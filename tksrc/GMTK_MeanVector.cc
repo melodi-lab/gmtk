@@ -231,6 +231,7 @@ MeanVector::noisyClone()
       clone->_name = _name + string("_cl") + buff;
       cloneNo++;
     } while (GM_Parms.meansMap.find(clone->_name) != GM_Parms.meansMap.end());
+
     clone->refCount = 0;
     clone->numTimesShared = 0;
     clone->means.resize(means.len());

@@ -62,14 +62,15 @@ public:
     // Polynomial non-linear mean-conditional diagonal Gaussians 
     // Implements sparse covariance Gaussians with Bayesian network covariance matrices
     // but non-linear dependencies, and polynomial non-linear BMMs.
-    PolyNLinMeanCondDiagGaussian = 2
+    PolyNLinMeanCondDiagGaussian = 2,
+    // A 1-dimensional Gamma distribution component, for real values that are
+    // strictly > 0. This can be in a mixture only with other 1D distributions.
+    GammaComponent = 3
     // add others here as they are written...
   };
 
-
   Component(const int dim) : _dim(dim) {}
   virtual ~Component() { }
-
 
   unsigned dim() const { return _dim; }
 
@@ -81,9 +82,9 @@ public:
   //////////////////////////////////////////////
 
   /////////////////////////////////////////////////
-  // create a copy of self, with entirely new parameters
-  // (so clone shares nothing), and with slightly (and 
-  // randomly) perturbed values.
+  // create a copy of self, with entirel or partially new parameters
+  // (so clone might or might not share, depends on the object), and
+  // with slightly (and randomly) perturbed values.
   virtual Component* noisyClone() = 0;
 
   /////////////////////////////////////////////////

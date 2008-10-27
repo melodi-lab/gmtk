@@ -65,9 +65,9 @@ public:
   //////////////////////////////////////////////
 
   /////////////////////////////////////////////////
-  // create a copy of self, with entirely new parameters
-  // (so clone shares nothing), and with slightly (and 
-  // randomly) perturbed values.
+  // create a copy of self, with entirel or partially new parameters
+  // (so clone might or might not share, depends on the object), and
+  // with slightly (and randomly) perturbed values.
   virtual Component* noisyClone() = 0;
 
   /////////////////////////////////////////////////

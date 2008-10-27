@@ -40,10 +40,9 @@ class Dense1DPMF;
 class Sparse1DPMF;
 class MeanVector;
 class DiagCovarVector;
-class RealMatrix;
 class DlinkMatrix;
 class Dlinks;
-class WeightMatrix;
+class RealMatrix;
 class DirichletTable;
 class MDCPT;
 class MSCPT;
@@ -88,7 +87,7 @@ public:
     emTrainMeans                          = (1 << 2),
     emTrainCovars                         = (1 << 3),
     emTraindLinkMats                      = (1 << 4),
-    emTrainWeightMats                     = (1 << 5),
+    emTrainRealMats                     = (1 << 5),
     emTrainDiagGaussians                  = (1 << 6),
     emTrainLinMeanCondDiagGaussians       = (1 << 7),
     emTrainMDCPTs                         = (1 << 8),
@@ -107,7 +106,7 @@ public:
   bool amTrainingMeans() { return (emTrainBitmask & emTrainMeans); }
   bool amTrainingCovars() { return (emTrainBitmask & emTrainCovars); }
   bool amTrainingdLinkMats() { return (emTrainBitmask & emTraindLinkMats); }
-  bool amTrainingWeightMats() { return (emTrainBitmask & emTrainWeightMats); }
+  bool amTrainingRealMats() { return (emTrainBitmask & emTrainRealMats); }
   bool amTrainingDiagGaussians() { return (emTrainBitmask & emTrainDiagGaussians); }
   bool amTrainingLinMeanCondDiagGaussians() { return (emTrainBitmask & emTrainLinMeanCondDiagGaussians); }
   bool amTrainingMDCPTs() { return (emTrainBitmask & emTrainMDCPTs); }
@@ -185,10 +184,12 @@ public:
   ////////////////////////////////
   // Collection of 2D Dense matrices, used
   // for weight matrices of MLPs, or 
-  // for logistic regression.
-  vector< WeightMatrix* > weightMats;
-  ObjectMapType weightMatsMap;
-  void add(WeightMatrix*ob);
+  // for logistic regression, or anytime
+  // an object needs a shared scalar, vector, or matrix of 
+  // real values.
+  vector< RealMatrix* > realMats;
+  ObjectMapType realMatsMap;
+  void add(RealMatrix*ob);
 
 
   ////////////////////////////////
@@ -372,7 +373,7 @@ public:
   void readCovars(iDataStreamFile& is,bool reset = false);
   void readDLinkMats(iDataStreamFile& is,bool reset = false);
   void readDLinks(iDataStreamFile& is,bool reset = false);
-  void readWeightMats(iDataStreamFile& is,bool reset = false);
+  void readRealMats(iDataStreamFile& is,bool reset = false);
   void readDirichletTabs(iDataStreamFile& is,bool reset = false);
   void readMdCpts(iDataStreamFile& is,bool reset = false);
   void readMsCpts(iDataStreamFile& is,bool reset = false);
@@ -397,7 +398,7 @@ public:
   void writeCovars(oDataStreamFile& os);
   void writeDLinkMats(oDataStreamFile& os);
   void writeDLinks(oDataStreamFile& os);
-  void writeWeightMats(oDataStreamFile& os);
+  void writeRealMats(oDataStreamFile& os);
   void writeDirichletTabs(oDataStreamFile& os);
   void writeMdCpts(oDataStreamFile& os);
   void writeMsCpts(oDataStreamFile& os);

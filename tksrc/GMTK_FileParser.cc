@@ -505,7 +505,7 @@ FileParser::FileParser(const char*const file,
   FILE* f;
   if (file == NULL)
     error("FileParser::FileParser, can't open NULL file");
-  string cppCommand = string("cpp");
+  string cppCommand = CPP_Command();
   if (cppCommandOptions != NULL)
     cppCommand = cppCommand + string(" ") + cppCommandOptions;
 
@@ -3435,20 +3435,20 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	if (rvInfoVector[i].conditionalParents[j].size() == 0) {
 	  // then under this value for switching parents, there
 	  // are no conditional parents and we have a direct
-	  // pointer to some Gaussian mixture.
+	  // pointer to some mixture.
 	  rv->conditionalMixtures[j].direct = true;
 	  if (rvInfoVector[i].listIndices[j].liType 
 		== RVInfo::ListIndex::li_String) {
 	    if (GM_Parms.mixturesMap.find(
 		    rvInfoVector[i].listIndices[j].nameIndex) ==
 		GM_Parms.mixturesMap.end()) {
-	      error("Error: RV \"%s\" at frame %d (line %d), Gaussian mixture \"%s\" doesn't exist\n",
+	      error("Error: RV \"%s\" at frame %d (line %d), mixture \"%s\" doesn't exist\n",
 		      rvInfoVector[i].name.c_str(),
 		      rvInfoVector[i].frame,
 		      rvInfoVector[i].fileLineNumber,
 		      rvInfoVector[i].listIndices[j].nameIndex.c_str());
 	    } else {
-	      // Mix Gaussian is there, so add it.
+	      // Mixture is there, so add it.
 	      rv->conditionalMixtures[j].mixture =
 		GM_Parms.mixtures[
 		      GM_Parms.mixturesMap[
@@ -3463,13 +3463,13 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	    if (rvInfoVector[i].listIndices[j].intIndex >= 
 		GM_Parms.mixturesMap.size()) {
 		if (!allocateIfNotThere) {
-		  error("Error: RV \"%s\" at frame %d (line %d), Gaussian mixture index (%d) too large\n",
+		  error("Error: RV \"%s\" at frame %d (line %d), mixture index (%d) too large\n",
 			rvInfoVector[i].name.c_str(),
 			rvInfoVector[i].frame,
 			rvInfoVector[i].fileLineNumber,
 			rvInfoVector[i].listIndices[j].intIndex);
 		} else {
-		  error("Can't allocate with integer Gaussian mixture index");
+		  error("Can't allocate with integer mixture index");
 		}
 	      } else {
 		// otherwise add it
@@ -3556,18 +3556,18 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		  ]];
 	      // make sure that the pointer table is filled in for this name.
 	      rv->conditionalMixtures[j].mapping.collection->fillMxTable();
-	      // Might as well do this here. Check that all Gaussians
+	      // Might as well do this here. Check that all component densities
 	      // in the collection are of the right dimensionality.
 	      // This check is important for ContRV::probGivenParents().
 	      const unsigned rvDim = 
 		(rvInfoVector[i].rvFeatureRange.lastFeatureElement - 
 		 rvInfoVector[i].rvFeatureRange.firstFeatureElement)+1;
-	      // make sure all Gaussians in the collection have the
+	      // make sure all component distributions in the collection have the
 	      // same dimensionality as the RV.
 	      for (unsigned u=0;u<
 		     rv->conditionalMixtures[j].mapping.collection->mxSize();
 		   u++) {
-		if ( // we only check the dimension for those Gaussians that have it.
+		if ( // we only check the dimension for those component distributions that have it.
 		    (rv->conditionalMixtures[j].mapping.collection->mx(u)->mixType
 		     != MixtureCommon::ci_zeroScoreMixture)
 		    &&

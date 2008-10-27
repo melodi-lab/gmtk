@@ -148,6 +148,8 @@ int
 main(int argc,char*argv[])
 {{ // use double so that we can destruct objects at end.
 
+    printf("EMable::minIncrementProbabilty.v = %f,lfm=%f\n",EMable::minIncrementProbabilty.val(),log_FLT_MIN);
+
   ////////////////////////////////////////////
   // set things up so that if an FP exception
   // occurs such as an "invalid" (NaN), overflow

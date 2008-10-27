@@ -75,6 +75,7 @@ ObsContRV::printNameFrameValue(FILE *f,bool nl)
   // the current global debug level changes the way observed variables are printed.
   if (IM::messageGlb(IM::Mega+5)) {
     // then print out the observation.
+    fprintf(f,"=");
     for (unsigned i=firstFeatureElement();i<=lastFeatureElement();i++) {
       // print only 1+3 significant digits for now.
       fprintf(f,"%.3e%s",
@@ -176,9 +177,11 @@ ObsContRV::probGivenParents(logpr& p)
   // dimensionality (this is checked in GMTK_FileParser.cc, 
   // in function FileParser::associateWithDataParams(bool)
 
-  // non-switching ObsContRVs are never direct since they
-  // always need parents.
-  assert (!curMappingOrDirect->direct);
+  if (curMappingOrDirect->direct) {
+    p = curMappingOrDirect->mixture->log_p
+      (frame(),firstFeatureElement());
+    return;
+  }
 
   // need to find which gaussian this will be.
   const unsigned gaussianIndex =
@@ -221,36 +224,39 @@ void
 ObsContRV::emIncrement(logpr posterior)
 {
 
-  // non-switching ObsContRVs are never direct since they
-  // always need parents.
-  assert (!curMappingOrDirect->direct);
 
-  // need to find which mixture this will be.
-  const unsigned mixtureIndex =
-    curMappingOrDirect->mapping.dtMapper->query(allParents,this);
+  if (curMappingOrDirect->direct) {
+    curMappingOrDirect->mixture->emIncrement
+      (posterior,frame(),firstFeatureElement());
+  } else {
 
-  ///////////////////////////////////////////////////////////
-  // Dynamic error checking:
-  // the following check needs to be here because DTs might
-  // have formulas in their leaves and there is no way
-  // to check this statically w/o enumerating through all possible
-  // values of the parents of this RV.
-  if (!curMappingOrDirect->mapping.collection->validMxIndex(mixtureIndex)) {
-    error("ERROR: random variable '%s' (time frame %d) using decision tree '%s' wants mixture "
-	  "with index %d but there are only %d mixtures in collection '%s'",
-	  name().c_str(),frame(),curMappingOrDirect->mapping.dtMapper->name().c_str(),
-	  mixtureIndex,
-	  curMappingOrDirect->mapping.collection->mxSize(),
-	  curMappingOrDirect->mapping.collection->name().c_str());
-    fprintf(stderr,"Parents configuration :");
-    printRVSetAndValues(stderr,allParents);
-    error("");
+    // need to find which mixture this will be.
+    const unsigned mixtureIndex =
+      curMappingOrDirect->mapping.dtMapper->query(allParents,this);
+
+    ///////////////////////////////////////////////////////////
+    // Dynamic error checking:
+    // the following check needs to be here because DTs might
+    // have formulas in their leaves and there is no way
+    // to check this statically w/o enumerating through all possible
+    // values of the parents of this RV.
+    if (!curMappingOrDirect->mapping.collection->validMxIndex(mixtureIndex)) {
+      error("ERROR: random variable '%s' (time frame %d) using decision tree '%s' wants mixture "
+	    "with index %d but there are only %d mixtures in collection '%s'",
+	    name().c_str(),frame(),curMappingOrDirect->mapping.dtMapper->name().c_str(),
+	    mixtureIndex,
+	    curMappingOrDirect->mapping.collection->mxSize(),
+	    curMappingOrDirect->mapping.collection->name().c_str());
+      fprintf(stderr,"Parents configuration :");
+      printRVSetAndValues(stderr,allParents);
+      error("");
+    }
+
+    // TODO: this needs to be changed when we have
+    // different types of mixtures.
+    curMappingOrDirect->mapping.collection->mx(mixtureIndex)->emIncrement
+      (posterior,frame(),firstFeatureElement());
   }
-
-  // TODO: this needs to be changed when we have
-  // different types of mixtures.
-  curMappingOrDirect->mapping.collection->mx(mixtureIndex)->emIncrement
-    (posterior,frame(),firstFeatureElement());
 }
 
 

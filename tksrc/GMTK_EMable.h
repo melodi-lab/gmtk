@@ -37,7 +37,7 @@ class RV;
 class EMable : public NamedObject, public IM {
 
 protected:
-
+public:
   //////////////////////////////////////////////////////////////////
   // A bitmask giving the "state" of the object. Used for
   //   1) error checking

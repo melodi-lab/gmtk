@@ -37,9 +37,10 @@
 #include "GMTK_MeanVector.h"
 #include "GMTK_DiagCovarVector.h"
 #include "GMTK_RealMatrix.h"
+#include "GMTK_GammaComponent.h"
 #include "GMTK_DlinkMatrix.h"
 #include "GMTK_Dlinks.h"
-#include "GMTK_WeightMatrix.h"
+#include "GMTK_RealMatrix.h"
 #include "GMTK_DirichletTable.h"
 #include "GMTK_MDCPT.h"
 #include "GMTK_MSCPT.h"
@@ -109,7 +110,7 @@ GMParms::~GMParms()
   deleteObsInVector(means);
   deleteObsInVector(covars);
   deleteObsInVector(dLinkMats);
-  deleteObsInVector(weightMats);
+  deleteObsInVector(realMats);
   deleteObsInVector(dirichletTabs);
   deleteObsInVector(components);
   deleteObsInVector(mdCpts);
@@ -140,7 +141,7 @@ void GMParms::add(Sparse1DPMF* ob) { add(ob,sPmfs,sPmfsMap); }
 void GMParms::add(MeanVector* ob){ add(ob,means,meansMap); }
 void GMParms::add(DiagCovarVector* ob){ add(ob,covars,covarsMap); }
 void GMParms::add(DlinkMatrix* ob) { add(ob,dLinkMats,dLinkMatsMap); }
-void GMParms::add(WeightMatrix*ob) { add(ob,weightMats,weightMatsMap); }
+void GMParms::add(RealMatrix*ob) { add(ob,realMats,realMatsMap); }
 void GMParms::add(DirichletTable*ob) { add(ob,dirichletTabs,dirichletTabsMap); }
 void GMParms::add(Component*ob){ add(ob,
 				     components,
@@ -455,38 +456,38 @@ GMParms::readDLinks(iDataStreamFile& is, bool reset)
 
 
 void 
-GMParms::readWeightMats(iDataStreamFile& is, bool reset)
+GMParms::readRealMats(iDataStreamFile& is, bool reset)
 {
   unsigned num;
   unsigned cnt;
   unsigned start = 0;
 
-  is.read(num,"Cant' read num weight matrices");
-  if (num > GMPARMS_MAX_NUM) error("ERROR: number of weight matrices (%d) in file '%s' line %d exceeds maximum",
+  is.read(num,"Cant' read num real matrices");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of real matrices (%d) in file '%s' line %d exceeds maximum",
 				   num,is.fileName(),is.lineNo());
   if (reset) {
     start = 0;
-    weightMats.resize(num);
+    realMats.resize(num);
   } else {
-    start = weightMats.size();
-    weightMats.resize(start+num);
+    start = realMats.size();
+    realMats.resize(start+num);
   }
   for (unsigned i=0;i<num;i++) {
     // first read the count
-    WeightMatrix* ob;
+    RealMatrix* ob;
 
-    is.read(cnt,"Can't read weight mat num");
+    is.read(cnt,"Can't read real mat num");
     if (cnt != i) 
-      error("ERROR: weight matrix count (%d), out of order in file '%s' line %d, expecting %d",
+      error("ERROR: real matrix count (%d), out of order in file '%s' line %d, expecting %d",
 	    cnt,is.fileName(),is.lineNo(),i);
 
-    ob = new WeightMatrix;
+    ob = new RealMatrix;
     ob->read(is);
-    if (weightMatsMap.find(ob->name()) != weightMatsMap.end())
-      error("ERROR: weight matrix named '%s' already defined but is specified for a second time in file '%s' line %d",
+    if (realMatsMap.find(ob->name()) != realMatsMap.end())
+      error("ERROR: real matrix named '%s' already defined but is specified for a second time in file '%s' line %d",
 	    ob->name().c_str(),is.fileName(),is.lineNo());
-    weightMats[i+start] = ob;
-    weightMatsMap[ob->name()] = i+start;
+    realMats[i+start] = ob;
+    realMatsMap[ob->name()] = i+start;
   }
 }
 
@@ -928,6 +929,8 @@ GMParms::readComponents(iDataStreamFile& is, bool reset)
     } else if (t == Component::PolyNLinMeanCondDiagGaussian) {
       error("PolyNLinMeanCondDiag not implemented");
       // gc = new PolyNLinMeanCondDiagGaussian(dim);
+    } else if (t == Component::GammaComponent) {
+      gc = new GammaComponent(dim);
     } else {
       error("Error: reading file %s line %d, unknown component type %d in file",
 	    is.fileName(),is.lineNo(),t);
@@ -1128,7 +1131,7 @@ GMParms::readAll(iDataStreamFile& is)
   readMeans(is);
   readCovars(is);
   readDLinkMats(is);
-  readWeightMats(is);
+  readRealMats(is);
   readDirichletTabs(is);
   readMdCpts(is);
   readMsCpts(is);
@@ -1186,8 +1189,8 @@ GMParms::readTrainable(iDataStreamFile& is)
   readCovars(is);
   infoMsg(Low+9,"Reading Dlink Mats\n");
   readDLinkMats(is);
-  infoMsg(Low+9,"Reading Weight  Mats\n");
-  readWeightMats(is);  
+  infoMsg(Low+9,"Reading Real Mats\n");
+  readRealMats(is);  
   infoMsg(Low+9,"Reading Dense CPTs\n");
   readMdCpts(is);
 
@@ -1326,7 +1329,10 @@ GMParms::read(
       readDLinks(*((*it).second),false);
 
     } else if (keyword == "WEIGHT_MAT_IN_FILE") {
-      readWeightMats(*((*it).second),false);
+      // TODO: evenually remove this backwards compatibility case. 
+      readRealMats(*((*it).second),false);
+    } else if (keyword == "REAL_MAT_IN_FILE") {
+      readRealMats(*((*it).second),false);
 
     } else if (keyword == "DIRICHLET_TAB_IN_FILE") {
       readDirichletTabs(*((*it).second),false);
@@ -1638,8 +1644,8 @@ GMParms::writeMeans(oDataStreamFile& os)
 
 /*-
  *-----------------------------------------------------------------------
- * writeMeans
- *      writes out the means 
+ * writeCovars
+ *      writes out the covariance matrices
  * 
  * Preconditions:
  *      markUsedMixtureComponents() should have been called immediately before.
@@ -1766,8 +1772,8 @@ GMParms::writeDLinks(oDataStreamFile& os)
 
 /*-
  *-----------------------------------------------------------------------
- * writeWeightMats
- *      writes out the weight mats
+ * writeRealMats
+ *      writes out the real mats
  * 
  * Preconditions:
  *      markUsedMixtureComponents() should have been called immediately before.
@@ -1784,31 +1790,30 @@ GMParms::writeDLinks(oDataStreamFile& os)
  *-----------------------------------------------------------------------
  */
 void 
-GMParms::writeWeightMats(oDataStreamFile& os)
+GMParms::writeRealMats(oDataStreamFile& os)
 {
-  os.nl(); os.writeComment("weight matrices");os.nl();
+  os.nl(); os.writeComment("real valued N_i x M_i matrices");os.nl();
   unsigned used = 0;
-  for (unsigned i=0;i<weightMats.size();i++) {
-    if (weightMats[i]->emUsedBitIsSet())
+  for (unsigned i=0;i<realMats.size();i++) {
+    if (realMats[i]->emUsedBitIsSet())
       used++;
   }
-  if (used != weightMats.size())
-    warning("NOTE: saving only %d used weight  matrices out of a total of %d",
-	    used,weightMats.size());
-  os.write(used,"num weight mats"); os.nl();
+  if (used != realMats.size())
+    warning("NOTE: saving only %d used real matrices out of a total of %d",
+	    used,realMats.size());
+  os.write(used,"num real mats"); os.nl();
   unsigned index = 0;
-  for (unsigned i=0;i<weightMats.size();i++) {
-    if (weightMats[i]->emUsedBitIsSet()) {
+  for (unsigned i=0;i<realMats.size();i++) {
+    if (realMats[i]->emUsedBitIsSet()) {
       // first write the count
-      os.write(index++,"weight mat cnt");
+      os.write(index++,"real mat cnt");
       os.nl();
-      weightMats[i]->write(os);
+      realMats[i]->write(os);
     }
   }
   assert ( used == index );
   os.nl();
 }
-
 
 
 
@@ -1834,7 +1839,7 @@ void
 GMParms::writeDirichletTabs(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("Dirichlet Tables");os.nl();
-  os.write(weightMats.size(),"num dirichlet tabs"); os.nl();
+  os.write(dirichletTabs.size(),"num dirichlet tabs"); os.nl();
   for (unsigned i=0;i<dirichletTabs.size();i++) {
     // first write the count
     os.write(i,"diriclet tab cnt");
@@ -2274,7 +2279,7 @@ GMParms::writeAll(oDataStreamFile& os)
   writeMeans(os);
   writeCovars(os);
   writeDLinkMats(os);
-  writeWeightMats(os);  
+  writeRealMats(os);  
   writeMdCpts(os);
   writeMsCpts(os);
   writeMtCpts(os);
@@ -2322,7 +2327,7 @@ GMParms::writeTrainable(oDataStreamFile& os)
   writeMeans(os);
   writeCovars(os);
   writeDLinkMats(os);
-  writeWeightMats(os);  
+  writeRealMats(os);  
   writeMdCpts(os);
 
   // next write definitional items
@@ -2457,7 +2462,10 @@ GMParms::write(const char *const outputFileFormat, const char * const cppCommand
       writeDLinks(*((*it).second));
 
     } else if (keyword == "WEIGHT_MAT_OUT_FILE") {
-      writeWeightMats(*((*it).second));
+      // TODO: remove this backward compatibility case.
+      writeRealMats(*((*it).second));
+    } else if (keyword == "REAL_MAT_OUT_FILE") {
+      writeRealMats(*((*it).second));
 
     } else if (keyword == "DIRICHLET_TAB_OUT_FILE") {
       writeDirichletTabs(*((*it).second));
@@ -2766,7 +2774,7 @@ unsigned GMParms::totalNumberParameters()
   for (unsigned i=0;i<dPmfs.size();i++)
     sum += dPmfs[i]->totalNumberParameters();
 
-  // components, gets means, vars, dlinks, weight mats
+  // components, gets means, vars, dlinks, real mats
   for (unsigned i=0;i<components.size();i++)
     sum += components[i]->totalNumberParameters();
 
@@ -2822,8 +2830,8 @@ void GMParms::markUsedMixtureComponents()
     covars[i]->recursivelyClearUsedBit();
   for (unsigned i=0;i<dLinkMats.size();i++)
     dLinkMats[i]->recursivelyClearUsedBit();
-  for (unsigned i=0;i<weightMats.size();i++)
-    weightMats[i]->recursivelyClearUsedBit();
+  for (unsigned i=0;i<realMats.size();i++)
+    realMats[i]->recursivelyClearUsedBit();
   for (unsigned i=0;i<components.size();i++)
     components[i]->recursivelyClearUsedBit();
   for (unsigned i=0;i<mixtures.size();i++)
@@ -2910,7 +2918,9 @@ void GMParms::markObjectsToNotTrain(const char*const fileName,
     } else if (objType == "DLINKMAT") {
       EMCLEARAMTRAININGBIT_CODE(dLinkMatsMap,dLinkMats);
     } else if (objType == "WEIGHTMAT") {
-      EMCLEARAMTRAININGBIT_CODE(weightMatsMap,weightMats);
+      EMCLEARAMTRAININGBIT_CODE(realMatsMap,realMats);
+    } else if (objType == "REALMAT") {
+      EMCLEARAMTRAININGBIT_CODE(realMatsMap,realMats);
     } else if (objType == "COMPONENT") {
       EMCLEARAMTRAININGBIT_CODE(componentsMap,components);
     } else if (objType == "DENSECPT") {
@@ -2969,8 +2979,8 @@ void GMParms::markObjectsToNotTrain(const char*const fileName,
      covars[i]->makeRandom();
    for (unsigned i=0;i<dLinkMats.size();i++)
      dLinkMats[i]->makeRandom();
-   for (unsigned i=0;i<weightMats.size();i++)
-     weightMats[i]->makeRandom();
+   for (unsigned i=0;i<realMats.size();i++)
+     realMats[i]->makeRandom();
 
    // components
    for (unsigned i=0;i<components.size();i++)
@@ -3006,8 +3016,8 @@ GMParms::makeUniform()
     covars[i]->makeUniform();
   for (unsigned i=0;i<dLinkMats.size();i++)
     dLinkMats[i]->makeUniform();
-  for (unsigned i=0;i<weightMats.size();i++)
-    weightMats[i]->makeUniform();
+  for (unsigned i=0;i<realMats.size();i++)
+    realMats[i]->makeUniform();
 
    // components
   for (unsigned i=0;i<components.size();i++)
@@ -3091,8 +3101,8 @@ GMParms::emEndIteration()
    //      covars[i]->emEndIteration();
    //    for (unsigned i=0;i<dLinkMats.size();i++)
    //      dLinkMats[i]->emEndIteration();
-   //    for (unsigned i=0;i<weightMats.size();i++)
-   //      weightMats[i]->emEndIteration();
+   //    for (unsigned i=0;i<realMats.size();i++)
+   //      realMats[i]->emEndIteration();
    //
    //////////////////////////////////////////////////////////////
 
@@ -3173,8 +3183,8 @@ GMParms::emSwapCurAndNew()
   //      covars[i]->emSwapCurAndNew();
   //    for (unsigned i=0;i<dLinkMats.size();i++)
   //      dLinkMats[i]->emSwapCurAndNew();
-  //    for (unsigned i=0;i<weightMats.size();i++)
-  //      weightMats[i]->emSwapCurAndNew();
+  //    for (unsigned i=0;i<realMats.size();i++)
+  //      realMats[i]->emSwapCurAndNew();
   //    for (unsigned i=0;i<components.size();i++)
   //      components[i]->emSwapCurAndNew();
 
@@ -3223,8 +3233,8 @@ GMParms::emStoreAccumulators(oDataStreamFile& ofile)
     covars[i]->emStoreAccumulators(ofile);
   for (unsigned i=0;i<dLinkMats.size();i++)
     dLinkMats[i]->emStoreAccumulators(ofile);
-  for (unsigned i=0;i<weightMats.size();i++)
-    weightMats[i]->emStoreAccumulators(ofile);
+  for (unsigned i=0;i<realMats.size();i++)
+    realMats[i]->emStoreAccumulators(ofile);
 
    // components
   for (unsigned i=0;i<components.size();i++)
@@ -3301,8 +3311,8 @@ GMParms::emLoadAccumulators(iDataStreamFile& ifile)
     covars[i]->emLoadAccumulators(ifile);
   for (unsigned i=0;i<dLinkMats.size();i++)
     dLinkMats[i]->emLoadAccumulators(ifile);
-  for (unsigned i=0;i<weightMats.size();i++)
-    weightMats[i]->emLoadAccumulators(ifile);
+  for (unsigned i=0;i<realMats.size();i++)
+    realMats[i]->emLoadAccumulators(ifile);
 
   // components
   for (unsigned i=0;i<components.size();i++)
@@ -3345,8 +3355,8 @@ GMParms::emAccumulateAccumulators(iDataStreamFile& ifile)
     covars[i]->emAccumulateAccumulators(ifile);
   for (unsigned i=0;i<dLinkMats.size();i++)
     dLinkMats[i]->emAccumulateAccumulators(ifile);
-  for (unsigned i=0;i<weightMats.size();i++)
-    weightMats[i]->emAccumulateAccumulators(ifile);
+  for (unsigned i=0;i<realMats.size();i++)
+    realMats[i]->emAccumulateAccumulators(ifile);
 
   // components
   for (unsigned i=0;i<components.size();i++)
@@ -3427,8 +3437,8 @@ GMParms::emInitAccumulators(bool startEMIteration)
     covars[i]->emInitAccumulators();
   for (unsigned i=0;i<dLinkMats.size();i++)
     dLinkMats[i]->emInitAccumulators();
-  for (unsigned i=0;i<weightMats.size();i++)
-    weightMats[i]->emInitAccumulators();
+  for (unsigned i=0;i<realMats.size();i++)
+    realMats[i]->emInitAccumulators();
 
   // components
   for (unsigned i=0;i<components.size();i++)
@@ -3472,8 +3482,8 @@ GMParms::emWriteUnencodedAccumulators(oDataStreamFile& ofile, bool writeLogVals)
     covars[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
   for (unsigned i=0;i<dLinkMats.size();i++)
     dLinkMats[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
-  for (unsigned i=0;i<weightMats.size();i++)
-    weightMats[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+  for (unsigned i=0;i<realMats.size();i++)
+    realMats[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
 
    // components
   for (unsigned i=0;i<components.size();i++)
