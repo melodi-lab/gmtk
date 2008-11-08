@@ -4631,3 +4631,9 @@ Sun Oct 26 15:38:11 2008 possible relevant paper on dynamic update
   geometry registration," in Proc. of the Eurographics Symposium on
   Geometry Processing, 2007.
 
+
+Sat Nov  8 20:32:56 2008
+  get beta observation distribution working, which gives us obsevation distributions
+   over fixed ranges of continuous values. Should mimic the gamma observation distribution
+   (i.e., diagonal independent beta distributions). 
+   

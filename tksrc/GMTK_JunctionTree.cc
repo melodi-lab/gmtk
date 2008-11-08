@@ -326,6 +326,20 @@ JT_Partition::JT_Partition(
  *
  *-----------------------------------------------------------------------
  */
+// first, we define two structures that are used for sorting/comparing 
+// weighted cliques.
+struct PriorityClique {
+  unsigned clique;
+  vector <double> weights;
+  PriorityClique(unsigned c,vector <double> w) : clique(c), weights(w) {}
+};
+struct PriorityCliqueCompare {  
+  // sort descending
+  bool operator() (const PriorityClique& a, 
+		   const PriorityClique& b) {
+    return (a.weights) > (b.weights);
+  }
+};
 void
 JT_Partition::findInterfaceCliques(const set <RV*>& iNodes,
 				   unsigned& iClique,

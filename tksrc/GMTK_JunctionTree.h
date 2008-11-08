@@ -55,22 +55,6 @@ class JT_Partition : public Partition {
 
   friend class JunctionTree;
 
-
-  struct PriorityClique {
-    unsigned clique;
-    vector <double> weights;
-    PriorityClique(unsigned c,vector <double> w) : clique(c), weights(w) {}
-  };
-
-  struct PriorityCliqueCompare {  
-    // sort descending
-    bool operator() (const PriorityClique& a, 
-		     const PriorityClique& b) {
-      return (a.weights) > (b.weights);
-    }
-  };
-
-
   void findInterfaceCliques(const set <RV*>& iNodes,
 			    unsigned& iClique,
 			    bool& iCliqueSameAsInterface,
