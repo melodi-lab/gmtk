@@ -13,8 +13,8 @@
 
 
 # compiler selection flags
-CC=gcc-4.2
-CXX=g++-4.2
+CC=gcc
+CXX=g++
 # extra flags to compilers and linker, allows user to control this from top level make run.
 EXCCFLAGS=
 # EXCXXFLAGS=-Wno-deprecated
