@@ -1,6 +1,8 @@
 /*-
- * GMTK_GammaComponent
- *        Gamma Component elements that are shared by all Gamma type component clases.
+ * GMTK_BetaComponent
+ *
+ *        Beta Observation Component elements that are shared by all
+ *        Beta type component clases.
  *
  *  Written by Jeff Bilmes <bilmes@ee.washington.edu>
  * 
@@ -18,29 +20,29 @@
  *
  */
 
+
 /*
  * A note on sharing: If no training is going on, it is possible to set up any form
- * of sharing that is specifyable in the parameter files. I.e., since a Gamma distribution
- * involves two parameters, we could have two Gamma distributions that share a shape but have
- * unique scale parameters. Since no training is going on, however, the utility of doing this
+ * of sharing that is specifyable in the parameter files. I.e., since a Beta distribution
+ * involves two parameters, we could have two Beta distributions that share an alpha but have
+ * unique beta parameters. Since no training is going on, however, the utility of doing this
  * is questionable.
  *
  * During training, however, some forms of sharing currently won't work. What will work is
- * if two separate random variables share the same Gamma distribution (this can be at different
- * times or positions in a structure file). What won't work, however, is if two Gamma distributions
- * share an shape and/or a scale parameter vector. In other words, each real matrix (which
- * are used for the parameters of a given Gamma distribution, should be used only one time
+ * if two separate random variables share the same Beta distribution (this can be at different
+ * times or positions in a structure file). What won't work, however, is if two Beta distributions
+ * share an alpha and/or a beta parameter vector. In other words, each real matrix (which
+ * are used for the parameters of a given Beta distribution, should be used only one time
  * during parameter training).
  *
  * A TODO is to derive the update equations for the constrained optimization case of
- * a Gamma distrubtion where one (or more) of the parameters are shared. See
- * also the Beta observation distribution.
+ * a Beta distrubtion where one (or more) of the parameters are shared. See also
+ * the Gamma observation distribution.
+ *
  */
 
-
-
-#ifndef GMTK_GAMMACOMPONENT_H
-#define GMTK_GAMMACOMPONENT_H
+#ifndef GMTK_BETACOMPONENT_H
+#define GMTK_BETACOMPONENT_H
 
 #include "fileParser.h"
 #include "logp.h"
@@ -56,7 +58,7 @@
 extern double digamma ( double x, int *ifault );
 extern double trigamma ( double x, int *ifault );
 
-class GammaComponent :  public Component {
+class BetaComponent :  public Component {
 
   ///////////////////////////////////////////////////////
   // The value that, if any variances go below, cause
@@ -67,59 +69,56 @@ class GammaComponent :  public Component {
   // TODO: shared parmaeters during training is not
   // yet implemented!!!!
 
-  // The scale parameter, which might be tied with
-  // other Gamma distributions. We use a general 1x1 sized
-  // real matrix for this.
-  RealMatrix* scale;
+  // The parameters for the beta, we use two vectors for the alpha and
+  // beta parametrs. Note that the normal state of these parameters
+  // is actually 1.0 less than their typically defined values, so 
+  // one needs to be careful to ensure that one is dealing with (alpha,beta)
+  // and not (alpha-1.0,beta-1.0).
+  RealMatrix* alpha;
+  RealMatrix* beta;
 
-  // The shape parameter, which might be tied with
-  // other Gamma distributions. We use a general 1x1 sized
-  // weight matrix for this.
-  RealMatrix* shape;
-
-  // set the left-most open interval limit to this value.
-  // I.e., rather than distribution from (0,infty) we have
-  // a distribution from (lower,infty)
+  // This distribution is for values that lie in the strictly *open*
+  // interval (lower,upper). That is, we must have that
+  // for any x, the strict inequalit: lower < x < upper
+  // If this is not the case, a run-time error will occur. Default
+  // values are (upper,lower) = (0,1).
+  double upper;
   double lower;
+  double rangeScale; // the difference
 
   // used for EM accumulation
   sArray <double> sumx;
   sArray <double> sumxx;  
-  sArray <double> sumlogx;
 
+  // precomputed log normalizer for the Beta distribution.
+  sArray <double> normalizer;
+  void recomputeNormalizer();
 
-  // precomputed log denominator for the Gamma distribution.
-  sArray <double> denominators;
-  void recomputeDenominators();
-
-  // Slightly perturb either the shape or scale parameters.
-  void perturbShape();
-  void perturbScale();
-
+  // Slightly perturb either the alpha or beta parameters.
+  void perturbAlpha();
+  void perturbBeta();
 
   /////////////////////////////////////////////////
   // modify the usage counts of any members that use them; typically
   // called with amount=1 or -1
   void adjustNumTimesShared(int amount){
-    scale->numTimesShared += amount;
-    shape->numTimesShared += amount;
+    alpha->numTimesShared += amount;
+    beta->numTimesShared += amount;
   };
-
-
 
 public:
 
   // a gamma distribution always has dimensionalit of 1 (but we do
-  // a vector of Gammas, sort of like a Diagonal component Gaussian.
-  GammaComponent(const int dim) : Component(dim) { }
+  // a vector of Betas, sort of like a Diagonal component Gaussian.
+  BetaComponent(const int dim) : Component(dim) { }
 
-  virtual ~GammaComponent() { }
+  virtual ~BetaComponent() { }
 
   static double varianceFloor() { return _varianceFloor; }
   static double setVarianceFloor(const double floor);
 
-  static bool cloneShareScale;
-  static bool cloneShareShape;
+  static bool cloneShareAlpha;
+  static bool cloneShareBeta;
 
   //////////////////////////////////////////////
   // read/write basic parameters
@@ -141,21 +140,20 @@ public:
   //////////////////////////////////
   // set all current parameters to valid but random values
   void makeRandom();
-  // set all current parameters to valid but "uniform" values 
-  // (for Gammas this means shape = 1, and scale = 2.
+  // set all current parameters to valid but "uniform" values.
   void makeUniform();
   unsigned totalNumberParameters() { return 2; }
   //////////////////////////////////
 
   void recursivelyClearUsedBit() { 
     emClearUsedBit(); 
-    scale->recursivelyClearUsedBit();
-    shape->recursivelyClearUsedBit();
+    alpha->recursivelyClearUsedBit();
+    beta->recursivelyClearUsedBit();
   } 
   void recursivelySetUsedBit() { 
     emSetUsedBit(); 
-    scale->recursivelySetUsedBit();
-    shape->recursivelySetUsedBit();
+    alpha->recursivelySetUsedBit();
+    beta->recursivelySetUsedBit();
   }
 
   //////////////////////////////////

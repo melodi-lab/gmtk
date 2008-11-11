@@ -54,7 +54,8 @@ double GammaComponent::setVarianceFloor(const double floor)
   return _varianceFloor;
 }
 
-
+// TODO: these values should not be exported to the command line
+// until (and if) sharing is done.
 // true if when a clone occurs, we use the same shape (i.e.,
 // share the shape and only clone other things).
 bool GammaComponent::cloneShareShape = false;
@@ -126,15 +127,19 @@ GammaComponent::log_p(const float *const x,
   assert ( basicAllocatedBitIsSet() );
 
   double val = 0;
+
+  // cache value
+  const double localLower = lower;
+
   for (unsigned i = 0; i < _dim ; i++ ) {
 
     // enforce strict positivity.
-    if (x[i] <= 0.0) {
+    if (x[i] <= localLower) {
       // unfortnately there is no way here to give a better error
       // message.  I suppose if we threw an exception, it could be
       // caught where more information is availale regarding the
       // observation location and file name, etc.
-      error("ERROR: obsevation value is %f, but a Gamma distribution cannot have a non-positive observation.",x[i]);
+      error("ERROR: obsevation value is %f (element %d), but a Gamma distribution (%s) has lower limit %f, all values must be strictly greater.",x[i],i,_name.c_str(),localLower);
     }
 
     // the gamma function is 
@@ -142,11 +147,12 @@ GammaComponent::log_p(const float *const x,
     // theta is the (obviously trival) scale parameter, and where k is the shape parameter.
     // We note that k = 1 represents the exponential density for various scales theta. Note,
     // sometimes this density is represented with alpha = 1/theta. 
-    
+
+    const double x_val = x[i] - localLower; 
     const float k = shape->values.ptr[i];
     const float theta = scale->values.ptr[i];  
     // Compute the probability in the log domain.
-    val += (k-1)*::log(x[i])  - x[i]/theta - denominators.ptr[i];
+    val += (k-1)*::log(x_val)  - x_val/theta - denominators.ptr[i];
   }
 
   return logpr(0,val);
@@ -185,9 +191,13 @@ GammaComponent::read(iDataStreamFile& is)
   // read name
   NamedObject::read(is);
 
+  // read range (lower,infty)
+  is.read(lower,"beta lower");
+
   // read scale vector
   string str;
   is.read(str);
+
 
   if (GM_Parms.realMatsMap.find(str) ==  GM_Parms.realMatsMap.end()) 
       error("Error: GammaComponent '%s' in file '%s' line %d specifies scale name '%s' that does not exist",
@@ -235,6 +245,7 @@ GammaComponent::write(oDataStreamFile& os)
   os.write((int)Component::GammaComponent);
   NamedObject::write(os);
   os.nl();
+  os.write(lower);  os.nl();
 
   // write object names
   os.write(scale->name());
@@ -341,6 +352,8 @@ GammaComponent::noisyClone()
     GammaComponent* clone;
     clone = new GammaComponent(_dim);
 
+    clone->lower = lower;
+
     unsigned cloneNo=0; do {
       char buff[256];
       sprintf(buff,"%d",cloneNo);
@@ -426,6 +439,7 @@ GammaComponent::identicalIndependentClone()
 
   newDG->shape = shape->cleanClone();
   newDG->scale = scale->cleanClone();
+  newDG->lower = lower;
 
   // don't change usage counts here - do it in calling function,
   // because only that knows how the sharing is arranged
@@ -511,21 +525,26 @@ GammaComponent::emIncrement(logpr prob,
   // MLE. To do an MLE of a Gamma requires an additional iterative
   // procedure.
 
+  // cache value
+  const double localLower = lower;
+
   if (!fisherKernelMode) {
     // do normal EM increment
     // this call is optimized to do the 1st and 2nd moment stats simultaneously
     for (unsigned i = 0; i < _dim; i++ ) {
       // enforce strict positivity.
-      if (f[i] <= 0.0) {
+      if (f[i] <= localLower) {
 	// unfortnately there is no way here to give a better error
 	// message.  I suppose if we threw an exception, it could be
 	// caught where more information is availale regarding the
 	// observation location and file name, etc.
-	error("ERROR: em training, obsevation value is %f, but a Gamma distribution cannot have a non-positive observation.",f[i]);
+	error("ERROR: em training, obsevation value is %f (element %d), but Gamma distribution (%s) has lower limit %f, all values must be strictly greater.",f[i],i,_name.c_str(),localLower);
       }
-      sumx.ptr[i] += f[i]*fprob;
-      sumxx.ptr[i] += f[i]*f[i]*fprob;
-      sumlogx.ptr[i] += ::log(f[i])*fprob;
+
+      const double x_val = f[i] - localLower; 
+      sumx.ptr[i] += x_val*fprob;
+      sumxx.ptr[i] += x_val*x_val*fprob;
+      sumlogx.ptr[i] += ::log(x_val)*fprob;
     }
   } else {
     error("ERROR: fisher kernel not yet implemented with gamma components");
@@ -644,11 +663,11 @@ GammaComponent::emStoreObjectsAccumulators(oDataStreamFile& ofile,
   assert (emEmAllocatedBitIsSet());
     
 
-  // since this is a Gaussian, we ignore the writeLogVals
+  // since this is a Gamma, we ignore the writeLogVals
   // argument since it doesn't make sense to take log of
   // these values since they are continuous. etc.
   if (writeZeros) {
-    for (unsigned i=0;i<2*_dim;i++) {
+    for (unsigned i=0;i<3*_dim;i++) {
       ofile.write(0.0,"Gamma Component store accum.");
     }
   } else {
@@ -670,6 +689,7 @@ GammaComponent::emLoadObjectsDummyAccumulators(iDataStreamFile& ifile)
     float tmp;
     ifile.read(tmp,"Gamma load accums nm.");
     ifile.read(tmp,"Gamma load accums nc.");
+    ifile.read(tmp,"Gamma load accums lg.");
   }
 }
 
@@ -689,8 +709,8 @@ GammaComponent::emLoadObjectsAccumulators(iDataStreamFile& ifile)
   assert (emEmAllocatedBitIsSet());
   for (unsigned i = 0; i < _dim; i++) {
     ifile.read(sumx.ptr[i],"Gamma Component load accums x");
-    ifile.read(sumxx.ptr[i],"Diag Component load accums xx.");
-    ifile.read(sumlogx.ptr[i],"Diag Component load accums lgx.");
+    ifile.read(sumxx.ptr[i],"Gamma Component load accums xx.");
+    ifile.read(sumlogx.ptr[i],"Gamma Component load accums lgx.");
   }
 }
 
@@ -699,15 +719,15 @@ void
 GammaComponent::emAccumulateObjectsAccumulators(iDataStreamFile& ifile)
 {
   //
-  // assume means and covariances are of type float
+  // assume shape and scale are of type float
   assert (emEmAllocatedBitIsSet());
   for (unsigned i = 0; i < _dim; i++) {
-    float tmp;
+    float tmp; // here is the float assumption.
     ifile.read(tmp,"Gamma component accumulate accums sumx.");
     sumx.ptr[i] += tmp;
-    ifile.read(tmp,"Diag Gaussian accumulate accums sumxx.");
+    ifile.read(tmp,"Gamma Gaussian accumulate accums sumxx.");
     sumxx.ptr[i] += tmp;
-    ifile.read(tmp,"Diag Gaussian accumulate accums sumlogx.");
+    ifile.read(tmp,"Gamma Gaussian accumulate accums sumlogx.");
     sumlogx.ptr[i] += tmp;
   }
 }

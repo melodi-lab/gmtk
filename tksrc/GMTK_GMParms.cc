@@ -38,6 +38,7 @@
 #include "GMTK_DiagCovarVector.h"
 #include "GMTK_RealMatrix.h"
 #include "GMTK_GammaComponent.h"
+#include "GMTK_BetaComponent.h"
 #include "GMTK_DlinkMatrix.h"
 #include "GMTK_Dlinks.h"
 #include "GMTK_RealMatrix.h"
@@ -931,6 +932,8 @@ GMParms::readComponents(iDataStreamFile& is, bool reset)
       // gc = new PolyNLinMeanCondDiagGaussian(dim);
     } else if (t == Component::GammaComponent) {
       gc = new GammaComponent(dim);
+    } else if (t == Component::BetaComponent) {
+      gc = new BetaComponent(dim);
     } else {
       error("Error: reading file %s line %d, unknown component type %d in file",
 	    is.fileName(),is.lineNo(),t);
