@@ -63,9 +63,12 @@ public:
     // Implements sparse covariance Gaussians with Bayesian network covariance matrices
     // but non-linear dependencies, and polynomial non-linear BMMs.
     PolyNLinMeanCondDiagGaussian = 2,
-    // A 1-dimensional Gamma distribution component, for real values that are
-    // strictly > 0. This can be in a mixture only with other 1D distributions.
-    GammaComponent = 3
+    // A N-dimensional Gamma distribution component, for real values that are
+    // strictly > 0.
+    GammaComponent = 3,
+    // A N-dimensional Beta distribution component, for real values that are
+    // in a given range
+    BetaComponent = 4
     // add others here as they are written...
   };
 

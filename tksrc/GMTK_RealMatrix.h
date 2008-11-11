@@ -33,6 +33,7 @@ class RV;
 class RealMatrix : public EMable  {
 
   friend class GammaComponent;
+  friend class BetaComponent;
 
 protected:
 
