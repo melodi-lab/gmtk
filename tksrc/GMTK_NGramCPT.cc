@@ -26,7 +26,7 @@
 #include <queue>
 #include <cmath>
 #include <cassert>
-
+#include <math.h>
 
 #include "GMTK_NGramCPT.h"
 #include "GMTK_GMParms.h"
@@ -42,7 +42,6 @@
 // ARPA format uses log10.
 // this should be commented out
 //#define M_LN10  1.0
-
 
 // this function is defined in GMTK_Vocab.cc
 extern unsigned nextPrime(unsigned n);
