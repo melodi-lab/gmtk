@@ -234,7 +234,14 @@ int stringprintf(string& str,const char *format, ...)
   char buff[512];
   va_list ap;
   va_start(ap,format);
+#ifdef __CYGWIN__
+  // TODO: as of Fri Sep 07 08:04:46 2007, cygwin doesn't have
+  // a vsnprintf, so we use vsprintf for now, but we know
+  // that this might cause an error.
+  int rc = vsprintf(buff, format, ap);
+#else
   int rc = vsnprintf(buff,sizeof(buff), format, ap);
+#endif
   va_end(ap);
   str = buff;
   return rc;
