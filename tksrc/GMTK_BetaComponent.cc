@@ -655,9 +655,8 @@ void
 BetaComponent::emLoadObjectsDummyAccumulators(iDataStreamFile& ifile)
 {
 
-  // assume alpha and beta are of type float
   for (unsigned i = 0; i < _dim; i++) {
-    float tmp;
+    double tmp;
     ifile.read(tmp,"Beta load accums al.");
     ifile.read(tmp,"Beta load accums bt.");
   }
@@ -688,10 +687,9 @@ void
 BetaComponent::emAccumulateObjectsAccumulators(iDataStreamFile& ifile)
 {
   //
-  // assume alphas and betas are of type float
   assert (emEmAllocatedBitIsSet());
   for (unsigned i = 0; i < _dim; i++) {
-    float tmp; // here is the float assumption.
+    double tmp; 
     ifile.read(tmp,"Beta component accumulate accums sumx.");
     sumx.ptr[i] += tmp;
     ifile.read(tmp,"Diag Gaussian accumulate accums sumxx.");

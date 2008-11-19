@@ -47,6 +47,10 @@
 #include "hash_mtable.h"
 #include "logp.h"
 
+#ifndef M_LN10
+#define M_LN10          2.30258509299404568402
+#endif
+
 
 // with this macro defined, the code will grow the backing-off value
 // hash table dynamically.

@@ -92,8 +92,8 @@ GammaComponent::recomputeDenominators()
   for (unsigned i=0; i< _dim; i++) {
     // compute log_e((theta^k gamma(k)));
     // = k*log_e(theta) + log_e(gamma(k))
-    const float k = shape->values.ptr[i];
-    const float theta = scale->values.ptr[i];
+    const double k = shape->values.ptr[i];
+    const double theta = scale->values.ptr[i];
     denominators.ptr[i] =  lgamma(k) +  k * log(theta);
   }
 }
@@ -149,8 +149,8 @@ GammaComponent::log_p(const float *const x,
     // sometimes this density is represented with alpha = 1/theta. 
 
     const double x_val = x[i] - localLower; 
-    const float k = shape->values.ptr[i];
-    const float theta = scale->values.ptr[i];  
+    const double k = shape->values.ptr[i];
+    const double theta = scale->values.ptr[i];  
     // Compute the probability in the log domain.
     val += (k-1)*::log(x_val)  - x_val/theta - denominators.ptr[i];
   }
@@ -518,7 +518,7 @@ GammaComponent::emIncrement(logpr prob,
   accumulatedProbability += prob;
   // prob.unlog() here so it doesn't need to be done
   // twice by the callees.
-  const float fprob = prob.unlog();
+  const double fprob = prob.unlog();
 
   // we next do an estimate of the stats for a Gamma distribuion.
   // NOTE: this is currently just a hack, this is *NOT* the
@@ -684,9 +684,8 @@ void
 GammaComponent::emLoadObjectsDummyAccumulators(iDataStreamFile& ifile)
 {
 
-  // assume scale and shape are of type float
   for (unsigned i = 0; i < _dim; i++) {
-    float tmp;
+    double tmp;
     ifile.read(tmp,"Gamma load accums nm.");
     ifile.read(tmp,"Gamma load accums nc.");
     ifile.read(tmp,"Gamma load accums lg.");
@@ -719,10 +718,9 @@ void
 GammaComponent::emAccumulateObjectsAccumulators(iDataStreamFile& ifile)
 {
   //
-  // assume shape and scale are of type float
   assert (emEmAllocatedBitIsSet());
   for (unsigned i = 0; i < _dim; i++) {
-    float tmp; // here is the float assumption.
+    double tmp;
     ifile.read(tmp,"Gamma component accumulate accums sumx.");
     sumx.ptr[i] += tmp;
     ifile.read(tmp,"Gamma Gaussian accumulate accums sumxx.");

@@ -56,6 +56,10 @@
 #include "fileParser.h"
 #include "hash_mtable.h"
 
+#ifndef M_LN10
+#define M_LN10          2.30258509299404568402
+#endif
+
 
 /*-
  * CPT for n-gram language models
