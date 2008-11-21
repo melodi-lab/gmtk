@@ -21,11 +21,11 @@ EXCCFLAGS=
 EXCXXFLAGS=
 EXLDFLAGS =  
 # optimization flags (activate the appropriate one to get faster results).
-OPTFLAGS =-g -O3 -march=pentium4 -mfpmath=sse -ffast-math
+# OPTFLAGS =-g -O3 -march=pentium4 -mfpmath=sse -ffast-math
 # OPTFLAGS=-g -O3 -march=pentium4 -mfpmath=sse -ffast-math
 # OPTFLAGS=-g -O3 -march=prescott -mfpmath=sse -ffast-math
 # OPTFLAGS=-g -O3 -march=nocona -mfpmath=sse -ffast-math
-# OPTFLAGS=-g -O3 -march=core2 -mfpmath=sse -ffast-math
+OPTFLAGS=-g -O3 -march=core2 -mfpmath=sse -ffast-math
 # Other -march flags to try are:
 #       -march=pentium4 - includes MMX, SSE, SSE2, instructions.
 #       -march=prescott - includes MMX, SSE, SSE2, SSE3 instructions + better p4 scheduling
@@ -64,6 +64,7 @@ all clean:
 	for subdir in $(MODULES); do \
 		(cd $$subdir; $(MAKE) $(MAKE_VARS) $@); \
 	done
+
 
 linux solaris ibm cygwin osx:
 	for subdir in IEEEFloatingpoint; do \
