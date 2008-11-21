@@ -26,6 +26,9 @@ compiled, please follow the steps below.
     but you might want to use something more aggressive (but which
     if you run on the wrong architecture will produce illegal instructions).
 
+    You might also want to change the version of gcc/g++ that you 
+    use to compile.
+ 
 4) do a 'make clean' just to make sure.
 
 5) do a 'make depend', you will get some errors about missing
@@ -40,16 +43,38 @@ compiled, please follow the steps below.
 
 7) Do a 'make depend' once again.
 
-8) Do 'make' and it should compile. If you are running
-   on cygwin do 'make -DANSI=' to turn off the ansi compatibility
-   which is needed on that platform.
+8) Do 'make' and it should compile (if you are running on a 2-core
+   box, do 'make -j 2' under gnumake to compile faster).
+
+   If you are running on cygwin do 'make ANSI=' to turn off the ansi
+   compatibility which is needed on that platform.
+
+   If you wish to make static binaries (i.e., ones that do not
+   depend on any shared libraries), do 'make EXLDFLAGS=-static'
+
+   You will see an error message about 'lex.yy.c', it is safe to
+   ignore it.
+
+   You might see an error message about 'ranlib', again safe to
+   ignore.
+
+   If you wish to compile , then you can run:
+    
+     make MODULES=featureFileIO all 
 
 9) All of the binaries should now live in the subdirectories:
-    ./tksrc -- the main GMTK binaries
-    ./featureFileIO -- some observation file tools (pfiles, raw files, etc.)
+
+    ./tksrc -- the main GMTK binaries, all start with 'gmtk*'
+
+    ./featureFileIO -- a set of utilities to manipulate GMTK
+                   observation files (which includes pfile, raw
+                   binary, ascii, and HTK files). These can be useful
+		   for preparing GMTK input observation files.
 
 10) enjoy!!
-    
+
+	-- Jeff Bilmes
+        -- gmtk-users@ssli.ee.washington.edu    
    
 ======================================================================
 ======================================================================
