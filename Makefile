@@ -47,7 +47,7 @@ MODULES = \
 	featureFileIO \
 	tksrc
 
-# files/dirs that should not be contained in distribution. 
+# files/dirs that should not be contained in src distribution. 
 EXCLUDE = \
 	tests_and_development \
 	EXCLUDE
@@ -103,7 +103,9 @@ EXCLUDE: force
 	find . \( -name "*~" -o -name "*~[0-9]*" -o -name "core*" -o -name "*.o" -o -name "*.a" -o -name "#*" -o -name ".#*" -o -name "*_bak" \) -print; \
 	find $(MODULES) -type f -perm +0111 \! \( -name '*.cc' -o -name '*.h' \) ; \
 	find . -name CVS -print; \
-	find . -name RCS -print) | \
+	find . -name RCS -print; \
+	find . -type d -name old -print; \
+	find . \( -name TODO -o -name notes -o -name depends.make \) -print ) | \
 	sed 's,^\./,,' > $@
 
 
