@@ -51,9 +51,9 @@ extern "C" {
 #endif
 
 
-HTKFileInfo::HTKFileInfo(const string& fname, int samp_size, int n_samples, int startOfData,
+HTKFileInfo::HTKFileInfo(int samp_size, int n_samples, int startOfData,
 						 bool isCompressed, float* scale, float* offset):
-	fname(fname), samp_size(samp_size), n_samples(n_samples), startOfData(startOfData),
+	samp_size(samp_size), n_samples(n_samples), startOfData(startOfData),
 	isCompressed(isCompressed), scale(scale), offset(offset){
 	
 }
@@ -70,7 +70,7 @@ StreamInfo::StreamInfo(const char *name, const char *crng_str,
 		       const char *drng_str,
 		       unsigned *nfloats, unsigned *nints, 
 		       unsigned *format, bool swap, unsigned num,bool cppIfAscii,char* cppCommandOptions, const char* sr_range_str) 
-  : cppIfAscii(cppIfAscii),cppCommandOptions(cppCommandOptions),numFileNames(0),srRng(NULL), pfile_istr(NULL),curHTKFileInfo(NULL), dataNames(NULL), cont_rng(NULL),disc_rng(NULL)
+  : cppIfAscii(cppIfAscii),cppCommandOptions(cppCommandOptions),numFileNames(0),srRng(NULL), pfile_istr(NULL),curDataFile(NULL),curHTKFileInfo(NULL), dataNames(NULL), cont_rng(NULL),disc_rng(NULL)
 {
 
   if (name == NULL) 	
@@ -179,8 +179,12 @@ StreamInfo::StreamInfo(const char *name, const char *crng_str,
 
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP     
      if(cppIfAscii) {
-       if (pclose(fofFile) != 0)
-	 warning("WARNING: Can't close pipe 'cpp %s'.",fofName);
+	 	warning("WARNING: Not closing pipe 'cpp %s' because doing that segfaults for some reason.",fofName);
+     	/*printf ("*******BEFORE HERE TOO******* fofFile %d\n",fofFile);
+       if (pclose(fofFile) != 0){
+     	printf ("*******HERE TOO******* \n");
+	 	warning("WARNING: Can't close pipe 'cpp %s'.",fofName);
+	   }*/
      }
      else
        fclose(fofFile);
@@ -213,9 +217,12 @@ StreamInfo::~StreamInfo() {
   else 
     delete pfile_istr;
 
-  if(curHTKFileInfo){
+  if(curDataFile){
       fclose(curDataFile);
       curDataFile = NULL;
+  }
+
+  if(curHTKFileInfo){
    	  delete curHTKFileInfo;
    	  curHTKFileInfo= NULL;
   }

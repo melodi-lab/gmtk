@@ -274,6 +274,10 @@ class ObservationMatrix {
   
   void   closeDataFiles();
   
+  //takes a sentLoc string of form filename[startFrame:endFrame] and returns filename in fnameStr, startFrame and endFrame
+  //used by openHTKFile openBinaryFile so far.
+  void   parseSentenceSpec(const string& sentLoc, int* startFrame, int* endFrame, string& fnameStr) const;
+  
   /////////////////////////////////////////////////////////////////
   
 

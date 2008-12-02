@@ -865,7 +865,6 @@ for(int i=0; i < MAX_OBJECTS; ++i) {
 				   (const char**)& prepr_str,
 				   gpr_str);   
 
-
      gsr_rng = new Range(gsr_str,0,globalObservationMatrix.numSegments());
 
      /////////////////////////////////////////////////////////////////////
