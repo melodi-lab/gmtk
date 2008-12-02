@@ -844,7 +844,8 @@ GMTK_Tie::execute_command(unsigned command_index)
     
     switch(commands[command_index].param_type) {
     case GMTK_Tie::PT_Mixture:
-      if (!(untie_Mixtures(commands[command_index].params)))
+      //the params are expanded by find_matching_command_parameters().
+      if (!(untie_Mixtures(commands[command_index].params,false)))
 	error(" Failed to untie Mixtures");
       break;
 
