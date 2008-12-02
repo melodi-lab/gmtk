@@ -690,9 +690,9 @@ GMTK_Tie::print_Command(Command &cmd, int index, IM::VerbosityLevels v)
   infoMsg(v," ParameterType: %s\n",ParameterType_to_string[cmd.param_type].c_str());
   print_Options(cmd.options,v);
 
-  infoMsg(v," Matching parameters: ");
+  infoMsg(v+IM::Increment," Matching parameters: ");
   for(std::vector<std::string>::iterator i=cmd.params.begin();i!=cmd.params.end();i++)
-    infoMsg(v," %s", i->c_str());
+    infoMsg(v+IM::Increment," %s", i->c_str());
   infoMsg(v,"\n");
 }
 
@@ -780,7 +780,7 @@ GMTK_Tie::execute_command(unsigned command_index)
     
     switch(commands[command_index].param_type) {
     case GMTK_Tie::PT_Mixture:
-      if (!(tie_Mixtures(commands[command_index].params, commands[command_index].options.Centroid)))
+      if (!(tie_Mixtures(commands[command_index].params, commands[command_index].options.Centroid,false)))
 	error(" Failed to tie Mixtures");
       break;
 
