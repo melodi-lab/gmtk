@@ -79,12 +79,10 @@ enum {
  */
 class HTKFileInfo{
 public:
-	HTKFileInfo(const string& fname, int samp_size, int n_samples, int startOfData,
+	HTKFileInfo(int samp_size, int n_samples, int startOfData,
 				bool isCompressed, float* scale, float* offset);
 	~HTKFileInfo();
 
-	string fname;  ///the name of the file
-	
 	int samp_size; /// bytes per sample
 	int n_samples; /// number of samples
 	int startOfData; ///the offset from start of file to the start of actual data
@@ -138,6 +136,7 @@ public:
   InFtrLabStream_PFile *pfile_istr;  // pfile input stream
 
   FILE *curDataFile;
+  string curDataFilename;       ///the name of the file
   HTKFileInfo* curHTKFileInfo;	//not null if and only if curDataFile is an HTK file 
 
   char **dataNames;        // pointers to individual filenames (into fofBuf)

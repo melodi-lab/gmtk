@@ -117,12 +117,11 @@ extern "C" {
 #define WARNING_ON_NAN 1
 
 
-
-#if 0
-#define DBGFPRINTF(_x_) fprintf _x_
-#else
-#define DBGFPRINTF(_x_)
-#endif
+//#if 0
+//#define DBGFPRINTF(_x_) fprintf _x_
+//#else
+//#define DBGFPRINTF(_x_)
+//#endif
 
 
 void check_required_inputs(const char** fof_names, 
@@ -220,6 +219,8 @@ void ObservationMatrix::openFiles(int n_files,
 				    // into _tmp{Flot,Int}SenBuffer
   for (unsigned stream_no = 0; stream_no < _numStreams; stream_no++) {
 
+    DBGFPRINTF((stderr,"Opening stream %d\n", stream_no));
+    
     if (fof_names[stream_no] == NULL)
       error("ObservationMatrix::openFiles: file list for stream %i is NULL\n",stream_no);
 
@@ -656,7 +657,6 @@ unsigned ObservationMatrix::numFrames(unsigned segno) {
   // max_n_samps and prrng_n_samps are initialized in the next fct call
   unsigned max_n_samps,prrng_n_samps;
   checkIfSameNumSamples(segno,max_n_samps,prrng_n_samps);
-
   // maybe move this to the end after potential upsampling takes place
   if (_totalSkip >= prrng_n_samps)
     error("ERROR: The number of real frames (%d) for segment %d of input observation files is less than or equal to startSkip + endSkip = %d.",prrng_n_samps,segno,_totalSkip);
@@ -830,7 +830,7 @@ void ObservationMatrix::loadSegment(unsigned segno) {
   // featuresBase after the initialization in openFiles.
   featuresBase = features.ptr + _stride*_startSkip;
 
-#if DEBUG
+#ifdef DEBUG
   // print the first 2 frames in featuresBase
   fprintf(stderr,"_numContinuous=%d\n",_numContinuous);
   fprintf(stderr,"First two frames of final features buffer=\n");
@@ -1793,55 +1793,85 @@ size_t ObservationMatrix::openPFile(StreamInfo *f, size_t sentno) {
   return f->curNumFrames;
 }
 
-/* open binary file for segment 'sentno' */
-
-
+/**  open binary file for segment 'sentno' if necessary and seek to the beginning of data for sentence sentno.
+ *
+ * The format for sentence locations is the same for the rows in HTK scp files.  See openHTKFile for details
+ *
+ * 
+ *  If another binary file is open for a different segment is already open, it is first closed.
+ *  If the sentno is contained within the previously opened binary file, only an fseek is done
+ *  instead of reopening the file. 
+ *
+ * @see openHTKFile
+ *
+ */
 size_t ObservationMatrix::openBinaryFile(StreamInfo *f, size_t sentno) {
 
-  unsigned long binfile_size=f->getFullFofSize();
-  if(sentno < 0 || sentno >= binfile_size) {
-    error("ERROR: Requested segment no %li of observation file '%s' but the max num of segments in list of binary files is %li",sentno,f->fofName,binfile_size);
-  }
-
-  //  assert(sentno >= 0 && sentno < _numSegments);
-
-  char *fname = f->dataNames[sentno];
-  int nfloats = f->nFloats;
-  int nints = f->nInts;
-  size_t fsize;
-
-  if (fname == NULL) {
-    warning("ObservationMatrix::openBinaryFile: Filename is NULL for segment %li\n",sentno);
-    return 0;
-  }
-
-  if ((f->curDataFile = fopen(fname,"rb")) == NULL) {
-    error("ObservationMatrix::openBinaryFile: Can't open '%s' for input\n",
-	  fname);
-
-  }
-
+    DBGFPRINTF((stderr,"In ObservationMatrix::openBinaryFile, sentno %d\n",sentno));
+    unsigned long binfile_size=f->getFullFofSize();
+    if(sentno < 0 || sentno >= binfile_size) {
+        error("ObservationMatrix::openBinaryFile: Requested segment no %li of observation file '%s' but the max num of segments in list of binary files is %li",sentno,f->fofName,binfile_size);
+    }
+    
+    //  assert(sentno >= 0 && sentno < _numSegments);
+    
+    char *fname = f->dataNames[sentno];
+    int nfloats = f->nFloats;
+    int nints = f->nInts;
+    int rec_size = nfloats * sizeof(float) + nints * sizeof(int);
+    size_t fsize;
+    
+    if (fname == NULL) {
+        warning("ObservationMatrix::openBinaryFile: Filename is NULL for segment %li\n",sentno);
+        return 0;
+    }
+    
+    int startFrame, endFrame; //these are the right values if the frame range is not specified
+    string fnameStr;
+    parseSentenceSpec(f->dataNames[sentno], &startFrame, &endFrame, fnameStr);
+    
+    if(f->curDataFilename != fnameStr && f->curDataFile){
+        //the wrong file is open
+        fclose(f->curDataFile);
+        f->curDataFile = NULL;
+    }
+    
+    if (!f->curDataFile){
+        if ((f->curDataFile = fopen(fnameStr.c_str(),"rb")) == NULL) {
+            error("ObservationMatrix::openBinaryFile: Can't open '%s' for input\n",
+            fnameStr.c_str());
+        
+        }
+        f->curDataFilename=fnameStr;
+    }
+    
     //sanity check on number of bytes
-
+    //FIXME would be nice to do this just once when the file is opened.  To do that, we need to keep n_samples in StreamInfo
     if (fseek(f->curDataFile,0L,SEEK_END) == -1) {
       warning("ObservationMatrix::openBinaryFile: Can't skip to end of file %s",
-	      fname);
+	      fnameStr.c_str());
     }
 
     fsize = ftell(f->curDataFile);
 
-    rewind(f->curDataFile);
-
-    int rec_size = nfloats * sizeof(float) + nints * sizeof(int);
 
     if ((fsize % rec_size) > 0)
       error("ObservationMatrix::openBinaryFile: odd number of bytes in file %s\n",fname);
 
     int n_samples = fsize / rec_size;
 
-    f->curNumFrames = n_samples;
+    if(endFrame<0) //endFrame, and therefore the range has not been specified: use the whole file
+	    endFrame= n_samples-1;
 
-    return n_samples;
+    if(endFrame>=n_samples)
+	    error("ERROR: ObservationMatrix::openBinaryFile: %s has the last frame at %d, equal to or greater than %d, the number of frames in file.\n",fname, endFrame, n_samples);	  
+
+    f->curNumFrames = endFrame-startFrame+1;
+
+    //now we seek to the start frame 
+    fseek(f->curDataFile, startFrame*rec_size, SEEK_SET);
+
+    return f->curNumFrames;
 }
 
 /* open ascii file for segment 'sentno' */
@@ -1935,6 +1965,30 @@ size_t ObservationMatrix::openAsciiFile(StreamInfo *f,size_t sentno) {
  DBGFPRINTF((stderr,"In  ObservationMatrix::openAsciiFile: n_samples = %d\n",n_samples));
 
  return n_samples;
+}
+
+void ObservationMatrix::parseSentenceSpec(const string& sentLoc, int* startFrame, int* endFrame, string& fnameStr) const{
+  unsigned int fNameLen;
+  *startFrame=0, *endFrame=-1; //these are the right values if the frame range is not specified
+  if(sentLoc[sentLoc.length()-1]==']'){
+	  //have a subrange spec
+	  fNameLen=sentLoc.find_last_of('[');
+	  if (fNameLen==string::npos){
+		    error("ERROR: ObservationMatrix::parseSentenceSpec: '%s' is an invalid sentence location.  Must be of the form 'filename[startFrame:endFrame]'",sentLoc.c_str());		  
+	  }
+
+	  string range= sentLoc.substr(fNameLen+1,sentLoc.length()-2-fNameLen);
+	  if (sscanf(range.c_str(),"%d:%d",startFrame,endFrame) != 2)
+	  	error("ERROR: ObservationMatrix::parseSentenceSpec: '%s' is an invalid sentence location.  Must be of the form 'filename[startFrame:endFrame]'",sentLoc.c_str());		  
+  
+	  if(*endFrame<*startFrame)
+	  	error("ERROR: ObservationMatrix::parseSentenceSpec: %s has the last frame smaller than first frame.\n",sentLoc.c_str());	  
+  }
+  else{
+	  fNameLen = sentLoc.length();
+  }
+  fnameStr = sentLoc.substr(0,fNameLen);
+
 }
 
 
@@ -2121,7 +2175,8 @@ size_t ObservationMatrix::openHTKFile2(const string& fname, StreamInfo *f) const
 
 	  }
 
-	  f->curHTKFileInfo= new HTKFileInfo(fname,samp_size,n_samples,ftell(f->curDataFile),isCompressed,scale,offset);
+	  f->curHTKFileInfo= new HTKFileInfo(samp_size,n_samples,ftell(f->curDataFile),isCompressed,scale,offset);
+	  f->curDataFilename=fname;
 	  
 	  return n_samples;
 	
@@ -2143,6 +2198,7 @@ size_t ObservationMatrix::openHTKFile2(const string& fname, StreamInfo *f) const
  */
 size_t ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
 
+  DBGFPRINTF((stderr,"In ObservationMatrix::openHTKFile, sentno %d\n",sentno));
   unsigned long htkfile_size=f->getFullFofSize();
   if(sentno < 0 || sentno >= htkfile_size) {
     error("ERROR: ObservationMatrix::openHTKFile: Requested segment no %li of observation file '%s' but the max num of segments in list of HTK files is %li",sentno,f->fofName,htkfile_size);
@@ -2154,34 +2210,20 @@ size_t ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
   }
 
   
-  string sentLoc(f->dataNames[sentno]);
-  unsigned int fNameLen;
-  int startFrame=0, endFrame=-1; //these are the right values if the frame range is not specified
-  if(sentLoc[sentLoc.length()-1]==']'){
-	  //have a subrange spec
-	  fNameLen=sentLoc.find_last_of('[');
-	  if (fNameLen==string::npos){
-		    error("ERROR: ObservationMatrix::openHTKFile: '%s' is an invalid sentence location.  Must be of the form 'filename[startFrame:endFrame]'",f->dataNames[sentno]);		  
-	  }
+  int startFrame, endFrame;
+  string fnameStr;
+  parseSentenceSpec(f->dataNames[sentno], &startFrame, &endFrame, fnameStr);
 
-	  string range= sentLoc.substr(fNameLen+1,sentLoc.length()-2-fNameLen);
-	  if (sscanf(range.c_str(),"%d:%d",&startFrame,&endFrame) != 2)
-	  	error("ERROR: ObservationMatrix::openHTKFile: '%s' is an invalid sentence location.  Must be of the form 'filename[startFrame:endFrame]'",f->dataNames[sentno]);		  
-  }
-  else{
-	  fNameLen = sentLoc.length();
-  }
-  string fnameStr = sentLoc.substr(0,fNameLen);
-
-  if(f->curHTKFileInfo && f->curHTKFileInfo->fname != fnameStr){
+  if(f->curDataFilename != fnameStr && f->curDataFile){
+      DBGFPRINTF((stderr,"In ObservationMatrix::openHTKFile, f->curDataFilename  %s fnameStr %s f->curDataFile  %d \n", f->curDataFilename.c_str(), fnameStr.c_str(), f->curDataFile));
 	  //the wrong file is open
       fclose(f->curDataFile);
       f->curDataFile = NULL;
-   	  delete f->curHTKFileInfo;
-   	  f->curHTKFileInfo= NULL;
+      delete f->curHTKFileInfo;
+      f->curHTKFileInfo= NULL;
   }
   
-  if(!f->curHTKFileInfo)   
+  if(!f->curDataFile)   
 	  openHTKFile2(fnameStr,f);
   
   const HTKFileInfo* htkInfo = f->curHTKFileInfo;
@@ -2189,15 +2231,13 @@ size_t ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
   if(endFrame<0) //endFrame, and therefore the range has not been specified: use the whole file
 	  endFrame= htkInfo->n_samples-1;
   
-  if(endFrame<startFrame)
-	    error("ERROR: ObservationMatrix::openHTKFile: %s has the last frame smaller than first frame.\n",sentLoc.c_str());	  
-  
   if(endFrame>=htkInfo->n_samples)
-	    error("ERROR: ObservationMatrix::openHTKFile: %s has the last frame at %d, beyond %d, which is the number of frames in file.\n",sentLoc.c_str(), endFrame, htkInfo->n_samples);	  
+	    error("ERROR: ObservationMatrix::openHTKFile: %s has the last frame at %d, beyond %d, which is the number of frames in file.\n",f->dataNames[sentno], endFrame, htkInfo->n_samples);	  
   
   f->curNumFrames=endFrame-startFrame+1;
   
   
+  DBGFPRINTF((stderr,"In ObservationMatrix::openHTKFile, curNumFrames %d\n",f->curNumFrames));
   
   //now we seek to the start frame 
   fseek(f->curDataFile, htkInfo->startOfData+startFrame*htkInfo->samp_size, SEEK_SET);
@@ -2206,11 +2246,11 @@ size_t ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
 
 
 /* close individual data files, except for pfile and HTK files. 
- * HTK file is closed only when the next HTK file is open, or when the stream is destroyed*/
+ * HTK and RAWBIN file is closed only when the next HTK or RAWBIN file is opened, or when the stream is destroyed*/
 void ObservationMatrix::closeDataFiles() {
 
   for (unsigned i = 0; i < _numStreams; i++)
-    if (_inStreams[i]->dataFormat != PFILE && _inStreams[i]->dataFormat != HTK ){
+    if (_inStreams[i]->getDataFormat() != PFILE && _inStreams[i]->getDataFormat() != HTK && _inStreams[i]->getDataFormat() != RAWBIN){
       fclose(_inStreams[i]->curDataFile);
     }
 }
