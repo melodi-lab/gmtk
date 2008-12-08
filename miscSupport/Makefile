@@ -155,6 +155,11 @@ testSHashMap: shash_map.h shash_map.cc hash_abstract.o hash_abstract.cc hash_abs
 testVSHashMap: vshash_map.h vshash_map.cc hash_abstract.o hash_abstract.cc hash_abstract.h general.o $(objs)
 	$(compile.cc.link) -Wall -g -DMAIN $(HASH) -o $@ vshash_map.cc error.o hash_abstract.cc general.o
 
+testRLS: rls_filter.cc rls_filter.h  adaptive_filter.h libmiscSupport.a
+	$(compile.cc.link) -Wall -g -DMAIN -o $@ rls_filter.cc libmiscSupport.a
+
+testLMS: lms_filter.cc lms_filter.h  adaptive_filter.h libmiscSupport.a
+	$(compile.cc.link) -Wall -g -DMAIN -o $@ lms_filter.cc libmiscSupport.a
 
 
 #----------------------------------------------------------------------------
