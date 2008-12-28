@@ -88,7 +88,7 @@ all: libmiscSupport.a
 # Define the standard library modules
 #----------------------------------------------------------------------------
 
-objs = error.o bp_range.o range.o arguments.o logp.o rand.o sArray.o cArray.o general.o lineqsolve.o debug.o fileParser.o hash_abstract.o mul_mdmd_md.o mul_mdmd_md_l0g.o mul_mdmd_md_l0nf.o eig.o bin_search.o
+objs = error.o bp_range.o range.o arguments.o logp.o rand.o sArray.o cArray.o general.o lineqsolve.o debug.o fileParser.o hash_abstract.o mul_mdmd_md.o mul_mdmd_md_l0g.o mul_mdmd_md_l0nf.o eig.o bin_search.o lms_filter.o rls_filter.o
 
 #----------------------------------------------------------------------------
 # Main build programs.

@@ -17,21 +17,56 @@ VCID("$Header$")
 LMSFilter::LMSFilter(unsigned _order, double _learning_rate)
 : AdaptiveFilter(_order), learning_rate(_learning_rate)
 {
-  printf("order = %d\n",_order);
+  // printf("order = %d\n",_order);
 
   weights.resize(order);
   history.resize(order);
 
-  for (unsigned i = 0; i < order ; i++ )
-    weights.ptr[i] = 0.0;
 
   // start off saying that the most recent sample is at the end.
   mostRecentSamplePosition = (order - 1);
-  
+
+  init();
+
+}
+
+void LMSFilter::init()
+{
   // we've loaded no samples
   numSamplesLoaded = 0;
 
+  // initialize to random values normalized to unity.
+  bool randomInit = false;
+
+
+  if (randomInit) {
+    double sum = 0;
+    for (unsigned i = 0; i < order ; i++ ) {
+      sum += (weights.ptr[i] = rnd.uniform(1.0));
+    }
+    if (sum == 0)
+      sum = 1.0;
+    else
+      sum = 1.0/sum;
+    for (unsigned i = 0; i < order ; i++ ) {
+      weights.ptr[i] *= sum;
+    }
+  } else {
+    // init to simple 2nd order filter if possible.
+    if (order == 1) 
+      weights.ptr[0] = 1.0;
+    else {
+      for (unsigned i = 0; i < order ; i++ ) {
+	weights.ptr[i] = 0;
+      }
+      // simple fixed filter weights rest are zero.
+      weights.ptr[0] = 2.0;
+      weights.ptr[1] = - 1.0;
+    }
+  }
+
 }
+
 
 double LMSFilter::makePrediction()
 {
@@ -40,7 +75,7 @@ double LMSFilter::makePrediction()
 
   double res = 0;
   for (unsigned i= 0; i < order; i++ ) {
-    res += weights.ptr [i] * history.ptr [ (mostRecentSamplePosition + i + 1) % order ];
+    res += weights.ptr [i] * history.ptr [ (mostRecentSamplePosition + i ) % order ];
   }
 
   return res;
@@ -62,15 +97,19 @@ void LMSFilter::addNextSampleAndUpdate(double val)
     for (unsigned i = 0; i < order ; i ++) {
       norm += history.ptr[i]*history.ptr[i];
     }
-    norm = 1.0/norm;
+    // printf("norm = %f\n",norm);
+    if (norm <= 1e-15)
+      norm = 1;
+    else
+      norm = 1.0/norm;
     for (unsigned i = 0; i < order ; i ++) {
       weights.ptr[i] +=
-	norm * learning_rate * error * history[ (mostRecentSamplePosition + i + 1) % order ];
+	norm * learning_rate * error * history[ (mostRecentSamplePosition + i ) % order ];
     }
   }
 
   // update history
-  unsigned newPos = (mostRecentSamplePosition + 1) % order;
+  unsigned newPos = (mostRecentSamplePosition + order - 1) % order;
   numSamplesLoaded ++;
   history[newPos] = val;
   mostRecentSamplePosition = newPos;
@@ -103,18 +142,18 @@ main(int argc, char*argv[])
   // have the signal go through 4 periods.
   for (unsigned i = 0; i < len; i++ ) {
     signal[i]
-      = cos(i * 2 * M_PI * 2 / len ) + rnd.normal()*.125/4.0;
+      = cos(i * i* 2 * M_PI * 2 / len ) + rnd.normal()*.125/2.0;
   }
 
-  unsigned order = 2;
+  unsigned order = 3;
   if (argc > 1)
     order = atoi(argv[1]);
   double lr = 0.5;
-  if (argc > 2)  
+  if (argc > 2)
     lr = atof(argv[2]);
 
-  LMSFilter * l1 = new LMSFilter(order, lr);
-  FixedFilter * ff = new FixedFilter();
+  AdaptiveFilter * l1 = new LMSFilter(order, lr);
+  AdaptiveFilter * ff = new FixedFilter();
 
 
   double err1 = 0;
@@ -140,7 +179,7 @@ main(int argc, char*argv[])
 
     }
   }
-  printf("avg err1 = %f, avg err2 = %f, err1/err2 = %f, sum_er_rat = %f\n",
+  printf("avg err1 = %f, avg err2 = %f, err1/err2 = %f, sum_err_rat = %f\n",
 	 err1/count,err2/count,err1/err2,sum_err_ratio/count);
 
   delete l1;

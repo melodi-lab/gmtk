@@ -59,10 +59,10 @@ public:
   // constructor
   RLSFilter(unsigned _order, double _forgetting_coef);
   
-  virtual bool readyToMakePrediction()  { return (numSamplesLoaded >= order) ; }
-
-  virtual double makePrediction();
-  virtual void addNextSampleAndUpdate(double val);
+  bool readyToMakePrediction()  { return (numSamplesLoaded >= order) ; }
+  double makePrediction();
+  void addNextSampleAndUpdate(double val);
+  void init();
 
 };
 

@@ -28,7 +28,11 @@ error(const char * const format, ...)
   (void) vfprintf(stderr, format, ap);
   va_end(ap);
   (void) fprintf(stderr, "\n");
+#ifdef ERROR_DOES_ABORT
+  (void) abort();
+#else
   (void) exit(EXIT_FAILURE);
+#endif
 }
 
 void
