@@ -4378,6 +4378,7 @@ Mon Oct 15 15:28:13 2007
     which should speed up packing/unpacking of clique values.
 
 Thu Oct 18 22:38:40 2007
+    keywords: size, long, unsigned long, size_t, 64bit, 64-bit
   - go through all code and make sure anything that is representing a size
     object is now either a size_t type, or is an 'unsigned long' (which
     apparently seems on all relevant 32 and 64-bit architectures to be the
@@ -4639,4 +4640,95 @@ Sat Nov  8 20:32:56 2008
    over fixed ranges of continuous values. Should mimic the gamma observation distribution
    (i.e., diagonal independent beta distributions). 
    
+Tue Dec  9 13:44:16 2008: easy
+ - this is probably mentioned somewhere above, but having time-inhomogeneous CPTs, i.e.,
+   CPTs similar to an MDCPT but where the CPT table comes from the observation file, should
+   be added (in fact, see entry at Feb 22nd, 2004).
+
+Tue Dec  9 13:58:01 2008
+ - get accumulator/fisher kernel working with beta & gamma distributions.
+
+Sun Dec 14 13:19:59 2008
+ - in clique expasion code, have backing off beam, i.e., 
+   if we hit a zero clique, then use a wider beam just for that clique.
+
+Fri Dec 19 16:27:09 2008
+ - another form of pruning: each clique entry
+   can (when compiled that way) look in the global clique
+   manager to see how frequently that entry has occured so far,
+   and base pruning on that relative count. I.e., very freqeunt
+   improbable entries might be pruned but rare improbable 
+   ones might be retained for a bit.
+ - general idea of using the clique manager as a map rather than
+   a set. The map can map to information that pruning can utilize.
+   I.e., the map can map to 
+       1) freqeuncy of use
+       2) most recent use (e.g., frame number of max frame variable
+          in the clique)
+       3) most recent (relative) probability score and/or rank
+       4) most recent pruning status.
+       5) keep track of shared/not-shared binary status. I.e., we might
+          want to prune shared/non-shared entries differently.
+
+Mon Dec 22 12:19:46 2008
+ - some sort of switching pruning, i.e., when we expand a switching parent,
+   and when it switches away other parents, rather than
+   iterate over all of the other parent values, we just prune
+   all but one value away.
+   ie., lets say that p(c|a,b,s) where c is child, a, b are
+   parents, and s is switching parent, and when s=1, 
+   it is such that b is irrelevant. Then we
+   expand s first, and rather than expand all values of
+   b (thereby creating a clique entry for each value of b), 
+   we expand only one value of b.
+   Q: but what if b's value determines other things that happens
+   later in the clique?
+   Q: maybe cluster pruning will handle this case (but it won't 
+      handle the generation of the clique in the first place).
+   Here is what should work. If we have a clique with c,a,s but
+   not b, then for s=1, we should be able to expand a,c for s=1
+   without needing to expand b.
+
+   
+Mon Dec 22 16:20:58 2008
+ - look into loop unrolling and other such compiler opts
+   for the packing stuff and inner inference recursions.
+
+Tue Dec 23 00:18:45 2008
+ - yet another idea for pruning, a little like wave propagation of 1/18/06 but
+   not exactly the same. Here, during ce, we move forward expanding cliques and
+   if we get a zero, we increaes beam for a while in local clique and if it still
+   fails, we go back one clique expand, and move forward. This perhaps could
+   be called wave pruning but with expanding boundaries. I.e., an example
+   of the clique numbers being expanded might be:
+      1 2 3 4 5 6 6 6 5 6 6 6 5 6 6 6 5 6 6 6 4 5 6 6 6 5 6 6 6 5 6 6 6 5 6 6 6 4 5 6 6 6 ...
+    (i.e., where we have a max number of expantions of 3).
+  If this continues, eventually we would go back to the first clique and expand there.
+ - compare this with just going back to the beginning and increasing beam width right
+   at the start (which is more like what HTK does).
+
+Wed Dec 24 13:43:43 2008
+ - remove all exception handling code so we can compile with -fno-exceptions
+
+
+Fri Dec 26 01:38:19 2008
+ - figure out how to get diversity pruning to persist in future expansions (i.e.,
+   we may diversity prune a clique, but then the next clique's expansion might
+   just prune away all of the diversity that was previously maintained).
+ - get the various clique pruning methods working in separator pruning.
+ - get pruning expansion working for other sorts of pruning options.
+     (both at the local clique level and at the segmen level).
+ - 
+
+Sat Dec 27 20:38:48 2008
+ - add Bayesian conjugate priors to the gamma/beta observation distributions.
+
+Sun Dec 28 00:41:09 2008
+ - for numeric beam arguments, rather than needing to specify 1e10 or whatever happens
+   to be log zero, instead have a special value 'off' that is extensible.
+
+Sun Dec 28 00:44:18 2008
+ -cpbeam style pruning works on C partitions, but not on P and E partitions,
+  which is bad since E partition can be big. Figure out a solution.
+   a) use right interface??
 
