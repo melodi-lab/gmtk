@@ -42,12 +42,16 @@ public:
 
   virtual double makePrediction() {
     if (!readyToMakePrediction()) return 0;
-    return 2*prevPrevValue - prevValue;
+    // return 2*prevPrevValue - prevValue;
+    return 2*prevValue - prevPrevValue;
   }
   virtual void addNextSampleAndUpdate(double val) {
     prevPrevValue = prevValue;
     prevValue = val;
     numSamplesLoaded ++;
+  }
+  virtual void init() {
+    numSamplesLoaded = 0;
   }
 
 };

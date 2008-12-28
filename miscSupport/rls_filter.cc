@@ -23,9 +23,9 @@ RLSFilter::RLSFilter(unsigned _order, double _forgetting_coef)
   concMat.resize(order*order);
 
   tmpVec.resize(order);
-
+  double sum = 0;
   for (unsigned i = 0; i < order ; i++ ) {
-    weights.ptr[i] = 0.0;
+    sum += (weights.ptr[i] = rnd.uniform(1.0));
     for (unsigned j = 0; j < order ; j++ ) {
       // initialize to a diagonal
       if (i == j) {
@@ -34,6 +34,11 @@ RLSFilter::RLSFilter(unsigned _order, double _forgetting_coef)
 	concMat.ptr[order* i + j] = 0.0;
     }
   }
+  sum = 1.0/sum;
+  for (unsigned i = 0; i < order ; i++ ) {
+    weights.ptr[i] *= sum;
+  }
+
   
   // start off saying that the most recent sample is at the end.
   mostRecentSamplePosition = (order - 1);
@@ -41,6 +46,46 @@ RLSFilter::RLSFilter(unsigned _order, double _forgetting_coef)
   // we've loaded no samples
   numSamplesLoaded = 0;
 
+}
+
+
+void RLSFilter::init()
+{
+  // we've loaded no samples
+  numSamplesLoaded = 0;
+
+  // initialize to random values normalized to unity.
+  bool randomInit = false;
+
+  // position 0 of weights is most recent
+  // position 1 of weights is next most recent
+  // etc.
+
+  if (randomInit) {
+    double sum = 0;
+    for (unsigned i = 0; i < order ; i++ ) {
+      sum += (weights.ptr[i] = rnd.uniform(1.0));
+    }
+    if (sum == 0)
+      sum = 1.0;
+    else
+      sum = 1.0/sum;
+    for (unsigned i = 0; i < order ; i++ ) {
+      weights.ptr[i] *= sum;
+    }
+  } else {
+    // init to simple 2nd order filter if possible.
+    if (order == 1) 
+      weights.ptr[0] = 1.0;
+    else {
+      for (unsigned i = 0; i < order ; i++ ) {
+	weights.ptr[i] = 0;
+      }
+      // simple fixed filter weights rest are zero.
+      weights.ptr[0] = 2.0;
+      weights.ptr[1] = - 1.0;
+    }
+  }
 }
 
 double RLSFilter::makePrediction()
@@ -84,7 +129,7 @@ void RLSFilter::addNextSampleAndUpdate(double val)
       tmp1 += tmpVec.ptr[i]*
 	history[ (mostRecentSamplePosition + i ) % order ];
     }
-    printf("tmp1 = %f\n",tmp1);
+    // printf("tmp1 = %f\n",tmp1);
     tmp1 = 1.0/tmp1;
 
     double inv_fc = 1.0/forgetting_coef;
@@ -164,10 +209,10 @@ main(int argc, char*argv[])
   // have the signal go through 4 periods.
   for (unsigned i = 0; i < len; i++ ) {
     signal[i]
-      = cos(i * 2 * M_PI * 2 / (double)len ) + rnd.normal()*.125/4.0;
+      = cos(i * i* 2 * M_PI * 2 / (double)len ) + rnd.normal()*.125/2.0;
   }
 
-  unsigned order = 4;
+  unsigned order = 3;
   if (argc > 1)
     order = atoi(argv[1]);
   double fc = 1.0;

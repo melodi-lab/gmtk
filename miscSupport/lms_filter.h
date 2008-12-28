@@ -51,6 +51,7 @@ public:
 
   virtual double makePrediction();
   virtual void addNextSampleAndUpdate(double val);
+  virtual void init();
 
 };
 

@@ -318,10 +318,11 @@ unsigned numBitsSet(unsigned u) {
 }
 
 
-char *CPP_Command() 
+const char * CPP_Command() 
 {
-  char *rc = getenv("GMTK_CPP_CMD");
+  const char * rc = getenv("GMTK_CPP_CMD");
   if (rc == NULL)
     rc = "cpp";
+  // fprintf(stdout,"cpp command got is (%s)\n",rc);
   return rc;
 }

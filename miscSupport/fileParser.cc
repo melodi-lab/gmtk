@@ -182,8 +182,12 @@ iDataStreamFile::prepareNext()
 
     do {
       char *s = fgets(buff,MAXLINSIZEPLUS1,fh);
-      if (s == NULL)
-	return false;
+      if (s == NULL) {
+	// try it again since osx under gdb seems to be slow in setting up the sub proc.
+	s = fgets(buff,MAXLINSIZEPLUS1,fh);
+	if (s == NULL)
+	  return false;
+      }
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
       if (cppIfAscii && (*s == CPP_DIRECTIVE_CHAR)) {
 	// check if there is a filename/lineNo change.

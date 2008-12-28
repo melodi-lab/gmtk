@@ -30,7 +30,7 @@ protected:
 public:
   
   unsigned order;
-  // the weights of the filter. The least recent position corresponds
+  // The weights of the filter. The least recent position corresponds
   // to weights[0], and the most recent to weights[order-1].
   sArray <double> weights;
 
@@ -40,9 +40,10 @@ public:
   }
   virtual ~AdaptiveFilter() {}
 
-  virtual bool readyToMakePrediction() = 0;
-  virtual double makePrediction() = 0;
-  virtual void addNextSampleAndUpdate(double val) = 0;
+  virtual bool readyToMakePrediction() { return 1; }
+  virtual double makePrediction() { return 0; }
+  virtual void addNextSampleAndUpdate(double val) {}
+  virtual void init() { fprintf(stderr,"abstract function\n"); }
 
 };
 
