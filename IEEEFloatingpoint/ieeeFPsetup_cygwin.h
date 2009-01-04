@@ -9,6 +9,7 @@
 #define IEEE_FP_SETUP_H
 
 #include <float.h>
+#include <ieeefp.h>
 
 void ieeeFPsetup();
 

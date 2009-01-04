@@ -11,13 +11,13 @@
     Karim Filali <karim@cs.washington.edu>
 */
 
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
-#ifndef __CYGWIN__
-#include <values.h>
-#endif
+#include <limits.h>
+#include <float.h>
 #include <math.h>
 
 #include "general.h"
@@ -46,8 +46,8 @@
 static const char* program_name;
 
 typedef struct { 
-  size_t sent_no;
-  size_t frame_no;
+  unsigned long sent_no;
+  unsigned long frame_no;
 } PfileLocation;
 
 
@@ -350,17 +350,19 @@ void gaussianNorm(FILE* out_fp,
 
 	for (size_t i=0;i<frrng.length();i++) {
 	    double maxs_stds, mins_stds;
-	    rc = fscanf(in_st_fp,"%d %lf %lf %f %u %u %f %u %u %lf %lf ",&j,
+	    rc = fscanf(in_st_fp,"%d %lf %lf %f %lu %lu %f %lu %lu %lf %lf ",&j,
 		    ftr_means_p,ftr_stds_p,
 		    ftr_maxs_p,
-		    &ftr_maxs_locs_p->sent_no,&ftr_maxs_locs_p->frame_no,
+		    &ftr_maxs_locs_p->sent_no,
+		    &ftr_maxs_locs_p->frame_no,
 		    ftr_mins_p,
-		    &ftr_mins_locs_p->sent_no,&ftr_mins_locs_p->frame_no,
+		    &ftr_mins_locs_p->sent_no,
+		    &ftr_mins_locs_p->frame_no,
 		    &maxs_stds,&mins_stds);
 	    if (rc != 11 || j != (int) i) {
 		fprintf(stderr,
-		       "%s: Error reading input stats file in lead-in %d.\n",
-		       program_name, i);
+		       "%s: Error reading input stats file in lead-in %ld.\n",
+		       program_name, (unsigned long)i);
 		error("Aborting.");
 	    }
 		
@@ -368,20 +370,24 @@ void gaussianNorm(FILE* out_fp,
 	    if (hist_bins > 0) {
 		hist_tot = 0;
 		for (unsigned j=0;j<hist_bins;j++) {
-		    if (fscanf(in_st_fp,"%u ", hist_p) != 1) {
+		    if (fscanf(in_st_fp,"%lu ", (unsigned long*)hist_p) != 1) {
 			fprintf(stderr,
 				"%s: Error reading input stats file, "
-				"el %d bin %d.\n",
-				program_name, i, j);
+				"el %lu bin %d.\n",
+				program_name, (unsigned long)i, j);
 			error("Aborting.");
 		    }
 		    hist_tot += *hist_p++;
 		}
 		if (last_hist_tot != -1 && hist_tot != last_hist_tot) {
 		    fprintf(stderr, 
-			    "%s: Error reading histogram: for for el %d had "
-			    "%d entries, %d had %d\n", program_name, 
-			    i, hist_tot, i-1, last_hist_tot);
+			    "%s: Error reading histogram: for for el %lu had "
+			    "%d entries, %lu had %d\n", 
+			    program_name, 
+			    (unsigned long)i, 
+			    hist_tot, 
+			    (unsigned long)(i-1), 
+			    last_hist_tot);
 		    error("Aborting.");
 		}
 	    }
@@ -588,14 +594,20 @@ void gaussianNorm(FILE* out_fp,
       for (size_t i=0;i<frrng.length();i++) {
 	const double maxs_stds = (*ftr_maxs_p)/(*ftr_stds_p);
 	const double mins_stds = (*ftr_mins_p)/(*ftr_stds_p);
-	fprintf(out_st_fp,"%d %f %f %f %d %d %f %d %d %f %f ",i,
-		*ftr_means_p,*ftr_stds_p,
-		*ftr_maxs_p,ftr_maxs_locs_p->sent_no,ftr_maxs_locs_p->frame_no,
-		*ftr_mins_p,ftr_mins_locs_p->sent_no,ftr_mins_locs_p->frame_no,
+	fprintf(out_st_fp,"%ld %f %f %f %ld %ld %f %ld %ld %f %f ",
+		(unsigned long)i,
+		*ftr_means_p,
+		*ftr_stds_p,
+		*ftr_maxs_p,
+		ftr_maxs_locs_p->sent_no,
+		ftr_maxs_locs_p->frame_no,
+		*ftr_mins_p,
+		ftr_mins_locs_p->sent_no,
+		ftr_mins_locs_p->frame_no,
 		maxs_stds,mins_stds);
 	if (hist_bins > 0) {
 	  for (size_t j=0;j<hist_bins;j++) {
-	    fprintf(out_st_fp,"%d ",*hist_p++);
+	    fprintf(out_st_fp,"%ld ",(unsigned long)*hist_p++);
 	  }
 	}
 	fprintf(out_st_fp,"\n");

@@ -68,13 +68,16 @@
  *-----------------------------------------------------------------------
  */
 
+using namespace std;
+
 #include <iostream>
-#include <fstream.h>
+#include <fstream>
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
 #include <cctype>
 #include <assert.h>
+
 
 #include "error.h"
 #include "arguments.h"
@@ -91,16 +94,20 @@ bool Arg::Disambiguate_When_Different_Data_Struct_Type=true;
 bool Arg::Error_If_No_Index_For_Array_Data_Struct_Type=true;
 
 bool Arg::EMPTY_ARGS_FLAG;
-char* const Arg::NOFLAG = "noflg";
-char* const Arg::CATEG_FLAG = "categflg"; // special flag that indicates the argument is for printing category heading information only
-char* const Arg::NOFL_FOUND = "nofl_fnd";
+
+const char* const Arg::NOFLAG = "noflg";
+// special flag that indicates the argument is for printing category heading information only
+const char* const Arg::CATEG_FLAG = "categflg"; 
+const char* const Arg::NOFL_FOUND = "nofl_fnd";
 const char Arg::COMMENTCHAR = '#';
-int Arg::Num_Arguments = 0;
-bool* Arg::Argument_Specified = NULL;
-char* Arg::Program_Name = "";
 const char* const ARGS_FILE_NAME = "argsFile";
 const char* const ArgsErrStr = "Argument Error:";
 
+
+int Arg::Num_Arguments = 0;
+
+bool* Arg::Argument_Specified = NULL;
+const char* Arg::Program_Name = "";
 unsigned Arg::Requested_Priority=HIGHEST_PRIORITY;
 
 /*-
@@ -119,7 +126,13 @@ unsigned Arg::Requested_Priority=HIGHEST_PRIORITY;
  *
  *-----------------------------------------------------------------------
  */
-void Arg::initialize(char*m,ArgDisposition r,char *d,ArgDataStruct ds, unsigned maxArrayElmts, bool hidden,unsigned priority) {
+void Arg::initialize(const char*m,
+		     ArgDisposition r,
+		     const char *d,
+		     ArgDataStruct ds, 
+		     unsigned maxArrayElmts, 
+		     bool hidden,
+		     unsigned priority) {
   flag = m;
   arg_kind = r;
   if (arg_kind == Tog) { 
@@ -156,7 +169,13 @@ void Arg::initialize(char*m,ArgDisposition r,char *d,ArgDataStruct ds, unsigned 
  *-----------------------------------------------------------------------
  */
 Arg::Arg() : mt(EMPTY_ARGS_FLAG) {
-  initialize(NULL,Arg::Opt,"",SINGLE,DEFAULT_MAX_NUM_ARRAY_ELEMENTS,false,HIGHEST_PRIORITY);
+  initialize(NULL,
+	     Arg::Opt,
+	     "",
+	     SINGLE,
+	     DEFAULT_MAX_NUM_ARRAY_ELEMENTS,
+	     false,
+	     HIGHEST_PRIORITY);
 }
 
 /**
@@ -169,7 +188,7 @@ Arg::Arg() : mt(EMPTY_ARGS_FLAG) {
  *
  *-----------------------------------------------------------------------
  **/
-Arg::Arg(char* d) : mt(EMPTY_ARGS_FLAG) {
+Arg::Arg(const char* d) : mt(EMPTY_ARGS_FLAG) {
   initialize(CATEG_FLAG,Arg::Opt,d,SINGLE,DEFAULT_MAX_NUM_ARRAY_ELEMENTS,false,HIGHEST_PRIORITY);
 }
 
@@ -184,7 +203,7 @@ Arg::Arg(char* d) : mt(EMPTY_ARGS_FLAG) {
  *
  *-----------------------------------------------------------------------
  */
-Arg::Arg(char*m ,ArgDisposition r,MultiType ucl,char* d,ArgDataStruct ds,unsigned maxArrayElmts, bool hidden, unsigned priority) : mt(ucl) {
+Arg::Arg(const char*m ,ArgDisposition r,MultiType ucl,const char* d,ArgDataStruct ds,unsigned maxArrayElmts, bool hidden, unsigned priority) : mt(ucl) {
   initialize(m,r,d,ds,maxArrayElmts,hidden,priority);
 }
 
@@ -199,7 +218,7 @@ Arg::Arg(char*m ,ArgDisposition r,MultiType ucl,char* d,ArgDataStruct ds,unsigne
  *
  *-----------------------------------------------------------------------
  */
-Arg::Arg(ArgDisposition r,MultiType ucl,char* d,ArgDataStruct ds,unsigned maxArrayElmts,bool hidden,unsigned priority): mt(ucl) {
+Arg::Arg(ArgDisposition r,MultiType ucl,const char* d,ArgDataStruct ds,unsigned maxArrayElmts,bool hidden,unsigned priority): mt(ucl) {
   //initialize(NOFLAG,r,d);
   initialize(NOFLAG,r,d,ds,maxArrayElmts,hidden,priority);
 }
@@ -402,7 +421,7 @@ bool Arg::checkMissing(bool printMessage) {
  *
  *-----------------------------------------------------------------------
  */
-Arg* Arg::searchArgs(Arg* ag,char *flag) {
+Arg* Arg::searchArgs(Arg* ag,const char *flag) {
   int flaglen = ::strlen(flag);
   Arg* arg_ptr = ag;
   int numTaged = 0;  
@@ -523,7 +542,7 @@ Arg* Arg::searchArgs(Arg* ag,char *flag, ArgDataStruct dataStructure) {
  *-----------------------------------------------------------------------
  */
 Arg::ArgsRetCode 
-Arg::argsSwitch(Arg* arg_ptr,char *arg,int& index,bool& found,char*flag)
+Arg::argsSwitch(Arg* arg_ptr,const char *arg,int& index,bool& found,const char*flag)
 {
   
   if(arg_ptr->dataStructType == ARRAY) {
@@ -664,6 +683,9 @@ Arg::argsSwitch(Arg* arg_ptr,char *arg,int& index,bool& found,char*flag)
 	      flag);
       return ARG_ERROR;
     }
+    // TODO: fix minor memory leak here, where old ptr is written over. Note that
+    // it is not as simple as just freeing old pointer, as old pointer might point to
+    // non-dynamicaly allocated memory (i.e., something like 'const char * foo = "bar"; ).
     if(arg_ptr->dataStructType == ARRAY)
       *( (char**)(arg_ptr->mt.ptr) + arg_ptr->arrayElmtIndex) = ::strcpy(new char[strlen(arg)+1],arg);
     else
@@ -748,7 +770,7 @@ Arg::argsSwitch(Arg* arg_ptr,char *arg,int& index,bool& found,char*flag)
  *
  *-----------------------------------------------------------------------
  */
-bool Arg::validBoolean(char *string,bool& value)
+bool Arg::validBoolean(const char *string,bool& value)
 {
   bool rc;
   int arglen = strlen(string);
@@ -778,7 +800,7 @@ bool Arg::validBoolean(char *string,bool& value)
 
 
 // return true if there is no flag.
-bool Arg::noFlagP(char *flg) {
+bool Arg::noFlagP(const char *flg) {
   // cant test here equality with NOFLAG, so do the following instread.
   if (flg == NOFLAG || flg == NOFL_FOUND)
     return true;
@@ -787,7 +809,7 @@ bool Arg::noFlagP(char *flg) {
 }
 
 // return true if there is the falg is the special category flag.
-bool Arg::categFlagP(char *flg) {
+bool Arg::categFlagP(const char *flg) {
   if (flg == CATEG_FLAG)
     return true;
   else
@@ -914,7 +936,7 @@ void Arg::print(FILE* f) {
  *
  *-----------------------------------------------------------------------
  */
-char *MultiType::printable(MultiType::ArgumentType at) {
+const char *MultiType::printable(MultiType::ArgumentType at) {
   switch (at) {
   case MultiType::bool_type:
     return "bool";
@@ -956,7 +978,7 @@ char *MultiType::printable(MultiType::ArgumentType at) {
  *
  *-----------------------------------------------------------------------
  */
-void Arg::usage(char* filter,bool stdErrPrint) {
+void Arg::usage(const char* filter,bool stdErrPrint) {
 
   FILE* destStream;
 
@@ -1389,7 +1411,7 @@ bool Arg::parse(int argc,char** argv)
  * arguments without flags
  */
 
-char *string_fl="This is a string";
+const char *string_fl="This is a string";
 char char_fl = 'C';
 float float_fl = 3.4;
 double double_fl = 4.5;
@@ -1399,9 +1421,9 @@ int int_fl = 343;
 /*
  * arguments with flags
  */
-//char *myString = "BARSTR";
-char *myString;
-char* strOfStr[10];
+const char *myString = "BARSTR";
+// char *myString;
+const char* strOfStr[10] = { "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten" };
 float aSingle = 2.3;
 double aDouble = .4;
 int int1 = 3;
@@ -1417,7 +1439,7 @@ int int3=3;
 int int4=4;
 int arg[10]={1000};
 
-char* testArrayOfChars="abcde";
+const char* testArrayOfChars="abcde";
 char testArrayOfChars2[10]={'z','y','x'};
 
 

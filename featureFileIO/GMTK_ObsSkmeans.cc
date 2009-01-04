@@ -16,9 +16,8 @@
 #include <cstdio>
 #include <cerrno>
 #include <cstring>
-#ifndef __CYGWIN__
-#include <values.h>
-#endif
+#include <limits.h>
+#include <float.h>
 #include <cmath>
 #include <cassert>
 #include <stdlib.h>
@@ -38,8 +37,12 @@
 #include "arguments.h"
 #include "GMTK_WordOrganization.h"
 
+#include "vbyteswapping.h"
+
+
 #include "GMTK_Kmeans.h"
 #include "GMTK_ObsInitmg.h"
+
 
 ObservationMatrix globalObservationMatrix;
 
@@ -215,7 +218,7 @@ static void uniformSkmeans(ObservationMatrix* obs_mat,
 
 	  if (!quiet_mode) {
 	    if ((sent_no) % SENTS_PER_PRINT == 0)
-	      printf("Processing sentence %d\n",(sent_no));
+	      printf("Processing sentence %ld\n",(unsigned long)(sent_no));
 	  }
 
 	  //	  const size_t n_read = in_streamp->read_ftrslabs(sent_no,ftr_buf, lab_buf);
@@ -342,7 +345,7 @@ static void uniformSkmeans(ObservationMatrix* obs_mat,
 
 	if (!quiet_mode) {
 	  if ((sent_no) % SENTS_PER_PRINT == 0)
-	    printf("Processing sentence %d\n",(sent_no));
+	    printf("Processing sentence %ld\n",(unsigned long)(sent_no));
 	}
 
 	//	const size_t n_read = in_streamp->read_ftrslabs(sent_no, ftr_buf, lab_buf);
@@ -507,7 +510,7 @@ viterbiSkmeans(ObservationMatrix * obs_mat,
 
 	  if (!quiet_mode) {
 	    if ((sent_no) % 1 == 0)
-	      printf("Processing sentence %d\n",(sent_no));
+	      printf("Processing sentence %ld\n",(unsigned long)(sent_no));
 	  }
 
 	  //	  const size_t n_read = in_streamp->read_ftrslabs(sent_no,ftr_buf, lab_buf);
@@ -633,8 +636,9 @@ viterbiSkmeans(ObservationMatrix * obs_mat,
 
 	if (!quiet_mode) {
 	  if ((sent_no) % SENTS_PER_PRINT == 0)
-	    printf("Processing sentence %d\n",(sent_no));
+	    printf("Processing sentence %ld\n",(unsigned long)(sent_no));
 	}
+
 
 	//	const size_t n_read = in_streamp->read_ftrslabs(sent_no, ftr_buf, lab_buf);
 
@@ -705,7 +709,7 @@ viterbiSkmeans(ObservationMatrix * obs_mat,
 #define MAX_OBJECTS 5
 
 char *   input_fname[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL};  // Input file name.
-char *   ifmtStr[MAX_OBJECTS]     = {"pfile","pfile","pfile","pfile","pfile"};
+const char *   ifmtStr[MAX_OBJECTS]     = {"pfile","pfile","pfile","pfile","pfile"};
 unsigned ifmt[MAX_OBJECTS];
 
 char *   output_fname      = NULL;
@@ -726,9 +730,9 @@ char  *spr_str[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL};   // per stream per se
 char  *pr_str               = 0;   // per-sentence range string
 
 
-char*    actionIfDiffNumFramesStr[MAX_OBJECTS]={"er","er","er","er","er"};   // 
+const char*    actionIfDiffNumFramesStr[MAX_OBJECTS]={"er","er","er","er","er"};   // 
 unsigned actionIfDiffNumFrames[MAX_OBJECTS]={FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR};   // 
-char*    actionIfDiffNumSentsStr[MAX_OBJECTS]={"te","te","te","te","te"}; 
+const char*    actionIfDiffNumSentsStr[MAX_OBJECTS]={"te","te","te","te","te"}; 
 unsigned actionIfDiffNumSents[MAX_OBJECTS]={SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END};   // 
 
 bool     quiet = false;
@@ -748,7 +752,7 @@ unsigned startSkip = 0;
 unsigned endSkip   = 0;
 
 
-char*    ftrcomboStr = "none";
+const char*    ftrcomboStr = "none";
 unsigned ftrcombo    = FTROP_NONE;
 
 bool     cppIfAscii        = true;

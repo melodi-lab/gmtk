@@ -17,9 +17,8 @@
 #include <cstdio>
 #include <cerrno>
 #include <cstring>
-#ifndef __CYGWIN__
-#include <values.h>
-#endif
+#include <limits.h>
+#include <float.h>
 #include <cmath>
 #include <cassert>
 #include "pfile.h"
@@ -35,6 +34,7 @@
 #include "GMTK_ObsGaussianNorm.h"
 
 #include "range.h"
+#include "vbyteswapping.h"
 
 #ifdef DEBUG
 #define DBGFPRINTF(_x_) fprintf _x_
@@ -46,7 +46,7 @@
 char *output_fname = 0; // Output pfile name.
 char * outputList = NULL;
 FILE * outputListFp=NULL;
-char * outputNameSeparatorStr="_";
+const char * outputNameSeparatorStr="_";
 
 
 void (*copy_swap_func_ptr)(size_t, const intv_int32_t*, intv_int32_t*)=NULL;
@@ -80,7 +80,7 @@ void printHTKHeader(FILE* ofp, bool oswap, int numInts, int numFloats, int numSa
   if (fwrite(&numSamples,sizeof(Int32),1,ofp) != 1) {
     error("Cannot write HTK number of samples\n");
   }
-  if (fwrite((short *)&samplePeriod,sizeof(Int32),1,ofp) != 1) {
+  if (fwrite((Int32 *)&samplePeriod,sizeof(Int32),1,ofp) != 1) {
     error("Cannot write HTK sample period\n");
   }
 
@@ -194,10 +194,10 @@ void printSegment(unsigned sent_no, FILE* out_fp, float* cont_buf, unsigned num_
 
 
 static void obsConcat(FILE *out_fp, 
-		      char *sr_str[], 
-		      char *fr_str[], 
-		      char *lr_str[], 
-		      char *spr_str[], 
+		      const char *sr_str[], 
+		      const char *fr_str[], 
+		      const char *lr_str[], 
+		      const char *spr_str[], 
 		      char *input_fname[],
 		      int n_input_fnames, 
 		      unsigned nfs[],
@@ -233,17 +233,17 @@ static void obsConcat(FILE *out_fp,
 
     globalObservationMatrix.openFiles(1,  // number of files
 				      (const char**)&file_name,
-				      (const char**)&fr_str,
-				      (const char**)&lr_str,
-				      (unsigned*)&nfs,
-				      (unsigned*)&nis,
-				      (unsigned*)&ifmt,
-				      (bool*)&iswap,
+				      (const char**)&fr_str[0],
+				      (const char**)&lr_str[0],
+				      (unsigned*)&nfs[0],
+				      (unsigned*)&nis[0],
+				      (unsigned*)&ifmt[0],
+				      (bool*)&iswap[0],
 				      startSkip,
 				      endSkip,
 				      cppIfAscii,
 				      cppCommandOptions,
-				      (const char**)&spr_str,
+				      (const char**)&spr_str[0],
 				      NULL, // actionIfDiffNumFrames,
 				      NULL, //actionIfDiffNumSents,
 				      perStreamTransforms,
@@ -359,22 +359,22 @@ static void obsConcat(FILE *out_fp,
 #define MAX_OBJECTS 5
 
 char *input_fname[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL};  // Input file name.
-char * ifmtStr[MAX_OBJECTS]={"pfile","pfile","pfile","pfile","pfile"};
+const char * ifmtStr[MAX_OBJECTS]={"pfile","pfile","pfile","pfile","pfile"};
 unsigned ifmt[MAX_OBJECTS];
 
 
 
-char * ofmtStr="flatasc";
+const char * ofmtStr="flatasc";
 unsigned ofmt;
 
 unsigned int nis[MAX_OBJECTS];
 unsigned int nfs[MAX_OBJECTS];
 
 //char  *sr_str               = 0;   // sentence range string
-char  *sr_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL};
-char  *fr_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL};   // feature range string    
-char  *lr_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL};   // label range string  
-char  *spr_str[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL};   // per stream per sentence range string 
+const char  *sr_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL};
+const char  *fr_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL};   // feature range string    
+const char  *lr_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL};   // label range string  
+const char  *spr_str[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL};   // per stream per sentence range string 
 
 int  debug_level = 0;
 bool dontPrintFrameID = false;

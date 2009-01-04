@@ -11,9 +11,8 @@
 #include <cstdio>
 #include <cerrno>
 #include <cstring>
-#ifndef __CYGWIN__
-#include <values.h>
-#endif
+#include <limits.h>
+#include <float.h>
 #include <cmath>
 #include <cassert>
 #include "pfile.h"
@@ -199,7 +198,7 @@ done:
 
 char *input_fname[2] = {NULL,NULL};  // Input pfile name.
 
-char * ifmtStr[2]={"pfile","pfile"};
+const char * ifmtStr[2]={"pfile","pfile"};
 unsigned ifmt[2];
 
 unsigned int nis[2];
