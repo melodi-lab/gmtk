@@ -4381,6 +4381,8 @@ InferenceMaxClique::ceCliquePrune(const unsigned k)
   if (k == 0 || k >= numCliqueValuesUsed)
     return;
 
+  infoMsg(IM::Med+9,"k-pruning with k=%d, state space = %d\n",k,numCliqueValuesUsed);
+
   // inclusive range to process.
   unsigned lower = 0;
   unsigned upper = numCliqueValuesUsed-1;
@@ -4562,6 +4564,8 @@ InferenceMaxClique::ceCliqueDiversityPrune(const unsigned numClusters)
     return;
   }
 
+  infoMsg(IM::Med+9,"Diversity/cluster pruning with state space = %d\n",numCliqueValuesUsed);
+
   /*
     - ideas to speed up: 
     -- factor malloc outside of this routine.
@@ -4581,7 +4585,7 @@ InferenceMaxClique::ceCliqueDiversityPrune(const unsigned numClusters)
   // printf("end allocate\n");fflush(stdout);
 
   // pick a random point as the first cluster.
-  centers[0] = rnd.uniform(numCliqueValuesUsed);
+  centers[0] = rnd.uniformOpen(numCliqueValuesUsed);
 
   unsigned* center_key_p;
   if (origin.packer.packedLen() <= IMC_NWWOH) {
