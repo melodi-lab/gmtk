@@ -21,6 +21,7 @@ EXCCFLAGS=
 EXCXXFLAGS=
 EXLDFLAGS =  
 # optimization flags (activate the appropriate one to get faster results).
+# Ultimately, also add -fno-exceptions
 # OPTFLAGS =-g -O3 -march=pentium4 -mfpmath=sse -ffast-math
 # OPTFLAGS=-g -O3 -march=pentium4 -mfpmath=sse -ffast-math
 # OPTFLAGS=-g -O3 -march=prescott -mfpmath=sse -ffast-math
@@ -31,6 +32,8 @@ OPTFLAGS=-g -O3 -march=core2 -mfpmath=sse -ffast-math
 #       -march=prescott - includes MMX, SSE, SSE2, SSE3 instructions + better p4 scheduling
 #       -march=nocona   - includes MMX, SSE, SSE2, SSE3 and 64-bit instructions + better p4 scheduling
 #
+# Extra optimization flags for some sources that may benefit from them.
+XOPTFLAGS=-funroll-loops -fargument-noalias-global
 # other general optional flags, optionally turned off at top level command line.
 ANSI=-ansi
 PEDANTIC=-pedantic
@@ -57,6 +60,7 @@ MAKE_VARS = \
 	CC="$(CC)" \
 	CXX="$(CXX)" \
 	EXLDFLAGS="$(EXLDFLAGS)" \
+	XOPTFLAGS="$(XOPTFLAGS)" \
 	CCFLAGS="$(CCFLAGS)" \
 	CXXFLAGS="$(CXXFLAGS)"
 
@@ -94,11 +98,28 @@ TAR = /bin/tar
 package:  EXCLUDE
 	$(TAR) cvzXf EXCLUDE ../gmtk-`cat RELEASE`.tar.gz .
 
+# use this to make dated source for myself
 date:  EXCLUDE
 	$(TAR) cvzXf EXCLUDE - . > ../gmtk-`date +%a_%b_%d_%Y_%k:%M | sed -e 's, ,,g'`.tar.gz
 
+# use this to make dated source for others.
+datedist:  EXCLUDEDIST
+	$(TAR) cvzXf EXCLUDE - . > ../gmtk-`date +%a_%b_%d_%Y_%k:%M | sed -e 's, ,,g'`.tar.gz
+
+
 # always remake this target when called.
 EXCLUDE: force
+	(find $(EXCLUDE) -type d -print -prune ; \
+	find . \( -name "*~" -o -name "*~[0-9]*" -o -name "core*" -o -name "*.o" -o -name "*.a" -o -name "#*" -o -name ".#*" -o -name "*_bak" \) -print; \
+	find $(MODULES) -type f -perm +0111 \! \( -name '*.cc' -o -name '*.h' \) ; \
+	find . -name CVS -print; \
+	find . -name RCS -print; \
+	find . -type d -name old -print ) | \
+	sed 's,^\./,,' > $@
+
+
+# always remake this target when called.
+EXCLUDEDIST: force
 	(find $(EXCLUDE) -type d -print -prune ; \
 	find . \( -name "*~" -o -name "*~[0-9]*" -o -name "core*" -o -name "*.o" -o -name "*.a" -o -name "#*" -o -name ".#*" -o -name "*_bak" \) -print; \
 	find $(MODULES) -type f -perm +0111 \! \( -name '*.cc' -o -name '*.h' \) ; \

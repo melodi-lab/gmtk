@@ -1,5 +1,4 @@
 
-
 ======================================================================
 ======================================================================
 ======================================================================
@@ -7,7 +6,7 @@
 
 			 How to compile GMTK
 
-			  Updated: Dec 2008
+			  Updated: Jan 2009
 
 
 Note, GMTK does not yet have a simple gnu configure style of
@@ -57,9 +56,15 @@ compiled, please follow the steps below.
    You might see an error message about 'ranlib', again safe to
    ignore.
 
-   If you wish to compile , then you can run:
+   If you wish to use a particular compiler, you can do:
     
-     make MODULES=featureFileIO all 
+     make CC=gcc-4.2 CXX=g++-4.2
+   
+   and if you wish to turn off all optimization, then do:
+
+     make OPTFLAGS= XOPTFLAGS=
+
+   See the top level Makefile for more such options.
 
 8) All of the binaries should now live in the subdirectories:
 
@@ -85,8 +90,12 @@ compiled, please follow the steps below.
 
 	-- Jeff Bilmes
 
+     For general questions:
         -- gmtk-users@ssli.ee.washington.edu
         -- gmtk-users-request@ssli.ee.washington.edu
+     For bugs:
+        -- gmtk-bugs@ssli.ee.washington.edu
+
    
 ======================================================================
 ======================================================================
