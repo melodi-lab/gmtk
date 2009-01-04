@@ -98,17 +98,19 @@ class MultiType {
 
   void * ptr;
   ArgumentType type;
-  static char* printable(MultiType::ArgumentType);
+  static const char* printable(MultiType::ArgumentType);
  public:
   MultiType(bool& b) { ptr = (void*)&b; type = bool_type; }
   MultiType(char& c) { ptr = (void*)&c;  type = char_type; }
   MultiType(char*& s) { ptr = (void*)&s; type = str_type; }
+  MultiType(const char*& s) { ptr = (void*)&s; type = str_type; }
   MultiType(int& i)  { ptr = (void*)&i;  type = int_type; }
   MultiType(unsigned int& i)  { ptr = (void*)&i; type = uint_type; }
   MultiType(float& f) { ptr = (void*)&f; type = float_type; }
   MultiType(double& d) { ptr = (void*)&d; type = double_type; }
 
   MultiType(char** s) { ptr = (void*)s; type = str_type; }
+  MultiType(const char** s) { ptr = (void*)s; type = str_type; }
   MultiType(bool* b) { ptr = (void*)b; type = bool_type; }
   MultiType(int* i)  { ptr = (void*)i; type = int_type; }
   MultiType(unsigned int* i)  { ptr = (void*)i;  type = uint_type; }
@@ -156,16 +158,16 @@ class Arg {
   // instead of -i1) for array type flags. If false -i is equivalent to -i1. 
   static bool Error_If_No_Index_For_Array_Data_Struct_Type;
 
-  static char* const NOFLAG;
-  static char* const CATEG_FLAG;
-  static char* const NOFL_FOUND;
+  static const char* const NOFLAG;
+  static const char* const CATEG_FLAG;
+  static const char* const NOFL_FOUND;
   static const char COMMENTCHAR;  // for argument files.
   // the total number of arguments in a given program.
   static int Num_Arguments;
   // an array of bits set if a particular argument is used
   static bool* Argument_Specified;
   // the program name, saved for usage messages.
-  static char* Program_Name;
+  static const char* Program_Name;
 
   // The priority level at which the user wants the information
   // printed.  Arguments with priority greater or equal to the
@@ -177,10 +179,10 @@ class Arg {
   // Instance data members.
   //////////////////////////////
 
-  char *flag; // name to match on command line, NULL when end.
+  const char *flag; // name to match on command line, NULL when end.
   ArgDisposition arg_kind;  // optional, required, toggle
   MultiType mt;
-  char *description;
+  const char *description;
 
   ArgDataStruct dataStructType;
   int arrayElmtIndex;
@@ -201,20 +203,29 @@ class Arg {
   unsigned count;  // keeps track of how many command line instances of this flag there are.  
 
  public:
-  //Arg(char*,ArgDisposition,MultiType,char*d=NULL);
-  Arg(char*,ArgDisposition,MultiType,char*d=NULL,ArgDataStruct ds=SINGLE,unsigned maxArrayElmts=DEFAULT_MAX_NUM_ARRAY_ELEMENTS, bool hidden=false,unsigned priority=HIGHEST_PRIORITY);
-  //Arg(ArgDisposition,MultiType,char*d=NULL);
-  Arg(ArgDisposition,MultiType,char*d=NULL,ArgDataStruct ds=SINGLE,unsigned maxArrayElmts=DEFAULT_MAX_NUM_ARRAY_ELEMENTS, bool hidden=false, unsigned priority=HIGHEST_PRIORITY);
 
-  Arg(char*d);
-  Arg(const Arg&);
+  // constructors.
   Arg();
+  Arg(const char*d);
+  Arg(const char*,ArgDisposition,MultiType,const char*d=NULL,ArgDataStruct ds=SINGLE,
+      unsigned maxArrayElmts=DEFAULT_MAX_NUM_ARRAY_ELEMENTS, bool hidden=false,
+      unsigned priority=HIGHEST_PRIORITY);
+  Arg(ArgDisposition,MultiType,const char*d=NULL,ArgDataStruct ds=SINGLE,
+      unsigned maxArrayElmts=DEFAULT_MAX_NUM_ARRAY_ELEMENTS, bool hidden=false,
+      unsigned priority=HIGHEST_PRIORITY);
+  Arg(const Arg&);
+
+
+  //Arg(char*,ArgDisposition,MultiType,char*d=NULL);
+  //Arg(ArgDisposition,MultiType,char*d=NULL);
+
+
   ~Arg();
 
   static ArgsRetCode parseArgsFromCommandLine(int,char**);
   static ArgsRetCode parseArgsFromFile(char*f="argsFile");
   static bool parse(int i,char**c);
-  static void usage(char* filter=NULL, bool stdErrPrint = true);
+  static void usage(const char* filter=NULL, bool stdErrPrint = true);
   static void printArgs(Arg*args,FILE*f);
 
   static unsigned getNumArguments() { return (unsigned) Num_Arguments; } 
@@ -228,17 +239,17 @@ class Arg {
 
  private:
   //void initialize(char*,ArgDisposition,char*);
-  void initialize(char*,ArgDisposition,char*,ArgDataStruct,unsigned,bool,unsigned priority);
+  void initialize(const char*,ArgDisposition,const char*,ArgDataStruct,unsigned,bool,unsigned priority);
 
-  static bool noFlagP(char *);
-  static bool categFlagP(char *);
-  static ArgsRetCode argsSwitch(Arg*,char *,int&,bool&,char*);
-  static Arg* searchArgs(Arg*,char*);
+  static bool noFlagP(const char *);
+  static bool categFlagP(const char *);
+  static ArgsRetCode argsSwitch(Arg*,const char *,int&,bool&,const char*);
+  static Arg* searchArgs(Arg*,const char*);
   static Arg* searchArgs(Arg* ag,char *flag, ArgDataStruct dataStructure);
   static Arg* searchArrayArgs(Arg* Args, char* flag);
   static void countAndClearArgBits();
   static bool checkMissing(bool printMessage=false);
-  static bool validBoolean(char* string,bool&value);
+  static bool validBoolean(const char* string,bool&value);
   void print(FILE*);
 
   void incCount() { this->count++; }

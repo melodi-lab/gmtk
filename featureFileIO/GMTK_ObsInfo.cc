@@ -48,15 +48,14 @@ void obsInfo(FILE* out_fp, ObservationMatrix* obs_mat, bool dont_print_info, boo
 }
 
 
-#ifdef MAIN
+// #ifdef MAIN
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
-#ifndef __CYGWIN__
-#include <values.h>
-#endif
+#include <limits.h>
+#include <float.h>
 #include <math.h>
 #include <assert.h>
 #include "pfile.h"
@@ -69,7 +68,7 @@ void obsInfo(FILE* out_fp, ObservationMatrix* obs_mat, bool dont_print_info, boo
 #define MAX_OBJECTS 5
 
 char *   input_fname[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL};  // Input file name.
-char *   ifmtStr[MAX_OBJECTS]     = {"pfile","pfile","pfile","pfile","pfile"};
+const char *   ifmtStr[MAX_OBJECTS]     = {"pfile","pfile","pfile","pfile","pfile"};
 unsigned ifmt[MAX_OBJECTS];
 
 char *   output_fname      = NULL;
@@ -79,9 +78,9 @@ bool     Print_Sent_Frames = false;
 unsigned nis[MAX_OBJECTS];
 unsigned nfs[MAX_OBJECTS];
 
-char*    actionIfDiffNumFramesStr[MAX_OBJECTS]={"er","er","er","er","er"};   // 
+const char*    actionIfDiffNumFramesStr[MAX_OBJECTS]={"er","er","er","er","er"};   // 
 unsigned actionIfDiffNumFrames[MAX_OBJECTS]={FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR};   // 
-char*    actionIfDiffNumSentsStr[MAX_OBJECTS]={"te","te","te","te","te"}; 
+const char*    actionIfDiffNumSentsStr[MAX_OBJECTS]={"te","te","te","te","te"}; 
 unsigned actionIfDiffNumSents[MAX_OBJECTS]={SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END};   // 
 
 bool     quiet = false;
@@ -288,4 +287,4 @@ for(int i=0; i < MAX_OBJECTS; ++i) {
 
     return 0;
 }
-#endif
+// #endif

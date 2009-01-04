@@ -2,13 +2,6 @@
 //static char* rcsid = "$Id$";
 // revised pfile code (withouth intvec,fltvec or quicknet) - KK
 
-// Added byte swapping/copying routines that also perform the four
-// operations, addition, substraction, multiplication and division.
-// In the case of division, no warning is given if the denominator is
-// zero; instead the division is not performed.  The routines are used
-// for feature stream combination in the GMTK Observation Matrix
-// library. -- Karim Filali (karim@cs.washington.edu)
-
 #include <assert.h>
 #include <cctype>
 #include <stdio.h>
@@ -16,6 +9,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include "pfile.h"
+#include "vbyteswapping.h"
 
 // Abbreviations for the sscanf/printf strings for signed and unsigned longs
 // or long-longs, compiler-dependent.
@@ -27,214 +21,20 @@
 
 // This is the verision string that appears in the PFile header
 
-static char* pfile_version0_string = 
+static const char* pfile_version0_string = 
     "-pfile_header version 0 size 32768";
+
+//
+// Much of the code below was taken from Quicknet's implmenetation of
+// the pfile library. Many of the names have been changed,
+// unfortunately, which means that it might be more difficult to keep
+// it consistent with the ICSI pfile code. TODO: at some point, there
+// should be one pfile library (not necessarily part of quicknet)
+// which can then be used by any software that wishes to use pfiles.
 
 
 // This routine is used to get one unsigned integer argument from a pfile
 // header stored in a buffer. It returns 0 on success, else -1.
-
-
-intv_int32_t
-swapb_i32_i32(intv_int32_t val)
-{
-  intv_uint32_t uval;
-  intv_uint32_t res;
-  intv_int32_t b0, b1, b2, b3;
-
-  uval = (intv_uint32_t) val;
-  b0 = uval >> 24;
-  b1 = (uval >> 8) & 0x0000ff00;
-  b2 = (uval << 8) & 0x00ff0000;
-  b3 = uval << 24;
-
-  res = b0 | b1 | b2 | b3;
-  return (intv_int32_t) res;
-}
-
-
-// TODO: this should be changed to i16 at some point.
-short
-swapb_short_short(short sval) {
- 
-  short res;
-  short s0,s1;
-
-  unsigned short usval = (unsigned short) sval;  
-
-  s0 = usval >> 8;
-  s1 = (usval << 8) & 0x0000ff00;
-  res = s0 | s1 ;
-  
-  return res;
-}
-	
-
-intv_int32_t
-copy_i32_i32(intv_int32_t from) {
-  return from;
-}
-
-void
-copy_i32_vi32(size_t len, intv_int32_t from, intv_int32_t* to)
-{
-  size_t i;
-
-  for (i=0; i<len; i++)
-    *to++ = from;
-}
-
-void
-swapb_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to)
-{
-  size_t i;
-for (i=0; i<len; i++)
-    *to++ = swapb_i32_i32(*from++);
-}
-
-void
-copy_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to)
-{
-  size_t i;
-
-  for (i=0; i<len; i++)
-  *to++ = *from++;
-}
-
-void
-copy_f_vf(size_t len, float from, float* to)
-{
-  size_t i;
-
-  for (i=0; i<len; i++)
-    *to++ = from;
-}
-
-// karim@cs
-
-
-void copy_add_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to)
-{
-  size_t i;
-  float * flto=(float*) to;
-  float * flfrom=(float*) from;
-  for (i=0; i<len; i++) {
-    *flto += (*flfrom++);
-    ++flto;
-  }
-  
-}
-
-
-void copy_mul_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to)
-{
-  size_t i;
-  float * flto=(float*) to;
-  float * flfrom=(float*) from;
-  for (i=0; i<len; i++) {
-    *flto *= (*flfrom++);
-    ++flto;
-  }
-
-}
-
-
-void copy_sub_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to)
-{
-  size_t i;
-
-  float * flto=(float*) to;
-  float * flfrom=(float*) from;
-  for (i=0; i<len; i++) {
-    *flto -= (*flfrom++);
-    ++flto;
-  }
-
-}
-
-
-void copy_div_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to)
-{
-  size_t i;
-
-  float * flto=(float*) to;
-  float * flfrom=(float*) from;
-  for (i=0; i<len; i++) {
-    if(*flfrom !=0) {
-      *flto /= (*flfrom);
-    }
-    ++flto;++flfrom;
-  }
-}
-
-
-void swapb_add_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to)
-{
-  size_t i;
-  float * float_to=(float*) to;
-  intv_int32_t swapped_from;
-  float* float_from;
-  for (i=0; i<len; i++) {
-    swapped_from=swapb_i32_i32(*from++);
-    float_from =  (float*)&swapped_from;
-    *float_to += (float)*float_from;
-    ++float_to;
-  }
-}
-
-
-void swapb_mul_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to)
-{
-
-  size_t i;
-  float * float_to=(float*) to;
-  intv_int32_t swapped_from;
-  float* float_from;
-  for (i=0; i<len; i++) {
-    swapped_from=swapb_i32_i32(*from++);
-    float_from =  (float*)&swapped_from;
-    *float_to *= (float)*float_from;
-    ++float_to;
-  }
-
-}
-
-
-void swapb_sub_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to)
-{
-
-size_t i;
-  float * float_to=(float*) to;
-  intv_int32_t swapped_from;
-  float* float_from;
-  for (i=0; i<len; i++) {
-    swapped_from=swapb_i32_i32(*from++);
-    float_from =  (float*)&swapped_from;
-    *float_to -= (float)*float_from;
-    ++float_to;
-  }
-
-}
-
-
-void swapb_div_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to)
-{
-
-size_t i;
-  float * float_to=(float*) to;
-  intv_int32_t swapped_from;
-  float* float_from;
-  for (i=0; i<len; i++) {
-    swapped_from=swapb_i32_i32(*from++);
-    float_from =  (float*)&swapped_from;
-    if(float_from!=0)
-      *float_to /= (float)*float_from;
-    ++float_to;
-  }
-
-}
-
-
 
 static int
 get_uint(const char* hdr, const char* argname, unsigned int* val)
@@ -728,58 +528,50 @@ InFtrLabStream_PFile::rewind()
 }
 
 size_t
-InFtrLabStream_PFile::read_ftrslabs(size_t frames, float* ftrs,
-				       UInt32* labs)
+InFtrLabStream_PFile::read_ftrslabs(size_t frames, 
+				    float* ftrs,
+				    UInt32* labs)
 {
-    size_t count;		// Count of number of frames
+  size_t count;		// Count of number of frames
 
-    for (count = 0; count < frames; count++)
-    {
-	if (pfile_sent == current_sent)
-	{
-	    if (pfile_frame==current_frame)
-	    {
-		if (ftrs!=NULL)
-		{
-                    if (bswap) 
-        		    swapb_vi32_vi32(num_ftr_cols, 
-				   (const intv_int32_t *)(&(buffer[first_ftr_col].f)),(intv_int32_t *)ftrs);
-                            else
-				copy_vi32_vi32(num_ftr_cols,
-                                   (const intv_int32_t *)(&(buffer[first_ftr_col].f)),(intv_int32_t *)ftrs);
-		    ftrs += num_ftr_cols;
-		}
-		if (labs!=NULL)
-		{
-                    if (bswap)
-		      swapb_vi32_vi32(num_lab_cols,
-			     (const intv_int32_t *) &(buffer[first_lab_col].l),
-			     (intv_int32_t *) labs);
-                    else
-                      copy_vi32_vi32(num_lab_cols,
-                             (const intv_int32_t *) &(buffer[first_lab_col].l),
-                             (intv_int32_t *) labs);
-		    labs += num_lab_cols;
-		}
-		read_frame();
-		current_frame++;
-		current_row++;
-	    }
-	    else
-	    {
-		error("Inconsistent frame number in PFile '%s',"
-			 " sentence=%li frame=%li - probably corrupted PFile.",
-			 filename, current_sent, current_frame);
-	    }
+  for (count = 0; count < frames; count++) {
+    if (pfile_sent == current_sent) {
+      if (pfile_frame==current_frame) {
+	if (ftrs!=NULL) {
+	  if (bswap) 
+	    swapb_vf32_vf32(num_ftr_cols, 
+			    (&(buffer[first_ftr_col].f)),ftrs);
+	  else
+	    copy_vf32_vf32(num_ftr_cols,
+			   (&(buffer[first_ftr_col].f)),ftrs);
+	  ftrs += num_ftr_cols;
 	}
-	else
-	{
-	    // Different sentence number - simply return number of frames
-	    // so far
-	    break;
+	if (labs!=NULL) {
+	  if (bswap)
+	    swapb_vi32_vi32(num_lab_cols,
+			    (const intv_int32_t *) &(buffer[first_lab_col].l),
+			    (intv_int32_t *) labs);
+	  else
+	    copy_vi32_vi32(num_lab_cols,
+			   (const intv_int32_t *) &(buffer[first_lab_col].l),
+			   (intv_int32_t *) labs);
+	  labs += num_lab_cols;
 	}
+	read_frame();
+	current_frame++;
+	current_row++;
+      } else {
+	error("Inconsistent frame number in PFile '%s',"
+	      " sentence=%li frame=%li - probably corrupted PFile.",
+	      filename, current_sent, current_frame);
+      }
+    } else {
+      // Different sentence number - simply return number of frames
+      // so far
+      break;
     }
-    return count;
+  }
+  return count;
 }
 
 SegID
@@ -1048,13 +840,13 @@ OutFtrLabStream_PFile::write_ftrslabs(size_t frames, const float* ftrs,
 	{
 	    if (ftrs!=NULL)
 	    {
-               if (bswap) {
-		swapb_vi32_vi32(num_ftrs, (const intv_int32_t *)ftrs, (intv_int32_t *)&(buffer[2].f));
-                }
-                else {
-                   copy_vi32_vi32(num_ftrs, (const intv_int32_t *)ftrs, (intv_int32_t*)&(buffer[2].f));
-                }
-		ftrs += num_ftrs;
+	      if (bswap) {
+		swapb_vf32_vf32(num_ftrs,ftrs, &(buffer[2].f));
+	      }
+	      else {
+		copy_vf32_vf32(num_ftrs, ftrs, &(buffer[2].f));
+	      }
+	      ftrs += num_ftrs;
 	    }
 	    else
 		copy_f_vf(num_ftrs, 0.0f, &(buffer[2].f));

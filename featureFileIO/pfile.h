@@ -9,12 +9,16 @@
 
 #include <stdio.h>
 #include "error.h"
+#include "general.h"
 
 // This is the size of the PFile header
 #define PFILE_HEADER_SIZE (32768)
 
-typedef size_t UInt32;
-typedef int Int32;
+// a print command for size_t similar to what you might find in inttypes.h
+#define PRIst "zu"
+// a print command for ssize_t similar to what you might find in inttypes.h
+#define PRIsst "zd"
+
 
 typedef int intv_int32_t;
 typedef unsigned int intv_uint32_t;
@@ -372,27 +376,5 @@ OutFtrLabStream_PFile::write_labs(size_t frames, const UInt32* labs)
     write_ftrslabs(frames, NULL, labs);
 }
 
-extern intv_int32_t swapb_i32_i32(intv_int32_t val);
-extern intv_int32_t copy_i32_i32(intv_int32_t from);
-extern void copy_i32_vi32(size_t len, intv_int32_t from, intv_int32_t* to);
-extern void swapb_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to);
-extern void copy_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to);
-extern void copy_f_vf(size_t len, float from, float* to);
-
-extern short swapb_short_short(short sval);
-
-
-// karim@cs
-
-extern void copy_add_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to);
-extern void copy_mul_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to);
-extern void copy_sub_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to);
-extern void copy_div_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to);
-
-extern void swapb_add_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to);
-extern void swapb_mul_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to);
-extern void swapb_sub_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to);
-extern void swapb_div_vi32_vi32(size_t len, const intv_int32_t* from, intv_int32_t* to);
 #endif // #ifndef PFILE_H_INCLUDED
-
 

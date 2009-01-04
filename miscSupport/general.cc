@@ -11,8 +11,11 @@
 #include <sys/resource.h>
 #include <unistd.h>
 #include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include <string>
+#include <string.h>
 
 #include "general.h"
 #include "rand.h"
@@ -158,7 +161,7 @@ void exit_program_with_status(const int stat)
  
 void memory_error()
 {
-  fprintf(stderr,"ERROR: can't allocate any more memory, malloc() failed. Either decrease your model size, find a better triangulation, use more pruning, use low-memory options, and/or use a machine with more memory.\n");
+  fprintf(stderr,"ERROR: can't allocate any more memory, malloc() failed. Either decrease your model size, find a better triangulation, use more and/or better pruning, use low-memory options, and/or use a machine with more memory.\n");
   exit_program_with_status(-1);
 }
 
@@ -226,12 +229,19 @@ void reportTiming(// input
 /*
  * a version of printf that goes to a C++ string 
  */
-int stringprintf(string& str,char *format, ...)
+int stringprintf(string& str,const char *format, ...)
 {
   char buff[512];
   va_list ap;
   va_start(ap,format);
+#ifdef __CYGWIN__
+  // TODO: as of Fri Sep 07 08:04:46 2007, cygwin doesn't have
+  // a vsnprintf, so we use vsprintf for now, but we know
+  // that this might cause an error.
+  int rc = vsprintf(buff, format, ap);
+#else
   int rc = vsnprintf(buff,sizeof(buff), format, ap);
+#endif
   va_end(ap);
   str = buff;
   return rc;
@@ -305,4 +315,14 @@ unsigned numBitsSet(unsigned u) {
   unsigned count=0;
   while (u) { count += (u&0x1); u >>= 1; }
   return count;
+}
+
+
+const char * CPP_Command() 
+{
+  const char * rc = getenv("GMTK_CPP_CMD");
+  if (rc == NULL)
+    rc = "cpp";
+  // fprintf(stdout,"cpp command got is (%s)\n",rc);
+  return rc;
 }

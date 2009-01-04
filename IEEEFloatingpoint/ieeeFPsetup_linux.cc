@@ -20,8 +20,11 @@
 #include <signal.h>
 #include <stdlib.h>
 
+#include "general.h"
 #include "ieeeFPsetup.h"
+#include "error.h"
 
+VCID("$Header$")
 
 /*
 ** Gets the i386 status bits

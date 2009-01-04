@@ -37,7 +37,7 @@ extern "C" {
      FILE     *popen(const char *, const char *) __THROW;
      int pclose(FILE *stream) __THROW;
 #endif
-};
+}
 #endif
 #endif
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
@@ -50,11 +50,53 @@ extern "C" {
 #define DBGFPRINTF(_x_)
 #endif
 
+
+bool
+freadUntilEOF(FILE *f)
+{
+  // read from f until we reach EOF condition (or an error occurs).
+  // Return 'true' if we reached EOF, return 'false' if an error occurs.
+
+  // first seek to the end
+  if (fseek(f,0L,SEEK_END)) {
+    // then fseek returned an error, but we ignore it since we return error later.
+    ;
+  }
+  // next try reading.
+  unsigned char buff[1024];
+  unsigned long rc;
+  while ( (rc=fread((void*)&buff[0],sizeof(unsigned char),1024,f)) == 1024 ) {
+    // do nothing
+    ;
+  }
+  
+  if (feof(f) && !ferror(f))
+    return true;
+  return false;
+
+}
+
+
+HTKFileInfo::HTKFileInfo(int samp_size, int n_samples, int startOfData,
+						 bool isCompressed, float* scale, float* offset):
+	samp_size(samp_size), n_samples(n_samples), startOfData(startOfData),
+	isCompressed(isCompressed), scale(scale), offset(offset){
+	
+}
+
+HTKFileInfo::~HTKFileInfo(){
+	if(scale)
+		delete [] scale;
+	if(offset)
+		delete [] offset;
+}
+
+
 StreamInfo::StreamInfo(const char *name, const char *crng_str,
 		       const char *drng_str,
 		       unsigned *nfloats, unsigned *nints, 
 		       unsigned *format, bool swap, unsigned num,bool cppIfAscii,char* cppCommandOptions, const char* sr_range_str) 
-  : cppIfAscii(cppIfAscii),cppCommandOptions(cppCommandOptions),numFileNames(0),srRng(NULL), pfile_istr(NULL), dataNames(NULL), cont_rng(NULL),disc_rng(NULL)
+  : cppIfAscii(cppIfAscii),cppCommandOptions(cppCommandOptions),numFileNames(0),srRng(NULL), pfile_istr(NULL),curDataFile(NULL),curHTKFileInfo(NULL), dataNames(NULL), cont_rng(NULL),disc_rng(NULL)
 {
 
   if (name == NULL) 	
@@ -136,7 +178,7 @@ StreamInfo::StreamInfo(const char *name, const char *crng_str,
      pfile_istr = NULL;
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP     
      if(cppIfAscii) { 
-       string cppCommand = string("cpp");
+       string cppCommand = CPP_Command();
        if (cppCommandOptions != NULL) {
 	 cppCommand = cppCommand + string(" ") + string(cppCommandOptions);
        }
@@ -163,8 +205,16 @@ StreamInfo::StreamInfo(const char *name, const char *crng_str,
 
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP     
      if(cppIfAscii) {
-       if (pclose(fofFile) != 0)
-	 warning("WARNING: Can't close pipe 'cpp %s'.",fofName);
+       // first, scan until end of file since sometimes it appears
+       // that cosing a pipe when not at the end causes an error.
+       freadUntilEOF(fofFile);
+       if (pclose(fofFile) != 0) {
+	 // we don' give a warning here since sometimes 'cpp' might return
+	 // with an error that we really don't care about. TODO: the proper
+	 // thing to do here is no to use 'cpp' as a pre-processor and use
+	 // some other macro preprocessor (such as m4).
+	 // warning("WARNING: Can't close pipe '%s %s'.",CPP_Command());
+       }
      }
      else
        fclose(fofFile);
@@ -175,7 +225,7 @@ StreamInfo::StreamInfo(const char *name, const char *crng_str,
    
    srRng= new Range(sr_range_str,0,fullFofSize);
    assert(srRng != NULL);
-   if((unsigned) srRng->last() >= (unsigned) fullFofSize)
+   if(!fullFofSize || (unsigned) srRng->last() >= (unsigned) fullFofSize)
      error("ERROR: Specified per-stream sentence range (%s) exceeds total number of sentences (%d).",srRng->GetDefStr(),fullFofSize);
    
    fofSize = srRng->length();
@@ -197,6 +247,16 @@ StreamInfo::~StreamInfo() {
   else 
     delete pfile_istr;
 
+  if(curDataFile){
+      fclose(curDataFile);
+      curDataFile = NULL;
+  }
+
+  if(curHTKFileInfo){
+   	  delete curHTKFileInfo;
+   	  curHTKFileInfo= NULL;
+  }
+  
   if (cont_rng != NULL)
     delete cont_rng;   
   if (disc_rng != NULL)
@@ -231,7 +291,7 @@ size_t StreamInfo::calcNumFileNames(FILE* &f) {
     }
     // since it's a pipe we need to close it and reopen it
     fclose(f);
-    string cppCommand = string("cpp");
+    string cppCommand = CPP_Command();
     if (cppCommandOptions != NULL) {
       cppCommand = cppCommand + string(" ") + string(cppCommandOptions);
     }

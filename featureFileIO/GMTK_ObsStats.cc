@@ -7,9 +7,8 @@
 */
 
 
-#ifndef __CYGWIN__
-#include <values.h>
-#endif
+#include <limits.h>
+#include <float.h>
 #include <math.h>
 #include "GMTK_ObsStats.h"
 
@@ -222,14 +221,19 @@ void obsStats(FILE *out_fp, ObservationMatrix* obs_mat,Range& srrng, Range& frrn
     for (i=0;i<frrng.length();i++) {
       const double maxs_stds = (*ftr_maxs_p)/(*ftr_stds_p);
       const double mins_stds = (*ftr_mins_p)/(*ftr_stds_p);
-      fprintf(out_fp,"%d %f %f %f %d %d %f %d %d %f %f ",i,
-	     *ftr_means_p,*ftr_stds_p,
-	     *ftr_maxs_p,ftr_maxs_locs_p->sent_no,ftr_maxs_locs_p->frame_no,
-	     *ftr_mins_p,ftr_mins_locs_p->sent_no,ftr_mins_locs_p->frame_no,
-	     maxs_stds,mins_stds);
+      fprintf(out_fp,"%lu %f %f %f %lu %lu %f %lu %lu %f %f ",
+	      (unsigned long)i,
+	      *ftr_means_p,*ftr_stds_p,
+	      *ftr_maxs_p,
+	      (unsigned long)ftr_maxs_locs_p->sent_no,
+	      (unsigned long)ftr_maxs_locs_p->frame_no,
+	      *ftr_mins_p,
+	      (unsigned long)ftr_mins_locs_p->sent_no,
+	      (unsigned long)ftr_mins_locs_p->frame_no,
+	      maxs_stds,mins_stds);
       if (hist_bins > 0) {
 	for (j=0;j<hist_bins;j++) {
-	  fprintf(out_fp,"%d ",*hist_p++);
+	  fprintf(out_fp,"%lu ",(unsigned long)*hist_p++);
 	}
       }
       fprintf(out_fp,"\n");
@@ -246,8 +250,8 @@ void obsStats(FILE *out_fp, ObservationMatrix* obs_mat,Range& srrng, Range& frrn
 	min_mins_stds = mins_stds;
     }
     if (!quiet_mode) {
-      printf("total sents used = %d, total frames used = %d\n",
-	      srrng.length(),total_frames);
+      printf("total sents used = %d, total frames used = %lu\n",
+	      srrng.length(),(unsigned long)total_frames);
       printf("max_maxs_stds = %f, min_mins_stds = %f\n",
 	     max_maxs_stds,min_mins_stds);
     }

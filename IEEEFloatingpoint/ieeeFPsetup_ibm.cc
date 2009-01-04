@@ -22,11 +22,7 @@
 #include "error.h"
 
 
-VCID("$Header$");
-
-#ifdef HAVE_NONSTANDARD_ARITHMETIC
-
-#endif
+VCID("$Header$")
 
 void fp_sigaction(int sig, siginfo_t* s_info, void *foo)
 {

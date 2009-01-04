@@ -1,7 +1,12 @@
 #
-# Makefile 
-#   for misc support
 #
+# GMTK Makefile for misc Support.
+# Do not run make directly using this directory. If you wish to compile only this module,
+# from the current directory run the following command:
+#
+#    make -f ../Makefile MODULES=miscSupport
+#
+# instead.
 #
 # $Header$
 #
@@ -20,32 +25,25 @@ top_srcdir = .
 VPATH = .
 
 #
-# Compilng programs to use.
-#
-CXX = g++
+# default options
 CC = gcc
+CXX = g++
 LD = $(CXX)
+EXCCFLAGS=
+EXCXXFLAGS=
+EXLDFLAGS =  
+OPTFLAGS =-g -O3 -DHAVE_NONSTANDARD_ARITHMETIC
+ANSI=-ansi
+PEDANTIC=-pedantic
+WALL=-Wall
+CCFLAGS = -g $(OPTFLAGS)  $(EXCCFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+CXXFLAGS = -g $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+
 AR = ar
 RANLIB = :
 INSTALL = /usr/bin/install -c
 INSTALL_DATA = ${INSTALL} -m 555
 INSTALL_EXE = $(INSTALL) -m 555
-
-#
-# Program options.
-#
-# OPTFLAGS = -O
-OPTFLAGS = -O3
-# OPTFLAGS =
-
-# extra flags via command line (e.g., -pg).
-EXCFLAGS =  
-EXLDFLAGS =  
-CXXFLAGS = -g $(OPTFLAGS) $(EXCFLAGS) -Wall -Wno-deprecated -ansi -pedantic
-CCFLAGS = -g $(OPTFLAGS)  $(EXCFLAGS) -Wall -ansi -pedantic
-LDFLAGS = 
-DEFS = 
-
 
 prefix = .
 exec_prefix = .
@@ -61,8 +59,8 @@ docdir = $(prefix)/man/man1
 LIBS = -lm
 INCLUDES =  $(includedirs)
 LDFLAGS= $(libdirs)
-compile.cc = $(CXX) $(DEFS) $(INCLUDES) $(CXXFLAGS) $(HASH)
-compile.c = $(CC) $(DEFS) $(INCLUDES) $(CCFLAGS) $(HASH)
+compile.cc = $(CXX) $(INCLUDES) $(CXXFLAGS) $(HASH)
+compile.c = $(CC) $(INCLUDES) $(CCFLAGS) $(HASH)
 pure =
 link = $(pure) $(LD) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
 archive = $(AR) -r
@@ -90,7 +88,7 @@ all: libmiscSupport.a
 # Define the standard library modules
 #----------------------------------------------------------------------------
 
-objs = error.o bp_range.o range.o arguments.o logp.o rand.o sArray.o cArray.o general.o lineqsolve.o debug.o fileParser.o hash_abstract.o mul_mdmd_md.o mul_mdmd_md_l0g.o mul_mdmd_md_l0nf.o eig.o bin_search.o
+objs = error.o bp_range.o range.o arguments.o logp.o rand.o sArray.o cArray.o general.o lineqsolve.o debug.o fileParser.o hash_abstract.o mul_mdmd_md.o mul_mdmd_md_l0g.o mul_mdmd_md_l0nf.o eig.o bin_search.o lms_filter.o rls_filter.o
 
 #----------------------------------------------------------------------------
 # Main build programs.
@@ -116,7 +114,7 @@ testBPRange: bp_range.cc error.o
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ bp_range.cc error.o $(objs)
 
 testArguments: arguments.cc
-	$(compile.cc.link) -Wall -g -DMAIN  -o $@ arguments.cc $(objs)
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ arguments.cc error.o
 
 testLogp: logp.cc
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ logp.cc error.o $(objs)
@@ -157,6 +155,11 @@ testSHashMap: shash_map.h shash_map.cc hash_abstract.o hash_abstract.cc hash_abs
 testVSHashMap: vshash_map.h vshash_map.cc hash_abstract.o hash_abstract.cc hash_abstract.h general.o $(objs)
 	$(compile.cc.link) -Wall -g -DMAIN $(HASH) -o $@ vshash_map.cc error.o hash_abstract.cc general.o
 
+testRLS: rls_filter.cc rls_filter.h  adaptive_filter.h libmiscSupport.a
+	$(compile.cc.link) -Wall -g -DMAIN -o $@ rls_filter.cc libmiscSupport.a
+
+testLMS: lms_filter.cc lms_filter.h  adaptive_filter.h libmiscSupport.a
+	$(compile.cc.link) -Wall -g -DMAIN -o $@ lms_filter.cc libmiscSupport.a
 
 
 #----------------------------------------------------------------------------
@@ -165,7 +168,7 @@ testVSHashMap: vshash_map.h vshash_map.cc hash_abstract.o hash_abstract.cc hash_
 
 all_srcs = error.cc bp_range.cc range.cc arguments.cc logp.cc rand.cc sArray.cc cArray.cc general.cc lineqsolve.cc debug.cc fileParser.cc hash_map_list.cc hash_abstract.cc  mul_mdmd_md.c mul_mdmd_md_l0g.c mul_mdmd_md_l0nf.c eig.c bin_search.cc # string_err.cc
 
-all_hdrs = error.h debug.h fileParser.h hash_map_list.h hash_abstract.h eig.h
+all_hdrs = error.h debug.h fileParser.h hash_map_list.h hash_abstract.h eig.h 
 
 all_objs = 
 

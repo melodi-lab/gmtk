@@ -20,7 +20,7 @@ enum bool { false = 0, true = 1 };
 
 
 void
-error(char *format, ...)
+error(const char * const format, ...)
 {
   va_list ap;
   va_start(ap,format);
@@ -28,11 +28,15 @@ error(char *format, ...)
   (void) vfprintf(stderr, format, ap);
   va_end(ap);
   (void) fprintf(stderr, "\n");
+#ifdef ERROR_DOES_ABORT
+  (void) abort();
+#else
   (void) exit(EXIT_FAILURE);
+#endif
 }
 
 void
-coredump(char *format, ...)
+coredump(const char * const format, ...)
 {
   va_list ap;
   va_start(ap,format);
@@ -44,7 +48,7 @@ coredump(char *format, ...)
 }
 
 void
-warning(char *format, ...)
+warning(const char * const format, ...)
 {
   va_list ap;
   va_start(ap,format);
@@ -55,7 +59,7 @@ warning(char *format, ...)
 }
 
 void
-ensure(bool condition,char *errorIfFail, ...)
+ensure(const bool condition,const char * const errorIfFail, ...)
 {
   if (!condition) {
     va_list ap;

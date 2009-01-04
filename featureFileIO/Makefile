@@ -1,8 +1,12 @@
 #
 # Makefile 
-#   General Makefile for GMTK
-#   J. Bilmes
+#   GMTK Makefile for GMTK's observation and feature file support.
+# Do not run make directly using this directory. If you wish to compile only this module,
+# from the current directory run the following command:
 #
+#    make -f ../Makefile MODULES=featureFileIO
+#
+# instead.
 #
 # $Header$
 #
@@ -21,11 +25,20 @@ top_srcdir = /n/pato/home/bilmes/gmtoolkit/gmtk
 VPATH = .
 
 #
-# Compilng programs to use.
-#
+# default options
+CC = gcc
 CXX = g++
-CC =  gcc
 LD = $(CXX)
+EXCCFLAGS=
+EXCXXFLAGS=
+EXLDFLAGS =  
+OPTFLAGS =-g -O3
+ANSI=-ansi
+PEDANTIC=-pedantic
+WALL=-Wall
+CCFLAGS = -g $(OPTFLAGS)  $(EXCCFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+CXXFLAGS = -g $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+
 AR = ar
 LEX = flex
 RANLIB = :
@@ -33,42 +46,23 @@ INSTALL = /usr/ucb/install -c
 INSTALL_DATA = ${INSTALL} -m 555
 INSTALL_EXE = $(INSTALL) -m 555
 
-#
-# Program options.
-#
-# OPTFLAGS = -O2 -DNDEBUG
-OPTFLAGS=-O3
-
-# extra flags via command line (e.g., -pg).
-EXCFLAGS =  
-EXLDFLAGS =  
-CXXFLAGS = -g $(OPTFLAGS) $(EXCFLAGS) -Wall -ansi -DMAIN
-CCFLAGS = -g $(OPTFLAGS)  $(EXCFLAGS) -Wall -ansi -DMAIN
-LDFLAGS = 
-DEFS = 
-
-# doesn't appear to work with pmake, temporarly remove. JB:12/29/04.
-# i f d e f DEBUG
-# CXXFLAGS := $(CXXFLAGS) -DDEBUG='$(DEBUG)'
-# e n d i f
-
 
 prefix = .
 exec_prefix = .
 install_prefix = .
 
-libdirs = -L$(prefix) -L$(prefix)/../miscSupport -L$(prefix)/../IEEEFloatingpoint -L/g/rcs/sw/lib
+libdirs = -L$(prefix) -L$(prefix)/../miscSupport -L$(prefix)/../IEEEFloatingpoint 
 includedirs = -I$(srcdir) -I$(srcdir)/../miscSupport -I$(prefix)/../IEEEFloatingpoint
 docdir = $(prefix)/man/man1
 
 
-LIBS = -lfileParser  -lmiscSupport  -lIEEEsupport -lfl -lsunmath -lm 
-GMTEST_LIBS = -lmiscSupport  -lIEEEsupport -lfl -lm 
-OBS_PRINT_LIBS = -lmiscSupport  -lIEEEsupport -lfl -lm
-OBS_INFO_LIBS = -lmiscSupport  -lIEEEsupport -lfl -lm
-OBS_SKMEANS_LIBS = -lmiscSupport  -lIEEEsupport -lfl -lm
-OBS_CONCAT_LIBS = -lmiscSupport  -lIEEEsupport -lfl -lm
-OBS_DIFF_LIBS = -lmiscSupport  -lIEEEsupport -lfl -lm
+LIBS = -lfileParser  -lmiscSupport  -lIEEEsupport -lm 
+GMTEST_LIBS = -lmiscSupport  -lIEEEsupport -lm 
+OBS_PRINT_LIBS = -lmiscSupport  -lIEEEsupport -lm
+OBS_INFO_LIBS = -lmiscSupport  -lIEEEsupport -lm
+OBS_SKMEANS_LIBS = -lmiscSupport  -lIEEEsupport -lm
+OBS_CONCAT_LIBS = -lmiscSupport  -lIEEEsupport -lm
+OBS_DIFF_LIBS = -lmiscSupport  -lIEEEsupport -lm
 
 
 INCLUDES =  $(includedirs)
@@ -76,8 +70,8 @@ LDFLAGS= $(libdirs)
 # Define PURE as purify to create purify versions.
 # This can be done easily by doing 'make -DPURE=purify' 
 PURE =
-compile.cc = $(CXX) $(DEFS) $(INCLUDES) $(CXXFLAGS)
-compile.c = $(CC) $(DEFS) $(INCLUDES) $(CCFLAGS)
+compile.cc = $(CXX) $(INCLUDES) $(CXXFLAGS)
+compile.c = $(CC) $(INCLUDES) $(CCFLAGS)
 link = $(PURE) $(LD) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
 archive = $(AR) -r
 compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
@@ -109,15 +103,15 @@ all: ${all_exs}
 # Define the standard library modules
 #----------------------------------------------------------------------------
 
-objs = GMTK_ObservationMatrix.o GMTK_Stream.o GMTK_DataTransformations.o GMTK_WordOrganization.o GMTK_ObsStats.o pfile.o
+objs = GMTK_ObservationMatrix.o GMTK_Stream.o GMTK_DataTransformations.o GMTK_WordOrganization.o GMTK_ObsStats.o pfile.o vbyteswapping.o
 
 #----------------------------------------------------------------------------
 # Other files used in the program. Keep this up to date.
 #----------------------------------------------------------------------------
 
-all_srcs = GMTK_ObservationMatrix.cc GMTK_Stream.cc GMTK_DataTransformations.cc GMTK_WordOrganization.cc  GMTK_ObsStats.cc
+all_srcs = GMTK_ObservationMatrix.cc GMTK_Stream.cc GMTK_DataTransformations.cc GMTK_WordOrganization.cc  GMTK_ObsStats.cc vbyteswapping.cc
 
-all_hdrs = GMTK_Stream.h GMTK_ObservationMatrix.h GMTK_WordOrganization.h  GMTK_ObsStats.h
+all_hdrs = GMTK_Stream.h GMTK_ObservationMatrix.h GMTK_WordOrganization.h  GMTK_ObsStats.h vbyteswapping.h
 
 all_objs = $(objs)
 

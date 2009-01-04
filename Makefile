@@ -4,20 +4,44 @@
 # $Header$
 #
 
-# .EXPORT:
-# .EXPORT: Linux AND !crane
-# .EXPORT:
-# .EXPORT: nikola2 Linux
+# Compiling notes:
+#   cygwin: make ANSI= ...
+#   linux:
+#   solaris:
+#   mac:
+#   ibm:
 
 
-# other flags
-EXLDFLAGS=
-# GCC=/usr/nikola/pkgs/gcc/.3.2/bin/gcc
-# GPP=/usr/nikola/pkgs/gcc/.3.2/bin/g++
+# compiler selection flags
 CC=gcc
 CXX=g++
-EXCOMFLAGS=
-OPTFLAGS =-g -O3 -Wno-deprecated -march=pentium4 -mfpmath=sse $(EXCOMFLAGS)
+# extra flags to compilers and linker, allows user to control this from top level make run.
+EXCCFLAGS=
+# EXCXXFLAGS=-Wno-deprecated
+EXCXXFLAGS=
+EXLDFLAGS =  
+# optimization flags (activate the appropriate one to get faster results).
+# Ultimately, also add -fno-exceptions
+# OPTFLAGS =-g -O3 -march=pentium4 -mfpmath=sse -ffast-math
+# OPTFLAGS=-g -O3 -march=pentium4 -mfpmath=sse -ffast-math
+OPTFLAGS=-g -O3 -march=prescott -mfpmath=sse -ffast-math
+# OPTFLAGS=-g -O3 -march=nocona -mfpmath=sse -ffast-math
+# OPTFLAGS=-g -O3 -march=core2 -mfpmath=sse -ffast-math
+# Other -march flags to try are:
+#       -march=pentium4 - includes MMX, SSE, SSE2, instructions.
+#       -march=prescott - includes MMX, SSE, SSE2, SSE3 instructions + better p4 scheduling
+#       -march=nocona   - includes MMX, SSE, SSE2, SSE3 and 64-bit instructions + better p4 scheduling
+#
+# Extra optimization flags for some sources that may benefit from them.
+XOPTFLAGS=-funroll-loops -fargument-noalias-global
+# other general optional flags, optionally turned off at top level command line.
+ANSI=-ansi
+PEDANTIC=-pedantic
+WALL=-Wall
+# specific flags to C and C++, and combining the above together.
+CCFLAGS = -g $(OPTFLAGS)  $(EXCCFLAGS) $(WALL) $(ANSI) $(PEDANTIC) -DOPTIMIZE_FOR_MEMORY_USAGE -DHASH_PRIME_SIZE
+CXXFLAGS = -g $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC) -DOPTIMIZE_FOR_MEMORY_USAGE -DHASH_PRIME_SIZE
+
 
 # GMTK modules 
 MODULES = \
@@ -26,24 +50,27 @@ MODULES = \
 	featureFileIO \
 	tksrc
 
-# files/dirs that should not be contained in distribution. 
+# files/dirs that should not be contained in src distribution. 
 EXCLUDE = \
 	tests_and_development \
 	EXCLUDE
 
 
 MAKE_VARS = \
-	OPTFLAGS="$(OPTFLAGS)" \
 	CC="$(CC)" \
 	CXX="$(CXX)" \
-	EXLDFLAGS="$(EXLDFLAGS)"
+	EXLDFLAGS="$(EXLDFLAGS)" \
+	XOPTFLAGS="$(XOPTFLAGS)" \
+	CCFLAGS="$(CCFLAGS)" \
+	CXXFLAGS="$(CXXFLAGS)"
 
 all clean:
 	for subdir in $(MODULES); do \
 		(cd $$subdir; $(MAKE) $(MAKE_VARS) $@); \
 	done
 
-linux solaris ibm cygwin:
+
+linux solaris ibm cygwin osx:
 	for subdir in IEEEFloatingpoint; do \
 		(cd $$subdir; $(MAKE) $(MAKE_VARS) $@); \
 	done
@@ -71,8 +98,14 @@ TAR = /bin/tar
 package:  EXCLUDE
 	$(TAR) cvzXf EXCLUDE ../gmtk-`cat RELEASE`.tar.gz .
 
+# use this to make dated source for myself
 date:  EXCLUDE
 	$(TAR) cvzXf EXCLUDE - . > ../gmtk-`date +%a_%b_%d_%Y_%k:%M | sed -e 's, ,,g'`.tar.gz
+
+# use this to make dated source for others.
+datedist:  EXCLUDEDIST
+	$(TAR) cvzXf EXCLUDE - . > ../gmtk-`date +%a_%b_%d_%Y_%k:%M | sed -e 's, ,,g'`.tar.gz
+
 
 # always remake this target when called.
 EXCLUDE: force
@@ -80,9 +113,21 @@ EXCLUDE: force
 	find . \( -name "*~" -o -name "*~[0-9]*" -o -name "core*" -o -name "*.o" -o -name "*.a" -o -name "#*" -o -name ".#*" -o -name "*_bak" \) -print; \
 	find $(MODULES) -type f -perm +0111 \! \( -name '*.cc' -o -name '*.h' \) ; \
 	find . -name CVS -print; \
-	find . -name RCS -print) | \
+	find . -name RCS -print; \
+	find . -type d -name old -print ) | \
 	sed 's,^\./,,' > $@
 
+
+# always remake this target when called.
+EXCLUDEDIST: force
+	(find $(EXCLUDE) -type d -print -prune ; \
+	find . \( -name "*~" -o -name "*~[0-9]*" -o -name "core*" -o -name "*.o" -o -name "*.a" -o -name "#*" -o -name ".#*" -o -name "*_bak" \) -print; \
+	find $(MODULES) -type f -perm +0111 \! \( -name '*.cc' -o -name '*.h' \) ; \
+	find . -name CVS -print; \
+	find . -name RCS -print; \
+	find . -type d -name old -print; \
+	find . \( -name TODO -o -name notes -o -name depends.make \) -print ) | \
+	sed 's,^\./,,' > $@
 
 
 force:

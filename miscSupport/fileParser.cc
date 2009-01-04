@@ -41,7 +41,7 @@ VCID("$Header$")
 
 
 bool 
-ioDataStreamFile::errorReturn(char *from,char *msg)
+ioDataStreamFile::errorReturn(const char *from,const char *msg)
 {
   if (msg != NULL) {
     error("%s occurred in %s, file '%s' line %d: %s\n",
@@ -86,7 +86,7 @@ iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary,const cha
       if (extraCommentChar == CPP_DIRECTIVE_CHAR)
 	warning("WARNING: opening file '%s' via cpp but also using char '%c' as a comment, unexpected results may occur",fileName(),extraCommentChar);
 
-      string cppCommand = string("cpp");
+      string cppCommand = CPP_Command();
       if (_cppCommandOptions != NULL) {
 	cppCommand = cppCommand + string(" ") + string(_cppCommandOptions);
       }
@@ -104,7 +104,7 @@ iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary,const cha
 
 	// add path of file to include directory paths.
 	string path = _name;
-	unsigned slashPos = path.rfind("/");
+	unsigned long slashPos = path.rfind("/");
 	if (slashPos != string::npos) {
 	  // then '/' is found
 	  cppCommand = cppCommand + " -I" + path.substr(0,slashPos);
@@ -182,8 +182,12 @@ iDataStreamFile::prepareNext()
 
     do {
       char *s = fgets(buff,MAXLINSIZEPLUS1,fh);
-      if (s == NULL)
-	return false;
+      if (s == NULL) {
+	// try it again since osx under gdb seems to be slow in setting up the sub proc.
+	s = fgets(buff,MAXLINSIZEPLUS1,fh);
+	if (s == NULL)
+	  return false;
+      }
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
       if (cppIfAscii && (*s == CPP_DIRECTIVE_CHAR)) {
 	// check if there is a filename/lineNo change.
@@ -295,7 +299,7 @@ void iDataStreamFile::rewind()
 
 
 bool 
-iDataStreamFile::readChar(char& c, char *msg) 
+iDataStreamFile::readChar(char& c, const char *msg) 
 {
   if (Binary) {
     size_t rc = fread(&c, sizeof(char), 1,fh);
@@ -312,7 +316,7 @@ iDataStreamFile::readChar(char& c, char *msg)
 
 
 bool 
-iDataStreamFile::readStr(char*& str, char *msg) 
+iDataStreamFile::readStr(char*& str, const char *msg) 
 {
   sArray<char> tmp(20);
   int len=0;
@@ -345,9 +349,9 @@ iDataStreamFile::readStr(char*& str, char *msg)
 
 
 bool 
-iDataStreamFile::readString(string& str, char *msg) 
+iDataStreamFile::readString(string& str, const char *msg) 
 {
-  str.erase();
+  str.clear();
   if (Binary) {
     char c;
     // read a string up to the next NULL character.
@@ -363,15 +367,29 @@ iDataStreamFile::readString(string& str, char *msg)
     if (str.size() == 0)
 	return errorReturn("readString, zero length string",msg);
   } else {
+
     if (!prepareNext())
       return errorReturn("readString",msg);
-    // read until a space. Add a null character
-    // onto the end of the string.
-    char c = *buffp++;
-    while (!isspace(c) &&  c != '\n') {
-      str += c;
-      c = *buffp++;
-    }
+
+    // Assume: pointer is currently to something other than a space.
+    // Then read until a space. 
+
+    char *startingPosition = buffp;
+    while (!isspace(*buffp) &&  (*buffp) != '\n') {
+      buffp++;
+    } 
+    str.append(startingPosition,buffp-startingPosition);
+
+    // This next code does the same as above, but it is commented out
+    // since valgrind reports a possible memory leak with the 'str += c' line
+    // under g++ 3.4.3 on linux/x86 (it may not be a real leak though).
+    // 
+    // char c = *buffp++;
+    // while (!isspace(c) &&  c != '\n') {
+    //  str += c;
+    //  c = *buffp++;
+    // }
+
   }
   return true;
 }
@@ -382,7 +400,7 @@ iDataStreamFile::readStringUntil(
   string& str, 
   const char delimiter, 
   bool spaceIsDelimiter, 
-  char *msg ) 
+  const char *msg ) 
 {
   str.erase();
   if (Binary) {
@@ -401,7 +419,7 @@ iDataStreamFile::readStringUntil(
 	return errorReturn("readStringUntil, zero length string",msg);
   } else {
     if (!prepareNext()) {
-      return errorReturn("readStringUntil_aaa",msg);
+      return errorReturn("readStringUntil",msg);
     }
     char c = *buffp++;
 
@@ -410,7 +428,7 @@ iDataStreamFile::readStringUntil(
 
       if (c == '\n') {
         if (!prepareNext()) {
-          return errorReturn("readStringUntil_whee",msg);
+          return errorReturn("readStringUntil",msg);
         }
       }
       c = *buffp++;
@@ -421,7 +439,7 @@ iDataStreamFile::readStringUntil(
 
 
 bool 
-iDataStreamFile::readToken(string& str, const string& tokenChars, char *msg) 
+iDataStreamFile::readToken(string& str, const string& tokenChars, const char *msg) 
 {
   str.erase();
   if (Binary) {
@@ -467,7 +485,7 @@ iDataStreamFile::readToken(string& str, const string& tokenChars, char *msg)
 
  */
 bool 
-iDataStreamFile::readIfMatch(const string& matchTokenStr, char *msg) 
+iDataStreamFile::readIfMatch(const string& matchTokenStr, const char *msg) 
 {
   bool success;
   if (Binary) {
@@ -545,7 +563,7 @@ iDataStreamFile::readIfMatch(const string& matchTokenStr, char *msg)
 
 
 bool 
-iDataStreamFile::readInt(int& i, char *msg) 
+iDataStreamFile::readInt(int& i, const char *msg) 
 {
   if (Binary) {
     size_t rc = fread(&i, sizeof(int), 1,fh);
@@ -570,7 +588,7 @@ iDataStreamFile::readInt(int& i, char *msg)
 
 
 bool 
-iDataStreamFile::readUnsigned(unsigned& i, char *msg) 
+iDataStreamFile::readUnsigned(unsigned& i, const char *msg) 
 {
   if (Binary) {
     size_t rc = fread(&i, sizeof(unsigned), 1,fh);
@@ -594,8 +612,36 @@ iDataStreamFile::readUnsigned(unsigned& i, char *msg)
 }
 
 
+
+
 bool 
-iDataStreamFile::readFloat(float& f, char *msg) 
+iDataStreamFile::readUnsignedLong(unsigned long& i, const char *msg) 
+{
+  if (Binary) {
+    size_t rc = fread(&i, sizeof(unsigned long), 1,fh);
+    if (rc != 1)
+      return errorReturn("readUnsignedLong",msg);
+    return true;
+  } else {
+    if (!prepareNext())
+      return errorReturn("readUnsignedLong",msg);
+    char *ptr;
+    i = strtoul(buffp,&ptr,0);
+    if (ptr == buffp) {
+      error("readUnsignedLong: Can't form unsigned at (%s) in file (%s) line %d. %s",buffp,
+	    fileName(),lineNo(),
+	    (msg?msg:""));
+    } else
+      buffp = ptr;
+    return true;
+  }
+}
+
+
+
+
+bool 
+iDataStreamFile::readFloat(float& f, const char *msg) 
 {
   if (Binary) {
     size_t rc = fread(&f, sizeof(float), 1,fh);
@@ -617,9 +663,28 @@ iDataStreamFile::readFloat(float& f, char *msg)
   }
 }
 
+bool 
+iDataStreamFile::readFloatVec(float* fp, unsigned len,const char *msg) 
+{
+  if (Binary) {
+    // binary mode reads in the entire vector at a time.
+    size_t rc = fread(fp, sizeof(float),len,fh);
+    if (rc != len)
+      return errorReturn("readFloatVec",msg);
+    return true;
+  } else {
+    // ASCI mode is no faster than reading the floats individually
+    while (len--) {
+      if (!readFloat(*fp++,msg))
+	return false;
+    }
+    return true;
+  }
+}
+
 
 bool 
-iDataStreamFile::readDouble(double& d, char *msg) 
+iDataStreamFile::readDouble(double& d, const char *msg) 
 {
   if (Binary) {
     size_t rc = fread(&d, sizeof(double), 1,fh);
@@ -642,8 +707,29 @@ iDataStreamFile::readDouble(double& d, char *msg)
 }
 
 
+bool 
+iDataStreamFile::readDoubleVec(double* dp, unsigned len,const char *msg) 
+{
+  if (Binary) {
+    // binary mode reads in the entire vector at a time.
+    size_t rc = fread(dp, sizeof(double),len,fh);
+    if (rc != len)
+      return errorReturn("readDoubleVec",msg);
+    return true;
+  } else {
+    // ASCI mode is no faster than reading the doubles individually
+    while (len--) {
+      if (!readDouble(*dp++,msg))
+	return false;
+    }
+    return true;
+  }
+}
+
+
+
 bool
-iDataStreamFile::readLine(char * line, size_t n, char *msg) {
+iDataStreamFile::readLine(char * line, size_t n, const char *msg) {
   if ( Binary )
     error("error calling getline(): Can't getline in a binary file.");
 
@@ -679,7 +765,7 @@ iDataStreamFile::readLine(char * line, size_t n, char *msg) {
  *
  *-----------------------------------------------------------------------
  */
-char iDataStreamFile::peekChar(char *msg) {
+char iDataStreamFile::peekChar(const char *msg) {
   if ( Binary ) {
     char c;
     size_t rc = fread(&c, sizeof(char), 1,fh);
@@ -734,7 +820,7 @@ oDataStreamFile::~oDataStreamFile()
   }
 }
 
-bool oDataStreamFile::writeStr(const char *const str,char *msg,const bool writeSpaceSuffixAscii)
+bool oDataStreamFile::writeStr(const char *const str,const char *msg,const bool writeSpaceSuffixAscii)
 {
   if (Binary) {
     const int len = strlen(str)+1;
@@ -750,7 +836,7 @@ bool oDataStreamFile::writeStr(const char *const str,char *msg,const bool writeS
 }
 
 
-bool oDataStreamFile::writeString(const string& str,char *msg,const bool writeSpaceSuffixAscii)
+bool oDataStreamFile::writeString(const string& str,const char *msg,const bool writeSpaceSuffixAscii)
 {
   if (Binary) {
     const int len = str.length()+1;
@@ -766,7 +852,7 @@ bool oDataStreamFile::writeString(const string& str,char *msg,const bool writeSp
 }
 
 
-bool oDataStreamFile::writeChar(const char c,char *msg,const bool writeSpaceSuffixAscii)
+bool oDataStreamFile::writeChar(const char c,const char *msg,const bool writeSpaceSuffixAscii)
 {
   if (Binary) {
     size_t rc = fwrite(&c, sizeof(char), 1,fh);
@@ -781,7 +867,7 @@ bool oDataStreamFile::writeChar(const char c,char *msg,const bool writeSpaceSuff
 }
 
 
-bool oDataStreamFile::writeInt(const int i,char *msg)
+bool oDataStreamFile::writeInt(const int i,const char *msg)
 {
   if (Binary) {
     size_t rc = fwrite(&i, sizeof(int), 1,fh);
@@ -795,7 +881,7 @@ bool oDataStreamFile::writeInt(const int i,char *msg)
   }
 }
 
-bool oDataStreamFile::writeUnsigned(const unsigned int u,char *msg)
+bool oDataStreamFile::writeUnsigned(const unsigned int u,const char *msg)
 {
   if (Binary) {
     size_t rc = fwrite(&u, sizeof(int), 1,fh);
@@ -810,7 +896,24 @@ bool oDataStreamFile::writeUnsigned(const unsigned int u,char *msg)
 }
 
 
-bool oDataStreamFile::writeFloat(const float f,char *msg)
+bool oDataStreamFile::writeUnsignedLong(const unsigned long u,const char *msg)
+{
+  if (Binary) {
+    size_t rc = fwrite(&u, sizeof(unsigned long), 1,fh);
+    if (rc != 1)
+      return errorReturn("writeUnsignedLong",msg);
+    return true;
+  } else {
+    if (fprintf(fh,"%lu ",u) == 0) 
+      return errorReturn("writeUnsignedLong",msg);
+    return true;
+  }
+}
+
+
+
+
+bool oDataStreamFile::writeFloat(const float f,const char *msg)
 {
   if (Binary) {
     size_t rc = fwrite(&f, sizeof(float), 1,fh);
@@ -825,7 +928,24 @@ bool oDataStreamFile::writeFloat(const float f,char *msg)
 }
 
 
-bool oDataStreamFile::writeDouble(const double d,char *msg)
+bool oDataStreamFile::writeFloatVec(const float* fp,unsigned len, const char *msg)
+{
+  if (Binary) {
+    size_t rc = fwrite(fp, sizeof(float), len,fh);
+    if (rc != len)
+      return errorReturn("writeFloatVec",msg);
+    return true;
+  } else {
+    while (len--) {
+      if (fprintf(fh,FLOATWRITESTR,*fp++) == 0) 
+	return errorReturn("writeFloatVec",msg);
+    }
+    return true;
+  }
+}
+
+
+bool oDataStreamFile::writeDouble(const double d,const char *msg)
 {
   if (Binary) {
     size_t rc = fwrite(&d, sizeof(double), 1,fh);
@@ -840,7 +960,25 @@ bool oDataStreamFile::writeDouble(const double d,char *msg)
 }
 
 
-bool oDataStreamFile::writeComment(char *comment, ...)
+bool oDataStreamFile::writeDoubleVec(const double* dp,unsigned len, const char *msg)
+{
+  if (Binary) {
+    size_t rc = fwrite(dp, sizeof(double), len,fh);
+    if (rc != len)
+      return errorReturn("writeDoubleVec",msg);
+    return true;
+  } else {
+    while (len--) {
+      if (fprintf(fh,DOUBLEWRITESTR,*dp++) == 0) 
+	return errorReturn("writeDoubleVec",msg);
+    }
+    return true;
+  }
+}
+
+
+
+bool oDataStreamFile::writeComment(const char *comment, ...)
 {
   if (Binary) {
     // do nothing.
@@ -858,7 +996,7 @@ bool oDataStreamFile::writeComment(char *comment, ...)
 
 
 
-bool oDataStreamFile::indent(const int i,const bool doubSpace,char *msg)
+bool oDataStreamFile::indent(const int i,const bool doubSpace,const char *msg)
 {
   if (Binary) {
   } else {
@@ -875,7 +1013,7 @@ bool oDataStreamFile::indent(const int i,const bool doubSpace,char *msg)
 }
 
 
-bool oDataStreamFile::space(const int numSpaceChars,char *msg)
+bool oDataStreamFile::space(const int numSpaceChars,const char *msg)
 {
   if (Binary) {
   } else {
@@ -889,7 +1027,7 @@ bool oDataStreamFile::space(const int numSpaceChars,char *msg)
 }
 
 
-bool oDataStreamFile::nl(char *msg)
+bool oDataStreamFile::nl(const char *msg)
 {
   if (Binary) {
   } else {
@@ -901,7 +1039,7 @@ bool oDataStreamFile::nl(char *msg)
 }
 
 
-bool oDataStreamFile::flush(char *msg)
+bool oDataStreamFile::flush(const char *msg)
 {
   if (fflush(fh) != 0)
     return errorReturn("flush",msg);
@@ -947,7 +1085,7 @@ int main()
     of.writeFloat(10003.043); of.nl();
     of.indent(1,false); of.writeDouble(10003.043343434); of.nl();
     of.writeStr("This_is_a_String"); of.nl();
-    of.write(far1,sizeof(far1)/sizeof(float),"writing array");
+    of.write((float*)&far1[0],sizeof(far1)/sizeof(float),"writing array");
     of.write(cppstr);
   }
 
