@@ -66,20 +66,24 @@ compiled, please follow the steps below.
 
    See the top level Makefile for more such options.
 
-8) All of the binaries should now live in the subdirectories:
+   If you run the binaries and get 'illegal instruction' errors, it is possible
+   you have compiled for an architecture that is not valid for where you are running.
+   See the top-level Makefile and adjust the default OPTFLAGS to your appropriate
+   architecture.
+
+8) All of the runnable binaries should now live in the subdirectories:
 
     ./tksrc -- the main GMTK binaries, all start with 'gmtk*'
 
     ./featureFileIO -- a set of utilities to manipulate GMTK
                    observation files (which includes pfile, raw
                    binary, ascii, and HTK files). These can be useful
-		   for preparing GMTK input observation files.
+                   for preparing GMTK input observation files.
  
-    ./scripts -- There are a few scripts
-                 here that go through the GMTK triangulation programs
-                 in a variety of ways, and they sometimes find 
-                 triangulations that are significantly faster
-                 than the default triangulation options.
+    ./scripts -- There are a few scripts here that go through the GMTK
+                 triangulation programs in a variety of ways, and they
+                 sometimes find triangulations that are significantly
+                 faster than the default triangulation options.
 
 9) Don't forget to read the documentation. It can
    be found at:
