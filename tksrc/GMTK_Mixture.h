@@ -149,6 +149,7 @@ public:
   // a version that uses the current global obervation matrix directly.
   logpr log_p(const unsigned frameIndex,
 	      const unsigned firstFeatureElement);
+  logpr maxValue();
   //////////////////////////////////
 
 

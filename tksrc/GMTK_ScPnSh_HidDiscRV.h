@@ -77,6 +77,13 @@ public:
     modifyProbability(p,rv_info.rvWeightInfo[0],this);
   }
 
+  virtual logpr maxValue() {
+    logpr p = HidDiscRV::maxValue();
+    // todo: we might want to cache this value rather than modifying it all the time.
+    modifyProbability(p,rv_info.rvWeightInfo[0],this);    
+    return p;
+  }
+
 
   virtual ScPnSh_HidDiscRV* cloneRVShell() {
     return (ScPnSh_HidDiscRV*)HidDiscRV::cloneRVShell();

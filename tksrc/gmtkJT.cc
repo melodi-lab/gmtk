@@ -83,6 +83,7 @@ VCID("$Header$")
 #define GMTK_ARG_CBEAM
 #define GMTK_ARG_CPBEAM
 #define GMTK_ARG_CKBEAM
+#define GMTK_ARG_CCBEAM
 #define GMTK_ARG_CRBEAM
 #define GMTK_ARG_CMBEAM
 #define GMTK_ARG_SBEAM
@@ -159,18 +160,24 @@ main(int argc,char*argv[])
 
   CODE_TO_COMPUTE_ENDIAN;
 
+
   ////////////////////////////////////////////
   // parse arguments
   bool parse_was_ok = Arg::parse(argc,(char**)argv);
   if(!parse_was_ok) {
-    Arg::usage(); exit(-1);
+    // Arg::usage(); 
+    exit(-1);
   }
+
+  infoMsg(IM::Max,"Finished parsing arguments\n");
 
 #define GMTK_ARGUMENTS_CHECK_ARGS
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_CHECK_ARGS
 
 
+
+  infoMsg(IM::Max,"Opening Files ...\n");
   globalObservationMatrix.openFiles(nfiles,
 				    (const char**)&ofs,
 				    (const char**)&frs,
@@ -193,35 +200,50 @@ main(int argc,char*argv[])
 				    (const char**)&prepr,
 				    gpr_str);
 
+  infoMsg(IM::Max,"Finished opening files.\n");
+
 
   /////////////////////////////////////////////
   // read in all the parameters
+
   if (inputMasterFile) {
     // flat, where everything is contained in one file, always ASCII
+    infoMsg(IM::Max,"Reading master file...\n");
     iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
     GM_Parms.read(pf);
+    infoMsg(IM::Max,"Finished reading master file.\n");
   }
   if (inputTrainableParameters) {
     // flat, where everything is contained in one file
+    infoMsg(IM::Max,"Reading trainable file...\n");
     iDataStreamFile pf(inputTrainableParameters,binInputTrainableParameters,true,cppCommandOptions);
     GM_Parms.readTrainable(pf);
+    infoMsg(IM::Max,"Finished reading trainable file.\n");
   }
   GM_Parms.finalizeParameters();
 
   /////////////////////////////
   // read in the structure of the GM, this will
   // die if the file does not exist.
+  infoMsg(IM::Max,"Reading structure file...\n");
   FileParser fp(strFileName,cppCommandOptions);
   infoMsg(IM::Tiny,"Finished reading in all parameters and structures\n");
 
   // parse the file
+  infoMsg(IM::Max,"Parsing structure file...\n");
   fp.parseGraphicalModel();
+
   // create the rv variable objects
+  infoMsg(IM::Max,"Creating rv objects...\n");
   fp.createRandomVariableGraph();
+
+
   // Make sure that there are no directed loops in the graph.
+  infoMsg(IM::Max,"Checking template...\n");
   fp.ensureValidTemplate();
 
   // link the RVs with the parameters.
+  infoMsg(IM::Max,"Allocating cpts...\n");
   if (allocateDenseCpts >= 0) {
     if (allocateDenseCpts == 0)
       fp.associateWithDataParams(FileParser::noAllocate);
@@ -237,10 +259,12 @@ main(int argc,char*argv[])
 
   // make sure that all observation variables work
   // with the global observation stream.
+  infoMsg(IM::Max,"Checking consistency between cpts and observations...\n");
   fp.checkConsistentWithGlobalObservationStream();
   GM_Parms.checkConsistentWithGlobalObservationStream();
 
   GM_Parms.setStride(globalObservationMatrix.stride());
+
 
   /////
   // TODO: check that beam is a valid value.
@@ -258,16 +282,23 @@ main(int argc,char*argv[])
     tri_file = string(strFileName) + GMTemplate::fileExtension;
   else 
     tri_file = string(triFileName);
+
+  infoMsg(IM::Max,"Creating template...\n");
   GMTemplate gm_template(fp);
   {
+    infoMsg(IM::Max,"Reading triangulation file...\n");
+
     // do this in scope so that is gets deleted now rather than later.
     iDataStreamFile is(tri_file.c_str());
     if (!fp.readAndVerifyGMId(is,checkTriFileCards))
       error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",tri_file.c_str(),strFileName);
-    
+
     gm_template.readPartitions(is);
     gm_template.readMaxCliques(is);
+
   }
+
+  infoMsg(IM::Max,"Triangulating graph...\n");
   gm_template.triangulatePartitionsByCliqueCompletion();
   if (1) { 
     // check that graph is indeed triangulated.
@@ -286,16 +317,24 @@ main(int argc,char*argv[])
   // CREATE JUNCTION TREE DATA STRUCTURES
   infoMsg(IM::Default,"Creating Junction Tree\n"); fflush(stdout);
   JunctionTree myjt(gm_template);
+
   myjt.setUpDataStructures(varPartitionAssignmentPrior,varCliqueAssignmentPrior);
+
   myjt.prepareForUnrolling();
+
   if (jtFileName != NULL)
     myjt.printAllJTInfo(jtFileName);
+
   myjt.setCliquePrintRanges(pPartCliquePrintRange,cPartCliquePrintRange,ePartCliquePrintRange);
   infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
   ////////////////////////////////////////////////////////////////////
 
   if (globalObservationMatrix.numSegments()==0)
     error("ERROR: no segments are available in observation file");
+
+  if (IM::messageGlb(IM::Giga)) { 
+    gm_template.reportScoreStats();
+  }
 
   Range* dcdrng = new Range(dcdrng_str,0,globalObservationMatrix.numSegments());
   if (dcdrng->length() <= 0) {

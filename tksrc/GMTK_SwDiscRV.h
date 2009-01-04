@@ -71,6 +71,16 @@ public:
     return dtMapper->iterable();
   }
 
+  logpr maxValue() {
+    logpr res;
+    for (unsigned i=0;i<conditionalCPTs.size();i++) {
+      logpr tmp = conditionalCPTs[i]->maxValue();
+      if (tmp > res)
+	res = tmp;
+    }
+    return res;
+  }
+
 };
 
 #endif

@@ -1516,6 +1516,7 @@ JunctionTree::insertFactorClique(FactorClique& factorClique,FactorInfo& factor)
 	error("INTERNAL ERROR: factor %s(%d) defined at %s:%d contains nodes that does not live in any partition\n",
 	      factor.name.c_str(),factor.frame,
 	      factor.fileName.c_str(),factor.fileLineNumber);
+	assert(0); // this should never happen.
       }
     }
   }
@@ -3968,6 +3969,8 @@ JunctionTree::prepareForUnrolling(JT_Partition& part)
 unsigned
 JunctionTree::unroll(const unsigned int numFrames)
 {
+  // note: the argument name is numFrames, which indicates
+  // the number of frames in an observation file.
 
   // first create the unrolled set of random variables corresponding
   // to this JT.

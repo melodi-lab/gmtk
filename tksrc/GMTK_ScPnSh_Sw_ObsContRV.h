@@ -72,6 +72,15 @@ public:
       modifyProbability(p,rv_info.rvWeightInfo[0],this);
   }
 
+  virtual logpr maxValue() {
+    logpr p = Sw_ObsContRV::maxValue();
+    if (rv_info.rvWeightInfo.size() > 1) 
+      modifyProbability(p,rv_info.rvWeightInfo[cachedSwitchingState],this);
+    else 
+      modifyProbability(p,rv_info.rvWeightInfo[0],this);
+    return p;
+  }
+
   virtual ScPnSh_Sw_ObsContRV* cloneRVShell() {
     return (ScPnSh_Sw_ObsContRV*)Sw_ObsContRV::cloneRVShell();
   }

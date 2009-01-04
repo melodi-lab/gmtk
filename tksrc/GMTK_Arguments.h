@@ -689,8 +689,20 @@ const char*const argerr = "ARG ERROR";
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   Arg("cpbeam",Arg::Opt,MaxClique::cliqueBeamBuildBeam,"Clique beam width while building cliques (log value)"),
+  Arg("cpfilter",Arg::Opt,MaxClique::cliqueBeamBuildFilter,"Adaptive filter to use for clique bild pruning"),
+    Arg("cpch",Arg::Opt,MaxClique::cliqueBeamContinuationHeuristic,"For clique beam build pruning, use a continuation heurisic within the rest of the clique"),
+
+    Arg("cpef",Arg::Opt,MaxClique::cliqueBeamBuildExpansionFactor,"For clique beam build pruning, the amount that the beam expands each time we find a zero clique"),
+    Arg("cpme",Arg::Opt,MaxClique::cliqueBeamBuildMaxExpansions,"For clique beam build pruning, the maximum number of expansions before we fail and exit"),
+
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+    if (MaxClique::cliqueBeamBuildBeam == (-LZERO) ) {
+      // then pruning is turned off, so set remaining params to sensibl values.
+      MaxClique::cliqueBeamBuildMaxExpansions = 1;      
+      MaxClique::cliqueBeamBuildExpansionFactor = 1.0;
+    }
 
 #else
 #endif
@@ -720,6 +732,27 @@ const char*const argerr = "ARG ERROR";
 #else
 #endif
 #endif // defined(GMTK_ARG_CKBEAM)
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
+#if defined(GMTK_ARG_CCBEAM)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("ccclusters",Arg::Opt,MaxClique::cliqueBeamClusterPruningNumClusters,"Number of clusters to use in cluster pruning"),
+  Arg("ccbeam",Arg::Opt,MaxClique::cliqueBeamClusterBeam,"Clique cluster beam width to prune clique clusters (log value)"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#else
+#endif
+#endif // defined(GMTK_ARG_CCBEAM)
 
 
 

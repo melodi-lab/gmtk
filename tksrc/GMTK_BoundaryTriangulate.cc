@@ -666,7 +666,6 @@ computeWeightedFillIn(const set<RV*>& nodes)
     }
   }
 
-
   // Note, we counted each edge twice, so fix that, although not strictly
   // necessary since we could just compute with 2*fill_in_weight, we do this,
   // however, since the user will be happier.
@@ -7833,8 +7832,8 @@ BoundaryTriangulate::findBestInterface(
  vector<float>& best_score,
  // what should be used to judge the quality of the interface
  const vector<BoundaryHeuristic>& bnd_heur_v,
- // true if we should use the exponential time optimal interface algorithm
- const bool recurse,
+ // true if we should find best (e.g., use the exponential time optimal interface algorithm)
+ const bool findBest,
  // --------------------------------------------------------------
  // The next 7 input arguments are used only with the optimal
  // interface algorithm when the IH_MIN_MAX_C_CLIQUE or
@@ -7946,7 +7945,7 @@ BoundaryTriangulate::findBestInterface(
   }
 
   
-  if ((bnd_heur_v.size() == 1) &&
+  if (findBest && (bnd_heur_v.size() == 1) &&
       ((bnd_heur_v[0] == IH_MIN_SIZE) 
        || (bnd_heur_v[0] == IH_MIN_WEIGHT_NO_D)))
     {      
@@ -8054,7 +8053,7 @@ BoundaryTriangulate::findBestInterface(
 
 
   // start exponential recursion to find the truly best interface.
-  if (recurse) {
+  if (findBest) {
     // best ones found so far
     set<RV*> best_left_C_l = left_C_l;
     set<RV*> best_C_l = C_l;

@@ -88,6 +88,23 @@ public:
       modifyProbability(p,rv_info.rvWeightInfo[0],this);
   }
 
+  logpr maxValue() {
+    // printf("ScPnSh_Sw_HidDiscRV::maxvalue() called\n");
+    logpr p;
+    for (unsigned i=0;i<conditionalCPTs.size();i++) {
+      logpr tmp = conditionalCPTs[i]->maxValue();
+      // switching weihts is either the same size as sw parents, or is size 1.
+      if (rv_info.rvWeightInfo.size() > 1) 
+	modifyProbability(tmp,rv_info.rvWeightInfo[i],this);
+      else 
+	modifyProbability(tmp,rv_info.rvWeightInfo[0],this);
+      if (tmp > p)
+	p = tmp;
+    }
+    return p;
+  }
+
+
   virtual ScPnSh_Sw_HidDiscRV* cloneRVShell() {
     return (ScPnSh_Sw_HidDiscRV*)Sw_HidDiscRV::cloneRVShell();
   }

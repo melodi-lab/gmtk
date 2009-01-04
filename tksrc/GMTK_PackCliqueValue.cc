@@ -471,6 +471,7 @@ PackCliqueValue::init(const unsigned *const cards, const bool useNaive)
   // printf("splits = %d\n",splits);
 
   valLocators.resize(len);
+  valBits.resize(len);
 
   // number of unused bits in the current packed word
   unsigned curNumberUnusedBits = numBitsPerUnsigned;
@@ -487,6 +488,9 @@ PackCliqueValue::init(const unsigned *const cards, const bool useNaive)
 
     if (ints[i].split == false) {
       assert (curNumberBits <= curNumberUnusedBits);
+
+      valBits[wordBoundaryNoOverlapLocation] = curNumberBits;
+
       // use bits only in current word
       valLocators[wordBoundaryNoOverlapLocation].start = curUnsignedLocation;
       valLocators[wordBoundaryNoOverlapLocation].startRightShift = 
@@ -515,6 +519,8 @@ PackCliqueValue::init(const unsigned *const cards, const bool useNaive)
       // use up remaining bits in this word
 
       wordBoundaryOverlapLocation--;
+
+      valBits[wordBoundaryOverlapLocation] = curNumberBits;
       
       valLocators[wordBoundaryOverlapLocation].start = curUnsignedLocation;
       valLocators[wordBoundaryOverlapLocation].startRightShift = 
@@ -721,6 +727,8 @@ PackCliqueValue::PackCliqueValue(vector<RV*>& nodes)
   }
   init(cards.ptr);
 }
+
+
 
 
 #ifdef MAIN

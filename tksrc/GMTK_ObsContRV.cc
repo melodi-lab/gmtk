@@ -213,6 +213,50 @@ ObsContRV::probGivenParents(logpr& p)
 }
 
 
+logpr 
+ObsContRV::maxValue()
+{
+  // we need to consider all possible mixtures that this RV might
+  // use. Note that for an ObsContRV there'll always be one entry in
+  // conditionalMixtures, but we do the more general case here (once)
+  // so that child classes have an easier time.
+  logpr mval;
+  //   double sumx = 0;
+  //   double sumxx = 0;
+  //   unsigned count = 0;
+  for (unsigned i=0; i< conditionalMixtures.size(); i++) {
+    if (conditionalMixtures[i].direct) {
+      logpr tmp = conditionalMixtures[i].mixture->maxValue();
+      if (tmp > mval)
+	  mval = tmp;
+      // sumx += tmp.valref();
+      // sumxx += tmp.valref()*tmp.valref();
+      // count ++;
+    } else {
+      for (unsigned j=0; j < conditionalMixtures[i].mapping.collection->mxSize(); j++) {
+	logpr tmp = conditionalMixtures[i].mapping.collection->mx(j)->maxValue();
+	if (tmp > mval)
+	  mval = tmp;
+	// sumx += tmp.valref();
+	// sumxx += tmp.valref()*tmp.valref();
+	// count ++;
+      }
+    }
+  }
+
+  // TODO: mval needs to be cached.
+
+  //   double mean = sumx/(double)count;
+  //   double std = (sumxx/count) - (sumx/(double)count)*(sumx/(double)count);
+  //   if (std <= 0) std = 0;
+  //   logpr p((void*)NULL);
+  //   p.valref() = mean;
+  //   return p;
+  
+  return mval;
+}
+
+
 
 
 /////////////////

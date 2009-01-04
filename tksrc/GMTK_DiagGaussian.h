@@ -117,6 +117,11 @@ public:
   logpr log_p(const float *const x,    // real-valued scoring obs at time t
 	      const Data32* const base, // ptr to base obs at time t
 	      const int stride);       // stride
+
+  // return the maximum possible value of this component. For a Gaussian,
+  // just return the value if the argument to the exponent is zero.
+  virtual logpr maxValue() { return logpr(0,covar->log_inv_normConst()); }
+
   //////////////////////////////////
 
 

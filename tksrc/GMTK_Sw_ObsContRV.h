@@ -69,6 +69,8 @@ public:
   void printSelfVerbose(FILE*f);
 
   void probGivenParents(logpr& p);
+  // logpr maxValue(); no need to redefine this here since parent
+  // class covers our case.
 
   void begin(logpr& p) {
     probGivenParents(p);

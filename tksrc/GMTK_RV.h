@@ -133,7 +133,7 @@ Each routine has:
 // routine that lives within the inner loops of inference.
 struct RVType {
   unsigned discrete:1;    // discrete == 1 or continuous 
-  unsigned hidden:1;      // hidden == 1, or continuous 
+  unsigned hidden:1;      // hidden == 1, or observed
   unsigned switching:1;   // switching == 1, or no switching (one set of parents)
   // Probability modification: given a probability p, we can optionally
   // change the value using the formula: penalty*p^scale+offset.
@@ -343,6 +343,17 @@ public:
   // See also begin() and next() iterators below, to iterate
   // through all values of this rv given current parent values.
   virtual void probGivenParents(logpr& p) = 0;
+
+  // return the max score value that this RV can take on, or at least
+  // an estimate of this quanitity. There are several variants to this
+  // approach. If there is no CPT associated with this RV (in the
+  // case that this is a factor graph, then this just returns unity).
+  virtual logpr maxValue() { 
+    // default just returns 1.0.
+    // printf("RV::maxvalue() called ****\n");
+    logpr p((void*)NULL); p.set_to_one(); return p;
+  }
+
 
   // Versions that return the probability so require 
   // more temporary creation.

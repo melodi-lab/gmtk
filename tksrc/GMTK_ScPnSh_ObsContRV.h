@@ -65,6 +65,12 @@ public:
     ObsContRV::probGivenParents(p);
     modifyProbability(p,rv_info.rvWeightInfo[0],this);
   }
+  inline virtual logpr maxValue() {
+    logpr p = ObsContRV::maxValue();
+    modifyProbability(p,rv_info.rvWeightInfo[0],this);
+    return p;
+  }
+
 
   virtual ScPnSh_ObsContRV* cloneRVShell() {
     return (ScPnSh_ObsContRV*)ObsContRV::cloneRVShell();

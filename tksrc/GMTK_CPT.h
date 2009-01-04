@@ -46,12 +46,12 @@ class DiscRV;
  * CPT
  *  |
  *  +-- MDCPT - Multi-d Dense CPT
+ *  |     |
+ *  |     +-- USCPT - special unity (1) score CPT for discrete features.
  *  |
  *  +-- MSCPT - Multi-d Sparse (decision tree based) CPT
  *  |
  *  +-- MTCPT - Multi-d deTerminisitc (decision tree based) CPT
- *  |     |
- *  |     +-- USCPT - special unity (1) score CPT for discrete features.
  *  |
  *  +-- NGramCPT - ARPA ngram language model with backing-off support
  *  |
@@ -98,6 +98,13 @@ protected:
   // cardinality of self (the child)
   unsigned _card;
 
+
+  // the precomputed maximum possible value of this CPT. Computed whenever
+  // the internal value change (e.g., after training, reading in, etc.)
+  logpr cachedMaxValue;
+  logpr nextCachedMaxValue; // any next value computed during training.
+
+
 public:
 
   /////////////////////////////////////////////////////////////////
@@ -121,7 +128,7 @@ public:
 
   ///////////////////////////////////////////////////////////  
   // General constructor, does nothing actually.
-  CPT(const DiscreteImplementaton _cptType) : cptType(_cptType) { _card = 0; }
+  CPT(const DiscreteImplementaton _cptType) : cachedMaxValue(1.0),cptType(_cptType) { _card = 0; }
   virtual ~CPT() {}
 
   ////////////////////////////////////////////////
@@ -179,6 +186,8 @@ public:
     CPT* cpt;
   protected:
     void setCPT(CPT* _cpt) { cpt = _cpt; }
+
+
   public:
     // Three fields that a CPT subclass can
     // modify as desired to implement a CPT.
@@ -257,6 +266,8 @@ public:
     coredump("INTERNAL ERROR: invalidly called RV::assignDeterministicChild()");
   }
 
+  // return the maximum possible value of this CPT
+  virtual logpr maxValue() { return cachedMaxValue; }
 
   ///////////////////////////////////////////////////////////  
   // Given the current parent values, generate a random sample.

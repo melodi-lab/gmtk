@@ -83,6 +83,7 @@ VCID("$Header$")
 #define GMTK_ARG_CBEAM
 #define GMTK_ARG_CPBEAM
 #define GMTK_ARG_CKBEAM
+#define GMTK_ARG_CCBEAM
 #define GMTK_ARG_CRBEAM
 #define GMTK_ARG_CMBEAM
 #define GMTK_ARG_SBEAM

@@ -236,6 +236,8 @@ void
 Partition::
 readMaxCliques(iDataStreamFile& is)
 {
+
+
   // read triangulation method used to produce these cliques.
   is.read(triMethod,"triangulation method string");
 
@@ -298,10 +300,38 @@ readMaxCliques(iDataStreamFile& is)
       RV* rv = (*loc).second;
       clique.insert(rv);
     }
-
     cliques.push_back(MaxClique(clique));
   }
 
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * Partition::reportScoreStats()
+ *   print out stats about the cliques to stdout
+ *
+ * Preconditions:
+ *   The maxclique variable must be instantiated and have valid RVs with cpts/factors associated.
+ *
+ * Postconditions:
+ *   Information about the maxclique variables are written out.
+ *
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+Partition::reportScoreStats()
+{
+  for (unsigned i=0;i<cliques.size();i++) {
+    printf("Clique %d:\n",i);
+    cliques[i].reportScoreStats();
+  }
 }
 
 
@@ -413,6 +443,7 @@ Partition::setCliquesFromAnotherPartition(Partition& from_part)
   // copy tri-method string as well.
   triMethod = from_part.triMethod;
 }
+
 
 
 

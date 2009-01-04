@@ -127,6 +127,17 @@ public:
     p = curCPT->probGivenParents(allParents,this);
   }
 
+  // refine parent
+  logpr maxValue() {
+    // problem: seems that this function is being called
+    // rather than the child maxValue for the wsj graph.
+    // printf("DiscRV::maxvalue() called\n");
+    if (curCPT != NULL)
+      return (curCPT->maxValue());
+    else
+      return logpr(1.0);
+  }
+
   //////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////
   // Parameter and Structure adjustment/checking       /////

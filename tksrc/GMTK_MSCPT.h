@@ -218,6 +218,11 @@ public:
     return true;
   }
 
+  // go through all possible probabilities for this CPT and recompute
+  // the max.
+  void recomputeCachedMaxValue();
+
+
   int randomSample(DiscRV*drv);
 
   ///////////////////////////////////////////////////////////  

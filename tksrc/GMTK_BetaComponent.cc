@@ -569,33 +569,39 @@ BetaComponent::emEndIteration()
     // check for zero, and then issue a warning if needed. This might not
     // indicate a problem as the alpha/beta of this object might be shared
     // and might have received plenty of count (TODO: implement sharing).
-    warning("WARNING: Beta Component named '%s' did not receive any accumulated probability in EM iteration. Global missed increment count is %d. Also check child alpha '%s' and beta '%s'",
+    warning("WARNING: Beta Component named '%s' did not receive any accumulated probability in EM iteration. Global missed increment count is %d. Also check child alpha '%s' and beta '%s'. Using previous parameters.",
 	    name().c_str(),
 	    missedIncrementCount,
 	    alpha->name().c_str(),
 	    beta->name().c_str());
+    // use previous values when there is no information to the contrary.
+    for (unsigned i = 0; i < _dim; i++ ) {
+      beta->nextValues.ptr[i] = beta->values.ptr[i];
+      alpha->nextValues.ptr[i] = alpha->values.ptr[i];
+    }
+
+  } else {
+
+    // TODO: implement the sharing case properly.
+    const double inv_denom = accumulatedProbability.inverse().unlog();
+
+    for (unsigned i = 0; i < _dim; i++ ) {
+      double mean = sumx.ptr[i]*inv_denom;
+      double variance = sumxx.ptr[i]*inv_denom - mean*mean;
+
+      // normalize for range.
+      mean = (mean - lower)*rangeScale;
+      variance = variance*rangeScale*rangeScale;
+
+      if (variance < _varianceFloor)
+	variance = _varianceFloor;
+
+      double tmp = mean * (1.0 - mean )/variance - 1.0;
+      beta->nextValues.ptr[i] = (1.0 - mean ) * tmp;
+      alpha->nextValues.ptr[i] = mean * tmp;
+
+    }
   }
-
-  // TODO: implement the sharing case properly.
-  const double inv_denom = accumulatedProbability.inverse().unlog();
-
-  for (unsigned i = 0; i < _dim; i++ ) {
-    double mean = sumx.ptr[i]*inv_denom;
-    double variance = sumxx.ptr[i]*inv_denom - mean*mean;
-
-    // normalize for range.
-    mean = (mean - lower)*rangeScale;
-    variance = variance*rangeScale*rangeScale;
-
-    if (variance < _varianceFloor)
-      variance = _varianceFloor;
-
-    double tmp = mean * (1.0 - mean )/variance - 1.0;
-    beta->nextValues.ptr[i] = (1.0 - mean ) * tmp;
-    alpha->nextValues.ptr[i] = mean * tmp;
-
-  }
-
   alpha->emEndIteration();
   beta->emEndIteration();
   emClearOnGoingBit();

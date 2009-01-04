@@ -595,7 +595,7 @@ private:
 	     set<RV*> &C_l,
 	     vector<float>& best_score,
 	     const vector<BoundaryHeuristic>& bnd_heur_v,
-	     const bool recurse,
+	     const bool findBest,
 	     const TriangulateHeuristics& tri_heur,
 	     const set<RV*>& P_u1,
 	     const set<RV*>& C1_u1,

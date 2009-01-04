@@ -51,7 +51,10 @@
 #include "cArray.h"
 #include "sArray.h"
 #include "debug.h"
-
+#include "fixed_filter.h"
+#include "lms_filter.h"
+#include "rls_filter.h"
+#include "counted_ptr.h"
 
 #include "GMTK_RV.h"
 #include "GMTK_DiscRV.h"
@@ -138,7 +141,7 @@ public:
 		    unsigned allocationUnitChunkSize,
 		    float growthFactor=1.25);
 
-  ~CliqueValueHolder() { makeEmpty(); }
+  ~CliqueValueHolder() { makeEmpty();  }
 
   // clear out all existing memory, and get ready for next use.
   void prepare();
@@ -238,11 +241,35 @@ public:
   // and previous previous clique max value around.
   logpr prevMaxCEValue;
   logpr prevPrevMaxCEValue;
+  counted_ptr<AdaptiveFilter> maxCEValuePredictor;
+
+  double prevMaxCEValPrediction;
+
 
   // beam width for clique-based beam pruning.
   static double cliqueBeam;
   // beam width to use while building cliques for partial clique pruning.
   static double cliqueBeamBuildBeam;
+  // properties of the filter used for partial clique pruning.
+  static char* cliqueBeamBuildFilter;
+  // use clique cont heuristic
+  static bool cliqueBeamContinuationHeuristic;
+  // clique build beam expansion factor 
+  static double cliqueBeamBuildExpansionFactor;
+  // clique build beam maximum number of expansions
+  static unsigned cliqueBeamBuildMaxExpansions;
+  // clique beam cluster pruning number of clsuters, 0 or 1 to turn off.
+  static unsigned cliqueBeamClusterPruningNumClusters;
+  // beam width for cluster-based beam pruning.
+  static double cliqueBeamClusterBeam;
+
+  // TODO: @@@@ remove this variable, it is here just to gather a few stats for
+  // Wed Dec 10 10:47:27 2008 Friday's talk. This will *NOT* work
+  // with multiple cliques per partition.
+  double prevFixedPrediction;
+
+
+
   // forced max number of states in a clique. Set to 0 to turn it off.
   static unsigned cliqueBeamMaxNumStates;
   // fraction of clique to retain, forcibly pruning away everything else. Must be
@@ -296,7 +323,12 @@ public:
 	    const unsigned int frameDelta = 0);
 
 
-  ~MaxClique() {}
+  ~MaxClique() { 
+    // TODO: do this right so that it works with tmp values in these objects.
+    //   right now, not deleting these causes a memory leak.
+    // if (maxCEValuePredictor != NULL) 
+    // delete maxCEValuePredictor; 
+  }
 
 
   // Complete the max clique by adjusting the random variables
@@ -372,6 +404,9 @@ public:
   // memory reporting
   void reportMemoryUsageTo(FILE *f);
 
+  // score reporting
+  void reportScoreStats();
+
   //////////////////////////////////////////////
   // TODO: figure out a way so that the member variables below exist only in
   // a subclass since all of the below is not needed for basic
@@ -410,6 +445,14 @@ public:
   //    1) compute assigned nodes dispositions (in appropriate order) 
   //    2) compute fSortedAssignedNodes in an inference clique
   vector<RV*> sortedAssignedNodes;
+
+  // USED ONLY IN JUNCTION TREE INFERENCE
+  // continuation scores to use for clique build pruning.
+  // this array is one larger than sortedAssignedNodes, and for
+  // node at position i (up to and including the length) gives
+  // the best possible continuation score.
+  sArray<logpr> sortedAssignedContinuationScores;
+
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // These are the nodes in this clique that are used to
@@ -871,6 +914,8 @@ public:
   void prepareForNextInferenceRound() {
     prevMaxCEValue.valref() = (-LZERO);
     prevPrevMaxCEValue.valref() = (-LZERO);
+    if (maxCEValuePredictor.get() != NULL)
+      maxCEValuePredictor->init();
   }
 
   // return the s'th VE separator. Must call computeVESeparators()
@@ -959,7 +1004,7 @@ class InferenceMaxClique  : public IM
   //    b) still more indirection toget to data we need.
   //    c) more bookeeping to keep
   // 
-
+  // Note: in any event, this class needs to be as small as possible!!!
   class CliqueValue {
   public:
 
@@ -1136,6 +1181,7 @@ public:
 			 const double furtherBeam,
 			 const unsigned minSize);
   void ceCliqueUniformSamplePrunedCliquePortion(const unsigned origNumCliqueValuesUsed);
+  void ceCliqueDiversityPrune(const unsigned numClusters);
   // a version that does all the pruning for this clique.
   void ceDoAllPruning();
 #ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
@@ -1158,6 +1204,8 @@ public:
 
   // compute the clique entropy
   double cliqueEntropy();
+  // compute a form of clique diversity
+  double cliqueDiversity();
 
   // memory reporting.
   void reportMemoryUsageTo(FILE *f);

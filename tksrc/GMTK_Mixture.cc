@@ -290,6 +290,17 @@ Mixture::log_p(const unsigned frameIndex,
   }
 }
 
+// return an upper bound on the maximum possible value
+// of this mixture.
+logpr Mixture::maxValue()
+{
+  logpr rc;
+  for (unsigned i=0;i<numComponents;i++) {
+    rc += dense1DPMF->p(i)*components[i]->maxValue();
+  }
+  return rc;
+}
+
 
 
 /////////////////

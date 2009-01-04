@@ -53,6 +53,7 @@ public:
     // type of CPT.
     _card = 0;
     setBasicAllocatedBit();
+    cachedMaxValue.set_to_one();
   }
   ~USCPT() { }
 

@@ -67,6 +67,8 @@ public:
   virtual void printSelfVerbose(FILE *f);
   
   void probGivenParents(logpr& p);
+  logpr maxValue();
+
   void begin(logpr& p) {
     ObsContRV::probGivenParents(p);
     return;

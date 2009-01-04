@@ -2331,6 +2331,7 @@ FileParser::createRandomVariableGraph()
 	  // discrete hidden switching
 	  if (rvInfoVector[i].rvWeightInfo.size() > 0) {
 	    // discrete hidden switching weighted
+	    // printf("creating scpnsh_sw_hiddiscrv\n");
 	    rv = new ScPnSh_Sw_HidDiscRV(rvInfoVector[i],rvInfoVector[i].frame,rvInfoVector[i].rvCard);
 	  } else {
 	    // discrete hidden switching not-weighted
