@@ -79,6 +79,11 @@ public:
     p = curCPT->probGivenParents(*curConditionalParents,this);
   }
 
+  logpr maxValue() {
+    // printf("Sw_HidDiscRV::maxvalue() called\n");
+    return SwDiscRV::maxValue();
+  }
+
   inline virtual void begin(logpr& p) {
     setCurrentConditionalParents(this);
     curCPT = conditionalCPTs[cachedSwitchingState];

@@ -60,6 +60,8 @@ VCID("$Header$")
 MTCPT::MTCPT()
   : CPT(di_MTCPT)
 {
+  // this CPT is not trained and its maximum possible value is always unity.
+  cachedMaxValue.set_to_one();
 }
 
 

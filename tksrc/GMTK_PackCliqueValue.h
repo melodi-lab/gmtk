@@ -87,6 +87,7 @@ class PackCliqueValue {
   };
 
   sArray< ValLocator> valLocators;
+  sArray< unsigned> valBits;
   // pointer to end of case where there is no word boundary.
   ValLocator *member_vl_nwb_endp;
   // pointer to end of array.
@@ -294,6 +295,19 @@ public:
     }
   }
 
+  unsigned hamming_bit_distance(const unsigned *const vec1,
+				const unsigned *const vec2);
+  unsigned hamming_entry_distance(const unsigned *const vec1,
+				  const unsigned *const vec2);
+  unsigned hamming_weighted_entry_distance(const unsigned *const vec1,
+					   const unsigned *const vec2);
+
+  inline unsigned use_distance(const unsigned *const vec1,
+			       const unsigned *const vec2)
+  {
+    return hamming_weighted_entry_distance(vec1,vec2);
+    // return hamming_bit_distance(vec1,vec2);
+  }
 
 };
 

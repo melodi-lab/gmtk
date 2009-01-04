@@ -176,6 +176,7 @@ public:
 		      const int stride) = 0;       // stride
   virtual logpr log_p(const unsigned frameIndex, 
 		      const unsigned firstFeatureElement) = 0;
+  virtual logpr maxValue() = 0;
   //////////////////////////////////
 
   //////////////////////////////////

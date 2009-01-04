@@ -258,6 +258,17 @@ MaxClique::cliqueBeam=(-LZERO);
 double
 MaxClique::cliqueBeamBuildBeam=(-LZERO);
 
+char* MaxClique::cliqueBeamBuildFilter = (char*)"";
+
+bool MaxClique::cliqueBeamContinuationHeuristic = true;
+
+double MaxClique::cliqueBeamBuildExpansionFactor = 1.0;
+// could also just have a maximum beam value rather than max expansions.
+unsigned MaxClique::cliqueBeamBuildMaxExpansions = 1;
+
+
+unsigned MaxClique::cliqueBeamClusterPruningNumClusters = 0;
+double MaxClique::cliqueBeamClusterBeam = (-LZERO);
 
 
 /*
@@ -401,7 +412,7 @@ MaxClique::MaxClique(MaxClique& from_clique,
 			     CLIQUE_VALUE_SPACE_MANAGER_DECAY_RATE)    // decay rate 
 {
   set<RV*>::iterator it;
-  
+
 
   // clone over nodes RVs.
   for (it = from_clique.nodes.begin();
@@ -482,6 +493,67 @@ MaxClique::MaxClique(MaxClique& from_clique,
   children = from_clique.children;
   ceReceiveSeparators = from_clique.ceReceiveSeparators;
   ceSendSeparator = from_clique.ceSendSeparator;
+
+  if (cliqueBeamBuildBeam != (-LZERO)) {
+    // then we're doing clique build pruning.
+    if (cliqueBeamBuildFilter == NULL || strlen(cliqueBeamBuildFilter) == 0 || strncmp(cliqueBeamBuildFilter,"fixed",5) == 0 ) {
+      maxCEValuePredictor = 
+	counted_ptr<AdaptiveFilter>(new FixedFilter());
+    } else if ( strncmp(cliqueBeamBuildFilter,"lms",3) == 0 ) {
+      // expecting syntax of the form "lms,3,0.9"
+      unsigned order = 3;
+      double lr = 0.9;
+      unsigned slen = strlen(cliqueBeamBuildFilter);
+      if (slen > 4) {
+	char *startp = &cliqueBeamBuildFilter[4];
+	char *endp;
+	unsigned tmp = strtol(startp, &endp, 10);
+	if (endp != startp) {
+	  order = tmp;
+	  if (*endp == ',') {
+	    startp = endp+1;
+	    double d = strtod(startp, &endp);
+	    if (endp != startp) {
+	      lr = d;
+	    }
+	  }
+	}
+      }
+      // fprintf(stderr,"lms order = %d, lr = %f\n",order,lr);
+      maxCEValuePredictor = 
+	counted_ptr<AdaptiveFilter>(new LMSFilter(order,lr));
+    } else if ( strncmp(cliqueBeamBuildFilter,"rls",3) == 0 ) {
+      // expecting syntax of the form "rls,3,1.0"
+      unsigned order = 3;
+      double fc = 1.0;
+      unsigned slen = strlen(cliqueBeamBuildFilter);
+      if (slen > 4) {
+	char *startp = &cliqueBeamBuildFilter[4];
+	char *endp;
+	unsigned tmp = strtol(startp, &endp, 10);
+	if (endp != startp) {
+	  order = tmp;
+	  if (*endp == ',') {
+	    startp = endp+1;
+	    double d = strtod(startp, &endp);
+	    if (endp != startp) {
+	      fc = d;
+	    }
+	  }
+	}
+      }
+      // fprintf(stderr,"rls order = %d, fc = %f\n",order,fc);
+      maxCEValuePredictor =
+	counted_ptr<AdaptiveFilter>(new RLSFilter(order,fc));
+    } else {
+      error("Error: unknown clique build beam pruning filter type '%s'\n",
+	    cliqueBeamBuildFilter);
+    }
+    prevMaxCEValPrediction = 0.0;
+  } else {
+    // nothing to do.
+    // maxCEValuePredictor = NULL;
+  }
 
 }
 
@@ -1165,6 +1237,41 @@ reportMemoryUsageTo(FILE *f)
 
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * MaxClique::reportScoreStats()
+ *
+ *    Report score stats for this clique.
+ *
+ * Preconditions:
+ *      Clique data structures must be created.
+ *
+ * Postconditions:
+ *      results printed.
+ *
+ * Side Effects:
+ *      None
+ *
+ * Results:
+ *     none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+MaxClique::
+reportScoreStats()
+{
+  for (set<RV*>::iterator j=nodes.begin();
+       j != nodes.end();
+       j++) {
+    RV *const rv = (*j);
+    logpr p = rv->maxValue();
+    printf("max val of rv %s(%d) = %f\n",
+	   rv->name().c_str(),rv->frame(),p.val());
+  }
+}
+
 /*-
  *-----------------------------------------------------------------------
  * MaxClique::prepareForUnrolling()
@@ -1554,49 +1661,69 @@ MaxClique::sortAndAssignDispositions(const char *varCliqueAssignmentPrior)
     // are never any AN_CONTINUE dispositions regardless of if we sort
     // or not.
     computeSortedAssignedNodesDispositions();
-    return;
-  }
+  } else {
 
-  // the first thing we do is compute the node disposistions. We don't
-  // actually use the disposistions here, as we use this routine just
-  // to tell us if there are any AN_CONTINUE nodes in the clique, and
-  // if there are, we remove them (since they are wasteful). The
-  // variable nodesToRemove is a boolean telling us if there
-  // are any such nodes to remove.
-  bool nodesToRemove =  computeSortedAssignedNodesDispositions();
+    // the first thing we do is compute the node disposistions. We don't
+    // actually use the disposistions here, as we use this routine just
+    // to tell us if there are any AN_CONTINUE nodes in the clique, and
+    // if there are, we remove them (since they are wasteful). The
+    // variable nodesToRemove is a boolean telling us if there
+    // are any such nodes to remove.
+    bool nodesToRemove =  computeSortedAssignedNodesDispositions();
 
 
-  if (nodesToRemove == false) {
-    // just sort and leave.
-    GraphicalModel::topologicalSortWPriority(assignedNodes,
-					     assignedNodes,
-					     sortedAssignedNodes,
-					     varCliqueAssignmentPrior);
-    // potentially need to re-compute disposistions if sorting order
-    // changed anything. These are the final and real dispositions
-    // used.
-    nodesToRemove = computeSortedAssignedNodesDispositions();
-    assert (!nodesToRemove);
-    return;
-  }
-
-  // so there are nodes to remove, we go through remove the
-  // nodes, re-sort, and then recompute the dispositions (yes, a bit
-  // wasteful but this happens only once).
-
-  set<RV*> toSortNodes;
-  for (unsigned i=0;i<dispositionSortedAssignedNodes.size();i++) {
-    if (dispositionSortedAssignedNodes[i] != AN_CONTINUE) {
-      toSortNodes.insert(sortedAssignedNodes[i]);
+    if (nodesToRemove == false) {
+      // just sort and leave.
+      GraphicalModel::topologicalSortWPriority(assignedNodes,
+					       assignedNodes,
+					       sortedAssignedNodes,
+					       varCliqueAssignmentPrior);
+      // potentially need to re-compute disposistions if sorting order
+      // changed anything. These are the final and real dispositions
+      // used.
+      nodesToRemove = computeSortedAssignedNodesDispositions();
+      assert (!nodesToRemove);
+    } else {
+      
+      // so there are nodes to remove, we go through remove the
+      // nodes, re-sort, and then recompute the dispositions (yes, a bit
+      // wasteful but this happens only once).
+      
+      set<RV*> toSortNodes;
+      for (unsigned i=0;i<dispositionSortedAssignedNodes.size();i++) {
+	if (dispositionSortedAssignedNodes[i] != AN_CONTINUE) {
+	  toSortNodes.insert(sortedAssignedNodes[i]);
+	}
+      }
+      GraphicalModel::topologicalSortWPriority(toSortNodes,
+					       toSortNodes,
+					       sortedAssignedNodes,
+					       varCliqueAssignmentPrior);
+      // now re-compute dispositions.
+      nodesToRemove = computeSortedAssignedNodesDispositions();
+      assert (!nodesToRemove);
     }
   }
-  GraphicalModel::topologicalSortWPriority(toSortNodes,
-					   toSortNodes,
-					   sortedAssignedNodes,
-					   varCliqueAssignmentPrior);
-  // now re-compute dispositions.
-  nodesToRemove = computeSortedAssignedNodesDispositions();
-  assert (!nodesToRemove);
+
+  sortedAssignedContinuationScores.resize(sortedAssignedNodes.size()+1);
+  if (cliqueBeamContinuationHeuristic) {
+    // TODO: do something better than just using global max value, like local max value
+    // of the current rv.
+    sortedAssignedContinuationScores.ptr[sortedAssignedNodes.size()] = 1.0;
+    for (int i = (sortedAssignedContinuationScores.size()-2); i>=0; i--) {
+      sortedAssignedContinuationScores.ptr[i]
+	= sortedAssignedContinuationScores.ptr[i+1] * 
+	sortedAssignedNodes[i]->maxValue();
+    }
+  } else {
+    for (unsigned i=0;i<sortedAssignedContinuationScores.size();i++)
+      sortedAssignedContinuationScores.ptr[i] = 1.0;
+  }
+
+//   for (unsigned i=0;i<sortedAssignedContinuationScores.size();i++) {
+//     printf("sortedAssignedContinuationScores[%d] = %f\n",i,
+// 	   sortedAssignedContinuationScores.ptr[i].valref());
+//   }
 
 }
 
@@ -2139,57 +2266,104 @@ InferenceMaxClique::InferenceMaxClique(MaxClique& from_clique,
 void
 InferenceMaxClique::ceGatherFromIncommingSeparators(JT_InferencePartition& part)
 {
-  traceIndent=-1; 
-  // this is like the sub-main() for collect evidence.
 
-  if (origin.cliqueBeamBuildBeam != (-LZERO) && origin.prevPrevMaxCEValue.valref() != (-LZERO)) {
-    cliqueBeamThresholdEstimate.valref() = 
-      origin.prevMaxCEValue.valref() + origin.prevMaxCEValue.valref() - origin.prevPrevMaxCEValue.valref()
-      - origin.cliqueBeamBuildBeam;
-    if (cliqueBeamThresholdEstimate.essentially_zero())
-      cliqueBeamThresholdEstimate.set_to_almost_zero();
-    infoMsg(IM::Med,"Partial clique beam pruning, ppmax=%f, pmax=%f, Est. Max cv = %f, Est. thres = %f.\n",
-	    origin.prevPrevMaxCEValue.valref(),
-	    origin.prevMaxCEValue.valref(),
-	    (origin.prevMaxCEValue.valref() + origin.prevMaxCEValue.valref() - origin.prevPrevMaxCEValue.valref()),
-	    cliqueBeamThresholdEstimate.valref());
-  } else {
-    cliqueBeamThresholdEstimate.set_to_almost_zero();
-  }
+  // we should never try more than 1x in this case.
+  assert ( origin.cliqueBeamBuildBeam != (-LZERO) || origin.cliqueBeamBuildMaxExpansions == 1 );
 
+  unsigned cliqueExpansionTry = 0;
+  while (cliqueExpansionTry < origin.cliqueBeamBuildMaxExpansions) {
 
-  if (origin.hashableNodes.size() == 0) {
-    ceGatherFromIncommingSeparatorsCliqueObserved(part);
-  } else {
-    // if we're still here, we do regular separator driven inference.
-    logpr p = 1.0;
-    if (origin.ceReceiveSeparators.size() == 0) {
-      if (origin.unassignedIteratedNodes.size() == 0) {
-	ceIterateAssignedNodes(part,0,p);
-      } else {
-	ceIterateUnassignedIteratedNodes(part,0,p);
+    traceIndent=-1; 
+    // this is like the sub-main() for collect evidence.
+    if (origin.cliqueBeamBuildBeam != (-LZERO)
+	&& origin.maxCEValuePredictor.get() != NULL
+	&& origin.maxCEValuePredictor->readyToMakePrediction()) {
+      
+      double currentCliqueBeamBuildBeam = 
+	origin.cliqueBeamBuildBeam * (::pow(origin.cliqueBeamBuildExpansionFactor,cliqueExpansionTry));
+      double maxCEValPrediction = origin.maxCEValuePredictor->makePrediction();
+      double fixedPrediction = 2*origin.prevMaxCEValue.valref() - origin.prevPrevMaxCEValue.valref();
+
+      cliqueBeamThresholdEstimate.valref() = maxCEValPrediction - 
+	currentCliqueBeamBuildBeam;
+      if (cliqueBeamThresholdEstimate.essentially_zero())
+	cliqueBeamThresholdEstimate.set_to_almost_zero();
+      // report the various values, 'p' = previous or predicted.
+
+      double denom = origin.prevMaxCEValue.valref();
+      // report absolute error if we can't compute relative error.
+      if (denom == 0.0) denom = 1.0;
+      infoMsg(IM::Med,"Partial clique beam pruning, ppmax= %f, pmax= %f, ppred= %f, pfpred= %f, p_rel_%%err = %f, p_frel_%%err= %f, pred= %f, pthres= %f.\n",
+	      origin.prevPrevMaxCEValue.valref(),
+	      origin.prevMaxCEValue.valref(),
+	      origin.prevMaxCEValPrediction,
+	      origin.prevFixedPrediction,
+	      100*::fabs(origin.prevMaxCEValPrediction - origin.prevMaxCEValue.valref())/
+	      ::fabs(denom),
+	      100*::fabs(origin.prevFixedPrediction - origin.prevMaxCEValue.valref())/
+	      ::fabs(denom),
+	      maxCEValPrediction,
+	      cliqueBeamThresholdEstimate.valref());
+      if (cliqueExpansionTry == 0) {
+	origin.prevMaxCEValPrediction = maxCEValPrediction;
+	origin.prevFixedPrediction = fixedPrediction;
       }
     } else {
-      ceIterateSeparators(part,0,p);
-    }
-  }
 
-  // check if we have a zero clique, and if we do, print message.
-  // This is before pruning is done.
-  if (message(IM::Mod)) {
+      // always prune if we fall below or equal to almost zero.
+      cliqueBeamThresholdEstimate.set_to_almost_zero(); 
+      origin.prevFixedPrediction = 0;
+      origin.prevMaxCEValPrediction = 0;
+    }
+
+    // next, do the actual collect message.
+    if (origin.hashableNodes.size() == 0) {
+      ceGatherFromIncommingSeparatorsCliqueObserved(part);
+    } else {
+      // if we're still here, we do regular separator driven inference.
+      logpr p = 1.0;
+      if (origin.ceReceiveSeparators.size() == 0) {
+	if (origin.unassignedIteratedNodes.size() == 0) {
+	  ceIterateAssignedNodes(part,0,p);
+	} else {
+	  ceIterateUnassignedIteratedNodes(part,0,p);
+	}
+      } else {
+	ceIterateSeparators(part,0,p);
+      }
+    }
+
     if (numCliqueValuesUsed == 0) {
-      printf("WARNING: ZERO CLIQUE: clique with no entries. Final probability will be zero.\n");
-      exit(0);
+      // if we have a zero clique, print message and possibly continue
+      // with expanded clique.
+      if (message(IM::Med)) {
+	  printf("WARNING: ZERO CLIQUE: clique with no entries, try %d out of %d.\n",
+		 cliqueExpansionTry+1,origin.cliqueBeamBuildMaxExpansions);
+      }
+    } else {
+      // current pruning level worked.
+      break;
     }
+    cliqueExpansionTry ++;
   }
 
-  // store new previous max CE values.
+  // check if we have a zero clique, and if we do, print message and exit.
+  // TODO: rather than exit, pop back to the top and allow continuation and/or
+  // beam expansion.
+  if (numCliqueValuesUsed == 0)
+    error("ERROR: ZERO CLIQUE: clique with no entries. Final probability will be zero.\n");
+
+
+  // store new previous max CE values, before any pruning.
   if (origin.cliqueBeamBuildBeam != (-LZERO)) {
     origin.prevPrevMaxCEValue.valref() = origin.prevMaxCEValue.valref();
     origin.prevMaxCEValue.valref() = maxCEValue.valref();
+    if (origin.maxCEValuePredictor.get() != NULL) {
+      origin.maxCEValuePredictor->addNextSampleAndUpdate(maxCEValue.valref());
+    }
   }
 
-  // do all the pruning here.
+  // do all other pruning here.
   ceDoAllPruning();
 
 }
@@ -2692,7 +2866,7 @@ InferenceMaxClique::ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
 {
 
   // do (potentially) partial clique beam pruning here.
-  if (p <= cliqueBeamThresholdEstimate)
+  if (p*origin.sortedAssignedContinuationScores[nodeNumber] <= cliqueBeamThresholdEstimate)
     return;
 
   if (nodeNumber == fSortedAssignedNodes.size()) {
@@ -3017,7 +3191,7 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
 						    const logpr p)
 {
 
-  if (p <= cliqueBeamThresholdEstimate)
+  if (p*origin.sortedAssignedContinuationScores[0]  <= cliqueBeamThresholdEstimate)
     return;
 
   // parray has to be 1 offset, storing p in entry -1
@@ -3049,7 +3223,8 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
 	// check for possible zero (could occur with
 	// zero score or observations).
 	parray[nodeNumber] = parray[nodeNumber-1]*cur_p;
-	if (parray[nodeNumber] <= localCliqueBeamThresholdEstimate) {
+	if (parray[nodeNumber]*origin.sortedAssignedContinuationScores[nodeNumber] 
+	    <= localCliqueBeamThresholdEstimate) {
 	  // Since we have small here, we cancel iterations of all
 	  // subsequent clique variables right now, rather than
 	  // iterate them with what will end up being below threshold
@@ -3111,7 +3286,8 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
 
   // check if zero probability, and if so, skip the first one and
   // continue on.
-  if (parray[nodeNumber] <= localCliqueBeamThresholdEstimate)
+  if (parray[nodeNumber]*origin.sortedAssignedContinuationScores[nodeNumber]  
+      <= localCliqueBeamThresholdEstimate)
     goto next_iteration;
 
   // main loop, iterate through all assigned nodes in this clique.
@@ -3235,7 +3411,8 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
 	    unfinished = cur_rv->next(cur_p);
 	    if (unfinished) {
 	      register logpr tmp = parray[nodeNumber-1]*cur_p;
-	      if (tmp > localCliqueBeamThresholdEstimate) {
+	      if (tmp*origin.sortedAssignedContinuationScores[nodeNumber]  
+		  > localCliqueBeamThresholdEstimate) {
 		parray[nodeNumber] = tmp;
 		goto next_node_number;
 	      }
@@ -3312,7 +3489,8 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
 	  // might get a zero probability, check condition here.
 	  // TODO: keep result in temp and only write back out if need be. @@@
 	  register logpr tmp =  parray[nodeNumber-1]*cur_p;
-	  if (tmp <= localCliqueBeamThresholdEstimate) {
+	  if (tmp*origin.sortedAssignedContinuationScores[nodeNumber] 
+	      <= localCliqueBeamThresholdEstimate) {
 	    // We just did a begin and got zero on the first try. 
 	    // we need to continue on with this variable until we finish.
 	    goto next_iteration;
@@ -3328,7 +3506,8 @@ InferenceMaxClique::ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
 	  cur_rv->probGivenParents(cur_p);
 	  // might get a zero probability, check condition here.
 	  register logpr tmp = parray[nodeNumber-1]*cur_p;
-	  if (tmp <= localCliqueBeamThresholdEstimate) {
+	  if (tmp*origin.sortedAssignedContinuationScores[nodeNumber] 
+	      <= localCliqueBeamThresholdEstimate) {
 	    // Since we have zero here, we cancel iterations of all
 	    // subsequent variables right now, rather than iterate
 	    // them with what will end up being zero probability.
@@ -3570,7 +3749,7 @@ ceSendToOutgoingSeparator(JT_InferencePartition& part,
   // next check if the outgoing separator has only obseved values.
   if (sep.origin.hAccumulatedIntersection.size() == 0 && sep.origin.hRemainder.size() == 0) {
 
-    printf("Observed separator\n");
+    // printf("Observed separator\n");
 
     // Then indeed, outgoing separator is all observed values. We do
     // this special separately from the general case since that case
@@ -3959,7 +4138,8 @@ InferenceMaxClique::ceCliquePrune()
   const unsigned origNumCliqueValuesUsed = numCliqueValuesUsed;
   for (unsigned cvn=0;cvn<numCliqueValuesUsed;) {
     if (cliqueValues.ptr[cvn].p < beamThreshold) {
-      // swap with last entry, and decrease numCliqueValuesUsed by one.
+      // swap with last entry, and decrease numCliqueValuesUsed by one. We
+      // swap so that entries at the end can be added back in by a future stage.
       swap(cliqueValues.ptr[cvn],cliqueValues.ptr[numCliqueValuesUsed-1]);
       numCliqueValuesUsed--;
     } else {
@@ -3967,11 +4147,12 @@ InferenceMaxClique::ceCliquePrune()
     }
   }
 
-  infoMsg(IM::Med,"Clique beam pruning: Max cv = %f, thres = %f. Original clique state space = %d, new clique state space = %d\n",
+  infoMsg(IM::Med,"Clique beam pruning: Max cv = %f, thres = %f. Original clique state space = %d, new clique state space = %d, %2.2f%% reduction\n",
 	  maxCEValue.valref(),
 	  beamThreshold.valref(),
 	  origNumCliqueValuesUsed,
-	  numCliqueValuesUsed);
+	  numCliqueValuesUsed,
+	  100*(1.0 - (double)numCliqueValuesUsed/(double)(origNumCliqueValuesUsed>0?origNumCliqueValuesUsed:1)) );
 
 #if 0
     // A version with a bit more information printed.
@@ -4034,7 +4215,9 @@ InferenceMaxClique::ceDoAllPruning()
   }
   //   printf("nms = %d, pf = %f, ncv = %d, k = %d\n",origin.cliqueBeamMaxNumStates,
   // origin.cliqueBeamRetainFraction,numCliqueValuesUsed,k);
+  // printf("starting k pruning with state space %d\n",numCliqueValuesUsed); fflush(stdout);
   ceCliquePrune(k);
+  // printf("ending k pruning\n"); fflush(stdout);
 
   // next do mass pruning.
   ceCliqueMassPrune(origin.cliqueBeamMassRelinquishFraction,
@@ -4045,6 +4228,12 @@ InferenceMaxClique::ceDoAllPruning()
   // next, do normal beam pruning.
   ceCliquePrune();
 
+  // do diversity pruning.
+  // printf("starting diversity pruning with state space %d\n",numCliqueValuesUsed); fflush(stdout);
+  ceCliqueDiversityPrune(origin.cliqueBeamClusterPruningNumClusters);
+  // printf("ending diversity pruning\n"); fflush(stdout);
+
+  // last, add random entries back in.
   if (origin.cliqueBeamUniformSampleAmount != 0) {
     ceCliqueUniformSamplePrunedCliquePortion(origNumCliqueValuesUsed);
   }
@@ -4352,84 +4541,223 @@ InferenceMaxClique::ceCliquePrune(const unsigned k)
 }
 
 
-
-#if 0
+/*
+ * structure used only for diversity pruning
+ */
+struct DistClust {
+  // the distance of this point to its cluster rep (its nearest center)
+  unsigned distance;
+  // the cluster number of this point's cluster (i.e., its nearest center).
+  unsigned cluster;
+};
 
 void 
 InferenceMaxClique::ceCliqueDiversityPrune(const unsigned numClusters)
 {
+
   // k can't be larger than the number of clique entries.
-  if (k == 0 || k >= numCliqueValuesUsed)
+  if (origin.cliqueBeamClusterBeam == (-LZERO) 
+      || numClusters <= 1 
+      || numClusters >= numCliqueValuesUsed) {
     return;
+  }
 
-  // first, cluster the points using an O(kn) algorithm that 
-  // attempts to preserver outliers, where k = numClusters, and n = number of points.
+  /*
+    - ideas to speed up: 
+    -- factor malloc outside of this routine.
+    -- use smaller data types for arrays
+    -- use a faster distance function
+    -- use a log k data structure ala Feder&Greene (but then constants might
+       be worse, and this would be only for relatively large k)
+    -- compile with -fno-exceptions (to possibly make routine calls faster)
+    -- 
+    
+   */
 
-  // first, we try to identify maximally dissimilar cluster centers using O(kn) steps.
+  unsigned long* centers = new unsigned long[numClusters];
 
-  unsigned long centers[numClusters];
+  // printf("begin allocate\n");fflush(stdout);
+  DistClust* distClusts = new DistClust[numCliqueValuesUsed];
+  // printf("end allocate\n");fflush(stdout);
 
-  // pick a random point.
-  center[0] = rnd.uniform(numCliqueValuesUsed);
+  // pick a random point as the first cluster.
+  centers[0] = rnd.uniform(numCliqueValuesUsed);
+
+  unsigned* center_key_p;
+  if (origin.packer.packedLen() <= IMC_NWWOH) {
+    center_key_p = &(cliqueValues.ptr[centers[0]].val[0]);
+  } else {
+#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
+    center_key_p = 
+      &origin.temporaryCliqueValuePool.ptr[cliqueValues.ptr[centers[0]].ival];
+#else
+    center_key_p = (unsigned*)cliqueValues.ptr[centers[0]].ptr;
+#endif
+  }
+
+
+
+  unsigned maxDist = 0;
+  unsigned maxIndx = 0;
+
+  for (unsigned cvn=0;cvn<numCliqueValuesUsed;cvn++) {
+    unsigned* current_key_p;
+    if (origin.packer.packedLen() <= IMC_NWWOH) {
+      current_key_p = &(cliqueValues.ptr[cvn].val[0]);
+    } else {
+#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
+      current_key_p =
+	&origin.temporaryCliqueValuePool.ptr[cliqueValues.ptr[cvn].ival];
+#else
+      current_key_p = (unsigned*)cliqueValues.ptr[cvn].ptr;
+#endif
+    }
+    distClusts[cvn].cluster = 0;
+    distClusts[cvn].distance = 
+      origin.packer.use_distance(center_key_p,current_key_p);
+    // find max while we're at it.
+    if (distClusts[cvn].distance > maxDist) {
+      maxIndx = cvn;
+      maxDist = distClusts[cvn].distance;
+    }
+
+  }
+
   unsigned k = 1;
   while (k < numClusters) {
-    // find the point that is maximally dissimilar to the closest point
-    // so far found.
 
-    // to compute the max of the min distances.
-    double dist = 0;
-    unsigned dist_index = cvn;
+    // assign new center using previously computed max index.
+    centers[k] = maxIndx;
+
+    // now we need to update all distances. Each min distance is such
+    // that it is either the same (i.e., it's cluster center has not changed)
+    // or it has decreased (it has a new cluster center). We only need
+    // to check against the newly assigned cluster.
+
+    if (origin.packer.packedLen() <= IMC_NWWOH) {
+      center_key_p = &(cliqueValues.ptr[centers[k]].val[0]);
+    } else {
+#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
+      center_key_p = 
+	&origin.temporaryCliqueValuePool.ptr[cliqueValues.ptr[centers[k]].ival];
+#else
+      center_key_p = (unsigned*)cliqueValues.ptr[centers[k]].ptr;
+#endif
+    }
+
+    // now compute the new max distance and cluster membership.
+    maxDist = 0;
+    maxIndx = 0;
     for (unsigned cvn=0;cvn<numCliqueValuesUsed;cvn++) {
 
+      unsigned* current_key_p;
 
-      // to compute the min
-      double min_dist = MAX_DIST;
-      // compute the min distance
-      for (int i = 0; i < k; i++) {
-	if (center[i] == cvn)
-	  goto cvn_continue;
+      if (origin.packer.packedLen() <= IMC_NWWOH) {
+	current_key_p = &(cliqueValues.ptr[cvn].val[0]);
+      } else {
+#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
+	current_key_p =
+	  &origin.temporaryCliqueValuePool.ptr[cliqueValues.ptr[cvn].ival];
+#else
+	current_key_p = (unsigned*)cliqueValues.ptr[cvn].ptr;
+#endif
+      }
+      unsigned cur_dist = 
+	origin.packer.use_distance(center_key_p,current_key_p);
 
-	// get the two keys
-	unsigned* center_key_p;
-	unsigned* current_key_p;
-	if (origin.packer.packedLen() <= IMC_NWWOH) {
-	  center_key_p = &(cliqueValues.ptr[center[k]].val[0]);
-	  current_key_p = &(cliqueValues.ptr[cvn].val[0]);
-	} else {
-	  center_key_p = (unsigned*)cliqueValues.ptr[center[k]].ptr;
-	  current_key_p = (unsigned*)cliqueValues.ptr[cvn].ptr;
-	}
-	min_dist = min(min_dist,measure(center_key_p,current_key_p,origin.packer.packedLen()));
+      if (cur_dist < distClusts[cvn].distance) {
+	distClusts[cvn].distance = cur_dist;
+	distClusts[cvn].cluster = k;
       }
 
-      if (min_dist > dist) {
-	dist = min_dist;
-	dist_index = cvn;
+      if (distClusts[cvn].distance > maxDist) {
+	maxIndx = cvn;
+	maxDist = distClusts[cvn].distance;
       }
-
-    cvn_continue:
 
     }
-    center[k] = dist_index;
-
     k++;
   }
 
 
-  // now that we have the k centers, we need to do the clustering. We cluster each remaining
-  // point to the closest center.
+  // now calculate the cluster sizes and max value within each cluster.
+  unsigned*  cluster_sizes = new unsigned[numClusters];
+  for (k=0;k<numClusters;k++) {
+    cluster_sizes[k] = 0;
+  }
+  // default values are set to zero.
+  logpr* intra_cluster_max_values = new logpr[numClusters];
+  for (unsigned cvn=0;cvn<numCliqueValuesUsed;cvn++) {
+    const unsigned clust = distClusts[cvn].cluster;
+    cluster_sizes[clust]++;
+    if (cliqueValues.ptr[cvn].p > intra_cluster_max_values[clust]) {
+      intra_cluster_max_values[clust] = cliqueValues.ptr[cvn].p;
+    }
+  }
+  for (k=0;k<numClusters;k++) {
+    // turn max values into the needed threshold
+    intra_cluster_max_values[k].valref() = 
+      intra_cluster_max_values[k].valref() - MaxClique::cliqueBeamClusterBeam;
+  }
 
 
+  // now we have the clustering do the pruning. 
+  // printf("now we have the clustering do the pruning. \n"); fflush(stdout);
+
+  if (IM::messageGlb(IM::Med+9)) {
+    printf("Clique cluster beam pruning: Orig cluster-%d sizes: ",numClusters);
+    for (k=0;k<numClusters;k++) {
+      printf("%u ",cluster_sizes[k]);
+      // turn max values into the needed threshold
+    }
+    printf("\n");
+  }
 
 
+  const unsigned origNumCliqueValuesUsed = numCliqueValuesUsed;
+  for (unsigned cvn=0;cvn<numCliqueValuesUsed;) {
+    const unsigned clust = distClusts[cvn].cluster;
+    if (cliqueValues.ptr[cvn].p < intra_cluster_max_values[clust]) {
 
+      assert ( clust < numClusters );
+
+      cluster_sizes[clust]--;
+
+      // swap with last entry, and decrease numCliqueValuesUsed by one.
+      // We swap rather than assign just in case some other method wants
+      // to add them back in (but this is slower).
+      swap(cliqueValues.ptr[cvn],cliqueValues.ptr[numCliqueValuesUsed-1]);
+
+      // distance values will be invalid after this.
+      distClusts[cvn].cluster = 
+	distClusts[numCliqueValuesUsed-1].cluster;
+
+      numCliqueValuesUsed--;
+    } else {
+      // it survived
+      cvn++;
+    }
+  }
+
+  infoMsg(IM::Med,"Clique cluster beam pruning: Original clique state space = %d, new clique state space = %d, %2.2f%% reduction\n",
+	  origNumCliqueValuesUsed,
+	  numCliqueValuesUsed,
+	  100*(1.0 - (double)numCliqueValuesUsed/(double)(origNumCliqueValuesUsed>0?origNumCliqueValuesUsed:1)) );
+
+  if (IM::messageGlb(IM::Med+9)) {
+    printf("Clique cluster beam pruning: Post cluster-%d sizes: ",numClusters);
+    for (k=0;k<numClusters;k++) {
+      printf("%u ",cluster_sizes[k]);
+    }
+    printf("\n");
+  }
+
+  delete [] centers;
+  delete [] distClusts;
+  delete [] cluster_sizes;
+  delete [] intra_cluster_max_values;
 
 }
-
-#endif
-
-
-
 
 
 /*-
@@ -4490,10 +4818,12 @@ InferenceMaxClique::ceCliqueMassPrune(const double removeFraction,
   logpr desiredSum = (origSum - (origSum*removeFraction));
   logpr actualSum;
 
+#if 0
   printf("DEBUG: mass pruning: origSum %.18e, desiredSum %.18e, diff %.18e\n",
    	 origSum.val(),
    	 desiredSum.val(),
    	 (origSum - desiredSum).val());
+#endif
   
   unsigned k;
   for (k=0;k<numCliqueValuesUsed;k++) {
@@ -4935,6 +5265,58 @@ cliqueEntropy()
   }
   // convert to entropy and log base 2.
   return - H / logpr::internal_log(2.0);
+}
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceMaxClique::cliqueDiversity()
+ *
+ *    Compute the clique diversity of the clique.
+ *
+ * Preconditions:
+ *      Clique data structures must be created.
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      None
+ *
+ * Results:
+ *     sum of probabilities of all elements in the clique.
+ *
+ *-----------------------------------------------------------------------
+ */
+double
+InferenceMaxClique::
+cliqueDiversity()
+{
+  double D = 0.0;
+  if (numCliqueValuesUsed > 0) {
+    for (unsigned i=1;i<numCliqueValuesUsed;i++) {
+      for (unsigned j=1;j<numCliqueValuesUsed;j++) {
+	unsigned* i_key_p; 
+	unsigned* j_key_p; 
+#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
+	i_key_p =
+	  &origin.temporaryCliqueValuePool.ptr[cliqueValues.ptr[i].ival];
+	j_key_p =
+	  &origin.temporaryCliqueValuePool.ptr[cliqueValues.ptr[j].ival];
+#else
+	i_key_p = (unsigned*)cliqueValues.ptr[i].ptr;
+	j_key_p = (unsigned*)cliqueValues.ptr[j].ptr;
+#endif	
+	double cur_dist = 
+	  origin.packer.use_distance(i_key_p,j_key_p);
+	D += cur_dist;
+      }
+    }
+  }
+  D = D /(  ((double)numCliqueValuesUsed)* ((double)numCliqueValuesUsed) );
+  return D;
 }
 
 

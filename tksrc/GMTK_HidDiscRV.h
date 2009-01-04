@@ -51,7 +51,6 @@ public:
 
   virtual void printSelf(FILE *f,bool nl=true);
   virtual void printSelfVerbose(FILE *f);
-
   
   virtual void begin(logpr& p) {
     curCPT->becomeAwareOfParentValuesAndIterBegin(allParents,it,this,p);

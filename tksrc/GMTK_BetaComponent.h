@@ -161,6 +161,9 @@ public:
   logpr log_p(const float *const x,     // real-valued scoring obs at time t
 		      const Data32* const base, // ptr to base obs at time t
 		      const int stride);    // stride
+
+  // TODO: finish this next function, returning the score of the mode of the distribution.
+  // virtual logpr maxValue() { error("Beta max value not implemented\n"); }
   //////////////////////////////////
 
 

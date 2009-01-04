@@ -88,7 +88,7 @@ public:
   void readMaxCliques(iDataStreamFile& is);
   void triangulatePartitionsByCliqueCompletion();
   void setCliquesFromAnotherPartition(Partition& p);
-
+  void reportScoreStats();
 
 };
 
@@ -292,6 +292,12 @@ public:
   void clear_C_Cliques() { C.clearCliques(); }
   void clear_E_Cliques() { E.clearCliques(); }
 
+  // report score properties of the partitions.
+  void reportScoreStats() {
+    printf("P score stats:\n"); P.reportScoreStats();
+    printf("C score stats:\n"); C.reportScoreStats();
+    printf("E score stats:\n"); E.reportScoreStats();
+  }
 
 };
 

@@ -575,53 +575,58 @@ GammaComponent::emEndIteration()
     // check for zero, and then issue a warning if needed. This might not
     // indicate a problem as the mean and covar of this object might be shared
     // and might have received plenty of count.
-    warning("WARNING: Gamma Component named '%s' did not receive any accumulated probability in EM iteration. Global missed increment count is %d. Also check child scale '%s' and shape '%s'",
+    warning("WARNING: Gamma Component named '%s' did not receive any accumulated probability in EM iteration. Global missed increment count is %d. Also check child scale '%s' and shape '%s'. Using previous parameters.",
 	    name().c_str(),
 	    missedIncrementCount,
 	    scale->name().c_str(),
 	    shape->name().c_str());
-  }
+    // use previous values when there is no information to the contrary.
+    for (unsigned i = 0; i < _dim; i++ ) {
+      shape->nextValues.ptr[i] = shape->values.ptr[i];
+      scale->nextValues.ptr[i] = scale->values.ptr[i];
+    }
+  } else {
 
-  // TODO: implement the sharing case properly.
-  const double inv_denom = accumulatedProbability.inverse().unlog();
+    // TODO: implement the sharing case properly.
+    const double inv_denom = accumulatedProbability.inverse().unlog();
 
-  for (unsigned i = 0; i < _dim; i++ ) {
-    const double mean = sumx.ptr[i]*inv_denom;
-    double variance = sumxx.ptr[i]*inv_denom - mean*mean;
-    if (variance < _varianceFloor)
-      variance = _varianceFloor;
-    double meanlogx = sumlogx.ptr[i]*inv_denom;
+    for (unsigned i = 0; i < _dim; i++ ) {
+      const double mean = sumx.ptr[i]*inv_denom;
+      double variance = sumxx.ptr[i]*inv_denom - mean*mean;
+      if (variance < _varianceFloor)
+	variance = _varianceFloor;
+      double meanlogx = sumlogx.ptr[i]*inv_denom;
 
-    // A quick but hacky way to get the parameters is to do the
-    // following:
-    // 
-    //    shape->nextValues.ptr[i] = mean*mean/variance;
-    //    scale->nextValues.ptr[i] = variance/mean; // = mean/shape
-    // 
-    // A better way to get MLEs is to use a generalized Newton method
-    // as suggested by Tom Minka.
-    // 
-    // We start with initial estimates based on the sample mean and
-    // variance.
-    double shapev = mean*mean/variance;
-    // printf("shape = %f\n",shapev);
-    double next_shapev;
-    // do no more than this many iterations (in practice, it seems to do about 3 or 4 iters).
-    unsigned max_iters = 10; 
-    do {
-      int dummy = 0;
-      // do a Newton update.
-      next_shapev = 1.0/(1/shapev + (meanlogx - log(mean) + log(shapev) - digamma(shapev,&dummy))/( shapev - shapev*shapev*trigamma(shapev,&dummy)));
-      // printf("next_shape = %f\n",next_shapev);
-      if (100.0*fabs(next_shapev - shapev)/shapev < 0.001)
-	break;
-      shapev = next_shapev;
-    } while (max_iters--);
+      // A quick but hacky way to get the parameters is to do the
+      // following:
+      // 
+      //    shape->nextValues.ptr[i] = mean*mean/variance;
+      //    scale->nextValues.ptr[i] = variance/mean; // = mean/shape
+      // 
+      // A better way to get MLEs is to use a generalized Newton method
+      // as suggested by Tom Minka.
+      // 
+      // We start with initial estimates based on the sample mean and
+      // variance.
+      double shapev = mean*mean/variance;
+      // printf("shape = %f\n",shapev);
+      double next_shapev;
+      // do no more than this many iterations (in practice, it seems to do about 3 or 4 iters).
+      unsigned max_iters = 10; 
+      do {
+	int dummy = 0;
+	// do a Newton update.
+	next_shapev = 1.0/(1/shapev + (meanlogx - log(mean) + log(shapev) - digamma(shapev,&dummy))/( shapev - shapev*shapev*trigamma(shapev,&dummy)));
+	// printf("next_shape = %f\n",next_shapev);
+	if (100.0*fabs(next_shapev - shapev)/shapev < 0.001)
+	  break;
+	shapev = next_shapev;
+      } while (max_iters--);
 
-    // finalize he values.
-    shape->nextValues.ptr[i] = shapev;
-    scale->nextValues.ptr[i] = mean/shapev;
-
+      // finalize he values.
+      shape->nextValues.ptr[i] = shapev;
+      scale->nextValues.ptr[i] = mean/shapev;
+    }
   }
 
   scale->emEndIteration();

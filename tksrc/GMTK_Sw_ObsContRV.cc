@@ -172,8 +172,6 @@ Sw_ObsContRV::probGivenParents(logpr& p)
 }
 
 
-
-
 /////////////////
 // EM Support //
 /////////////////

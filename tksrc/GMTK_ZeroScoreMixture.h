@@ -81,6 +81,7 @@ public:
 	      const unsigned firstFeatureElement)
     { // a no-argument logpr returns a zero value.
       return logpr(); }
+  logpr maxValue() { return logpr(); }
   //////////////////////////////////
 
 

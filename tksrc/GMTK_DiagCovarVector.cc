@@ -127,7 +127,7 @@ DiagCovarVector::read(iDataStreamFile& is)
     }
   }
   if (numFloored > 0)
-    infoMsg(IM::Warning,"WARNING: reading diagonal covariance matrix '%s' (from file '%s' line %d), and %d variance values (out of %d) were  < current Floor = (%e), forcing them to floor.",
+    infoMsg(IM::SoftWarning,"WARNING: reading diagonal covariance matrix '%s' (from file '%s' line %d), and %d variance values (out of %d) were  < current Floor = (%e), forcing them to floor.\n",
 	    name().c_str(),
 	    is.fileName(),is.lineNo(),
 	    numFloored,
@@ -1669,7 +1669,7 @@ DiagCovarVector::emStoreAccumulators(oDataStreamFile& ofile)
     // be needed by another object for which the training bit is set.
     if (accumulatedProbability.zero()) {
       // then we indeed have no probability values, so lets emit a warning
-      infoMsg(IM::SoftWarning,"WARNING: zero accumulator values for %s '%s'\n",
+      infoMsg(IM::Warning,"WARNING: zero accumulator values for %s '%s'\n",
 	      typeName().c_str(),
 	      name().c_str());
       // We write out '0' to state that 

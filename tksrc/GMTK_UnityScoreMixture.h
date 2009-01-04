@@ -85,6 +85,7 @@ public:
       logpr val((void*)NULL);
       val.set_to_one();
       return val; }
+  logpr maxValue() { return 1.0; }
   //////////////////////////////////
 
 

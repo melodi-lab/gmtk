@@ -4732,3 +4732,22 @@ Sun Dec 28 00:44:18 2008
   which is bad since E partition can be big. Figure out a solution.
    a) use right interface??
 
+Fri Jan  2 20:54:08 2009
+ - for packed clique value distace, user can supply the weight of a rv to affect the
+   distance without causing a performance hit. I.e., each rv can have a 
+   non-negative weight which, rather than the log cardinality, indicates the importance
+   of that rv when the values are not equal.
+
+Sat Jan  3 19:07:36 2009
+  - have special projection-only cliques. I.e., cliques that are used only
+    after forward/backward, and when a parent clique is complete, we will project
+    down to the smaller clique.
+    Useful for:
+        - fast training with large D continuous vectors
+        - a non slow-down when needing to use clique posteriors.
+
+
+
+
+  
+

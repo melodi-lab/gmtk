@@ -225,9 +225,14 @@ MSCPT::read(iDataStreamFile& is)
   }
   _averageCardinality /= ncl->spmfSize();
 
-
   setBasicAllocatedBit();
+
+  recomputeCachedMaxValue();
 }
+
+
+
+
 
 
 /*-
@@ -265,6 +270,41 @@ MSCPT::write(oDataStreamFile& os)
 ////////////////////////////////////////////////////////////////////
 //        Probability Evaluation
 ////////////////////////////////////////////////////////////////////
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * MSCPT::recomputeCachedMaxValue()
+ *      go through all possible probabilities for this CPT and recompute the max
+ * 
+ * Preconditions:
+ *      All corresponding SPMFs must be read in and valid.
+ *
+ * Postconditions:
+ *      cachedMaxValue is valid.
+ *
+ * Side Effects:
+ *      Changes changes cachedMaxValue
+ *
+ * Results:
+ *      No results, 
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+MSCPT::recomputeCachedMaxValue()
+{
+  cachedMaxValue.set_to_zero();
+  for (unsigned u=0;u<ncl->spmfSize();u++) {
+    logpr tmp = ncl->spmf(u)->maxValue();
+    if (tmp > cachedMaxValue)
+      cachedMaxValue = tmp;
+  }
+}
+
+
+
 
 
 
@@ -484,6 +524,7 @@ MSCPT::emSwapCurAndNew()
   // happens via the global object.
 
   emClearSwappableBit();
+  recomputeCachedMaxValue();
 }
 
 

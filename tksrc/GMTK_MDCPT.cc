@@ -301,6 +301,7 @@ MDCPT::read(iDataStreamFile& is)
   mdcpt.resize(numValues);
   logpr child_sum;
   child_sum.set_to_zero();
+  cachedMaxValue.set_to_zero();
   int row=0;;
   // be more forgiving as cardinality increases
   const double threshold = _card*normalizationThreshold;
@@ -344,6 +345,9 @@ MDCPT::read(iDataStreamFile& is)
       }
     }
     child_sum += mdcpt[i];
+
+    if (mdcpt[i] > cachedMaxValue)
+      cachedMaxValue = mdcpt[i];
 
     i++;
     if (i % _card == 0 && (normalizationThreshold != 0)) {
@@ -798,6 +802,8 @@ MDCPT::emEndIteration()
     }
   } else {
 
+    nextCachedMaxValue.set_to_zero();
+
     // now normalize the next ones
     const int child_card = card();
     const int num_parent_assignments = mdcpt.len()/child_card;
@@ -825,6 +831,10 @@ MDCPT::emEndIteration()
 	for (int i=0;i<child_card;i++) {
 	  *tmp_loc_ptr /= sum;
 	  (*tmp_loc_ptr).floor();
+
+	  if ((*tmp_loc_ptr) > nextCachedMaxValue)
+	    nextCachedMaxValue = *tmp_loc_ptr;
+
 	  tmp_loc_ptr++;
 	}
       }
@@ -854,6 +864,7 @@ MDCPT::emSwapCurAndNew()
     return;
 
   mdcpt.swapPtrs(nextMdcpt);
+  cachedMaxValue = nextCachedMaxValue;
   emClearSwappableBit();
 }
 

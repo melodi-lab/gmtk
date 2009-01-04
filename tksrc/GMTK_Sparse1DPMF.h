@@ -92,6 +92,9 @@ public:
     return pmf.ptr[i];
   }
 
+  // return the maximum possible value of this object
+  logpr maxValue() { return dense1DPMF->maxValue(); }
+
   ///////////////////////////////////////////////////////////  
   // Re-normalize the output distributions
   void normalize();

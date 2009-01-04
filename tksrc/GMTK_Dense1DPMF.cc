@@ -172,7 +172,7 @@ Dense1DPMF::read(iDataStreamFile& is)
   }
 
 
-
+  cachedMaxValue.set_to_zero();
   logpr sum;
   for (int i=0;i<length;i++) {
 
@@ -212,6 +212,9 @@ Dense1DPMF::read(iDataStreamFile& is)
       }
     }
     sum += pmf[i];
+    if (pmf[i] > cachedMaxValue)
+      cachedMaxValue = pmf[i];
+
   }
 
 
@@ -311,8 +314,11 @@ Dense1DPMF::normalize()
   for (int i=0;i<pmf.len();i++) {
     sum += pmf[i];
   }
+  cachedMaxValue.set_to_zero();
   for (int i=0;i<pmf.len();i++) {
     pmf[i] = pmf[i] / sum;
+    if (pmf[i] > cachedMaxValue)
+      cachedMaxValue = pmf[i];
   }
 }
 
@@ -604,7 +610,7 @@ Dense1DPMF::emSwapCurAndNew()
     }
   }
 
-  // renormalize
+  // renormalize & re-compute max value.
   normalize();
   emClearSwappableBit();
 }

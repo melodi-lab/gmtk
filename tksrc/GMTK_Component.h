@@ -116,6 +116,13 @@ public:
 		   const Data32* const base,
 		   const int stride)
   { return ::exp(log_p(x,base,stride).val()); }
+
+
+  // return the maximum possible value of this component. Default
+  // return value is 1.0 (which is not even a bound for continuous RVs
+  // since the scores for, say, Gaussians can be > 1.0, so this function
+  // should be redefined in child classes.
+  virtual logpr maxValue() { return 1.0; }
   //////////////////////////////////
 
 
