@@ -612,20 +612,40 @@ GammaComponent::emEndIteration()
       // printf("shape = %f\n",shapev);
       double next_shapev;
       // do no more than this many iterations (in practice, it seems to do about 3 or 4 iters).
-      unsigned max_iters = 10; 
+      const unsigned max_iters = 10; 
+      unsigned cur_iters = max_iters;
       do {
 	int dummy = 0;
-	// do a Newton update.
+	// Do a Newton update. The below may not be numerically stable
+	// and/or when using Gammas, it may be best not to compile
+	// with -ffast-math on gcc.
 	next_shapev = 1.0/(1/shapev + (meanlogx - log(mean) + log(shapev) - digamma(shapev,&dummy))/( shapev - shapev*shapev*trigamma(shapev,&dummy)));
+
 	// printf("next_shape = %f\n",next_shapev);
-	if (100.0*fabs(next_shapev - shapev)/shapev < 0.001)
+	// if (100.0*fabs(next_shapev - shapev)/shapev < 1e-3)
+
+	if (fabs(next_shapev - shapev) < shapev*1e-5)
 	  break;
 	shapev = next_shapev;
-      } while (max_iters--);
+      } while (cur_iters--);
 
-      // finalize he values.
-      shape->nextValues.ptr[i] = shapev;
-      scale->nextValues.ptr[i] = mean/shapev;
+      if (shapev <= FLT_MIN) {
+	warning("WARNING: Gamma Component '%s', child scale '%s' and shape '%s', dim %d, iters %d, computed shape (%e) fell below floor (%e). Using previous parameters.",
+		name().c_str(),
+		scale->name().c_str(),
+		shape->name().c_str(),
+		i,
+		1 + max_iters - cur_iters,
+		shapev,
+		FLT_MIN);
+	// set to previous values.
+	shape->nextValues.ptr[i] = shape->values.ptr[i];
+	scale->nextValues.ptr[i] = scale->values.ptr[i];
+      } else {
+	// finalize he values.
+	shape->nextValues.ptr[i] = shapev;
+	scale->nextValues.ptr[i] = mean/shapev;
+      }
     }
   }
 
