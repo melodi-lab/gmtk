@@ -4746,8 +4746,79 @@ Sat Jan  3 19:07:36 2009
         - fast training with large D continuous vectors
         - a non slow-down when needing to use clique posteriors.
 
+Tue Jan 13 10:09:43 2009
+  - island algoritm's islands should keep only the smallest set of
+    rv's that render left and right indepenent. Therefore, could keep
+    only the separator between two partitions rather than the entire
+    partition. This could reduce memory.
+  - Option during various inferences styles to free/delete the
+    separator tables since it is not expensive to recreate them. The
+    expensive part is creating the cliques, and they are the things
+    that are most important to preserve.
+
+  - to save more memory, the separator AI and REM could all be sorted
+    after creation and then a binary search used to find an entry
+    rather than a hash table. This could probably be a compile
+    option, although if we delete the separators as we go along,
+    this wouldn't be necessary (it might be faster just to delete and
+    then re-create them). Also, the sorting will need a multi-word
+    comparision operator on packed items - perhaps the packer
+    can provide a comparison operator.
+
+Wed Jan 14 19:06:40 2009
+  - right now, a partition's RI separator is kept in the neighboring partition
+    to the right. It may be useful to free-up the separator storage after 
+    it has been gathered from and re-created it later (since it is relatively quick to create),
+    and it might be easier to do if a partition's RI separator is kept within the
+    partition itself.
+     - the problem with this is that when we create the separators for gathering into a clique,
+       it is very useful to have them all.
+
+Fri Jan 16 21:54:23 2009
+  - in the observation code (observation matrix), add another option that is like -startSkip but what it does
+    is that it takes the first N real frames, computes mean/variance, and adds dummy noise
+    to the beginning of each observation file. That way we can have dlinks into the past without
+    the need to modify the observation file at all, and will help with edge effects.
+   - have a bunch of different distributiosn for this, i.e, have
+     Gaussian, uniform, constant values as well duplicated first
+     value, and mirrored values.
+   
+Sat Jan 17 01:39:21 2009
+  - get tied parameter Gamma and Beta observations working
+  - get conjugate priors for Gamma & Betas working
+  - allow linear conditional continuous dependencies for Gamma and Beta distributions.
 
 
+Wed Jan 21 23:54:15 2009
+  - when constructing a clique, we have an estimate of the max value. We also
+    have, a any given time, a set of clique values that have already been inserted.
+     we prune if:
+          cur_score + cont_score < est_max_value - threshold
 
-  
+     1) if any of the clique values are greater than the estimated max
+        value, we should update the max value (it is possible for this
+        to happen not because of the continuation scores, but because
+        of prediction error). This gives us an updated est_max_value
+        that is more accurate, and this is easy since we're already
+        estimating the max as we construct the clique.
 
+     2) Most of the clique entries will probably be below the max value.
+
+              cur_mn          (est_mx-thr)                cur_mx       est_mx
+                 
+
+        heuristic: if cur_mx is 
+
+   - another idea: in speech (at least) there is spatial locality. We could use frame
+     t to estimate better continuation scores and use that estimate for frame (t+1)
+     rather than using the mos optimistic estimate (which is what we're doing now).
+     I.e., we'd keep, for each rv, a prev_frame_max_val[rv] and a cur_frame_max_val,
+     then use that during the expansion.
+     **** In fact, we could use multiple linear predictors to predict
+          the cur_frame_max_val based on a set of
+          previous_frame_max_values and use that to predict not only
+          the clique max value but also the continuation heuristic as
+          well!! This should be an optional thing, as the added
+          expense of doing the prediction might be a little high (but
+          then maybe not, compared to large state space).
+   
