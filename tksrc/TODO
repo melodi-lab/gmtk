@@ -4807,7 +4807,13 @@ Wed Jan 21 23:54:15 2009
               cur_mn          (est_mx-thr)                cur_mx       est_mx
                  
 
-        heuristic: if cur_mx is 
+        heuristic: if cur_mx has not increased for a while (some
+                   threshold count, perhaps a percentage of the
+                   previous instance's state space), treat this as an
+                   estmate of the real max - we might make some
+                   pruning decisions we otherwise would not have
+                   made. Of course, if we find a max that is greater,
+                   then we bump up the cur_mx as in step 1.
 
    - another idea: in speech (at least) there is spatial locality. We could use frame
      t to estimate better continuation scores and use that estimate for frame (t+1)
@@ -4821,4 +4827,24 @@ Wed Jan 21 23:54:15 2009
           well!! This should be an optional thing, as the added
           expense of doing the prediction might be a little high (but
           then maybe not, compared to large state space).
+      Add a -predictContinuationScores {fixed | lms,i,j | rls,i,j } option.
+      We should not bother predicting those scores that are fixed (i.e., those rvs that
+      are based on a time-homogeneous markov chain and/or that have observed values).
+      In fact, this might really work only for continuous data and/or speech.
    
+  - is there a benefit to not having an E? I.e., a problem with E is that it is
+    hard to predict. Perhaps this would be another advantage of an outside-inside
+    procedure, since as we are moving in from both sides, we'll have good prediction
+    of the inner partitions (and will have expanded with, presumabl, a reduced
+    state space at the E side).
+
+Fri Jan 23 23:37:04 2009
+  - perhaps a crazy idea, but we could use a corpus of speech data to learn
+    a swiching AR_HMM on the max-scores for a clique and/or for random variables.
+    The idea being that it would not be an adapative filter, but rather
+    a model that learns the distribution of max-clique scores on a corpus of daa.
+    That model could then be included in a "production" ASR system and be used to
+    predict next-frame scores (like a Kalman-filter) and used to improve pruning.
+  - perhaps this could be combined with an adapative kalman-filter to adapt to the
+    local observation???
+
