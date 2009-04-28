@@ -4959,6 +4959,23 @@ Thu Mar 12 10:57:01 2009
      as the truncated parametric length distribtuions above
       (e.g., truncated Poisson distributions).
 
+Tue Apr 28 12:35:18 2009
+  - when the strings are very long (bio, conversational, etc) rather than doing forward/bacward complete,
+    it seems like we should have a bunch of limited extent messages going from left to right and doing
+    that a number of times.
+    I.e., rather than doing for i = 1 ... N, left_to_right(i,i+1) and then doing for i = N ... 1, doing
+    right_to_left(i+1,i), do something like:
+       for all i in paralel
+            send messages a few stages to the right and/or left (randomly)
+    This would still be O(N), sowy would it be faster?
+
+Tue Apr 28 12:37:35 2009
+  - for debugging message, when we say message C',part[N], clique ...
+    include the total length, i.e.,, "message C',part[N of M], clique' where M is total length.
+
+
+
+
       
 
 
