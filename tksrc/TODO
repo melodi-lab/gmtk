@@ -4974,10 +4974,38 @@ Tue Apr 28 12:37:35 2009
     include the total length, i.e.,, "message C',part[N of M], clique' where M is total length.
 
 
+Sun Jun 21 22:54:04 2009
+  - this is probably mentioned above, but have conditional exponential-based local CPTs.
+      p(c|parents) = 1/Z(parents)exp(\lambda f) where f is a vector function
+      of indicators 
+       
+Tue Jun 23 12:12:51 2009
+  - give sarray to have its own allocator (or do a subclass) and in
+    such case, it always allocates in chunks of some number of units
+    of the main class.
+
+Tue Jun 23 12:13:26 2009
+  - symmetric MDCPT - i.e., an MDCPT that is constrained to be symmetric.
+  - in 2d case, it always says (and trained with) p(i|j) = p(j|i)
+  - in 3d case it says p(i|j,k) = p(j|i,k) = p(k|i,j)
+  - in nd case it says that p(i_k | i_\negk) = p(i_j | p_\neg j) for all k \neq j
+  - clearly, only works for cubic distributions.
+  - one way to do this is, when given a set of values i,j,k, etc.,
+    sort them first (so i<=j<=k) and use that to look up the probability.
 
 
-      
+Tue Jun 23 15:29:08 2009
+  Fix island so that there is no (zero) linear dependence: Right now
+  it still does w.r.t. 1) the obsevation sequence, 2) the stored
+  viteri values, and 3) the shared clique value pool. 
 
-
-
+  In this last case, it is not really linear in the length, but
+  instead holds the clique values for all partitions even if they
+  don't need to be held at all times. Getting this last case to work
+  will be a bit tricky. One way would be to allow the clique value
+  pool values to be removed, but this will almost surely slow down the
+  data structure (which is bad of course). Another option is to have
+  local pools (kind of like what we currently have for reach frame)
+  and then only insert the values into the true global pool for the
+  islands -- this is probably the best idea.
 
