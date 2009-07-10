@@ -4928,7 +4928,7 @@ Sat Mar  7 20:09:08 2009
     saved when doing a forward pass, rather than the partition
     separator and all other cliques/separators. For forward-inference,
     this is like an even lower-memory version of probE, except that
-    all separators are saved. For EM training, we'll need to
+    all separators are saved. For EM training/Viterbi, we'll need to
     re-generate the forward pass in seach partition again on each
     backwards pass, starting from the saved separators. For island
     inference, the islands that are saved should only be the
@@ -4940,6 +4940,11 @@ Sat Mar  7 20:09:08 2009
     and 'restore state' for the origin of the clique since there might
     be certain things (such as the the LP prediction code, etc.) that
     is based on going left-to-right in the inference.
+  - have a version of gather_into_root that rather than storing things
+    at the clique level, immediately projects down to the outgoing
+    separator (so it never needs to store the clique values even locally).
+
+
 
 
 Tue Mar 10 00:50:55 2009
@@ -4967,7 +4972,8 @@ Tue Apr 28 12:35:18 2009
     right_to_left(i+1,i), do something like:
        for all i in paralel
             send messages a few stages to the right and/or left (randomly)
-    This would still be O(N), sowy would it be faster?
+    - This would still be O(N), so would it be faster?
+    - can we show convergence in some cases?
 
 Tue Apr 28 12:37:35 2009
   - for debugging message, when we say message C',part[N], clique ...
@@ -4977,7 +4983,7 @@ Tue Apr 28 12:37:35 2009
 Sun Jun 21 22:54:04 2009
   - this is probably mentioned above, but have conditional exponential-based local CPTs.
       p(c|parents) = 1/Z(parents)exp(\lambda f) where f is a vector function
-      of indicators 
+      of indicators. this is like a local CRF for a CPT. 
        
 Tue Jun 23 12:12:51 2009
   - give sarray to have its own allocator (or do a subclass) and in
@@ -4995,7 +5001,7 @@ Tue Jun 23 12:13:26 2009
 
 
 Tue Jun 23 15:29:08 2009
-  Fix island so that there is no (zero) linear dependence: Right now
+  Fix island so that there is no (zero, nada) linear dependence: Right now
   it still does w.r.t. 1) the obsevation sequence, 2) the stored
   viteri values, and 3) the shared clique value pool. 
 
@@ -5009,3 +5015,63 @@ Tue Jun 23 15:29:08 2009
   and then only insert the values into the true global pool for the
   islands -- this is probably the best idea.
 
+Wed Jun 24 02:34:36 2009
+ - update makefile with Arthur Cantor's makefile mods for intel compiler.
+
+Fri Jun 26 11:09:06 2009
+ - many objects still allocate memor inefficientl (i.e., simetimes
+   we want only blocks of size k of objects. Go through and make
+   special allocators for each of these objects to save memory).
+
+ - for debugging output, have a filter that only prints out (curframes
+   mod K == 0) where K is some integer.
+ - 
+
+Fri Jun 26 23:47:27 2009
+  - have a bunch of perl scripts consolidated to parse GMTK output
+    (e.g., parsing new GMTK Viterbi output into perl/python arrays).
+  - 
+
+Sat Jul  4 01:11:42 2009
+  - allow symbol names to be used everywhere, including
+      a) when reading in observations
+      b) when specifying cpts and sparse cpts
+      c) in DT formulas (need to figure out how to do this since
+         right now DTs are specified unassociated from where they'll 
+         ultimately be used. Perhaps one way to do this is to
+         allow a DT to allow a symbol table to be used for
+         each random variable (all the parents and the child).
+     
+
+Fri Jul 10 15:07:00 2009
+  - dynamic pruning algorithm similar to the TCP congestion algorithm?
+    i.e., additive increase and multiplicative decrease.
+   - for pruning, when things are going well (i.e., we are
+     nowhere close to getting zero cliques, we linearly decrease
+     the beam widths. Once we hit a zero, we backtrack to
+     previous frames exponentially increasing it as we go.
+     Rational for this: the goal is to find a good hyp at the end (or
+       many of them if we're doing k-best). 
+  - need to get frame-backtracking beams working in the first place
+     (one simple option is to immediately backtrack to the beginning
+      of the segment, which is what HTK does, but perhaps this
+      is overkill and would waste potential effort.
+   - basically, we need a 'back and forth' algorithm, or a 'wave'
+     algroithm that moves back and forth and has the chance ultimately
+     to backtrack to the very beginning (ala HTK) but can also do
+     something much better (by avoiding backtracking to the
+     beginning).
+   - it's probably better to get the new message code working first,
+     so that each forward message can be sub-classed by a separate
+     algorithm (and also the various memory options for this as well,
+     such as to eliminate memory for the clique expansion and save
+     only memory for the separators within each partition).
+
+
+
+
+
+ 
+
+
+   
