@@ -5041,6 +5041,15 @@ Sat Jul  4 01:11:42 2009
          ultimately be used. Perhaps one way to do this is to
          allow a DT to allow a symbol table to be used for
          each random variable (all the parents and the child).
+  - perhaps a way to do this with observations is to have a
+    file format for symbolic observation names, and then the
+    are translated into values as needed as the observation becomes
+    associated with a CPT (so this means that the obs would mean
+    something different depending on the context it is used in).
+      - the same could be done with DT formulas, i.e., constants
+        could be symbolic tokens rather than integers (this would
+        preclude optimization from occuring, but this is ok).
+
      
 
 Fri Jul 10 15:07:00 2009
