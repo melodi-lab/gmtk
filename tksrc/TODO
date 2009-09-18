@@ -5082,6 +5082,11 @@ Mon Jul 13 00:51:31 2009
     http://www.joelonsoftware.com/uibook/chapters/fog0000000059.html
 
 
+Fri Sep 18 14:37:23 2009
+  - in rngdecisiontree, add back in code that allows/special-cases not
+    only single integers to be fast (i.e., not use the expression parser)
+    but also single variables (e.g., parent values, such as p0, p1, etc).
+
 
  
 
