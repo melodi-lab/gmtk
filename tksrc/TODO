@@ -5088,7 +5088,18 @@ Fri Sep 18 14:37:23 2009
     but also single variables (e.g., parent values, such as p0, p1, etc).
 
 
- 
+Fri Sep 25 13:38:17 2009
+ - another form of diversity pruning - at each clique expansion,
+   do a local backtrace a few frames (i.e., from t to t-\tau) and
+   then for each clique entry, develop a diversity measure that
+   is a function of that back trace path (could be the best path).
+   This would be a form of hash function, where two clique entries
+   are similar if they have a very similar history, and are different
+   if they are very differnet. It could also combine the score
+   of the backtrace as well. 
+
+
+   
 
 
    
