@@ -5075,18 +5075,40 @@ Fri Jul 10 15:07:00 2009
      algorithm (and also the various memory options for this as well,
      such as to eliminate memory for the clique expansion and save
      only memory for the separators within each partition).
+   - steps include: as a function of what we have already done
+       1) how far (how many partitions) to backtrack to
+       2) how much to increase the beam (function of each backtrack position).
+           2a) and each different beam might need to change very differently.
+       3) show approximation guarantees. 
+   - how does this interact with the island algorithm? 
+       - during forward pass, no problem since island first does forward
+         along the way.
+   - Two phase algoritm:
+        1) phase 1: a discover phase, where we use gmtkJT like low-memory inference
+           to explore the space of pruning/backtracking schedules that work.
+           "work" should be more than completing the decoding with non-zero,
+           since there could be search errors not just model errors.
+        2) second phase, given we've found a good one, a decoding phase that sues
+           the pruning schedule found to do a final decode.
+   - 
 
 
 Mon Jul 13 00:51:31 2009
   - on software and what happens when there are so many options.
     http://www.joelonsoftware.com/uibook/chapters/fog0000000059.html
 
+Wed Jul 15 13:34:09 2009
+  - use Brian Lucena's MCS algorithm to find a lower bound on tree-width
+    (his Siam 2003 paper, "a new lower bound for tree-width using MCS").
+    given this lower bound once (and if) the triangulation heuristics have found
+    a triangulation with this clique size (since they are all upper bounds)
+    we can stop triangulating since we've found the optimal in these cases.
 
 Fri Sep 18 14:37:23 2009
   - in rngdecisiontree, add back in code that allows/special-cases not
     only single integers to be fast (i.e., not use the expression parser)
     but also single variables (e.g., parent values, such as p0, p1, etc).
-
+ 
 
 Fri Sep 25 13:38:17 2009
  - another form of diversity pruning - at each clique expansion,
@@ -5099,7 +5121,14 @@ Fri Sep 25 13:38:17 2009
    of the backtrace as well. 
 
 
+Sat Oct  3 15:04:38 2009
+ - re-write the flex/lex tokenizer to not any longer be dependent on
+   lex since that is broken on some platforms (e.g., on the
+   mac with gdb and emacs).
+
+
    
+
 
 
    
