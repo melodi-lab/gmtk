@@ -5127,7 +5127,30 @@ Sat Oct  3 15:04:38 2009
    mac with gdb and emacs).
 
 
-   
+Mon Oct 19 23:36:03 2009
+ - new pruning options:
+
+   1) do initial pass and compute the posteriors. Add those posteriors
+      (to the appropriate variable) on the 2nd pass.
+
+   2) summary pruning: Expand the clique, then contract down to a
+      particualr subset of variables, prune on those subset (using any
+      of the standard pruning option, including cbeam, ckbeam,
+      diversity, etc.) and then prune the expanded clique based on the
+      pruned subset.  (need a way to specify a set of rvs and offsets
+      on the command line, have a general parser for
+      "foo(-3),bar(2),baz(+2),foo(0)") Need a way to take a clique,
+      project it down to a sub-clique, do the pruning there, and then
+      re-expand. We could either: 
+
+          1) go through original clique, and hash-lookup the
+             sub-clique and if not found, then remove the entry.
+
+          2) could go through subclique for each surviving value and
+             then do
+             
+
+
 
 
 
