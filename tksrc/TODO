@@ -5150,8 +5150,36 @@ Mon Oct 19 23:36:03 2009
              then do
              
 
+Wed Oct 28 15:00:24 2009
+  - in rngdecision tree, add a special value that compuites the lexicographic entry
+    to collapse all the parent values down to a unique integer. I.e.,
+    something like p1*cont1 + p2*const2 + ... pn*constn. This can be done
+    using a DT formulat, but this is very slow, much better to have variable that
+    computes that for you. 
 
 
+Tue Nov 17 17:27:35 2009
 
+   - another particle filter based idea: at time t, we keep the same
+     clique values that existed at time t-1 and then rescore them.  We
+     do this ratherthan re-expanding the clique at time t and then
+     pruning them down (which is a waste).
+
+     Every so often, we will do a full regeneration of time t, based on
+     what happened at time t-1.
+
+     Also, while at time t we might keep the same values and rescore 
+     what happened at time t-1, we might also do a partial regeneration 
+     at time t.
+ 
+     So the general algorithm would be:
+
+     at time t, do one or more of the following steps:
+        - keep some (or all) of the clique values that were at time t-1
+        - rescore all of the clique values at time t.
+        - regenerate some or all of the remaining values at time t
+        - do some one of the forms of pruning at time t.
+
+   
 
    
