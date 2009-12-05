@@ -5181,5 +5181,10 @@ Tue Nov 17 17:27:35 2009
         - do some one of the forms of pruning at time t.
 
    
+Fri Dec  4 16:41:01 2009
+  - for diversity pruning, allow user to enter a sqare matrix object
+    that gives the distance between ay pairs of random variables.
+  - have a bunch of simple matrices built in (i.e., equals, unequals,
+    absolute value of difference, etc.).
 
    
