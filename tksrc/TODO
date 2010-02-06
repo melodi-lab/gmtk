@@ -5180,11 +5180,19 @@ Tue Nov 17 17:27:35 2009
         - regenerate some or all of the remaining values at time t
         - do some one of the forms of pruning at time t.
 
-   
+
 Fri Dec  4 16:41:01 2009
   - for diversity pruning, allow user to enter a sqare matrix object
     that gives the distance between ay pairs of random variables.
   - have a bunch of simple matrices built in (i.e., equals, unequals,
     absolute value of difference, etc.).
+
+
+Fri Feb  5 17:25:02 2010
+  - for island algorithm: should have an option to set base = sqrt(T) for whatever
+    the current length is.    
+
+   
+
 
    
