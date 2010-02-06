@@ -5192,7 +5192,10 @@ Fri Feb  5 17:25:02 2010
   - for island algorithm: should have an option to set base = sqrt(T) for whatever
     the current length is.    
 
-   
+  - need to add some sort of sparsity encouraging prior to the CPT learning
+    (is posterior weight of > 1 enough to do this???).
+
+
 
 
    
