@@ -5205,3 +5205,8 @@ Thu Apr  8 17:22:41 2010
   in addition to InferenceMaxClique::cliqueEntropy()   
    also add a compute clique variance that does so in the real space (good for Gaussian variability in cliques).
 
+
+Wed Apr 21 20:23:00 2010
+  for DOCS, add 'cpp -std=c89' tip to  get good working cpp for GMTK.
+   See email from Ajit from today.
+   
