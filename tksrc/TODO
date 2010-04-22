@@ -5198,4 +5198,10 @@ Fri Feb  5 17:25:02 2010
    
 Mon Mar 15 14:59:17 2010
   - add a reverse option, to run the model in reverse (i.e., do beta first and then
-    alpha, this should be easy to do, but maybe not very fast).
+    alpha, this should be easy to do, but maybe not very fast).>>>>>>> 1.532
+
+
+Thu Apr  8 17:22:41 2010
+  in addition to InferenceMaxClique::cliqueEntropy()   
+   also add a compute clique variance that does so in the real space (good for Gaussian variability in cliques).
+
