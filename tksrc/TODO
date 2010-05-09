@@ -5210,3 +5210,8 @@ Wed Apr 21 20:23:00 2010
   for DOCS, add 'cpp -std=c89' tip to  get good working cpp for GMTK.
    See email from Ajit from today.
    
+Sun May  9 00:40:25 2010
+  Add an option to gmtkTriangulate that duplicates one (or more)
+  copies of C into P' and/or into E'. This would allow easy
+  specification of different P and/or E without running into the
+  interface constraint P|CE, P|CCE, PC|CE.
