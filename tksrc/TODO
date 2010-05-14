@@ -5215,3 +5215,13 @@ Sun May  9 00:40:25 2010
   copies of C into P' and/or into E'. This would allow easy
   specification of different P and/or E without running into the
   interface constraint P|CE, P|CCE, PC|CE.
+
+Fri May 14 11:20:15 2010
+  To logp.{cc,h}, add high level operations that are optimized, such
+  as summing a bunch of logp objects (that first compute the max and only
+  sum the onest hat are in range of the max).
+  Pipeline the max computation as well (compile this with unroll, etc.).
+
+
+
+
