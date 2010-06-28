@@ -5222,6 +5222,13 @@ Fri May 14 11:20:15 2010
   sum the onest hat are in range of the max).
   Pipeline the max computation as well (compile this with unroll, etc.).
 
-
+Mon Jun 28 11:31:34 2010
+  - as a criterion for finding a good interface separator factorziation
+    (for the combined BK algorithm with interface separator), pehrpas 
+    a good interface separator would be one that can factor into a set of
+    factors that does not break apart any original factor. I.e.,
+    if the factors are f(a,b)f(b,c)f(c,d) and if ac was a separator,
+    factoring this into g(a)g(c) this might be good since it breaks 
+    apart no factor. 
 
 
