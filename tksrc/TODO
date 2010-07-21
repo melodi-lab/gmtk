@@ -3652,6 +3652,9 @@ Fri May  5 15:48:30 2006
 Tue May 16 19:55:14 2006
   - for docs, include all memory optimization operations, don't forget
      about all memory options:
+     reduce memory options
+     reduction memory
+     Reduce
 
             1) find a different triangulation somehow.
             2) -hashLoadFactor option (set to 0.98)
@@ -3662,6 +3665,7 @@ Tue May 16 19:55:14 2006
                could decrease the following even further in GMTK_MaxClique.cc
                 #define MEM_OPT_GROWTH_RATE 1.25
             6) Gaussian cache if using Gaussians.
+                -componentCache F
             7) if there is no clique sharing, possibly change in GMTK_MaxClique.h
 			#define IMC_NWWOH (1)
 			#define ISC_NWWOH_AI (1)
@@ -4656,19 +4660,20 @@ Fri Dec 19 16:27:09 2008
  - another form of pruning: each clique entry
    can (when compiled that way) look in the global clique
    manager to see how frequently that entry has occured so far,
-   and base pruning on that relative count. I.e., very freqeunt
+   and base pruning on that relative count. I.e., very frequent
    improbable entries might be pruned but rare improbable 
    ones might be retained for a bit.
  - general idea of using the clique manager as a map rather than
    a set. The map can map to information that pruning can utilize.
    I.e., the map can map to 
-       1) freqeuncy of use
+       1) freqeuncy of use, as in a count > 0.
        2) most recent use (e.g., frame number of max frame variable
           in the clique)
-       3) most recent (relative) probability score and/or rank
-       4) most recent pruning status.
-       5) keep track of shared/not-shared binary status. I.e., we might
+       3) most recent (relative) probability score and/or integer rank
+       4) most recent pruning status (did it get pruned or not)
+       5) keep track of shared/not-shared binary/{0,1} status. I.e., we might
           want to prune shared/non-shared entries differently.
+          (this is a subset of 1).
 
 Mon Dec 22 12:19:46 2008
  - some sort of switching pruning, i.e., when we expand a switching parent,
@@ -4722,7 +4727,7 @@ Fri Dec 26 01:38:19 2008
 
 Sat Dec 27 20:38:48 2008
  - add Bayesian conjugate priors to the gamma/beta observation distributions.
-
+   
 Sun Dec 28 00:41:09 2008
  - for numeric beam arguments, rather than needing to specify 1e10 or whatever happens
    to be log zero, instead have a special value 'off' that is extensible.
@@ -4746,8 +4751,495 @@ Sat Jan  3 19:07:36 2009
         - fast training with large D continuous vectors
         - a non slow-down when needing to use clique posteriors.
 
+Tue Jan 13 10:09:43 2009
+  - island algoritm's islands should keep only the smallest set of
+    rv's that render left and right indepenent. Therefore, could keep
+    only the separator between two partitions rather than the entire
+    partition. This could reduce memory.
+  - Option during various inferences styles to free/delete the
+    separator tables since it is not expensive to recreate them. The
+    expensive part is creating the cliques, and they are the things
+    that are most important to preserve.
+
+  - to save more memory, the separator AI and REM could all be sorted
+    after creation and then a binary search used to find an entry
+    rather than a hash table. This could probably be a compile
+    option, although if we delete the separators as we go along,
+    this wouldn't be necessary (it might be faster just to delete and
+    then re-create them). Also, the sorting will need a multi-word
+    comparision operator on packed items - perhaps the packer
+    can provide a comparison operator.
+
+Wed Jan 14 19:06:40 2009
+  - right now, a partition's RI separator is kept in the neighboring partition
+    to the right. It may be useful to free-up the separator storage after 
+    it has been gathered from and re-created it later (since it is relatively quick to create),
+    and it might be easier to do if a partition's RI separator is kept within the
+    partition itself.
+     - the problem with this is that when we create the separators for gathering into a clique,
+       it is very useful to have them all.
+
+Fri Jan 16 21:54:23 2009
+  - in the observation code (observation matrix), add another option that is like -startSkip but what it does
+    is that it takes the first N real frames, computes mean/variance, and adds dummy noise
+    to the beginning of each observation file. That way we can have dlinks into the past without
+    the need to modify the observation file at all, and will help with edge effects.
+   - have a bunch of different distributiosn for this, i.e, have
+     Gaussian, uniform, constant values as well duplicated first
+     value, and mirrored values.
+   
+Sat Jan 17 01:39:21 2009
+  - get tied parameter Gamma and Beta observations working
+  - get conjugate priors for Gamma & Betas working
+  - allow linear conditional continuous dependencies for Gamma and Beta distributions.
+
+
+Wed Jan 21 23:54:15 2009
+  - when constructing a clique, we have an estimate of the max value. We also
+    have, a any given time, a set of clique values that have already been inserted.
+     we prune if:
+          cur_score + cont_score < est_max_value - threshold
+
+     1) if any of the clique values are greater than the estimated max
+        value, we should update the max value (it is possible for this
+        to happen not because of the continuation scores, but because
+        of prediction error). This gives us an updated est_max_value
+        that is more accurate, and this is easy since we're already
+        estimating the max as we construct the clique.
+
+     2) Most of the clique entries will probably be below the max value.
+
+              cur_mn          (est_mx-thr)                cur_mx       est_mx
+                 
+
+        heuristic: if cur_mx has not increased for a while (some
+                   threshold count, perhaps a percentage of the
+                   previous instance's state space), treat this as an
+                   estmate of the real max - we might make some
+                   pruning decisions we otherwise would not have
+                   made. Of course, if we find a max that is greater,
+                   then we bump up the cur_mx as in step 1.
+
+   - another idea: in speech (at least) there is spatial locality. We could use frame
+     t to estimate better continuation scores and use that estimate for frame (t+1)
+     rather than using the mos optimistic estimate (which is what we're doing now).
+     I.e., we'd keep, for each rv, a prev_frame_max_val[rv] and a cur_frame_max_val,
+     then use that during the expansion.
+     **** In fact, we could use multiple linear predictors to predict
+          the cur_frame_max_val based on a set of
+          previous_frame_max_values and use that to predict not only
+          the clique max value but also the continuation heuristic as
+          well!! This should be an optional thing, as the added
+          expense of doing the prediction might be a little high (but
+          then maybe not, compared to large state space).
+      Add a -predictContinuationScores {fixed | lms,i,j | rls,i,j } option.
+      We should not bother predicting those scores that are fixed (i.e., those rvs that
+      are based on a time-homogeneous markov chain and/or that have observed values).
+      In fact, this might really work only for continuous data and/or speech.
+   
+  - is there a benefit to not having an E? I.e., a problem with E is that it is
+    hard to predict. Perhaps this would be another advantage of an outside-inside
+    procedure, since as we are moving in from both sides, we'll have good prediction
+    of the inner partitions (and will have expanded with, presumabl, a reduced
+    state space at the E side).
+
+Fri Jan 23 23:37:04 2009
+  - perhaps a crazy idea, but we could use a corpus of speech data to learn
+    a swiching AR_HMM on the max-scores for a clique and/or for random variables.
+    The idea being that it would not be an adapative filter, but rather
+    a model that learns the distribution of max-clique scores on a corpus of daa.
+    That model could then be included in a "production" ASR system and be used to
+    predict next-frame scores (like a Kalman-filter) and used to improve pruning.
+  - perhaps this could be combined with an adapative kalman-filter to adapt to the
+    local observation???
+
+
+Sun Jan 25 00:09:02 2009
+  - it is beginning (or has been for a while) to become the case that it is not really valid
+    to run ascii files through cpp, since cpp makes C/C++ specific assumptions about
+    the tokens. For example, you can not really concatenate things like 
+          dt/ 
+    and
+          name
+    in order to get:
+          dt/name
+    as you get an error message saying that 
+         error: pasting "/" and "name" does not give a valid preprocessing token
+
+    The solution for now is to backoff to gcc-2.95.3's cpp as that is the lastest one that
+    doesnt' conform to the latest C/C++ conventions. A longer term solution is to implement
+    GMTK's own macro expansion processor.
+
+Wed Jan 28 10:31:35 2009
+  - observation code needs to be able to work better with island algorithm (i.e., we should be able
+    to not load the entire observation into memory at the same time if so desired). This will
+    take a bit of reworking as right now some parts of the code use a base_offset + stride*frame_num
+    to get the current frame_num base position.
+
+Wed Jan 28 11:31:43 2009
+  - for docs, emails from today and yesterday to zafer
+
+Thu Jan 29 16:31:42 2009
+  - take mean or median of the three predictors (fixed, rls, lms) for M_t.
+     (can produce a new adaptive filter class that combines the 3 existing adaptive filter
+      classes).
+
+
+Fri Jan 30 15:02:04 2009
+  - on diveristy pruning, once we have a cluster, is there a way to choose a summary of the
+    cluster, rather than only representatives from that cluster?
+  - when choosing cluster centers, break ties by choosing high probability values.
+       i.e., the issue is that suppose that we choose the most different state
+       w.r.t. to probability. We want to avoid the case that we have all of the
+       high prob. states in one cluster.
+
+
+Thu Feb 12 14:57:59 2009
+  - for docs: change message about FP exception to include useful infomation
+      - Guasisans getting small, use reg parameter, increase variance floor, vanish more agressively, etc.
+        (FP errors can be due to vareity of things, describe them in the FP exception message rather than
+         just aborting).
+        Oh, parameter initialization if doing EM, etc.
+        Perhaps have a global state variable that says what is currently happening that the exception
+        handler can check to use to determine what is going on.
+
+
+Sat Feb 28 00:01:44 2009
+ - for docs, email to zafer today, giving an exercise about cholesky and UDU,
+   make this an exercise to understand GMTK parameters.
+   (see a few more emails in gmtk directory about this).
+
+Sat Feb 28 00:17:48 2009
+  - simple single compile time option that does all internal numerical math in 
+    double  vs. single precision (a one-stop switch for changing this at compile time).
+
+      
+Sat Feb 28 03:44:45 2009
+  - STL set optimizations
+  - for inserting new elements into a set, do:
+        copy(cur_set.begin(),cur_set.end(),
+	 inserter(allrvs,allrvs.end()));
+  - for erasing one set from another, do:
+         s.erase(start_iter,end_iter)
+        iter must be pointers within s.
+
+Sat Mar  7 20:09:08 2009
+  - have an option so that only the partition separator memory is
+    saved when doing a forward pass, rather than the partition
+    separator and all other cliques/separators. For forward-inference,
+    this is like an even lower-memory version of probE, except that
+    all separators are saved. For EM training/Viterbi, we'll need to
+    re-generate the forward pass in seach partition again on each
+    backwards pass, starting from the saved separators. For island
+    inference, the islands that are saved should only be the
+    separators, not the entire partition.
+  - when doing this, do not insert the clique values into the
+    globally shared clique pool (i.e., only use the private pool).
+  - have the same option work for viterbi decoding.
+  - For the island algorithm, will also need some sort of 'save state'
+    and 'restore state' for the origin of the clique since there might
+    be certain things (such as the the LP prediction code, etc.) that
+    is based on going left-to-right in the inference.
+  - have a version of gather_into_root that rather than storing things
+    at the clique level, immediately projects down to the outgoing
+    separator (so it never needs to store the clique values even locally).
 
 
 
-  
 
+Tue Mar 10 00:50:55 2009
+  - for E partition, we might want to use a different varible
+    order, say where we try to reach the special end-of-utterance
+    observation first rather than the other observations, so that
+    we can observe the fail first principle. Possibly
+    have a separate -vcap option for E partition.
+  - in general, have a different order style/options for P, C, and E.
+
+
+Thu Mar 12 10:57:01 2009
+  - have parametric discrete observation distributions.
+  - E.g., truncated geometric distributions for integer observations
+          truncated Negative binomial distributions integer observations
+    Perhaps ML estimates of the truncated forms are the same
+     as the truncated parametric length distribtuions above
+      (e.g., truncated Poisson distributions).
+
+Tue Apr 28 12:35:18 2009
+  - when the strings are very long (bio, conversational, etc) rather than doing forward/bacward complete,
+    it seems like we should have a bunch of limited extent messages going from left to right and doing
+    that a number of times.
+    I.e., rather than doing for i = 1 ... N, left_to_right(i,i+1) and then doing for i = N ... 1, doing
+    right_to_left(i+1,i), do something like:
+       for all i in paralel
+            send messages a few stages to the right and/or left (randomly)
+    - This would still be O(N), so would it be faster?
+    - can we show convergence in some cases?
+
+Tue Apr 28 12:37:35 2009
+  - for debugging message, when we say message C',part[N], clique ...
+    include the total length, i.e.,, "message C',part[N of M], clique' where M is total length.
+
+
+Sun Jun 21 22:54:04 2009
+  - this is probably mentioned above, but have conditional exponential-based local CPTs.
+      p(c|parents) = 1/Z(parents)exp(\lambda f) where f is a vector function
+      of indicators. this is like a local CRF for a CPT. 
+       
+Tue Jun 23 12:12:51 2009
+  - give sarray to have its own allocator (or do a subclass) and in
+    such case, it always allocates in chunks of some number of units
+    of the main class.
+
+Tue Jun 23 12:13:26 2009
+  - symmetric MDCPT - i.e., an MDCPT that is constrained to be symmetric.
+  - in 2d case, it always says (and trained with) p(i|j) = p(j|i)
+  - in 3d case it says p(i|j,k) = p(j|i,k) = p(k|i,j)
+  - in nd case it says that p(i_k | i_\negk) = p(i_j | p_\neg j) for all k \neq j
+  - clearly, only works for cubic distributions.
+  - one way to do this is, when given a set of values i,j,k, etc.,
+    sort them first (so i<=j<=k) and use that to look up the probability.
+
+
+Tue Jun 23 15:29:08 2009
+  Fix island so that there is no (zero, nada) linear dependence: Right now
+  it still does w.r.t. 1) the obsevation sequence, 2) the stored
+  viteri values, and 3) the shared clique value pool. 
+
+  In this last case, it is not really linear in the length, but
+  instead holds the clique values for all partitions even if they
+  don't need to be held at all times. Getting this last case to work
+  will be a bit tricky. One way would be to allow the clique value
+  pool values to be removed, but this will almost surely slow down the
+  data structure (which is bad of course). Another option is to have
+  local pools (kind of like what we currently have for reach frame)
+  and then only insert the values into the true global pool for the
+  islands -- this is probably the best idea.
+
+Wed Jun 24 02:34:36 2009
+ - update makefile with Arthur Cantor's makefile mods for intel compiler.
+
+Fri Jun 26 11:09:06 2009
+ - many objects still allocate memor inefficientl (i.e., simetimes
+   we want only blocks of size k of objects. Go through and make
+   special allocators for each of these objects to save memory).
+
+ - for debugging output, have a filter that only prints out (curframes
+   mod K == 0) where K is some integer.
+ - 
+
+Fri Jun 26 23:47:27 2009
+  - have a bunch of perl scripts consolidated to parse GMTK output
+    (e.g., parsing new GMTK Viterbi output into perl/python arrays).
+  - 
+
+Sat Jul  4 01:11:42 2009
+  - allow symbol names to be used everywhere, including
+      a) when reading in observations
+      b) when specifying cpts and sparse cpts
+      c) in DT formulas (need to figure out how to do this since
+         right now DTs are specified unassociated from where they'll 
+         ultimately be used. Perhaps one way to do this is to
+         allow a DT to allow a symbol table to be used for
+         each random variable (all the parents and the child).
+  - perhaps a way to do this with observations is to have a
+    file format for symbolic observation names, and then the
+    are translated into values as needed as the observation becomes
+    associated with a CPT (so this means that the obs would mean
+    something different depending on the context it is used in).
+      - the same could be done with DT formulas, i.e., constants
+        could be symbolic tokens rather than integers (this would
+        preclude optimization from occuring, but this is ok).
+
+     
+
+Fri Jul 10 15:07:00 2009
+  - dynamic pruning algorithm similar to the TCP congestion algorithm?
+    i.e., additive increase and multiplicative decrease.
+   - for pruning, when things are going well (i.e., we are
+     nowhere close to getting zero cliques, we linearly decrease
+     the beam widths. Once we hit a zero, we backtrack to
+     previous frames exponentially increasing it as we go.
+     Rational for this: the goal is to find a good hyp at the end (or
+       many of them if we're doing k-best). 
+  - need to get frame-backtracking beams working in the first place
+     (one simple option is to immediately backtrack to the beginning
+      of the segment, which is what HTK does, but perhaps this
+      is overkill and would waste potential effort.
+   - basically, we need a 'back and forth' algorithm, or a 'wave'
+     algroithm that moves back and forth and has the chance ultimately
+     to backtrack to the very beginning (ala HTK) but can also do
+     something much better (by avoiding backtracking to the
+     beginning).
+   - it's probably better to get the new message code working first,
+     so that each forward message can be sub-classed by a separate
+     algorithm (and also the various memory options for this as well,
+     such as to eliminate memory for the clique expansion and save
+     only memory for the separators within each partition).
+   - steps include: as a function of what we have already done
+       1) how far (how many partitions) to backtrack to
+       2) how much to increase the beam (function of each backtrack position).
+           2a) and each different beam might need to change very differently.
+       3) show approximation guarantees. 
+   - how does this interact with the island algorithm? 
+       - during forward pass, no problem since island first does forward
+         along the way.
+   - Two phase algoritm:
+        1) phase 1: a discover phase, where we use gmtkJT like low-memory inference
+           to explore the space of pruning/backtracking schedules that work.
+           "work" should be more than completing the decoding with non-zero,
+           since there could be search errors not just model errors.
+        2) second phase, given we've found a good one, a decoding phase that sues
+           the pruning schedule found to do a final decode.
+   - 
+
+
+Mon Jul 13 00:51:31 2009
+  - on software and what happens when there are so many options.
+    http://www.joelonsoftware.com/uibook/chapters/fog0000000059.html
+
+Wed Jul 15 13:34:09 2009
+  - use Brian Lucena's MCS algorithm to find a lower bound on tree-width
+    (his Siam 2003 paper, "a new lower bound for tree-width using MCS").
+    given this lower bound once (and if) the triangulation heuristics have found
+    a triangulation with this clique size (since they are all upper bounds)
+    we can stop triangulating since we've found the optimal in these cases.
+
+Fri Sep 18 14:37:23 2009
+  - in rngdecisiontree, add back in code that allows/special-cases not
+    only single integers to be fast (i.e., not use the expression parser)
+    but also single variables (e.g., parent values, such as p0, p1, etc).
+ 
+
+Fri Sep 25 13:38:17 2009
+ - another form of diversity pruning - at each clique expansion,
+   do a local backtrace a few frames (i.e., from t to t-\tau) and
+   then for each clique entry, develop a diversity measure that
+   is a function of that back trace path (could be the best path).
+   This would be a form of hash function, where two clique entries
+   are similar if they have a very similar history, and are different
+   if they are very differnet. It could also combine the score
+   of the backtrace as well. 
+
+
+Sat Oct  3 15:04:38 2009
+ - re-write the flex/lex tokenizer to not any longer be dependent on
+   lex since that is broken on some platforms (e.g., on the
+   mac with gdb and emacs).
+
+
+Mon Oct 19 23:36:03 2009
+ - new pruning options:
+
+   1) do initial pass and compute the posteriors. Add those posteriors
+      (to the appropriate variable) on the 2nd pass.
+
+   2) summary pruning: Expand the clique, then contract down to a
+      particualr subset of variables, prune on those subset (using any
+      of the standard pruning option, including cbeam, ckbeam,
+      diversity, etc.) and then prune the expanded clique based on the
+      pruned subset.  (need a way to specify a set of rvs and offsets
+      on the command line, have a general parser for
+      "foo(-3),bar(2),baz(+2),foo(0)") Need a way to take a clique,
+      project it down to a sub-clique, do the pruning there, and then
+      re-expand. We could either: 
+
+          1) go through original clique, and hash-lookup the
+             sub-clique and if not found, then remove the entry.
+
+          2) could go through subclique for each surviving value and
+             then do
+             
+
+Wed Oct 28 15:00:24 2009
+  - in rngdecision tree, add a special value that compuites the lexicographic entry
+    to collapse all the parent values down to a unique integer. I.e.,
+    something like p1*cont1 + p2*const2 + ... pn*constn. This can be done
+    using a DT formulat, but this is very slow, much better to have variable that
+    computes that for you. 
+
+
+Tue Nov 17 17:27:35 2009
+
+   - another particle filter based idea: at time t, we keep the same
+     clique values that existed at time t-1 and then rescore them.  We
+     do this ratherthan re-expanding the clique at time t and then
+     pruning them down (which is a waste).
+
+     Every so often, we will do a full regeneration of time t, based on
+     what happened at time t-1.
+
+     Also, while at time t we might keep the same values and rescore 
+     what happened at time t-1, we might also do a partial regeneration 
+     at time t.
+ 
+     So the general algorithm would be:
+
+     at time t, do one or more of the following steps:
+        - keep some (or all) of the clique values that were at time t-1
+        - rescore all of the clique values at time t.
+        - regenerate some or all of the remaining values at time t
+        - do some one of the forms of pruning at time t.
+
+
+Fri Dec  4 16:41:01 2009
+  - for diversity pruning, allow user to enter a sqare matrix object
+    that gives the distance between ay pairs of random variables.
+  - have a bunch of simple matrices built in (i.e., equals, unequals,
+    absolute value of difference, etc.).
+
+
+Fri Feb  5 17:25:02 2010
+  - for island algorithm: should have an option to set base = sqrt(T) for whatever
+    the current length is.    
+
+  - need to add some sort of sparsity encouraging prior to the CPT learning
+    (is posterior weight of > 1 enough to do this???).
+
+   
+Mon Mar 15 14:59:17 2010
+  - add a reverse option, to run the model in reverse (i.e., do beta first and then
+    alpha, this should be easy to do, but maybe not very fast).>>>>>>> 1.532
+
+
+Thu Apr  8 17:22:41 2010
+  in addition to InferenceMaxClique::cliqueEntropy()   
+   also add a compute clique variance that does so in the real space (good for Gaussian variability in cliques).
+
+
+Wed Apr 21 20:23:00 2010
+  for DOCS, add 'cpp -std=c89' tip to  get good working cpp for GMTK.
+   See email from Ajit from today.
+   
+Sun May  9 00:40:25 2010
+  Add an option to gmtkTriangulate that duplicates one (or more)
+  copies of C into P' and/or into E'. This would allow easy
+  specification of different P and/or E without running into the
+  interface constraint P|CE, P|CCE, PC|CE.
+
+Fri May 14 11:20:15 2010
+  To logp.{cc,h}, add high level operations that are optimized, such
+  as summing a bunch of logp objects (that first compute the max and only
+  sum the onest hat are in range of the max).
+  Pipeline the max computation as well (compile this with unroll, etc.).
+
+Mon Jun 28 11:31:34 2010
+  - as a criterion for finding a good interface separator factorziation
+    (for the combined BK algorithm with interface separator), pehrpas 
+    a good interface separator would be one that can factor into a set of
+    factors that does not break apart any original factor. I.e.,
+    if the factors are f(a,b)f(b,c)f(c,d) and if ac was a separator,
+    factoring this into g(a)g(c) this might be good since it breaks 
+    apart no factor. relate this to submodularity.
+
+
+Wed Jul 21 13:35:00 2010
+  - add an option to -copyNFramesOfCIntoP N and -copyNFramesOfCIntoE N 
+    which will help to reduce the interface error messages when they
+    occur of the form "P|CE, P|CCE, PC|CE". This will need to be
+    an option to gmtkTriangulate (but hopefully won't modify the trifile 
+    format).
+
+
+
+
+     
