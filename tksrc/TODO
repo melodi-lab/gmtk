@@ -5232,3 +5232,14 @@ Mon Jun 28 11:31:34 2010
     apart no factor. relate this to submodularity.
 
 
+Wed Jul 21 13:35:00 2010
+  - add an option to -copyNFramesOfCIntoP N and -copyNFramesOfCIntoE N 
+    which will help to reduce the interface error messages when they
+    occur of the form "P|CE, P|CCE, PC|CE". This will need to be
+    an option to gmtkTriangulate (but hopefully won't modify the trifile 
+    format).
+
+
+
+
+     
