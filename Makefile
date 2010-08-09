@@ -20,17 +20,22 @@ EXCCFLAGS=
 # EXCXXFLAGS=-Wno-deprecated
 EXCXXFLAGS=
 EXLDFLAGS =  
-# optimization flags (activate the appropriate one to get faster results).
-# Ultimately, also add -fno-exceptions
+# optimization flags for intel (activate the appropriate one to get faster results).
+# Ultimately, also add -fno-exceptions and possibly -fno-rtti (run-time type info)
 # OPTFLAGS =-g -O3 -march=pentium4 -mfpmath=sse -ffast-math
-# OPTFLAGS=-g -O3 -march=pentium4 -mfpmath=sse -ffast-math
-OPTFLAGS=-g -O3 -march=prescott -mfpmath=sse -ffast-math
-# OPTFLAGS=-g -O3 -march=nocona -mfpmath=sse -ffast-math
-# OPTFLAGS=-g -O3 -march=core2 -mfpmath=sse -ffast-math
+# OPTFLAGS=-g -O3 -march=pentium4 -mfpmath=sse -msse -ffast-math
+# OPTFLAGS=-g -O3 -march=prescott -mfpmath=sse -msse2 -ffast-math
+# OPTFLAGS=-g -O3 -march=nocona -mfpmath=sse -msse3 -ffast-math
+OPTFLAGS=-g -O3 -march=nocona -mfpmath=sse -msse3 
+# OPTFLAGS=-g -O3 -march=core2 -mfpmath=sse -msse4 -ffast-math
+# OPTFLAGS=-g -O3 -march=core2 -mfpmath=sse -msse4
+# OPTFLAGS=-g -O3 -march=core2 -mfpmath=sse -msse4
+# OPTFLAGS=-g -O3 -march=core2 -mfpmath=sse
 # Other -march flags to try are:
-#       -march=pentium4 - includes MMX, SSE, SSE2, instructions.
-#       -march=prescott - includes MMX, SSE, SSE2, SSE3 instructions + better p4 scheduling
-#       -march=nocona   - includes MMX, SSE, SSE2, SSE3 and 64-bit instructions + better p4 scheduling
+#       -march=pentium4      - includes MMX, SSE, SSE2, instructions.
+#       -march=prescott      - includes MMX, SSE, SSE2, SSE3 instructions + better p4 scheduling
+#       -march=nocona        - includes MMX, SSE, SSE2, SSE3 and 64-bit instructions + better p4 scheduling
+#       -march=core2 -sse4   - uses SSE4
 #
 # Extra optimization flags for some sources that may benefit from them.
 XOPTFLAGS=-funroll-loops -fargument-noalias-global
@@ -93,7 +98,7 @@ World:
 	$(MAKE) depend
 	$(MAKE) all
 
-TAR = /bin/tar
+TAR = /usr/bin/tar
 
 package:  EXCLUDE
 	$(TAR) cvzXf EXCLUDE ../gmtk-`cat RELEASE`.tar.gz .
@@ -101,6 +106,13 @@ package:  EXCLUDE
 # use this to make dated source for myself
 date:  EXCLUDE
 	$(TAR) cvzXf EXCLUDE - . > ../gmtk-`date +%a_%b_%d_%Y_%k:%M | sed -e 's, ,,g'`.tar.gz
+
+# same as date, but does a copy
+BHOST=bilmes@cuba.ee.washington.edu:tmp/.
+hbackup:  EXCLUDE
+	( BFILENAME=../gmtk-`date +%a_%b_%d_%Y_%k:%M | sed -e 's, ,,g'`.tar.gz; \
+	$(TAR) cvzXf EXCLUDE - . > $$BFILENAME; \
+	scp $$BFILENAME $(BHOST); )
 
 # use this to make dated source for others.
 datedist:  EXCLUDEDIST
