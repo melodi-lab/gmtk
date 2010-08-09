@@ -107,7 +107,7 @@ compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
 # Default target(s)
 #----------------------------------------------------------------------------
 
-all_exs = gmtkJT gmtkTime gmtkEMtrainNew gmtkKernel gmtkViterbiNew gmtkTriangulate gmtkParmConvert gmtkTFmerge gmtkDTindex gmtkNGramIndex gmtkTie #gmtkViz
+all_exs = gmtkJT gmtkTime gmtkEMtrainNew gmtkKernel gmtkViterbiNew gmtkViterbi gmtkTriangulate gmtkParmConvert gmtkTFmerge gmtkDTindex gmtkNGramIndex gmtkTie #gmtkViz
 
 all: ${all_exs}
 
@@ -115,8 +115,10 @@ all: ${all_exs}
 # Define the standard library modules
 #----------------------------------------------------------------------------
 
+objs = GMTK_Dense1DPMF.o GMTK_Sparse1DPMF.o GMTK_MeanVector.o GMTK_DiagCovarVector.o GMTK_RealMatrix.o GMTK_DlinkMatrix.o GMTK_DirichletTable.o GMTK_DirichletPrior.o  GMTK_MDCPT.o GMTK_MSCPT.o GMTK_RealArray.o GMTK_CPT.o GMTK_MixtureCommon.o GMTK_Component.o GMTK_GaussianComponent.o GMTK_GMParms.o GMTK_FileParser.o lex.yy.o GMTK_MTCPT.o GMTK_Mixture.o GMTK_DiagGaussian.o GMTK_Dlinks.o GMTK_EMable.o GMTK_LinMeanCondDiagGaussian.o GMTK_LinMeanCondDiagGaussianOpt.o  GMTK_RngDecisionTree.o GMTK_NameCollection.o  GMTK_GMTemplate.o GMTK_JunctionTree.o GMTK_GraphicalModel.o GMTK_MaxClique.o GMTK_BoundaryTriangulate.o GMTK_Timer.o GMTK_Signals.o GMTK_PackCliqueValue.o GMTK_PackCliqueValueOpt.o GMTK_Vocab.o GMTK_NGramCPT.o GMTK_FNGramCPT.o GMTK_RV.o GMTK_ContRV.o GMTK_DiscRV.o GMTK_HidDiscRV.o GMTK_ObsDiscRV.o GMTK_ObsContRV.o  GMTK_ScPnShRV.o GMTK_SwDiscRV.o GMTK_SwRV.o GMTK_Sw_HidDiscRV.o GMTK_Sw_ObsContRV.o GMTK_Sw_ObsDiscRV.o GMTK_VECPT.o GMTK_NetworkFlow.o GMTK_NetworkFlowTriangulate.o GMTK_DiagGaussianOpt.o GMTK_LatticeADT.o GMTK_LatticeNodeCPT.o GMTK_LatticeEdgeCPT.o GMTK_Tie.o tieSupport.o GMTK_RVInfo.o GMTK_GammaComponent.o GMTK_BetaComponent.o GMTK_Partition.o GMTK_JT_Partition.o GMTK_JT_Partition.o GMTK_PartitionTables.o GMTK_PartitionStructures.o GMTK_JunctionTreeMessagePassing.o GMTK_JunctionTreeIslandMessagePassing.o
 
-objs = GMTK_Dense1DPMF.o GMTK_Sparse1DPMF.o GMTK_MeanVector.o GMTK_DiagCovarVector.o GMTK_RealMatrix.o GMTK_DlinkMatrix.o GMTK_DirichletTable.o GMTK_DirichletPrior.o  GMTK_MDCPT.o GMTK_MSCPT.o GMTK_RealArray.o GMTK_CPT.o GMTK_MixtureCommon.o GMTK_Component.o GMTK_GaussianComponent.o GMTK_GMParms.o GMTK_FileParser.o lex.yy.o GMTK_MTCPT.o GMTK_Mixture.o GMTK_DiagGaussian.o GMTK_Dlinks.o GMTK_EMable.o GMTK_LinMeanCondDiagGaussian.o GMTK_LinMeanCondDiagGaussianOpt.o  GMTK_RngDecisionTree.o GMTK_NameCollection.o  GMTK_GMTemplate.o GMTK_JunctionTree.o GMTK_GraphicalModel.o GMTK_MaxClique.o GMTK_BoundaryTriangulate.o GMTK_Timer.o GMTK_Signals.o GMTK_PackCliqueValue.o GMTK_PackCliqueValueOpt.o GMTK_Vocab.o GMTK_NGramCPT.o GMTK_FNGramCPT.o GMTK_RV.o GMTK_ContRV.o GMTK_DiscRV.o GMTK_HidDiscRV.o GMTK_ObsDiscRV.o GMTK_ObsContRV.o  GMTK_ScPnShRV.o GMTK_SwDiscRV.o GMTK_SwRV.o GMTK_Sw_HidDiscRV.o GMTK_Sw_ObsContRV.o GMTK_Sw_ObsDiscRV.o GMTK_VECPT.o GMTK_NetworkFlow.o GMTK_NetworkFlowTriangulate.o GMTK_DiagGaussianOpt.o GMTK_LatticeADT.o GMTK_LatticeNodeCPT.o GMTK_LatticeEdgeCPT.o GMTK_Tie.o tieSupport.o GMTK_RVInfo.o GMTK_GammaComponent.o GMTK_BetaComponent.o
+
+
 
 
 #----------------------------------------------------------------------------
@@ -124,10 +126,13 @@ objs = GMTK_Dense1DPMF.o GMTK_Sparse1DPMF.o GMTK_MeanVector.o GMTK_DiagCovarVect
 #----------------------------------------------------------------------------
 
 
-all_srcs =  GMTK_CPT.cc GMTK_Dlinks.cc GMTK_Dense1DPMF.cc GMTK_DiagCovarVector.cc GMTK_DiagGaussian.cc GMTK_DlinkMatrix.cc GMTK_GMParms.cc GMTK_MDCPT.cc GMTK_MSCPT.cc GMTK_MeanVector.cc GMTK_RealArray.cc GMTK_RealMatrix.cc GMTK_RngDecisionTree.cc GMTK_Sparse1DPMF.cc GMTK_DirichletTable.cc GMTK_DirichletPrior.cc  GMTK_FileParser.cc GMTK_FileTokenizer.lex GMTK_MTCPT.cc GMTK_MixtureCommon.cc GMTK_Component.cc GMTK_GaussianComponent.cc GMTK_Mixture.cc  gmtkEMtrainNew.cc gmtkKernel.cc GMTK_EMable.cc  gmtkViterbiNew.cc GMTK_LinMeanCondDiagGaussian.cc GMTK_LinMeanCondDiagGaussianOpt.cc GMTK_NameCollection.cc GMTK_GraphicalModel.cc gmtkParmConvert.cc GMTK_GMTemplate.cc GMTK_JunctionTree.cc gmtkTriangulate.cc gmtkTFmerge.cc gmtkJT.cc gmtkTime.cc GMTK_MaxClique.cc GMTK_BoundaryTriangulate.cc GMTK_Timer.cc GMTK_Signals.cc gmtkDTindex.cc GMTK_PackCliqueValue.cc GMTK_PackCliqueValueOpt.cc GMTK_Vocab.cc GMTK_NGramCPT.cc GMTK_FNGramCPT.cc gmtkNGramIndex.cc GMTK_RV.cc GMTK_ContRV.cc GMTK_DiscRV.cc GMTK_HidDiscRV.cc GMTK_ObsContRV.cc GMTK_ObsDiscRV.cc GMTK_ScPnShRV.cc GMTK_ScPnSh_HidDiscRV.cc GMTK_SwDiscRV.cc GMTK_SwRV.cc GMTK_Sw_HidDiscRV.cc GMTK_Sw_ObsContRV.cc GMTK_Sw_ObsDiscRV.cc GMTK_VECPT.cc  GMTK_NetworkFlow.cc GMTK_NetworkFlowTriangulate.cc GMTK_DiagGaussianOpt.cc GMTK_LatticeADT.cc GMTK_LatticeNodeCPT.cc GMTK_LatticeEdgeCPT.cc gmtkTie.cc GMTK_Tie.cc tieSupport.cc GMTK_GammaComponent.cc GMTK_BetaComponent.cc  # gmtkUnroll.cc GMTK_RVInfo.cc gmtkViz.cc 
+all_srcs =  GMTK_CPT.cc GMTK_Dlinks.cc GMTK_Dense1DPMF.cc GMTK_DiagCovarVector.cc GMTK_DiagGaussian.cc GMTK_DlinkMatrix.cc GMTK_GMParms.cc GMTK_MDCPT.cc GMTK_MSCPT.cc GMTK_MeanVector.cc GMTK_RealArray.cc GMTK_RealMatrix.cc GMTK_RngDecisionTree.cc GMTK_Sparse1DPMF.cc GMTK_DirichletTable.cc GMTK_DirichletPrior.cc  GMTK_FileParser.cc GMTK_FileTokenizer.lex GMTK_MTCPT.cc GMTK_MixtureCommon.cc GMTK_Component.cc GMTK_GaussianComponent.cc GMTK_Mixture.cc  gmtkEMtrainNew.cc gmtkKernel.cc GMTK_EMable.cc  gmtkViterbiNew.cc gmtkViterbi.cc GMTK_LinMeanCondDiagGaussian.cc GMTK_LinMeanCondDiagGaussianOpt.cc GMTK_NameCollection.cc GMTK_GraphicalModel.cc gmtkParmConvert.cc GMTK_GMTemplate.cc GMTK_JunctionTree.cc gmtkTriangulate.cc gmtkTFmerge.cc gmtkJT.cc gmtkTime.cc GMTK_MaxClique.cc GMTK_BoundaryTriangulate.cc GMTK_Timer.cc GMTK_Signals.cc gmtkDTindex.cc GMTK_PackCliqueValue.cc GMTK_PackCliqueValueOpt.cc GMTK_Vocab.cc GMTK_NGramCPT.cc GMTK_FNGramCPT.cc gmtkNGramIndex.cc GMTK_RV.cc GMTK_ContRV.cc GMTK_DiscRV.cc GMTK_HidDiscRV.cc GMTK_ObsContRV.cc GMTK_ObsDiscRV.cc GMTK_ScPnShRV.cc GMTK_ScPnSh_HidDiscRV.cc GMTK_SwDiscRV.cc GMTK_SwRV.cc GMTK_Sw_HidDiscRV.cc GMTK_Sw_ObsContRV.cc GMTK_Sw_ObsDiscRV.cc GMTK_VECPT.cc  GMTK_NetworkFlow.cc GMTK_NetworkFlowTriangulate.cc GMTK_DiagGaussianOpt.cc GMTK_LatticeADT.cc GMTK_LatticeNodeCPT.cc GMTK_LatticeEdgeCPT.cc gmtkTie.cc GMTK_Tie.cc tieSupport.cc GMTK_GammaComponent.cc GMTK_BetaComponent.cc GMTK_Partition.cc GMTK_JT_Partition.cc GMTK_PartitionTables.cc GMTK_PartitionStructures.cc GMTK_JunctionTreeMessagePassing.cc GMTK_JunctionTreeIslandMessagePassing.cc
+# gmtkUnroll.cc GMTK_RVInfo.cc gmtkViz.cc 
 
 
-all_hdrs = GMTK_CPT.h GMTK_Constants.h GMTK_Dlinks.h GMTK_Dense1DPMF.h GMTK_DiagCovarVector.h GMTK_DiagGaussian.h GMTK_DiscreteRandomVariable.h GMTK_ContinuousRandomVariable.h GMTK_DlinkMatrix.h GMTK_EMable.h  GMTK_GMParms.h GMTK_MDCPT.h GMTK_MSCPT.h GMTK_MeanVector.h GMTK_RandomVariable.h GMTK_RealArray.h GMTK_RealMatrix.h GMTK_RngDecisionTree.h GMTK_Sparse1DPMF.h GMTK_DirichletTable.h GMTK_DirichletPrior.h  GMTK_FileParser.h GMTK_NamedObject.h GMTK_MTCPT.h GMTK_MixtureCommon.h GMTK_Component.h GMTK_GaussianComponent.h GMTK_Mixture.h GMTK_LinMeanCondDiagGaussian.h GMTK_ProgramDefaultParms.h  GMTK_NameCollection.h GMTK_GMTemplate.h GMTK_JunctionTree.h GMTK_GraphicalModel.h GMTK_ZeroScoreMixture.h GMTK_UnityScoreMixture.h GMTK_USCPT.h GMTK_RVInfo.h GMTK_FactorInfo.h GMTK_BoundaryTriangulate.h GMTK_MaxClique.h GMTK_Timer.h GMTK_Signals.h version.h GMTK_PackCliqueValue.h GMTK_SpaceManager.h GMTK_Vocab.h GMTK_NGramCPT.h GMTK_FNGramCPT.h GMTK_ContRV.h GMTK_DiscRV.h GMTK_HidDiscRV.h GMTK_ObsContRV.h GMTK_ObsDiscRV.h GMTK_RV.h GMTK_ScPnShRV.h GMTK_ScPnSh_HidDiscRV.h GMTK_ScPnSh_ObsContRV.h GMTK_ScPnSh_ObsDiscRV.h GMTK_ScPnSh_Sw_HidDiscRV.h GMTK_ScPnSh_Sw_ObsDiscRV.h GMTK_SimpleDiscreteRV.h GMTK_SwContRV.h GMTK_SwDiscRV.h GMTK_SwRV.h GMTK_Sw_HidDiscRV.h GMTK_Sw_ObsContRV.h GMTK_Sw_ObsDiscRV.h GMTK_VECPT.h GMTK_NetworkFlow.h GMTK_NetworkFlowTriangulate.h GMTK_LatticeADT.h GMTK_LatticeNodeCPT.h GMTK_LatticeEdgeCPT.h GMTK_Tie.h tieSupport.h GMTK_GammaComponent.h GMTK_BetaComponent.h
+
+all_hdrs = GMTK_CPT.h GMTK_Constants.h GMTK_Dlinks.h GMTK_Dense1DPMF.h GMTK_DiagCovarVector.h GMTK_DiagGaussian.h GMTK_DiscreteRandomVariable.h GMTK_ContinuousRandomVariable.h GMTK_DlinkMatrix.h GMTK_EMable.h  GMTK_GMParms.h GMTK_MDCPT.h GMTK_MSCPT.h GMTK_MeanVector.h GMTK_RandomVariable.h GMTK_RealArray.h GMTK_RealMatrix.h GMTK_RngDecisionTree.h GMTK_Sparse1DPMF.h GMTK_DirichletTable.h GMTK_DirichletPrior.h  GMTK_FileParser.h GMTK_NamedObject.h GMTK_MTCPT.h GMTK_MixtureCommon.h GMTK_Component.h GMTK_GaussianComponent.h GMTK_Mixture.h GMTK_LinMeanCondDiagGaussian.h GMTK_ProgramDefaultParms.h  GMTK_NameCollection.h GMTK_GMTemplate.h GMTK_JunctionTree.h GMTK_GraphicalModel.h GMTK_ZeroScoreMixture.h GMTK_UnityScoreMixture.h GMTK_USCPT.h GMTK_RVInfo.h GMTK_FactorInfo.h GMTK_BoundaryTriangulate.h GMTK_MaxClique.h GMTK_Timer.h GMTK_Signals.h version.h GMTK_PackCliqueValue.h GMTK_SpaceManager.h GMTK_Vocab.h GMTK_NGramCPT.h GMTK_FNGramCPT.h GMTK_ContRV.h GMTK_DiscRV.h GMTK_HidDiscRV.h GMTK_ObsContRV.h GMTK_ObsDiscRV.h GMTK_RV.h GMTK_ScPnShRV.h GMTK_ScPnSh_HidDiscRV.h GMTK_ScPnSh_ObsContRV.h GMTK_ScPnSh_ObsDiscRV.h GMTK_ScPnSh_Sw_HidDiscRV.h GMTK_ScPnSh_Sw_ObsDiscRV.h GMTK_SimpleDiscreteRV.h GMTK_SwContRV.h GMTK_SwDiscRV.h GMTK_SwRV.h GMTK_Sw_HidDiscRV.h GMTK_Sw_ObsContRV.h GMTK_Sw_ObsDiscRV.h GMTK_VECPT.h GMTK_NetworkFlow.h GMTK_NetworkFlowTriangulate.h GMTK_LatticeADT.h GMTK_LatticeNodeCPT.h GMTK_LatticeEdgeCPT.h GMTK_Tie.h tieSupport.h GMTK_GammaComponent.h GMTK_BetaComponent.h GMTK_Partition.h GMTK_JT_Partition.h GMTK_PartitionTables.h GMTK_PartitionStructures.h
+
 
 
 all_objs = $(objs)
@@ -199,6 +204,11 @@ gmtkTFmerge: gmtkTFmerge.o libGMTK.a ../miscSupport/libmiscSupport.a .NOEXPORT
 gmtkViterbiNew: gmtkViterbiNew.o libGMTK.a ../miscSupport/libmiscSupport.a .NOEXPORT
 	-@rm -f $@
 	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkViterbiNew.o $(LIBS)
+
+gmtkViterbi: gmtkViterbi.o libGMTK.a ../miscSupport/libmiscSupport.a .NOEXPORT
+	-@rm -f $@
+	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkViterbi.o $(LIBS)
+
 
 gmtkViterbiNew3: gmtkViterbiNew3.o libGMTK.a ../miscSupport/libmiscSupport.a .NOEXPORT
 	-@rm -f $@
@@ -280,6 +290,9 @@ install: $(all_exs)
 	(for i in $(all_exs); do $(INSTALL_EXE) $$i $(install_prefix)/bin/$$i; done)
 
 installd: $(all_exs)
+	(STR=`date +%a_%b_%d_%Y_%k:%M | sed -e 's, ,,g'`; echo Installing with postfix $$STR; for i in $(all_exs); do $(INSTALL_EXE) $$i $(install_prefix)/bin/$$i.$$STR; strip $(install_prefix)/bin/$$i.$$STR; done)
+
+installbackexs:
 	(STR=`date +%a_%b_%d_%Y_%k:%M | sed -e 's, ,,g'`; echo Installing with postfix $$STR; for i in $(all_exs); do $(INSTALL_EXE) $$i $(install_prefix)/bin/$$i.$$STR; strip $(install_prefix)/bin/$$i.$$STR; done)
 
 uninstall:

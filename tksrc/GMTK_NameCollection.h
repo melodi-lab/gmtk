@@ -42,6 +42,9 @@ class Sparse1DPMF;
 class NameCollection : public NamedObject  {
 
   friend class GMParms;
+  friend class RV;
+  friend class DiscRV;
+  friend class FileParser;
 
   // Possible instantiations of this class
   // 0) just table is allocated

@@ -793,7 +793,8 @@ LinMeanCondDiagGaussian::emEndIterationNoSharing()
     // Store the next means in xAccumulators and
     // store the dlinks in xzAccumulators.
 
-    // now copy it and means over.
+    // now copy it and means over. Note, this could potentially call
+    // overflow here since we are converting from doubles to floats.
     nextDlinkMat_p = nextDlinkMat.ptr;
     xzAccumulators_p = xzAccumulators.ptr;
     for (int feat=0;feat<mean->dim();feat++) {

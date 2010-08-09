@@ -233,6 +233,13 @@ Mixture::log_p(const unsigned frameIndex,
 {
   assert ( basicAllocatedBitIsSet() );
 
+  /*
+  fprintf(stderr,"Calling mixture_log_p with this = 0x%X, frameindex = %d, and firstFeatureElement = %d\n",
+	  this,
+	  frameIndex,
+	  firstFeatureElement);
+  */
+
   // we assume that frameIndex exists since we unroll the graph with respect to
   // the global observation matrix.
   const float *const x = globalObservationMatrix.floatVecAtFrame(frameIndex,firstFeatureElement);
@@ -470,7 +477,21 @@ Mixture::emIncrement(logpr prob,
   const Data32* const base = globalObservationMatrix.baseAtFrame(frameIndex);
   const int stride = globalObservationMatrix.stride();
 
+  /*
+  fprintf(stderr,"Calling emIncrement with this = 0x%X, frameindex = %d, and firstFeatureElement = %d, and prob=%f\n",
+	  this,
+	  frameIndex,
+	  firstFeatureElement,
+	  prob.valref());
+  */
+
   if (cacheMixtureProbabilities) {
+    // note, we should not have to check that we've got the right size, since it
+    // should be the case that if we are here in EM, with non-zero probability,
+    // the mixture and component scores should have been computed already.
+    // If this were not true, there would be a problem.
+    assert( componentCache.ptr[frameIndex].cmpProbArray.size() == numComponents );
+
     logpr tmp = prob/componentCache.ptr[frameIndex].prob;
     // we never do EM training caching the mixture prob but not
     // caching the component probabilities.

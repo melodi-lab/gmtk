@@ -788,6 +788,109 @@ MeanVector::emEndIterationNoSharing(const float*const partialAccumulatedNextMean
 
 
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ *  emEndIterationNoSharingElementProbabilities()
+ *      end the EM iteration for this mean object, where we have no
+ *      sharing. Also, this version takes another argument that is an
+ *      array of probabilities accumulated for each individual element of the mean.
+ * 
+ * Preconditions:
+ *      basic structures must be allocated, EM must be ongoing.
+ *
+ * Postconditions:
+ *      em iteration is ended.
+ *
+ * Side Effects:
+ *      possibly updates all next parameters
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+MeanVector::emEndIterationNoSharingElementProbabilities(const float*const partialAccumulatedNextMeans,
+							const logpr *const elementAccumulatedProbabilities)
+{
+  assert ( basicAllocatedBitIsSet() );
+
+  // we return if both 1) the not training bit is set
+  // and 2) there is no chance that this object will be shared.
+  // If 1) is not true, we are training this object so we continue,
+  // and if 2) is not true (we are sharing), then the accumulaters
+  // created for this object will be needed by the other objects 
+  // in this object's Gaussian component, so we'll need to compute them,
+  // even though the parameters of this object will not be updated
+  // when we swap them in.
+  // if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+  // return;
+
+  // if this isn't the case, something is wrong.
+  assert ( emOnGoingBitIsSet() );
+
+  // shouldn't be called when sharing occurs.
+  assert ( refCount == 1 );
+  assert (!emSharedBitIsSet());
+
+
+  if (!emAccInitializedBitIsSet()) {
+    // make sure next-means are set up
+    nextMeans.growIfNeeded(means.len());
+    for (int i=0;i<means.len();i++) {
+      nextMeans[i] = 0.0;
+    }
+    emSetAccInitializedBit();
+  }
+  
+  refCount = 0;
+
+  // the assumption here is that the objects accumulatd probability is an upper
+  // bound on the element-wise accumulated probabilities. I.e., we should
+  // have that:
+  //
+  //      accumulatedProbability >= elementAccumulatedProbabilities[i] \forall i
+  //
+  // therefore we can use accumulatedProbability as a floor detection.
+  accumulatedProbability.floor();
+  if (accumulatedProbability < minContAccumulatedProbability()) {
+    infoMsg(IM::Warning,"WARNING: Mean vec '%s' received only %e accumulated log probability (min is %e) in EM iteration, using previous means",name().c_str(),
+	    accumulatedProbability.val(),
+	    minContAccumulatedProbability().val());
+    for (int i=0;i<nextMeans.len();i++)
+      nextMeans[i] = means[i];
+  } else {
+    // finish computing the next means.
+    for (int i=0;i<means.len();i++) {
+      logpr locAccumulatedProb =  elementAccumulatedProbabilities[i];
+      locAccumulatedProb.floor();
+      if (locAccumulatedProb < minContAccumulatedProbability()) {
+	infoMsg(IM::SoftWarning,"WARNING: Mean vec '%s' element #%d received only %e accumulated log probability (min is %e) in EM iteration, using previous mean for this element",
+		name().c_str(),
+		i,
+		locAccumulatedProb.val(),
+		minContAccumulatedProbability().val());
+	nextMeans[i]  = means[i];
+      } else {
+	const double invRealAccumulatedProbability =
+	  locAccumulatedProb.inverse().unlog();
+	nextMeans[i] = partialAccumulatedNextMeans[i]*invRealAccumulatedProbability;
+      }
+    }
+  }
+
+  // make it swapable
+  emSetSwappableBit();
+
+  // stop EM
+  emClearOnGoingBit();
+}
+
+
+
+
 /*-
  *-----------------------------------------------------------------------
  * emEndIterationNoSharingAlreadyNormalized()

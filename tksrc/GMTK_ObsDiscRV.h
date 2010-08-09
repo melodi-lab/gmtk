@@ -93,5 +93,7 @@ public:
 
 };
 
+void setObservedRVs(vector <RV*>& rvs);
+void setObservedRVs(set <RV*>& rvs);
 
 #endif

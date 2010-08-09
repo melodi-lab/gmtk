@@ -112,11 +112,9 @@ PackCliqueValue::hamming_entry_distance(const unsigned *const packed_vec1,
   {
     do {
       register unsigned res1 =
-	(packed_vec1[vl_p->start] & vl_p->startMask)
-	>> vl_p->startRightShift;
+	(packed_vec1[vl_p->start] & vl_p->startMask);
       register unsigned res2 =
-	(packed_vec2[vl_p->start] & vl_p->startMask)
-	>> vl_p->startRightShift;
+	(packed_vec2[vl_p->start] & vl_p->startMask);
       vl_p++;
 
       dist += (res1 != res2);
@@ -126,6 +124,8 @@ PackCliqueValue::hamming_entry_distance(const unsigned *const packed_vec1,
   // next the ones that do span a word boundary
   {
     while (vl_p != vl_endp) {
+
+      /*
       register unsigned res1 =
 	(packed_vec1[vl_p->start] & vl_p->startMask)
 	>> vl_p->startRightShift;
@@ -139,6 +139,17 @@ PackCliqueValue::hamming_entry_distance(const unsigned *const packed_vec1,
       res2 |=
 	((packed_vec2[vl_p->start+1] & vl_p->nextMask) <<
 	 vl_p->nextLeftShift);
+      */
+
+      register unsigned res1 =
+	(packed_vec1[vl_p->start] & vl_p->startMask);
+      res1 |=
+	(packed_vec1[vl_p->start+1] & vl_p->nextMask);
+
+      register unsigned res2 =
+	 (packed_vec2[vl_p->start] & vl_p->startMask);
+      res2 |=
+	 (packed_vec2[vl_p->start+1] & vl_p->nextMask);
 
       dist += (res1 != res2);
 
@@ -163,19 +174,26 @@ PackCliqueValue::hamming_weighted_entry_distance(const unsigned *const packed_ve
   // that do not span a word boundary
   {
     do {
-      // we don't need to right shift since we are only testing equality below
+      // first, get the values into registers
       register unsigned res1 =
 	(packed_vec1[vl_p->start] & vl_p->startMask);
       register unsigned res2 =
 	(packed_vec2[vl_p->start] & vl_p->startMask);
+      // we don't need to right shift since we are only testing
+      // equality below.
+
       vl_p++;
 
       // dist += (res1 != res2)*valBits[i];
       if (res1 != res2) {
 	// BP will predict that forward branch will not be taken, or condition is true.
-	// It is more common that res1 will not equal res2.
+	// It is probably more common that res1 will not equal res2, but it
+	// really depends on the data.
 	dist += (*valBits_p);
       } 
+      
+      // TODO: see if there is some way of speeding this up.
+
 
       valBits_p++;
     } while (vl_p != vl_nwb_endp);

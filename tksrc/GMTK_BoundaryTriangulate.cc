@@ -1045,7 +1045,7 @@ BoundaryTriangulate
   //      1) C' has S C-chunks, 
   //      2) E' contains an E and an extra M C-chunks. 
   // The reason for the extra M C-chunks in E' is that the
-  // boundary may span M chunks into E.
+  // boundary may span M chunks into E'.
   // 
   // Note also that it is only in the M=1,S=1 case above can we
   // recover the basic template P,C,E by using P'E' (i.e., not using
@@ -1073,7 +1073,12 @@ BoundaryTriangulate
   for (unsigned i=0;i<unroll1_rvs.size();i++) {
     unroll1_rvs[i]->createNeighborsFromParentsChildren();
   }
-  // add edges from any extra factors in .str file
+  // Add edges from any extra factors in .str file. Note
+  // we add them here so that the resulting clique struture has
+  // these edges, but as of 1/2009 the edges from these cliques
+  // are not added vai the unroll process (they need not be as
+  // long as the inference code respects the resulting JT implied
+  // by the given triangulation)
   fp.addUndirectedFactorEdges(M+S-1,unroll1_rvs,unroll1_pos);
   for (unsigned i=0;i<unroll1_rvs.size();i++) {
     unroll1_rvs[i]->moralize();

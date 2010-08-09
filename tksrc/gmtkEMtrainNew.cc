@@ -107,6 +107,7 @@ VCID("$Header$")
 
 /****************************         INFERENCE OPTIONS           ***********************************************/
 #define GMTK_ARG_ISLAND
+#define GMTK_ARG_CLIQUE_TABLE_NORMALIZE
 #define GMTK_ARG_CE_SEP_DRIVEN
 #define GMTK_ARG_COMPONENT_CACHE
 #define GMTK_ARG_CLIQUE_VAR_ITER_ORDERS
@@ -149,7 +150,7 @@ int
 main(int argc,char*argv[])
 {{ // use double so that we can destruct objects at end.
 
-    printf("EMable::minIncrementProbabilty.v = %f,lfm=%f\n",EMable::minIncrementProbabilty.val(),log_FLT_MIN);
+  // printf("EMable::minIncrementProbabilty.v = %f,lfm=%f\n",EMable::minIncrementProbabilty.val(),log_FLT_MIN);
 
   ////////////////////////////////////////////
   // set things up so that if an FP exception
@@ -376,8 +377,9 @@ main(int argc,char*argv[])
   }
 
   double llDiffPerc = 100.0;
-
-  for (unsigned i=0; i<maxEMIterations; i++)  {
+  
+  unsigned i=0;
+  for (; i<maxEMIterations; i++)  {
 
     unsigned total_num_frames = 0;
 
@@ -401,10 +403,6 @@ main(int argc,char*argv[])
 
 
 	if (island) {
-	  if (MixtureCommon::cacheMixtureProbabilities == true) {
-	    infoMsg(IM::Default,"NOTE: with island algorithm, might want to also try turning off Gaussian component caching with '-componentCache F'\n"); 
-	    fflush(stdout);
-	  }
 	  unsigned numUsableFrames;
 	  myjt.collectDistributeIsland(numFrames,
 				       numUsableFrames,
@@ -454,9 +452,11 @@ main(int argc,char*argv[])
 	}
 	(*trrng_it)++;
       }
-      infoMsg(IM::Default,"Total data log prob from %d frames processed is: %1.9e\n",
+      infoMsg(IM::Default,"EMIter%d: Total data log prob from %d frames processed is: %1.9e\n",
+	      i,
 	      total_num_frames,total_data_prob.val());
     }
+
 
     if (storeAccFile != NULL) {
       // just store the accumulators and exit.
@@ -516,6 +516,9 @@ main(int argc,char*argv[])
       break;
     }
   }
+  if (i == maxEMIterations) {
+    printf("Maximum number of EM iterations reached (%d). Stopping\n",maxEMIterations);
+  }
 
   /////////////////////////////////////////////////////////
   // finally, write out the final basic parameters
@@ -538,7 +541,7 @@ main(int argc,char*argv[])
   }
 
 
-} // close brace to cause a destruct on valid end of program.
+} // close brace to cause a destruct on valid end of program before print message.
  exit_program_with_status(0); 
 }
 

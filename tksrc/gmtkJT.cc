@@ -110,6 +110,7 @@ VCID("$Header$")
 #define GMTK_ARG_DO_DIST_EVIDENCE
 #define GMTK_ARG_PROB_EVIDENCE
 #define GMTK_ARG_ISLAND
+#define GMTK_ARG_CLIQUE_TABLE_NORMALIZE
 #define GMTK_ARG_CE_SEP_DRIVEN
 #define GMTK_ARG_MIXTURE_CACHE
 #define GMTK_ARG_VITERBI_SCORE
@@ -124,12 +125,17 @@ VCID("$Header$")
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_DEFINITION
 
+static unsigned boostVerbosity=0;
+const static char *boostVerbosityRng=NULL;
+
 Arg Arg::Args[] = {
 
 #define GMTK_ARGUMENTS_DOCUMENTATION
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_DOCUMENTATION
 
+  Arg("boostVerbosity",Arg::Opt,boostVerbosity,"Verbosity (0 <= v <= 100) during boost verb partitions"),
+  Arg("boostRng",Arg::Opt,boostVerbosityRng,"Range to boost verbosity"),
 
   // final one to signal the end of the list
   Arg()
@@ -178,6 +184,7 @@ main(int argc,char*argv[])
 
 
   infoMsg(IM::Max,"Opening Files ...\n");
+
   globalObservationMatrix.openFiles(nfiles,
 				    (const char**)&ofs,
 				    (const char**)&frs,
@@ -221,6 +228,7 @@ main(int argc,char*argv[])
     infoMsg(IM::Max,"Finished reading trainable file.\n");
   }
   GM_Parms.finalizeParameters();
+
 
   /////////////////////////////
   // read in the structure of the GM, this will
@@ -347,12 +355,6 @@ main(int argc,char*argv[])
   struct rusage rue; /* ending time */
   getrusage(RUSAGE_SELF,&rus);
 
-  if (island) {
-    if (MixtureCommon::cacheMixtureProbabilities == true) {
-      infoMsg(IM::Default,"NOTE: with island algorithm, might want to also try turning off Gaussian component caching with '-componentCache F'\n"); 
-      fflush(stdout);
-    }
-  }
 
   Range::iterator* dcdrng_it = new Range::iterator(dcdrng->begin());
   while (!dcdrng_it->at_end()) {
@@ -362,11 +364,22 @@ main(int argc,char*argv[])
 	    globalObservationMatrix.numSegments(),
 	    0,globalObservationMatrix.numSegments()-1);
 
+    infoMsg(IM::Max,"Loading segment %d ...\n",segment);
     const unsigned numFrames = GM_Parms.setSegment(segment);
+    infoMsg(IM::Max,"Finished loading segment %d with %d frames.\n",segment,numFrames);
+
 
     if (probE) {
       unsigned numUsableFrames;
-      logpr probe = myjt.probEvidence(numFrames,numUsableFrames);
+      
+      // Range* bvrng = NULL;
+      // if (boostVerbosityRng != NULL)
+      // bvrng = new Range(bvrng,0,globalObservationMatrix.numSegments());
+
+      // logpr probe = myjt.probEvidence(numFrames,numUsableFrames,bvrng,boostVerbosity);
+
+      infoMsg(IM::Max,"Beginning call to probability of evidence.\n");
+      logpr probe = myjt.probEvidenceFixedUnroll(numFrames,&numUsableFrames);
       printf("Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
 	     segment,
 	     probe.val(),
@@ -374,12 +387,22 @@ main(int argc,char*argv[])
 	     probe.val()/numUsableFrames);
     } else if (island) {
       unsigned numUsableFrames;
-      myjt.collectDistributeIsland(numFrames,
-				   numUsableFrames,
-				   base,
-				   lst);
+
+      infoMsg(IM::Max,"Beginning call to island collect/distribute evidence.\n");
+      logpr probe = myjt.collectDistributeIsland(numFrames,
+						 numUsableFrames,
+						 base,
+						 lst);
+
+      printf("Segment %d, after island Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+	     segment,
+	     probe.val(),
+	     probe.val()/numFrames,
+	     probe.val()/numUsableFrames);
 
     } else {
+
+      infoMsg(IM::Max,"Beginning call to unroll\n");
       unsigned numUsableFrames = myjt.unroll(numFrames);
       infoMsg(IM::Low,"Collecting Evidence\n");
       myjt.collectEvidence();
@@ -425,3 +448,4 @@ main(int argc,char*argv[])
 } // close brace to cause a destruct on valid end of program.
  exit_program_with_status(0); 
 }
+

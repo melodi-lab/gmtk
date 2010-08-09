@@ -35,7 +35,7 @@ VCID("$Header$")
 
 
 #include "GMTK_RV.h"
-
+#include "GMTK_ObsDiscRV.h"
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -44,8 +44,14 @@ VCID("$Header$")
 ////////////////////////////////////////////////////////////////////
 
 
+// TODO: at this point, this variable's real value is onl
+// known to the triangulation program, not once inference is known.
+// It would be useful to know what this variable was set to during
+// triangulation in the main inference routine.
 bool RV::disconnectChildrenOfObservedParents = true;
 
+// print options
+bool RV::alwaysPrintIntegerRVValues = false;
 
 /*-
  *-----------------------------------------------------------------------
@@ -170,6 +176,43 @@ void RV::createNeighborsFromParentsChildren()
   assert ( neighbors.find(this) == neighbors.end() );
 }
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * observedParents();
+ *      returns any parents that are
+ *           1) observed
+ *           2) are not connected in the undirected graph due
+ *              to disconnectChildrenOfObservedParents being true.
+ *
+ *
+ * Preconditions:
+ *      all parents and all children member variables must already
+ *      be initialized with a valid graph.
+ *
+ * Postconditions:
+ *      none (return value is returned)
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      any disconnected observed parents
+ *
+ *-----------------------------------------------------------------------
+ */
+
+set <RV*> RV::observedParents()
+{
+  set <RV*> rc;
+  for (unsigned i=0;i<allParents.size();i++) {
+    if (allParents[i]->observed()) {
+      rc.insert(allParents[i]);
+    }
+  }
+  return rc;
+}
 
 
 
@@ -353,6 +396,20 @@ void RV::setParents(vector<RV *> &sparents,vector<vector<RV *> > &cpl)
 }
 
 
+#define DO_IF_REGEX_MATCH(preg,rv,pcommand)		\
+    if (preg) { \
+      if (!regexec(preg,rv->name().c_str(),0,0,0)) { \
+        if (!first) \
+          fprintf(f,","); \
+	pcommand; \
+	first = false; \
+      } \
+    } else { \
+        if (!first) \
+          fprintf(f,","); \
+	pcommand; \
+	first = false; \
+    }
 
 
 /*-
@@ -374,81 +431,64 @@ void RV::setParents(vector<RV *> &sparents,vector<vector<RV *> > &cpl)
  *
  *-----------------------------------------------------------------------
  */
-void printRVSetAndValues(FILE*f,vector<RV*>& locset,const bool nl) 
+void printRVSetAndValues(FILE*f,vector<RV*>& locset,const bool nl,regex_t* preg)
 {
   bool first = true;
   for (unsigned i=0;i<locset.size();i++) {
     RV* rv = locset[i];
-    if (!first)
-      fprintf(f,",");
-    rv->printNameFrameValue(f,false);
-    first = false;
+    DO_IF_REGEX_MATCH(preg,rv,rv->printNameFrameValue(f,false));
   }
   if (nl) fprintf(f,"\n");
 }
-void printRVSetAndValues(FILE*f,sArray<RV*>& locset,const bool nl) 
+void printRVSetAndValues(FILE*f,sArray<RV*>& locset,const bool nl,regex_t* preg)
 {
   bool first = true;
   for (unsigned i=0;i<locset.size();i++) {
     RV* rv = locset[i];
-    if (!first)
-      fprintf(f,",");
-    rv->printNameFrameValue(f,false);
-    first = false;
+
+    DO_IF_REGEX_MATCH(preg,rv,rv->printNameFrameValue(f,false));
   }
   if (nl) fprintf(f,"\n");
 }
-void printRVSetAndValues(FILE*f,set<RV*>& locset,bool nl)
+void printRVSetAndValues(FILE*f,set<RV*>& locset,bool nl,regex_t* preg)
 {
   bool first = true;
   set<RV*>::iterator it;
   for (it = locset.begin();
        it != locset.end();it++) {
     RV* rv = (*it);
-    if (!first)
-      fprintf(f,",");
-    rv->printNameFrameValue(f,false);
-    first = false;
+    DO_IF_REGEX_MATCH(preg,rv,rv->printNameFrameValue(f,false));
   }
   if (nl) fprintf(f,"\n");
 }
 
 
-void printRVSet(FILE*f,vector<RV*>& locset,const bool nl) 
+void printRVSet(FILE*f,vector<RV*>& locset,const bool nl,regex_t* preg)
 {
   bool first = true;
   for (unsigned i=0;i<locset.size();i++) {
     RV* rv = locset[i];
-    if (!first)
-      fprintf(f,",");
-    rv->printNameFrame(f,false);
-    first = false;
+    DO_IF_REGEX_MATCH(preg,rv,rv->printNameFrame(f,false));
   }
   if (nl) fprintf(f,"\n");
 }
-void printRVSet(FILE*f,sArray<RV*>& locset,const bool nl) 
+void printRVSet(FILE*f,sArray<RV*>& locset,const bool nl,regex_t* preg)
 {
   bool first = true;
   for (unsigned i=0;i<locset.size();i++) {
     RV* rv = locset[i];
-    if (!first)
-      fprintf(f,",");
-    rv->printNameFrame(f,false);
-    first = false;
+    DO_IF_REGEX_MATCH(preg,rv,rv->printNameFrame(f,false));
   }
   if (nl) fprintf(f,"\n");
 }
-void printRVSet(FILE*f,const set<RV*>& locset,bool nl)
+void printRVSet(FILE*f,const set<RV*>& locset,bool nl,regex_t* preg)
 {
   bool first = true;
   set<RV*>::iterator it;
   for (it = locset.begin();
        it != locset.end();it++) {
     RV* rv = (*it);
-    if (!first)
-      fprintf(f,",");
-    rv->printNameFrame(f,false);
-    first = false;
+    DO_IF_REGEX_MATCH(preg,rv,rv->printNameFrame(f,false));
   }
   if (nl) fprintf(f,"\n");
 }
@@ -456,17 +496,15 @@ void printRVSet(FILE*f,const set<RV*>& locset,bool nl)
 
 
 void
-printRVSetPtr(FILE*f,set<RV*>& locset,bool nl)
+printRVSetPtr(FILE*f,set<RV*>& locset,bool nl,regex_t* preg)
 {
   bool first = true;
   set<RV*>::iterator it;
   for (it = locset.begin();
        it != locset.end();it++) {
     RV* rv = (*it);
-    if (!first)
-      fprintf(f,",");
-    fprintf(f,"%s(%d)=0x%lX",rv->name().c_str(),rv->frame(),(unsigned long)rv);
-    first = false;
+    DO_IF_REGEX_MATCH(preg,rv,
+		      fprintf(f,"%s(%d)=0x%lX",rv->name().c_str(),rv->frame(),(unsigned long)rv));
   }
   if (nl) fprintf(f,"\n");
 }
@@ -489,6 +527,23 @@ unionRVs(const set<RV*>& A,
 	    B.begin(),B.end(),
 	    inserter(C,C.end()));
 }
+
+
+#if 0
+currently unfinished
+set <RV*> filterRVSet(const set<RV*>& inputSet,regex_t* filter)
+{
+  set <RV*> res;
+  set<RV*>::iterator it;
+  for (it = inputSet.begin();
+       it != inputSet.end();it++) {
+    RV* rv = (*it);
+    DO_IF_REGEX_MATCH(preg,rv,rv->printNameFrame(f,false));
+  }
+  return res;
+}
+#endif
+
 
 
 /*
@@ -691,6 +746,21 @@ bool firstRVSetContainedInSecond(set <RV*>& firstSet,
 
 }
 
-
+void adjustFramesBy(set <RV*>& rvs,
+		    int adjustment,
+		    bool resetObservedValues)
+{
+  if (adjustment == 0)
+    return;
+  set <RV*>::iterator it;
+  for (it = rvs.begin(); it != rvs.end(); it++ ) {
+    RV* rv = (*it);
+    assert ( rv->frame() + adjustment >= 0 );
+    rv->adjustFrameBy(adjustment);
+  }
+  // observed values are now invalid, so reset them.
+  if (resetObservedValues)
+    setObservedRVs(rvs);
+}
 
 

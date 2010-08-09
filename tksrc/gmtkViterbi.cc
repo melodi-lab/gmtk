@@ -1,6 +1,29 @@
 /*
- * gmtkJT.cc
- * produce a junction tree
+ * gmtkViterbi.cc
+ *
+ * A GMTK program for various Viterbi decoding options. I.e., this program can:
+ *
+ *   1) Write out all the k-best random variable values corresponding
+ *      to all (or a subset of) the hidden variables in a graph, and
+ *      do this for a number of segments.
+ *
+ *   2) Do a compressed viterbi output. I.e., write out all variable
+ *      values for all times of a child random variable (the query
+ *      variable, or the word variable on speech) whenever a parent
+ *      variable (a transition variable, of cardinality 2) has a value of 1.
+ *
+      // TODO: 1) DONE: have a regex to filter which random variables are printed
+      //       2) DONE: have a range spec to filter which frames are printed
+      //       3) trigger: have a trigger condition (i.e., variable(offset) = value)
+      //          to filter which frames are printed, where 'offset'
+      //          can be either -1, 0, or 1. (-triggerVariable1 -triggerValue1 -triggerVariable2 -triggerValue2 ...), the values should be int sets.
+      //       4) compression: have the option to print only when one of the values
+      //          has changed from last time (so, print first C, and last E always).
+      //          Note this is not a substitute for 3 as the trigger might be true multiple
+      //          frames in a row, while the value stays the same (e.g., transition to the same word)
+      //    allow 'ands' and 'ors' of the above. 
+      //      5) DONE: the option to always print ints, even if symbol table exists.
+ *      
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
@@ -22,6 +45,7 @@
 #include <string.h>
 #include <float.h>
 #include <assert.h>
+#include <regex.h>
 
 // TODO: remove next 2 eventually 
 #include <iostream>
@@ -34,6 +58,7 @@
 #include "arguments.h"
 #include "ieeeFPsetup.h"
 #include "version.h"
+
 
 #include "GMTK_WordOrganization.h"
 
@@ -108,6 +133,7 @@ VCID("$Header$")
 
 /****************************         INFERENCE OPTIONS           ***********************************************/
 #define GMTK_ARG_ISLAND
+#define GMTK_ARG_CLIQUE_TABLE_NORMALIZE
 #define GMTK_ARG_CE_SEP_DRIVEN
 #define GMTK_ARG_MIXTURE_CACHE
 #define GMTK_ARG_CLIQUE_VAR_ITER_ORDERS
@@ -118,8 +144,7 @@ VCID("$Header$")
 #define GMTK_ARG_OBS_MATRIX_XFORMATION
 
 /************************            DECODING OPTIONS                  ******************************************/
-#define GMTK_ARG_DECODING_OPTIONS
-
+#define GMTK_ARG_NEW_DECODING_OPTIONS
 
 #define GMTK_ARGUMENTS_DEFINITION
 #include "GMTK_Arguments.h"
@@ -152,9 +177,6 @@ int
 main(int argc,char*argv[])
 {
 
-  fprintf(stderr,"THIS PROGRAM DOES NOT CURRENTLY WORK, DO NOT USE IT. Use the new new gmtk Viterbi program instead, called 'gmtkViterbi'. this program will eventually vanish.\n");
-  exit(-1);
-
   ////////////////////////////////////////////
   // set things up so that if an FP exception
   // occurs such as an "invalid" (NaN), overflow
@@ -170,7 +192,10 @@ main(int argc,char*argv[])
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }
-
+  
+  // if (island == false) {
+  // error("Program must currently be run with -island T\n");
+  // }
 
 #define GMTK_ARGUMENTS_CHECK_ARGS
 #include "GMTK_Arguments.h"
@@ -306,14 +331,6 @@ main(int argc,char*argv[])
   }
 
   Range* dcdrng = new Range(dcdrng_str,0,globalObservationMatrix.numSegments());
-#if 0
-  if (dcdrng->length() <= 0) {
-    infoMsg(IM::Default,"Training range '%s' specifies empty set. Exiting...\n",
-	  dcdrng_str);
-    exit_program_with_status(0);
-  }
-#endif
-
   if (dcdrng->length() == 0) { 
     error("Decoding range must specify a non-zero length range. Range given is %s\n",
 	  dcdrng_str);
@@ -321,73 +338,32 @@ main(int argc,char*argv[])
 
   logpr total_data_prob = 1.0;
 
-  FILE* vitValsFile;
-  if (showVitVals) {
-    if (strcmp(showVitVals,"-") == 0)
-      vitValsFile = stdout;
-    else {
-      if ((vitValsFile = fopen(showVitVals, "w")) == NULL)
-	error("Can't open file '%s' for writing\n",vitValsFile);
-    }
-  } else {
-    vitValsFile = NULL;
+  // What is the difference between the pVit* files and the vit*
+  // files?  The pVit* files are similar to the vit* files, but the
+  // pVit print via partitions, while the vit* does a bunch more
+  // processing to give the illusion that there are only frames/slices
+  // rather than GMTK partitions (which could span any number of
+  // frames, even partial frames). Also, the vit files are more meant
+  // for users, while the pVit files are more meant for algorithm
+  // writters/debugging which is the reason that we have both of them
+  // here.
+  FILE* pVitValsFile = NULL;
+  if (strcmp("-",pVitValsFileName) == 0)
+    pVitValsFile = stdout;
+  else {
+    if ((pVitValsFile = fopen(pVitValsFileName, "w")) == NULL)
+      error("Can't open file '%s' for writing\n",pVitValsFileName);
   }
-
-  map<int, string> word_map;
-  if (wordVar != NULL)
-  {
-    if (varMapFile==NULL)
-      error("File to map from word index to string not specified.");
-    if(transitionLabel == NULL)
-      error("The label of the transition variable was not specified.");
-
-    ifstream in(varMapFile);
-    if (!in) { cout << "Unable to open " << varMapFile << endl; exit(1); }
-    string name;
-    int val;
-    while (!in.eof())
-    {
-      in >> val;
-      if ( in.eof() )
-	break;
-      in >> name >> ws;
-      // printf("reading %d word = (%s)\n",val,name.c_str());
-      word_map[val] = name;
-    }
-    in.close();
-
+#if 0
+  FILE* vitValsFile = NULL;
+  if (strcmp("-",vitValsFileName) == 0)
+    vitValsFile = stdout;
+  else {
+    if ((vitValsFile = fopen(vitValsFileName, "w")) == NULL)
+      error("Can't open file '%s' for writing\n",vitValsFileName);
   }
+#endif
 
-  set<string> dumpVars;
-  map<string,int> posFor;
-  int ndv=0;
-  if (dumpNames)
-  {
-      ifstream din(dumpNames);
-      if (!din) {cout << "Unable to open " << dumpNames << endl; exit(1);}
-      string s;
-      while (!din.eof())
-      {
-          din >> s >> ws;
-          dumpVars.insert(s);
-          posFor[s] = ndv++;  // which position within a frame to put it
-      }
-      din.close();
-  }
-
-  vector<string> ofiles;
-  if (ofilelist)
-  {
-      ifstream oin(ofilelist);
-      if (!oin) {cout << "Unable to open " << ofilelist << endl; exit(1);} 
-      string s;
-      while (!oin.eof())
-      {
-          oin >> s >> ws;
-          ofiles.push_back(s);
-      }
-      oin.close();
-  }
   // We always do viterbi scoring/option in this program.
   JunctionTree::viterbiScore = true;
 
@@ -398,6 +374,35 @@ main(int argc,char*argv[])
   total_data_prob = 1.0;
   Range::iterator* dcdrng_it = new Range::iterator(dcdrng->begin());
     
+  regex_t *pVitPreg = NULL;
+  if (pVitRegexFilter != NULL) {
+    pVitPreg = (regex_t*) malloc(sizeof(regex_t));
+    const unsigned case_ignore = (pVitCaseSensitiveRegexFilter? 0 : REG_ICASE);
+    if (regcomp(pVitPreg,pVitRegexFilter,
+		REG_EXTENDED
+		| case_ignore
+		| REG_NOSUB
+		)) {
+      error("ERROR: problem with regular expression filter string '%s'\n",pVitRegexFilter);
+    }
+  }
+
+  regex_t *vitPreg = NULL;
+  if (vitRegexFilter != NULL) {
+    vitPreg = (regex_t*) malloc(sizeof(regex_t));
+    const unsigned case_ignore = (vitCaseSensitiveRegexFilter? 0 : REG_ICASE);
+    if (regcomp(vitPreg,vitRegexFilter,
+		REG_EXTENDED
+		| case_ignore
+		| REG_NOSUB
+		)) {
+      error("ERROR: problem with regular expression filter string '%s'\n",vitRegexFilter);
+    }
+  }
+
+
+
+
   while (!dcdrng_it->at_end()) {
     const unsigned segment = (unsigned)(*(*dcdrng_it));
     if (globalObservationMatrix.numSegments() < (segment+1)) 
@@ -409,7 +414,6 @@ main(int argc,char*argv[])
 
     logpr probe;
     if (island) {
-      // warning("WARNING:: Island algorithm for decoding not yet debugged (but almost). Use at your own risk!!\n");
       unsigned numUsableFrames;
       myjt.collectDistributeIsland(numFrames,
 				   numUsableFrames,
@@ -441,7 +445,8 @@ main(int argc,char*argv[])
 	     probe.val()/numFrames,
 	     probe.val()/numUsableFrames);
       if (probe.essentially_zero()) {
-	infoMsg(IM::Default,"Skipping segment since probability is essentially zero\n");
+	infoMsg(IM::Default,"Skipping segment %d since probability is essentially zero\n",
+		segment);
       } else {
 	myjt.setRootToMaxCliqueValue();
 	total_data_prob *= probe;
@@ -450,82 +455,42 @@ main(int argc,char*argv[])
 	infoMsg(IM::Low,"Done Distributing Evidence\n");
       }
     }
-    if (vitValsFile) {
-      if (probe.essentially_zero())
-	printf("Not printing Viterbi values since segment has zero probability\n");
-      else 
-	myjt.printCurrentRVValues(vitValsFile);
+    
+    if (probe.essentially_zero())
+      warning("Segment %d: Not printing Viterbi values since segment has zero probability\n",
+	      segment);
+    else {
+      fprintf(pVitValsFile,"========\nSegment %d, number of frames = %d, viteri-score = %f\n",
+	      segment,numFrames,probe.val());
+      if (pVitValsFile)
+	myjt.printSavedPartitionViterbiValues(pVitValsFile,
+					      pVitAlsoPrintObservedVariables,
+					      pVitPreg,
+					      pVitPartRangeFilter);
+
+#if 0      
+      if (vitValsFile)
+	myjt.printSavedViterbiValues(vitValsFile,
+				     vitAlsoPrintObservedVariables,
+				     vitPreg,
+				     vitReverseOrder,
+				     MAX_VITERBI_TRIGGERS,
+				     vitTriggerVariables,
+				     vitTriggerSets);
+#endif
+
     }
 
-    if (dumpNames)
-    {
-        if (segment >= ofiles.size()) 
-	  error("More utterances than output files");
-        FILE *fp = fopen(ofiles[segment].c_str(), "wb");
-        if (!fp) {cout << "Unable to open " << ofiles[segment] << endl; exit(1);}
-        int *vals = new int[myjt.curNodes().size()];
-        // just in case a variable isn't present in a slice, write a -1
-        for (int i=0; i<int(myjt.curNodes().size()); i++) vals[i] = -1;
-        int nv=0;
-        for (int i=0; i<int(myjt.curNodes().size()); i++)
-            if (dumpVars.count(myjt.curNodes()[i]->name())) 
-            {
-                if (!myjt.curNodes()[i]->discrete()) 
-                    error("variables to dump must be discrete and hidden");
-                int p = myjt.curNodes()[i]->frame()*dumpVars.size() 
-                        + posFor[myjt.curNodes()[i]->name()];
-                assert(p<int(myjt.curNodes().size()));
-                vals[p] = RV2DRV(myjt.curNodes()[i])->val; 
-                nv++;
-            }
-        fwrite((void *) vals, sizeof(int), nv, fp); 
-        delete [] vals;
-        fclose(fp);
-    }
-    if (wordVar && probe.not_essentially_zero())
-    {
-      // print the sequence of values for this variable
-      // compress consecutive values into a single instance
-      // the times are right if a word transition at time t means there is
-      // a new word at t+1
-      string pvn = string(wordVar);
-      string tl = string(transitionLabel);
-      for (int i=0, lv=-1, lf=0; i<int(myjt.curNodes().size()); i++)
-      {
-        if (myjt.curNodes()[i]->name() == pvn)
-        {
-          if (!myjt.curNodes()[i]->discrete())
-            error("Can only print Viterbi values for discrete variables");
-          if (RV2DRV(myjt.curNodes()[i])->cardinality != word_map.size())
-            error("Word-val to string map file (%s) size %d does not match the number of words %d.",
-		  varMapFile,
-		  int(word_map.size()),
-		  RV2DRV(myjt.curNodes()[i])->cardinality);
-          lv = RV2DRV(myjt.curNodes()[i])->val;
-        }
-        else if (myjt.curNodes()[i]->name()==tl)
-        {
-          if (!myjt.curNodes()[i]->discrete()) 
-            error("Word transition variable should be discrete");
-          if (RV2DRV(myjt.curNodes()[i])->cardinality != 2) 
-            error("Word transition variable should have two values");
-          if (RV2DRV(myjt.curNodes()[i])->val==1)  // a word transition
-          {
-            cout << word_map[lv] << " (" << lf << "-" 
-                 << myjt.curNodes()[i]->frame() << ")\n" << flush;  
-            lf = myjt.curNodes()[i]->frame()+1;
-          }
-        }
-      }
-    }
     (*dcdrng_it)++;
   }
 
-  infoMsg(IM::Default,"Total data log prob is: %1.9e\n",
-	  total_data_prob.val());
+  if (pVitPreg != NULL) {
+    regfree(pVitPreg);
+    free(pVitPreg);
+  }
 
-  if (vitValsFile && vitValsFile != stdout)
-    fclose(vitValsFile);
+  infoMsg(IM::Default,"Total data log prob for all segments is: %1.9e\n",
+	  total_data_prob.val());
 
   getrusage(RUSAGE_SELF,&rue);
   if (IM::messageGlb(IM::Default)) { 
@@ -533,6 +498,13 @@ main(int argc,char*argv[])
     double userTime,sysTime;
     reportTiming(rus,rue,userTime,sysTime,stdout);
   }
+
+  if (pVitValsFile != stdout)
+    fclose(pVitValsFile);
+#if 0
+  if (vitValsFile != stdout)
+    fclose(vitValsFile);
+#endif
 
   exit_program_with_status(0);
 }

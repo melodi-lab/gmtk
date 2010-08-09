@@ -313,6 +313,7 @@ frame:1 {
 
        variable : state2 {
           type: discrete hidden cardinality 4 ;
+	  symboltable: collection("foo");
           switchingparents: nil ;
           conditionalparents:
 	             # this is a sep. hidden markov chain
@@ -458,7 +459,8 @@ FileParser::fillKeywordTable()
     /* 50 */ "softConstraint",
     /* 51 */ "table",
     /* 52 */ "logLinear",
-    /* 53 */ "emarfNum"
+    /* 53 */ "emarfNum",
+    /* 54 */ "symboltable",
   };
   vector<string> v;
   const unsigned len = sizeof(kw_table)/sizeof(char*);
@@ -1371,7 +1373,8 @@ FileParser::parseRandomVariableAttributeList()
       tokenInfo == KW_Weight ||
       tokenInfo == KW_EliminationHint ||
       tokenInfo == KW_Switchingparents ||
-      tokenInfo == KW_Conditionalparents)
+      tokenInfo == KW_Conditionalparents ||
+      tokenInfo == KW_SymbolTable)
     {
       parseRandomVariableAttribute();
       parseRandomVariableAttributeList();
@@ -1394,9 +1397,67 @@ FileParser::parseRandomVariableAttribute()
     if (curRV.rvType == RVInfo::t_unknown)
       parseError("type must be first attribute");
     return parseRandomVariableParentAttribute();
-  }  else
+  }  else if (tokenInfo == KW_SymbolTable) {
+    return parseRandomVariableSymbolTable();
+  } else
     parseErrorExpecting("variable attribute");
 }
+
+
+void
+FileParser::parseRandomVariableSymbolTable()
+{
+
+  ensureNotAtEOF(KW_SymbolTable);
+  if (tokenInfo != KW_SymbolTable)
+    parseError(KW_SymbolTable);
+  consumeToken();
+
+  ensureNotAtEOF(":");
+  if (tokenInfo != TT_Colon)
+    parseErrorExpecting("':'");
+  consumeToken();
+
+
+  // parse a string of the form 'collection("foo")'
+  ensureNotAtEOF(KW_Collection);
+  if (tokenInfo != KW_Collection)
+    parseError(KW_Collection);
+  consumeToken();
+
+  if (tokenInfo != TT_LeftParen) {
+    parseErrorExpecting("'('");
+  }
+  consumeToken();
+
+  ensureNotAtEOF("collection name");
+  string collectionName;
+  if (tokenInfo == TT_String) {
+    collectionName = tokenInfo.tokenStr;
+    // remove the double quotes
+    collectionName.replace(0,1,"");
+    collectionName.replace(collectionName.length()-1,1,"");
+    consumeToken();
+  } else
+    parseErrorExpecting("collection name");
+
+
+  ensureNotAtEOF(")");
+  if (tokenInfo != TT_RightParen) {
+    parseErrorExpecting("')'");
+  }
+  consumeToken();
+
+  ensureNotAtEOF(";");
+  if (tokenInfo != TT_SemiColon)
+    parseErrorExpecting("';'");
+  consumeToken();
+
+  // fprintf(stderr,"Found symbol table = %s\n",collectionName.c_str());
+  curRV.symbolTableCollectionName = collectionName;
+
+}
+
 
 void
 FileParser::parseRandomVariableTypeAttribute()
@@ -3593,6 +3654,46 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 	}
       }
     }
+
+    // now set up any symbol tables for this random variable
+    // fprintf(stderr,"Looking %d for symbol table name %s\n",i,rvInfoVector[i].symbolTableCollectionName.c_str());
+    if (rvInfoVector[i].symbolTableCollectionName.length() > 0) {
+      if (rvInfoVector[i].rvType != RVInfo::t_discrete) {
+	error("Error: RV \"%s\" at frame %d (line %d), specifies a symbol table collection name \"%s\" for a non-discrete random variable\n",
+	      rvInfoVector[i].name.c_str(),
+	      rvInfoVector[i].frame,
+	      rvInfoVector[i].fileLineNumber,
+	      rvInfoVector[i].symbolTableCollectionName.c_str());
+      }
+      // then there is a name there. Look up the name in the
+      // list of named collections.
+      if (GM_Parms.nclsMap.find(rvInfoVector[i].symbolTableCollectionName) ==
+	  GM_Parms.nclsMap.end()) {
+	error("Error: RV \"%s\" at frame %d (line %d), specifies a symbol table collection name \"%s\" that doesn't exist\n",
+	      rvInfoVector[i].name.c_str(),
+	      rvInfoVector[i].frame,
+	      rvInfoVector[i].fileLineNumber,
+	      rvInfoVector[i].symbolTableCollectionName.c_str());
+      } else {
+	rvInfoVector[i].symbolTable =
+		GM_Parms.ncls[
+		   GM_Parms.nclsMap[
+				    rvInfoVector[i].symbolTableCollectionName
+		  ]];
+	// check that the cardinality matches in the discrete case. 
+	if (rvInfoVector[i].symbolTable->table.size() != rvInfoVector[i].rvCard) {
+	  error("Error: RV \"%s\" at frame %d (line %d), cardinality of RV is %d, but symbol table \"%s\" has a length of %d.\n",
+		rvInfoVector[i].name.c_str(),
+		rvInfoVector[i].frame,
+		rvInfoVector[i].fileLineNumber,
+		rvInfoVector[i].rvCard,
+		rvInfoVector[i].symbolTableCollectionName.c_str(),
+		rvInfoVector[i].symbolTable->table.size());
+	}
+
+      }
+    }
+
   }
 
   // now go through factor list and associate the 

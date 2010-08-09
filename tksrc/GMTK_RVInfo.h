@@ -39,6 +39,7 @@ class FileParser;
 class GMTemplate;
 class Partition;
 class BoundaryTriangulate;
+class NameCollection;
 
 #include "GMTK_CPT.h"
 #include "GMTK_MixtureCommon.h"
@@ -206,6 +207,13 @@ private:
   // conditionalParents.size()).
   vector <WeightInfo> rvWeightInfo;
 
+
+  // if discrete, then a possible symbol table to get
+  // names of integer values from (which is a named collection object).
+  string symbolTableCollectionName;
+  NameCollection* symbolTable;
+
+
   /////////////////////////////////////////////////////////
   // An actual pointer to the RV once we instantiate it.  Note that
   // in general, there is a many-to-one mapping from random variable
@@ -224,51 +232,6 @@ public:
   RVInfo() : rv(NULL) { clear(); }
   // destructor
   ~RVInfo() { clear(); }
-
-  // copy constructor
-  RVInfo(
-    float        new_eliminationOrderHint,
-    int          new_variablePositionInStrFile,
-    unsigned     new_frame,
-    unsigned     new_fileLineNumber,
-    string       new_rvFileName,
-    string       new_name,
-    Type         new_rvType,
-    Disposition  new_rvDisp,
-    unsigned     new_rvCard,
-    FeatureRange new_rvFeatureRange,
-    bool         new_isDeterministic,
-    bool         new_isSparse,
-    RV*          new_rv,
-    ListIndex    new_switchMapping,
-    vector< rvParent >          new_switchingParents,
-    vector<vector< rvParent > > new_conditionalParents,
-    vector< CPT::DiscreteImplementaton > new_discImplementations,
-    vector< MixtureCommon::ContinuousImplementation > new_contImplementations,
-    vector< ListIndex > new_listIndices,
-    vector <WeightInfo> new_rvWeightInfo
-  ) :
-  eliminationOrderHint( new_eliminationOrderHint ), 
-  variablePositionInStrFile( new_variablePositionInStrFile ), 
-  frame( new_frame ),
-  fileLineNumber( new_fileLineNumber ),
-  rvFileName( new_rvFileName ), 
-  name( new_name ), 
-  rvType( new_rvType ), 
-  rvDisp( new_rvDisp ), 
-  rvCard( new_rvCard ), 
-  rvFeatureRange( new_rvFeatureRange ), 
-  isDeterministic ( new_isDeterministic ),
-  isSparse ( new_isSparse ),
-  switchingParents( new_switchingParents ), 
-  switchMapping( new_switchMapping ), 
-  conditionalParents( new_conditionalParents ), 
-  discImplementations( new_discImplementations ), 
-  contImplementations( new_contImplementations ), 
-  listIndices( new_listIndices ), 
-  rvWeightInfo( new_rvWeightInfo ), 
-  rv( new_rv )
-  { return; }; 
 
   // copy constructor
   RVInfo(const RVInfo&v) {
@@ -292,6 +255,8 @@ public:
     rv = v.rv;
     isDeterministic = v.isDeterministic;
     isSparse = v.isSparse;
+    symbolTableCollectionName = v.symbolTableCollectionName;
+    symbolTable = v.symbolTable;
   }
 
   // clear out the current RV structure when we
@@ -328,7 +293,7 @@ public:
 
   bool sparse() { return isSparse; }
 
-
+  static rvParent parseRVParent(const char* const);
 
 };
 

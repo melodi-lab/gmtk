@@ -40,6 +40,7 @@
 
 #include "GMTK_FileParser.h"
 #include "GMTK_RV.h"
+#include "GMTK_ObsDiscRV.h"
 #include "GMTK_DiscRV.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_JunctionTree.h"
@@ -85,22 +86,6 @@ const char* JunctionTree::E1_n = "E'";
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 
-/*
- * Take the union of A and B and place it in C.
- */
-static void
-union_1_2_to_3(const set<RV*>& A,
-	       const set<RV*>& B,
-	       set<RV*>& C,
-	       bool do_not_clear = false)
-{
-  if (!do_not_clear)
-    C.clear();
-  set_union(A.begin(),A.end(),
-	    B.begin(),B.end(),
-	    inserter(C,C.end()));
-}
-
 struct PairUnsigned1stElementCompare {  
   // sort ascending, comparing only 1st element.
   bool operator() (const pair<unsigned,unsigned>& a, 
@@ -110,540 +95,122 @@ struct PairUnsigned1stElementCompare {
   }
 };
 
-
-////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////
-//        JT Partition support
-////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////
-//        Constructors/Destructors 
-////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////
-
-
-/*-
- *-----------------------------------------------------------------------
- * JT_Partition constructor.
+/*
+ * Must be called *ONLY* after collectEvidence() or
+ * distributeEvidence() has been called since it uses the long
+ * instatiated table and structure arrays which are asssumed to exist
+ * in place.
  *
- *   This one creates a JT_Parititon from a partition and is used as
- *   part of the JT unroll function. It creates a set of cliques
- *   isomorphic to the Parititon, but all RVs in the new cliques have
- *   had their frame number adjusted by a frame delta. The constructor
- *   also includes arguments for the left interface variables (liVars)
- *   and right interface variables (riVars) and appropriate frame
- *   deltas for those. The reason for having two frame deltas is that
- *   the from interfaces might actually be the same, the only
- *   difference in this partition is if it is on the left or right of
- *   the new partition, something determined only by the frame delta.
- *
- *
- * Preconditions:
- *   None.
- *
- * Postconditions:
- *   JT_Partition is created and set up.
- *
- * Side Effects:
- *   Adjusts member variables.
- *
- * Results:
- *   none.
- *
- *-----------------------------------------------------------------------
  */
-JT_Partition::JT_Partition(
-		       Partition& from_part,
-		       const unsigned int frameDelta,
-		       // the left and right interface variables for
-		       // this JT partition Empty if doesn't exist
-		       // (say for an P or E partition). These have
-		       // their own frame deltas since they might be
-		       // different.
-		       // Left interface:
-		       const set <RV*>& from_liVars,
-		       const unsigned int liFrameDelta,
-		       // Right interface:
-		       const set <RV*>& from_riVars,
-		       const unsigned int riFrameDelta,
-		       // Information todo the mapping.
-		       vector <RV*>& newRvs,
-		       map < RVInfo::rvParent, unsigned >& ppf)
-
-{
-
-  triMethod = from_part.triMethod;
-  numVEseps = 0;
-
-  set<RV*>::iterator it;
-
-  // clone over nodes RVs.  
-  // TODO: make this next code a routine
-  //  nodesClone() since it is used in several places.
-  for (it = from_part.nodes.begin();
-       it != from_part.nodes.end();
-       it++) {
-    RV* rv = (*it);
-    RVInfo::rvParent rvp;
-    rvp.first = rv->name();
-    rvp.second = rv->frame()+frameDelta;    
-
-    if ( ppf.find(rvp) == ppf.end() ) {
-      coredump("INTERNAL ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set, from from_part2\n",
-	    rv->name().c_str(),rv->frame(),frameDelta,
-	    rvp.first.c_str(),rvp.second);
-    }
-
-    RV* nrv = newRvs[ppf[rvp]];
-    nodes.insert(nrv);
-  }
-  liNodes.clear();
-  for (it = from_liVars.begin();
-       it != from_liVars.end();
-       it++) {
-    RV* rv = (*it);
-    RVInfo::rvParent rvp;
-    rvp.first = rv->name();
-    rvp.second = rv->frame()+liFrameDelta;    
-
-    if ( ppf.find(rvp) == ppf.end() ) {
-      coredump("INTERNAL ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set, from from_liVars\n",
-	    rv->name().c_str(),rv->frame(),liFrameDelta,
-	    rvp.first.c_str(),rvp.second);
-    }
-
-    RV* nrv = newRvs[ppf[rvp]];
-    liNodes.insert(nrv);
-  }
-  riNodes.clear();
-  for (it = from_riVars.begin();
-       it != from_riVars.end();
-       it++) {
-    RV* rv = (*it);
-    RVInfo::rvParent rvp;
-    rvp.first = rv->name();
-    rvp.second = rv->frame()+riFrameDelta;    
-
-    if ( ppf.find(rvp) == ppf.end() ) {
-      coredump("INTERNAL ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set, from from_riVars\n",
-	    rv->name().c_str(),rv->frame(),riFrameDelta,
-	    rvp.first.c_str(),rvp.second);
-    }
-
-    RV* nrv = newRvs[ppf[rvp]];
-    riNodes.insert(nrv);
-  }
-
-  // make the cliques.
-  cliques.reserve(from_part.cliques.size());
-  // 
-  // NOTE: It is ***CRUCIAL*** for the cliques in the cloned partition
-  // to be inserted in the *SAME ORDER* as in the partition being
-  // cloned. If this is not done, inference will crash.
-  for (unsigned i=0;i<from_part.cliques.size();i++) {
-    cliques.push_back(MaxClique(from_part.cliques[i],
-				newRvs,ppf,frameDelta));
-  }
-}
-
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * JT_Partition constructor.
- *
- *   A bear-bones constructor that does no frame adjustment and is
- *   here for the sake of quickly being able to compute JT weight from
- *   within a triangulation routine (before we really have the full JT
- *   set up). This routine should only be called from
- *   junctionTreeWeight().
- *
- *
- * Preconditions:
- *   None.
- *
- * Postconditions:
- *   JT_Partition is created and set up, but for a specific purpose (see above comment).
- *
- * Side Effects:
- *   Adjusts member variables.
- *
- * Results:
- *   none.
- *
- *-----------------------------------------------------------------------
- */
-JT_Partition::JT_Partition(
- Partition& from_part,
- // Left interface:
- const set <RV*>& from_liVars,
- // Right interface:
- const set <RV*>& from_riVars
- )
-{
-  nodes = from_part.nodes;
-  triMethod = from_part.triMethod;
-  numVEseps = 0;
-  liNodes = from_liVars;
-  riNodes = from_riVars;
-  // make the cliques.
-  cliques = from_part.cliques;
-}
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * JT_Partition::findInterfaceCliques()
- *
- *   This routine looks in the current JT_Partition and finds a clique
- *   that overlaps the iNodes. It is assumed, for example, that iNodes
- *   are the partition interface nodes (either left or right) and the goal
- *   is to find a clique in the current partition that could serve as an
- *   interface clique. If there are more than one candiate interface clique
- *   available, then the one with the smallest normal weight is chosen.
- *
- *   uses command line option: interfaceCliquePriorityStr 
- *
- *
- * Preconditions:
- *   JT_partition tree must have been created and all set up.
- *
- * Postconditions:
- *   none.
- *
- *
- * Side Effects:
- *   None
- *
- * Results:
- *   - candiate interface clique number in this JT_Partition via iCliques.
- *   - if the clique returned is the exact same set of nodes as the interface
- *     nodes, then iCliqueSameAsInterface is set to true on return.
- *
- *-----------------------------------------------------------------------
- */
-// first, we define two structures that are used for sorting/comparing 
-// weighted cliques.
-struct PriorityClique {
-  unsigned clique;
-  vector <double> weights;
-  PriorityClique(unsigned c,vector <double> w) : clique(c), weights(w) {}
-};
-struct PriorityCliqueCompare {  
-  // sort descending
-  bool operator() (const PriorityClique& a, 
-		   const PriorityClique& b) {
-    return (a.weights) > (b.weights);
-  }
-};
 void
-JT_Partition::findInterfaceCliques(const set <RV*>& iNodes,
-				   unsigned& iClique,
-				   bool& iCliqueSameAsInterface,
-				   const string priorityStr)
+JunctionTree::printAllCliques(FILE* f,
+			      const bool normalize,
+			      const bool justPrintEntropy)
 {
-  if (iNodes.size() > 0) {
-    vector < PriorityClique > pcArray;
 
-    for (unsigned cliqueNo=0;cliqueNo<cliques.size();cliqueNo++) {
-      // check that clique fully covers iNodes 
-      set<RV*> res;
-      set_intersection(cliques[cliqueNo].nodes.begin(),
-		       cliques[cliqueNo].nodes.end(),
-		       iNodes.begin(),
-		       iNodes.end(),
-		       inserter(res,res.end()));
-      
-      if (res.size() == iNodes.size()) {
-	// we've found a candidate.
+  ptps_iterator ptps_it(*this);
+  ptps_it.set_to_first_entry();
 
-	// Priority for determining which clique becomes the interface
-	// clique.  All attributes get sorted in decreasing order, so
-	// that larger values have priority.  Larger numbers are
-	// prefered.
+  char buff[2048];
+  if (pPartCliquePrintRange != NULL) {
+    BP_Range::iterator it = pPartCliquePrintRange->begin();
+    while (!it.at_end()) {
+      const unsigned cliqueNum = (unsigned)(*it);
+      if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
+	sprintf(buff,"Partition %d (P), Clique %d:",ptps_it.pt_i(),cliqueNum); 
+	partitionTableArray[ptps_it.pt_i()]
+	  .maxCliques[cliqueNum]
+	  .printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
+			      .maxCliquesSharedStructure[cliqueNum],
+			      f,buff,normalize,justPrintEntropy);
+      }
+      it++;
+    }
+  }
+  ptps_it++;
 
-	// Options to include by priority of priorityStr:
-	//   * W: negative weight of the clique
-	//   * D: number of deterministic nodes in clique
-	//   * H: number of hidden nodes in clique
-	//   * O: number of observed nodes in clique
-	//   * I: Interface Clique same as Interface
-	// 
-	//  Any can be preceeded by a '-' sign to flip effect. E.g., D-E-SU
-	//
-	// Default case: W
-
-	vector <double> weights;
-	float mult = 1.0;
-	bool loc_iCliqueSameAsInterface = false;
-	for (unsigned charNo=0;charNo< priorityStr.size(); charNo++) {
-	  const char curCase = toupper(priorityStr[charNo]);
-	  if (curCase == '-') {
-	    mult = -1.0;
-	    continue;
-	  }
-
-	  if (res.size() == cliques[cliqueNo].nodes.size()) {
-	    loc_iCliqueSameAsInterface = true;
-	  } else {
-	    loc_iCliqueSameAsInterface = false;
-	  }
-
-	  if (curCase == 'W') {	  
-	    weights.push_back(-mult*(double)MaxClique::computeWeight(cliques[cliqueNo].nodes));
-	  } else if (curCase == 'D') {
-	    set<RV*>::iterator it;
-	    set<RV*>::iterator it_end = cliques[cliqueNo].nodes.end();
-	    unsigned numDeterministicNodes = 0;
-	    for (it = cliques[cliqueNo].nodes.begin(); it != it_end; it++) {
-	      RV* rv = (*it);
-	      if (rv->discrete() && RV2DRV(rv)->deterministic())
-		numDeterministicNodes++;
-	    }
-	    weights.push_back(mult*(double)numDeterministicNodes);
-	  } else if (curCase == 'H') {	  
-	    set<RV*>::iterator it;
-	    set<RV*>::iterator it_end = cliques[cliqueNo].nodes.end();
-	    unsigned numHiddenNodes = 0;
-	    for (it = cliques[cliqueNo].nodes.begin(); it != it_end; it++) {
-	      RV* rv = (*it);
-	      if (rv->hidden())
-		numHiddenNodes++;
-	    }
-	    weights.push_back(mult*(double)numHiddenNodes);
-	  } else if (curCase == 'O') {
-	    set<RV*>::iterator it;
-	    set<RV*>::iterator it_end = cliques[cliqueNo].nodes.end();
-	    unsigned numObservedNodes = 0;
-	    for (it = cliques[cliqueNo].nodes.begin(); it != it_end; it++) {
-	      RV* rv = (*it);
-	      if (rv->observed())
-		numObservedNodes++;
-	    }
-	    weights.push_back(mult*(double)numObservedNodes);
-	  } else if (curCase == 'I') {
-	    weights.push_back(mult*(double)loc_iCliqueSameAsInterface);
-	  } else {
-	    error("ERROR: Unrecognized interface clique determiner letter '%c' in string '%s'\n",
-		  curCase,priorityStr.c_str());
-	  }
-
-	  mult = 1.0;
+  if (cPartCliquePrintRange != NULL) {
+    for (; !ptps_it.at_last_entry(); ptps_it++) {
+      BP_Range::iterator it = cPartCliquePrintRange->begin();
+      while (!it.at_end()) {
+	const unsigned cliqueNum = (unsigned)(*it);
+	if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
+	  sprintf(buff,"Partition %d (C), Clique %d:",ptps_it.pt_i(),cliqueNum); 
+	  partitionTableArray[ptps_it.pt_i()].
+	    maxCliques[cliqueNum].
+	    printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
+			       .maxCliquesSharedStructure[cliqueNum],
+			       f,buff,normalize,justPrintEntropy);
 	}
-	// always push back at end.
-	weights.push_back((double)loc_iCliqueSameAsInterface);
-
-	pcArray.push_back(PriorityClique(cliqueNo,weights));
+	it++;
       }
     }
-
-    assert ( pcArray.size() > 0 );
-    sort(pcArray.begin(),pcArray.end(),PriorityCliqueCompare());
-    iClique = pcArray[0].clique;
-    iCliqueSameAsInterface  = (bool)pcArray[0].weights[pcArray[0].weights.size()-1];
-
   } else {
-    // This could happen either when (case 1) we are trying to find
-    // the r-interface for E, the left interface for P, or (case 2)
-    // for disconnected graphs or when some of the partitions (P, or
-    // E) are empty.  In case 1, it doesn't matter what we return (it
-    // could be an invalid value such as ~0x0). In the disconnected
-    // graph case, we need to return any valid clique index. Since
-    // there is always a clique, we return a 0.
-    iClique = 0;
-    iCliqueSameAsInterface = false;
+    // partNo = partitionStructureArray.size()-1;
+    ptps_it.set_to_last_entry();
   }
-}
 
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * JT_Partition::find{L,R}InterfaceCliques()
- *
- *   Two quick routiens to find left/right interface cliques. See
- *   the called routine for documentation.
- *
- * Preconditions:
- *   JT_partition tree must have been created and all set up.
- *
- * Postconditions:
- *   none.
- *
- *
- * Side Effects:
- *   None
- *
- * Results:
- *
- *-----------------------------------------------------------------------
- */
-void
-JT_Partition::findLInterfaceClique(unsigned& liClique,bool& liCliqueSameAsInterface,const string priorityStr)
-{
-  findInterfaceCliques(liNodes,liClique,liCliqueSameAsInterface,priorityStr);
-}
-void
-JT_Partition::findRInterfaceClique(unsigned& riClique,bool& riCliqueSameAsInterface,const string priorityStr)
-{
-  findInterfaceCliques(riNodes,riClique,riCliqueSameAsInterface,priorityStr);
-}
-
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * JT_Partition::cliqueWith{Max,Min}Weight()
- *
- *   Return the clique in the current junction tree with maximum {minimum} 
- *   normal weight. 
- *
- * Preconditions:
- *   JT_partition tree must have been created and all set up.
- *
- * Postconditions:
- *   none.
- *
- * Side Effects:
- *   None
- *
- * Results:
- *   returns the index of the max/min weight clique in this JT Part.
- *
- *-----------------------------------------------------------------------
- */
-unsigned
-JT_Partition::cliqueWithMaxWeight()
-{
-  double weight = -10e20;
-  unsigned res= ~0x0;
-  // TODO: for empty P or E partitions, this next assertion will need to be removed.
-  // assert ( cliques.size() > 0 );
-  for (unsigned i=0;i<cliques.size();i++) {
-    if (MaxClique::computeWeight(cliques[i].nodes) > weight) {
-      res = i;
+  if (ePartCliquePrintRange != NULL) {
+    BP_Range::iterator it = ePartCliquePrintRange->begin();
+    while (!it.at_end()) {
+      const unsigned cliqueNum = (unsigned)(*it);
+      if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
+	sprintf(buff,"Partition %d (E), Clique %d:",ptps_it.pt_i(),cliqueNum); 
+	partitionTableArray[ptps_it.pt_i()]
+	  .maxCliques[cliqueNum]
+	  .printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
+			      .maxCliquesSharedStructure[cliqueNum],
+			      f,buff,normalize,justPrintEntropy);
+      }
+      it++;
     }
   }
-  return res;
+
 }
-unsigned
-JT_Partition::cliqueWithMinWeight()
+
+
+void
+JunctionTree::printAllCliques(PartitionStructures& ps, // partition
+			      PartitionTables& pt, // partition
+			      const unsigned partNo, // partition Number, for printing/msgs only
+			      const char *const nm,  // partition name
+			      BP_Range* rng,         // range of cliques in partition to print.
+			      FILE* f,               // where to print
+			      const bool normalize,
+			      const bool justPrintEntropy)
 {
-  double weight = DBL_MAX;
-  unsigned res = ~0x0;
-  // TODO: for empty P or E partitions, this next assertion will need to be removed.
-  // assert ( cliques.size() > 0 );
-  for (unsigned i=0;i<cliques.size();i++) {
-    if (MaxClique::computeWeight(cliques[i].nodes) < weight) {
-      res = i;
+  char buff[2048];
+  if (rng != NULL) {
+    BP_Range::iterator it = rng->begin();
+    while (!it.at_end()) {
+      const unsigned cliqueNum = (unsigned)(*it);
+      if (cliqueNum < ps.maxCliquesSharedStructure.size()) {
+	sprintf(buff,"Partition %d (%s), Clique %d:",partNo,nm,cliqueNum); 
+	pt.maxCliques[cliqueNum].printCliqueEntries(ps.maxCliquesSharedStructure[cliqueNum],
+						    f,buff,normalize,justPrintEntropy);
+      } else {
+	// could print out a warning here.
+      }
+      it++;
     }
   }
-  return res;
 }
-
-
-
-////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////
-//        JT Inference Partition support
-////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////
-
-
-
-JT_InferencePartition::JT_InferencePartition(JT_Partition& from_part,
-					     vector <RV*>& newRvs,
-					     map < RVInfo::rvParent, unsigned >& ppf,
-					     const unsigned int frameDelta)
-  : origin(from_part)
-{
-
-  // first allocate space with empty (and unusable) entries
-  maxCliques.resize(origin.cliques.size());
-  separatorCliques.resize(origin.separators.size());
-
-  // then actually re-construct the objects in the array appropriately.
-  for (unsigned i=0;i<maxCliques.size();i++) {
-    new (&maxCliques[i]) InferenceMaxClique(origin.cliques[i],
-					    newRvs,ppf,frameDelta);
-  }
-  for (unsigned i=0;i<separatorCliques.size();i++) {
-    new (&separatorCliques[i]) InferenceSeparatorClique(origin.separators[i],
-					    newRvs,ppf,frameDelta);
-  }
-
-  for (unsigned i=0;i<factorCliques.size();i++) {
-    new (&factorCliques[i]) InferenceFactorClique(origin.factorCliques[i],
-						  newRvs,ppf,frameDelta);
-  }
-
-}
-
 
 
 /*-
  *-----------------------------------------------------------------------
- * JT_InferencePartition::emIncrement()
- *
- *    Go through each clique in the partition and update the assigned probabiltiy
- *    variables for all entries in each clique, based on global probability of evidence
- *    given as the argument.
- *    If 'localNormalization' == true, then we ignore the evidence provided by probE
- *    and sum the clique first to get the local normalization constant.
- *
- * See Also:
- *    0) JunctionTree::collectEvidence()
- *    1) JunctionTree::distributeEvidence()
- *    2) JunctionTree::emIncrement()
- *       
+ * JunctionTree::printCurrentRVValues()
+ *   
+ *   Prints out all random variables in the current unrolled set.
  *
  * Preconditions:
- *    The cliques must be an instantiated table. All data structures must be set up.
+ *   - cur_unrolled_rvs must be defined and unrolled
  *
  * Postconditions:
- *   The accumulators are increment accordingly.
+ *   cur_unrolled_rvs is printed.
  *
  * Side Effects:
- *   This will update the accumulators of all trainable parameter objects.
- *
- * Results:
- *   None
- *
- *-----------------------------------------------------------------------
- */
-void
-JT_InferencePartition::emIncrement(const logpr probE,
-				   const bool localCliqueNormalization,
-				   const double emTrainingBeam)
-{
-  for (unsigned cliqueNo=0;cliqueNo < maxCliques.size(); cliqueNo++ ) {
-    maxCliques[cliqueNo].emIncrement(probE,localCliqueNormalization,emTrainingBeam);
-  }
-
-
-}
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * JT_InferencePartition::reportMemoryUsageTo()
- *   Reports memory usage of the template in ASCII format (suitable for stdout or an ascii file)
- *
- * Preconditions:
- *   The partitions must be validly instantiated with clique & separator structures.
- *
- * Postconditions:
- *   current memory usage is reported.
- *
- * Side Effects:
- *   none
+ *   none 
  *
  * Results:
  *   none
@@ -651,75 +218,46 @@ JT_InferencePartition::emIncrement(const logpr probE,
  *-----------------------------------------------------------------------
  */
 void
-JT_InferencePartition::reportMemoryUsageTo(FILE *f)
+JunctionTree::printCurrentRVValues(FILE *f)
 {
-  for (unsigned cliqueNo=0;cliqueNo < maxCliques.size(); cliqueNo++ ) {
-    maxCliques[cliqueNo].reportMemoryUsageTo(f);
-  }
-  for (unsigned i=0;i<separatorCliques.size();i++) {
-    separatorCliques[i].reportMemoryUsageTo(f);
+  for (unsigned i=0;i<cur_unrolled_rvs.size();i++) {
+    cur_unrolled_rvs[i]->printSelf(f);
   }
 }
+
+void
+JunctionTree::setCliquePrintRanges(char *p,char*c,char*e)
+{
+  if (p != NULL) {
+    BP_Range* tmp = new BP_Range(p,0,gm_template.P.cliques.size());
+    if (!tmp || tmp->length() <= 0)
+      delete tmp;
+    else
+      pPartCliquePrintRange = tmp;
+  }
+  if (c != NULL) {
+    BP_Range* tmp = new BP_Range(c,0,gm_template.C.cliques.size());
+    if (!tmp || tmp->length() <= 0)
+      delete tmp;
+    else
+      cPartCliquePrintRange = tmp;
+  }
+  if (e != NULL) {
+    BP_Range* tmp = new BP_Range(e,0,gm_template.E.cliques.size());
+    if (!tmp || tmp->length() <= 0)
+      delete tmp;
+    else
+      ePartCliquePrintRange = tmp;
+  }
+}
+
+
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 //        Support for building a tree from clique graph
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * JunctionTree::setUpDataStructures()
- *
- *   Sets up all the data structures in a JT (other than preparing for
- *   unrolling), and calls all the routines in the necessary
- *   order. This is like the main routine of this class, as it calls
- *   what needs to be done to set up a JT.
- *
- * Preconditions:
- *   Junction tree must have been created. Should not have called 
- *   setUpDataStructures() before. The C partitions in the template
- *   have variables, but the other partions (P, and E) might be empty.
- *
- * Postconditions:
- *   All data structures are set up. The JT is ready to have
- *   prepareForUnrolling() called.
- *
- * Side Effects:
- *   Changes many internal data structures in this object. 
- *
- * Results:
- *    None.
- *
- *-----------------------------------------------------------------------
- */
-void
-JunctionTree::setUpDataStructures(const char* varPartitionAssignmentPrior,
-				  const char *varCliqueAssignmentPrior)
-{
-  // main() routine for this class.
-  createPartitionJunctionTrees(junctionTreeMSTpriorityStr);
-  computePartitionInterfaces();
-  createFactorCliques();
-  createDirectedGraphOfCliques();
-  assignRVsToCliques(varPartitionAssignmentPrior,varCliqueAssignmentPrior);
-  assignFactorsToCliques();
-  // TODO: assignScoringFactorsToCliques();
-  setUpMessagePassingOrders();
-  // create seps and VE seps.
-  createSeparators();
-  computeSeparatorIterationOrders();
-
-  // -- -- used only to compute weight.
-  getCumulativeUnassignedIteratedNodes(); 
-  // -- --
-
-  sortCliqueAssignedNodesAndComputeDispositions(varCliqueAssignmentPrior);
-}
-
-
 
 
 
@@ -793,7 +331,7 @@ JunctionTree::createPartitionJunctionTree(Partition& part,const string junctionT
 
     vector< Edge > edges;
     edges.reserve((numMaxCliques*(numMaxCliques-1))/2);
-  
+
     for (unsigned i=0;i<numMaxCliques;i++) {
       for (unsigned j=i+1;j<numMaxCliques;j++) {
 	set<RV*> sep_set;
@@ -1010,7 +548,7 @@ JunctionTree::createPartitionJunctionTree(Partition& part,const string junctionT
 	}
       }
     }
-  
+
     // sort in decreasing order by edge weight which in this
     // case is the sep-set size.
     sort(edges.begin(),edges.end(),EdgeCompare());
@@ -1049,7 +587,7 @@ JunctionTree::createPartitionJunctionTree(Partition& part,const string junctionT
 	    // reading in the trifiles. We just issue an informative
 	    // message just in case.
 	    printf("NOTE: junction tree creation joining two cliques (%d and %d) with size 0 set intersection. Either disconnected (which is ok) or non-triangulated (which is bad) graph.\n",
-		    edges[i].clique1,edges[i].clique2);
+		   edges[i].clique1,edges[i].clique2);
 	    // TODO: print out two cliques that are trying to be joined.
 	    printf("Clique %d: ",edges[i].clique1);
 	    part.cliques[edges[i].clique1].printCliqueNodes(stdout);
@@ -1058,7 +596,7 @@ JunctionTree::createPartitionJunctionTree(Partition& part,const string junctionT
 	  }
 	}
 
- 	part.cliques[edges[i].clique1].neighbors.push_back(edges[i].clique2);
+	part.cliques[edges[i].clique1].neighbors.push_back(edges[i].clique2);
 	part.cliques[edges[i].clique2].neighbors.push_back(edges[i].clique1);
 
 	if (++joinsPlusOne == numMaxCliques)
@@ -1138,20 +676,21 @@ JunctionTree::reportMemoryUsageTo(FILE *f,unsigned whichPartitions)
 
 /*-
  *-----------------------------------------------------------------------
- * JunctionTree::base_unroll()
+ * JunctionTree::create_base_partitions()
  *   sets up the internal data structures and creates a junction tree corresponding
- *   to the graph with C' unrolled k=2 times, (i.e., we have
- *   a graph that has (3) copies of C'). It does this using the initial
- *   partitions given in gm_template (P', C', and E').
+ *   to the graph with C' unrolled k=1 times, (i.e., we have
+ *   a graph that has (1) copies of C'). 
  *
- *   This routine should really only be called once to set up
- *   the base partitions (P1,C1,C2,C3,E1), from which all future
- *   unrolls will take place.
+ *   This routine should only be called once to set up the base
+ *   partitions (P',C',E'), from which all future unrolls will take
+ *   place, modifications, and instantiations take place.
  *
  *   Sets things up so that inference can take place.
- *   Unrolling is in terms of new C' partitions (so that if S=1, k corresponds to frames)
- *   but in general the network will be T(P') + k*T(C') + T(E) frames long, and in general
- *   T(C') >= S. This also depends on if the boundary algorithm was run or not. 
+ *
+ *   Unrolling is in terms of modifid (i.e., C') partitions (so that
+ *   if S=1, k corresponds to frames). See GMTemplate::computeUnrollParameters
+ *   for documentation on how this relates to frames, and the basic and modified
+ *   template.
  *
  * Preconditions:
  *   The partitions must be validly instantiated with cliques 
@@ -1170,15 +709,16 @@ JunctionTree::reportMemoryUsageTo(FILE *f,unsigned whichPartitions)
  *-----------------------------------------------------------------------
  */
 void
-JunctionTree::base_unroll()
+JunctionTree::create_base_partitions()
 {
 
   // first create the unrolled set of random variables corresponding
-  // to this JT.
+  // to this JT. Unroll corresponding to 1 [P' C' E']. (see GMTemplate::computeUnrollParameters
+  // for more documentation on this).
 
   fp.unroll(gm_template.M + gm_template.S - 1,
 	    partition_unrolled_rvs,partition_ppf);
-  
+
   set <RV*> empty;
 
   // copy P partition 
@@ -1228,7 +768,7 @@ JunctionTree::base_unroll()
     // An P' in the RI case must be P' = [ P C ], so
     // there is never an empty P' here.
     assert ( P1.cliques.size() > 0 );
-    
+
     // there might be an empty E1, though, so we need to check for that.
 
     if (E1.cliques.size() > 0) {
@@ -1244,7 +784,7 @@ JunctionTree::base_unroll()
 			     partition_unrolled_rvs,partition_ppf);
     }
   }
-  
+
 }
 
 
@@ -1276,7 +816,7 @@ void
 JunctionTree::computePartitionInterfaces()
 {
   // set up the base partitions
-  base_unroll();
+  create_base_partitions();
 
   // Use base partitions to find the various interface cliques.
   bool P_riCliqueSameAsInterface;
@@ -1322,7 +862,7 @@ JunctionTree::computePartitionInterfaces()
 
     // sanity check
     assert (C_li_to_C == C_li_to_P);
-    
+
     P_to_C_icliques_same =
       P_riCliqueSameAsInterface && Co_liCliqueSameAsInterface;
 
@@ -1342,7 +882,7 @@ JunctionTree::computePartitionInterfaces()
   E_root_clique = E1.cliqueWithMaxWeight();
   // If this is updated, need also to update in all other places
   // the code, search for string "update E_root_clique"
-  
+
 }
 
 
@@ -1395,7 +935,7 @@ JunctionTree::computePartitionInterface(JT_Partition& part1,
   // compute intersection by (name,frame) equivalance.
 
   infoMsg(IM::Giga,"Starting create partition interface\n");
-  
+
   unsigned max_sep_set_size = 0;
   unsigned part1_clique=0,part2_clique=0;
   unsigned part1_clique_size=0,part2_clique_size=0;
@@ -1448,9 +988,9 @@ JunctionTree::computePartitionInterface(JT_Partition& part1,
 }
 
 
-      
-      
-      
+
+
+
 
 
 
@@ -1555,15 +1095,15 @@ JunctionTree::createFactorCliques()
   // since this is the basic partition, we have
   // M+S copies of the chunk.
   const unsigned numChunkCopies = gm_template.M + gm_template.S;
-  
+
   for (unsigned factorNo=0;factorNo < fp.factorList.size(); factorNo++) {
     // find a home for the current factor, in either
     // P1, Co, or E1, being mindful of the partial
     // unrolling that potentially has already taken
     // place in producing P1, Co, and E1.
-    
+
     FactorInfo& factor = fp.factorList[factorNo];
-    
+
     if (fp.frameInTemplateP(factor.frame)) {
       const unsigned offset = 0;
 
@@ -1736,12 +1276,12 @@ JunctionTree::assignRVsToCliques(const char* varPartitionAssignmentPrior,
     infoMsg(IM::Giga,"assigning rvs to P1 partition\n");
     assignRVsToCliques(P1_n,P1,P_ri_to_C,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
     // accumulate what occured in P1 so Co can use it. 
-    union_1_2_to_3(P1.cliques[P_ri_to_C].cumulativeAssignedNodes,
-		   P1.cliques[P_ri_to_C].assignedNodes,
-		   Co.cliques[C_li_to_P].cumulativeAssignedNodes);
-    union_1_2_to_3(P1.cliques[P_ri_to_C].cumulativeAssignedProbNodes,
-		   P1.cliques[P_ri_to_C].assignedProbNodes,
-		   Co.cliques[C_li_to_P].cumulativeAssignedProbNodes);
+    unionRVs(P1.cliques[P_ri_to_C].cumulativeAssignedNodes,
+	     P1.cliques[P_ri_to_C].assignedNodes,
+	     Co.cliques[C_li_to_P].cumulativeAssignedNodes);
+    unionRVs(P1.cliques[P_ri_to_C].cumulativeAssignedProbNodes,
+	     P1.cliques[P_ri_to_C].assignedProbNodes,
+	     Co.cliques[C_li_to_P].cumulativeAssignedProbNodes);
 
     // printf("P1's cum ass prob:");
     // printRVSet(stdout,P1.cliques[P_ri_to_C].cumulativeAssignedProbNodes);
@@ -1757,12 +1297,12 @@ JunctionTree::assignRVsToCliques(const char* varPartitionAssignmentPrior,
   if (E1.nodes.size() > 0) {
     infoMsg(IM::Max,"assigning rvs to E partition\n");
     // accumulate what occured in P1,Co so E1 can use it. 
-    union_1_2_to_3(Co.cliques[C_ri_to_E].cumulativeAssignedNodes,
-		   Co.cliques[C_ri_to_E].assignedNodes,
-		   E1.cliques[E_li_to_C].cumulativeAssignedNodes);
-    union_1_2_to_3(Co.cliques[C_ri_to_E].cumulativeAssignedProbNodes,
-		   Co.cliques[C_ri_to_E].assignedProbNodes,
-		   E1.cliques[E_li_to_C].cumulativeAssignedProbNodes);
+    unionRVs(Co.cliques[C_ri_to_E].cumulativeAssignedNodes,
+	     Co.cliques[C_ri_to_E].assignedNodes,
+	     E1.cliques[E_li_to_C].cumulativeAssignedNodes);
+    unionRVs(Co.cliques[C_ri_to_E].cumulativeAssignedProbNodes,
+	     Co.cliques[C_ri_to_E].assignedProbNodes,
+	     E1.cliques[E_li_to_C].cumulativeAssignedProbNodes);
     assignRVsToCliques(E1_n,E1,E_root_clique,varPartitionAssignmentPrior,varCliqueAssignmentPrior);
   }
 
@@ -1771,24 +1311,24 @@ JunctionTree::assignRVsToCliques(const char* varPartitionAssignmentPrior,
   // user edited the trifile, which is one possible reason for this to
   // end in error.
   set <RV*> allNodes;
-  union_1_2_to_3(P1.nodes,Co.nodes,allNodes);
-  union_1_2_to_3(Co.nodes,E1.nodes,allNodes,true);
+  unionRVs(P1.nodes,Co.nodes,allNodes);
+  unionRVs(Co.nodes,E1.nodes,allNodes,true);
   set <RV*> allAssignedProbNodes;
   if (E1.cliques.size() > 0)
-    union_1_2_to_3(E1.cliques[E_root_clique].cumulativeAssignedProbNodes,
-		   E1.cliques[E_root_clique].assignedProbNodes,
-		   allAssignedProbNodes);
+    unionRVs(E1.cliques[E_root_clique].cumulativeAssignedProbNodes,
+	     E1.cliques[E_root_clique].assignedProbNodes,
+	     allAssignedProbNodes);
   else 
-    union_1_2_to_3(Co.cliques[C_ri_to_E].cumulativeAssignedProbNodes,
-		   Co.cliques[C_ri_to_E].assignedProbNodes,
-		   allAssignedProbNodes);
+    unionRVs(Co.cliques[C_ri_to_E].cumulativeAssignedProbNodes,
+	     Co.cliques[C_ri_to_E].assignedProbNodes,
+	     allAssignedProbNodes);
 
   set <RV*> nodesThatGiveNoProb;
   set_difference(allNodes.begin(),allNodes.end(),
 		 allAssignedProbNodes.begin(),allAssignedProbNodes.end(),
 		 inserter(nodesThatGiveNoProb,
 			  nodesThatGiveNoProb.end()));
-  
+
   if (nodesThatGiveNoProb.size() > 0) {
     fprintf(stderr,"INTERNAL ERROR: some nodes do not give probability to any clique, those nodes include: ");
     printRVSet(stderr,nodesThatGiveNoProb);
@@ -1919,7 +1459,7 @@ JunctionTree::assignRVsToCliques(const char *const partName,
 
 	// Then the node will be a probability contributer to one clique
 	// in this partition.
-	
+
 	// We choose one of those cliques to be the one the node
 	// contributes probabilty to.
 	unsigned clique_num = (*(scoreSet.begin())).second;
@@ -1931,7 +1471,7 @@ JunctionTree::assignRVsToCliques(const char *const partName,
 		  rv->name().c_str(),rv->frame(),clique_num);
 	}
       }
-      
+
       // update the cumulative RV assignments.
       getCumulativeAssignedNodes(part,rootClique);
 
@@ -1972,7 +1512,7 @@ JunctionTree::assignRVsToCliques(const char *const partName,
   // nodes last, since that results in the fewest branch mis-predicts.
   if (varCliqueAssignmentPrior && strlen(varCliqueAssignmentPrior) > 0) {
     infoMsg(IM::Giga,"Sorting cliques variables using priority order (%s)\n",varCliqueAssignmentPrior);
-    
+
     // We re-sort the assigned nodes in each clique according to a
     // designated (and hopefully good) topological order.
     for (unsigned clique_num=0;clique_num<part.cliques.size(); clique_num++ ) {
@@ -2033,7 +1573,7 @@ JunctionTree::assignRVToClique(const char *const partName,
   // First, check if directed_closure(rv) == (rv U parents(rv)) not in
   // the current clique, and if so then continue on down.
   bool closure_in_clique = (curClique.nodes.find(rv) != curClique.nodes.end());
-  
+
   // printf("clique%d: from rv, closure_in_clique = %d\n",root,closure_in_clique);
 
   if (closure_in_clique && !allParentsObserved) {
@@ -2062,7 +1602,7 @@ JunctionTree::assignRVToClique(const char *const partName,
       set_difference(parSet.begin(),parSet.end(),
 		     parentsInClique.begin(),parentsInClique.end(),
 		     inserter(parentsOutOfClique,parentsOutOfClique.end()));
-      
+
       // Check to see if all parents out of the clique are observed,
       // and if so, the closure is in the clique.
       set<RV*>::iterator it;
@@ -2315,7 +1855,7 @@ JunctionTree::assignFactorsToCliques()
 void
 JunctionTree::assignFactorsToCliques(JT_Partition& part)
 {
-  
+
   // for each factor, assign it to any clique that contains
   // it.
 
@@ -2325,12 +1865,12 @@ JunctionTree::assignFactorsToCliques(JT_Partition& part)
     if ((part.factorCliques[f].factorInfo->fType != FactorInfo::ft_symmetricConstraint)
 	||
 	(part.factorCliques[f].factorInfo->symmetricConstraintInfo.symmetricConstraintType
-	     != FactorInfo::sct_allVarsEqual))
+	 != FactorInfo::sct_allVarsEqual))
       continue;
 
     for (unsigned c=0;c<part.cliques.size();c++) {
       infoMsg(IM::Giga,"Checking if factor %d fits in clique %d, in partition\n",
-	     f,c);
+	      f,c);
       if (firstRVSetContainedInSecond(part.factorCliques[f].nodes,
 				      part.cliques[c].nodes)) {
 
@@ -2383,12 +1923,12 @@ JunctionTree::getCumulativeAssignedNodes(JT_Partition& part,
     // elements into sets where the elements are already contained in
     // the sets), but it doesn't need to run that fast, so the
     // redundant work is not a big deal.
-    union_1_2_to_3(part.cliques[child].cumulativeAssignedNodes,
-		   part.cliques[child].assignedNodes,
-		   curClique.cumulativeAssignedNodes,true);
-    union_1_2_to_3(part.cliques[child].cumulativeAssignedProbNodes,
-		   part.cliques[child].assignedProbNodes,
-		   curClique.cumulativeAssignedProbNodes,true);
+    unionRVs(part.cliques[child].cumulativeAssignedNodes,
+	     part.cliques[child].assignedNodes,
+	     curClique.cumulativeAssignedNodes,true);
+    unionRVs(part.cliques[child].cumulativeAssignedProbNodes,
+	     part.cliques[child].assignedProbNodes,
+	     curClique.cumulativeAssignedProbNodes,true);
 
   }
 }
@@ -2528,13 +2068,26 @@ JunctionTree::setUpMessagePassingOrderRecurse(JT_Partition& part,
 /*-
  *-----------------------------------------------------------------------
  * JunctionTree::createSeperators()
+ *
  *   Creates the seperator objects based on the message passing order
- *   that has been created at this point. It creates seperators
- *   relative to the base partitions 0, 1, 2, and 3. Each
- *   seperator contains nodes consisting of the intersection
- *   of the maxCliques between which a message is sent.
+ *   that has been created at this point. It creates seperators for
+ *   the base partitions P1, Co, and E1. Each seperator contains nodes
+ *   consisting of the intersection of the maxCliques between which a
+ *   message is sent.
+ *
+ *   The order the separators in the separator array are created in each partition are:
+ *      1) first come the separators between cliques entirely contained within
+ *         the partition.
+ *      2) next come any VE separators, if there are any.
+ *      3) last comes the left-interface (LI) separator, which is the
+ *         separator between the right-interface clique in the left
+ *         partition and the left-interface clique in the current
+ *         partition. Note that P1 does not have such an entry
+ *         in its separator array.
  *   
- *   See comment in class JT_Partition for 'separators' member for more information.
+ *   See comment in class JT_Partition in .h file at the 'separators'
+ *   member for more information on separators and the order that
+ *   they come in.
  * 
  * Preconditions:
  *   setUpMessagePassingOrder() must have already been called.
@@ -2558,33 +2111,38 @@ JunctionTree::createSeparators()
   if (P1.cliques.size() > 0) { 
     createSeparators(P1,
 		     P1_message_order);
-    P1.cliques[P_ri_to_C].ceSendSeparator = ~0x0; // set to invalid value
-    // P1 has no LI, so nothing more to do for P1 here.
-    
+
+    // set to invalid value, since the ri clique sends to a separator
+    // in the next partition, rather than internal to this partition.
+    P1.cliques[P_ri_to_C].ceSendSeparator = ~0x0; 
+
     // insert VE seps last
     if (useVESeparators && (veSeparatorWhere & VESEP_WHERE_P)) {
       infoMsg(IM::Max,"Searching for VE seps in P1\n");
       createVESeparators(P1);
     } else
       P1.numVEseps = 0;
+
+    // P1 has no LI, so nothing more to do for P1 here.
+
   }
-  
+
   // Cs are never empty.
   assert ( Co.cliques.size() > 0 );
 
+  // first create the normal seprators
   createSeparators(Co,
 		   Co_message_order);
 
-
-  // insert VE seps before the last one
+  // Next, potentially insert VE seps, before the last one.
   if (useVESeparators && (veSeparatorWhere & VESEP_WHERE_C)) {
     infoMsg(IM::Max,"Searching for VE seps in Co\n");
     createVESeparators(Co);
   } else
     Co.numVEseps = 0;
 
-  // Final one is guaranteed *always* to be the interface separator to
-  // the left partition.
+  // Final separator is guaranteed *always* to be the interface
+  // separator to the left partition, the LI separator.
   if (gm_template.leftInterface) {
     // left interface case
     assert ( E1.cliques.size() > 0 );
@@ -2609,11 +2167,16 @@ JunctionTree::createSeparators()
       if (Co.liNodes.size() > 0) {
 	// then there will at least be a Ci <-> C_{i+1}
 	// intersection. I.e., we are guaranteed that the chunks are
-	// not disconnected from each other.
+	// not disconnected from each other. This can happen if C
+	// reaches into the future (i.e., reaches into its next self
+	// and into E) --- for example, if there are children
+	// variables in Ci with their parents in C_{i+1}. It is not
+	// possible in this case for a child in Ci to have a parent in
+	// C_{i-1} since we're in the size(P) == 0 case here.
 	Co.separators.push_back(SeparatorClique(Co.cliques[C_li_to_P],Co.cliques[C_li_to_P]));
       } else {
-	// then there will not be a Ci <-> C_{i+1} intersection.  need
-	// to create an empty separator since the chunks are
+	// then there will not be a Ci <-> C_{i+1} intersection.  We
+	// need to create an empty separator since the chunks are
 	// disconnected from each other.
 	set<RV*> empty;
 	MaxClique mc(empty);
@@ -2634,22 +2197,27 @@ JunctionTree::createSeparators()
 
   }
 
-  // don't update left partitions RI clique's send separator since handled explicitly
+  // don't update left partitions RI clique's send separator since
+  // handled explicitly
   Co.cliques[C_ri_to_C].ceSendSeparator = ~0x0; //set to invalid value
 
+
   if (E1.cliques.size() > 0) { 
+
+    // normal separators
     createSeparators(E1,
 		     E1_message_order);
 
-    // insert VE seps before final one.
+
+    // Next, potentially insert any VE seps, before final one.
     if (useVESeparators  && (veSeparatorWhere & VESEP_WHERE_E)) {
       infoMsg(IM::Max,"Searching for VE seps in E1\n");
       createVESeparators(E1);
     } else
       E1.numVEseps = 0;
 
-    // Final one is guaranteed *always* to be the interface separator to
-    // the left partition.
+    // Final LI separator one is guaranteed *always* to be the
+    // interface separator to the left partition.
     // 
     // Create separator of interface cliques. Co is never empty. Note that the interface
     // separator always has to be the last separator inserted.
@@ -2867,7 +2435,7 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
     // these will be affected by the pruning parameters (while the
     // VE seps (if any) don't change with pruning.
     if (part.separators[clique.ceReceiveSeparators[0]].veSeparator
-	       && !part.separators[clique.ceReceiveSeparators[1]].veSeparator) {
+	&& !part.separators[clique.ceReceiveSeparators[1]].veSeparator) {
       // sep 0 is a VE separator, but sep 1 isn't. Put the VE sep last.
       swap(clique.ceReceiveSeparators[0],clique.ceReceiveSeparators[1]);
     } else if (part.separators[clique.ceReceiveSeparators[1]].veSeparator
@@ -3039,7 +2607,7 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
 
 	// sort in (default) ascending order
 	sort(sepIntersections.begin(),sepIntersections.end(),PairUnsigned1stElementCompare());
-	
+
 	// among number of ties (the ones with minimal intersection
 	// with others), find the one with greatest weight to place
 	// last.
@@ -3101,7 +2669,7 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
 	    set_union(empty.begin(),empty.end(),
 		      sep_j.nodes.begin(),sep_j.nodes.end(),
 		      inserter(sep_union_set,sep_union_set.end()));
-	    
+
 	  }
 	  sep_intr_set.clear();
 	  set_intersection(sep_i.nodes.begin(),sep_i.nodes.end(),
@@ -3109,7 +2677,7 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
 			   inserter(sep_intr_set,sep_intr_set.end()));
 	  sepIntersections[i-firstVESeparator].first = sep_intr_set.size();
 	}
-	  
+
 
 	// 	  printf("before sorting: VE seps have intersection among others:");
 	// 	  for (int i=firstVESeparator;i<=lastSeparator;i++) {
@@ -3140,7 +2708,7 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
 	// 		   (*it)<(*(it+1)));
 	// 	  }
 
-	
+
 	// among number of ties (the ones with minimal intersection
 	// with others), find the one with greatest weight to place
 	// last.
@@ -3190,7 +2758,7 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
 	= part.separators[clique.ceReceiveSeparators[0]].nodes;
 
       for (unsigned sep=1;sep<numSeparators;sep++) {
-      
+
 	// reference variables for easy access
 	set<RV*>& sepNodes
 	  = part.separators[clique.ceReceiveSeparators[sep]].nodes;
@@ -3533,7 +3101,7 @@ JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
       }
     }
   }
-    
+
   createDirectedGraphOfCliques(jt_part,root);
   assignRVsToCliques("candidate partition",jt_part,root,"","");
 
@@ -3552,12 +3120,12 @@ JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
 
   computeSeparatorIterationOrders(jt_part);
   getCumulativeUnassignedIteratedNodes(jt_part,root);
-  
+
   // If the code is changed so that jt weight needs the sorted
   // assigned nodes or the dispositions, we'll need to make a static version of
   // the following routine and call it here.
   // sortCliqueAssignedNodesAndComputeDispositions();
-  
+
   // return jt_part.cliques[root].cumulativeUnassignedIteratedNodes.size();
   double weight = junctionTreeWeight(jt_part,root,lp_nodes,rp_nodes);
 
@@ -3569,7 +3137,7 @@ JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
 	 it++) 
       {
 	RV* rv = (*it);
-	
+
 	assert ( rv-> discrete() );
 	DiscRV* drv = (DiscRV*)rv;
 	if (!drv->sparse())
@@ -3581,7 +3149,7 @@ JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
 	if (jt_part.unassignedInPartition.find(rv) ==
 	    jt_part.unassignedInPartition.end())
 	  continue;
-	
+
 	badness_count ++;
       }
     weight = badness_count*jtWeightPenalizeUnassignedIterated + weight;
@@ -3701,7 +3269,7 @@ JunctionTree::printAllJTInfo(FILE* f,
 			     const unsigned root,
 			     set <RV*>* lp_nodes,
 			     set <RV*>* rp_nodes)
-			     
+
 {
   // print cliques information
   fprintf(f,"=== Clique Information ===\n");
@@ -3895,7 +3463,7 @@ JunctionTree::prepareForUnrolling()
 
 
   }
-  
+
   if (P1.numVEseps > 0) {
     infoMsg(IM::Default,"Computing P's %d VE separators\n",P1.numVEseps);
   }
@@ -3937,7 +3505,8 @@ JunctionTree::prepareForUnrolling(JT_Partition& part)
  * JunctionTree::unroll()
  *   sets up the internal data structures and creates a junction tree corresponding
  *   to the graph with C' unrolled k times, k >= 0. (i.e., we have
- *   a graph that has (k+1) copies of C'). 
+ *   a graph that has (k+1) copies of C') and place them into this
+ *   class's members partitionStructureArray and partitionTableArray.
  *
  *   This also set up data structures for inference. Some of what this routine
  *   does is copy data out of STL structures into faster customized structures
@@ -3967,7 +3536,9 @@ JunctionTree::prepareForUnrolling(JT_Partition& part)
  *-----------------------------------------------------------------------
  */
 unsigned
-JunctionTree::unroll(const unsigned int numFrames)
+JunctionTree::unroll(const unsigned int numFrames,
+		     const UnrollTableOptions tableOption,
+		     unsigned *totalNumberPartitions)
 {
   // note: the argument name is numFrames, which indicates
   // the number of frames in an observation file.
@@ -3975,14 +3546,12 @@ JunctionTree::unroll(const unsigned int numFrames)
   // first create the unrolled set of random variables corresponding
   // to this JT.
 
-  unsigned basicTemplateUnrollAmount;
-  int modifiedTemplateUnrollAmount;
-  unsigned numUsableFrames;
-  unsigned frameStart;
-
+  curNumFrames = numFrames;
   if (!gm_template.computeUnrollParameters(numFrames,
-					   basicTemplateUnrollAmount,
-					   modifiedTemplateUnrollAmount,
+					   basicTemplateMaxUnrollAmount,
+					   basicTemplateMinUnrollAmount,
+					   modifiedTemplateMaxUnrollAmount,
+					   modifiedTemplateMinUnrollAmount,
 					   numUsableFrames,
 					   frameStart))
     error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, different template, or decrease M,S if >1.\n",
@@ -3990,26 +3559,62 @@ JunctionTree::unroll(const unsigned int numFrames)
 	  fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
 	  fp.numFrames(),
 	  gm_template.M,gm_template.S);
+  const int numCoPartitionTables = modifiedTemplateMaxUnrollAmount+1;
+  const int numCoPartitionStructures= modifiedTemplateMinUnrollAmount+1;
+  const int numPartitionStructures= modifiedTemplateMinUnrollAmount+3;
 
-  prepareForNextInferenceRound();
-
+  // we should never have more than 2 C structures since 2 is the max
+  // necessary.
+  assert ( numCoPartitionStructures <= 2 );
 
   infoMsg(IM::Info,"Number of Current Frames = %d, Number of Currently Usable Frames = %d\n",numFrames,numUsableFrames);
   infoMsg(IM::Tiny,"Number Of Frames = %d, Unrolling Basic Template %d times, Modified Template %d times\n",
 	  numFrames,
-	  basicTemplateUnrollAmount,
-	  modifiedTemplateUnrollAmount);
+	  basicTemplateMaxUnrollAmount,
+	  modifiedTemplateMaxUnrollAmount);
 
   // unrolled random variables
   // vector <RV*> unrolled_rvs;
   // mapping from 'name+frame' to integer index into unrolled_rvs.
   // map < RVInfo::rvParent, unsigned > ppf;
 
-  fp.unroll(basicTemplateUnrollAmount,cur_unrolled_rvs,cur_ppf);
+  // Only unroll the minimum amount since unrolling is expensive and
+  // takes up much memory.
+  fp.unroll(basicTemplateMinUnrollAmount,cur_unrolled_rvs,cur_ppf);
+
+  // set the observed variables for now, but these may/will be modified later.
   setObservedRVs(cur_unrolled_rvs);
 
-  // TODO: clear out the old and pre-allocate for new size.
-  jtIPartitions.clear();
+  prepareForNextInferenceRound();
+  // this clears the shared caches in the origin cliques
+  clearCliqueSepValueCache(perSegmentClearCliqueValueCache);
+
+  // clear out the old and pre-allocate for new size.
+  partitionStructureArray.clear();
+  partitionTableArray.clear();
+
+  // 
+  // For the structure array, we always only need to unroll by the
+  // amount corresponding to the amount by which the basic random
+  // variables have been unrolled.
+  partitionStructureArray.resize(numPartitionStructures);
+  unsigned partNo = 0;
+  new (&partitionStructureArray[partNo++]) PartitionStructures(P1
+							       ,cur_unrolled_rvs
+							       ,cur_ppf
+							       ,0*gm_template.S*fp.numFramesInC(),
+							       false // does not have a li separator
+							       );
+  for (int p=0;p<numCoPartitionStructures;p++) {
+    new (&partitionStructureArray[partNo]) PartitionStructures(Co,cur_unrolled_rvs,cur_ppf,p*gm_template.S*fp.numFramesInC());
+    partNo++;
+  }
+  new (&partitionStructureArray[partNo++]) 
+    PartitionStructures(E1,cur_unrolled_rvs,cur_ppf,
+			modifiedTemplateMinUnrollAmount*gm_template.S*fp.numFramesInC());
+
+   
+  // 
   // re-allocate. We add three to modifiedTemplateUnrollAmount
   // since: 
   //  1) when we unroll by n we get n+1 copies (+1) and
@@ -4017,30 +3622,72 @@ JunctionTree::unroll(const unsigned int numFrames)
   //     but below is how much to allocate.
   //  2) we need a partition for P, even if it is empty. (+1) 
   //  3) we need a partition for E, even if it is empty. (+1)
-  jtIPartitions.resize(modifiedTemplateUnrollAmount+3);
-  // this clears the shared caches. 
-  clearCliqueSepValueCache(perSegmentClearCliqueValueCache);
-
-  unsigned partNo = 0;
-  const int numCoPartitions = modifiedTemplateUnrollAmount+1;
-
-  new (&jtIPartitions[partNo++]) JT_InferencePartition(P1,cur_unrolled_rvs,cur_ppf,0*gm_template.S*fp.numFramesInC());
-  for (int p=0;p<numCoPartitions;p++) {
-    new (&jtIPartitions[partNo]) JT_InferencePartition(Co,cur_unrolled_rvs,cur_ppf,p*gm_template.S*fp.numFramesInC());
-    if (p == 0 && P1.cliques.size() == 0) {
-      // Alternatively to the below, we might set this inference
-      // partition to not use the LI separator, since it is will
-      // always be empty at the start. At the moment, we handle this
-      // in the inference CE/DE code below.
+  if (tableOption == LongTable) {
+    // then we pre-allocate the table array to correspond to the
+    // entire length of the segment. I.e., each table is unique.  With
+    // this option, it is possible to store all of the tables in
+    // memory at the same time (assuming there is sufficient RAM).
+    partitionTableArray.resize(modifiedTemplateMaxUnrollAmount+3);
+    unsigned partNo = 0;
+    new (&partitionTableArray[partNo++]) PartitionTables(P1);
+    for (int p=0;p<numCoPartitionTables;p++) {
+      new (&partitionTableArray[partNo]) PartitionTables(Co);
+      partNo++;
     }
-    partNo++;
+    new (&partitionTableArray[partNo++])
+      PartitionTables(E1);
+    assert (partNo == partitionTableArray.size());
+  } else  if (tableOption == ShortTable) {
+    // Then we pre-allocate the table array to correspond only to the
+    // structure array, assuming that the tables are going to be
+    // reused in some way. In this option, it is not possible to store
+    // all the tables simultaneously in memory (meaning, we
+    // are only allocating tables for *at most* a [P C C E] but
+    // it might be [P C E] or even [P E] depending on the
+    // number of C partitions in the structure (which depends on
+    // the real unrolling amount).
+    partitionTableArray.resize(numPartitionStructures);
+    unsigned partNo = 0;
+    new (&partitionTableArray[partNo++]) PartitionTables(P1);
+    for (int p=0;p<numCoPartitionStructures;p++) {
+      new (&partitionTableArray[partNo]) PartitionTables(Co);
+      partNo++;
+    }
+    new (&partitionTableArray[partNo++])
+      PartitionTables(E1);
+    assert (partNo == partitionStructureArray.size());
+  } else if (tableOption == ZeroTable) {
+    partitionTableArray.clear();
+  } else {
+    // assume NoTouchTable, so leave it alone.
+  }
+  
+  if (viterbiScore == true) {
+    // Then we need to allocate the storage to keep the Viterbi options.
+    // For now, it is unfortunately as long as the segment iself, even in the
+    // island algorithm case, although the values area packed.
+
+    // Once we include N-best list, then this is how it will effect these
+    // data structures.
+    const unsigned N_best = 1;
+
+    // First do P
+    P_partition_values.resize(N_best*partitionStructureArray[0].packer.packedLen());
+
+    // Next C
+    C_partition_values.resize(N_best
+			      *partitionStructureArray[1].packer.packedLen()
+			      *numCoPartitionTables);
+
+    // Next E
+    E_partition_values.resize(N_best
+			      *partitionStructureArray[numPartitionStructures-1]
+			      .packer.packedLen());
+
   }
 
-  new (&jtIPartitions[partNo++]) 
-    JT_InferencePartition(E1,cur_unrolled_rvs,cur_ppf,
-			  (modifiedTemplateUnrollAmount)*gm_template.S*fp.numFramesInC());
-
-  assert (partNo == jtIPartitions.size());
+  if (totalNumberPartitions != NULL)
+    *totalNumberPartitions = (modifiedTemplateMaxUnrollAmount+3);
 
   return numUsableFrames;
 }
@@ -4073,1950 +3720,67 @@ JunctionTree::clearAfterUnroll()
   for (unsigned i=0; i < cur_unrolled_rvs.size(); i++) 
     delete cur_unrolled_rvs[i];
   // clear out the old and pre-allocate for new size.
-  jtIPartitions.clear();
+  partitionStructureArray.clear();
   // this clears the shared caches. 
   clearCliqueSepValueCache(perSegmentClearCliqueValueCache);
 }
 
 
-/*-
- *-----------------------------------------------------------------------
- * JunctionTree::setObservedRVs()
- *   sets the observed RVs to their values, either taking values from
- *   the global observation matrix, or taking the values from the files.
- *
- * Preconditions:
- *   The given RVs must come from the result of unroll, and the observation matrix
- *   *must* be set up and ready to be used.
- *
- * Postconditions:
- *   All discrete observed random variables have a value that is their appropriate observed
- *   value.
- *
- * Side Effects:
- *   Modifies values of discrete observed random variables.
- *
- * Results:
- *   none
- *
- *-----------------------------------------------------------------------
- */
-void
-JunctionTree::setObservedRVs(vector <RV*>& rvs)
-{
-  // Set all discrete observed variables to their values here
-  vector <RV*>::iterator it;
-  for (it = rvs.begin(); it!= rvs.end(); it++) {
-    RV *rv = (*it);
-    if (rv->discrete() && !rv->hidden()) {
-      DiscRV* drv = (DiscRV*)rv;
-      drv->setToObservedValue();
-    }
-  }
-}
-
-
 
 
 /*-
  *-----------------------------------------------------------------------
- * JunctionTree::ceGatherIntoRoot
- *   
- *   Collect Evidence Gather Into Root: This routine does a collect
- *   evidence pass for this partition, and gathers all messages into
- *   the root within the current partition. It does so using the
- *   message order given in the argument 'message_order', and gathers
- *   into the provided root clique.  
+ * JunctionTree::setUpDataStructures()
  *
- * See Also:
- *   Dual routine: JunctionTree::deScatterOutofRoot()
- *
+ *   Sets up all the data structures in a JT (other than preparing for
+ *   unrolling), and calls all the routines in the necessary
+ *   order. This is like the main routine of this class, as it calls
+ *   what needs to be done to set up a JT.
  *
  * Preconditions:
- *   It is assumed that either:
- *     1) this is the left-most partition
- *  or 2) that the left interface clique within this partition has had a message
- *        sent to it from the left neighbor partition.
+ *   Junction tree must have been created. Should not have called 
+ *   setUpDataStructures() before. The C partitions in the template
+ *   have variables, but the other partions (P, and E) might be empty.
  *
  * Postconditions:
- *     All cliques in the partition have all messages but one sent to it.
+ *   All data structures are set up. The JT is ready to have
+ *   prepareForUnrolling() called.
  *
  * Side Effects:
- *     all partitions will have been instantiated to the extent that the messages (with
- *     the current pruning ratios)  have been created.
+ *   Changes many internal data structures in this object. 
  *
  * Results:
- *   none
+ *    None.
  *
  *-----------------------------------------------------------------------
  */
 void
-JunctionTree::ceGatherIntoRoot(// partition
-			       JT_InferencePartition& part,
-			       // index of root clique in the partition
-			       const unsigned root,
-			       // message order of the JT in this partition
-			       vector< pair<unsigned,unsigned> >& message_order,
-			       // the name of the partition (for debugging/status msgs)
-			       const char*const part_type_name,
-			       // number of the partition in unrolled graph 
-			       // (for debugging/status msgs)
-			       const unsigned part_num,
-			       const bool clearWhenDone,
-			       const bool alsoClearOrigins)
+JunctionTree::setUpDataStructures(const char* varPartitionAssignmentPrior,
+				  const char *varCliqueAssignmentPrior)
 {
-  // first check that this is not an empty partition.
-  if (part.maxCliques.size() == 0)
-    return;
+  // main() routine for this class.
+  createPartitionJunctionTrees(junctionTreeMSTpriorityStr);
+  computePartitionInterfaces();
+  createFactorCliques();
+  createDirectedGraphOfCliques();
+  assignRVsToCliques(varPartitionAssignmentPrior,varCliqueAssignmentPrior);
+  assignFactorsToCliques();
+  // TODO: assignScoringFactorsToCliques();
+  setUpMessagePassingOrders();
+  // create seps and VE seps.
+  createSeparators();
+  computeSeparatorIterationOrders();
 
-  // Now, do partition messages.
-  for (unsigned msgNo=0;msgNo < message_order.size(); msgNo ++) {
-    const unsigned from = message_order[msgNo].first;
-    const unsigned to = message_order[msgNo].second;
-    infoMsg(IM::Med+5,
-	    "CE: gathering into %s,part[%d]: clique %d\n",
-	    part_type_name,part_num,from);
-    part.maxCliques[from].
-      ceGatherFromIncommingSeparators(part);
-    infoMsg(IM::Mod,
-	    "CE: message %s,part[%d]: clique %d --> clique %d\n",
-	    part_type_name,part_num,from,to);
-    part.maxCliques[from].
-      ceSendToOutgoingSeparator(part);
+  // -- -- used only to compute weight.
+  getCumulativeUnassignedIteratedNodes(); 
+  // -- --
 
-    // TODO: if we are just computing probE here, we should
-    // delete memory in part.maxCliques[from]. Also, if we're
-    // only doing probE, we should not keep the cliques around at all, only
-    // the outgoing separator.
-    if (clearWhenDone) {
-      part.maxCliques[from].
-	clearCliqueAndIncommingSeparators(part,alsoClearOrigins);
-    }
-  }
-  // collect to partition's root clique
-  infoMsg(IM::Med+5,
-	  "CE: gathering into partition root %s,part[%d]: clique %d\n",
-	  part_type_name,part_num,root);
-  part.maxCliques[root].
-    ceGatherFromIncommingSeparators(part);
-
-  if (IM::messageGlb(IM::Med+9)) {
-    part.reportMemoryUsageTo(stdout);
-  }
+  sortCliqueAssignedNodesAndComputeDispositions(varCliqueAssignmentPrior);
 }
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * JunctionTree::ceSendToNextPartition
- *   
- *   Collect Evidence Send To Next Partition: This routine sends a
- *   message from the right interface clique of a left (or previous)
- *   partition to the left interface clique of a right (or next)
- *   partition in the partition series. It is assumed that the right
- *   interface clique has had all its incomming messages sent to it.
- *
- * See Also:
- *   Dual routine: JunctionTree::deReceiveToPreviousPartition()
- *
- *
- * Preconditions:
- *   It is assumed that:
- *     1) the right interface of the previous partition must have had
- *        all messages sent to it.
- * 
- * Postconditions:
- *     the left interface of the next partition is now set up.
- *
- * Side Effects:
- *     all partitions will have been instantiated to the extent that the messages (with
- *     the current pruning ratios)  have been created.
- *
- * Results:
- *   none
- *
- *-----------------------------------------------------------------------
- */
-void
-JunctionTree::ceSendToNextPartition(// previous partition
-				    JT_InferencePartition& previous_part,
-				    // root clique of the previous partition (i.e., the
-				    // right interface clique) 
-				    const unsigned previous_part_root,
-				    // name of previous partition (for debugging/status msgs)
-				    const char*const previous_part_type_name,
-				    // sequence number (in unrolling) of previous partition
-				    // (for debugging/status msgs)
-				    const unsigned previous_part_num,
-				    // next partition
-				    JT_InferencePartition& next_part,
-				    // leaf clique of next partition (i.e., index number
-				    // of the left interface clique of next partition)
-				    const unsigned next_part_leaf,
-				    // name (debugging/status msgs)
-				    const char*const next_part_type_name,
-				    // partitiiton number (debugging/status msgs)
-				    const unsigned next_part_num)
-{
-  // check for empty partitions.
-  if (previous_part.maxCliques.size() == 0 || next_part.maxCliques.size() == 0)
-    return;
-
-  infoMsg(IM::Mod,"CE: message %s,part[%d],clique(%d) --> %s,part[%d],clique(%d)\n",
-	   previous_part_type_name,
-	   previous_part_num,
-	   previous_part_root,
-	   next_part_type_name,
-	   next_part_num,
-	   next_part_leaf);
-  previous_part.maxCliques[previous_part_root].
-    ceSendToOutgoingSeparator(previous_part,
-			      next_part.
-			      separatorCliques[next_part.separatorCliques.size()-1]);
-
-  if (IM::messageGlb(IM::Med+9)) {
-    previous_part.reportMemoryUsageTo(stdout);
-  }
-}
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * JunctionTree::collectEvidence()
- *   
- *   Collect Evidence: This routine performes a complete collect
- *   evidence pass for this series of partitions that have been
- *   unrolled a certain amount, given by the jtIPartitions array. It
- *   sets the appropriate names, etc. of the partitions depending on
- *   if this is a left-interface or right-interface form of inference.
- *   the root within the current partition. 
- *  
- *   This routine demonstrates a simple version of linear space
- *   collect evidence inference. It keeps everything in memory at the
- *   same time when doing going forward, so it is suitable for use in
- *   a collect evidence/distribute evidence (forward/backward)
- *   framework.  A companion routine (aptly named
- *   'distributeEvidence') will, assuming collect evidence has been
- *   called, do the distribute evidence stage, thereby leaving all
- *   cliques in all partitions locally and therefore globally
- *   consistent, ready to be used say in EM training.
- *
- * See Also:
- *    1) contant memory (not dept. on time T) version of collect evidence
- *       JunctionTree::probEvidence()
- *    2) log space version of collect/distribute evidence  
- *       JunctionTree::collectDistributeIsland()
- *
- * Preconditions:
- *   The parititons must have been created and placed in the array jtIPartitions.
- *
- * Postconditions:
- *     All cliques in the partition have all messages but one sent to it.
- *
- * Side Effects:
- *     all partitions will have been instantiated to the extent that the messages (with
- *     the current pruning ratios)  have been created.
- *
- * Results:
- *   none
- *
- *-----------------------------------------------------------------------
- */
-void
-JunctionTree::collectEvidence()
-{
-  // This routine handles all of:
-  // 
-  //    unrolled 0 times: (so there is a single P1, and E1)  
-  //    unrolled 1 time: so there is a P1, C1, C3, E1
-  //    unrolled 2 or more times: so there is a P1 C1 [C2 ...] C3, E1
-  //    etc.
-
-  const unsigned numCoPartitions = jtIPartitions.size()-2;
-  unsigned partNo = 0;
-  // set up appropriate name for debugging output.
-  const char* prv_nm;
-  prv_nm = P1_n;
-  unsigned prv_ri = P_ri_to_C;
-  ceGatherIntoRoot(jtIPartitions[partNo],
-		   P_ri_to_C,
-		   P1_message_order,
-		   prv_nm,partNo);
-
-  for (unsigned p = 0; p < numCoPartitions; p++) {
-    ceSendToNextPartition(jtIPartitions[partNo],prv_ri,prv_nm,partNo,
-			  jtIPartitions[partNo+1],C_li_to_C,Co_n,partNo+1);
-    partNo++;
-    prv_nm = Co_n;
-    prv_ri = C_ri_to_C;
-
-    // we skip the first Co's LI separator if there is no P1
-    // partition, since otherwise we'll get zero probability.
-    if (p == 0 && P1.cliques.size() == 0)
-      Co.skipLISeparator();
-    ceGatherIntoRoot(jtIPartitions[partNo],
-		     C_ri_to_C,
-		     Co_message_order,
-		     prv_nm,partNo);
-    // if the LI separator was turned off, we need to turn it back on.
-    if (p == 0 && P1.cliques.size() == 0)
-      Co.useLISeparator();
-  }
-
-  ceSendToNextPartition(jtIPartitions[partNo],prv_ri,prv_nm,partNo,
-			jtIPartitions[partNo+1],E_li_to_C,E1_n,partNo+1);
-  partNo++;
-
-  // it might be that E is the first partition as well, say if this is
-  // a static graph, and in this case we need in this case to skip the
-  // incomming separator, which doesn't exist.
-  if (numCoPartitions == 0 && P1.cliques.size() == 0)
-    E1.skipLISeparator();
-  ceGatherIntoRoot(jtIPartitions[partNo],
-		   E_root_clique,
-		   E1_message_order,
-		   E1_n,partNo);
-  if (numCoPartitions == 0 && P1.cliques.size() == 0)
-    E1.useLISeparator();
-
-
-  assert ( partNo == jtIPartitions.size()-1 );
-
-  // root clique of last partition did not do partition, since it
-  // never sent to next separator (since there is none). We explicitly
-  // call pruning on the root clique of the last partition.
-  //if (jtIPartitions[partNo].maxCliques.size() > 0)
-  //  jtIPartitions[partNo].maxCliques[E_root_clique].ceDoAllPruning();
-
-}
-
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * JunctionTree::deScatterOutofRoot
- *   
- *   Distribute Evidence Scatter Outof Root: This routine does a
- *   distribute evidence pass for this partition, and scatters all
- *   messages outof the root within the current partition. It does so
- *   using the message order given in the argument 'message_order',
- *   and scatters out of the provided root clique (which is the right
- *   interface clique of this partition). By "Scatter", I mean it
- *   sends messages from the root clique distributing everything
- *   ultimately to all leaf cliques in this partition.
- *
- * See Also:
- *   Dual routine: JunctionTree::ceGatherIntoRoot()
- *
- *
- * Preconditions:
- *   It is assumed that either:
- *     1) this is the ritht-most partition
- *  or 2) that the right interface clique within this partition has had a message
- *        sent to it from the right neighbor partition.
- *
- * Postconditions:
- *     All cliques in the partition have all messages but one sent to it.
- *
- * Side Effects:
- *     all partitions will have been instantiated to the extent that the messages (with
- *     the current pruning ratios)  have been created.
- *
- * Results:
- *   none
- *
- *-----------------------------------------------------------------------
- */
-void
-JunctionTree::deScatterOutofRoot(// the partition
-				 JT_InferencePartition& part,
-				 // root (right interface clique) of this partition
-				 const unsigned root,
-				 // message order
-				 vector< pair<unsigned,unsigned> >& message_order,
-				 // name (debugging/status msgs)
-				 const char*const part_type_name,
-				 // partition number (debugging/status msgs)
-				 const unsigned part_num)
-{
-  if (part.maxCliques.size() == 0)
-    return;
-
-  const unsigned stopVal = (unsigned)(-1);
-  infoMsg(IM::Med+5,"DE: distributing out of partition root %s,part[%d]: clique %d\n",
-	  part_type_name,part_num,root);
-  part.maxCliques[root].
-    deScatterToOutgoingSeparators(part);
-  for (unsigned msgNo=(message_order.size()-1);msgNo != stopVal; msgNo --) {
-    const unsigned to = message_order[msgNo].first;
-    const unsigned from = message_order[msgNo].second;
-    infoMsg(IM::Mod,"DE: message %s,part[%d]: clique %d <-- clique %d\n",
-	    part_type_name,part_num,to,from);
-    part.maxCliques[to].
-      deReceiveFromIncommingSeparator(part);
-    infoMsg(IM::Med+5,"DE: distributing out of %s,part[%d]: clique %d\n",
-	    part_type_name,part_num,to);
-    part.maxCliques[to].
-      deScatterToOutgoingSeparators(part);
-  }
-}
-
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * JunctionTree::deReceiveToPreviousPartition()
- *   
- *   Distribute Evidence Receive To Previous Partition: This routine
- *   sends a message from the left interface clique of a right (or
- *   next) partition to the right interface clique of a left (or
- *   previous) partition in the partition series. It is assumed that
- *   the left interface clique has had all its messages sent to it.
- *
- * See Also:
- *   Dual routine: JunctionTree::ceSendToNextPartition()
- *
- * Preconditions:
- *   It is assumed that:
- *     1) the left interface of the next partition must have had
- *        all messages sent to it.
- * 
- * Postconditions:
- *     the right interface of the previous partition is now set up.
- *
- * Side Effects:
- *     all partitions will have been instantiated to the extent that the messages (with
- *     the current pruning ratios)  have been created.
- *
- * Results:
- *   none
- *
- *-----------------------------------------------------------------------
- */
-void
-JunctionTree::deReceiveToPreviousPartition(// the next partition
-					   JT_InferencePartition& next_part,
-					   // leaf (left interface cliuqe) of next partition
-					   const unsigned next_part_leaf,
-					   // name of next part (debugging/status msgs)
-					   const char*const next_part_type_name,
-					   // number of next part (debugging/status msgs)
-					   const unsigned next_part_num,
-					   // previous partition
-					   JT_InferencePartition& previous_part,
-					   // root (right interface clique) of previous partition 
-					   const unsigned previous_part_root,
-					   // name of prev part (debugging/status msgs)
-					   const char*const previous_part_type_name,
-					   // number of prev part (debugging/status msgs)
-					   const unsigned previous_part_num)
-{
-  // check for empty partitions.
-  if (previous_part.maxCliques.size() == 0 || next_part.maxCliques.size() == 0)
-    return;
-
-  infoMsg(IM::Mod,"DE: message %s,part[%d],clique(%d) <-- %s,part[%d],clique(%d)\n",
-	  previous_part_type_name,previous_part_num,previous_part_root,
-	  next_part_type_name,next_part_num,next_part_leaf);
-  previous_part.maxCliques[previous_part_root].
-    deReceiveFromIncommingSeparator(previous_part,
-				    next_part.
-				    separatorCliques[next_part.
-						     separatorCliques.size()-1]);
-}
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * JunctionTree::distributeEvidence()
- *   
- *   Distribute Evidence: This routine performs a complete distribute
- *   evidence pass for this series of partitions that have been
- *   unrolled a certain amount, given by the jtIPartitions array. It
- *   sets the appropriate names, etc. of the partitions depending on
- *   if this is a left-interface or right-interface form of inference.
- *   the root within the current partition.
- *  
- *   This routine demonstrates a simple version of linear space
- *   distribute evidence inference. It uses data kept in memory when
- *   doing going backwards, and it is assumed that it will be used in
- *   tandem with a previous collect evidence call.  A companion
- *   routine ('collectEvidence') will, do collect evidence appropriately
- *   leaving all data structures set up for distributeEvidence() to be called.
- *
- *   After distributeEvidence() is called, all cliques in all
- *   partitions will be locally (& globally if it is a JT) consistant, and so will
- *   be ready for EM training, etc.
- *
- * See Also:
- *    0) collectEvidence()
- *    1) contant memory (not dept. on time T) version of collect evidence
- *       JunctionTree::probEvidence()
- *    2) log space version of collect/distribute evidence  
- *       JunctionTree::collectDistributeIsland()
- *
- * Preconditions:
- *   - collectEvidence() must have been called right before this.
- *   - The parititons must have been created and placed in the array jtIPartitions.
- * 
- *
- * Postconditions:
- *     All cliques are now locally consistant, and will be globally consistant
- *     if we have a junction tree. 
- *
- * Side Effects:
- *     all partitions will have been instantiated to the extent that the messages (with
- *     the current pruning ratios)  have been created.
- *
- * Results:
- *   none
- *
- *-----------------------------------------------------------------------
- */
-void
-JunctionTree::distributeEvidence()
-{
-  // this routine handles all of:
-  // unrolled 0 times: (so there is a single P1, and E1)  
-  // unrolled 1 time: so there is a P1, C1, C3, E1
-  // unrolled 2 or more times: so there is a P1 C1 [C2 ...] C3, E1
-
-  const unsigned numCoPartitions = jtIPartitions.size()-2;
-  unsigned partNo = jtIPartitions.size()-1;
-  // set up appropriate name for debugging output.
-  const char* prv_nm;
-  unsigned prv_ri;
-
-  if (numCoPartitions == 0 && P1.cliques.size() == 0)
-    E1.skipLISeparator();
-  deScatterOutofRoot(jtIPartitions[partNo],
-		     E_root_clique,
-		     E1_message_order,
-		     E1_n,partNo);
-  if (numCoPartitions == 0 && P1.cliques.size() == 0)
-    E1.useLISeparator();
-
-
-  partNo--;
-  if (numCoPartitions > 0) {
-    prv_ri = C_ri_to_E;
-    prv_nm = Co_n;
-  } else {
-    // then there is no C' partition so we distribute
-    // directly into P partition.
-    prv_ri = P_ri_to_C;
-    prv_nm = P1_n;
-  }
-  deReceiveToPreviousPartition(jtIPartitions[partNo+1],E_li_to_C,E1_n,partNo+1,
-			       jtIPartitions[partNo],prv_ri,prv_nm,partNo);
-
-  for (unsigned p=numCoPartitions; p > 0; p--) {
-
-    if (p == 1 && P1.cliques.size() == 0)
-      Co.skipLISeparator();
-    deScatterOutofRoot(jtIPartitions[partNo],
-		       C_ri_to_C,
-		       Co_message_order,
-		       Co_n,partNo);
-    if (p == 1 && P1.cliques.size() == 0)
-      Co.useLISeparator();
-
-    partNo--;
-    prv_nm = ((p == 1)?P1_n:Co_n);
-
-    if (p > 1) 
-      prv_ri = C_ri_to_C;
-    else
-      prv_ri = P_ri_to_C;
-    deReceiveToPreviousPartition(jtIPartitions[partNo+1],C_li_to_C,Co_n,partNo+1,
-				 jtIPartitions[partNo],prv_ri,prv_nm,partNo);
-  }
-
-  deScatterOutofRoot(jtIPartitions[partNo],
-		     P_ri_to_C,
-		     P1_message_order,
-		     P1_n,partNo);
-
-  assert ( partNo == 0 );
-}
-
-/*
- * Must be called after collectEvidence() or distributeEvidence() has been called.
- *
- */
-void
-JunctionTree::printAllCliques(FILE* f,const bool normalize,const bool justPrintEntropy)
-{
-  unsigned partNo = 0;
-  char buff[2048];
-  if (pPartCliquePrintRange != NULL) {
-    BP_Range::iterator it = pPartCliquePrintRange->begin();
-    while (!it.at_end()) {
-      const unsigned cliqueNum = (unsigned)(*it);
-      if (cliqueNum < jtIPartitions[partNo].maxCliques.size()) {
-	sprintf(buff,"Partition %d (P), Clique %d:",partNo,cliqueNum); 
-	jtIPartitions[partNo].maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize,justPrintEntropy);
-      }
-      it++;
-    }
-  }
-  partNo++;
-
-  if (cPartCliquePrintRange != NULL) {
-    for (;partNo<jtIPartitions.size()-1;partNo++) {
-      BP_Range::iterator it = cPartCliquePrintRange->begin();
-      while (!it.at_end()) {
-	const unsigned cliqueNum = (unsigned)(*it);
-	if (cliqueNum < jtIPartitions[partNo].maxCliques.size()) {
-	  sprintf(buff,"Partition %d (C), Clique %d:",partNo,cliqueNum); 
-	  jtIPartitions[partNo].maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize,justPrintEntropy);
-	}
-	it++;
-      }
-    }
-  } else {
-    partNo = jtIPartitions.size()-1;
-  }
-    
-  if (ePartCliquePrintRange != NULL) {
-    BP_Range::iterator it = ePartCliquePrintRange->begin();
-    while (!it.at_end()) {
-      const unsigned cliqueNum = (unsigned)(*it);
-      if (cliqueNum < jtIPartitions[partNo].maxCliques.size()) {
-	sprintf(buff,"Partition %d (E), Clique %d:",partNo,cliqueNum); 
-	jtIPartitions[partNo].maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize,justPrintEntropy);
-      }
-      it++;
-    }
-  }
-}
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * JunctionTree::emIncrement()
- *
- *    A version of emIncrement that works with the data structures set up by 
- *    collectEvidence() and distributeEvidence() above. Note, EM training
- *    can also be performed with the island algorithm.
- *
- * See Also:
- *    0) collectEvidence()
- *    1) distributeEvidence()
- *    2) log space version of collect/distribute evidence  
- *       JunctionTree::collectDistributeIsland()
- *
- * Preconditions:
- *    collectEvidence() AND distributeEvidence() must have just been
- *    called setting up the data structures. All cliques must exist and
- *    must have their clique tables filled out and ready.
- *    Also, all parametr accumulators must be set up and ready to go.
- *
- * Postconditions:
- *   The accumulators are increment accordingly.
- *
- * Side Effects:
- *   This will update the accumulators of all trainable parameter objects.
- *
- * Results:
- *   None
- *
- *-----------------------------------------------------------------------
- */
-void
-JunctionTree::emIncrement(const logpr probE,
-			  const bool localCliqueNormalization,
-			  const double emTrainingBeam)
-{
-  // Quite simply, just iterate through all partitions and call emIncrement
-  // therein.
-  for (unsigned partNo = 0; partNo < jtIPartitions.size() ; partNo ++ ) {
-    jtIPartitions[partNo].emIncrement(probE,localCliqueNormalization,emTrainingBeam);
-  }
-}
-
-void
-JunctionTree::printAllCliques(JT_InferencePartition& part, // partition
-			      const unsigned partNo, // partition Number
-			      const char *const nm,  // partition name
-			      BP_Range* rng,         // range of cliques in partition to print.
-			      FILE* f,               // where to print
-			      const bool normalize,
-			      const bool justPrintEntropy)
-{
-  char buff[2048];
-  if (rng != NULL) {
-    BP_Range::iterator it = rng->begin();
-    while (!it.at_end()) {
-      const unsigned cliqueNum = (unsigned)(*it);
-      sprintf(buff,"Partition %d (%s), Clique %d:",partNo,nm,cliqueNum); 
-      part.maxCliques[cliqueNum].printCliqueEntries(f,buff,normalize,justPrintEntropy);
-      it++;
-    }
-  }
-}
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * JunctionTree::probEvidence()
- *
- *    A constant memory (i.e., indep. of T), combination of unroll and
- *    collectEvidence() above. It is constnat memory in that
- *    it keeps no more than two partitions in memory simultaneously.
- *
- * See Also:
- *    0) collectEvidence()
- *    1) distributeEvidence()
- *    2) log space version of collect/distribute evidence  
- *       JunctionTree::collectDistributeIsland()
- *
- * Preconditions:
- *    same as unroll() above.
- *
- * Postconditions:
- *   The probability of the evidence is returned to the caller.
- *
- * Side Effects:
- *   This will update the space managers averages and statistics.
- *
- *   TODO: hash table usage, sharingetc. so that hash tables are not re-used 
- *         for the entire length.
- *
- * Results:
- *
- *-----------------------------------------------------------------------
- */
-logpr 
-JunctionTree::probEvidence(const unsigned int numFrames,
-			   unsigned& numUsableFrames)
-{
-
-  // first create the unrolled set of random variables corresponding
-  // to this JT.
-
-  unsigned basicTemplateUnrollAmount;
-  int modifiedTemplateUnrollAmount;
-  unsigned frameStart;
-  if (!gm_template.computeUnrollParameters(numFrames,
-					   basicTemplateUnrollAmount,
-					   modifiedTemplateUnrollAmount,
-					   numUsableFrames,
-					   frameStart))
-    error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, different template, or decrease M,S if >1.\n",
-	  numFrames,
-	  fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
-	  fp.numFrames(),
-	  gm_template.M,gm_template.S);
-
-  prepareForNextInferenceRound();
-
-  infoMsg(IM::Info,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
-  infoMsg(IM::Tiny,"numFrames = %d, unrolling BT %d times, MT %d times\n",
-	  numFrames,
-	  basicTemplateUnrollAmount,
-	  modifiedTemplateUnrollAmount);
-
-  // unrolled random variables
-  // vector <RV*> unrolled_rvs;
-  // mapping from 'name+frame' to integer index into unrolled_rvs.
-  // map < RVInfo::rvParent, unsigned > ppf;
-
-  fp.unroll(basicTemplateUnrollAmount,cur_unrolled_rvs,cur_ppf);
-  setObservedRVs(cur_unrolled_rvs);
-
-  // this clears the shared caches. 
-  clearCliqueSepValueCache(perSegmentClearCliqueValueCache);
-
-  // actual absolute part numbers
-  unsigned partNo;
-  const int numCoPartitions = modifiedTemplateUnrollAmount+1;
-  // never use more than two partitions at a time.
-  JT_InferencePartition *curPart, *prevPart;
-  // set up appropriate name for debugging output.
-  const char* prv_nm;
-  unsigned prv_ri;
-
-  partNo = 0;
-  curPart = new JT_InferencePartition(P1,cur_unrolled_rvs,cur_ppf,0*gm_template.S*fp.numFramesInC());
-  prevPart = NULL;
-  prv_nm = P1_n;
-  prv_ri = P_ri_to_C;
-  ceGatherIntoRoot(*curPart,
-		   P_ri_to_C,
-		   P1_message_order,
-		   prv_nm,partNo,
-		   true,true);
-  // curPart->origin.clearSeparatorValueCache();
-
-  if (pPartCliquePrintRange != NULL) 
-    printAllCliques(*curPart,
-		    partNo,
-		    prv_nm,
-		    pPartCliquePrintRange,
-		    stdout,
-		    false);
-
-  swap(curPart,prevPart);
-
-  for (int p = 0; p < numCoPartitions; p++) {
-    delete curPart;
-    curPart = new JT_InferencePartition(Co,cur_unrolled_rvs,cur_ppf,p*gm_template.S*fp.numFramesInC());
-    ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
-			  *curPart,C_li_to_C,Co_n,partNo+1);
-
-    // TODO: this next call can't really go here since the destination clique
-    // has already assumed parameters from the previous sizes. To clear cache at
-    // partition bondary intervals, will need to interleave this in the above two calls.
-    // prevPart->origin.clearCliqueValueCache(true);
-
-    partNo++;
-    prv_nm = Co_n;
-    prv_ri = C_ri_to_C;
-
-    if (p == 0 && P1.cliques.size() == 0)
-      Co.skipLISeparator();
-    ceGatherIntoRoot(*curPart,
-		     C_ri_to_C,
-		     Co_message_order,
-		     prv_nm,partNo,
-		     true,true);
-
-    if (cPartCliquePrintRange != NULL) 
-      printAllCliques(*curPart,
-		      partNo,
-		      prv_nm,
-		      cPartCliquePrintRange,
-		      stdout,
-		      false);
-
-
-
-    // curPart->origin.clearSeparatorValueCache();
-    if (p == 0 && P1.cliques.size() == 0)
-      Co.useLISeparator();
-
-
-    swap(curPart,prevPart);
-  }
-
-  delete curPart;
-  curPart = new JT_InferencePartition(E1,cur_unrolled_rvs,cur_ppf,
-				      modifiedTemplateUnrollAmount*gm_template.S*fp.numFramesInC());
-  ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
-			*curPart,E_li_to_C,E1_n,partNo+1);
-  // prevPart->origin.clearCliqueValueCache(true);
-
-  partNo++;
-  if (numCoPartitions == 0 && P1.cliques.size() == 0)
-    E1.skipLISeparator();
-  ceGatherIntoRoot(*curPart,
-		   E_root_clique,
-		   E1_message_order,
-		   E1_n,partNo,
-		   true,true);
-
-  if (ePartCliquePrintRange != NULL) 
-    printAllCliques(*curPart,
-		    partNo,
-		    E1_n,
-		    ePartCliquePrintRange,
-		    stdout,
-		    false);
-
-  // curPart->origin.clearSeparatorValueCache();
-  if (numCoPartitions == 0 && P1.cliques.size() == 0)
-    E1.useLISeparator();
-
-
-  // root clique of last partition did not do partition, since it
-  // never sent to next separator (since there is none). We explicitly
-  // call pruning on the root clique of the last partition.
-  // curPart->maxCliques[E_root_clique].ceDoAllPruning();
-
-  logpr rc = curPart->maxCliques[E_root_clique].sumProbabilities();
-  
-  delete curPart;
-  delete prevPart;
-  
-  return rc;
-
-}
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * JunctionTree::probEvidenceTime()
- *    Just like probEvidence() but keeps track of how many messages between partitions
- *    have been done, and returns (even if not complete) when timer expires.  
- *
- * See Also:
- *    0) probEvidence()
- *
- * Preconditions:
- *    same as probEvidence() above.
- *
- * Postconditions:
- *    same as probEvidence() above.
- *
- * Side Effects:
- *    same as probEvidence() above.
- *
- * Results:
- *    same as probEvidence() above.
- *-----------------------------------------------------------------------
- */
-logpr 
-JunctionTree::probEvidenceTime(const unsigned int numFrames,
-			       unsigned& numUsableFrames,
-			       unsigned& numPartitionsDone,
-			       const bool noE)
-{
-
-  // first create the unrolled set of random variables corresponding
-  // to this JT.
-  numPartitionsDone = 0;
-  logpr res;
-
-  unsigned basicTemplateUnrollAmount;
-  int modifiedTemplateUnrollAmount;
-  unsigned frameStart;
-  if (!gm_template.computeUnrollParameters(numFrames,
-					   basicTemplateUnrollAmount,
-					   modifiedTemplateUnrollAmount,
-					   numUsableFrames,
-					   frameStart))
-    error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, different template, or decrease M,S if >1.\n",
-	  numFrames,
-	  fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
-	  fp.numFrames(),
-	  gm_template.M,gm_template.S);
-
-  prepareForNextInferenceRound();
-
-
-  infoMsg(IM::Info,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
-  infoMsg(IM::Tiny,"numFrames = %d, unrolling BT %d times, MT %d times\n",
-	  numFrames,
-	  basicTemplateUnrollAmount,
-	  modifiedTemplateUnrollAmount);
-
-  // unrolled random variables
-  // vector <RV*> unrolled_rvs;
-  // mapping from 'name+frame' to integer index into unrolled_rvs.
-  // map < RVInfo::rvParent, unsigned > ppf;
-
-  fp.unroll(basicTemplateUnrollAmount,cur_unrolled_rvs,cur_ppf);
-  setObservedRVs(cur_unrolled_rvs);
-
-  // this clears the shared caches. 
-  clearCliqueSepValueCache(perSegmentClearCliqueValueCache);
-
-  // actual absolute part numbers
-  unsigned partNo;
-  const unsigned numCoPartitions = modifiedTemplateUnrollAmount+1;
-  // never use more than two partitions at a time.
-  JT_InferencePartition *curPart, *prevPart;
-  // set up appropriate name for debugging output.
-  const char* prv_nm;
-  unsigned prv_ri;
-
-  partNo = 0;
-  curPart = new JT_InferencePartition(P1,cur_unrolled_rvs,cur_ppf,0*gm_template.S*fp.numFramesInC());
-  prevPart = NULL;
-  prv_nm = P1_n;
-  prv_ri = P_ri_to_C;
-  ceGatherIntoRoot(*curPart,
-		   P_ri_to_C,
-		   P1_message_order,
-		   prv_nm,partNo);
-  swap(curPart,prevPart);
-  if (probEvidenceTimeExpired)
-    goto finished;
-
-  for (unsigned p = 0; p < numCoPartitions; p++ ) {
-    delete curPart;
-    curPart = new JT_InferencePartition(Co,cur_unrolled_rvs,cur_ppf,p*gm_template.S*fp.numFramesInC());
-    ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
-			  *curPart,C_li_to_C,Co_n,partNo+1);
-    partNo++;
-    prv_nm = Co_n;
-    prv_ri = C_ri_to_C;
-
-    if (p == 0 && P1.cliques.size() == 0)
-      Co.skipLISeparator();
-    ceGatherIntoRoot(*curPart,
-		     C_ri_to_C,
-		     Co_message_order,
-		     prv_nm,partNo);
-    if (p == 0 && P1.cliques.size() == 0)
-      Co.useLISeparator();
-
-    swap(curPart,prevPart);
-    if (probEvidenceTimeExpired)
-      goto finished;
-  }
-
-  delete curPart;
-
-  // we have the option to skip E here.
-  if (!noE) {
-    // then do E.
-    curPart = new JT_InferencePartition(E1,cur_unrolled_rvs,cur_ppf,
-					modifiedTemplateUnrollAmount*gm_template.S*fp.numFramesInC());
-    ceSendToNextPartition(*prevPart,prv_ri,prv_nm,partNo,
-			  *curPart,E_li_to_C,E1_n,partNo+1);
-    partNo++;
-
-    if (numCoPartitions == 0 && P1.cliques.size() == 0)
-      E1.skipLISeparator();
-    ceGatherIntoRoot(*curPart,
-		     E_root_clique,
-		     E1_message_order,
-		     E1_n,partNo);
-    if (numCoPartitions == 0 && P1.cliques.size() == 0)
-      E1.useLISeparator();
-  
-    
-    // root clique of last partition did not do partition, since it
-    // never sent to next separator (since there is none). We explicitly
-    // call pruning on the root clique of the last partition.
-    // curPart->maxCliques[E_root_clique].ceDoAllPruning();
-    
-    res = curPart->maxCliques[E_root_clique].sumProbabilities();
-  } else {
-    curPart = NULL;
-  }
-
- finished:
-  numPartitionsDone = partNo;
-  
-  delete curPart;
-  delete prevPart;
-
-  return res;
-
-}
-
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * JunctionTree:: interface routines for island algorithm.
- *
- *    The various routines are interface routines for island algorithm
- *    to the lower level collect/distribute evidence routines defined
- *    above. These routines each only know the current partition (and
- *    possibly the previous or next partition) number, take the actual
- *    partition information from a pre-allocated array, and call
- *    the appropriate real routine. The routines included here
- *    are:
- *        ceGatherIntoRoot - call CE into the root (RI) of a partition
- *        createPartition - create the partition at location given
- *        ceSendToNextPartition - send from RI of left partition to LI of next right partition.
- *        cePruneRootCliqueOfPartition - explicitly prune the root cliuqe of the partition 
- *        deReceiveToPreviousPartition - send from LI of right partition to RI of previous left partition
- *        deletePartition - free memory associated with partition, and set array ptr to NULL
- *        deScatterOutofRoot - call DE from root (RI) of a partition
- *        probEvidenceRoot - return the prob of evidence from the root clique of the partition
- *        emIncrementIsland - name says it all
- *        printAllCliques - print out all clique entries according to clique ranges.
- *
- *    Note that these routines only do real work if the current prob evidence is
- *    something other than zero. As if it is zero, that means that
- *    we've already gotten to the end and found it is zero, and we're
- *    in the mode where we're just freeing up memory.
- *
- * Preconditions:
- *   For the non create/destroy routines, each routine assumes that
- *   the array location for the corresponding partition has been
- *   assigned appropriately. The other pre-conditions are the
- *   same as the routines (above) that are called. 
- *   The create routine has the same preconditions.
- *   The destroy routine assumes that the partition at the current location
- *   has been created.
- *
- * Postconditions:
- *   Since these routiens are mainly stubs, see the corresponding function that is called.
- *
- * Side Effects:
- *   These routines will affect internal structures, space managers, hash tables
- *   within the partitions that they refer to.
- *
- * Results:
- *   none
- *
- *-----------------------------------------------------------------------
- */
-void JunctionTree::
-ceGatherIntoRoot(const unsigned part)
-{
-  infoMsg(IM::Mod,"==> ceGatherIntoRoot: part = %d, nm = %s\n",
-	  part,partPArray[part].nm);
-
-  // We check here the condition if the partition number is 1 (i.e.,
-  // the 2nd partition) and P has no cliques. If this is the case,
-  // then we don't want to use the partition 1's left interface
-  // separator since it will be empty. Since we don't know
-  // at this point if partition one is a C' or an E' we ask to skip
-  // both (this will work either in the case when the number of C'
-  // partitions is 0 or 1).
-  if (part == 1 && P1.cliques.size() == 0) {
-    Co.skipLISeparator();
-    E1.skipLISeparator();
-  }
-  if (cur_prob_evidence.not_essentially_zero())
-    ceGatherIntoRoot(*partPArray[part].p,
-		     partPArray[part].ri,
-		     *partPArray[part].mo,
-		     partPArray[part].nm,
-		     part);
-  // restore the LI interface skip state of the partitions.
-  if (part == 1 && P1.cliques.size() == 0) {
-    Co.useLISeparator();
-    E1.useLISeparator();
-  }
-
-}
-void JunctionTree::
-createPartition(const unsigned part)
-{
-  infoMsg(IM::Mod,"$$$ createPartition: part = %d, nm = %s\n",
-	  part,partPArray[part].nm);
-  if (cur_prob_evidence.not_essentially_zero())
-    partPArray[part].p = new JT_InferencePartition(*partPArray[part].JT,
-						   cur_unrolled_rvs,cur_ppf,
-						   partPArray[part].offset);
-}
-void JunctionTree::
-ceSendToNextPartition(const unsigned part,const unsigned nextPart)
-{
-  infoMsg(IM::Mod,"--> ceSendToNextPartition: part = %d (%s), nextPart = %d (%s)\n",
-	  part,partPArray[part].nm,
-	  nextPart,partPArray[nextPart].nm);
-  if (cur_prob_evidence.not_essentially_zero())
-    ceSendToNextPartition(*partPArray[part].p,partPArray[part].ri,partPArray[part].nm,part,
-			  *partPArray[nextPart].p,partPArray[nextPart].li,partPArray[nextPart].nm,nextPart);
-}
-void JunctionTree::
-cePruneRootCliqueOfPartition(const unsigned part)
-{
-  infoMsg(IM::Mod,"\\/- cePruneRootCliqueOfPartition: part = %d, nm = %s\n",
-	  part,partPArray[part].nm);
-  // if (cur_prob_evidence.not_essentially_zero())
-  //  partPArray[part].p->maxCliques[partPArray[part].ri].ceDoAllPruning();
-}
-void JunctionTree::
-deReceiveToPreviousPartition(const unsigned part,const unsigned prevPart)
-{
-  infoMsg(IM::Mod,"<-- deReceiveToPreviousPartition: part = %d (%s), prevPart = %d (%s)\n",
-	  part,partPArray[part].nm,
-	  prevPart,partPArray[prevPart].nm);
-  if (cur_prob_evidence.not_essentially_zero())
-    deReceiveToPreviousPartition(*partPArray[part].p,partPArray[part].li,partPArray[part].nm,part,
-				 *partPArray[prevPart].p,partPArray[prevPart].ri,partPArray[prevPart].nm,prevPart);
-}
-void JunctionTree::
-deletePartition(const unsigned part)
-{
-  infoMsg(IM::Mod,"*** deletePartition: part = %d (%s)\n",
-	  part,partPArray[part].nm);
-  delete partPArray[part].p;
-  partPArray[part].p = NULL;
-}
-void JunctionTree::
-deScatterOutofRoot(const unsigned part)
-{
-  infoMsg(IM::Mod,"<== deScatterOutofRoot: part = %d (%s)\n",
-	  part,partPArray[part].nm);
-
-  if (part == 1 && P1.cliques.size() == 0) {
-    Co.skipLISeparator();
-    E1.skipLISeparator();
-  }
-
-  if (cur_prob_evidence.not_essentially_zero())
-    deScatterOutofRoot(*partPArray[part].p,
-		       partPArray[part].ri,
-		       *partPArray[part].mo,
-		       partPArray[part].nm,
-		       part);
-  if (part == 1 && P1.cliques.size() == 0) {
-    Co.useLISeparator();
-    E1.useLISeparator();
-  }
-}
-logpr
-JunctionTree::probEvidenceRoot(const unsigned part)
-{
-  // return the sum of probs for the root (right interface) clique of the given partition.
-  infoMsg(IM::Mod,"^^^ computing evidence for JT root: part = %d (%s)\n",
-	  part,partPArray[part].nm);
-  return partPArray[part].p->maxCliques[partPArray[part].ri].sumProbabilities();
-}
-logpr
-JunctionTree::setRootToMaxCliqueValue(const unsigned part)
-{
-  // return the sum of probs for the root (right interface) clique of the given partition.
-  infoMsg(IM::Mod,"^^^ setting JT root to max clique value: part = %d (%s)\n",
-	  part,partPArray[part].nm);
-  return partPArray[part].p->maxCliques[partPArray[part].ri].maxProbability();
-}
-void
-JunctionTree::emIncrementIsland(const unsigned part,
-				const logpr cur_prob_evidence,
-				const bool localCliqueNormalization)
-{
-  // increment for this partition.
-  infoMsg(IM::Mod,"^^^ incrementing EM: part = %d (%s)\n",
-	  part,partPArray[part].nm);
-  return partPArray[part].p->emIncrement(cur_prob_evidence,localCliqueNormalization,curEMTrainingBeam);
-}
-void
-JunctionTree::printAllCliques(const unsigned part,FILE* f,const bool normalize,const bool justPrintEntropy)
-{
-  BP_Range* rng;
-  if (part == 0) 
-    rng = pPartCliquePrintRange;
-  else if (part == partPArray.size()-1)
-    rng = ePartCliquePrintRange;
-  else 
-    rng = cPartCliquePrintRange;
-
-  printAllCliques(*(partPArray[part].p),part,partPArray[part].nm,
-		  rng,
-		  f,normalize,justPrintEntropy);
-
-}
-
-
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * JunctionTree::collectDistributeIslandBase()
- *
- * Preconditions:
- *   1) Guaranteed that partition[start] has
- *   been allocated. If start > 0, then we are also
- *   guaranteed that ceSendNext(start-1,start) has
- *   been called. In either case, we are also guaranteed
- *   taht ceGatherIntoRoot(start) has been called.
- *
- *   2) Also, we are guaranteed that either end == final, or that
- *   partition[end+1] has also already been created and that we've
- *   already sent a forward message to partition[end+1]. Therefore, if
- *   end < final, we are ready to do a deReceiveToPrev(end+1,end) to
- *   the partition at position end.
- *
- *   This function should only be called by collectDistributeIslandRecurse()
- *
- * Postconditions:
- *
- *  All partitions between start and end will exist and will be
- *  complete, meaning they will have had *all* messages sent, and so
- *  they could be used for EM updating. All partitions
- *  from [start+1,end] will be deallocated. 
- *
- *
- * Side Effects:
- *
- * Results:
- *
- *-----------------------------------------------------------------------
- */
-void
-JunctionTree::collectDistributeIslandBase(const unsigned start,
-					  const unsigned end,
-					  const bool runEMalgorithm,
-					  const bool runViterbiAlgorithm,
-					  const bool localCliqueNormalization)
-{
-  for (unsigned part = start; part <= end; part ++) {
-    if (part > start) {
-      // first one is done already (see pre-conditions) , so don't do.
-      ceGatherIntoRoot(part);
-    }
-    if (part != end) {
-      // then we create the next partition and send starting message
-      // to it.
-      createPartition(part+1);
-      ceSendToNextPartition(part,part+1);
-    } else {
-      // We are at the end, so we don't create and send to the next
-      // partition. This is because either 1)
-      // end=(partPArray.size()-1) (we are really at the last
-      // partition on the right), so there is no right neighboring
-      // partition, or 2) the right neighboring partition has already
-      // been sent a message from the previous
-      // incarnation/instantiation of the current partition.  Note,
-      // that if we don't send a message to the next partition, we do
-      // need to prune last clique of this partition here since that
-      // is what would have happened ordinarily. 
-      // All the partition's root cliques need to be pruned, as
-      // otherwise there might be entries in that clique not contained
-      // in its previously-created outgoing separator. Therefore, we
-      // explicitly prune here in that case.
-      cePruneRootCliqueOfPartition(part);
-    }
-  }
-  for (unsigned part = end; (1);) { 
-    if (part < (partPArray.size()-1)) {
-      // then there is something on the right to receive a message
-      // from. 
-      deReceiveToPreviousPartition(part+1,part);
-    } else {
-      // this is the true end and we can get the probability of evidence here.
-      // only initialize this if we are not doing localCliqueNormalization
-      if (runEMalgorithm) {
-	cur_prob_evidence = probEvidenceRoot(part);
-	if (cur_prob_evidence.essentially_zero()) {
-	  infoMsg(IM::Default,"Island not training segment since probability is essentially zero\n");
-	  // note that we can't just jump out as we have to free up all the
-	  // memory that we allocated. We thus have to check a bunch of conditions on 
-	  // the way out and do EM training only when appropriate, but always delete.
-	}
-      } else if (runViterbiAlgorithm) {
-	cur_prob_evidence = probEvidenceRoot(part);
-	if (cur_prob_evidence.essentially_zero()) {
-	  infoMsg(IM::Default,"Island not decoding segment since probability is essentially zero\n");
-	  // note that we can't just jump out as we have to free up
-	  // all the memory that we allocated. We thus have to check a
-	  // bunch of conditions on the way out and do decoding only
-	  // when appropriate, but always delete.
-	} else
-	  setRootToMaxCliqueValue(part);
-      }
-      if (IM::messageGlb(IM::Low)) {
-	infoMsg(IM::Low,"XXX Island Finished Inference: part = %d (%s): log probE = %f\n",
-		part,partPArray[part].nm,probEvidenceRoot(part).valref());
-      }
-    }
-    // 
-    if (part != end) {
-      // delete it if we created it here.
-      deletePartition(part+1);
-    }
-
-    if ( ((runEMalgorithm == runViterbiAlgorithm) && (runEMalgorithm == false))
-	 || cur_prob_evidence.not_essentially_zero()) {
-      // scatter into all cliques within this separator (at the very least)
-      deScatterOutofRoot(part);
-      // We now have a completed partition that we can use
-      // for EM, viterbi decoding, scoring, etc.
-      if (IM::messageGlb(IM::Mod)) {
-	infoMsg(IM::Mod,"!!! finished partition: part = %d (%s)\n",
-		part,partPArray[part].nm);
-	for (unsigned cliqueNo=0;cliqueNo<partPArray[part].p->maxCliques.size();cliqueNo++) {
-	  printf("XXX Island: Part no %d: clique no %d: log probE = %f\n",
-		 part,cliqueNo,partPArray[part].p->maxCliques[cliqueNo].sumProbabilities().valref());
-	}
-      }
-    }
-    
-    // and do em updating if appropriate.
-    if (runEMalgorithm && cur_prob_evidence.not_essentially_zero()) {
-      emIncrementIsland(part,cur_prob_evidence,localCliqueNormalization);
-    }
-    printAllCliques(part,stdout,true);
-
-    if (part == start)
-      break;
-    part--;
-  }
-}
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * JunctionTree::collectDistributeIslandRecurse()
- *
- *  Run a collect distribute evidence stage
- *  between the partitions that are at locations [start,end] INCLUSIVE.
- *  Note if this is the very first call, it should be called
- *  with [start=0,end=(nparts-1)].
- *
- * Preconditions:
- *    For this to work, we must have that:
- *     1) partitions[start] exists (i.e., allocated), and
- *        ceGather(start) has already been called.
- *     2) Either end == partitions[final], 
- *        Or,  end != partitions[final], and
- *             partitions[end+1] has been allocated, and
- *             it is all ready to have deReceiveToPrev(end+1,end)
- *             be called.
- *    This function should only be called by collectDistributeIsland()
- *
- * Postconditions:
- *  All partitions between start and end will have at one time
- *  been in a state where all cliques will have had all
- *  messages, and so could be used for EM updating.
- *
- * Side Effects:
- *
- * Results:
- *
- *-----------------------------------------------------------------------
- */
-void
-JunctionTree::collectDistributeIslandRecurse(const unsigned start,
-					     const unsigned end,
-					     const unsigned base,
-					     const unsigned linear_section_threshold,
-					     const bool runEMalgorithm,
-					     const bool runViterbiAlgorithm,
-					     const bool localCliqueNormalization)
-{
-  // We're doing from [start,end] inclusive, so compute length
-  // accordingly
-  const unsigned len = end-start + 1;
-  if (len <= linear_section_threshold) {
-    // do base case.
-    collectDistributeIslandBase(start,end,runEMalgorithm,
-				runViterbiAlgorithm,
-				localCliqueNormalization);
-  } else { 
-    const unsigned section_size = len/base;
-
-    if (section_size <= 1) {
-      infoMsg(IM::High,"Island collect/distribute inference, log base (%d) too large for current sect length (%d) & linear sect threshold (%d), it would result in sub sect len (%d). Backing off to linear case.\n",base,len,linear_section_threshold,section_size);
-      return collectDistributeIslandBase(start,end,runEMalgorithm,
-					 runViterbiAlgorithm,
-					 localCliqueNormalization);
-    }
-    // so we are assured there that section_size is at least two here. 
-
-    // compute what is left over at end.
-    const unsigned remainder = len - section_size*base;
-
-    unsigned section_start = start;
-    // number of sections that get an extra partition.
-    unsigned num_to_distribute = remainder;
-    // The size of section is stored in this variable.
-    unsigned cur_section_size;
-    while (1) {
-      // Update the current section size based on a uniform
-      // allocation of the remaining partitions over the
-      // first 'remainder' sections.
-      cur_section_size = section_size;
-      if (num_to_distribute > 0) {
-	// distribute the remainder evenly over the sections.
-	cur_section_size ++;
-	num_to_distribute--;
-      }
-      // don't do last section, as is handled by recursive call.
-      if (section_start + cur_section_size == (end+1))
-	break;
-
-      // the last partition included within section.
-      const unsigned section_end = section_start + cur_section_size-1;
-      // At this point, we are Guaranteed that:
-      //  - partition[section_start] has been allocated and ahs
-      //    already had ceGatherIntoRoot(section) called.
-      // We now run a constant space collect evidence stage, where we:
-      //    a) leave partition[section_start] in place
-      //    b) delete all partitions starting from and including (section_start+1)
-      //       up to and including section_end.
-      //    c) the last section we allocate (section_end+1) gets
-      //       a ceSendTo message, and is also gathered (since it is
-      //       going to be the start for the recursive call), and we leave
-      //       that one allocated in place.
-      createPartition(section_start+1);
-      ceSendToNextPartition(section_start,section_start+1);
-      ceGatherIntoRoot(section_start+1);
-      for (unsigned part = section_start+1; part <= section_end; part ++) {
-	createPartition(part+1);
-	ceSendToNextPartition(part,part+1);
-	ceGatherIntoRoot(part+1);
-	deletePartition(part);
-      }
-      // move to point to next partition.
-      section_start += cur_section_size;
-    }
-
-    unsigned num_not_to_distribute = base - remainder;
-    section_start = (end+1);
-    bool first_iteration = true;
-    while (1) {
-      cur_section_size = section_size;
-      if (num_not_to_distribute > 0) 
-	num_not_to_distribute--;
-      else {
-	// distribute remainder over the first sections
-	cur_section_size++;
-      }
-      section_start -= cur_section_size;
-      // the last partition included within section.
-      const unsigned section_end = section_start + cur_section_size-1;
-      // recurse
-      collectDistributeIslandRecurse(section_start,section_end,
-				     base,linear_section_threshold,
-				     runEMalgorithm,
-				     runViterbiAlgorithm,
-				     localCliqueNormalization);
-      // need to delete partition at location section_start+cur_section_size
-      // if it is one that we created.
-      if (!first_iteration) {
-	assert (section_start+cur_section_size != (end+1));
-	deletePartition(section_start+cur_section_size);
-      }
-      first_iteration = false;
-      // if this was the first section, we end now.
-      if (section_start == start)
-	break;
-    }
-  }
-}
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * JunctionTree::collectDistributeIsland()
- *
- *  Do a collect evidence/distribute evidence pass using the island
- *  algorithm, a log-space version of collect/distribute evidence.
- *  The original idea was presented in the paper:
- *
- *      J. Binder, K. Murphy, and S. Russel. Space-efficient inference in
- *      dynamic probabilistic networks. In IJCAI, 1997.
- *      http://citeseer.ist.psu.edu/30635.html
- *
- *  By word of mouth, I (bilmes) heard that the idea arose from an
- *  algorithm that is used in genetic sequencing, and the connection
- *  was originally suggested by Paul Horton, but I am not sure of the
- *  original source in genetics (as of 2004. Please let me know if you
- *  are reading this and you know.).
- *
- *  Here, we adopt this idea to GMTK's notion of graph partitions.
- *
- *  Most simply, in the linear case we pay O(T) memory and O(T)
- *  compute. In the island case, we pay O(b*log_b(T)) memory and
- *  O(Tlog_b(T)) compute, where b is the base of the logarithm (note,
- *  all costs are of course multiplied by the average within-partition
- *  cost, we explain things only interms of the time/space complexity
- *  in how it relates to the length of the segment T). This can make
- *  the difference between being able to use collect/distribute
- *  evidence if in going from O(T) to O(logT) we go from *not* being
- *  able to fit in main memory to *being* able to fit in memory, but
- *  the additional time cost of logT can still be quite large. If T =
- *  1024, say, and base = 2, then we pay an extra time cost of a
- *  factor of 10!! (e.g., 1 day to 10 days).
- *
- *  More specifically, for a segment of length T, this algorithm never
- *  keeps simultaneously in memory more than about M partitions, where
- *
- *            M = T/base^k + k*(base-1)
- *
- *  and where k is the *smallest* integer value such that
- *
- *            T/base^k <= lst
- *
- *  and where lst = linear_section_threshold (the threshold at which
- *  we drop down to linear inference).  Therefore, we keep
- *  in memory no more than about
- *
- *            M = lst + k*(base-1)
- *
- *  partitions, where k is defined as above, log_b(T/lst) = k. For
- *  example, if lst == 3, and base == 3, then we keep simultaneously
- *  in memory no more than about 3+(base-1)log3(T/3) partitions,
- *  having logarithmic growth in T.
- *
- *  As mentioned above, this doesn't come for free, however, as we pay
- *  a cost in time complexity to save memory. Specifically, we do
- *  multiple collect evidence stages (unfortunately, the more time
- *  costly of the two, collect vs. distribute). Specifically, we need
- *  to do T' = R(T) collect evidence stages between partitions, where
- * 
- *        R(T) = T + (base-1)*R(T/base), 
- *
- *  This is the recurance relationship corresponding to what is
- *  implemented here in GMTK. To solve it, however, we can simplify by
- *  saying
- *  
- *        R(T) < T + base*R(T/base) 
- *
- *  meaning R(T) < T + T + ... + T, and there are log_{base}(T) terms
- *  in the sum. In actuality, there are k terms in the sum, where k is
- *  defined as above.
- * 
- *  Therefore, we can decrease running time and increase space
- *  requirements either by increasing base (from 2 on up) or
- *  alternatively (or also) by increasing lst (from 2 on up). Note
- *  that we increase mem in increasing b since O(b*log_b(T)) =
- *  O((b/ln(b))*ln(T)), so mem is growing as b/ln(b). Note also that
- *  one should set base and lst such that everything just fits in main
- *  memory (i.e., so we don't start swapping to disk), but it is not
- *  worth it to set these so that it takes any less than main memory,
- *  as that will slow things down further than necessary. Also note
- *  that argmin_{ b \in 2,3,4,... } b/ln(b) = 3, so a base of 3 is
- *  a good starting point. 
- *
- * See Also:
- *    0) collectEvidence()
- *    1) distributeEvidence()
- *    2) probEvidence()
- *
- * Preconditions:
- *   Same as unroll()
- *
- * Postconditions:
- *   Forward/backward has been run.
- *
- * Side Effects:
- *  Updates space manager statitics in cliques. 
- *  TODO: add side effects here as routine evolves.
- *
- * Results:
- *
- *
- *-----------------------------------------------------------------------
- */
-void
-JunctionTree::collectDistributeIsland(// number of frames in this segment.
-				      const unsigned int numFrames,
-				      // return value, number of frames
-				      // that are actually used.
-				      unsigned& numUsableFrames,
-				      // the base of the logarithm
-				      const unsigned base,
-				      // the threshold at which we drop
-				      // down to the linear collect/distribute
-				      // evidence stage.
-				      const unsigned linear_section_threshold,
-				      const bool runEMalgorithm,
-				      const bool runViterbiAlgorithm,
-				      const bool localCliqueNormalization)
-{
-
-  // cant run both EM and viterbi at the same time.
-  assert (!runEMalgorithm || !runViterbiAlgorithm);
-
-  // must have a linear_section_threshold of at least two partitions.
-  if (linear_section_threshold < 2)
-    error("ERROR: Island algorithm collect/distribute inference. linear section threshold value (%d) is too small.\n",linear_section_threshold);
-
-
-  // the log base must be a number that actually causes a split.
-  if (base <= 1)
-    error("ERROR: Island algorithm collect/distribute inference. base of log (%d) is too small.\n",base);
-
-
-  // first create the unrolled set of random variables corresponding
-  // to this JT.
-  unsigned basicTemplateUnrollAmount;
-  int modifiedTemplateUnrollAmount;
-  unsigned frameStart;
-  if (!gm_template.computeUnrollParameters(numFrames,
-					   basicTemplateUnrollAmount,
-					   modifiedTemplateUnrollAmount,
-					   numUsableFrames,
-					   frameStart))
-    error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, different template, or decrease M,S if >1.\n",
-	  numFrames,
-	  fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
-	  fp.numFrames(),
-	  gm_template.M,gm_template.S);
-
-  prepareForNextInferenceRound();
-
-  infoMsg(IM::Info,"numFrames = %d, numUsableFrames = %d\n",numFrames,numUsableFrames);
-  infoMsg(IM::Tiny,"numFrames = %d, unrolling BT %d times, MT %d times\n",
-	  numFrames,
-	  basicTemplateUnrollAmount,
-	  modifiedTemplateUnrollAmount);
-
-  fp.unroll(basicTemplateUnrollAmount,cur_unrolled_rvs,cur_ppf);
-  setObservedRVs(cur_unrolled_rvs);
-
-  const unsigned numPartitions = modifiedTemplateUnrollAmount+3;
-  const unsigned numCoPartitions = modifiedTemplateUnrollAmount+1;
-  unsigned partNo = 0;  
-
-  if (numCoPartitions == 0) {
-    // In this case, there is:
-    //    for LI: a P'=P, E'=[CE]
-    //    for RI: a P'=[P C], a E'=E
-    // In either case, it might be that P is empty.
-    if (P1.cliques.size() == 0)
-      E1.skipLISeparator();
-  }
-
-  // this clears the shared caches. 
-  clearCliqueSepValueCache(perSegmentClearCliqueValueCache);
-
-  // TODO: turn this array into a function so we don't alloate the entire array length.
-  // re-allocate.
-  partPArray.resize(numPartitions);
-  // Redundantly store partition information in an array both for
-  // debug messages and easy access to *significantly* simplify the
-  // island code above.
-  partPArray[partNo].JT = &P1;
-  partPArray[partNo].offset = 0*gm_template.S*fp.numFramesInC();
-  partPArray[partNo].p = NULL;
-  partPArray[partNo].mo = &P1_message_order;
-  partPArray[partNo].nm = P1_n;
-  partPArray[partNo].ri = P_ri_to_C;
-  partPArray[partNo].li = ~0x0;
-  partNo++;
-  for (unsigned p=0;p<numCoPartitions;p++) {
-    partPArray[partNo].JT = &Co;
-    partPArray[partNo].offset = p*gm_template.S*fp.numFramesInC();
-    partPArray[partNo].p = NULL;
-    partPArray[partNo].mo = &Co_message_order;
-    partPArray[partNo].nm = Co_n;
-    partPArray[partNo].ri = C_ri_to_C;
-    partPArray[partNo].li = C_li_to_C;
-    partNo++;
-  }
-  partPArray[partNo].JT = &E1;
-  partPArray[partNo].offset = (modifiedTemplateUnrollAmount)*gm_template.S*fp.numFramesInC();
-  partPArray[partNo].p = NULL;
-  partPArray[partNo].mo = &E1_message_order;
-  partPArray[partNo].nm = E1_n;
-  partPArray[partNo].ri = E_root_clique;
-  partPArray[partNo].li = E_li_to_C;
-  partNo++;
-
-  assert (partNo == partPArray.size());
-
-  // Start off with unity probability of evidence (we can set it to be
-  // anything other than zero actually). This will signal to the
-  // island algorithm to keep going and do real work. If we reach the
-  // end and if the segment decodes with zero probability, this
-  // variable will be set to such, and which will cause the island
-  // algorithm to, during its backward phase, just free up the islands
-  // of memory that have been allocated rather than doing anything
-  // else.
-  cur_prob_evidence.set_to_one();
-
-  // The recursion assumes that its first partition is already
-  // allocated, so we make sure to do that here.
-  partPArray[0].p = new JT_InferencePartition(P1,cur_unrolled_rvs,cur_ppf,0*gm_template.S*fp.numFramesInC());
-  ceGatherIntoRoot(0);
-  collectDistributeIslandRecurse(0,partPArray.size()-1,base,linear_section_threshold,
-				 runEMalgorithm,
-				 runViterbiAlgorithm,
-				 localCliqueNormalization);
-  delete partPArray[0].p;
-  partPArray[0].p = NULL;
-
-  partPArray.clear();
-
-  // turn it back on in all cases.
-  E1.useLISeparator();
-
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * JunctionTree::probEvidence()
- *   
- *   This version of probEvidence() merely sums up the entries in E's
- *   root clique and return the result. This, if collect evidence has
- *   been called all the way to E's root clique, this function will
- *   return the probabilty of the evidence prob(E).
- *
- *   Note that if we are in viterbi mode, then rather than summing
- *   we return the score of the maximum value clique entry.
- *
- * See Also:
- *   probEvidence() above, the other (overloaded) version which is
- *   a const. mem version of collectEvidence().
- *
- * Preconditions:
- *   - collectEvidence() (or the other probEvidence()) must have been called
- *   - The E partition must exist in the jtIPartitions array
- *     and must have been called for this to work right.
- *
- * Postconditions:
- *   none
- *
- * Side Effects:
- *   none 
- *
- * Results:
- *   The probability of the evidence
- *
- *-----------------------------------------------------------------------
- */
-logpr
-JunctionTree::probEvidence()
-{
-  if (viterbiScore) {
-    if (jtIPartitions[jtIPartitions.size()-1].maxCliques.size() > 0)
-      return jtIPartitions[jtIPartitions.size()-1].maxCliques[E_root_clique].
-	maxProbability();
-    else {
-      // this means that E is empty, we use the root clique of the last
-      // Co partition.
-      return jtIPartitions[jtIPartitions.size()-2].maxCliques[C_ri_to_E].
-	maxProbability();
-    }
-  } else {
-    if (jtIPartitions[jtIPartitions.size()-1].maxCliques.size() > 0)
-      return jtIPartitions[jtIPartitions.size()-1].maxCliques[E_root_clique].
-	sumProbabilities();
-    else {
-      // this means that E is empty, we use the root clique of the last
-      // Co partition.
-      return jtIPartitions[jtIPartitions.size()-2].maxCliques[C_ri_to_E].
-	sumProbabilities();
-    }
-  }
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * JunctionTree::setRootToMaxCliqueValue()
- *   
- *   This version of probEvidence() merely sets E's root clique to its
- *   current max value, and return the max value.
- *
- * See Also:
- *   probEvidence() above, the other (overloaded) version which is
- *   a const. mem version of collectEvidence().
- *
- * Preconditions:
- *   - collectEvidence() (or the other probEvidence()) must have been called
- *     for this to work.
- *   - The E partition must exist in the jtIPartitions array
- *     and must have been called for this to work right.
- *
- * Postconditions:
- *   none
- *
- * Side Effects:
- *   none 
- *
- * Results:
- *   The probability of the evidence
- *
- *-----------------------------------------------------------------------
- */
-logpr
-JunctionTree::setRootToMaxCliqueValue()
-{
-  if (jtIPartitions[jtIPartitions.size()-1].maxCliques.size() > 0)
-    return jtIPartitions[jtIPartitions.size()-1].maxCliques[E_root_clique].
-      maxProbability();
-  else 
-    return jtIPartitions[jtIPartitions.size()-2].maxCliques[C_ri_to_E].
-      maxProbability();
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * JunctionTree::printProbEvidenceAccordingToAllCliques()
- *   
- *   This routine will cycle through all cliques of all partitions and will
- *   print out the sums of the probs. of each cliuqe. Therefore, if 
- *   collect/distribute evidence has been called (and it is working)
- *   this routine should print out exactly the same value for all
- *   cliques (to within numerical precision and logp.h table error roundoff).
- *
- *   This routine really is only used for debugging/status messages.
- *
- * Preconditions:
- *   - collectEvidence() and distributeEvidence() should have been called
- *     and the jtIPartitions array left set up.
- *
- * Postconditions:
- *   none
- *
- * Side Effects:
- *   none 
- *
- * Results:
- *   none
- *
- *-----------------------------------------------------------------------
- */
-void
-JunctionTree::printProbEvidenceAccordingToAllCliques()
-{
-  for (unsigned part=0;part<jtIPartitions.size();part++) {
-    for (unsigned cliqueNo=0;cliqueNo<jtIPartitions[part].maxCliques.size();cliqueNo++) {
-      printf("Part no %d: clique no %d: log probE = %f\n",
-	     part,cliqueNo,jtIPartitions[part].maxCliques[cliqueNo].sumProbabilities().valref());
-    }
-  }
-}
-
-
-
-
-/*-
- *-----------------------------------------------------------------------
- * JunctionTree::printCurrentRVValues()
- *   
- *   Prints out all random variables in the current unrolled set.
- *
- * Preconditions:
- *   - cur_unrolled_rvs must be defined and unrolled
- *
- * Postconditions:
- *   cur_unrolled_rvs is printed.
- *
- * Side Effects:
- *   none 
- *
- * Results:
- *   none
- *
- *-----------------------------------------------------------------------
- */
-void
-JunctionTree::printCurrentRVValues(FILE *f)
-{
-  for (unsigned i=0;i<cur_unrolled_rvs.size();i++) {
-    cur_unrolled_rvs[i]->printSelf(f);
-  }
-}
-
-void
-JunctionTree::setCliquePrintRanges(char *p,char*c,char*e)
-{
-  if (p != NULL) {
-    BP_Range* tmp = new BP_Range(p,0,gm_template.P.cliques.size());
-    if (!tmp || tmp->length() <= 0)
-      delete tmp;
-    else
-      pPartCliquePrintRange = tmp;
-  }
-  if (c != NULL) {
-    BP_Range* tmp = new BP_Range(c,0,gm_template.C.cliques.size());
-    if (!tmp || tmp->length() <= 0)
-      delete tmp;
-    else
-      cPartCliquePrintRange = tmp;
-  }
-  if (e != NULL) {
-    BP_Range* tmp = new BP_Range(e,0,gm_template.E.cliques.size());
-    if (!tmp || tmp->length() <= 0)
-      delete tmp;
-    else
-      ePartCliquePrintRange = tmp;
-  }
-}
-
 
 
 /////////////////////////////////////////////	
 /// END OF FILE
 /////////////////////////////////////////////
+
+

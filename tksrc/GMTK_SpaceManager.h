@@ -56,7 +56,6 @@ class SpaceManager : public IM {
   // additive growth for memory allocation
   // should be const (but compiler complains)
   unsigned growthAddition;
-
   // Between instances of an object requesting via the same
   // spacemanager, how quickly should we decay. 
   // Must have 0 < decayRate
@@ -134,7 +133,21 @@ public:
   }
 
   unsigned nextSizeFrom(const unsigned curSize) {
-    return (unsigned)(((float)curSize)*growthRate) +  growthAddition;
+    //fprintf(stderr,"about to grow, size = %u, growthrate = %f, addition = %u\n",
+    //    curSize,growthRate,growthAddition);
+    // For some reason, gcc-4.2 on a mac has an arithmetic exception with
+    // the commented expression below, so we use the one after instead.
+    // unsigned rc = (unsigned)(((float)curSize)*growthRate) +  growthAddition;
+    // unsigned rc = (unsigned)(((double)curSize*growthRate) + (double)growthAddition);
+    // Note that uncommenting the print commands make the problem go away, it probably
+    // has something to do with this function being inlined.
+    // as of Sat Oct  3 16:41:42 2009, the below seems to work on the mac, as bot
+    // of the above expressions seem to fail with gcc-4.2 on macos-leopard.
+    unsigned rc = growthAddition;
+    double tmp = curSize*growthRate;
+    rc += (unsigned)tmp;
+    // fprintf(stderr,"done growing, rc = %u\n",rc);
+    return rc;
   }
 
   void setCurrentAllocationSizeIfLarger(const unsigned curSize) {

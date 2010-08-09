@@ -188,7 +188,7 @@ public:
   void emZeroOutObjectsAccumulators();
   void emLoadObjectsAccumulators(iDataStreamFile& ifile);
   void emAccumulateObjectsAccumulators(iDataStreamFile& ifile);
-  const string typeName() { return "Diag Gaussian"; }
+  const string typeName() { return "Gamma Distribution"; }
   //////////////////////////////////
 
   //////////////////////////////////

@@ -1610,6 +1610,173 @@ DiagCovarVector::emEndIterationNoSharing(const float*const partialAccumulatedNex
 
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * emEndIterationNoSharingElementProbabilities
+ *      end the EM iteration for this var in the case that there is no
+ *      sharing occuring, either mean sharing or covariance sharing.
+ *      Also, this version takes another argument that is an array of
+ *      probabilities accumulated for each individual element of the
+ *      mean.
+ *
+ * Preconditions:
+ *
+ *      see the assertions
+ *
+ * Postconditions:
+ *      EM iteration has been ended.
+ *
+ * Side Effects:
+ *      internal parameters are changed.
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+DiagCovarVector::emEndIterationNoSharingElementProbabilities(
+                           const float*const partialAccumulatedNextMeans,
+			   const float *const partialAccumulatedNextCovar,
+			   const logpr *const elementAccumulatedProbabilities)
+{
+  assert ( basicAllocatedBitIsSet() );
+
+  // we return if both 1) the not training bit is set
+  // and 2) there is no chance that this object will be shared.
+  // If 1) is not true, we are training this object so we continue,
+  // and if 2) is not true (we are sharing), then the accumulaters
+  // created for this object will be needed by the other objects 
+  // in this object's Gaussian component, so we'll need to compute them,
+  // even though the parameters of this object will not be updated
+  // when we swap them in.
+  // if (numTimesShared == 1 && !emAmTrainingBitIsSet())
+  //return;
+
+
+  // if this isn't the case, something is wrong.
+  assert ( emOnGoingBitIsSet() );
+
+  // shouldn't be called when sharing occurs.
+  assert ( refCount == 1 );
+  assert (!emSharedBitIsSet());
+
+  if (!emAccInitializedBitIsSet()) {
+    nextCovariances.growIfNeeded(covariances.len());
+    for (int i=0;i<covariances.len();i++) {
+      nextCovariances[i] = 0.0;
+    }
+    emSetAccInitializedBit();
+  }
+
+  refCount = 0;
+  // we're ready to finish and compute the next covariances.
+
+
+  // the assumption here is that the objects accumulatd probability is an upper
+  // bound on the element-wise accumulated probabilities. I.e., we should
+  // have that:
+  //
+  //      accumulatedProbability >= elementAccumulatedProbabilities[i] \forall i
+  //
+  // therefore we can use accumulatedProbability as a floor detection.  
+  if (accumulatedProbability < minContAccumulatedProbability()) {
+    infoMsg(IM::Warning,"WARNING: Diag covariance vec '%s' received only %e accumulated log probability (min is %e) in EM iteration, using previous values.",
+	    name().c_str(),
+	    accumulatedProbability.val(),
+	    minContAccumulatedProbability().val());
+    for (int i=0;i<covariances.len();i++) 
+      nextCovariances[i] = covariances[i];
+  } else {
+
+    // TODO: should check for possible overflow here of 
+    // accumulatedProbability when we do the inverse and unlog.
+    // Ideally this won't happen for a given minAccumulatedProbability().
+    const double invRealAccumulatedProbability = 
+      accumulatedProbability.inverse().unlog();
+
+    // Finally, divide by N (see the equation above)
+    // here computing the final variances.
+    unsigned prevNumFlooredVariances = numFlooredVariances;
+    double minVar = DBL_MAX;
+
+    for (int i=0;i<covariances.len();i++) {
+      logpr locAccumulatedProb =  elementAccumulatedProbabilities[i];
+      locAccumulatedProb.floor();
+
+      bool floored_variance = false;
+
+
+      if (locAccumulatedProb >=  minContAccumulatedProbability()) {
+	const double tmp = 
+	  ((double)partialAccumulatedNextCovar[i] - 
+	   (double)partialAccumulatedNextMeans[i]*
+	   (double)partialAccumulatedNextMeans[i]*(double)invRealAccumulatedProbability)
+	  *(double)invRealAccumulatedProbability;
+	nextCovariances[i] = tmp;
+
+	if (nextCovariances[i] < minVar)
+	  minVar = nextCovariances[i];
+	if (nextCovariances[i] < (float)GaussianComponent::varianceFloor())
+	  floored_variance = true;
+      } else {
+	floored_variance = true;
+      }
+
+      if (floored_variance == true) { 
+	/////////////////////////////////////////////////////
+	// When variances hit zero or their floor:
+	// There could be several reasons for the variances hitting the floor:
+	//   1) The prediction of means is very good which leads to low
+	//      variances.  In this case, we shouldn't drop the component,
+	//      instead we should just hard-limit the variance (i.e., here
+	//      mixCoeffs[this] is not too small).  
+	//   2) Very small quantity of training data (i.e., mixCoeffs[this] is
+	//      very small). In this case we should remove the component
+	//      completely.
+	//   3) If there is only one mixture, and this happens, then it could be
+	//      that the prob of this Gaussian is small. In this case, there's 
+	//      probably a problem with the graph topology. 
+	//      I.e., really, we should remove the RV state leading to
+	//      this this Gaussian. For now,
+	//      however, if this happens, the variance will be floored like
+	//      in case 1.
+
+	numFlooredVariances++;
+
+	// Don't let variances go less than variance floor. 
+
+	// At this point, we either could keep the old variance 
+	// values, or hard limit them to the varianceFloor. 
+
+	// either A or B but not both should be uncommented below.
+
+	// A: keep old variance
+	nextCovariances[i] = covariances[i];
+
+	// B: hard limit the variances
+	// nextCovariances[i] = GaussianComponent::varianceFloor();
+      }
+    }
+
+    if (prevNumFlooredVariances < numFlooredVariances) {
+      infoMsg(IM::Warning,"WARNING: covariance vector named '%s' had %d variances floored, minimum variance found was %e.\n",
+	      name().c_str(),
+	      numFlooredVariances-prevNumFlooredVariances,
+	      minVar);
+    }
+
+  }
+
+  // make it swapable
+  emSetSwappableBit();
+
+  // stop EM
+  emClearOnGoingBit();
+}
+
+
+
 
 
 
