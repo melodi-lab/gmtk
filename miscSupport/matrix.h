@@ -66,6 +66,58 @@ mTranspose(const inType *const in,
   } while (i<n);
 }
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * mMakeSymmetric()
+ *      A general template version of a 
+ *      function to compute X <--- (X + X^T)/2, i.e,.
+ *      compute the average of a square matrix the transpose of itself and do
+ *      in place.
+ * 
+ * Preconditions:
+ *      m > 0
+ *  (these conditions are assumed, and if they are not true, errors
+ *   will result)
+ *
+ * Postconditions:
+ *  matrix is modified so that X is now symmetric and is the average of its old
+ *  self and its transpose.
+ *
+ * Side Effects:
+ *      changes the input matrix in
+ *
+ * Results:
+ *      symmetric version of self
+ *
+ *-----------------------------------------------------------------------
+ */
+template <class inType>
+void
+mMakeSymmetric(inType *in,
+	       const int m) // rows & cols of 'in'
+{
+  assert( m > 0 );
+  int i = 1;
+  inType *diag_el = in;
+  do {
+    inType *inp_c = diag_el + i;
+    inType *inp_r = diag_el + i*m;
+    inType *inp_c_endp = diag_el + m - i;
+    do {
+      inType avg = (*inp_c + *inp_r) * 0.5;
+      *inp_c  = *inp_r = avg;
+      inp_c ++;
+      inp_r += m;
+    } while (inp_c != inp_c_endp);
+    diag_el = inp_c + i;
+    i++;
+  } while (i<m);
+}
+
+
+
+
 ////////////////////////////////////////////////////
 // matrixSelfOuterProduct: compute Z = VV'
 // 
@@ -297,6 +349,9 @@ void matrixSelfOuterProduct(const mType *const v,
     break;
   }
 }
+
+// TODO: make a inline unrolled-by-8 vectorized template (float,double) dot-product
+
 
 #endif
 

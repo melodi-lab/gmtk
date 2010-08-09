@@ -12,6 +12,7 @@
 #include "debug.h"
 
 unsigned IM::globalMessageLevel = IM::Nano;
+bool IM::globalFlush = true;
 
 #ifdef MAIN
 

@@ -157,8 +157,11 @@ iDataStreamFile::~iDataStreamFile()
 {
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
   if (cppIfAscii) {
-    if (pclose(fh) != 0) {
-      warning("WARNING: Can't close pipe 'cpp %s'.",fileName());
+    // first, scan until end of file since sometimes it appears
+    // that closing a pipe when not at the end causes an error (e.g., mac osx)
+    freadUntilEOF(fh);
+    if (::pclose(fh) != 0) {
+      warning("WARNING: Can't close pipe '%s %s'.",CPP_Command(),fileName());
     }
   } else {
     if (fclose(fh) != 0) {

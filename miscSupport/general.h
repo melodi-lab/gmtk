@@ -141,6 +141,7 @@ unsigned int numBitsSet(unsigned u);
  */
 const char* CPP_Command();
 
+bool freadUntilEOF(FILE *f);
 
 /*
  * MACHINE DEPENDENT typedefs.

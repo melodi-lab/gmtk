@@ -326,3 +326,28 @@ const char * CPP_Command()
   // fprintf(stdout,"cpp command got is (%s)\n",rc);
   return rc;
 }
+
+bool
+freadUntilEOF(FILE *f)
+{
+  // read from f until we reach EOF condition (or an error occurs).
+  // Return 'true' if we reached EOF, return 'false' if an error occurs.
+
+  // first seek to the end
+  if (fseek(f,0L,SEEK_END)) {
+    // then fseek returned an error, but we ignore it since we return error later.
+    ;
+  }
+  // next try reading.
+  unsigned char buff[1024];
+  unsigned long rc;
+  while ( (rc=fread((void*)&buff[0],sizeof(unsigned char),1024,f)) == 1024 ) {
+    // do nothing
+    ;
+  }
+  
+  if (feof(f) && !ferror(f))
+    return true;
+  return false;
+
+}
