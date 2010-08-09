@@ -102,6 +102,9 @@
 using namespace std;
 
 #include "fileParser.h"
+#include "debug.h"
+
+
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
 #ifndef DECLARE_POPEN_FUNCTIONS_EXTERN_C
 extern "C" {
@@ -117,6 +120,7 @@ extern "C" {
 #endif
 
 #define WARNING_ON_NAN 1
+bool ObservationsAllowNan = false;
 
 
 //#if 0
@@ -1281,11 +1285,15 @@ void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,
       for(Range::iterator it = float_rng->begin(); !it.at_end(); it++) {
 	float_copy_swap_func_ptr(1,&float_buf[*it+(*pr_it)*num_floats],float_buf_ptr++);
 	if(!isfinite(*(float_buf_ptr-1))) {
+	  if(ObservationsAllowNan && isnan(*(float_buf_ptr-1))) {
+	    ; // do nothing
+	  } else {
 #ifdef WARNING_ON_NAN
-	  warning("WARNING: Found NaN or +/-INF at %i'th float in frame %i, sentence %i  and observation file '%s'\n",*it,*pr_it,_segmentNumber,_inStreams[stream_no]->fofName);
+	    warning("WARNING: Found NaN or +/-INF at %i'th float in frame %i, sentence %i  and observation file '%s'\n",*it,*pr_it,_segmentNumber,_inStreams[stream_no]->fofName);
 #else
-	  error("ERROR: Found NaN or +/-INF at %i'th float in frame %i, segment %i and observation file '%s'\n",*it,*pr_it,_segmentNumber,_inStreams[stream_no]->fofName);
+	    error("ERROR: Found NaN or +/-INF at %i'th float in frame %i, segment %i and observation file '%s'\n",*it,*pr_it,_segmentNumber,_inStreams[stream_no]->fofName);
 #endif
+	  }
 	}
       }
     }
@@ -1435,11 +1443,15 @@ void ObservationMatrix::copyAndAdjustLengthToFinalBuffer(unsigned stream_no,
 	for(Range::iterator it = float_rng->begin(); !it.at_end(); it++) {
 	  float_copy_swap_func_ptr(1,&float_buf[*it+(*pr_it)*num_floats],float_buf_ptr++);
 	  if(!isfinite(*(float_buf_ptr-1))) {
+	    if(ObservationsAllowNan && isnan(*(float_buf_ptr-1))) {
+	      ; // do nothing
+	    } else {
 #ifdef WARNING_ON_NAN
-	    warning("WARNING: ObservationMatrix::copyToFinalBuffer: found NaN or +/-INF at %i'th float in frame %i and stream %i\n",*it,*pr_it,stream_no);
+	      warning("WARNING: ObservationMatrix::copyToFinalBuffer: found NaN or +/-INF at %i'th float in frame %i and stream %i\n",*it,*pr_it,stream_no);
 #else
-	    error("ERROR: ObservationMatrix::copyToFinalBuffer: found NaN or +/-INF at %i'th float in frame %i and stream %i\n",*it,*pr_it,stream_no);
+	      error("ERROR: ObservationMatrix::copyToFinalBuffer: found NaN or +/-INF at %i'th float in frame %i and stream %i\n",*it,*pr_it,stream_no);
 #endif
+	    }
 	  }
 	}
 	start_float_buf+=stride;
