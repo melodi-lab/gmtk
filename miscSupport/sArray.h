@@ -133,6 +133,8 @@ class sArray {
 
 
   void resizeIfDifferent(int arg_size) {
+    // note that this does not call destructors if the sizes are the
+    // same.
     if (arg_size != _size)
       resize(arg_size);
   }
@@ -153,12 +155,17 @@ class sArray {
       resize((int)(f*arg_size+1.0));
   }
 
+  // see comment within this routine before using it.
   void resizeAndCopy(const int arg_size) {
     if (arg_size < 0)
       coredump("Error: Sarray:resize arg_size < 0");
     T* tmp = new T[arg_size];
     const int nsize = (_size<arg_size?_size:arg_size);
     ::memcpy((void*)tmp,(void*)ptr,sizeof(T)*nsize);
+    // note that this could be a problem for objects that have
+    // destructors, as this will call the destructor for the object
+    // that still has live pointers. Care should be used when using an
+    // sArray for non pointer types.
     delete [] ptr;
     _size = arg_size;
     ptr = tmp;

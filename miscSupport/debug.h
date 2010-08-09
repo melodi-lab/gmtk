@@ -36,6 +36,7 @@ class IM {
   bool flush;
 
 public:
+  static bool globalFlush;
 
   IM() {
     messageLevel = globalMessageLevel;
@@ -152,7 +153,6 @@ public:
 #endif
   }
 
-
   unsigned msgLevel() { return messageLevel; }
   unsigned setMsgLevel(const unsigned ml) { messageLevel = ml; return ml; }
   static unsigned glbMsgLevel() { return globalMessageLevel; }
@@ -172,8 +172,10 @@ inline void infoMsg(unsigned v,const char* format, ...)
     va_start(ap,format);
     if (v == IM::Warning)
       (void) vfprintf(stderr, format, ap);
-    else 
+    else {
       (void) vfprintf(stdout, format, ap);
+      if (IM::globalFlush) fflush(stdout);
+    }
     va_end(ap);
   }
 #endif
@@ -187,8 +189,10 @@ inline void infoMsg(const char* format, ...)
     va_start(ap,format);
     if (IM::Default == IM::Warning)
       (void) vfprintf(stderr, format, ap);
-    else 
+    else  {
       (void) vfprintf(stdout, format, ap);
+      if (IM::globalFlush) fflush(stdout);
+    }
     va_end(ap);
   }
 #endif
@@ -202,8 +206,10 @@ inline void infoMsgForce(const char* format, ...)
     va_start(ap,format);
     if (IM::Default == IM::Warning)
       (void) vfprintf(stderr, format, ap);
-    else 
+    else  {
       (void) vfprintf(stdout, format, ap);
+      if (IM::globalFlush) fflush(stdout);
+    }
     va_end(ap);
 #endif
 }

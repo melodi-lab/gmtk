@@ -42,7 +42,7 @@ void LMSFilter::init()
   if (randomInit) {
     double sum = 0;
     for (unsigned i = 0; i < order ; i++ ) {
-      sum += (weights.ptr[i] = rnd.uniform(1.0));
+      sum += (weights.ptr[i] = rnd.drand48pe());
     }
     if (sum == 0)
       sum = 1.0;

@@ -58,19 +58,19 @@ class RAND {
   }
 
 
-  /* return a random number uniformly in [l,u] inclusive, l < u */
+  /* return an integer random number uniformly in [l,u] inclusive, l < u */
   int uniform(int l, int u) 
     { return (l + (int)((1+u-l)*::drand48())); }
 
-  /* return a random number uniformly in [0,u] inclusive */
+  /* return an integer random number uniformly in [0,u] inclusive */
   int uniform(int u) 
     { return ((int)((u+1)* ::drand48())); }
 
-  /* return a random number uniformly in [0,u-1] inclusive */
+  /* return an integer random number uniformly in [0,u-1] inclusive */
   int uniformOpen(int u) 
     { return ((int)((u)* ::drand48())); }
 
-  /* return 1 with probability p */
+  /* return 1 with probability p and 0 with probability 1-p */
   int coin(float p) 
     { return (int)
 	(drand48() < p); }
@@ -87,7 +87,7 @@ class RAND {
   // simple interface to drand
   double drand48() { return ::drand48(); }
 
-  // choose from [0:(u-1)] according to a length u 'dist', 
+  // choose integers from [0:(u-1)] according to a length u 'dist', 
   // assume sum(dist) = 1.0
   int sample(const int u,const float *const dist);
 

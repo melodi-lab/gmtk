@@ -1,3 +1,22 @@
+/*-
+ * GMTK_RLSFilter.cc
+ *
+ *  Written by Jeff Bilmes <bilmes@ee.washington.edu>
+ * 
+ *  $Header$
+ * 
+ * Copyright (c) 2008, < fill in later >
+ *
+ * Permission to use, copy, modify, and distribute this
+ * software and its documentation for any non-commercial purpose
+ * and without fee is hereby granted, provided that the above copyright
+ * notice appears in all copies.  The University of Washington,
+ * Seattle make no representations about
+ * the suitability of this software for any purpose.  It is provided
+ * "as is" without express or implied warranty.
+ *
+ */
+
 
 #include <math.h>
 #include <stdlib.h>
@@ -25,7 +44,7 @@ RLSFilter::RLSFilter(unsigned _order, double _forgetting_coef)
   tmpVec.resize(order);
   double sum = 0;
   for (unsigned i = 0; i < order ; i++ ) {
-    sum += (weights.ptr[i] = rnd.uniform(1.0));
+    sum += (weights.ptr[i] = rnd.drand48pe());
     for (unsigned j = 0; j < order ; j++ ) {
       // initialize to a diagonal
       if (i == j) {
@@ -64,7 +83,7 @@ void RLSFilter::init()
   if (randomInit) {
     double sum = 0;
     for (unsigned i = 0; i < order ; i++ ) {
-      sum += (weights.ptr[i] = rnd.uniform(1.0));
+      sum += (weights.ptr[i] = rnd.drand48pe());
     }
     if (sum == 0)
       sum = 1.0;

@@ -890,7 +890,7 @@ Range::Range(const char *defstr /*=NULL*/, int minval /*=0*/,
       error("ERROR: First value of range specification '%s' is below the minimum possible value '%d'",defstr,minval);
       }
     if(last() >= ulimval) {
-      error("ERROR: Last value of range specification '%s' is greater than the maximum possible value '%d'",defstr,ulimval-1);
+      error("ERROR: Last value of range specification '%s', which is %d, is greater than the maximum possible value '%d'",defstr,last(),ulimval-1);
     }
   }
 #endif
