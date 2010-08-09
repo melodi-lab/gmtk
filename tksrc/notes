@@ -46,12 +46,10 @@ clone mean
 clone covar
    analogous to clone mean
        
-The reason for using maps here rather than additional members in
-each object is that splitting/vanishing is probably the exception
-rather than the norm, therefore we don't want to use up
-more memory by adding a field in each object which will
-probably not often be used.
-
+The reason for using maps here rather than additional members in each
+object is that splitting/vanishing is probably the exception rather
+than the norm, therefore we don't want to use up more memory by adding
+a field in each object which will probably not often be used.
 
 mix gaus end 
 
@@ -2259,6 +2257,525 @@ Part[3] = C
    is used by default collectEvidence() and JunctionTree::distributeEvidence()
  2) can't call fileparser unroll() on entire length
  3) 
+
+
+Mon Jan  5 02:16:01 2009
+ - notes on getting inference working w/o full unrolling
+ - idea: unroll so that we have a:
+       P' C1' C2' E'
+   Then do:
+      P' -> C1'
+      C1' -> C2'
+      adjust C1' rv frames
+      C2' -> C1'
+      adjust C2' rv frames
+      C1' -> C2'
+      ...
+      adjust E' frames
+      C2' -> E' (assuming C2' was last to be distributed into).
+  - problem: InferenceMaxClique::ceSendToOutgoingSeparator(...)
+     when going between partitions, needs to have the next partition
+     l-interace RV's be the same as the previous partition's r-interface RV's.
+     (i.e., unpack into clique rvs, and then project score into sep's by packing
+         sep rv's to get hash key).
+     This works fine within partition, but cross partition, we need to do
+     more than just adjust the RV frame numbers.
+     I..e, the adjustments above need to change the sep rv pointers.
+ - solution:
+   unroll to P' C1' C2' E'
+   then:
+     1) Do P' -> C1'
+     2) Do C1' -> C2'
+     3) adjust frame of pair (C1',C2') & set observed in pair
+     4) Do C1' -> C2'
+     5) if more C->C, goto 3
+     6) adjust frame of pair (C2',E') & set observed in pair
+     7) do C2' -> E'
+  to do this, should just grab the union of nodes in a pair
+
+  - possible bug: when child is not connected to its obseved parent,
+    and observed parent is not in same clique, and when changing the
+    frame and obseved value of the child, need to make sure that
+    disconnected observed parent frame + value also changes.
+
+
+Mon Jan  5 02:23:04 2009: where do important comments lie?
+
+- Regarding interface defintions, and documentation on M, S, basic templates, modified templates.
+  BoundaryTriangulate::validInterfaceDefinition()
+  BoundaryTriangulate::findPartitions()
+  GMTemplate::computeUnrollParameters()
+
+Fri Jan  9 15:47:04 2009
+ - change InferenceMaxClique/SeparatorClique to 
+     CliqueStates and SeparatorStates
+  or even CliqueStateTable and ConditionalFactorTable
+   since it is likelyt hat in future, the separator stuff will be used
+   as (optionally conditional) learnt factors which is what the current
+   separators are.
+ - these will be tables of values, and will be adjusted to be
+   as small as possible (to minimize memory usage). They
+   will not contain pointers to the RVs.
+
+
+MaxCliqueTableCE
+MaxCliqueTableDE
+MaxCliqueTablePrune
+
+================================================================================
+================================================================================
+================================================================================
+================================================================================
+================================================================================
+================================================================================
+
+Notes about new island implementation, Jan 2009.
+
+What to do about CC and CE random variables create a member variable
+for CC_rvs and CE_rvs that can be adjusted by teh support
+routines. along with an integer that tells what the current shift
+is. From the part, we can know the appropriate shift, and then we
+subtract off the current shfit from the appropriate one. To shift
+CE_rvs, we check that CC_rvs current shift is 0, if not shif it to
+zero and then shift CE_rvs to where they should be. I guess to be
+symmetric we would need to do the smae with CC_rvs (i.e., check that
+CE_rvs shift is currently zero,
+
+where to do this shifting
+
+converting from part (or iterator) to shift.
+
+When to shift?
+
+In current collect evidence, what we do is:
+
+loop
+  gather
+  ++ptps_it
+  shift_if_required
+  sendforwardscross (prev,cur)
+end_loop
+final gather
+
+So the pattern is:
+   gather
+   increment
+   shift
+   send
+
+shift just before a send
+
+
+distribute evidence does
+
+shift_to_end
+loop
+  scatter
+  sendbackwardscross (cur,prev) 
+  shift_if_required
+  --ptps_it
+end_loop
+final scatter
+
+so the pattern is
+    scatter
+    send
+    shift
+    decrement   
+
+shift just after a send, just
+before a scatter/send pair, so could
+have a routine shiftToPosition(cur), i.e.,
+the iterator incremen/decrement.
+
+Island does:
+  gather(0)
+  island(0,len-1)
+
+island(s,e)
+   iterate
+      send_to_next
+      gather
+
+
+Problem is, there are three places where parts might live:
+   1) in the array (during base)
+   2) in the map (to store the islands
+   3) in temporary buffers (when we do the throw-away forward pass).
+Each of the simple part-arg only  routines might need to take any
+mix of these three. There are two routines, one with one arg one with two args,
+so we could do:
+   3^1 + 3^2 = 12 different routines, and we would need to special
+   case each time (i.e., in first/last loop slots, etc.), but that is messey.
+
+We need a clean way to do this. Also, note array is an array of objects not pointers
+(although we don't need to use that array).
+
+suppose we carete a partitionTablePointerArray allocated appropriately.
+
+- PartitionTable pt = createPartition(part) could return the parttion as a pointer.
+- storeIsland(part_no,pt) - uses island_it to determine if it is a P, C, or E.
+- deletePartition(pt); or just delete pt;
+- deleteIsland(part); // would free the pointer and remoe from map
+- pt = retreiveIsland(part);
+- the local 2 things could be done inline.
+- ceGatherIntoRoot(part_no,pt)
+- ceSendForwardsCrossPartitions(l_part_no,l_part,r_part)
+- ceSendBackwardsCrossPartitions(l_part_no,l_part,r_part)
+- deScatterOutofRoot(part_no,pt);
+
+- we add/delete/retrieve islands indirectly and can easily replace the
+  data structure later.
+
+
+------------------------------------------------------
+
+Thu Jan 29 12:51:10 2009
+
+new viterbi program features.
+
+ o) support k-best.
+
+ 1) Write out all the k-best random variable values corresponding
+    to all (or a subset of) the hidden variables in a graph, and
+    do this for a number of segments.
+
+ 2) Do a compressed viterbi output. I.e., write out all variable
+    values for all times of a child random variable (the query
+    variable, or the word variable on speech) whenever a parent
+    variable (a transition variable, of cardinality 2) has a value of 1.
+    (more generally, print out the value of a child random variable
+      if its parents have a particular set of values).
+
+ 3) be able to have two modes: print out the variables to stdout,
+    or save the k-best results to a compressed binary file.
+    Have a new program gmtkViterbRead to read these files.
+
+ 4) work with island algorithm or normal, since this could use more
+     memory.
+  
+ 5) Print variables based on their symbol table if a variable
+    has a symbol table (new parser stuff).
+
+ 6) rather than outputing a list, output a compressed (lattice)
+    version of the list. I.e., it would be a lattice over
+    partition states (so that if say k=20,000) we wouldn't
+    have an n*k sized structure, especially if many of the
+    elemnets in the lattice are identical!!!
+    We can save the latice on disk in compressed binary format.
+
+   THIS is what we should be doing!!!
+
+
+If k=20,000 then clearly for long sequences it will not be useful
+to expand the memory by a factor of k!!!
+
+K-best:
+
+For collect evidence:
+  - when projecting down to sep, each sep entry has k entries
+    rather than 1. We save the k top backpointers rather than
+    the 1 best. I.e., we save both the cvn value and the 
+    forward probability, and keep the top k.
+
+deScatterToOutgoingSeparatorsViterbi at root clique:
+   (this will be a modification to
+    MaxCliqueTable::deScatterToOutgoingSeparatorsViterbi()   
+    the routine will no longer assume that clique is set to max value
+    but rather will (at root clique) call k-best pruning routine and
+    sort the top k. For non-root clique, see below.
+   - find top k values, and sort them.
+   - for i = 1 ... k, to through in desending order of score:
+      - instantiate clique value to i'th best.
+      - save/print out clique value
+      - for each separator, save the sep's i'th foward pointer for
+        to current separator value.
+        (also change name from forwardpointer to something
+         like kBestMaxPointerFromParentClique)
+
+**Something can't be right: if the top k are such that they have identical root
+clique values .. **
+  - actualy:
+    - for 1-best, take the max root clique value and scatter out of that.
+    - for the 2nd best, we have to take the max fo the fllowing two:
+        a) the 1st best clique value with its second best separator value.
+        b) the 2nd best clique value with its first best separator value
+    - for the 3rd best, we take max of (but not include whatever was used in the 2nd best):
+        a) the 1st best clique value with its second best separator value.
+        a) the 1st best clique value with its third best separator value.
+        b) the 2nd best clique value with its first best separator value
+        b) the 2nd best clique value with its second best separator value
+        c) the 3rd best clique value with its first best separator value
+
+
+Receive from incomming separator viterbi (for any clique)
+  - we are at a clique and the parent separator has had it's k forwardpointers set up.
+  - For each of the separators forwardpointers i,
+     - look at the corresponding back-pointer.
+     - take the top backpointer that has not been used so far (look at sign bit of back pointer)
+     - instantiate the clique with clique value the backpointer points to.
+     - call deScatterToOutgoingSeparatorsViterbi(i) for a non-root clique.
+          - save the clique's values
+     - mark the backpointer as already used (set the sign bit).
+
+deScatterToOutgoingSeparatorsViterbi at non-root clique:
+  - take argument i (this is a number from 1 ... k) that indicates
+    the one we're currently instantiating. That is, the
+    clique is currently instantiated to the i'th best clique value.
+      - save/print out clique value (or does caller do that??)
+      - for each separator, save the sep's i'th foward pointer for
+        to current separator value.
+
+Q: how to get the printed values out for each partition, since as it
+stands, there is never a time that all cliques are instantiated at the
+same values?
+A: we need to do multiple scatterOutOfRoot calls at the junction tree
+with an argument i, i = 1...k.
+
+At root clique, first thing we might do is just sort the clique table
+so that top k are at the top.
+   
+This means that scatterOutOfRoot always needs to have its send separator
+(which wasn't the case for non-viterbi)??
+
+Actually, what needs to be done is that catherIntoRoot needs to have
+the send separator at the same time since the send separator needs
+to have backpointers that include the case of all n-best from the
+incomming separators.
+
+
+--------------------------------------------
+
+shift(part) 
+  - shits the right of the two RVs to part 'part'
+
+Island does:
+  last of left-to-right:
+     shift(last)
+     gather-into-root
+     
+  right-to-left:
+     shift(last)
+     set root clique to max values.           
+     shift(last)
+     descatter out of root
+     store Viterbi Value (using rvs at position last)
+     part--
+     shift(last)
+     desendbackwardscrosspartitions (this uses the uneven iter/shift)
+     shift(last-1)
+     descatter out of root
+     store viterbi values of island_it
+     part --
+
+
+CAN'T have a shift between
+   scatteroutofroot and sendbackwardscrosspartitions.
+   The reason is that scatteroutofroot in Viterbi mode
+   wants the rvs to be set to the max values.
+
+CAN have a shift as:
+    shift
+    scatteroutofroot
+    record Viterbi values.
+    sendbackwardscrosspartitions
+
+shouldn't it be??
+
+repeat:
+    sendbackwardscrosspartitions
+    scatteroutofroot
+    shift
+
+set to max (root)
+sendbackwardscrosspartitions (root-1,root)
+scatteroutofroot(root-1)
+shift(-1)
+sendbackwardscrosspartitions (root-2,root-1)
+scatteroutofroot(root-2)
+shift(-1)
+
+
+Mon Mar  9 17:20:15 2009
+-------------------------------
+
+Things todo:
+
+  1) in island algorithm all setCurrentIslandShiftTo(part) followed
+     by island_it shifts should get rid of second explicit chagne.
+  2) use the same island_it for both normal and for island inference.
+  3) fix bug in linear inference with shifting.
+  4) think about and make sure there are no other bugs.
+  5) document the way it works so that it will be easy to to 
+     get k-best working (send email to gmtk-users about
+     new viterbi output format ideas).
+  XX) change storeViterviValue to recordPartitionViterbiValues
+
+Viterbi cases:
+   scatterOutOfRoot: uses the curently set clique random variable values (which
+     are presumed to be the max value), and for each incomming separator,
+     finds the entry in the separator, and then stores the entry
+     in the two extra indices in the separator (forward pointers).
+     It does this via the low level routine deScatterToOutgoingSeparators.
+     Propagates this down the local tree in the partition by
+       recursively calling deReceiveFromIncommingSeparator and
+          deScatterToOutgoingSeparators.
+
+    - not ok to shift before (since if did, would loose the max values).
+    - not ok to shift after until after viterbi max score rv values
+       have been used (printed, etc.)
+    - fine to shift after since leaves info stored in separators.
+
+   deSendCrossPartitions (which calls deReceiveFromIncommingSeparator):
+      - this uses the pointers stored in the parent separator
+        to find the separator entry. This separator entry holds
+        a pointer to the clique entry that lead to the max value.
+        We restore the clique to that max value (in terms of
+        its random variables). When this is done, the
+        random variables must hold their values for either
+        storage or for the next scatter out of root. So no shift
+        allowed after this is called until next scatteroutofroot is called.
+     - ok to shift before.
+     - not ok to shift after, will loose info if shift after since
+       leaves RVs set to max value for viterbi.
+
+   (s) - [C] - (s) - [C] - (s) - [C]
+
+set root clique to max values
+repeatd pattern:
+  1. scatteroutofroot
+  2. store/print partition max, EM train, etc.
+  3. shift 
+  4. deSendCrossPartitions
+
+
+shift of random variables interface does everything through
+a passed in iterator. I.e.,
+  - shift(it) sets the position to whatever it.pt_i() is set to.
+
+(approach Mon Mar 16 16:54:59 2009, put the 'real last clique' end guy
+out of the loop and make it such that the 2nd condition is always
+true).
+
+distribute evidence:
+  if this is real last clique
+      it.setto(end);
+      shift(it) (which makes CE such that E is current and at the last)
+                               e
+            (s) - [C] - (s) - [C]
+                               ^
+      set root clique to max (cur)
+      scatteroutofroot(cur)
+      store max values/em update/print (cur)
+      deSendCrossPartitions(prev = end -1 ,cur = end)
+  else
+      it.setto(end+1)
+      shift(it) -- (so cur is now end+1)
+                   e
+            (s) - [C] - (s) - [C]
+                               ^
+      deSendCrossPartitions(it.prev,it.cur)
+
+
+for part = end until part == start
+  scatteroutofroot(prev)
+  store partition max / em increment (prev)
+  part --;
+  if (part == start)
+     break;
+  shift left by one
+  deSendCrossPartitions (prev,cur)
+
+----------------------------
+
+  scatteroutofroot
+  store partition max / em increment
+  shift 
+  deSendCrossPartitions
+
+  if (part == start)
+     break;
+  part--
+
+
+
+So we must have:
+Base case:
+
+  shift(last).
+  set to max
+  scatteroutofroot(last)
+
+
+  store partition max
+  
+
+  desendcrosspartitions
+  store max
+  shift(-1)
+  
+           
+
+Fri Sep  4 15:24:26 2009
+
+
+  start[k] = initial start position for each cluster. I.e.,
+  start[0] = 0, start[1] = num 0 clusts, start[1] = num 0 + num 1 clusts.
+  for cvn = 1 ... num
+     let k_cvn  = current cluster position of cvn
+     let k be the cluster id of entry cvn
+     if k != k_cvn  //cvn not already in correct position do
+          swap cvn to location start[k]
+     else
+         cvn ++
+ 
+
+Now, how to do final sort - we have k clusters with c[i] entries in each
+one and the rest are invalid and need to be moved to the end.
+
+One way:
+
+two pointers, one for the current where-to-put valid entry but
+points to a non-valid, and 
+one > for the location that should be .
+I.e., iterate:
+    swap
+    update one pointer to point ot next out-of-place entry
+    update pointer to point to next hole
+
+seems like there would be better memory organization
+if we have two pointers, going in opposite directions,
+one starting from the top increasing and one from the end
+decreasing, and we stop when they meet. 
+
+
+
+
+Tue Mar 23 21:33:57 2010
+
+How to add an observation distribution as a new component
+
+1) Add a new component type to enum ComponentType in GMTK_Component.h
+     and give it a new number.
+
+2) Possibly create a new class for the component type (call it <class>) and
+   create files GMTK_<class>Component.{cc,h}, or if not,
+   then subclass from one of the existing ones (e.g., class GaussianComponent).
+
+3) Copy the appropriate code from an existing component into the newly created .cc and .h files
+
+4) Edit GMTK_GMParams.cc to include the new .h file 
+5) Edit GMTK_GMParams.cc GMParms::readComponents(iDataStreamFile& is, bool reset)
+   to  read in the new routines.
+
+6) depending on the type of the Gaussian, GMTK_DiagCovarVector.{cc,h}
+   and GMTK_MeanVector.{cc,h} will need to be modified.
+
+How to add a new discrete CPT type.
+
+
+
+
 
 
 

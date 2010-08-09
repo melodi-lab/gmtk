@@ -97,9 +97,11 @@ LinMeanCondDiagGaussian::log_p(const float *const x,
   DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE d=0.0;
 
   int i=0; do {
+    // TODO: vectorize this version for better unrolling 
     float u=0.0;
     const int nLinks = dLinks->numLinks(i);
     if (nLinks > 0) {
+      // TODO: this is just a dot-product, should call inlined vectorized version of this.
       const int *lagStrideOffsets_endp = lagStrideOffsetsp+nLinks;
       do {
 	u += (*buryValsp) *

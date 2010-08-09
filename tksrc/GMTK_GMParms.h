@@ -77,49 +77,6 @@ class GMTK_GM;
 class GMParms : public IM  {
 public:
 
-  //////////////////////////////////////////////////////////////////
-  // A bitmask giving a flag if each type of EMable object is
-  // currently being trained. Can only have 8*sizeof(unsigned) of these
-  // for now.
-  enum {
-    emTrainDense1DPMFs                    = (1 << 0),
-    emTrainSparse1DPMFs                   = (1 << 1),
-    emTrainMeans                          = (1 << 2),
-    emTrainCovars                         = (1 << 3),
-    emTraindLinkMats                      = (1 << 4),
-    emTrainRealMats                     = (1 << 5),
-    emTrainDiagGaussians                  = (1 << 6),
-    emTrainLinMeanCondDiagGaussians       = (1 << 7),
-    emTrainMDCPTs                         = (1 << 8),
-    emTrainMSCPTs                         = (1 << 9),
-    emTrainMixtures                   = (1 << 10),
-    emTrainGausSwitchingMixtures      = (1 << 11),
-    emTrainLogitSwitchingMixtures     = (1 << 12),
-    emTrainMLPSwitchingMixtures       = (1 << 13),
-    emDefaultState                        = ~0x0
-  };
-
-  unsigned int emTrainBitmask;
-  
-  bool amTrainingDense1DPMFs() { return (emTrainBitmask & emTrainDense1DPMFs); }
-  bool amTrainingSparse1DPMFs() { return (emTrainBitmask & emTrainSparse1DPMFs); }
-  bool amTrainingMeans() { return (emTrainBitmask & emTrainMeans); }
-  bool amTrainingCovars() { return (emTrainBitmask & emTrainCovars); }
-  bool amTrainingdLinkMats() { return (emTrainBitmask & emTraindLinkMats); }
-  bool amTrainingRealMats() { return (emTrainBitmask & emTrainRealMats); }
-  bool amTrainingDiagGaussians() { return (emTrainBitmask & emTrainDiagGaussians); }
-  bool amTrainingLinMeanCondDiagGaussians() { return (emTrainBitmask & emTrainLinMeanCondDiagGaussians); }
-  bool amTrainingMDCPTs() { return (emTrainBitmask & emTrainMDCPTs); }
-  bool amTrainingMSCPTs() { return (emTrainBitmask & emTrainMSCPTs); }
-  bool amTrainingMixtures() { return (emTrainBitmask & emTrainMixtures); }
-  bool amTrainingGausSwitchingMixtures() 
-  { return (emTrainBitmask & emTrainGausSwitchingMixtures); }
-  bool amTrainingLogitSwitchingMixtures() 
-  { return (emTrainBitmask & emTrainLogitSwitchingMixtures); }
-  bool amTrainingMLPSwitchingMixtures() 
-  { return (emTrainBitmask & emTrainMLPSwitchingMixtures); }
-
-
   class ParamFile {
   public:
     string fileName;

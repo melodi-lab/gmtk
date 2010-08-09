@@ -41,6 +41,7 @@ logpr
 // EMable::minIncrementProbabilty = logpr((void*)NULL,log_FLT_MIN);
 // EMable::minIncrementProbabilty = logpr((void*)NULL,log_FLT_MIN);
 // We use a constant -85 here since it might no be that log_FLT_MIN is initialized yet.
+// We use a value (-85) that is approximately log of the single precision FLT_MIN.
 EMable::minIncrementProbabilty = logpr((void*)NULL,-85.0);
 
 unsigned long

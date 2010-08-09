@@ -38,6 +38,7 @@ private:
 
   friend class DiagGaussian;
   friend class LinMeanCondDiagGaussian;
+  friend class MissingFeatureScaledDiagGaussian;
   friend class DiagCovarVector;
   friend class DlinkMatrix;
   friend class GMTK_Tie;
@@ -139,6 +140,9 @@ public:
 					     const float*const partialAccumulatedNextMeans,
 					     const DiagCovarVector* covar);
   void emEndIterationNoSharing(const float *const partialAccumulatedNextMeans);
+
+  void emEndIterationNoSharingElementProbabilities(const float *const partialAccumulatedNextMeans,
+						   const logpr *const elementAccumulatedProbabilities);
 
   void emEndIterationNoSharingAlreadyNormalized(const float *const accumulatedNextMeans);
   void emEndIterationSharedMeansCovarsDlinks(const logpr accumulatedProbability,

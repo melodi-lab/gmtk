@@ -109,6 +109,7 @@ VCID("$Header$")
 
 /****************************         INFERENCE OPTIONS           ***********************************************/
 #define GMTK_ARG_ISLAND
+#define GMTK_ARG_CLIQUE_TABLE_NORMALIZE
 #define GMTK_ARG_CE_SEP_DRIVEN
 #define GMTK_ARG_COMPONENT_CACHE
 #define GMTK_ARG_CLIQUE_VAR_ITER_ORDERS
@@ -316,16 +317,6 @@ main(int argc,char*argv[])
     exit_program_with_status(0);
   }
 
-
-
-
-
-  if (island) {
-    if (MixtureCommon::cacheMixtureProbabilities == true) {
-      infoMsg(IM::Default,"NOTE: with island algorithm, might want to also try turning off Gaussian component caching with '-componentCache F'\n"); 
-      fflush(stdout);
-    }
-  }
 
 
   struct rusage rus; /* starting time */

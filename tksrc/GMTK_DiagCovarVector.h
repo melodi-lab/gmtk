@@ -35,6 +35,7 @@ class DiagCovarVector : public EMable {
 
   friend class DiagGaussian;
   friend class LinMeanCondDiagGaussian;
+  friend class MissingFeatureScaledDiagGaussian;
   friend class MeanVector;
   friend class DlinkMatrix;
   friend class GMTK_Tie;
@@ -149,6 +150,10 @@ public:
   void emEndIteration(const float*const c);
   void emEndIteration(const logpr prob,const float*const m,const float*const v);
   void emEndIterationNoSharing(const float*const m,const float*const v);
+  void emEndIterationNoSharingElementProbabilities(const float*const m,
+						   const float*const v,
+						   const logpr *const elementAccumulatedProbabilities);
+
   void emEndIterationNoSharingAlreadyNormalized(const float*const c);
   void emEndIterationSharedMeansCovars(const logpr parentsAccumulatedProbability,
 					     const float*const partialAccumulatedNextMeans,

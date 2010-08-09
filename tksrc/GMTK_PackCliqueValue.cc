@@ -158,6 +158,8 @@ findNaive(vector<unsigned> bins,
       // use up all of first slot.
       unsigned remainder = bins[j];
       bins[j] = 0;
+      // assumption here is that an item is never
+      // larger than a single bin.
       bins[j+1] -= (ints[i].val-remainder);
       // where does it go
       ints[i].bin = j;
@@ -352,6 +354,15 @@ findApproximateBest2Retry(vector<unsigned> bins,
 	bins[k] = 8*sizeof(unsigned);
       random_shuffle(ints.begin(),ints.end());
       goto top;
+
+      // TODO: other heuristics to implement:
+      //   1) don't give up so quickly. I.e., rather than immediately going for a split,
+      //      if we don't find an entry, we shuffle and keep doing that a number of times
+      //      looking for a perfect packing rather than immediately backing off to a split.
+      //   2) rather than randomly_shuffling, do a random perturbation of the sorted entries,
+      //      i.e., either sorted, or almost sorted is probably ok. We could randoml swap
+      //      a few of the entries in the ints list each time. 
+
     }
 
   }
@@ -710,6 +721,8 @@ PackCliqueValue::PackCliqueValue(const unsigned len,
 PackCliqueValue::PackCliqueValue(vector<RV*>& nodes)
   : unpackedVectorLength(nodes.size())
 {
+
+
   assert (nodes.size() > 0);
 
   sArray < unsigned > cards(nodes.size());

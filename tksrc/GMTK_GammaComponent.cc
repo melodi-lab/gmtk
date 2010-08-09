@@ -364,7 +364,10 @@ GammaComponent::noisyClone()
 
     // sharing during training is not implemented (yet). Make sure the
     // user doesn't change code above and set these values.
-    assert (!cloneShareShape && !cloneShareScale);
+    // assert (!cloneShareShape && !cloneShareScale);
+    if (cloneShareShape || cloneShareScale) {
+      error("ERROR: Gamma Component '%s' has shared either its shape '%s' or scale '%s' during EM training, but shared traning is not (yet) implemented.",name().c_str(),shape->name().c_str(),scale->name().c_str());
+    }
 
     if (cloneShareShape && cloneShareScale) {
       warning("WARNING: Gamma Component '%s' is cloning, and was asked to share both scale and shape. No sharing is occuring instead.",name().c_str());
@@ -630,7 +633,7 @@ GammaComponent::emEndIteration()
       } while (cur_iters--);
 
       if (shapev <= FLT_MIN) {
-	warning("WARNING: Gamma Component '%s', child scale '%s' and shape '%s', dim %d, iters %d, computed shape (%e) fell below floor (%e). Using previous parameters.",
+	infoMsg(IM::Warning,"WARNING: Gamma Component '%s', child scale '%s' and shape '%s', dim %d, iters %d, computed shape (%e) fell below floor (%e). Using previous parameters.",
 		name().c_str(),
 		scale->name().c_str(),
 		shape->name().c_str(),

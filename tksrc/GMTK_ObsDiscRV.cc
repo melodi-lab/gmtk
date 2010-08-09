@@ -254,3 +254,59 @@ void ObsDiscRV::computeParentsSatisfyingChild(
   return mtcpt->computeParentsSatisfyingChild(par,parents,hiddenParents,hiddenParentPacker,
 					      hiddenNodeValPtrs,child,packedParentVals,num);
 }
+
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * setObservedRVs()
+ *   sets the observed RVs to their values, either taking values from
+ *   the global observation matrix, or taking the values from the files.
+ *
+ * Preconditions:
+ *   The given RVs must come from the result of unroll, and the observation matrix
+ *   *must* be set up and ready to be used.
+ *
+ * Postconditions:
+ *   All discrete observed random variables have a value that is their appropriate observed
+ *   value.
+ *
+ * Side Effects:
+ *   Modifies values of discrete observed random variables.
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+setObservedRVs(vector <RV*>& rvs)
+{
+  // Set all discrete observed variables to their values here. Continuous
+  // observed rvs get their values from elsehwere.
+  vector <RV*>::iterator it;
+  for (it = rvs.begin(); it!= rvs.end(); it++) {
+    RV *rv = (*it);
+    if (rv->discrete() && !rv->hidden()) {
+      DiscRV* drv = (DiscRV*)rv;
+      drv->setToObservedValue();
+    }
+  }
+}
+void
+setObservedRVs(set <RV*>& rvs)
+{
+  // Set all discrete observed variables to their values here. Continuous
+  // observed rvs get their values from elsehwere.
+  set <RV*>::iterator it;
+  for (it = rvs.begin(); it!= rvs.end(); it++) {
+    RV *rv = (*it);
+    if (rv->discrete() && !rv->hidden()) {
+      DiscRV* drv = (DiscRV*)rv;
+      drv->setToObservedValue();
+    }
+  }
+}
+

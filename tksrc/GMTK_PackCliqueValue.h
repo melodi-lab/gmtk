@@ -107,7 +107,7 @@ public:
 
   PackCliqueValue(vector<RV*>& nodes);
 
-  PackCliqueValue(const unsigned len, const unsigned *const cards, bool useNaive = false); 
+  PackCliqueValue(const unsigned len, const unsigned *const cards, bool useNaive = false);
 
   // create an empty one for re-construction later
   PackCliqueValue() : numUnsignedInPackedVector(0),unpackedVectorLength(0),member_vl_nwb_endp(0),member_vl_endp(0),totalNumBits(0) {}
@@ -295,6 +295,10 @@ public:
     }
   }
 
+  // TODO: make a query() function that given a packed vector
+  // and a position, returns the integer for that position.
+
+
   unsigned hamming_bit_distance(const unsigned *const vec1,
 				const unsigned *const vec2);
   unsigned hamming_entry_distance(const unsigned *const vec1,
@@ -307,6 +311,21 @@ public:
   {
     return hamming_weighted_entry_distance(vec1,vec2);
     // return hamming_bit_distance(vec1,vec2);
+  }
+
+  // compare two packed values, -1 if vec1<vec2, 0 if vec1=vec2, +1 if vec1>vec2
+  int compare(const unsigned * vec1,
+	      const unsigned * vec2) {
+    const unsigned *const vec1_endp = vec1 + packedLenInWords();
+    do {
+      if (*vec1 < *vec2)
+	return -1;
+      else if (*vec1 > *vec2)
+	return +1;
+      vec1++; 
+      vec2++;
+    } while (vec1 != vec1_endp);
+    return 0;
   }
 
 };

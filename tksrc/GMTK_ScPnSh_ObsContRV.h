@@ -67,6 +67,13 @@ public:
   }
   inline virtual logpr maxValue() {
     logpr p = ObsContRV::maxValue();
+    // TODO: a bug here, if we call modifyProbability at the beginning
+    // before we have any observations, and if the modification parameters
+    // come from an observation file, then this will produce random results.
+    // I.e., we might be calling maxValue of this rv to do some pre-pruning
+    // stuff here.
+    // This is an inherent problem as the max probability of a random variable
+    // is very time-dependent (it depends on the obs file). 
     modifyProbability(p,rv_info.rvWeightInfo[0],this);
     return p;
   }

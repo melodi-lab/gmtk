@@ -100,7 +100,6 @@ const unsigned GMPARMS_MAX_NUM = 900000000;
 
 GMParms::GMParms()
 {
-  emTrainBitmask = emDefaultState;
 }
 
 
@@ -1276,6 +1275,8 @@ GMParms::read(
   fileNameMap[INLINE_FILE_KEYWORD] = &is;
 
   while (is.readString(keyword)) {
+
+    // fprintf(stderr,"read keyword '%s'\n",keyword.c_str());
 
     if (!is.readString(fileName)) {
       error("ERROR: while reading file '%s' line %d , got keyword '%s' without a filename",
@@ -2618,7 +2619,8 @@ GMParms::next()
  * setSegment
  *      do any necessary bookkeeping work with regard to the
  *      parameters in order that we properly move to the segment
- *      given by the argument to this function.
+ *      given by the argument to this function. We do this
+ *      here since some of the parameters can be segment dependent.
  *
  * Preconditions:
  *      nil

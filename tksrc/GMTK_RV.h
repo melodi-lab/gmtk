@@ -119,6 +119,7 @@ Each routine has:
 #include <vector>
 #include <string>
 #include <set>
+#include <regex.h>
 
 #include "logp.h"
 #include "GMTK_RVInfo.h"
@@ -152,7 +153,7 @@ class RV  {
   friend class GMTemplate;
   friend class JunctionTree;
   friend class MaxClique;
-  friend class InferenceMaxClique;
+  friend class MaxCliqueTable;
   friend class BoundaryTriangulate;
   friend class SwRV;
   friend class SeparatorClique;
@@ -206,8 +207,10 @@ protected:
   RVInfo& rv_info;
 
   /////////////////////////////////////////////////////////////////////////
-  // The time frame (time slice) of the random variable.
-  // Counting starts from 0.
+  // The time frame (time slice) of the random variable.  Counting
+  // starts from 0. This value might change as the RV structure is
+  // re-used for different chunks over the segment so any CPT should
+  // not rely on this value remaining constant.
   unsigned timeFrame;
 
   //////////////////////////////////////////////////////////
@@ -250,11 +253,26 @@ public:
   // up inference.
   static bool disconnectChildrenOfObservedParents;
 
+  // printing style options. Normally, if a symbol table exists,
+  // we will print the symbol (for debugging, Viterbi, etc.) but if
+  // this is set, we'll always print integers.
+  static bool alwaysPrintIntegerRVValues;
+
+
+  // return the set of observed parents of this rv.
+  set <RV*> observedParents();
+
   // return the name
   const string& name() const { return rv_info.name; }
 
   // return the current time frame
   unsigned frame() const { return timeFrame; }
+
+  // Adjust the frame of this rv. use this only if you know what you
+  // are doing as adjusting the frame of a rv can only be done in
+  // certain contexts.
+  // TODO: re-set the observed value if appropriate.
+  void adjustFrameBy(int adjustment) { timeFrame += adjustment; }
 
   // return various aspects of the RV, based on the RVInfo of this RV.
   bool discrete() const { return (rv_info.rvType == RVInfo::t_discrete); }
@@ -448,16 +466,18 @@ public:
   // appropriate observed value, otherwise a noop.
   virtual void setToObservedValue() {}
 
-
 };
 
-void printRVSetAndValues(FILE*f,vector<RV*>& locset,const bool nl=true); 
-void printRVSetAndValues(FILE*f,sArray<RV*>& locset,const bool nl=true);
-void printRVSetAndValues(FILE*f,set<RV*>& locset,const bool nl=true);
-void printRVSet(FILE*f,vector<RV*>& locvec,const bool nl=true);
-void printRVSet(FILE*f,sArray<RV*>& locset,const bool nl=true);
-void printRVSet(FILE*f,const set<RV*>& locset,const bool nl=true);
-void printRVSetPtr(FILE*f,set<RV*>& locset,const bool nl=true);
+// TODO: below routines should be in RV namespace.
+
+void printRVSetAndValues(FILE*f,vector<RV*>& locset,const bool nl=true,regex_t* preg = NULL); 
+void printRVSetAndValues(FILE*f,sArray<RV*>& locset,
+			 const bool nl=true,regex_t* preg = NULL);
+void printRVSetAndValues(FILE*f,set<RV*>& locset,const bool nl=true,regex_t* preg = NULL);
+void printRVSet(FILE*f,vector<RV*>& locvec,const bool nl=true,regex_t* preg = NULL);
+void printRVSet(FILE*f,sArray<RV*>& locset,const bool nl=true,regex_t* preg = NULL);
+void printRVSet(FILE*f,const set<RV*>& locset,const bool nl=true,regex_t* preg = NULL);
+void printRVSetPtr(FILE*f,set<RV*>& locset,const bool nl=true,regex_t* preg = NULL);
 
 // other useful routines.
 
@@ -500,5 +520,9 @@ void getRVOVec(sArray<RV*>& destination,
 
 bool firstRVSetContainedInSecond(set <RV*>& firstSet,
 				 set <RV*>& secondSet);
+
+void adjustFramesBy(set <RV*>& rvs,int adjustment,bool resetObservedValues = true);
+
+
 
 #endif

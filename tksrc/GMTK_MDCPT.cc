@@ -27,6 +27,7 @@
 #include <assert.h>
 
 #include "general.h"
+#include "matrix.h"
 #include "error.h"
 #include "rand.h"
 
@@ -832,6 +833,8 @@ MDCPT::emEndIteration()
 	  *tmp_loc_ptr /= sum;
 	  (*tmp_loc_ptr).floor();
 
+	  // pre-compute the max value right here as we are scanning
+	  // through.
 	  if ((*tmp_loc_ptr) > nextCachedMaxValue)
 	    nextCachedMaxValue = *tmp_loc_ptr;
 
@@ -848,6 +851,16 @@ MDCPT::emEndIteration()
 	      _name.c_str());
 
   }
+
+#if 0
+  // TODO: make this an option, rather than a comment. This code
+  // will make the resulting 2D square MDCPT symmetric.
+  if (make2DSymmetric && numParents() == 1  && card() == parentCardinality(0)) {
+    // then make symmetric
+    mMakeSymmetric(nextMdcpt.ptr,card());
+  }
+#endif
+
   // stop EM
   emClearOnGoingBit();
 

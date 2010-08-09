@@ -54,6 +54,7 @@ public:
   enum ComponentType { 
     // standard diagonal Gaussian
     DiagGaussian = 0, 
+
     // Linear mean-conditional diagonal Gaussian. 
     // Implements full-covariance Gaussians (via chol. factorization),
     // sparse covariance Gaussians with Bayesian network covariance matrices,
@@ -68,7 +69,19 @@ public:
     GammaComponent = 3,
     // A N-dimensional Beta distribution component, for real values that are
     // in a given range
-    BetaComponent = 4
+    BetaComponent = 4,
+
+    // A diagonal Gaussian component with missing features specified as NANs,
+    // and with an optional vector scale. That is, 
+    // p(x_1,x_2, \dots, x_n) = p(x_1)^\alpha_1 p(x_2)^\alpha_2 \dots p(x_n)^\alpha_n
+    // where p(x_i) is a standard scalar Gaussian. If any of x_i is a NAN
+    // then p(x_i) = 1, i.e., x_i = NAN is the same as if x_i was hidden
+    // and was a dangling hidden child (and is integrated away). 
+    MissingFeatureScaledDiagGaussian = 5 
+
+
+
+    // ...
     // add others here as they are written...
   };
 

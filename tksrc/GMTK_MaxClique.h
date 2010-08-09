@@ -30,6 +30,9 @@
  *
  */
 
+// TODO: perhaps create a subclass or member of maxClique at some point, rather than
+// adding everything for exact inference to the base class.
+
 
 #ifndef GMTK_MAXCLIQUE_H
 #define GMTK_MAXCLIQUE_H
@@ -69,11 +72,13 @@
 #include <string>
 #include <map>
 
-class JT_InferencePartition;
+class PartitionStructures;
+class PartitionTables;
 class SeparatorClique;
-class InferenceSeparatorClique;
+class ConditionalSeparatorTable;
+// class ConditionalSeparatorTable::SharedLocalStructure;
 class MaxClique;
-class InferenceMaxClique;
+class MaxCliqueTable;
 
 /////////////////////////////
 // TODO: think of a way of subclassing or something so that members
@@ -210,12 +215,12 @@ public:
 // use h(C) so that observed variables (or vars with card = 1) are not
 // needlessly stored in the clique value.
 // --
-// InferenceMaxClique Number Words WithOut a Hash (IMC_NWWOH): Namely,
+// MaxCliqueTable Number Words WithOut a Hash (IMC_NWWOH): Namely,
 // the number of words that can be stored directly as a packed clique
 // value before we resort to using a shared hash table for all
 // instances of this origin clique.
 #define IMC_NWWOH (1)
-// InferenceSeparatorClique Number Words WithOut a Hash (ISC_NWWOH):
+// ConditionalSeparatorTable Number Words WithOut a Hash (ISC_NWWOH):
 // Namely, the number of words that can be stored directly as a packed
 // clique value before we resort to using a shared hash table for all
 // instances of this origin clique.  One for the accumulated
@@ -225,7 +230,6 @@ public:
 #define ISC_NWWOH_RM (1)
 // -- 
 //////////////////////////////////////////////////////////////////////////////
-
 
 
 class MaxClique : public IM {
@@ -262,6 +266,8 @@ public:
   static unsigned cliqueBeamClusterPruningNumClusters;
   // beam width for cluster-based beam pruning.
   static double cliqueBeamClusterBeam;
+  // state beam width for state-based cluster pruning
+  static unsigned cliqueBeamClusterMaxNumStates;
 
   // TODO: @@@@ remove this variable, it is here just to gather a few stats for
   // Wed Dec 10 10:47:27 2008 Friday's talk. This will *NOT* work
@@ -273,16 +279,28 @@ public:
   // forced max number of states in a clique. Set to 0 to turn it off.
   static unsigned cliqueBeamMaxNumStates;
   // fraction of clique to retain, forcibly pruning away everything else. Must be
+
   // between 0 and 1 (i.e., 0 < v <= 1).
   static float cliqueBeamRetainFraction;
+  // a version for clustered states
+  static float cliqueBeamClusterRetainFraction;
+
   // between 0 and 1 (i.e., 0 < v <= 1).
-  static double cliqueBeamMassRelinquishFraction;
+  static double cliqueBeamMassRetainFraction;
   // exponentiate the clique scores before pruning by this amount.
   static double cliqueBeamMassExponentiate;
   // min possible resulting size.
   static unsigned cliqueBeamMassMinSize;
   // additional normal beam to include once mass is covered.
   static double cliqueBeamMassFurtherBeam;
+
+  // a version of the above for, but for cluster/diversity pruning
+  static double cliqueBeamClusterMassRetainFraction;
+  static double cliqueBeamClusterMassExponentiate;
+  static unsigned cliqueBeamClusterMassMinSize;
+  static double cliqueBeamClusterMassFurtherBeam;
+
+
   // amount to re-sample from pruned clique. =0.0 to turn off.
   static double cliqueBeamUniformSampleAmount;
 
@@ -293,6 +311,19 @@ public:
   // space and might but does not necessarily slow things down).
   static bool storeDeterministicChildrenInClique;
 
+
+  // if this is turned on, GMTK will normalize the score of each clique so
+  //  that we do not run out of numeric dynamic range. This will
+  //  render prob(evidence) meaningless, but will give the same
+  //  results for training or decoding. The special values
+  //  f the variabale are:
+  //      val == 1 ==> don't do any score normalize (default)
+  //      val == 0 ==> normalize (divide) by the maximum clique value
+  //      val > 1  ==> normalize (divide) by the given value. A good
+  //                value to use woudl be exp(- log(prob(evidence)) / T ) 
+  //                and the per-frame log-likelyhood can be estimaed
+  //                by a short-length run of the program.
+  static double normalizeScoreEachClique;
 
   // @@@ need to take out, here for now to satisify STL call of vector.clear().
 #if 0
@@ -774,8 +805,8 @@ public:
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // Manages and memorizes the size and space requests made
-  // by all corresponding InferenceMaxCliques. This way,
-  // the next time an InferenceMaxCliques asks for an initial
+  // by all corresponding MaxCliqueTables. This way,
+  // the next time an MaxCliqueTables asks for an initial
   // amount of memory, we'll be able to give it something
   // closer to what it previously asked for rather than
   // something too small.
@@ -914,9 +945,22 @@ public:
   void prepareForNextInferenceRound() {
     prevMaxCEValue.valref() = (-LZERO);
     prevPrevMaxCEValue.valref() = (-LZERO);
-    if (maxCEValuePredictor.get() != NULL)
+    if (maxCEValuePredictor.ptr() != NULL)
       maxCEValuePredictor->init();
   }
+
+  // USED ONLY IN JUNCTION TREE INFERENCE
+  // Clears or resets to initial status all memory that was created
+  // for this clque during an inference run.
+  void clearInferenceMemory() {
+    valueHolder.prepare();
+    cliqueValueHashSet.clear();
+#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
+    temporaryCliqueValuePool.clear();
+#endif
+  }
+
+  void clearCliqueAndIncommingSeparatorMemory(SeparatorClique& sep);
 
   // return the s'th VE separator. Must call computeVESeparators()
   // first. Caller assumed to copy this out since we return a
@@ -934,308 +978,13 @@ public:
 };
 
 
-// A version of maxclique that:
-//   1) has no STL and uses only fast datastructures with custom memory managment
-//   2) keeps a pointer back to it's original clique for hash tables, etc.
-// Note that this is not a subclass of MaxClique since we do not want
-// these objects to have to have all MaxClique's member variables.
-class InferenceMaxClique  : public IM
-{
-  friend struct CliqueValueDescendingProbCompare;
-
-  // integer value to keep track of indenting when running in trace
-  // mode.
-  static int traceIndent;
-
-  // the original maxclique from which this object has been cloned and
-  // where we get access to some data structures that are common to
-  // all InferenceMaxClique of this particular base clique.
-  MaxClique& origin;
-
-  // Non-STL "fast" versions of arrays that exist in the final
-  // unrolled versions of the cliques. These give rapid access
-  // to the random variables involved in this clique.
-  sArray< RV*> fNodes;
-  sArray< RV*> fSortedAssignedNodes;
-  sArray< RV*> fUnassignedIteratedNodes;
-  sArray< RV*> fDeterminableNodes;
-  // Direct pointers to the values within the discrete hidden RVs
-  // within this clique.  Note, the observed discrete and continuous
-  // variables are not contained here.
-  sArray < DiscRVType* > discreteValuePtrs;
-
-
-#if 0
-  // temporary factor hack, works with only one factor per clique using
-  // equality constraint.
-  struct InferenceFactorInfo {
-    sArray< RV*> fFactorNodes; // all factor nodes
-    sArray< RV*> fFactorNodesInSeps; // any factor nodes in incomming seps
-    sArray< RV*> fFactorNodesNotInSeps; // fFactorNodes - fFactorNodesInSeps
-    RV* fFirstFactorNodePastSepsUnassigned;
-    sArray< RV* > fRemainingFactorNodePastSepsUnassigned;
-  } *inferenceFactorInfo;
-
-#endif
-
-  // Data structure holding a clique value, i.e., a set of random
-  // variable values and a probability for that set of values.
-  // -
-  // TODO: potentially create a gobal table of these clique values and
-  // in this clique, store rather than actual clique values, store
-  // instead integer indices into this global table. When clique
-  // values get pruned away, they can be restored into global table.
-  // Advantages of such a scheme:
-  //    a) pruned clique values get removed right away, reclaiming
-  //       storage for additional clique values later in inference
-  //    b) in distribute evidence (backward pass), might be useful
-  //       and faster not to have to keep checking forward pass pruning
-  //       threshold (i.e., pruned away clique values will need
-  //       to be ignored in some way or another)
-  //    c) wasted storage might be less since unused array
-  //       in each clique holds only one word (index) rather
-  //       than entire contents of a clique value. (but
-  //       global clique value pool needs to hold unused values as well
-  //       but how many?? not clear.
-  // 
-  // Dis-advantages of such a scheme:
-  //    a) uses more storage per clique value (an integer index +
-  //     the entries in the clique value
-  //    b) still more indirection toget to data we need.
-  //    c) more bookeeping to keep
-  // 
-  // Note: in any event, this class needs to be as small as possible!!!
-  class CliqueValue {
-  public:
-
-    // shared space.
-    union {
-      // When a packed clique value is > ISC_NWWOH words (unsigned),
-      // then we keep a pointer to the packed clique value (list of
-      // variables) where the actuall clique value is obtained. This
-      // points to a data structure maintained by origin.
-      union {
-	// keep both a ptr and an unsigned long version of the ptr.
-	unsigned *ptr;
-	unsigned long ival;
-      };
-      // When a packed clique value is only ISC_NWWOH words (unsigned)
-      // or less we don't bother with a hash table and just store the
-      // packed clique value right here, thereby saving needing to
-      // look things up in a hash table and also saving memory.
-      // unsigned val[IMC_NWWOH];
-      unsigned val[((IMC_NWWOH>1)?IMC_NWWOH:1)];
-    };
-
-    // The probability p. Note that we could keep a collect evidence
-    // and distribute evidence probability here (and thereby avoid
-    // doing the Hugin-style divide on the distribute evidence stage)
-    // but we only keep one value 1) to save space, as adding an extra
-    // probability will increase storage requirements (especially if a
-    // logpr is a 64-bit fp number), and 2) since everything is done
-    // in log arithmetic, a divide is really a floating point
-    // subtraction which is cheap.
-    logpr p;
-
-  };
-
-  // the collection of clique values for this clique.
-  sArray< CliqueValue > cliqueValues;
-  // Number of currently used clique values
-  unsigned numCliqueValuesUsed;
-#ifdef TRACK_NUM_CLIQUE_VALS_SHARED
-  // Number of times that the clique value was shared from a time before
-  unsigned numCliqueValuesShared;
-#endif
-
-  void clear(bool alsoClearOrigin=false) {
-    // clear out all memory used by this inference clique.
-    fNodes.clear();
-    fSortedAssignedNodes.clear();
-    fUnassignedIteratedNodes.clear();
-    fDeterminableNodes.clear();
-    discreteValuePtrs.clear();
-    cliqueValues.clear();
-    if (alsoClearOrigin) {
-      // also clear all memory associated with the origin clique.
-      // NOTE: do not use this if using this clique in a DBN (this is
-      // only relevant for graphs that have only one instance of a
-      // clique, such as static graphs, or cliques that are either in
-      // the P, or E partitions (not in the C partitions), so are used
-      // only once.
-      origin.valueHolder.prepare();
-      origin.cliqueValueHashSet.clear();
-#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
-      origin.temporaryCliqueValuePool.clear();
-#endif
-    }
-  }
-
-  // Max collect-evidence probability for this clique. Used for beam
-  // pruning.
-  logpr maxCEValue;
-
-  // Estimate of the beam threshold for the current clique based on
-  // the two previous clique's maxCE values.
-  logpr cliqueBeamThresholdEstimate;
-
-
-public:
-
-  // WARNING: constructor hack to create a very broken object with
-  // non-functional reference objects (in order to create an array of
-  // these objects and then initialize them later with appropriate
-  // references). Do not use until after proper re-constructor.
-  InferenceMaxClique() : origin(*((MaxClique*)NULL)) {}
-  // normal constructor (i.e., re-constructor).
-  InferenceMaxClique(MaxClique& _origin,
-		     vector <RV*>& newRvs,
-		     map < RVInfo::rvParent, unsigned >& ppf,
-		     const unsigned int frameDelta);
-  // destructor
-  ~InferenceMaxClique() {}
-
-  // collect evidence functions.
-  void ceGatherFromIncommingSeparators(JT_InferencePartition& part);
-  // special case when the clique is fully observed.
-  void ceGatherFromIncommingSeparatorsCliqueObserved(JT_InferencePartition& part);
-
-
-  ///////////////////////////////////////
-  // iterate unassigned nodes
-
-  void inline ceIterateUnassignedIteratedNodes(JT_InferencePartition& part,
-					const unsigned nodeNumber,
-					const logpr p) 
-  {
-    if (nodeNumber == fUnassignedIteratedNodes.size()) {
-      ceIterateAssignedNodes(part,0,p);
-      return;
-    }
-    ceIterateUnassignedIteratedNodesRecurse(part,nodeNumber,p);
-  }
-  void ceIterateUnassignedIteratedNodesRecurse(JT_InferencePartition& part,
-					       const unsigned nodeNumber,
-					       const logpr p);
-
-  ///////////////////////////////////////
-  // iterate separators
-
-  void inline ceIterateSeparators(JT_InferencePartition& part,
-				  const unsigned sepNumber,
-				  const logpr p) 
-  {
-    if (sepNumber == origin.ceReceiveSeparators.size()) {
-      // move on to the iterated nodes.
-      ceIterateUnassignedIteratedNodes(part,0,p);
-      return;
-    }
-    ceIterateSeparatorsRecurse(part,sepNumber,p);
-  }
-  void ceIterateSeparatorsRecurse(JT_InferencePartition& part,
-				  const unsigned sepNumber,
-				  const logpr p);
-  void ceIterateSeparatorsRecurseDense(JT_InferencePartition& part,
-				       const unsigned sepNumber,
-				       const logpr p);
-
-  ///////////////////////////////////////
-  // iterate assigned nodes.
-
-
-  void ceIterateAssignedNodesRecurse(JT_InferencePartition& part,
-				     const unsigned nodeNumber,
-				     const logpr p);
-  void ceIterateAssignedNodesNoRecurse(JT_InferencePartition& part,
-				       const logpr p);
-
-  void inline ceIterateAssignedNodes(JT_InferencePartition& part,
-				     const unsigned nodeNumber,
-				     const logpr p)
-  {
-    // apply factors so far from separators or unassigned nodes.
-
-    if (fSortedAssignedNodes.size() == 0 || message(High)) {
-      // let recursive version handle degenerate or message full case
-      ceIterateAssignedNodesRecurse(part,0,p);
-    } else {
-      // ceIterateAssignedNodesRecurse(part,0,p);
-      ceIterateAssignedNodesNoRecurse(part,p);
-    }
-  }
-
-  /////////////////////////////////////////
-  // memory clearing.
-  void clearCliqueAndIncommingSeparators(JT_InferencePartition& part,
-					 bool alsoClearOrigins = false);
-
-
-  /////////////////////////////////////////
-  void ceSendToOutgoingSeparator(JT_InferencePartition& part,
-			    InferenceSeparatorClique& sep); 
-  void ceSendToOutgoingSeparator(JT_InferencePartition& part);
-  void ceCliquePrune();
-  void ceCliquePrune(const unsigned k);
-  void ceCliqueMassPrune(const double removeFraction,
-			 const double exponentiate,
-			 const double furtherBeam,
-			 const unsigned minSize);
-  void ceCliqueUniformSamplePrunedCliquePortion(const unsigned origNumCliqueValuesUsed);
-  void ceCliqueDiversityPrune(const unsigned numClusters);
-  // a version that does all the pruning for this clique.
-  void ceDoAllPruning();
-#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
-  void insertLocalCliqueValuesIntoSharedPool();
-#endif
-
-  // distribute evidence functions.
-  void deScatterToOutgoingSeparators(JT_InferencePartition& part);
-  void deScatterToOutgoingSeparatorsViterbi(JT_InferencePartition& part);
-  void deReceiveFromIncommingSeparator(JT_InferencePartition& part,
-				       InferenceSeparatorClique& sep);
-  void deReceiveFromIncommingSeparatorViterbi(JT_InferencePartition& part,
-					      InferenceSeparatorClique& sep);
-
-  void deReceiveFromIncommingSeparator(JT_InferencePartition& part);
-
-  // sum up the probabilities in the current clique and return their value.
-  logpr sumProbabilities();
-  logpr sumExponentiatedProbabilities(double exponent);
-
-  // compute the clique entropy
-  double cliqueEntropy();
-  // compute a form of clique diversity
-  double cliqueDiversity();
-
-  // memory reporting.
-  void reportMemoryUsageTo(FILE *f);
-
-
-  // compute the max probability and return its value, and also
-  // optionally sets the clique to its max value.
-  logpr maxProbability(bool setCliqueToMaxValue = true);
-
-  // print all clique values and prob to given file.
-  void printCliqueEntries(FILE*f,const char*str=NULL,
-			  const bool normalize = false,
-			  const bool justPrintEntropy = false);
-  
-  // EM accumulation support.
-  void emIncrement(const logpr probE, 
-		   const bool localCliqueNormalization = false,
-		   const double emTrainingBeam = -LZERO);
-
-};
-
-
-
 
 class SeparatorClique : public IM
 {
   friend class FileParser;
   friend class GraphicalModel;
   friend class GMTemplate;
-  friend class InferenceSeparatorClique;
+  friend class ConditionalSeparatorTable;
   friend class JunctionTree;
 
 public:
@@ -1291,7 +1040,7 @@ public:
   // This is computed in prepareForUnrolling(). Once it is computed,
   // we are not allowed to make any additional copies of this object,
   // or otherwise this pointer might get deleted twice.
-  InferenceSeparatorClique* veSepClique;
+  ConditionalSeparatorTable* veSepClique;
   ///////////////////////////////////////////////
   // VE separator files information.
   ///////////////////////////////////////////////
@@ -1401,9 +1150,9 @@ public:
   void reportMemoryUsageTo(FILE *f);
 
   // Manages and memorizes the size and space requests made by all
-  // corresponding InferenceSeparatorCliques regarding the size of
+  // corresponding ConditionalSeparatorTables regarding the size of
   // 'separatorValues' array. I.e., the next time a
-  // InferenceSeparatorClique asks for an initial amount of memory,
+  // ConditionalSeparatorTable asks for an initial amount of memory,
   // we'll be able to give it something closer to what it previously
   // asked for rather than something too small.
   SpaceManager separatorValueSpaceManager;
@@ -1418,6 +1167,17 @@ public:
   // used to clear out hash table memory between segments
   void clearSeparatorValueCache(bool force=false);
 
+  void clearInferenceMemory() {
+    accSepValHashSet.clear();
+    remSepValHashSet.clear();
+    // could change to makeEmpty if running on a static graph only 
+    if (accPacker.packedLen() > ISC_NWWOH_AI)
+      accValueHolder.prepare();
+    if (remPacker.packedLen() > ISC_NWWOH_RM)
+      remValueHolder.prepare();
+  }
+
+
   // @@@ need to take out, here for now to satisify STL call of vector.clear().
 #if 0
   SeparatorClique& operator=(const SeparatorClique& f) {
@@ -1425,13 +1185,7 @@ public:
   }
 #endif
 
-
 };
-
-
-
-
-
 
 
 // A version of separatorclique that:
@@ -1441,49 +1195,84 @@ public:
 //      etc.
 // Note that this is not a subclass of SeparatorClique since we do not want
 // these objects to have to have all SeparatorClique's member variables.
-class InferenceSeparatorClique : public IM
+class ConditionalSeparatorTable : public IM
 {
-  friend class InferenceMaxClique;
+  friend class MaxCliqueTable;
+  friend class PartitionStructures;
+  friend class PartitionTables;
+  friend class SeparatorClique;
 
-  // TODO: for the sArray's below, make only one copy of these and
-  // update then once before being used in a given origin clique
-  // (since they don't need to coexist). This would save memory
-  // (and wouldn't cost so much time).
+  // Member functions that are shared accross multiple instances of
+  // this table, and thus are kept separate and passed in via
+  // arguments as needed, rather than wasting storage to keep these
+  // member functions around. We manage the data structure here though
+  // since here is where it is defined what is and isn't needed.
+  struct SharedLocalStructure {
 
-  // Non-STL "f=fast" versions of arrays that are instantiated
-  // only in the final unrolled versions of the separator cliques.
-  sArray< RV*> fNodes;
-  sArray< RV*> fAccumulatedIntersection;
-  sArray< RV*> fRemainder;
 
-  // Direct fast access pointers to the values within the discrete
-  // *HIDDEN* RVs within this sep clique.  Note, the observed discrete
-  // and continuous variables are not contained here.  1) one for the
-  // accumulated intersection
-  sArray < DiscRVType*> accDiscreteValuePtrs;
-  // 2) and one for the remainder variables.
-  sArray < DiscRVType*> remDiscreteValuePtrs;
+    // the original separator clique from which this object has been cloned.
+    SeparatorClique* origin;
 
-  // the original separator clique from which this object has been cloned.
-  SeparatorClique& origin;
-  
+    // Non-STL "f=fast" versions of arrays that are instantiated
+    // only in the final unrolled versions of the separator cliques.
+    sArray< RV*> fNodes;
+    sArray< RV*> fAccumulatedIntersection; // remove
+    sArray< RV*> fRemainder;
+
+    // Direct fast access pointers to the values within the discrete
+    // *HIDDEN* RVs within this sep clique.  Note, the observed discrete
+    // and continuous variables are not contained here.  1) one for the
+    // accumulated intersection
+    sArray < DiscRVType*> accDiscreteValuePtrs;
+    // 2) and one for the remainder variables.
+    sArray < DiscRVType*> remDiscreteValuePtrs;
+
+
+    // @@@@ NOW TODO: include a full function that takes a
+    // maxClique/separator, offset, and new rv set and fills in all of
+    // the member slots here (like what hte old constructor of the
+    // containing object used to do). (the consructure soudl do it, no 1/15)
+
+    set <RV*> returnRVsAsSet();
+
+    SharedLocalStructure(SeparatorClique& _origin,
+			 vector <RV*>& newRvs,
+			 map < RVInfo::rvParent, unsigned >& ppf,
+			 const unsigned int frameDelta);
+    // empty constructor
+    SharedLocalStructure() : origin(NULL) {}
+
+  };
+
   // Two indices to get at the veterbi values for current
   // separator. In other words, these indices give the separator entry
   // corresponding to the variable assigmnets that give the max value
   // for the clique closer to the root relative to this separator. We
   // store these indices here so that that clique need not retain its
-  // values, while the current separator can still store the values it
-  // needs.
+  // values in the set of rvs, while the current separator can still
+  // store the values it needs. For VE separators, we never use these
+  // for their normal use, so instead we encode an id to indicate that
+  // this is a VE separator (so that certain other data items do not
+  // get deleted on destruction). Actualy, this can be done with
+  // a single pointer directly to the appropriate entry!!
   struct ForwardPointer {
     unsigned viterbiAccIndex;
     unsigned viterbiRemIndex;
     ForwardPointer() 
     {
-      viterbiAccIndex = viterbiRemIndex = 0xABCDEFA;
+      viterbiAccIndex = viterbiRemIndex = 0;
+    }
+    void setToVeSeparatorId() {
+      viterbiAccIndex = viterbiRemIndex = (unsigned)~0x0;
+    }
+    bool veSeparator() {
+      // we use special values here to indicate if the current
+      // separator is a VE (virtual evidence) separator which is
+      // treated very differently in the inference code.
+      return (viterbiAccIndex == (unsigned)~0x0 && viterbiRemIndex == (unsigned)~0x0);
     }
   };
-  // TODO: make an array for N-best decoding.
-  ForwardPointer forwPointer;
+
 
   class RemainderValue {
   public:
@@ -1505,7 +1294,6 @@ class InferenceSeparatorClique : public IM
     };
     // forward probability
     logpr p;
-
 
     // make a union to share space between doing
     // backward inference and backward viterbi pass
@@ -1571,6 +1359,14 @@ class InferenceSeparatorClique : public IM
     }
   };
 
+
+  // Forward pointer for viterbi, and for encoding VE separator identity status.
+  // TODO: figure out a way to avoid needing to store these here.
+  // TODO: make an array for N-best decoding.
+  ForwardPointer forwPointer;
+  bool veSeparator() { return forwPointer.veSeparator(); }
+  void setToVeSeparatorId() { forwPointer.setToVeSeparatorId(); }
+
   // The collection of AI separator values.
   cArray< AISeparatorValue >* separatorValues;
   // number of currently used clique values
@@ -1588,72 +1384,474 @@ class InferenceSeparatorClique : public IM
 
 public:
 
-  bool veSeparator() {  return origin.veSeparator; }
 
   // WARNING: constructor hack to create a very broken object with
   // non-functional reference objects (in order to create an array of
   // these objects and then initialize them later with appropriate
   // references). Do not use until after proper re-constructor.
-  InferenceSeparatorClique() : origin(*((SeparatorClique*)NULL)) { iAccHashMap = NULL; separatorValues = NULL; }
-  // normal (or re-)constructor
-  InferenceSeparatorClique(SeparatorClique& _origin,
-			   vector <RV*>& newRvs,
-			   map < RVInfo::rvParent, unsigned >& ppf,
-			   const unsigned int frameDelta);
-  // version for VE separators
-  InferenceSeparatorClique(SeparatorClique& _origin);
+  ConditionalSeparatorTable()  
+  { iAccHashMap = NULL; separatorValues = NULL; }
+  // normal (or re-)constructor.
+  ConditionalSeparatorTable(SeparatorClique& origin);
+  void init(SeparatorClique& origin);
+
+  ///////////////////////////////////////////////////////////////////////
+  // version to create a VE separators that lives in a SeparatorClique
+  ConditionalSeparatorTable(SeparatorClique& origin,
+			    ConditionalSeparatorTable::SharedLocalStructure& sepSharedStructure);
 
   // destructor
-  ~InferenceSeparatorClique() 
+  ~ConditionalSeparatorTable() 
   {
-    if (!veSeparator()) {
-      // only delete when not a VE separator, since when it is these
-      // guys are shared accross multiple InferenceSeparatorCliques.
-      // Note: the 'mother' VE InferenceSeparatorClique is actually a
-      // placeholder VE separator, but it is deleted only when the
-      // containing SeparatorClique is deleted.
-      delete iAccHashMap;
-      iAccHashMap = NULL;
-      delete separatorValues;
-      separatorValues = NULL;
-    }
+    clearInferenceMemory();
   }
 
-  void clear(bool alsoClearOrigin=false) {
+  void clearInferenceMemory() {
+    // only delete when not a VE separator, since when it is these
+    // guys are shared accross multiple ConditionalSeparatorTables.
+    // Note: the 'mother' VE ConditionalSeparatorTable is actually a
+    // placeholder VE separator, but it is deleted only when the
+    // containing SeparatorClique is deleted.
     if (veSeparator())
       return;
-
     delete iAccHashMap;
     iAccHashMap = NULL;
     delete separatorValues;
     separatorValues = NULL;
-    fNodes.clear();
-    fAccumulatedIntersection.clear();
-    fRemainder.clear();
-    accDiscreteValuePtrs.clear();
-    remDiscreteValuePtrs.clear();
-    if (alsoClearOrigin) {
-      origin.accSepValHashSet.clear();
-      origin.remSepValHashSet.clear();
-      // could change to makeEmpty if running on a static graph only 
-      if (origin.accPacker.packedLen() > ISC_NWWOH_AI)
-	origin.accValueHolder.prepare();
-      if (origin.remPacker.packedLen() > ISC_NWWOH_RM)
-	origin.remValueHolder.prepare();
+  }
+
+
+  // insert current value of RVs into separator
+  void insert(SeparatorClique& origin,
+	      ConditionalSeparatorTable::SharedLocalStructure& sepSharedStructure);
+
+  // separator based pruning
+  void ceSeparatorPrune(SeparatorClique& origin);
+
+  // memory reporting
+  void reportMemoryUsageTo(SeparatorClique&,FILE *f);
+
+};
+
+
+
+// The table entries for a maxclique that:
+//   1) has no STL and uses only fast datastructures with custom memory managment
+//   2) keeps a pointer back to it's original clique for hash tables, etc.
+// 
+// Note that this is not a subclass of MaxClique since we want this
+// object to be as absolutely small as possible to save memory on very
+// long segments (e.g., genomes), and we definitely do not want these
+// objects to have to have all MaxClique's member variables which
+// would be highly redundant.
+class MaxCliqueTable  : public IM
+{
+  friend struct CliqueValueDescendingProbCompare;
+  friend class PartitionStructures;
+  friend class PartitionTables;
+
+  // integer value to keep track of indenting when running in trace
+  // mode. TODO: reentrant issues.
+  static int traceIndent;
+  static const unsigned spi;
+
+
+  // Member functions that are shared accross multiple instances of
+  // this table, and thus are kept separate and passed in via
+  // arguments as needed, rather than wasting storage to keep these
+  // member functions around. We manage the data structure here though
+  // since here is where it is defined what is and isn't needed.
+  struct SharedLocalStructure {
+    // The original maxclique from which this object has been created
+    // and where we get access to some data structures that are common
+    // to all MaxCliqueTable's of this particular base clique.
+    MaxClique* origin;
+
+    // Non-STL "fast" versions of arrays that exist in the final
+    // unrolled versions of the cliques. These give rapid access to the
+    // random variables involved in this clique and used in the unrolled
+    // random variables during inference (i.e., the variables that are
+    // shared amongst cliques and their separators both within and
+    // accross cliques and partitions).
+    sArray< RV*> fNodes;
+    sArray< RV*> fSortedAssignedNodes;
+    sArray< RV*> fUnassignedIteratedNodes;
+    sArray< RV*> fDeterminableNodes;
+    // Direct pointers to the values within the discrete hidden RVs
+    // within this clique.  Note, the observed discrete and continuous
+    // variables are not contained here.
+    sArray < DiscRVType* > discreteValuePtrs;
+
+    // pointers to RVs having the max frame value and the min frame value
+    RV* rv_w_max_frame_num;
+    RV* rv_w_min_frame_num;
+
+
+    // initialize the above members.
+    SharedLocalStructure(MaxClique& _origin,
+			 vector <RV*>& newRvs,
+			 map < RVInfo::rvParent, unsigned >& ppf,
+			 const unsigned int frameDelta);
+    // empty constructor
+    SharedLocalStructure() : origin(NULL) {}
+
+    set <RV*> returnRVsAsSet();
+
+    // return as as set the random variables and any of their observed
+    // parents as a set. The main use of this routine is to return the
+    // random variables that might get their frame number changed.  The
+    // reason for also returning the observed parents is that when a
+    // frame number changes, the observed values might also need to
+    // change, and observed parents might live in a different clique or
+    // even a different partition (see the variable
+    // disconnectChildrenOfObservedParents in RV.h).
+    set <RV*> returnRVsAndTheirObservedParentsAsSet();
+
+  };
+
+
+  // Data structure holding a clique value, i.e., a set of random
+  // variable values and a probability for that set of values.
+  // -
+  // TODO: potentially create a global table of these clique values and
+  // in this clique, store rather than actual clique values, store
+  // instead integer indices into this global table. When clique
+  // values get pruned away, they can be restored into global table.
+  // Advantages of such a scheme:
+  //    a) pruned clique values get removed right away, reclaiming
+  //       storage for additional clique values later in inference
+  //    b) in distribute evidence (backward pass), might be useful
+  //       and faster not to have to keep checking forward pass pruning
+  //       threshold (i.e., pruned away clique values will need
+  //       to be ignored in some way or another)
+  //    c) wasted storage might be less since unused array
+  //       in each clique holds only one word (index) rather
+  //       than entire contents of a clique value. (but
+  //       global clique value pool needs to hold unused values as well
+  //       but how many?? not clear.
+  // 
+  // Dis-advantages of such a scheme:
+  //    a) uses more storage per clique value (an integer index +
+  //     the entries in the clique value
+  //    b) still more indirection toget to data we need.
+  //    c) more bookeeping to keep
+  // 
+  // Note: in any event, this class needs to be as small as possible!!!
+  class CliqueValue {
+  public:
+
+    // shared space.
+    union {
+      // When a packed clique value is > ISC_NWWOH words (unsigned),
+      // then we keep a pointer to the packed clique value (list of
+      // variables) where the actuall clique value is obtained. This
+      // points to a data structure maintained by origin.
+      union {
+	// Keep both a ptr and an unsigned long version of the ptr.
+	// The ptr is used when pointing to a shared global value pool
+	// and the ival is used to point to an index entry in a
+	// temporary clique value pool which is used to store values
+	// as the clique table is being created but before pruning
+	// happens. Values that are in the global clique value pool
+	// are never removed, but this option allows the insertion of
+	// values only that have not been pruned away, thereby saving
+	// much memory.
+	unsigned *ptr;
+	unsigned long ival;
+      };
+      // When a packed clique value is only ISC_NWWOH words (unsigned)
+      // or less we don't bother with a hash table and just store the
+      // packed clique value right here, thereby saving needing to
+      // look things up in a hash table and also saving memory.
+      // unsigned val[IMC_NWWOH];
+      unsigned val[((IMC_NWWOH>1)?IMC_NWWOH:1)];
+    };
+
+    // The probability p. Note that we could keep a collect evidence
+    // and distribute evidence probability here (and thereby avoid
+    // doing the Hugin-style divide on the distribute evidence stage)
+    // but we only keep one value 1) to save space, as adding an extra
+    // probability will increase storage requirements (especially if a
+    // logpr is a 64-bit fp number), and 2) since everything is done
+    // in log arithmetic, a divide is really a floating point
+    // subtraction which is cheap.
+    logpr p;
+
+  };
+
+  // the collection of clique values in the clique table for this
+  // clique.
+  sArray< CliqueValue > cliqueValues;
+  // Number of currently used clique values. Note that this value
+  // might be different than the size contained in the sArray since
+  // the sArray indicates the amount allocated and/or expanded, and
+  // differences in allocation vs. total number that have been
+  // generated, and also pruning, will mean that these values can be
+  // different.
+  unsigned numCliqueValuesUsed;
+
+
+  // extra storage to store special clique values for things like
+  // n-best, etc.
+  union {
+    unsigned back_max_cvn;
+    // for n-best, a length n array, should create a n-chunk array
+    // class that allocates these in fixed units using operator new.
+    // unsigned* back_max_cvn_arr;
+  };
+
+#ifdef TRACK_NUM_CLIQUE_VALS_SHARED
+  // Number of times that the clique value was shared from a time before
+  unsigned numCliqueValuesShared;
+#endif
+
+
+public:
+
+  // WARNING: constructor hack to create a very broken object with
+  // non-functional reference objects (in order to create an array of
+  // these objects and then initialize them later with appropriate
+  // references). Do not use until after proper re-constructor.
+  MaxCliqueTable() {}
+  // normal constructor (i.e., re-constructor).
+  MaxCliqueTable(MaxClique& origin);
+  void init(MaxClique& origin);
+
+  // destructor
+  ~MaxCliqueTable() {}
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // collect evidence functions.
+
+  void ceGatherFromIncommingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+				       ConditionalSeparatorTable* separatorTableArray,
+				       ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray);
+				       
+
+  // special case when the clique is fully observed.
+  void ceGatherFromIncommingSeparatorsCliqueObserved(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+						     ConditionalSeparatorTable* separatorCliqueArray,
+						     ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray,
+						     logpr& maxCEValue);
+
+
+  ////////////////////////////////////////////////////////////////////////////
+  // iterate unassigned nodes
+  void inline ceIterateUnassignedIteratedNodes(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+					       logpr cliqueBeamThresholdEstimate,
+					       logpr& maxCEValue,
+					       const unsigned nodeNumber,
+					       const logpr p)
+  {
+    if (nodeNumber == sharedStructure.fUnassignedIteratedNodes.size()) {
+      ceIterateAssignedNodes(sharedStructure,cliqueBeamThresholdEstimate,maxCEValue,0,p);
+      return;
+    }
+    ceIterateUnassignedIteratedNodesRecurse(sharedStructure,
+					    cliqueBeamThresholdEstimate,
+					    maxCEValue,
+					    nodeNumber,
+					    p);
+  }
+  void ceIterateUnassignedIteratedNodesRecurse(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+					       logpr cliqueBeamThresholdEstimate,
+					       logpr& maxCEValue,
+					       const unsigned nodeNumber,
+					       const logpr p);
+
+  ///////////////////////////////////////
+  // iterate separators
+
+  void inline ceIterateSeparators(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+				  ConditionalSeparatorTable* separatorTableArray,
+				  ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray,
+				  logpr cliqueBeamThresholdEstimate,
+				  logpr& maxCEValue,
+				  const unsigned sepNumber,
+				  const logpr p) 
+  {
+    if (sepNumber == sharedStructure.origin->ceReceiveSeparators.size()) {
+      // move on to the iterated nodes.
+      ceIterateUnassignedIteratedNodes(sharedStructure,
+				       cliqueBeamThresholdEstimate,
+				       maxCEValue,
+				       0,p);
+      return;
+    }
+    ceIterateSeparatorsRecurse(sharedStructure,separatorTableArray,sepSharedStructureArray,
+			       cliqueBeamThresholdEstimate,
+			       maxCEValue,
+			       sepNumber,p);
+  }
+  void ceIterateSeparatorsRecurse(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+				  ConditionalSeparatorTable* separatorTableArray,
+				  ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray,
+				  logpr cliqueBeamThresholdEstimate,
+				  logpr& maxCEValue,
+				  const unsigned sepNumber,
+				  const logpr p);
+
+  ///////////////////////////////////////
+  // iterate assigned nodes.
+
+
+  void ceIterateAssignedNodesRecurse(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+				     logpr cliqueBeamThresholdEstimate,
+				     logpr& maxCEValue,
+				     const unsigned nodeNumber,
+				     const logpr p);
+  void ceIterateAssignedNodesNoRecurse(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+				       logpr cliqueBeamThresholdEstimate,
+				       logpr& maxCEValue,
+				       const logpr p);
+
+  void inline ceIterateAssignedNodes(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+				     logpr cliqueBeamThresholdEstimate,
+				     logpr& maxCEValue,
+				     const unsigned nodeNumber,
+				     const logpr p)
+  {
+    // apply factors so far from separators or unassigned nodes.
+
+    // if (true || sharedStructure.fSortedAssignedNodes.size() == 0 || message(High)) {
+    if (sharedStructure.fSortedAssignedNodes.size() == 0 || message(High)) {
+      // let recursive version handle degenerate or message full case
+      ceIterateAssignedNodesRecurse(sharedStructure,
+				    cliqueBeamThresholdEstimate,
+				    maxCEValue,
+				    0,
+				    p);
+    } else {
+      // ceIterateAssignedNodesRecurse(part,0,p);
+      ceIterateAssignedNodesNoRecurse(sharedStructure,
+				      cliqueBeamThresholdEstimate,
+				      maxCEValue,
+				      p);
     }
   }
 
-  // insert current value of RVs into separator
-  void insert();
 
-  // separator based pruning
-  void ceSeparatorPrune();
+  /////////////////////////////////////////
+  // a version that automatically selects which separator to use within partition from the clique.
+  void ceSendToOutgoingSeparator(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+				 ConditionalSeparatorTable* separatorTableArray,
+				 ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray);
+  // a version with an explicit outgoing separator.
+  void ceSendToOutgoingSeparator(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+				 ConditionalSeparatorTable& sep,
+				 ConditionalSeparatorTable::SharedLocalStructure&);
 
-  // memory reporting
-  void reportMemoryUsageTo(FILE *f);
+
+
+
+  /////////////////////////////////////////
+  // memory clearing.
+  void clearInferenceMemory() {
+    // clear out all memory used by this inference clique.
+    cliqueValues.clear();
+  }
+  void clearCliqueAndIncommingSeparatorMemory(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+					      ConditionalSeparatorTable*,
+					      ConditionalSeparatorTable::SharedLocalStructure*);
+
+
+  /////////////////////////////////////////
+  // Pruning
+  /////////////////////////////////////////
+
+  void ceDoAllPruning(MaxClique& origin,logpr maxCEValue);
+  void ceCliqueBeamPrune(MaxClique& origin,logpr maxCEValue);
+  unsigned ceCliqueStatePrune(const unsigned k,
+			      CliqueValue*,
+			      const unsigned);
+  unsigned ceCliqueMassPrune(const double removeFraction,
+			     const double exponentiate,
+			     const double furtherBeam,
+			     const unsigned minSize,
+			     CliqueValue*,
+			     const unsigned);
+  void ceCliqueDiversityPrune(MaxClique& origin,const unsigned numClusters);
+
+  void ceCliqueUniformSamplePrunedCliquePortion(MaxClique& origin,
+						const unsigned origNumCliqueValuesUsed);
+
+  void ceDoCliqueScoreNormalization(MaxCliqueTable::SharedLocalStructure& sharedStructure);
+
+
+#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
+  void insertLocalCliqueValuesIntoSharedPool(MaxClique& origin);
+#endif
+
+
+  /////////////////////////////////////////
+  // distribute evidence functions.
+  /////////////////////////////////////////
+
+  void deScatterToOutgoingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+				     ConditionalSeparatorTable* separatorTableArray,
+				     ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray);
+
+
+  void deScatterToOutgoingSeparatorsViterbi(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+					    ConditionalSeparatorTable* separatorTableArray,
+					    ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray);
+
+  // a version that automatically selects which separator to use within partition from the clique.
+  void deReceiveFromIncommingSeparator(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+				       ConditionalSeparatorTable* separatorTableArray,
+				       ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray);
+  // a version with an explicit incomming separator
+  void deReceiveFromIncommingSeparator(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+				       ConditionalSeparatorTable&,
+				       ConditionalSeparatorTable::SharedLocalStructure&);
+  // a version specific to viterbi decoding.
+  void deReceiveFromIncommingSeparatorViterbi(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+					      ConditionalSeparatorTable&,
+					      ConditionalSeparatorTable::SharedLocalStructure&);
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // MISC.
+
+  // sum up the probabilities in the current clique table and return
+  // their value.
+  logpr sumProbabilities();
+  logpr sumExponentiatedProbabilities(double exponent,
+				      CliqueValue* curCliqueVals,
+				      const unsigned curNumCliqueValuesUsed);
+
+  // compute the clique entropy
+  double cliqueEntropy();
+  // compute a form of clique diversity
+  double cliqueDiversity(MaxClique& origin);
+
+  // memory reporting.
+  void reportMemoryUsageTo(MaxClique& origin,FILE *f);
+
+
+  // compute the max probability and return its value, and also
+  // optionally sets the rvs to its max value.
+  logpr maxProbability(MaxCliqueTable::SharedLocalStructure&,
+		       bool setCliqueToMaxValue = true);
+  // a faster version that just operates on the table.
+  logpr maxProb();
+
+  // print all clique values and prob to given file.
+  void printCliqueEntries(MaxCliqueTable::SharedLocalStructure&,
+			  FILE*f,const char*str=NULL,
+			  const bool normalize = false,
+			  const bool justPrintEntropy = false);
+  
+  // EM accumulation support.
+  void emIncrement(MaxCliqueTable::SharedLocalStructure&,
+		   const logpr probE, 
+		   const bool localCliqueNormalization = false,
+		   const double emTrainingBeam = -LZERO);
 
 
 };
+
+
 
 
 // A factor clique is a (not-necessarily max) clique that implements
@@ -1668,7 +1866,7 @@ class FactorClique : public IM
   friend class FileParser;
   friend class GraphicalModel;
   friend class GMTemplate;
-  friend class InferenceSeparatorClique;
+  friend class ConditionalSeparatorTable;
   friend class JunctionTree;
 
 public:
@@ -1737,5 +1935,9 @@ public:
   InferenceFactorClique(FactorClique& _origin);
 
 };
+
+
+
+
 
 #endif

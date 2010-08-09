@@ -189,7 +189,8 @@ public:
     KW_SoftConstraint=50,
     KW_Table=51,
     KW_LogLinear=52,
-    KW_EmarfNum=53
+    KW_EmarfNum=53,
+    KW_SymbolTable=54
   };
 
   // list of token keyword strings.
@@ -295,6 +296,7 @@ private:
   void parseRandomVariableAttributeList();
   void parseRandomVariableAttribute();
   void parseRandomVariableTypeAttribute();
+  void parseRandomVariableSymbolTable();
 
   void parseRandomVariableWeightAttribute();
   void parseRandomVariableWeightAttributeSpecList();

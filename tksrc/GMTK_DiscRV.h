@@ -31,6 +31,7 @@
 #include "GMTK_CPT.h"
 #include "GMTK_ObservationMatrix.h"
 #include "GMTK_PackCliqueValue.h"
+#include "GMTK_NameCollection.h"
 
 class FileParser;
 
@@ -106,7 +107,10 @@ public:
   // printing routines.
   virtual void printNameFrameValue(FILE *f,bool nl=true) {
     RV::printNameFrame(f,false);
-    fprintf(f,"=%d%s",val,nls(nl));
+    if (alwaysPrintIntegerRVValues || rv_info.symbolTable == NULL)
+      fprintf(f,"=%d%s",val,nls(nl));
+    else 
+      fprintf(f,"=%s%s",rv_info.symbolTable->table[val].c_str(),nls(nl));
   }
   virtual void printSelf(FILE *f,bool nl=true);
   virtual void printSelfVerbose(FILE *f);

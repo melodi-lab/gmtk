@@ -110,6 +110,8 @@ const char*const argerr = "ARG ERROR";
    char *postpr[MAX_NUM_OBS_FILES] = {NULL,NULL,NULL,NULL,NULL};   
    char *gpr_str                   = NULL;   // global final frame range string
 
+extern bool ObservationsAllowNan;
+
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   // observation input file handling
@@ -124,6 +126,7 @@ const char*const argerr = "ARG ERROR";
   Arg("prepr", Arg::Opt, prepr,"Pre Per-segment frame Range for obs file X before any transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("postpr",Arg::Opt, postpr,"Post Per-segment frame Range for obs file X after per-stream transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("gpr",   Arg::Opt, gpr_str," Global Per-segment final frame Range"),
+  Arg("obsNAN",   Arg::Opt, ObservationsAllowNan," True if observation files allow FP NAN values"),
 
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
@@ -748,7 +751,30 @@ const char*const argerr = "ARG ERROR";
   Arg("ccclusters",Arg::Opt,MaxClique::cliqueBeamClusterPruningNumClusters,"Number of clusters to use in cluster pruning"),
   Arg("ccbeam",Arg::Opt,MaxClique::cliqueBeamClusterBeam,"Clique cluster beam width to prune clique clusters (log value)"),
 
+  Arg("cckbeam",Arg::Opt,MaxClique::cliqueBeamClusterMaxNumStates,"Max number of states in each cluster in cluster pruning"),
+
+  Arg("ccrbeam",Arg::Opt,MaxClique::cliqueBeamClusterRetainFraction,"Fraction of in-cluster clique state space to retain. Range: 0 < v <= 1."),
+
+  Arg("ccmbeam",Arg::Opt,MaxClique::cliqueBeamClusterMassRetainFraction,"Percentage of clique cluster mass to retain. Range: 0 < v <= 1. v = 1.0 means no pruning"),
+  Arg("ccmexp",Arg::Opt,MaxClique::cliqueBeamClusterMassExponentiate,"Exponent to apply to clique cluster scores when doing mass pruning. Must be non-negative."),
+  Arg("ccmmin",Arg::Opt,MaxClique::cliqueBeamClusterMassMinSize,"When using -cmbeam, min possible resulting clique cluster state size (>= 1)"),
+  Arg("ccmfurther",Arg::Opt,MaxClique::cliqueBeamClusterMassFurtherBeam,"When using -ccmbeam, additional beam to use after mass has been acounted for (>= 0)"),
+
+
+
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+
+  if (MaxClique::cliqueBeamClusterMassRetainFraction <= 0.0 || MaxClique::cliqueBeamClusterMassRetainFraction > 1.0)
+    error("%s: ccmbeam argument must be: 0.0 < v <= 1.0",argerr);
+  if (MaxClique::cliqueBeamClusterMassMinSize <= 0)
+    error("%s: -ccmmin option must be at least unity.",argerr);
+  if (MaxClique::cliqueBeamClusterMassFurtherBeam < 0)
+    error("%s: -ccmfurther option must be >= 0.",argerr);
+  if (MaxClique::cliqueBeamClusterMassExponentiate < 0.0) 
+    error("%s: -ccmexp option must be >= 0.",argerr);
+
+
 
 #else
 #endif
@@ -789,7 +815,7 @@ const char*const argerr = "ARG ERROR";
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("cmbeam",Arg::Opt,MaxClique::cliqueBeamMassRelinquishFraction,"Percentage of clique mass to relinquish. Range: 0 < v <= 1. v = 0.0 means no pruning"),
+  Arg("cmbeam",Arg::Opt,MaxClique::cliqueBeamMassRetainFraction,"Percentage of clique mass to relinquish. Range: 0 < v <= 1. v = 1.0 means no pruning"),
   Arg("cmexp",Arg::Opt,MaxClique::cliqueBeamMassExponentiate,"Exponent to apply to clique scores when doing mass pruning. Must be non-negative."),
   Arg("cmmin",Arg::Opt,MaxClique::cliqueBeamMassMinSize,"When using -cmbeam, min possible resulting clique state size (>= 1)"),
   Arg("cmfurther",Arg::Opt,MaxClique::cliqueBeamMassFurtherBeam,"When using -cmbeam, additional beam to use after mass has been acounted for (>= 0)"),
@@ -797,8 +823,8 @@ const char*const argerr = "ARG ERROR";
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
-  if (MaxClique::cliqueBeamMassRelinquishFraction < 0.0 || MaxClique::cliqueBeamMassRelinquishFraction >= 1.0)
-    error("%s: cmbeam argument must be: 0.0 <= v < 1.0",argerr);
+  if (MaxClique::cliqueBeamMassRetainFraction <= 0.0 || MaxClique::cliqueBeamMassRetainFraction > 1.0)
+    error("%s: cmbeam argument must be: 0.0 < v <= 1.0",argerr);
   if (MaxClique::cliqueBeamMassMinSize <= 0)
     error("%s: -cmmin option must be at least unity.",argerr);
   if (MaxClique::cliqueBeamMassFurtherBeam < 0)
@@ -849,7 +875,12 @@ const char*const argerr = "ARG ERROR";
 
   Arg("ebeam",Arg::Opt,emTrainingBeam,"EM training beam width"),
 
+  // We could make this avalable to the command line, but this is really meant for an
+  // internal variable. If desired, you can enable this by uncommenting.
+  // Arg("minEMIncrementProb",Arg::Opt,EMable::minIncrementProbabilty.v,"Natural log of minumum EM increment posterior prob"),
+
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
 
 #else
 #endif
@@ -1058,6 +1089,7 @@ const char*const argerr = "ARG ERROR";
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   Arg("verbosity",Arg::Opt,verbosity,"Verbosity (0 <= v <= 100) of informational/debugging msgs"),
+  Arg("printIntValues",Arg::Opt,RV::alwaysPrintIntegerRVValues,"always print rv values as integer rather than symbols"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
@@ -1186,6 +1218,16 @@ static bool  cliquePrintOnlyEntropy = false;
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
   // these options are checked by the island algorithm code.
+  if (island) {
+    infoMsg(IM::Default,"NOTE: running island algorithm, turning off component caching '-componentCache F', setting hash load factor to at least 0.98 '-hashLoadFactor 0.98', and not storing deterministic children '-deterministicChildrenStore F'\n"); 
+    fflush(stdout);
+    MixtureCommon::cacheMixtureProbabilities = false;
+    // make sure to use other low memory options.
+    if (hash_abstract::loadFactor < 0.98)
+      hash_abstract::loadFactor = 0.98;
+    MaxClique::storeDeterministicChildrenInClique = false;
+  }
+
 
 #else
 #endif
@@ -1443,7 +1485,7 @@ static bool localCliqueNormalization = false;
   // log likelihood store file
   Arg("llStoreFile",Arg::Opt,llStoreFile,"File to store previous sum LL's"), 
   Arg("objsNotToTrain",Arg::Opt,objsToNotTrainFile,"File listing trainable parameter objects to not train."),
-  Arg("localCliqueNorm",Arg::Opt,localCliqueNormalization,"Use local clique sum for posterior normalization."),
+  Arg("localCliqueNorm",Arg::Opt,localCliqueNormalization,"Use local clique sum for EM posterior normalization."),
   Arg("dirichletPriors",Arg::Opt,EMable::useDirichletPriors,"Enable the use of Dirichlet priors for this process."),
 
   Arg("gmarCoeffL2",Arg::Opt,GaussianComponent::gmarCoeffL2,"Gaussian mean l2 accuracy-regularization tradeoff coeff (ie, prior concentration)"),
@@ -1461,6 +1503,46 @@ static bool localCliqueNormalization = false;
 #else
 #endif
 #endif // defined(GMTK_ARG_EM_TRAINING_PARAMS)
+
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+/* this next argument is applicable to all inference, but we add it 
+ * here as an error check needs to be done only in the EM and/or training
+ * case.
+ */
+
+#if defined(GMTK_ARG_CLIQUE_TABLE_NORMALIZE)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("cliqueTableNormalize",Arg::Opt,MaxClique::normalizeScoreEachClique,"Normalize scores of each clique right after its creation (increases dynamic range)."),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+    if (MaxClique::normalizeScoreEachClique < 0.0) {
+      error("ERROR: -cliqueTableNormalize option must be non-negative\n");
+    }
+
+
+#if defined(GMTK_ARG_EM_TRAINING_PARAMS)
+    if (MaxClique::normalizeScoreEachClique != 0.0 && localCliqueNormalization == false) {
+      // EM training won't work in this case unless it does local clique normalization as well.
+      localCliqueNormalization = true;
+      infoMsg(IM::SoftWarning,"Turning on EM local clique normalization since clique table score normalization is on.\n");
+    }
+#endif
+
+
+#else
+#endif
+#endif // defined(GMTK_ARG_CLIQUE_TABLE_NORMALIZE)
+
 
 
 
@@ -1652,6 +1734,74 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 #else
 #endif
 #endif // defined(GMTK_ARG_DECODING_OPTIONS)
+
+// Options for the transition to the new gmtkViterbi front end.
+
+#if defined(GMTK_ARG_NEW_DECODING_OPTIONS)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+
+  // arguments for partition based Viterbi printing.
+  static char* pVitValsFileName = NULL;
+  // TODO: get binary printing working
+  // static bool pVitValsFileBinp = false;
+  static char* pVitRegexFilter = NULL;
+  static bool pVitCaseSensitiveRegexFilter = false;
+  static char* pVitPartRangeFilter = NULL;
+  static bool pVitAlsoPrintObservedVariables = false;
+
+  // arguments for frame-based Viterbi printing.
+//  static char* vitValsFileName = NULL;
+  // TODO: get binary printing working
+  // static bool vitValsFileBinp = false;
+  static char* vitRegexFilter = NULL;
+  static bool vitCaseSensitiveRegexFilter = false;
+//  static bool vitAlsoPrintObservedVariables = false;
+//  static bool vitReverseOrder = false;
+#define MAX_VITERBI_TRIGGERS 3
+  const char   *vitTriggerVariables[MAX_VITERBI_TRIGGERS] = { NULL, NULL, NULL };
+  const char   *vitTriggerSets[MAX_VITERBI_TRIGGERS] = { NULL, NULL, NULL };
+
+
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  // partition based 
+  Arg("pVitValsFile",Arg::Req,pVitValsFileName,"Partition Vit: file to print viterbi values, '-' for stdout"),
+  // TODO: not currently used, but should add.
+  // Arg("pVitBinVitValsFile",Arg::Opt,pVitValsFileBinp,"Partition Vit: Should file to print viterbi values be binary? (T/F) "),
+
+  Arg("pVitRegexFilter",Arg::Opt,pVitRegexFilter,"Partition Vit: Regular expression to filter variable names."),
+  Arg("pVitCaseSensitiveRegexFilter",Arg::Opt,pVitCaseSensitiveRegexFilter,"Partition Vit: Case sensitivity of the rv regular expression filter."),
+
+  Arg("pVitPrintRange",Arg::Opt,pVitPartRangeFilter,"Partition Vit: value printing, integer range filter for partitions (e.g., frames, slices) to print."),
+
+  Arg("pVitPrintObservedVariables",Arg::Opt,pVitAlsoPrintObservedVariables,"Partition Vit: also print observed random variables in addtion to hidden"),
+
+#if 0
+  // this is not implemented yet.
+  // frame based
+  Arg("vitValsFile",Arg::Req,vitValsFileName,"Vit: file to print viterbi values, '-' for stdout"),
+  // TODO: not currently used, but should add.
+  // Arg("vitBinVitValsFile",Arg::Opt,vitValsFileBinp,"Vit: Should file to print viterbi values be binary? (T/F) "),
+
+  Arg("vitRegexFilter",Arg::Opt,vitRegexFilter,"Vit: Regular expression to filter variable names."),
+  Arg("vitCaseSensitiveRegexFilter",Arg::Opt,vitCaseSensitiveRegexFilter,"Vit: Case sensitivity of the rv regular expression filter."),
+
+  Arg("vitPrintObservedVariables",Arg::Opt,vitAlsoPrintObservedVariables,"Vit: also print observed random variables in addtion to hidden"),
+
+  Arg("vitReverseOrder",Arg::Opt,vitReverseOrder,"Vit: print values in reverse order."),
+
+  Arg("vitTriggerVar", Arg::Opt,vitTriggerVariables,"Viterbi: Trigger variable. Replace X with trigger variable number",Arg::ARRAY,MAX_VITERBI_TRIGGERS),
+  Arg("vitTriggerSet", Arg::Opt,vitTriggerSets,"Viterbi: Trigger value set. Replace X with trigger set number",Arg::ARRAY,MAX_VITERBI_TRIGGERS),
+#endif
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+
+#else
+#endif
+#endif // defined(GMTK_ARG_NEW_DECODING_OPTIONS)
 
 
 /*==============================================================================================================*/

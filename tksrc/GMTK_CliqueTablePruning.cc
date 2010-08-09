@@ -1,12 +1,11 @@
 /*-
  * GMTK_MaxClique.cc
  *
- *     maxClique support and JT probabilistic inference. Includes the
- *     implementation of a message in the message passing algorithm.
+ *     maxClique table pruning for Maximal cliques
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2003, < fill in later >
+ * Copyright (c) 2009, < fill in later >
  *
  * Permission to use, copy, modify, and distribute this
  * software and its documentation for any non-commercial purpose
@@ -24,22 +23,6 @@
 /*
  * TODO: turn this into multiple files
  *   mc, mctable CE, mctable DE, mctable prune, csctable
- *
- */
-
-
-
-/*
- * TODO:
- *   1) Maybe: In some of the structures the choice of when
- *   to use a hash table vs. an inlined value is done
- *   by either using an unsigned* or a unsigned. Create
- *   options where we do 'unsigned val[LEN]' and where
- *   only if packed value is > LEN words do we resort to
- *   the hash table.
- *
- *   2) Figure out way to remove the (unsigned**) type casts
- *   in front of call to packer object (see below).   
  *
  */
 
@@ -88,94 +71,6 @@ VCID("$Header$")
 ////////////////////////////////////////////////////////////////////
 
 
-////////////////////////////////////////////////////////////////////////
-// Comment/Uncomment to optimize for speed/reducing memory usage.
-#ifndef OPTIMIZE_FOR_MEMORY_USAGE
-#define OPTIMIZE_FOR_MEMORY_USAGE
-#endif
-////////////////////////////////////////////////////////////////////////
-
-#ifdef OPTIMIZE_FOR_MEMORY_USAGE
-
-#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
-#define TEMPORARY_LOCAL_CLIQUE_VALUE_POOL_GROWTH_RATE 1.15
-#endif
-
-// reasonable value is 1.25, but could go as low as 1.05 or so.
-#define MEM_OPT_GROWTH_RATE 1.25
-
-#define CLIQUE_VALUE_HOLDER_STARTING_SIZE 23
-#define CLIQUE_VALUE_HOLDER_GROWTH_RATE   MEM_OPT_GROWTH_RATE
-
-#define AI_SEP_VALUE_HOLDER_STARTING_SIZE 1
-#define AI_SEP_VALUE_HOLDER_GROWTH_RATE   MEM_OPT_GROWTH_RATE
-
-#define REM_SEP_VALUE_HOLDER_STARTING_SIZE 1
-#define REM_SEP_VALUE_HOLDER_GROWTH_RATE   MEM_OPT_GROWTH_RATE
-
-#define REM_HASH_MAP_STARTING_SIZE 1
-
-#define CLIQUE_VALUE_SPACE_MANAGER_GROWTH_RATE   MEM_OPT_GROWTH_RATE
-#define CLIQUE_VALUE_SPACE_MANAGER_DECAY_RATE    0.0
-
-#define SEPARATOR_VALUE_SPACE_MANAGER_GROWTH_RATE  MEM_OPT_GROWTH_RATE
-#define SEPARATOR_VALUE_SPACE_MANAGER_DECAY_RATE   0.0
-
-#define REMAINDER_VALUE_SPACE_MANAGER_GROWTH_RATE  MEM_OPT_GROWTH_RATE
-#define REMAINDER_VALUE_SPACE_MANAGER_DECAY_RATE   0.0
-
-#else
-// Then we optimize more for speed at the expense of memory usage.
-// Note, with these settings, information about memory usage will be
-// used from one segment to pre-allocate structures for the next
-// segment processed (which means that if segment i uses less memory
-// than segment i+1, we might use more memory than segment i+1
-// needs).
-
-
-#ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
-#define TEMPORARY_LOCAL_CLIQUE_VALUE_POOL_GROWTH_RATE 2.0
-#endif
-
-
-#define CLIQUE_VALUE_HOLDER_STARTING_SIZE 23
-#define CLIQUE_VALUE_HOLDER_GROWTH_RATE   2.0
-
-#define AI_SEP_VALUE_HOLDER_STARTING_SIZE 23
-#define AI_SEP_VALUE_HOLDER_GROWTH_RATE   2.0
-
-#define REM_SEP_VALUE_HOLDER_STARTING_SIZE 23
-#define REM_SEP_VALUE_HOLDER_GROWTH_RATE   2.0
-
-#define REM_HASH_MAP_STARTING_SIZE 2
-
-#define CLIQUE_VALUE_SPACE_MANAGER_GROWTH_RATE   2.0
-#define CLIQUE_VALUE_SPACE_MANAGER_DECAY_RATE    0.9
-
-#define SEPARATOR_VALUE_SPACE_MANAGER_GROWTH_RATE  2.0
-#define SEPARATOR_VALUE_SPACE_MANAGER_DECAY_RATE   0.9
-
-#define REMAINDER_VALUE_SPACE_MANAGER_GROWTH_RATE  2.0
-#define REMAINDER_VALUE_SPACE_MANAGER_DECAY_RATE   0.9
-
-#endif
-
-// for sorting an array of RVs ascending based on increasing cardinality
-struct ParentCardinalityCompare 
-{  
-  bool operator() (const RV* rv1,
-		   const RV* rv2) 
-  {
-    // place observed ones first.
-    if (RV2DRV(rv1)->discreteObservedImmediate())
-      return false;
-    else if (RV2DRV(rv2)->discreteObservedImmediate())
-      return true;
-    else return (RV2DRV(rv1)->cardinality < RV2DRV(rv2)->cardinality);
-  }
-};
-
-
 // for sorting an array of CliqueValue descending based on the contained logpr 
 struct CliqueValueDescendingProbCompare
 {  
@@ -185,70 +80,6 @@ struct CliqueValueDescendingProbCompare
     return (cv1.p > cv2.p);
   }
 };
-
-
-
-
-
-////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////
-//        Static variables and functions
-////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////
-
-/*
- * integer value to keep track of indenting when running in trace mode.
- */
-int MaxCliqueTable::traceIndent = -1;
-
-/*
- * number of spaces per indent. Could be a #define
- *
- */
-const unsigned MaxCliqueTable::spi = 1;
-
-/*
- *
- * Static memory for use for packed clique values. We do this here
- * rather than placing things on the stack since some routines might
- * do it repeatly and recursively. Also, making this global will make
- * the inference code below non-reentrant. TODO: change this when
- * getting working with POSIX threads.
- *
- */
-
-namespace CliqueBuffer {
-  // TODO: change this for multi-threading.
-
-  // allocate some temporary storage for packed separator values.
-  // 128 words is *much* bigger than any possible packed clique value
-  // will take on, but it is easy/fast to allocate on the stack right now.
-  unsigned packedVal[128];
-}
-
-
-
-/*
- *
- * Continuous observation per-feature penalty, default value defined here.
- *
- */
-double 
-MaxClique::continuousObservationPerFeaturePenalty = 0.0;
-
-///////////////////////////////////////////////
-// VE separator files information.
-///////////////////////////////////////////////
-bool SeparatorClique::recomputeVESeparatorTables = false;
-const char* SeparatorClique::veSeparatorFileName = "veSeparatorFile.dat";
-bool SeparatorClique::generatingVESeparatorTables = "true";
-FILE* SeparatorClique::veSeparatorFile = NULL;
-float SeparatorClique::veSeparatorLogProdCardLimit = 7.0; // i.e., 1e7=10M is default max.
-
-
-bool MaxClique::storeDeterministicChildrenInClique = true;
-
-double MaxClique::normalizeScoreEachClique = 1.0;
 
 
 /*
@@ -284,7 +115,7 @@ unsigned MaxClique::cliqueBeamClusterPruningNumClusters = 0;
 double MaxClique::cliqueBeamClusterBeam = (-LZERO);
 
 #define NO_PRUNING_CLIQUEBEAMCLUSTERPRUNINGMAXSTATES (UINT_MAX)
-unsigned MaxClique::cliqueBeamClusterMaxNumStates = NO_PRUNING_CLIQUEBEAMCLUSTERPRUNINGMAXSTATES;
+unsigned MaxClique::cliqueBeamClusterPruningMaxStates = NO_PRUNING_CLIQUEBEAMCLUSTERPRUNINGMAXSTATES;
 
 
 /*
@@ -303,20 +134,17 @@ MaxClique::cliqueBeamMaxNumStates = 0;
  */
 float
 MaxClique::cliqueBeamRetainFraction = 1.0;
-// a version for cluster/diversity pruning
-float
-MaxClique::cliqueBeamClusterRetainFraction = 1.0;
 
 
 /*
- * Fraction of clique mass to relinquish. Default (1.0) means prune nothing.
+ * Fraction of clique mass to relinquish. Default (0.0) means prune nothing.
  *
  */
 double
-MaxClique::cliqueBeamMassRetainFraction = 1.0;
+MaxClique::cliqueBeamMassRelinquishFraction = 0.0;
 
 /*
- * When using cliqueBeamMassRetainFraction, this option determins the lower bound of the
+ * When using cliqueBeamMassRelinquishFraction, this option determins the lower bound of the
  * min min clique state space size.
  *
  */
@@ -342,13 +170,6 @@ MaxClique::cliqueBeamMassFurtherBeam = 0.0;
  */
 double
 MaxClique::cliqueBeamMassExponentiate = 1.0;
-
-// A version of the above four variables that are used for cluster/diversity pruning.
-
-double MaxClique::cliqueBeamClusterMassRetainFraction = 1.0;
-unsigned MaxClique::cliqueBeamClusterMassMinSize = 1;
-double MaxClique::cliqueBeamClusterMassFurtherBeam = 0.0;
-double MaxClique::cliqueBeamClusterMassExponentiate = 1.0;
 
 
 /*
@@ -2140,11 +1961,10 @@ SharedLocalStructure(MaxClique& _origin,
 		     const unsigned int frameDelta)
 {
 
+
   origin = &_origin;
 
   set<RV*>::iterator it;
-
-  rv_w_max_frame_num = rv_w_min_frame_num = NULL;
 
   // clone over nodes RVs.
   fNodes.resize(origin->nodes.size());
@@ -2165,13 +1985,6 @@ SharedLocalStructure(MaxClique& _origin,
 
     RV* nrv = newRvs[ppf[rvp]];
     fNodes[i++] = nrv;
-
-    // compute and score max/min frame RVs.
-    if (rv_w_max_frame_num == NULL || nrv->frame() > rv_w_max_frame_num->frame())
-      rv_w_max_frame_num = nrv;
-    if (rv_w_min_frame_num == NULL || nrv->frame() < rv_w_min_frame_num->frame())
-      rv_w_min_frame_num = nrv;
-
   }
 
   // and clone over assigned nodes and sorted assigned nodes
@@ -2492,9 +2305,6 @@ ceGatherFromIncommingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStru
   // we prune here right away.
   ceDoAllPruning(origin,maxCEValue);
 
-  if (origin.normalizeScoreEachClique != 1.0)
-    ceDoCliqueScoreNormalization(sharedStructure);
-
 }
 
 
@@ -2745,19 +2555,8 @@ MaxCliqueTable::ceIterateSeparatorsRecurse(MaxCliqueTable::SharedLocalStructure&
 					   const logpr p)
 {
 
-  if (p.essentially_zero())
+  if (p <= cliqueBeamThresholdEstimate)
     return;
-
-// TODO: at some point, also include some sort of continuation and pruning heuristic
-// at the separator level.
-//   if (p*separator_continuation[sepNum]*clique_continuation <= cliqueBeamThresholdEstimate) {
-//     fprintf(stderr,"Returning from separator recurse, p.v = %f, thresest = %f\n",
-// 	    p.val(),cliqueBeamThresholdEstimate.val());
-//     return;
-//   }
-// or should have a separator threshold which is precomputed cliqueBeamThresholdEstimate-cliuqe_contin
-
-
 
   // syntactic simplicity and cached variables ...
   MaxClique& origin = *(sharedStructure.origin);
@@ -4523,7 +4322,7 @@ MaxCliqueTable::ceDoAllPruning(MaxClique& origin,
   // printf("ending k pruning\n"); fflush(stdout);
 
   // next do mass pruning.
-  numCliqueValuesUsed = ceCliqueMassPrune(1.0 - origin.cliqueBeamMassRetainFraction,
+  numCliqueValuesUsed = ceCliqueMassPrune(origin.cliqueBeamMassRelinquishFraction,
 					  origin.cliqueBeamMassExponentiate,
 					  origin.cliqueBeamMassFurtherBeam,
 					  origin.cliqueBeamMassMinSize,
@@ -4581,29 +4380,6 @@ MaxCliqueTable::ceDoAllPruning(MaxClique& origin,
 #endif
 
 }
-
-void 
-MaxCliqueTable::ceDoCliqueScoreNormalization(MaxCliqueTable::SharedLocalStructure& 
-					     sharedStructure)
-{
-  // syntactic convenience variables.
-  MaxClique& origin = *(sharedStructure.origin);
-
-  assert (origin.normalizeScoreEachClique != 1.0);
-  
-  logpr normValue;
-  if (origin.normalizeScoreEachClique == 0.0) {
-    // find max score and take inverse
-    normValue = maxProb().inverse();
-  } else {
-    normValue = origin.normalizeScoreEachClique;
-  }
-  for (unsigned cvn=0;cvn<numCliqueValuesUsed;cvn++) {
-    cliqueValues.ptr[cvn].p *= normValue;
-  }
-}
-
-
 
 
 #ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
@@ -4942,19 +4718,15 @@ MaxCliqueTable::ceCliqueDiversityPrune(MaxClique& origin,const unsigned numClust
 
   // k can't be larger than the number of clique entries.
   if ((origin.cliqueBeamClusterBeam == (-LZERO)  && 
-       (MaxClique::cliqueBeamClusterMaxNumStates 
-	== NO_PRUNING_CLIQUEBEAMCLUSTERPRUNINGMAXSTATES)
-       && 
-       origin.cliqueBeamClusterRetainFraction == 1.0
-       && 
-       origin.cliqueBeamClusterMassRetainFraction == 1.0)
+       (MaxClique::cliqueBeamClusterPruningMaxStates 
+	== NO_PRUNING_CLIQUEBEAMCLUSTERPRUNINGMAXSTATES))
+      || numClusters <= 1 
       || numClusters >= numCliqueValuesUsed) {
     return;
-    // note that setting the number of clusters to 1 should produce
-    // results identical to the no-clustering case, but we allow
-    // that case to pass through here for consistency, sanity checking
-    // completeness, and since the k=1 case does not complicate the
-    // code below (i.e., it need not be a special case).
+    // TODO: note that setting the number of clusters to 1 might lead the user
+    // to think that this is similar to non-clustered pruning, but this is
+    // actually not the case as the number of clusters to 1 option, based on
+    // the code here, turns off diversity pruning.
   }
 
   infoMsg(IM::Med+9,"Diversity/cluster pruning with state space = %d\n",numCliqueValuesUsed);
@@ -5098,9 +4870,9 @@ MaxCliqueTable::ceCliqueDiversityPrune(MaxClique& origin,const unsigned numClust
   // points to their clusters based on the nearest center.
 
   // Initialize cluster sizes.
-  unsigned*  orig_cluster_sizes = new unsigned[numClusters];
+  unsigned*  cluster_sizes = new unsigned[numClusters];
   for (k=0;k<numClusters;k++) {
-    orig_cluster_sizes[k] = 0;
+    cluster_sizes[k] = 0;
   }
 
 
@@ -5117,7 +4889,7 @@ MaxCliqueTable::ceCliqueDiversityPrune(MaxClique& origin,const unsigned numClust
     logpr* intra_cluster_max_values = new logpr[numClusters];
     for (unsigned cvn=0;cvn<numCliqueValuesUsed;cvn++) {
       const unsigned clust = distClusts[cvn].cluster;
-      orig_cluster_sizes[clust]++;
+      cluster_sizes[clust]++;
       if (cliqueValues.ptr[cvn].p > intra_cluster_max_values[clust]) {
 	intra_cluster_max_values[clust] = cliqueValues.ptr[cvn].p;
       }
@@ -5129,7 +4901,7 @@ MaxCliqueTable::ceCliqueDiversityPrune(MaxClique& origin,const unsigned numClust
     if (IM::messageGlb(IM::Med+9)) {
       printf("Clique cluster beam pruning: Orig cluster-%d sizes: ",numClusters);
       for (k=0;k<numClusters;k++) {
-	printf("%u ",orig_cluster_sizes[k]);
+	printf("%u ",cluster_sizes[k]);
 	// turn max values into the needed threshold
       }
       printf("\n");
@@ -5152,7 +4924,7 @@ MaxCliqueTable::ceCliqueDiversityPrune(MaxClique& origin,const unsigned numClust
 
 	assert ( clust < numClusters );
 
-	orig_cluster_sizes[clust]--;
+	cluster_sizes[clust]--;
 
 	// swap with last entry, and decrease numCliqueValuesUsed by
 	// one.  We swap rather than assign just in case some other
@@ -5185,7 +4957,7 @@ MaxCliqueTable::ceCliqueDiversityPrune(MaxClique& origin,const unsigned numClust
     if (IM::messageGlb(IM::Med+9)) {
       printf("Clique cluster beam pruning: Post cluster-%d sizes: ",numClusters);
       for (k=0;k<numClusters;k++) {
-	printf("%u ",orig_cluster_sizes[k]);
+	printf("%u ",cluster_sizes[k]);
       }
       printf("\n");
     }
@@ -5194,17 +4966,13 @@ MaxCliqueTable::ceCliqueDiversityPrune(MaxClique& origin,const unsigned numClust
     // still need to calculate cluster sizes
     for (unsigned cvn=0;cvn<numCliqueValuesUsed;cvn++) {
       const unsigned clust = distClusts[cvn].cluster;
-      orig_cluster_sizes[clust]++;
+      cluster_sizes[clust]++;
     }
   }
   
-  // printf("************* trying div state pruning, a = %ul, b = %ul\n",MaxClique::cliqueBeamClusterMaxNumStates,NO_PRUNING_CLIQUEBEAMCLUSTERPRUNINGMAXSTATES);
+  // printf("************* trying div state pruning, a = %ul, b = %ul\n",MaxClique::cliqueBeamClusterPruningMaxStates,NO_PRUNING_CLIQUEBEAMCLUSTERPRUNINGMAXSTATES);
 
-  if (origin.cliqueBeamClusterMaxNumStates != NO_PRUNING_CLIQUEBEAMCLUSTERPRUNINGMAXSTATES
-      ||  
-      origin.cliqueBeamClusterRetainFraction < 1.0
-      || 
-      origin.cliqueBeamClusterMassRetainFraction < 1.0) {
+  if (MaxClique::cliqueBeamClusterPruningMaxStates < NO_PRUNING_CLIQUEBEAMCLUSTERPRUNINGMAXSTATES) {
 
     // Now we do k-beam pruning. The algorithm is to:
     //  1) 'sort' entire list by cluster number, O(n)
@@ -5223,17 +4991,17 @@ MaxCliqueTable::ceCliqueDiversityPrune(MaxClique& origin,const unsigned numClust
 
     // First, we need to sort the clique values using the clusters,
     // rather than the values, as the key. This will organize the table
-    // so that cluster 0 elements will come first, cluster 1 elements will come next, and
-    // so on. This can be done in O(n) time rather than doing an O(nlogn) sort.
+    // so that cluster 0 will come first, cluster 1 will come next, and
+    // so on. This can be done in O(n) time rather than doing a sort.
     // Once done, the entries will be in arbitrary order in each cluster.
 
     // now calculate the cluster sizes
     unsigned*  cluster_starts = new unsigned[numClusters+1];
-    unsigned*  cluster_endp = new unsigned[numClusters]; // current ends
+    unsigned*  cluster_endp = new unsigned[numClusters];
     cluster_endp[0] = cluster_starts[0] = 0;
     for (k=1;k<numClusters;k++) {
       cluster_endp[k] = 
-	cluster_starts[k] = cluster_starts[k-1] + orig_cluster_sizes[k-1];
+	cluster_starts[k] = cluster_starts[k-1] + cluster_sizes[k-1];
     }
     // include this one for convenience to the code below.
     cluster_starts[numClusters] = numCliqueValuesUsed;
@@ -5287,71 +5055,26 @@ MaxCliqueTable::ceCliqueDiversityPrune(MaxClique& origin,const unsigned numClust
       }
     }
 
-    // Next, we do state-beam pruning within each cluster. We call the state-pruning
-    // routine which will leave the top m=maxStateSize clique entries at the beginning
-    // of each cluster and the rest will be after the top m=maxStateSize (which will
-    // be useful for other forms of clustering later). We place
+    // Next, we do k-beam pruning within each cluster. We call the k-pruning
+    // routine which will leave the top k clique entries at the beginning
+    // of each cluster and the rest will be after the top k. We place
     // the new sizes of the clusters in the 'cluster_endp' array -- note
-    // that the sizes are at most m but could be < m in which case
+    // that the sizes are at most k but could be < k in which case
     // no pruning is done of course. The entire amortized process is O(n)
     // since each sub-step is O(size of cluster k) and 
-    // O(n) = \sum_k O(size of cluster k). Note, that we calcluate
-    // a local maxStateSize(k) for cluste k based on the global constraint
-    // on the max state size within each cluster, and the percentage
-    // reduction to retain, taking the minimum of the two.
-    unsigned newNumCliqueValuesUsed = numCliqueValuesUsed;
-    if (origin.cliqueBeamClusterMaxNumStates != NO_PRUNING_CLIQUEBEAMCLUSTERPRUNINGMAXSTATES
-	||  
-	origin.cliqueBeamClusterRetainFraction < 1.0) {
-      newNumCliqueValuesUsed = 0;
-      for (k=0;k<numClusters;k++) {
-	
-	unsigned maxStateSize = 
-	  2 + (unsigned)((origin.cliqueBeamClusterRetainFraction)
-			 *(double)orig_cluster_sizes[k]);
-	
-	if (MaxClique::cliqueBeamClusterMaxNumStates != NO_PRUNING_CLIQUEBEAMCLUSTERPRUNINGMAXSTATES)
-	  maxStateSize = min(MaxClique::cliqueBeamClusterMaxNumStates,
-			   maxStateSize);
-
-	// what is returned is the new cluster size, which is
-	// the min of the original size or the within-cluster state space.
-	// We re-use the cluster_endp array that was used as temporary
-	// storage above to store the new cluster sizes.
-	cluster_endp[k] = 
-	  ceCliqueStatePrune(maxStateSize,
-			     cliqueValues.ptr + cluster_starts[k],
-			     orig_cluster_sizes[k]);
-	newNumCliqueValuesUsed += cluster_endp[k];
-      }
-
-      assert ( newNumCliqueValuesUsed <= numCliqueValuesUsed );
-    } else {
-      // we still need to update the sizes
-      for (k=0;k<numClusters;k++) {
-	cluster_endp[k] = orig_cluster_sizes[k];
-      }
+    // O(n) = \sum_k O(size of cluster k)
+    unsigned newNumCliqueValuesUsed = 0;
+    for (k=0;k<numClusters;k++) {
+      // what is returned is the new cluster size, which is
+      // the min of the original size or the within-cluster state space.
+      cluster_endp[k] = 
+	ceCliqueStatePrune(MaxClique::cliqueBeamClusterPruningMaxStates,
+			   cliqueValues.ptr + cluster_starts[k],
+			   cluster_sizes[k]);
+      newNumCliqueValuesUsed += cluster_endp[k];
     }
 
-    //////////////////////////////////////////////////////////////////////
-    // next, we do mass percentage based pruning within each
-    // cluster. This is pretty easy given that the clique is organized
-    // as it is.
-    if (origin.cliqueBeamClusterMassRetainFraction < 1.0) {
-      newNumCliqueValuesUsed = 0;
-      for (k=0;k<numClusters;k++) {
-	cluster_endp[k] =
-	  ceCliqueMassPrune(1.0 - origin.cliqueBeamClusterMassRetainFraction,
-			    origin.cliqueBeamClusterMassExponentiate,
-			    origin.cliqueBeamClusterMassFurtherBeam,
-			    origin.cliqueBeamClusterMassMinSize,
-			    cliqueValues.ptr + cluster_starts[k],
-			    cluster_endp[k]);
-	newNumCliqueValuesUsed += cluster_endp[k];
-      }
-      assert ( newNumCliqueValuesUsed <= numCliqueValuesUsed );
-    }
-
+    assert ( newNumCliqueValuesUsed <= numCliqueValuesUsed );
 
     // Last, we need to re-organize the entire clique table so that
     // all of the to-be pruned entries are at the end. We do the
@@ -5360,12 +5083,9 @@ MaxCliqueTable::ceCliqueDiversityPrune(MaxClique& origin,const unsigned numClust
     // For better cache behavior, we have two pointers scan the array,
     // one that is ahead of the other. The earlier pointer points to
     // the next element that needs to be pruned and the later pointer
-    // points to the next element that should not be pruned.  We
+    // points to the next element that should not be pruned.  we
     // always maintain that earlier_p < later_p as we scan the
-    // array. We also maintain the invariant that everything between
-    // earlier_p and later_p should be pruned, so that as soon as
-    // earlier_p has enough entries before it, we can stop.
-    // Note also that later_p could touch (and prefetch into cache)
+    // array. Note that later_p could touch (and prefetch into cache)
     // some memory items that are later used by earlier_p (this
     // wouldn't be the case if we used an alternative approach where
     // we had two pointers, one initalized at the start and one at the
@@ -5376,7 +5096,7 @@ MaxCliqueTable::ceCliqueDiversityPrune(MaxClique& origin,const unsigned numClust
       // We first find the first "hole", i.e., location where
       // something should be moved.
       for (k=0;k<numClusters;k++) {
-	if (cluster_endp[k] < orig_cluster_sizes[k])
+	if (cluster_endp[k] < cluster_sizes[k])
 	  break;
       }
       assert (k < numClusters);
@@ -5391,8 +5111,7 @@ MaxCliqueTable::ceCliqueDiversityPrune(MaxClique& origin,const unsigned numClust
       else 
 	later_loc_end = numCliqueValuesUsed;
       while (early_loc < newNumCliqueValuesUsed) {
-	// swap earlier (to be pruned) and later (not to be pruned)
-	// locations.
+	// swap earlier and later pointers
 	swap(cliqueValues.ptr[early_loc],
 	     cliqueValues.ptr[later_loc]);
 
@@ -5403,17 +5122,17 @@ MaxCliqueTable::ceCliqueDiversityPrune(MaxClique& origin,const unsigned numClust
 	later_loc++;
 	if (later_loc == later_loc_end) {
 	  k++;
-	  if (k < numClusters) {
-	    later_loc = cluster_starts[k];
+	  if (k < numClusters) 
 	    later_loc_end = cluster_starts[k] + cluster_endp[k];
-	  } else {
-	    // this should only happen at the last iteration.
-	    assert ( early_loc  ==  newNumCliqueValuesUsed );
-	  }
+	  else 
+	    later_loc_end = numCliqueValuesUsed;
 	}
       }
-      numCliqueValuesUsed = newNumCliqueValuesUsed;
     }
+
+
+    numCliqueValuesUsed = newNumCliqueValuesUsed;
+
 
     infoMsg(IM::Med,"Clique cluster state pruning: Original clique state space = %d, new clique state space = %d, %2.2f%% reduction\n",
 	    origNumCliqueValuesUsed,
@@ -5435,10 +5154,14 @@ MaxCliqueTable::ceCliqueDiversityPrune(MaxClique& origin,const unsigned numClust
   }
 
 
+  // TODO: could still do an r (percentage prune) pruning within each
+  // cluster, or a mass-based prune.
+
+
   // free memory for general stuff.
   delete [] centers;
   delete [] distClusts;
-  delete [] orig_cluster_sizes;
+  delete [] cluster_sizes;
 
 }
 
@@ -5494,9 +5217,7 @@ MaxCliqueTable::ceCliqueMassPrune(const double removeFraction,
   // printf("mass pruning: maxVal %.18e, minVal %.18e\n",
   // loc_maxCEValue.val(),curCliqueVals[curNumCliqueValuesUsed-1].p.val());
 
-  logpr origSum = sumExponentiatedProbabilities(exponentiate,
-						curCliqueVals,
-						curNumCliqueValuesUsed);
+  logpr origSum = sumExponentiatedProbabilities(exponentiate); // /loc_maxCEValue;
 
   if (origSum.zero())
     return curNumCliqueValuesUsed;
@@ -5562,11 +5283,10 @@ MaxCliqueTable::ceCliqueMassPrune(const double removeFraction,
     k=min(minSize,curNumCliqueValuesUsed);
 
   const unsigned newStateSpace = min(k,curNumCliqueValuesUsed);
-  infoMsg(IM::Med,"Clique mass-beam pruning: Original state space = %d (exp-mass=%e), new state space = %d, reduction %2.2f%%, desired exp-mass = %e, actual exp-mass = %e\n",
+  infoMsg(IM::Med,"Clique mass-beam pruning: Original state space = %d (exp-mass=%e), new state space = %d, desired exp-mass = %e, actual exp-mass = %e\n",
 	  curNumCliqueValuesUsed,
 	  origSum.val(),
 	  newStateSpace,
-	  100.0*(1.0 - (double)newStateSpace/(double)curNumCliqueValuesUsed),
 	  desiredSum.val(),
 	  actualSum.val());
   return newStateSpace;
@@ -5733,17 +5453,15 @@ sumProbabilities()
  */
 logpr
 MaxCliqueTable::
-sumExponentiatedProbabilities(double exponent,
-			      CliqueValue* curCliqueVals,
-			      const unsigned curNumCliqueValuesUsed)
+sumExponentiatedProbabilities(double exponent)
 {
   logpr p;
-  if (curNumCliqueValuesUsed > 0) {
+  if (numCliqueValuesUsed > 0) {
     // We directly assign first one rather than adding to initialized
     // zero so that logpr's log(0) floating point value is preserved.
-    p = curCliqueVals[0].p.pow(exponent);
-    for (unsigned i=1;i<curNumCliqueValuesUsed;i++)
-      p += curCliqueVals[i].p.pow(exponent);
+    p = cliqueValues.ptr[0].p.pow(exponent);
+    for (unsigned i=1;i<numCliqueValuesUsed;i++)
+      p += cliqueValues.ptr[i].p.pow(exponent);
   }
   return p;
 }
@@ -5957,16 +5675,15 @@ maxProbability(MaxCliqueTable::SharedLocalStructure& sharedStructure,
 
     return max_cvn_score;
   }
+
 }
 logpr
 MaxCliqueTable::
 maxProb()
 {
+  // check for empty clique and if so, return zero.
   if (numCliqueValuesUsed == 0)
     return logpr();
-
-#if 1
-  // check for empty clique and if so, return zero.
   logpr mx = cliqueValues.ptr[0].p;
   // find the max score clique entry
   for (unsigned cvn=1;cvn<numCliqueValuesUsed;cvn++) {
@@ -5975,36 +5692,6 @@ maxProb()
     }
   }
   return mx;
-#else
-  // pipeline version exposing independent ops,
-  // since max is bad for ilp.
-
-  // check for empty clique and if so, return zero.
-  register logpr mx0 = cliqueValues.ptr[0].p;
-  if (numCliqueValuesUsed == 1)
-    return mx0;
-  register logpr mx1 = cliqueValues.ptr[1].p;
-  // find the max score clique entry
-  unsigned end_loc = numCliqueValuesUsed & ~0x1;
-  for (unsigned cvn=2;cvn<end_loc;cvn+=2) {
-    if (cliqueValues.ptr[cvn].p > mx0) {
-      mx0 = cliqueValues.ptr[cvn].p;
-    }
-    if (cliqueValues.ptr[cvn+1].p > mx1) {
-      mx1 = cliqueValues.ptr[cvn+1].p;
-    }
-  }
-  if (numCliqueValuesUsed & 0x1) {
-    if (cliqueValues.ptr[numCliqueValuesUsed-1].p > mx1) {
-      mx1 = cliqueValues.ptr[numCliqueValuesUsed-1].p;
-    }
-  }
-  if (mx0 > mx1)
-    return mx0;
-  else
-    return mx1;
-#endif
-
 }
 
 

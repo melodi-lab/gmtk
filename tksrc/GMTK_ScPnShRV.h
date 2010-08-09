@@ -76,6 +76,7 @@ public:
     if (wi.penalty.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Constant) {
       p.valref() += wi.penalty.weight_value;
     } else if (wi.penalty.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Observation) {
+      // TODO: check here that global obsevation matrix is active.
       p.valref() += 
 	(*globalObservationMatrix.floatVecAtFrame(rv->frame(),
 						  wi.penalty.firstFeatureElement));
