@@ -384,9 +384,9 @@ class ObservationMatrix {
   unsigned numStreams()    { return _numStreams ;  }
   unsigned numSegments()   { return _numSegments ;  }
   size_t   segmentNumber() { return _segmentNumber; }  // the segment number
-  unsigned numFrames()     { return _numFrames ;    }  // the number of frames not including the skip in this segment
+  unsigned numFrames()     { return _numFrames ;    }  // the number of frames, i.e., subtracting off the skip in this segment.
   unsigned numFrames(unsigned segno);  // The difference between this method the numFrames() is that numFrames() returns the number of frames in teh CURRENT segment (the one that has been loaded last using loadSegment(...); while numFrames(segno) loads sentence number segno.
-  unsigned numNonSkippedFrames() { return _numNonSkippedFrames; }    // the number of "real" frames in this segment
+  unsigned numNonSkippedFrames() { return _numNonSkippedFrames; }    // the number of "real" frames in this segment, including the skipped frames.
   unsigned numContinuous() { return _numContinuous; }  // number of continuous features in this segment
   unsigned numDiscrete()   { return _numDiscrete;   }  // number of discrete features
   unsigned numFeatures()   { return _numFeatures;   }  // sum of the above two
