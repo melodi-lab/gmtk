@@ -1,6 +1,34 @@
+2010-08-08  jab  <jab@jabnet.local>
+
+	* speedups: Various speedups and bug fixes.
+
+	* island: new implementation of island algorithm and data structures, it is much cleaner now.
+
+	* pruning: New pruning options: diversity/cluster pruning, and
+	predictive pruning (the predictie pruning stuff is published in
+	interspeech 2010). Diversity pruning has not yet been published or
+	described.
+
+	* significant speedups to Gaussian evaluation.
+
+	* random variables can now have symbol tables.
+
+	* gmtkViterbiNew is deprecated, gmtkViterbi is the new gmtkViterbi
+	program. As a result, the output file format is significantly
+	changed.
+	
+	* added and changed quite a bit of code since the previous
+	version. Essentially re-wrote the core data structures and
+	unrolling strategy so that now, there is no long delay waiting for
+	STL to unroll a large graph - now there is no unrolling at all,
+	and the only thing that happens is data structures are allocated
+	as we go forward in the collect evidence phase.
+
+
 2008-11-21  jab  <jab@jabnet.kyb.local>
 
-	* added: lots has happened since 05, but this file unfortunately has not been kept up to date. I hope to keep it up to date now.
+	* added: lots has happened since 05, but this file unfortunately
+	has not been kept up to date. I hope to keep it up to date now.
 
 
 2005-08-28  Jeff Bilmes  <bilmes@cuba.ee.washington.edu>
