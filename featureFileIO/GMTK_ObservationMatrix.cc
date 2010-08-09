@@ -73,6 +73,8 @@
  *   (could treat them as single sentences or have each frame prefixed
  *   by the sentence number and maybe the frame number)
  *    3- Add support for the WAVEFORM HTK paramter kind
+ *    4- Add extra frames at beginning and end in various forms (random noise, mirror, duplicate) to
+ *       allow dlinks to condition beyond the beginning of the observation.
  *
  *
  *   Dec 02, 2003 -- Fixed discrete data reading bug when using the
@@ -2250,9 +2252,11 @@ size_t ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
 void ObservationMatrix::closeDataFiles() {
 
   for (unsigned i = 0; i < _numStreams; i++)
-    if (_inStreams[i]->getDataFormat() != PFILE && _inStreams[i]->getDataFormat() != HTK && _inStreams[i]->getDataFormat() != RAWBIN){
+    if (_inStreams[i]->getDataFormat() != PFILE && _inStreams[i]->getDataFormat() != HTK && _inStreams[i]->getDataFormat() != RAWBIN) {
       fclose(_inStreams[i]->curDataFile);
+      _inStreams[i]->curDataFile = NULL;
     }
+
 }
 
 

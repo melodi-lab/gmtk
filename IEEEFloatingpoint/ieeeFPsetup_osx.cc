@@ -42,7 +42,7 @@ void sighandler(int sigarg)
 
     fprintf(stderr,"Received floating point (FP) exception: ");
     if (sw & _MM_EXCEPT_INVALID) {
-      fprintf(stderr,"invald operation\n");
+      fprintf(stderr,"invalid operation\n");
       found = 1;
     }
     if (sw & _MM_EXCEPT_DENORM) {
