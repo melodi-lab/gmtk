@@ -66,6 +66,10 @@ class RAND {
   int uniform(int u) 
     { return ((int)((u+1)* ::drand48())); }
 
+  /* return a random number uniformly in [0,u-1] inclusive */
+  int uniformOpen(int u) 
+    { return ((int)((u)* ::drand48())); }
+
   /* return 1 with probability p */
   int coin(float p) 
     { return (int)

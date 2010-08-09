@@ -42,7 +42,8 @@ compiled, please follow the steps below.
 6) Do a 'make depend' once again.
 
 7) Do 'make' and it should compile (if you are running on a 2-core
-   box, do 'make -j 2' under gnumake to compile faster).
+   box, do 'make -j 2' under gnumake to compile faster), but read on
+   below before you continue.
 
    If you are running on cygwin do 'make ANSI=' to turn off the ansi
    compatibility which is needed on that platform.
@@ -64,7 +65,20 @@ compiled, please follow the steps below.
 
      make OPTFLAGS= XOPTFLAGS=
 
-   See the top level Makefile for more such options.
+   If you wish to compile a 64-bit version, then do:
+
+     make EXCCFLAGS=-m64 EXCXXFLAGS=-m64
+
+   (although keep in mind that 64-bit GMTK has not been as extensively tested
+    as when running under 32-bit mode).
+
+   If you wish to create static binaries (i.e., ones that are not dependent on shared libraries),
+   then assuming you've got the static libraries installed, do
+
+    make EXLDFLAGS=-static
+
+   Note, many of the above options can be combined. See the top level
+   Makefile for more such options.
 
    If you run the binaries and get 'illegal instruction' errors, it is possible
    you have compiled for an architecture that is not valid for where you are running.
