@@ -56,12 +56,16 @@ typedef union
 
 #define _FILE_OFFSET_BITS 64
 
+// same deal as with _FILE_OFFSET_BITS --arthur 6/23/2009
+#define PF_HAVE_LONG_LONG 1
+#define PF_HAVE_FSEEKO 1
+
 // Some stuff to deal with large file support
 //  First make sure things still work if we do not have fseeko/ftello
 #ifdef PF_HAVE_FSEEKO
 #define pfile_fseek(a,b,c) fseeko(a,b,c)
 #define pfile_ftell(a) ftello(a)
-typedef off_t pfile_off_t;
+typedef off64_t pfile_off_t;
 #else
 #define pfile_fseek(a,b,c) fseek(a,b,c)
 #define pfile_ftell(a) ftell(a)
@@ -86,6 +90,7 @@ typedef unsigned long pfile_ulonglong_t;
 #if (defined(PF_HAVE_FSEEKO) && defined(PF_HAVE_LONG_LONG) && (_FILE_OFFSET_BITS==64))
 #define PFILE_LARGEFILES 1
 #else
+#error "Now we need large file support"
 #define PFILE_LARGEFILES 0
 #endif
 
