@@ -33,11 +33,10 @@ static const char* pfile_version0_string =
 // which can then be used by any software that wishes to use pfiles.
 
 
-// This routine is used to get one unsigned integer argument from a pfile
+// This routine is used to get one pfile_ulonglong_t integer argument from a pfile
 // header stored in a buffer. It returns 0 on success, else -1.
-
 static int
-get_uint(const char* hdr, const char* argname, unsigned int* val)
+get_pfile_ulonglong(const char* hdr, const char* argname, pfile_ulonglong_t* val)
 {
     const char* p;		// Pointer to argument
     int count = 0;		// Number of characters scanned
@@ -49,13 +48,32 @@ get_uint(const char* hdr, const char* argname, unsigned int* val)
     // Go past argument name
     p += strlen(argname);
     // Get value from stfing
-    sscanf(p, " %u%n", val, &count);
+    sscanf(p, " " LLU "%n", val, &count);
 
     // We expect to pass one space, so need >1 characters for success.
     if (count > 1)
 	return 0;
     else
 	return -1;
+}
+
+// This routine is used to get one unsigned integer argument from a pfile
+// header stored in a buffer. It returns 0 on success, else -1.
+static int
+get_uint(const char* hdr, const char* argname, unsigned int* val)
+{
+    pfile_ulonglong_t v;
+	//printf("get_uint: reading pfile header arg %s\n",argname);
+    int success = get_pfile_ulonglong(hdr, argname, &v);
+	//printf("get_uint: get_pfile_ulonglong(%s) status=%d, val = " LLU "\n",argname,success,v);
+    if (success==0){
+        if(v>INT_MAX){
+            error("header argname %s has value " LLU " which overflows INT_MAX. Failed to read pfile header.",
+                   argname, v);
+        } 
+        *val=(unsigned int) v;
+    }
+    return success;
 }
 
 // This routine is used to find string-valued data in the PFile header.
@@ -167,7 +185,7 @@ InFtrLabStream_PFile::read_header()
 
     sscanf(p, "-data size " LLU " offset " LLD " ndim %u nrow %u ncol %u",
 	   &size, &offset, &ndim, &rows, &cols);
-    if (offset!=0 || ndim!=2 || (rows*cols)!=size)
+    if (offset!=0 || ndim!=2 || ((pfile_ulonglong_t)rows*cols)!=size)
 	error("Bad or unrecognized pfile header -data args in"
 		 " '%s'.", filename);
 
@@ -179,6 +197,8 @@ InFtrLabStream_PFile::read_header()
 			    &num_ftr_cols);
 
     first_lab_col = 0;      // Initialize to zero.
+
+    int status =get_uint(header, "-num_labels", &num_lab_cols);
     if (get_uint(header, "-num_labels", &num_lab_cols))
         num_lab_cols = 0;       // Set to zero if not found.
     if (num_lab_cols > 0)
@@ -651,7 +671,7 @@ InFtrLabStream_PFile::set_pos(size_t segno, size_t frameno)
 	long this_sent_row;	// The number of the row at the start of sent.
 	long next_sent_row;	// The row at the start of next sent.
 	long row;		// The number of the row we require
-	long offset;		// The position as a file offset
+	pfile_longlong_t offset;		// The position as a file offset
 
 	this_sent_row = sentind[segno];
 	row = sentind[segno] + frameno;
@@ -661,8 +681,7 @@ InFtrLabStream_PFile::set_pos(size_t segno, size_t frameno)
 	    error("Seek beyond end of sentence %li.",
 		     (unsigned long) segno);
 	}
-	offset = bytes_in_row * row + data_offset;
-	
+	offset = bytes_in_row * (pfile_longlong_t)row + data_offset;
 	if (pfile_fseek(file, (pfile_off_t) offset, SEEK_SET)!=0)
 	{
 	    error("Seek failed in PFile "
