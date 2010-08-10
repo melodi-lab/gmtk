@@ -27,11 +27,11 @@
 #include "machine-dependent.h"
 #include "cArray.h"
 
-#include "GMTK_MixtureCommon.h"
 #include "GMTK_Component.h"
 
 #include "GMTK_DiagGaussian.h"
 
+#include "GMTK_MixtureCommon.h"
 #include "GMTK_Dense1DPMF.h"
 
 
@@ -101,7 +101,10 @@ public:
 
   Mixture(const int dim,ContinuousImplementation mtype=ci_mixture)
     : MixtureCommon(dim,mtype)
-  { }
+  {
+    dense1DPMF=NULL;
+  }
+  
   //  Mixture() {}
   ~Mixture() {}
 
@@ -122,16 +125,8 @@ public:
   // components (and their means, variances, parms, etc.) 
   // that are not actively used in a parameter file (such
   // as those that have vanished away).
-  void recursivelyClearUsedBit() { 
-    emClearUsedBit();
-    for (unsigned i=0;i<components.size();i++)
-      components[i]->recursivelyClearUsedBit();
-  }
-  void recursivelySetUsedBit() {
-    emSetUsedBit();    
-    for (unsigned i=0;i<components.size();i++)
-      components[i]->recursivelySetUsedBit();
-  }
+  void recursivelyClearUsedBit();
+  void recursivelySetUsedBit();
 
   //////////////////////////////////
   // set all current parameters to valid but random values
