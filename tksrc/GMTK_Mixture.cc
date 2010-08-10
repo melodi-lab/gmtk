@@ -205,6 +205,25 @@ Mixture::emptyComponentCache()
   }
 }
 
+// these routines are used to not save 
+// components (and their means, variances, parms, etc.) 
+// that are not actively used in a parameter file (such
+// as those that have vanished away).
+void Mixture::recursivelyClearUsedBit() { 
+    emClearUsedBit();
+    for (unsigned i=0;i<components.size();i++)
+      components[i]->recursivelyClearUsedBit();
+    if(dense1DPMF != NULL)
+      dense1DPMF->emClearUsedBit();
+  }
+void Mixture::recursivelySetUsedBit() {
+    emSetUsedBit();    
+    for (unsigned i=0;i<components.size();i++)
+      components[i]->recursivelySetUsedBit();
+    if(dense1DPMF != NULL)
+      dense1DPMF->emSetUsedBit();
+  }
+
 //
 // compute the log probability of x with stride 'stride'
 // 
