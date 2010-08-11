@@ -75,13 +75,13 @@ typedef long pfile_off_t;
 // Set up long long types if we have them, along with approriate format
 // string segments
 #if defined(PF_HAVE_LONG_LONG)
-typedef long long pfile_longlong_t;
-typedef unsigned long long pfile_ulonglong_t;
+typedef long long int pfile_longlong_t;
+typedef long long unsigned pfile_ulonglong_t;
 #define PF_LLU "%llu"
 #define PF_LLD "%lld"
 #else
-typedef long pfile_longlong_t;
-typedef unsigned long pfile_ulonglong_t;
+typedef long int pfile_longlong_t;
+typedef long unsigned pfile_ulonglong_t;
 #define PF_LLU "%lu"
 #define PF_LLD "%ld"
 #endif
