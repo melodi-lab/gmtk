@@ -41,7 +41,7 @@ OPTFLAGS=-g -O3 -march=nocona -mfpmath=sse -msse3
 XOPTFLAGS=-funroll-loops -fargument-noalias-global
 # other general optional flags, optionally turned off at top level command line.
 ANSI=-ansi
-PEDANTIC=-pedantic
+PEDANTIC=-pedantic -Wno-long-long
 WALL=-Wall
 # specific flags to C and C++, and combining the above together.
 CCFLAGS = -g $(OPTFLAGS)  $(EXCCFLAGS) $(WALL) $(ANSI) $(PEDANTIC) -DOPTIMIZE_FOR_MEMORY_USAGE -DHASH_PRIME_SIZE
