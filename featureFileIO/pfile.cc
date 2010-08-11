@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <limits.h>
 #include "pfile.h"
 #include "vbyteswapping.h"
 
@@ -84,7 +85,7 @@ get_str(const char* hdr, const char* argname)
     char* p;		// Pointer to argument.
 
     // Find argument in header.
-    p = strstr(hdr, argname);
+    p = strstr((char*)hdr, (char*)argname);
     if (p==NULL)
 	return NULL;
     // Go past argument name.
