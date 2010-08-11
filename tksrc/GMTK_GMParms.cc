@@ -22,6 +22,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <iostream>
 #include <errno.h>
 #include <string.h>
 #include <float.h>
@@ -97,6 +98,9 @@ const unsigned GMPARMS_MAX_NUM = 900000000;
 //        General create, read, destroy routines 
 ////////////////////////////////////////////////////////////////////
 
+
+// from tieSupport
+Mixture* find_Mixture(std::string &name);
 
 GMParms::GMParms()
 {
@@ -2092,19 +2096,39 @@ GMParms::writeMixtures(oDataStreamFile& os)
   os.nl(); os.writeComment("Mixtures of components");os.nl();
   // Leave out the first two (ie., the -2) as they are internal
   // objects. See routine finalizeParameters().
-  os.write(mixtures.size()-2,"num MIXCOMPONENTS"); os.nl();
 
-  for (unsigned i=0;i<mixtures.size()-2;i++) {
-    // first write the count
-    os.write(i,"MIXCOMPONENTS cnt");
-    os.nl();
 
-    // next write the dimension of this mixture
-    os.write(mixtures[i]->dim(),"MG dim");
-    os.nl();
+  // first scan through and find the number that are used.
+  unsigned used = 0;
+  for (unsigned i=0;i<mixtures.size();i++)
+    if (mixtures[i]->emUsedBitIsSet())
+      used++;
 
-    mixtures[i]->write(os);
+  if (used != mixtures.size()-2)
+    warning("NOTE: saving only %d used mixtures out of a total of %d",
+	    used,mixtures.size());
+
+  //os.write(mixtures.size()-2,"num MIXCOMPONENTS"); os.nl();
+  os.write(used,"num MIXCOMPONENTS"); os.nl();
+
+  unsigned index=0;
+  for (unsigned i=0;i<mixtures.size();i++) {
+
+    if (mixtures[i]->emUsedBitIsSet()){
+
+      // first write the count
+      os.write(index++,"MIXCOMPONENTS cnt");
+      os.nl();
+
+      // next write the dimension of this mixture
+      os.write(mixtures[i]->dim(),"MG dim");
+      os.nl();
+      
+      mixtures[i]->write(os);
+    }
   }
+
+  assert(used==index);
 
   os.nl();
 }
@@ -2267,9 +2291,9 @@ GMParms::writeMlpSwitchMixtures(oDataStreamFile& os)
  *-----------------------------------------------------------------------
  */
 void 
-GMParms::writeAll(oDataStreamFile& os)
+GMParms::writeAll(oDataStreamFile& os, bool remove_unnamed)
 {
-  markUsedMixtureComponents();
+  markUsedMixtureComponents(remove_unnamed);
 
   // just write everything in one go.
 
@@ -2318,10 +2342,10 @@ GMParms::writeAll(oDataStreamFile& os)
  *-----------------------------------------------------------------------
  */
 void 
-GMParms::writeTrainable(oDataStreamFile& os)
+GMParms::writeTrainable(oDataStreamFile& os, bool remove_unnamed)
 {
 
-  markUsedMixtureComponents();
+  markUsedMixtureComponents(remove_unnamed);
 
   // just write everything in one go.
 
@@ -2363,10 +2387,10 @@ GMParms::writeTrainable(oDataStreamFile& os)
  *-----------------------------------------------------------------------
  */
 void 
-GMParms::writeNonTrainable(oDataStreamFile& os)
+GMParms::writeNonTrainable(oDataStreamFile& os, bool remove_unnamed)
 {
   // just write everything in one go.
-  markUsedMixtureComponents();
+  markUsedMixtureComponents(remove_unnamed);
 
   // write structural items
   writeDTs(os);
@@ -2379,7 +2403,7 @@ GMParms::writeNonTrainable(oDataStreamFile& os)
 
 
 void 
-GMParms::write(const char *const outputFileFormat, const char * const cppCommandOptions, const int intTag)
+GMParms::write(const char *const outputFileFormat, const char * const cppCommandOptions, const int intTag, bool remove_unnamed)
 {
   //
   // read a file consisting of a list of 
@@ -2404,7 +2428,7 @@ GMParms::write(const char *const outputFileFormat, const char * const cppCommand
   char buff[2048];
   iDataStreamFile is(outputFileFormat,false,true,cppCommandOptions);
 
-  markUsedMixtureComponents();
+  markUsedMixtureComponents(remove_unnamed);
 
   while (is.readString(keyword)) {
 
@@ -2802,6 +2826,105 @@ unsigned GMParms::totalNumberParameters()
 
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * markOnlyNamedMixtures()
+ *      mark only mixture distributions that are named in one of the
+ *      named collections
+ * 
+ * Preconditions:
+ *      all candidates for deletion should have had their UsedBit
+ *      cleared
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      obvious
+ *
+ *-----------------------------------------------------------------------
+ */
+void GMParms::markOnlyNamedMixtures()
+{
+
+  // rebuild the mixture map, in case it got out of sync with the
+  // mixtures vector - is this ever necessary?
+  /*
+  mixturesMap.clear();
+  int j=0;
+  for(vector<Mixture*>::iterator mi=mixtures.begin();mi!=mixtures.end();mi++,j++)
+    mixturesMap[(*mi)->name()]=j;
+  */
+
+  // do each name collection in turn
+  infoMsg(IM::Huge,"Marking mixtures that are listed in a loaded name collection: ");
+  unsigned n=0,nu=0;
+  for(vector<NameCollection*>::iterator nc=ncls.begin();nc!=ncls.end();nc++){
+    for(vector<std::string>::iterator nci=(*nc)->table.begin(); nci!=(*nc)->table.end(); nci++){
+      if (!mixtures[mixturesMap[*nci]]->emUsedBitIsSet()){
+	n++;
+	mixtures[mixturesMap[*nci]]->recursivelySetUsedBit();
+      } else
+	nu++;
+      
+    }
+  } 
+  infoMsg(IM::Huge,"%d were marked (there are %d further mixtures that are not listed in a name collection) \n",n,nu);
+
+  /*
+  cerr << "actually removing unused mixtures" << endl;
+
+  too slow
+
+
+  // now we must actually delete all unused Mixtures, because all the
+  // various saving routines will call markUsedMixtureComponents(),
+  // which will mark *all* mixtures as being used, even if they are
+  // not
+  for (vector<Mixture*>::iterator i=mixtures.begin();i!=mixtures.end();){
+    if(! (*i)->emUsedBitIsSet())
+      i=mixtures.erase(i);
+    else 
+      i++;
+  }
+
+  */
+
+  infoMsg(IM::Huge,"Deleting unused DPMFs: ");
+  unsigned old_size=dPmfs.size();
+
+  vector< Dense1DPMF* > new_dPmfs;
+
+  int s=0;
+  for (vector<Dense1DPMF*>::iterator i=dPmfs.begin();i!=dPmfs.end();i++)
+    if((*i)->emUsedBitIsSet())
+      s++;
+
+  new_dPmfs.reserve(s);
+
+  // and the same for DPMFs (should probably fix writeDPmfs instead)
+  for (vector<Dense1DPMF*>::iterator i=dPmfs.begin();i!=dPmfs.end();i++){
+    if((*i)->emUsedBitIsSet())
+      new_dPmfs.push_back(*i);
+  }
+
+  dPmfsMap.clear();
+  dPmfs.clear();
+  dPmfs.reserve(new_dPmfs.size());
+
+  unsigned j=0;
+  for (vector<Dense1DPMF*>::iterator i=new_dPmfs.begin();i!=new_dPmfs.end();i++,j++){
+    dPmfsMap[(*i)->name()]=j;
+    dPmfs.push_back(*i);
+  }
+
+  infoMsg(IM::Default," %d of %d DPMFs were deleted; %d were retained\n",old_size-dPmfs.size(),old_size,dPmfs.size());
+
+
+}
 
 /*-
  *-----------------------------------------------------------------------
@@ -2823,7 +2946,7 @@ unsigned GMParms::totalNumberParameters()
  *
  *-----------------------------------------------------------------------
  */
-void GMParms::markUsedMixtureComponents()
+void GMParms::markUsedMixtureComponents(bool remove_unnamed)
 {
 
   ///////////////////////////////////////////////////
@@ -2845,8 +2968,12 @@ void GMParms::markUsedMixtureComponents()
   ///////////////////////////////////////////////
   // Now, set only those bits that are used
   // by some mixture.
-  for (unsigned i=0;i<mixtures.size();i++)
-    mixtures[i]->recursivelySetUsedBit();
+
+  if(remove_unnamed)
+    markOnlyNamedMixtures();
+  else
+    for (unsigned i=0;i<mixtures.size();i++)
+      mixtures[i]->recursivelySetUsedBit();
 
 }
 
@@ -3545,6 +3672,39 @@ GMParms::setFirstUtterance(
   firstUtterance = first_index;
 }
 
+
+
+
+
+void GMParms::sort_name_collections()
+{
+  for(vector<NameCollection*>::iterator i=ncls.begin();i!=ncls.end();i++)
+    (*i)->sort();
+}
+
+void
+GMParms::unsort_name_collections()
+{
+  for(vector<NameCollection*>::iterator i=ncls.begin();i!=ncls.end();i++)
+    (*i)->unsort();
+}
+
+
+
+void 
+GMParms::commit_nc_changes()
+{
+  for(vector<NameCollection*>::iterator i=ncls.begin();i!=ncls.end();i++)
+    (*i)->commit_all_searches_and_replacements();
+}
+
+
+
+
+
+
+
+
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -3597,6 +3757,8 @@ main()
 #endif
 
 }
+
+
 
 
 #endif

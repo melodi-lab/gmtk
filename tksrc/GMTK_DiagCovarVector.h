@@ -21,6 +21,8 @@
 #ifndef GMTK_DIAGCOVARVECTOR_H
 #define GMTK_DIAGCOVARVECTOR_H
 
+#include <list>
+
 #include "fileParser.h"
 #include "logp.h"
 #include "sArray.h"
@@ -29,7 +31,9 @@
 #include "GMTK_NamedObject.h"
 
 class MeanVector;
+class Clusterable;
 class DlinkMatrix;
+
 
 class DiagCovarVector : public EMable {
 
@@ -39,6 +43,7 @@ class DiagCovarVector : public EMable {
   friend class MeanVector;
   friend class DlinkMatrix;
   friend class GMTK_Tie;
+  friend double cluster_scaled_log_likelihood(std::list<Clusterable*> &items, double* tot_occupancy);
 
   //////////////////////////////////
   // The actual covariance "matrix"

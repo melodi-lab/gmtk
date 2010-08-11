@@ -158,8 +158,11 @@ EMable::emStoreAccumulators(oDataStreamFile& ofile)
 
       // store the accumulators as normal.
       ofile.write(accumulatedProbability.val(),"EM store accums");
+
+      //ofile.write("\n\nCalling virtual fn here\n");
       // call virtual function to do actual work for object.
       emStoreObjectsAccumulators(ofile);
+      //ofile.write("\nDone virtual fn here\n\n");
     }
   }
 }
@@ -219,6 +222,7 @@ EMable::emLoadAccumulators(iDataStreamFile& ifile)
       ifile.read(accumulatedProbability.valref(),"EM load accums");
       // call virtual function to do actual work for object.
       emLoadObjectsAccumulators(ifile);
+
     }
   }
 }
@@ -272,6 +276,7 @@ EMable::emAccumulateAccumulators(iDataStreamFile& ifile)
       logpr tmp;
       ifile.read(tmp.valref(),"EM accumulate accums");
       accumulatedProbability += tmp;
+      //infoMsg(IM::Max,"EMable::emAccumulateAccumulators accumulated %f for %s\n",tmp.val(),name().c_str());
       // call virtual function to do actual work for object.
       emAccumulateObjectsAccumulators(ifile);
     }

@@ -56,6 +56,7 @@
 
 #define MAX_REGEX_GROUPS 20
 
+double cluster_scaled_log_likelihood(std::list<Clusterable*> &items, double *tot_Occupancy = NULL);
 
 // ----------------------------------------------------------------------
 // Clusterable
@@ -83,6 +84,10 @@ protected:
   ////////////////////////////////////////////////////////////////////////
   // unlogged version of _occupancy (to do: take care about underflow)
   double _unlog_occupancy;
+  
+  ////////////////////////////////////////////////////////////////////////
+  // a feature vector (for DT-based clustering)
+  FeatureVectorType features;
 
   ////////////////////////////////////////////////////////////////////////
   // a pointer to the dissimilarity function that will be used when
@@ -100,6 +105,8 @@ public:
 
   inline const std::string& name(){return _name;};
   inline const double occupancy(){return _unlog_occupancy;};
+
+  friend class GMTK_Tie;
 };
 
 
@@ -158,6 +165,27 @@ public:
   // add more here...
 };
 
+class ClusterableDiagGaussian: public ClusterableObject<DiagGaussian>
+{
+private:
+  void set_dissimilarity_function(GMTK_Tie::DissimilarityMeasureType d);
+public:
+
+  ////////////////////////////////////////////////////////////////////////
+  // it makes no sense to construct an empty object
+  ClusterableDiagGaussian() {error("Cannot construct a ClusterableDiagGaussian this way!");};
+  // this isDiagGaussian the constructor to use
+  ClusterableDiagGaussian(const std::string &n, DiagGaussian *m, GMTK_Tie::DissimilarityMeasureType d);
+
+  ////////////////////////////////////////////////////////////////////////
+  // available dissimilarity measures for ClusterableDiagGaussian are:
+  // NONE !?
+  // add more here...
+
+  friend double cluster_scaled_log_likelihood(std::list<Clusterable*> &items, double* tot_occupancy);
+
+};
+
 
 class ClusterableMixture: public ClusterableObject<Mixture>
 {
@@ -209,6 +237,20 @@ typedef struct {
   // occupancy count summed over all items
   double occupancy;
 
+  ////////////////////////////////////////////////////////////////////////
+  // for DT clustering
+  ////////////////////////////////////////////////////////////////////////
+  // is this cluster split as far as it will go?
+  bool finished;
+  // which questions have been used
+  // TO BE REMOVED
+  std::vector<unsigned> questions_used; // entry of non-zero means
+					// question has previously
+					// been used on the way to
+					// arriving at this cluster
+
+  unsigned tree_node; // an index into the GMTK_Tie::decision_tree
+
 } Cluster;
 
 
@@ -242,7 +284,10 @@ void update_merged_sizes_table(sArray< sArray<float> > *merged_sizes,
 			       std::list<Cluster>::iterator ci);
 
 
-
+// decision-tree based clustering; at the moment, we have no way of
+// remembering the tree (so it can be saved for re-use), but this will
+// be added later
+void recursive_split(std::list<Cluster> &clusters, std::list<Cluster>::iterator ci);
 
 
 // ----------------------------------------------------------------------
@@ -283,7 +328,7 @@ unsigned find_Components_using_MeanVector(const MeanVector* const mean, const st
 // finding sub-components, with sanity and type checking
 
 // find the Components of a Mixture, with optional check that nothing is currently shared
-std::vector<Component*> find_Components_of_Mixture(Mixture *mixture, bool forbid_sharing=true);
+//std::vector<Component*> find_Components_of_Mixture(Mixture *mixture, bool forbid_sharing=true);
 
 // these include a check that the Mixture has only Gaussian components
 std::vector<MeanVector*> find_MeanVectors_of_Mixture(Mixture *mixture);
@@ -292,6 +337,8 @@ std::vector<MeanVector*> find_MeanVectors_of_Mixture(std::string &name);
 // these include check that Mixture has exactly one Gaussian component
 MeanVector* find_MeanVector_of_Mixture(Mixture *mixture);
 MeanVector* find_MeanVector_of_Mixture(std::string &name);
+Component*  find_Component_of_Mixture(Mixture *mixture);
+Component*  find_Component_of_Mixture(std::string &name);
 
 // these include a check that the Component is DiagGaussian (may extend later)
 MeanVector* find_MeanVector_of_Component(Component *component);
@@ -335,6 +382,10 @@ inline bool is_DiagGaussian(Component *component)
 
 // create a unique new name (one that doesn't yet exist in the given map)
 std::string new_name(std::string basename, map< string, unsigned > *map);
+
+double cluster_log_likelihood(std::list<Clusterable*> &items);
+
+//void search_and_replace_in_name_collection(NameCollection *nc, std::vector<std::string> old_names, std::string new_name);
 
 
 #endif

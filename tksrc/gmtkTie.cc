@@ -79,8 +79,9 @@
 #include "GMTK_DiagCovarVector.h"
 #include "GMTK_DlinkMatrix.h"
 #include "GMTK_Mixture.h"
-#include "GMTK_Tie.h"
+#include "GMTK_Signals.h"
 
+#include "GMTK_Tie.h"
 #include "tieSupport.h"
 
 #define GMTK_ARG_HELP
@@ -99,6 +100,7 @@
 #define GMTK_ARG_VAR_FLOOR_ON_READ
 #define GMTK_ARG_CPT_NORM_THRES
 
+#define GMTK_ARG_RLIMIT_PARAMS
 
 ////////////////////////////////////////////
 // command line arguments specific to gmtkTie
@@ -145,6 +147,9 @@ main(int argc,char*argv[])
   // occurs such as an "invalid" (NaN), overflow
   // or divide by zero, we actually get a FPE
   ieeeFPsetup();
+  set_new_handler(memory_error);
+  InstallSignalHandlers();
+
 
   ////////////////////////////////////////////
   // parse arguments
@@ -218,9 +223,13 @@ main(int argc,char*argv[])
   infoMsg(IM::Tiny,"Finished reading structure file\n");
 
 
+
+
+
+
   ////////////////////////////////////////////
   // the object responsible for all tying processes
-  GMTK_Tie tie(&GM_Parms);
+  GMTK_Tie tie(&GM_Parms,cppCommandOptions);
 
 
   ////////////////////////////////////////////
@@ -303,33 +312,61 @@ main(int argc,char*argv[])
   // unused parameters should be retained to take part in the tying
   // procedure
   infoMsg(IM::Tiny,"Note: unused parameters will NOT be saved\n");
-  GM_Parms.markUsedMixtureComponents();
-  infoMsg(IM::Mod,"Finished marking used params\n");
+  //GM_Parms.markUsedMixtureComponents();
+  //infoMsg(IM::Mod,"Finished initial marking of used params\n");
 
   ////////////////////////////////////////////
   // go through the commands and expand out the list of matching
   // parameters from GM_Parms
+  infoMsg(IM::Tiny,"Expanding out regular expressions in all commands\n");
   tie.find_matching_command_parameters();
   
   ////////////////////////////////////////////
   // execute the commands in the order given in the tying command file
   infoMsg(IM::Tiny,"Executing a list of %d commands\n",tie.commands.size());
-  for (unsigned i=0;i<tie.commands.size();i++)
+
+  
+
+  for (unsigned i=0;i<tie.commands.size();i++){
+    
     if (!tie.execute_command(i))
       ////////////////////////////////////////////
       // do not reduce this to a warning because subsequent commands
-      // could reply on the success of earlier ones
+      // might rely on the success of earlier ones
       error("Command %d failed",i);
-	
-  /*
-    no changes are currently made to the master file
-  if (outputMasterFile != NULL) {
-    GM_Parms.write(outputMasterFile,cppCommandOptions);
-  }
-  */
+    
+    //if (tie.commands[i].command == GMTK_Tie::CT_DTcluster)
+    // tie.purge_features_and_questions();
+      
 
+  }
+
+  // return the name collections back to their original orders, if
+  // necessary
+
+
+  infoMsg(IM::Tiny,"Committing changes to name collections\n");
+  GM_Parms.commit_nc_changes();
+
+  infoMsg(IM::Tiny,"Restoring ordering in name collections\n");
+  GM_Parms.unsort_name_collections();
+
+  //infoMsg(IM::Tiny,"Marking used mixture components and removing mixtures that are not listed in a name collection\n");
+  //GM_Parms.markUsedMixtureComponents(true);
+
+  infoMsg(IM::Tiny,"Writing trainable parameters\n");
   oDataStreamFile of(outputTrainableParameters,binOutputTrainableParameters);
-  GM_Parms.writeTrainable(of);
+
+  // the 'true' here should be user-settable
+  GM_Parms.writeTrainable(of,true); // 'true' means "only save mixtures listed in name collections"
+
+  infoMsg(IM::Tiny,"Finished writing trainable params file\n");
+
+  if (outputMasterFile != NULL) {
+  infoMsg(IM::Tiny,"Writing master file\n");
+    GM_Parms.write(outputMasterFile,cppCommandOptions,CSWT_EMPTY_TAG,false);
+    infoMsg(IM::Tiny,"Finished writing master file\n");
+  }
 
   exit_program_with_status(0);
 }

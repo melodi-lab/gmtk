@@ -32,7 +32,7 @@
 #include "GMTK_NamedObject.h"
 #include "GMTK_DirichletTable.h"
 #include "GMTK_DirichletPrior.h"
-#include "tieSupport.h"
+//#include "tieSupport.h"
 
 
 class Dense1DPMF : public EMable, public DirichletPrior {

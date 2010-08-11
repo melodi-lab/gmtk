@@ -131,6 +131,9 @@ VCID("$Header$")
 /************************            TIMING OPTIONS                    ******************************************/
 #define GMTK_ARG_TIMING
 
+// should be made conditional on having setrlimit available
+#define GMTK_ARG_RLIMIT_PARAMS
+
 /////////////////////////////////////////////////////////////
 // General Options
 

@@ -80,6 +80,7 @@ VCID("$Header$")
 #include "GMTK_BoundaryTriangulate.h"
 #include "GMTK_JunctionTree.h"
 #include "GMTK_MaxClique.h"
+#include "GMTK_Signals.h"
 
 
 /*****************************   OBSERVATION INPUT FILE HANDLING   **********************************************/
@@ -146,6 +147,9 @@ VCID("$Header$")
 /************************            DECODING OPTIONS                  ******************************************/
 #define GMTK_ARG_NEW_DECODING_OPTIONS
 
+// should be made conditional on having setrlimit available
+#define GMTK_ARG_RLIMIT_PARAMS
+
 #define GMTK_ARGUMENTS_DEFINITION
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_DEFINITION
@@ -183,6 +187,7 @@ main(int argc,char*argv[])
   // or divide by zero, we actually get a FPE
   ieeeFPsetup();
   set_new_handler(memory_error);
+  InstallSignalHandlers();
 
   CODE_TO_COMPUTE_ENDIAN;
    

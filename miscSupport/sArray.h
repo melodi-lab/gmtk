@@ -29,7 +29,8 @@
 //  Added a method that initializes an array to zero in addition to
 //  resizing it.  -- Karim Filali (karim@cs.washington.edu)
 //
-
+// added various convenience operators and functions: +=, /=,
+// dot_product, elementwise_product. -- Simon King
 
 
 #ifndef SARRAY_H
@@ -261,20 +262,71 @@ class sArray {
     internalSort(start,end); 
   }
 
-  inline sArray<T>& operator+= (sArray<T> &s){
+
+  inline sArray<T>& operator += (sArray<T> &s){
     assert(_size == s.len());
     for (int i=0; i<_size; i++)
       ptr[i] += s[i];
     return *this;
   }
 
-  inline sArray<T>& operator/= (const T n){
+  inline sArray<T>& operator -= (sArray<T> &s){
+    assert(_size == s.len());
+    for (int i=0; i<_size; i++)
+      ptr[i] -= s[i];
+    return *this;
+  }
+
+  inline sArray<T>& operator /= (const T n){
     for (int i=0; i<_size; i++)
       ptr[i] /= n;
     return *this;
   }
 
+
 };
 
+
+template<class T>
+inline sArray<T> elementwise_product(const sArray<T> &s1, const sArray<T> &s2){
+  assert(s1.len() == s2.len());
+  sArray<T> rval;
+  rval.resize(s1.len());
+  for (int i=0; i<rval.len(); i++)
+    rval[i] = s1[i] * s2[i];
+  return rval;
+}
+
+template<class T>
+inline sArray<T> operator + (const sArray<T> &s1, const sArray<T> &s2){
+  assert(s1.len() == s2.len());
+  sArray<T> rval;
+  rval.resize(s1.len());
+  for (int i=0; i<rval.len(); i++)
+    rval[i] = s1[i] + s1[i];
+  return rval;
+}
+
+
+template<class T>
+inline sArray<T> operator * (const T a, const sArray<T> &s){
+  sArray<T> rval;
+  rval.resize(s.len());
+  for (int i=0; i<rval.len(); i++)
+    rval[i] = a * s[i];
+  return rval;
+}
+
+template<class T>
+inline sArray<T> operator * (const sArray<T> &s, const T a){ return a * s; }
+
+
+inline sArray<double> operator * (const double a, const sArray<float> &s){
+  sArray<double> rval;
+  rval.resize(s.len());
+  for (int i=0; i<rval.len(); i++)
+    rval[i] = a * s[i];
+  return rval;
+}
 
 #endif

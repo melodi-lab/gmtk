@@ -306,6 +306,15 @@ public:
   void add(NameCollection*);
 
   //////////////////////////////////////////////////////////////////
+  // sorting the name collections will break any mappings that use
+  // them, so they must always be unsorted afterwards
+  void sort_name_collections();
+  void unsort_name_collections();
+
+  void commit_nc_changes();
+
+
+  //////////////////////////////////////////////////////////////////
   // Structure of model between hidden variables
   // and between hidden and observed variables.
   //////////////////////////////////////////////////////////////////
@@ -373,10 +382,11 @@ public:
   void writeMlpSwitchMixtures(oDataStreamFile& os);
 
   ///////////////////////////////////////////////////////////    
-  // read/write in all the all parameters for simple
-  // file format
+  // read/write in all the all parameters for simple file format; if
+  // remove_unnamed is true, then Mixtures not named in a
+  // NameCollection will be removed
   void readAll(iDataStreamFile& is);
-  void writeAll(oDataStreamFile& os);
+  void writeAll(oDataStreamFile& os, bool remove_unnamed=false);
 
 
   ///////////////////////////////////////////////////////////    
@@ -386,19 +396,20 @@ public:
   void read(iDataStreamFile& is);
   void write(const char *const outputFileFormat, 
 	     const char * const cppCommandOptions,
-	     const int intTag=CSWT_EMPTY_TAG);
+	     const int intTag=CSWT_EMPTY_TAG,
+	     bool remove_unnamed=false);
 
   ///////////////////////////////////////////////////////////    
   // read/write the trainable parameters, i.e., the ones that this program
   // might modify
   void readTrainable(iDataStreamFile& is);
-  void writeTrainable(oDataStreamFile& os);
+  void writeTrainable(oDataStreamFile& os, bool remove_unnamed=false);
 
   ///////////////////////////////////////////////////////////    
   // read/write the non-trainable parameters, i.e., the ones that this program
   // will not modify (e.g., DTs, DLINK structures, etc)
   void readNonTrainable(iDataStreamFile& is);
-  void writeNonTrainable(oDataStreamFile& os);
+  void writeNonTrainable(oDataStreamFile& os, bool remove_unnamed=false);
 
   ////////////////////////////////////////////////////////////////
   // load internal global objects, after all other parameters
@@ -423,11 +434,14 @@ public:
   // for papers, etc.
   unsigned totalNumberParameters();
 
+  ///////////////////////////////////////////////////////////    
+  // Remove mixtures that are not listed in a named collection
+  void markOnlyNamedMixtures();
 
   ///////////////////////////////////////////////////////////    
   // Remove parameters that are not used by anyone. Return
   // true if any were removed.
-  void markUsedMixtureComponents();
+  void markUsedMixtureComponents(bool remove_unnamed=false);
 
 
   ///////////////////////////////////////////////////////////    

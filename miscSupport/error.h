@@ -17,6 +17,9 @@
 #endif
 #endif
 
+// it's quite unlikely that any stdlib defines this
+#define EXIT_RESOURCES_EXCEEDED (2)
+
 void error(const char * const format, ...);
 void coredump(const char * constformat, ...);
 void warning(const char * const format, ...);

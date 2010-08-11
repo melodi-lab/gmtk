@@ -42,6 +42,7 @@ VCID("$Header$")
 #include "GMTK_GMParms.h"
 #include "GMTK_ObservationMatrix.h"
 
+#include "tieSupport.h"
 
 
 void
@@ -120,6 +121,65 @@ Mixture::write(oDataStreamFile& os)
   }
   os.nl();
 }
+
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * identicalIndependentClone
+ *      creates an exact copy of this object that shares nothing with
+ *      the original
+ *
+ * Preconditions:
+ *      1) object being copied should be allocated
+ *      2) GM_Parms should contain all parameters, so that a unique name
+ *         for the new object can be generated
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      the new object is added to GM_Parms
+ *
+ * Results:
+ *      a pointer the new object
+ *
+ *-----------------------------------------------------------------------
+ */
+Mixture* 
+Mixture::identicalIndependentClone()
+{
+
+  Mixture* newMx = new Mixture(dim());
+
+  // don't change usage counts here - do it in calling function,
+  // because only that knows how the sharing is arranged
+
+  newMx->components.resize(components.size());
+  int i=0;
+
+  for(vector < Component* >::iterator ci=components.begin();ci!=components.end();ci++,i++)
+    newMx->components[i]=(*ci)->identicalIndependentClone();
+
+  newMx->dense1DPMF = dense1DPMF->identicalIndependentClone();
+
+  newMx->_name = new_name(name(),&GM_Parms.mixturesMap);
+  newMx->setBasicAllocatedBit();
+  GM_Parms.add(newMx);
+
+  return newMx;
+}
+
+
+
+
+
+
+
+
+
 
 
 
