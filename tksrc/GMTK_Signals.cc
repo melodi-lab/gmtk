@@ -17,11 +17,16 @@
  */
 
 #include "GMTK_Signals.h" 
+#include "error.h"
+#include "general.h"
 
 #include <stdio.h>     /* standard I/O functions                         */
 #include <signal.h>    /* signal name macros, and the signal() prototype */
 
-volatile bool terminate = false;
+// can't call this 'terminate' because there is a terminate() function
+// in the std namespace
+volatile bool sigterminate = false;
+
 
 /*-
  *-----------------------------------------------------------------------
@@ -32,7 +37,7 @@ volatile bool terminate = false;
  *   none
  *   
  * Postconditions:
- *   The terminate flag is set
+ *   The sigterminate flag is set
  *
  * Side Effects:
  *   none
@@ -46,8 +51,43 @@ void catch_sigusr1(int sig_num)
 {
   // Display warning 
   fprintf(stderr, "GMTK received sigusr1, terminating...\n");
-  terminate = true;
+  sigterminate = true;
 }
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * catch_sigxcpu
+ *   The signal handler for SIGXCPU
+ *
+ * Preconditions:
+ *   none
+ *   
+ * Postconditions:
+ *   none
+ *
+ * Side Effects:
+ *   program exits with status EXIT_RESOURCES_EXCEEDED
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+void catch_sigxcpu(int sig_num)
+{
+  // Display warning 
+  fprintf(stderr, "GMTK received SIGXCPU (maximum CPU time has been exceeded), terminating...\n");
+  exit_program_with_status(EXIT_RESOURCES_EXCEEDED);
+
+  //  this method requires testing TerminateSignalReceived() inside loops
+  // sigterminate = true;
+  //  in future, could use this method to allow cleaner exit, or
+  //  possibly to limit the CPU time *per utterance* processed
+
+}
+
+
 
 /*-
  *-----------------------------------------------------------------------
@@ -58,7 +98,7 @@ void catch_sigusr1(int sig_num)
  *   none
  *
  * Postconditions:
- *   Signal handlers are installed, terminate flag set to false
+ *   Signal handlers are installed, sigterminate flag set to false
  *
  * Side Effects:
  *
@@ -69,9 +109,10 @@ void catch_sigusr1(int sig_num)
  */
 void InstallSignalHandlers()
 {
-  terminate = false;
+  sigterminate = false;
 
   signal(SIGUSR1, catch_sigusr1);
+  signal(SIGXCPU, catch_sigxcpu);
 }
 
 /*-
@@ -96,6 +137,6 @@ void InstallSignalHandlers()
  */
 bool TerminateSignalReceived()
 {
-  return(terminate); 
+  return(sigterminate); 
 }
 

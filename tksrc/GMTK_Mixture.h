@@ -43,6 +43,7 @@ class Mixture : public MixtureCommon {
   friend MeanVector* find_MeanVector_of_Mixture(Mixture *mixture);
   friend bool all_DiagGaussian(Mixture* mixture);
   friend std::vector<MeanVector*> find_MeanVectors_of_Mixture(Mixture *mixture);
+  friend Component* find_Component_of_Mixture(Mixture *mixture);
 
   ///////////////////////////////////////////
   // the (possibly) shared components
@@ -104,14 +105,20 @@ public:
   {
     dense1DPMF=NULL;
   }
-  
   //  Mixture() {}
-  ~Mixture() {}
+
+  ~Mixture() { }
 
   //////////////////////////////////////////////
   // read/write basic parameters
   void read(iDataStreamFile& is);
   void write(oDataStreamFile& os);
+
+  /////////////////////////////////////////////////
+  // create a copy of self, with entirely new copies of all
+  // components/weights; NOTHING is shared
+  Mixture* identicalIndependentClone();
+
 
   unsigned totalNumberParameters();
 

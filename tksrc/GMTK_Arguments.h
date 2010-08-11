@@ -2080,6 +2080,7 @@ static char *loadAccRange = NULL;
 static bool accFileIsBinary = true;
 static char *loadCmdFile = NULL;
 
+
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   // EM accumulator file support - loading only
@@ -2088,6 +2089,9 @@ static char *loadCmdFile = NULL;
   Arg("accFileIsBinary",Arg::Opt,accFileIsBinary,"Binary accumulator files"), 
 
   Arg("loadCmdFile",Arg::Opt,loadCmdFile,"Load tying command file"), 
+
+
+
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
@@ -2104,23 +2108,75 @@ static char *loadCmdFile = NULL;
 
 
 
+
+/*==============================================================================================================*/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+/****************************                                     ***********************************************/
+/****************************     RESOURCE LIMITNG OPTIONS        ***********************************************/
+/****************************                                     ***********************************************/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+
+
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
 /*************************************************************************************************************/
 /*************************************************************************************************************/
 
 
-
-#if defined(GMTK_ARG_XX_XX)
+#if defined(GMTK_ARG_RLIMIT_PARAMS)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
---
+  static int rlimitMaxMem = 0;
+  static int rlimitMaxTime = 0;
+  static int rlimitMaxCore = -1;
+
+
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
---
+  Arg("maxMem",Arg::Opt,rlimitMaxMem,  "Maximum virtual memory  (Bytes); 0 means 'unlimited'"), 
+  Arg("maxTime",Arg::Opt,rlimitMaxTime,"Maximum CPU time      (seconds); 0 means 'unlimited'"), 
+  Arg("maxCore",Arg::Opt,rlimitMaxCore,"Maximum core file size  (Bytes);-1 means 'unlimited'"), 
+
+
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
---
+    if (rlimitMaxMem > 0) {
+      infoMsg(IM::Tiny,"Setting max allowed virtual memory\n");
+      struct rlimit rl;
+      rl.rlim_cur = rlimitMaxMem;
+      rl.rlim_max = rlimitMaxMem;
+      if (setrlimit(RLIMIT_AS,&rl) != 0)
+	error("Error: tried to set max memory beyond the allowed maximum");
+    }
+
+    if (rlimitMaxTime > 0) {
+      infoMsg(IM::Tiny,"Setting max allowed CPU time\n");
+      struct rlimit rl;
+
+      // soft limit
+      rl.rlim_cur = rlimitMaxTime;
+
+      // hard limit must be higher than soft limit, otherwise an
+      // immediate SIGKILL is sent which doesn't allow an orderly
+      // exit; so, simply add 10 seconds to allow time for the SIGXCPU
+      // handler to be called
+      rl.rlim_max = rlimitMaxTime + 10; 
+      if (setrlimit(RLIMIT_CPU,&rl) != 0)
+	error("Error: tried to set max CPU time beyond the allowed maximum");
+    };
+
+    if (rlimitMaxCore >= 0) {
+      infoMsg(IM::Tiny,"Setting max allowed core file size\n");
+      struct rlimit rl;
+      rl.rlim_cur = rlimitMaxCore;
+      rl.rlim_max = rlimitMaxCore;
+      if (setrlimit(RLIMIT_CORE,&rl) != 0)
+	error("Error: tried to set max core file size beyond the allowed maximum");
+    }
+
 #else
 #endif
-#endif // defined(GMTK_ARG_XX_XX)
+#endif // defined(GMTK_ARG_RLIMIT_PARAMS)
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/

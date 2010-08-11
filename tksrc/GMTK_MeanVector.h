@@ -21,6 +21,8 @@
 #ifndef GMTK_MEANVECTOR_H
 #define GMTK_MEANVECTOR_H
 
+#include <list>
+
 #include "fileParser.h"
 #include "logp.h"
 #include "sArray.h"
@@ -31,6 +33,7 @@
 
 class DiagCovarVector;
 class DlinkMatrix;
+class Clusterable;
 
 class MeanVector : public EMable {
 
@@ -44,9 +47,10 @@ private:
   friend class GMTK_Tie;
   friend class ClusterableMean;
   friend class ClusterableMixture;
+  friend double cluster_scaled_log_likelihood(std::list<Clusterable*> &items, double* tot_occupancy);
 
   //////////////////////////////////
-  // The acutal mean vector
+  // The actual mean vector
   sArray<float> means;
 
   //////////////////////////////////

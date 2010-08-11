@@ -107,7 +107,7 @@ compile.cc.link = $(PURE) $(LD)  $(INCLUDES) $(LDFLAGS) $(EXLDFLAGS) $(CXXFLAGS)
 # Default target(s)
 #----------------------------------------------------------------------------
 
-all_exs = gmtkJT gmtkTime gmtkEMtrainNew gmtkKernel gmtkViterbiNew gmtkViterbi gmtkTriangulate gmtkParmConvert gmtkTFmerge gmtkDTindex gmtkNGramIndex gmtkTie #gmtkViz
+all_exs = gmtkTie gmtkJT gmtkTime gmtkEMtrainNew gmtkKernel gmtkViterbiNew gmtkViterbi gmtkTriangulate gmtkParmConvert gmtkTFmerge gmtkDTindex gmtkNGramIndex gmtkTie #gmtkViz
 
 all: ${all_exs}
 
@@ -121,6 +121,7 @@ objs = GMTK_Dense1DPMF.o GMTK_Sparse1DPMF.o GMTK_MeanVector.o GMTK_DiagCovarVect
 
 
 
+
 #----------------------------------------------------------------------------
 # Other files used in the program. Keep this up to date.
 #----------------------------------------------------------------------------
@@ -128,8 +129,6 @@ objs = GMTK_Dense1DPMF.o GMTK_Sparse1DPMF.o GMTK_MeanVector.o GMTK_DiagCovarVect
 
 all_srcs =  GMTK_CPT.cc GMTK_Dlinks.cc GMTK_Dense1DPMF.cc GMTK_DiagCovarVector.cc GMTK_DiagGaussian.cc GMTK_DlinkMatrix.cc GMTK_GMParms.cc GMTK_MDCPT.cc GMTK_MSCPT.cc GMTK_MeanVector.cc GMTK_RealArray.cc GMTK_RealMatrix.cc GMTK_RngDecisionTree.cc GMTK_Sparse1DPMF.cc GMTK_DirichletTable.cc GMTK_DirichletPrior.cc  GMTK_FileParser.cc GMTK_FileTokenizer.lex GMTK_MTCPT.cc GMTK_MixtureCommon.cc GMTK_Component.cc GMTK_GaussianComponent.cc GMTK_Mixture.cc  gmtkEMtrainNew.cc gmtkKernel.cc GMTK_EMable.cc  gmtkViterbiNew.cc gmtkViterbi.cc GMTK_LinMeanCondDiagGaussian.cc GMTK_LinMeanCondDiagGaussianOpt.cc GMTK_NameCollection.cc GMTK_GraphicalModel.cc gmtkParmConvert.cc GMTK_GMTemplate.cc GMTK_JunctionTree.cc gmtkTriangulate.cc gmtkTFmerge.cc gmtkJT.cc gmtkTime.cc GMTK_MaxClique.cc GMTK_BoundaryTriangulate.cc GMTK_Timer.cc GMTK_Signals.cc gmtkDTindex.cc GMTK_PackCliqueValue.cc GMTK_PackCliqueValueOpt.cc GMTK_Vocab.cc GMTK_NGramCPT.cc GMTK_FNGramCPT.cc gmtkNGramIndex.cc GMTK_RV.cc GMTK_ContRV.cc GMTK_DiscRV.cc GMTK_HidDiscRV.cc GMTK_ObsContRV.cc GMTK_ObsDiscRV.cc GMTK_ScPnShRV.cc GMTK_ScPnSh_HidDiscRV.cc GMTK_SwDiscRV.cc GMTK_SwRV.cc GMTK_Sw_HidDiscRV.cc GMTK_Sw_ObsContRV.cc GMTK_Sw_ObsDiscRV.cc GMTK_VECPT.cc  GMTK_NetworkFlow.cc GMTK_NetworkFlowTriangulate.cc GMTK_DiagGaussianOpt.cc GMTK_LatticeADT.cc GMTK_LatticeNodeCPT.cc GMTK_LatticeEdgeCPT.cc gmtkTie.cc GMTK_Tie.cc tieSupport.cc GMTK_GammaComponent.cc GMTK_BetaComponent.cc GMTK_Partition.cc GMTK_JT_Partition.cc GMTK_PartitionTables.cc GMTK_PartitionStructures.cc GMTK_JunctionTreeMessagePassing.cc GMTK_JunctionTreeIslandMessagePassing.cc GMTK_MissingFeatureScaledDiagGaussian.cc GMTK_RVInfo.cc GMTK_WeightMatrix.cc
 # gmtkUnroll.cc GMTK_RVInfo.cc gmtkViz.cc 
-
-
 
 
 

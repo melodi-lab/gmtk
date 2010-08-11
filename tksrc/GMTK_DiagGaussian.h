@@ -36,6 +36,7 @@ class DiagGaussian : public GaussianComponent {
 
   friend class GMTK_Tie;
   friend MeanVector* find_MeanVector_of_DiagGaussian(DiagGaussian *diag_gaussian);
+  friend double cluster_scaled_log_likelihood(std::list<Clusterable*> &items, double* tot_occupancy);
 
   ///////////////////////////////////////////////////////
   // The means. 

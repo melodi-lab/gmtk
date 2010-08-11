@@ -41,10 +41,13 @@ class Sparse1DPMF;
 
 class NameCollection : public NamedObject  {
 
+
   friend class GMParms;
   friend class RV;
   friend class DiscRV;
   friend class FileParser;
+  friend class GMTK_Tie;
+  friend void search_and_replace_in_name_collection(NameCollection *nc, std::vector<std::string> old_names, std::string new_name);
 
   // Possible instantiations of this class
   // 0) just table is allocated
@@ -58,6 +61,20 @@ class NameCollection : public NamedObject  {
 
   // string of names. 
   vector<string> table;
+
+  // a sorted version of table
+  vector<string> sorted_table;
+
+  // changes that are waiting to be made to sorted_table
+  vector< pair<string,string> > queued_changes;
+
+  // if this is true, then sorted_table has been made from table, and
+  // may have subsequently been modified, so we should not use table
+  // again until unsort() has been called
+  bool _is_sorted;
+  // and a place to remember how to unsort it again
+  vector<unsigned> unsort_mapping;
+  
   // direct pointers to those objects
   // for which this might refer to.
   vector<Mixture*> mxTable;
@@ -91,6 +108,16 @@ public:
   unsigned spmfSize() { return spmfTable.size(); }
   bool validSpmfIndex(unsigned u) { return (u < spmfSize()); }
 
+  //////////////////////////////////////////////
+  // sorting and unsorting, replacing, etc
+  // to do: clear sorted_table on loading, etc
+  inline bool is_sorted() { return _is_sorted; };
+  void sort();
+  void unsort();
+  void resort();
+  void search_and_replace(std::vector<std::string> old_names, std::string new_name);
+  void queue_search_and_replace(std::vector<std::string> old_names, std::string new_name);
+  void commit_all_searches_and_replacements();
 };
 
 

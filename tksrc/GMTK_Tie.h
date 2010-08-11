@@ -37,17 +37,21 @@
 #include "GMTK_GMParms.h"
 
 #include <list>
+#include <set>
 #include <regex.h>
 
+#include "tieStructures.h"
 
 class GMTK_Tie {
 
 public:
   ////////////////////////////////////////////////////////////////////////
   // constructor and destructor
-  GMTK_Tie(GMParms *GM_Parms_ptr);
+  GMTK_Tie(GMParms *GM_Parms_ptr, char* cppCommandOptions=NULL);
   ~GMTK_Tie();
 
+  // local copy of this, for file input/output
+  char* _cppCommandOptions;
 
   ////////////////////////////////////////////////////////////////////////
   // the following enumerated types are all the available commands and
@@ -62,10 +66,16 @@ public:
   // commands
   enum CommandType {
     CT_Unknown=0,
-    CT_Tie=1,       // just tie, no questions asked
-    CT_Cluster=2,   // bottom-up cluster, then tie
-    CT_DTcluster=3, // decision-tree cluster, then tie
-    CT_Untie=4      // does what it says on the tin
+    CT_Tie=1,         // just tie, no questions asked
+    CT_Cluster=2,     // bottom-up cluster, then tie
+    CT_DTcluster=3,   // decision-tree cluster, then tie
+    CT_Untie=4,       // does what it says on the tin
+    CT_DTsynthesise=5,// ties the parameters listed to existing parameters, using the decision tree provided
+    CT_loadFeatureDefinitions=6,
+    CT_loadQuestions=7,
+    CT_loadFeatureValues=8,
+    CT_saveTree=9,
+    CT_loadTree=10
   };
   map<std::string, CommandType> string_to_CommandType;
   map<CommandType, std::string> CommandType_to_string;
@@ -75,8 +85,10 @@ public:
   enum ParameterType {
     PT_Unknown=0,
     PT_Mixture=1,
-    PT_Mean=2,
-    PT_Collection=3
+    PT_Component=2,
+    PT_Mean=3,
+    PT_Collection=4,
+    PT_NotRequired=5
   };
   map<std::string, ParameterType> string_to_ParameterType;
   map<ParameterType, std::string> ParameterType_to_string;
@@ -86,6 +98,9 @@ public:
   // pairwise dissimilarity measures between parameters (note: not
   // necessarily distance metrics)
   enum DissimilarityMeasureType{
+
+    // use the unknown value to indicate that this option is not
+    // relevant to the current command
     DMT_Unknown=0,
 
     // just uses the distance between two mean vectors; only works for
@@ -155,10 +170,10 @@ public:
   ////////////////////////////////////////////////////////////////////////
   // ways of choosing the centroid of a cluster
   enum CentroidType{
-    // use any existing cluster member
+
     CNT_Unknown=0, 
 
-    // use any existing cluster member
+    // use any existing cluster member (i.e. the first in the list)
     CNT_Arbitrary=1,
 
     // use the existing cluster member with the lowest total
@@ -208,14 +223,16 @@ public:
   // ways of measuring the size of a cluster
   enum ClusterSizeMethodType {
 
+    CSM_Unknown=0,
+
     // find the farthest apart pair of cluster members (the "diameter"
     // of the cluster), as used in HTK
-    CSM_MostDissimilarPair=0,
-    CSM_EmulateHTK=1, // will be the same as CSM_MostDissimilarPair
+    CSM_MostDissimilarPair=1,
+    CSM_EmulateHTK=2, // will be the same as CSM_MostDissimilarPair
 
     // take average over all members of dissimilarity to centroid (may
     // require recomputation of centroid)
-    CSM_AverageDissimilarityToCentroid=2
+    CSM_AverageDissimilarityToCentroid=3
   };
   map<std::string, ClusterSizeMethodType> string_to_ClusterSizeMethodType;
   map<ClusterSizeMethodType, std::string> ClusterSizeMethodType_to_string;
@@ -226,29 +243,31 @@ public:
   // them apply to all commands)
   typedef struct {
 
-    // the stopping criterion for data driven agglomerative clustering
-    // or decision tree clustering
-    //
-    // in the former case, clusters grow, starting from a size of 0.0
-    //
-    // in the latter case, clusters shrink (they are repeatedly split
-    // in two); this criterion terminates tree growth only for one
-    // branch of the tree, but other branches will continue to grow
+    // a stopping criterion for data driven agglomerative clustering
     float MaxClusterSize;
 
-    // the target number of parameters to aim for in decision tree
-    // clustering (i.e. the number of leaves of the tree)
-    //
-    // normally used *instead* of MaxClusterSize (if both are given,
-    // then tree growing is terminated for that branch if *either* of
-    // them is satisfied - this may not be helpful behaviour?)
+    // the target number of parameters (we count them by name, not
+    // actual number of free parameters, so when clustering Mixtures,
+    // this counts each Mixtures as 1 parameter) to aim for in
+    // decision tree clustering (i.e. the number of leaves of the
+    // tree)
     unsigned MaxNumberParameters;
 
-    // the first method for outlier removal
+    // the first method for outlier removal in agglomerative clustering
     double MinOccupancyCount;
 
-    // the second method for outlier removal
-    int MinClusterMembers; 
+    // for removing items prior to clustering; such items will be
+    // synthesised if DT clustering is used
+    double ThresholdOccupancyCount;
+
+    // the second method for outlier removal (bottom up) or for
+    // stopping tree building (top down)
+    unsigned MinClusterMembers; 
+
+    // minimum improvement in log likelihood that a split in the
+    // decision tree must acheive
+    float MinImprovementPercent; 
+    double MinImprovementAbsolute; 
 
     // when parameters get tied, they will be renamed using this
     // prefix (not yet implemented)
@@ -270,6 +289,14 @@ public:
     // whether weighting by occupancy should be used when computing
     // cluster size (not yet implemented)
     bool ClusterSizeOccupancyWeighting;
+
+    std::string CollectionName;
+
+    std::string Filename;
+    std::string TreeName;
+    std::string FeatureSetName;
+    std::string FeatureValuesName;
+    std::string QuestionSetName;
 
   } Options;
 
@@ -311,6 +338,45 @@ public:
 
 
 
+
+  ////////////////////////////////////////////////////////////////////////
+  // decision tree clustering 
+  ////////////////////////////////////////////////////////////////////////
+  
+  // a named collection of loaded feature set definitions
+  map<std::string,FeatureDefinitionSetType> feature_definition_sets;
+  // a named collection of loaded feature value lists
+  map<std::string,FeatureValueSetType> feature_value_sets;
+  // a named collection of question sets
+  map<std::string,QuestionSetType> question_sets;
+  // a named collection of decision trees
+  std::map<std::string,DecisionTreeType> decision_trees;
+
+  ////////////////////////////////////////////////////////////////////////
+  // loading (from already opened iDataStreamFile)
+  void read_feature_definition_set(iDataStreamFile& is);
+  void read_feature_value_set(iDataStreamFile& is);
+  void read_question_set(iDataStreamFile& is);
+
+  // loading and saving decision trees
+  void load_decision_tree(unsigned command_index);
+  void save_decision_tree(unsigned command_index);
+
+  // clear data structures
+  //void purge_features_and_questions();
+
+
+
+  bool question_previously_used(DecisionTreeType &decision_tree, unsigned node, unsigned question_index);
+  inline unsigned parent(unsigned child){ return div(child,2).quot; };
+  inline unsigned left_child(unsigned node) {return node * 2; };
+  inline unsigned right_child(unsigned node) {return (node * 2) + 1; };
+  void grow_decision_tree_if_needed(DecisionTreeType &decision_tree, unsigned node);
+  void print_tree(DecisionTreeType &decision_tree);
+  std::string new_tree_name(const std::string basename);
+
+
+
 private:
 
   ////////////////////////////////////////////////////////////////////////
@@ -323,9 +389,9 @@ private:
   ////////////////////////////////////////////////////////////////////////
   void parse_option(CommandType ctype, Options &o, std::string opt);
   void fill_in_default_values(CommandType ctype, Options &opt);
-  void enter_tie_option(GMTK_Tie::Options &opt, std::string &key, std::string &value);
-  void enter_cluster_option(GMTK_Tie::Options &opt, std::string &key, std::string &value);
-  void enter_DTcluster_option(GMTK_Tie::Options &opt, std::string &key, std::string &value);
+  void enter_option(GMTK_Tie::Options &opt, std::string &key, std::string &value);
+  //void enter_cluster_option(GMTK_Tie::Options &opt, std::string &key, std::string &value);
+  //void enter_DTcluster_option(GMTK_Tie::Options &opt, std::string &key, std::string &value);
 
 
 public:
@@ -344,15 +410,11 @@ public:
   // validate the parameters (only simple error checking is done)
   bool validate_command_parameters();
   
-  
-  ////////////////////////////////////////////////////////////////////////
-  // saving
-  // - not yet implemented
 
 
   ////////////////////////////////////////////////////////////////////////
   // printing
-  void print_Command(Command &cmd, int command_index, IM::VerbosityLevels v=IM::Tiny);
+  void print_Command(int command_index, IM::VerbosityLevels v=IM::Tiny);
   void print_Options(Options &opt, IM::VerbosityLevels v=IM::Tiny);
 
 
@@ -360,9 +422,20 @@ public:
   // tying functions - either called as the direct result of a user
   // command, or after clustering has been used to determine groups of
   // parameters to tie
-  bool tie_Mixtures(std::vector<std::string> param_expressions, CentroidType method, bool expand_expressions=true);
-  bool untie_Mixtures(std::vector<std::string> param_expressions, bool expand_expressions=true);
-  bool tie_Means(std::vector<std::string> param_expressions, CentroidType method, bool expand_expressions=true);
+  //
+  // all tying commands return the name of the chosen centroid
+  std::string tie_Mixtures(std::vector<std::string> param_expressions, CentroidType method,
+			   std::string collection_name="",
+			   std::string name_prefix="",
+			   bool occupancy_weighted=false, bool expand_expressions=true);
+
+  bool untie_Mixtures(std::vector<std::string> param_expressions, 
+		      std::string collection_name="",
+		      std::string name_prefix="",
+		      bool expand_expressions=true);
+
+
+  std::string  tie_Means(std::vector<std::string> param_expressions, CentroidType method, bool expand_expressions=true);
 
   ////////////////////////////////////////////////////////////////////////
   // to do - add more types:
@@ -381,9 +454,15 @@ public:
   ////////////////////////////////////////////////////////////////////////
   // clustering
   bool data_driven_cluster(unsigned command_index, std::vector<std::vector<std::string> > &clustered_params);
-  bool decision_tree_cluster(unsigned command_index, std::vector<std::vector<std::string> > &clustered_params); // not implemented
+  bool decision_tree_cluster(unsigned command_index, std::vector<std::vector<std::string> > &clustered_params,
+			     std::vector<std::string> &outliers); 
 
-
+  ////////////////////////////////////////////////////////////////////////
+  // synthesising unseen parameters
+  bool decision_tree_synthesise(unsigned command_index);
+  bool decision_tree_synthesise(std::vector<std::string>::iterator b, std::vector<std::string>::iterator e,
+				DecisionTreeType *decision_tree,
+				std::string collection_name="");
 };
 
 
