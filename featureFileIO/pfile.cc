@@ -199,7 +199,6 @@ InFtrLabStream_PFile::read_header()
 
     first_lab_col = 0;      // Initialize to zero.
 
-    int status =get_uint(header, "-num_labels", &num_lab_cols);
     if (get_uint(header, "-num_labels", &num_lab_cols))
         num_lab_cols = 0;       // Set to zero if not found.
     if (num_lab_cols > 0)
