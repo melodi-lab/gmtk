@@ -25,6 +25,7 @@
 #include <wx/image.h>
 #include <wx/list.h>
 #include <wx/notebook.h>
+#include <wx/numdlg.h>
 #include <wx/print.h>
 #include <wx/printdlg.h>
 #include <wx/statline.h>
@@ -825,7 +826,7 @@ class VizNode : public Selectable {
 		// Selectable methods
 		virtual void setSelected( bool newSelected );
 		virtual bool onMe( const wxPoint& pt );
-		virtual bool inRect( const wxRect& rect ) { return rect.Inside(center); }
+		virtual bool inRect( const wxRect& rect ) { return rect.Contains(center); }
 
 		//highlight functions
 		bool isHighlighted() {return (highlight_state != off);}
@@ -852,14 +853,14 @@ class ControlPoint : public Selectable {
 		ControlPoint( const wxPoint& pt );
 		// selectable methods
 		virtual bool onMe( const wxPoint& pt );
-		virtual bool inRect( const wxRect& rect ) { return rect.Inside(pos); }
+		virtual bool inRect( const wxRect& rect ) { return rect.Contains(pos); }
 };
 
 /// Represents an arc
 class VizArc {
 	public:
 		/// for some wxDC methods
-		wxList *points;
+		wxPointList *points;
 		/// much more user-friendly and with all the necessary info
 		std::vector< ControlPoint* > *cps;
 		/// the parent
@@ -1880,7 +1881,9 @@ void GFrame::do_layout()
 	about_sizer->Fit(about_pane);
 	about_sizer->SetSizeHints(about_pane);
 	struct_notebook->AddPage(about_pane, wxT("About"));
-	MainVizWindow_sizer->Add(new wxNotebookSizer(struct_notebook), 1, wxEXPAND, 0);
+	// wxNotebookSizer was deprecated
+	//	MainVizWindow_sizer->Add(new wxNotebookSizer(struct_notebook), 1, wxEXPAND, 0);
+	MainVizWindow_sizer->Add(struct_notebook, 1, wxEXPAND, 0);
 	SetAutoLayout(true);
 	SetSizer(MainVizWindow_sizer);
 	MainVizWindow_sizer->Fit(this);
@@ -1997,7 +2000,7 @@ void GFrame::OnMenuFileNew(wxCommandEvent &event)
 			 "All files|*"
 			 "|Structure Files|*.str"
 			 "|Text Files|*.txt;*.text",
-			 wxOPEN | wxCHANGE_DIR, wxDefaultPosition);
+			 wxFD_OPEN | wxFD_CHANGE_DIR, wxDefaultPosition);
 
 	dlg.SetFilterIndex(1); // show only .str's by default
 
@@ -2032,7 +2035,7 @@ void GFrame::OnMenuFileOpen(wxCommandEvent &event)
 			 "All files|*"
 			 "|Position Files|*.gvp"
 			 "|Text Files|*.txt;*.text",
-			 wxOPEN | wxCHANGE_DIR, wxDefaultPosition);
+			 wxFD_OPEN | wxFD_CHANGE_DIR, wxDefaultPosition);
 
 	dlg.SetFilterIndex(1); // show only .gvp's by default
 
@@ -2252,7 +2255,7 @@ void GFrame::OnMenuFilePrintEPS(wxCommandEvent &event)
 	// If it couldn't be casted to a StructPage, then curPage will be NULL.
 	if (curPage) {
 
-		wxFileDialog eps_file_dialog(this, "Save to EPS", "", "", "*.eps", wxSAVE | wxOVERWRITE_PROMPT);
+		wxFileDialog eps_file_dialog(this, "Save to EPS", "", "", "*.eps", wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
 		if(eps_file_dialog.ShowModal() == wxID_CANCEL)
 			return; //canceled
 
@@ -2266,7 +2269,9 @@ void GFrame::OnMenuFilePrintEPS(wxCommandEvent &event)
 		wxString name;
 		curPage->getName(name);
       GmtkPrintout printout(curPage,name);
-		wxString temp_file_name = wxGetTempFileName( wxT("gmtkviz") );
+// This function is obsolete, please use wxFileName::CreateTempFileName() instead.
+//		wxString temp_file_name = wxGetTempFileName( wxT("gmtkviz") );
+                wxString temp_file_name = wxFileName::CreateTempFileName( wxT("gmtkviz") );
 
 		//give the temp file name to the printData
 		printData.SetFilename(temp_file_name);
@@ -2305,7 +2310,7 @@ void GFrame::OnMenuFilePrintEPS(wxCommandEvent &event)
 		ps2eps_cmd.append(" | ps2eps > '");
 
 		//quote single quotes to be safe
-		string temp_path = eps_file_dialog.GetPath().c_str();
+		string temp_path = eps_file_dialog.GetPath().wx_str();
 		size_t match_loc = 0;
 		while(string::npos != (match_loc = temp_path.find("'", match_loc))){
 			temp_path.replace(match_loc,1,"'\"'\"'"); //replace ' with '"'"'
@@ -3915,8 +3920,8 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 		// valid below we may mark it invalid
 		bool strFile_valid = true;
 		//these are just char * versions of the filenames
-		char * strFile_cstr = (char *)strFile.mb_str(wxConvUTF8);
-		char * gvpFile_cstr = (char *)gvpFile.mb_str(wxConvUTF8);
+		char * strFile_cstr = strFile.char_str(wxConvUTF8);
+		char * gvpFile_cstr = gvpFile.char_str(wxConvUTF8);
 		/* store the strFile name so that we can use it to in the FileParser
 		 * this way we only need to have 1 call to the FileParser, even
 		 * if we modify the tempFileName
@@ -3943,7 +3948,7 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 				//wxString tempSTR = wxString::Format("%s",strFile_cstr);
 				//= dirname(gvpFile) ++ / ++ strFile
 				tempFileName = wxString::Format("%s/%s",
-						dirname((char *)tempGVP.mb_str(wxConvUTF8)), 
+						dirname((char *)tempGVP.char_str(wxConvUTF8)), 
 						strFile_cstr);
 						//basename((char *)tempSTR.mb_str(wxConvUTF8)));
 
@@ -5425,7 +5430,8 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 				(*arc->cps)[index]->arc = arc;
 				// must keep these in sync
 				arc->points->Insert( index,
-						(wxObject*)&(*arc->cps)[index]->pos );
+						           &(*arc->cps)[index]->pos );
+//						(wxObject*)&(*arc->cps)[index]->pos );
 				screenDirty = true;
 			}
 		} else {
@@ -5483,7 +5489,8 @@ StructPage::OnMouseEvent( wxMouseEvent &event )
 						// Tell it who its parent is.
 						(*arc->cps)[1]->arc = arc;
 						// must keep these in sync
-						arc->points->Insert(1,(wxObject*)&(*arc->cps)[1]->pos);
+						arc->points->Insert(1,&(*arc->cps)[1]->pos);
+//						arc->points->Insert(1,(wxObject*)&(*arc->cps)[1]->pos);
 						screenDirty = true;
 					} else {
 						arc = NULL;
@@ -5811,7 +5818,7 @@ StructPage::blit( wxDC& dc )
 	tempClip.Subtract(wxRegion( 0, 0,
 		(int)round(getWidth()*gZoomMap[displayScale]),
 		(int)round(getHeight()*gZoomMap[displayScale]) ));
-	dc.SetClippingRegion(tempClip);
+	dc.SetDeviceClippingRegion(tempClip);
 	dc.Clear();
 	dc.DestroyClippingRegion();
 	// all the action is the constructor and destructor
@@ -5842,21 +5849,15 @@ StructPage::crossesNode( wxCoord x0, wxCoord x1 )
 	int numNodes = nodes.size();
 
 	for (int i = 0; i < numNodes; i++) {
-		if ( ( ( x0 < nodes[i]->center.x-NODE_RADIUS !=
-				x1 < nodes[i]->center.x-NODE_RADIUS ) ||
-					( x0 > nodes[i]->center.x+NODE_RADIUS !=
-				x1 > nodes[i]->center.x+NODE_RADIUS ) ) ||
-					( ( x0 < nodes[i]->nametag.pos.x !=
-				x1 < nodes[i]->nametag.pos.x ) ||
-					( x0 > nodes[i]->nametag.pos.x + 2*NODE_RADIUS !=
-				x1 > nodes[i]->nametag.pos.x + 2*NODE_RADIUS ) ) )
+	  if ( ( ( (x0 < nodes[i]->center.x-NODE_RADIUS) != (x1 < nodes[i]->center.x-NODE_RADIUS) ) ||
+		 ( (x0 > nodes[i]->center.x+NODE_RADIUS) != (x1 > nodes[i]->center.x+NODE_RADIUS) ) ) ||
+	       ( ( (x0 < nodes[i]->nametag.pos.x) != (x1 < nodes[i]->nametag.pos.x) ) ||
+		 ( (x0 > nodes[i]->nametag.pos.x + 2*NODE_RADIUS) != (x1 > nodes[i]->nametag.pos.x + 2*NODE_RADIUS) ) ) )
 			return true;
 	}
 	for (unsigned int i = 0; i < frameNameTags.size(); i++) {
-		if ( ( x0 < frameNameTags[i]->pos.x !=
-				x1 < frameNameTags[i]->pos.x ) ||
-			 ( x0 > frameNameTags[i]->pos.x + 2*NODE_RADIUS !=
-				x1 > frameNameTags[i]->pos.x + 2*NODE_RADIUS ) )
+	  if ( ( (x0 < frameNameTags[i]->pos.x) != (x1 < frameNameTags[i]->pos.x) ) ||
+	       ( (x0 > frameNameTags[i]->pos.x + 2*NODE_RADIUS) != (x1 > frameNameTags[i]->pos.x + 2*NODE_RADIUS) ) )
 			return true;
 	}
 	return false;
@@ -6604,7 +6605,8 @@ StructPage::copyArcLayout( int iFrom, int jFrom,
 	// now rebuild the wxList used for drawing along the points
 	to->points->Clear();
 	for (unsigned int k = 0; k < to->cps->size(); k++) {
-		to->points->Append( (wxObject*)&(*to->cps)[k]->pos );
+		to->points->Append( &(*to->cps)[k]->pos );
+//		to->points->Append( (wxObject*)&(*to->cps)[k]->pos );
 	}
 }
 
@@ -6813,7 +6815,10 @@ StructPage::redraw( void )
 void
 StructPage::draw( wxDC& dc )
 {
-	dc.BeginDrawing();
+  // Begin(End)Drawing was deprecated and removed a while ago. 
+  // It appears it never did anything, so I'm assuming I don't
+  // need to replace it with anything.
+  // dc.BeginDrawing();
 	// Don't trust the DC defaults.
 	dc.Clear();
 	wxFont tempFont( labelFont.GetPointSize(), labelFont.GetFamily(),
@@ -6916,7 +6921,7 @@ StructPage::draw( wxDC& dc )
 		dc.SetBrush(oldBrush);
 	}
 
-	dc.EndDrawing();
+	// dc.EndDrawing();
 }
 
 /**
@@ -6961,10 +6966,10 @@ StructPage::Save( void )
 
 			struct stat strFile_stat;
 			//we need temp strings because basename and dirname alter their args
-			wxString tempGVP = wxString::Format("%s",gvpFile.c_str());
+			wxString tempGVP = wxString::Format("%s",gvpFile.wc_str());
 			//tempFileName = dirname(gvpFile) ++ "/" ++ strFile
 			wxString tempFileName = wxString::Format("%s/%s",
-					dirname((char *)tempGVP.mb_str(wxConvUTF8)), 
+					dirname((char *)tempGVP.char_str(wxConvUTF8)), 
 					strFile.c_str());
 			if(strFile.GetChar(0) == '/' && stat(strFile.c_str(), &strFile_stat) == 0){
 				//this is an absolute path so we should use this
@@ -6987,14 +6992,14 @@ StructPage::Save( void )
 				wxString tempGVP_old = wxString::Format("%s",gvpFile_old.c_str());
 				wxString tempFileName_old = wxString::Format("%s/%s/%s",
 						wxFileName::GetCwd().c_str(),
-						dirname((char *)tempGVP_old.mb_str(wxConvUTF8)), 
+						dirname((char *)tempGVP_old.char_str(wxConvUTF8)), 
 						strFile.c_str());
-				if(tempSTR.Find(dirname((char *)tempGVP.mb_str(wxConvUTF8))) == 0){
+				if(tempSTR.Find(dirname((char *)tempGVP.char_str(wxConvUTF8))) == 0){
 					// if strfile is in directory or subdir of gvpFile
 					tempGVP = wxString::Format("%s",gvpFile.c_str());
 					//remove the leading directory data and the / so that strFile loc is
 					//relative to gvpFile
-					tempSTR.Remove(0,1 + strlen(dirname((char *)tempGVP.mb_str(wxConvUTF8))));
+					tempSTR.Remove(0,1 + strlen(dirname((char *)tempGVP.char_str(wxConvUTF8))));
 					line.sprintf("strFile=%s\n", tempSTR.c_str());
 				} else if((gvpFile_old != "") && (stat(tempFileName_old.c_str(), &strFile_stat) == 0)){
 					//strFile is relative to old gvpFile (this is a save as)
@@ -7200,7 +7205,7 @@ StructPage::SaveAs( void )
 			  * were valid
 			  */
 			 //wxSAVE | wxCHANGE_DIR | wxOVERWRITE_PROMPT,
-			 wxSAVE | wxOVERWRITE_PROMPT,
+			 wxFD_SAVE | wxFD_OVERWRITE_PROMPT,
 			 wxDefaultPosition);
 
 	dlg.SetFilterIndex(1); // show only gvps by default
@@ -8384,7 +8389,7 @@ bool
 NameTag::onMe( const wxPoint& pt )
 {
 	wxRect temp(pos.x, pos.y, size.x, size.y);
-	return temp.Inside(pt);
+	return temp.Contains(pt);
 }
 
 /**
@@ -8405,7 +8410,7 @@ NameTag::onMe( const wxPoint& pt )
 bool
 NameTag::inRect( const wxRect& rect )
 {
-	return rect.Inside(pos.x + size.x/2, pos.y + size.y/2);
+	return rect.Contains(pos.x + size.x/2, pos.y + size.y/2);
 }
 
 /**
@@ -8426,7 +8431,7 @@ NameTag::inRect( const wxRect& rect )
  *******************************************************************/
 
 VizNode::VizNode( const wxPoint& pos, RVInfo *newRvi, StructPage *newPage )
-	: nametag(pos, wxT(newRvi->name.c_str()))
+	: nametag(pos, newRvi->name.c_str())
 {
 	center.x = pos.x;
 	center.y = pos.y;
@@ -8442,7 +8447,7 @@ VizNode::VizNode( const wxPoint& pos, RVInfo *newRvi, StructPage *newPage )
 			   wxSize(2*NODE_RADIUS, 2*NODE_RADIUS),
 			   wxTRANSPARENT_WINDOW );
 	tipWin->Hide();
-	tipWin->SetToolTip(wxT(rvId.first.c_str()));
+	tipWin->SetToolTip(rvId.first.c_str());
 	visible = true;
 	highlight_state = off;
 	nametag.SetFrame(rvi->frame);
@@ -8722,9 +8727,10 @@ VizArc::VizArc( std::vector< ControlPoint* > *newCps, StructPage *newPage )
 	}
 	
 	int numPoints = cps->size();
-	points = new wxList;
+	points = new wxPointList;
 	for (int i = 0; i < numPoints; i++) {
-		points->Append( (wxObject*)&(*cps)[i]->pos );
+		points->Append( &(*cps)[i]->pos );
+//		points->Append( (wxObject*)&(*cps)[i]->pos );
 	}
 	visible = true;
 	highlighted = false;
@@ -8749,9 +8755,10 @@ VizArc::VizArc(const VizArc &original)
 		(*cps)[i]->pos.y = (*(original.cps))[i]->pos.y;
 	}
 	int numPoints = cps->size();
-	points = new wxList;
+	points = new wxPointList;
 	for (int i = 0; i < numPoints; i++) {
-		points->Append( (wxObject*)&(*cps)[i]->pos );
+		points->Append( &(*cps)[i]->pos );
+//		points->Append( (wxObject*)&(*cps)[i]->pos );
 	}
 }
 
@@ -8888,7 +8895,7 @@ VizArc::draw( wxDC *dc, int drawFlags )
 
 		int end = points->GetCount() - 1;
 		assert(end > 0);
-		wxNode *node = points->GetFirst();
+		wxwxPointListNode *node = points->GetFirst();
 		node = node->GetNext();
 		for ( int i = 1; i < end; i++, node = node->GetNext() ) {
 			assert(node != NULL);
