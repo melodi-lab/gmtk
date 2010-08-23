@@ -2094,25 +2094,28 @@ void
 GMParms::writeMixtures(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("Mixtures of components");os.nl();
-  // Leave out the first two (ie., the -2) as they are internal
-  // objects. See routine finalizeParameters().
+
+
+  // We do not save the final two mixtures as they are internal
+  // objects. See routine finalizeParameters().  This is the reason
+  // for the (-2) in the below.
 
 
   // first scan through and find the number that are used.
+  const unsigned maxPossibleNumUsed = mixtures.size()-2;
   unsigned used = 0;
-  for (unsigned i=0;i<mixtures.size();i++)
+  for (unsigned i=0;i<maxPossibleNumUsed;i++)
     if (mixtures[i]->emUsedBitIsSet())
       used++;
 
-  if (used != mixtures.size()-2)
+  if (used != maxPossibleNumUsed)
     warning("NOTE: saving only %d used mixtures out of a total of %d",
 	    used,mixtures.size());
 
-  //os.write(mixtures.size()-2,"num MIXCOMPONENTS"); os.nl();
   os.write(used,"num MIXCOMPONENTS"); os.nl();
 
   unsigned index=0;
-  for (unsigned i=0;i<mixtures.size();i++) {
+  for (unsigned i=0;i<maxPossibleNumUsed;i++) {
 
     if (mixtures[i]->emUsedBitIsSet()){
 
