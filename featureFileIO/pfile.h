@@ -65,7 +65,15 @@ typedef union
 #ifdef PF_HAVE_FSEEKO
 #define pfile_fseek(a,b,c) fseeko(a,b,c)
 #define pfile_ftell(a) ftello(a)
-typedef off64_t pfile_off_t;
+// #if defined(__FreeBSD__)
+// typedef off_t off64_t
+// #endif
+// typedef off64_t pfile_off_t;
+// TODO: the above was commented out to get working on OSX, but
+// this compiles fine on Linux. We need to have a proper build for
+// both 32 and 64 bit architectures for both oss, so this needs to be
+// addressed and fixed.
+typedef long pfile_off_t;
 #else
 #define pfile_fseek(a,b,c) fseek(a,b,c)
 #define pfile_ftell(a) ftell(a)
