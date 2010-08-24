@@ -46,6 +46,7 @@ double LatticeADT::_defaultFrameRate = -100.0;
 
 
 bool LatticeADT::_latticeNodeUseMaxScore = true;
+bool LatticeADT::_ignoreLatticeNodeTimeMarks = false;
 
 
 /*-
@@ -58,7 +59,7 @@ bool LatticeADT::_latticeNodeUseMaxScore = true;
  *-----------------------------------------------------------------------
  */
 LatticeADT::LatticeADT()
-  : _latticeNodes(NULL), _numberOfNodes(0),
+  : _latticeNodes(NULL), _timeMarks(false), _numberOfNodes(0),
     _numberOfLinks(0), _start(0), _end(0),
     _lmscale(0), _wdpenalty(0), _acscale(1.0),
     _base(0), 
@@ -231,13 +232,35 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab)
   float latestTime = 0.0;
 
   // reading nodes
+  bool _startTimeMarks = false;
   for ( unsigned i = 0; i < _numberOfNodes; i++ ) {
 
     ifs.readLine( line, linesize);
     ptr = strtok(line, seps);
+    // If node time information is in the lattice, node lines should
+    // look like:
+    // 
+    // ...
+    // I=27    t=7.56
+    // I=28    t=7.56
+    // I=29    t=7.56
+    // I=30    t=7.56
+    // I=31    t=7.56
+    // ...
+    // 
+    // If no node time info is present, lines should look like:
+    // 
+    // ...
+    // I=27
+    // I=28
+    // I=29
+    // I=30
+    // I=31
+    // ...
+    // It should be one or the other of these cases, and it cannot be a mix.
 
     if ( ptr[0] != 'I' || ptr[1] != '=' )
-      error("Error in lattice '%s', line %d, expecting I= within line, but got '%s'", 
+      error("Error in lattice '%s', line %d, expecting 'I=' within line, but got '%s'", 
 	    ifs.fileName(),ifs.lineNo(),ptr);
     if ( (id = atoi(ptr+2)) > _numberOfNodes )
       error("Error in lattice '%s', line %d, node id %d is bigger than number of nodes %d",
@@ -246,23 +269,51 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab)
     if ( (ptr = strtok(NULL, seps)) != NULL ) {
       // there is time information
       if ( ptr[0] == 't' ) {
-	// set up the time
+	if (i == 0) 
+	  _startTimeMarks = true;
+	if (_startTimeMarks == false)
+	  error("Error in lattice '%s', line %d, can't have nodes both with and without time marks",
+		ifs.fileName(),ifs.lineNo());
+
+	// set up the time, expecting a strong of the form 't=7.56'
 	_latticeNodes[id].time = atof(ptr+2);
 
-	// by default, there is no frame constrain
+	// by default, there is no frame constraint
 	_latticeNodes[id].startFrame = 0;
 	_latticeNodes[id].endFrame = ~0;
 
 	// update latest time
 	if ( latestTime < _latticeNodes[id].time )
 	  latestTime = _latticeNodes[id].time;
+      } else {
+	if (i == 0) 
+	  _startTimeMarks = false;
+	if (_startTimeMarks == true)
+	  error("Error in lattice '%s', line %d, can't have nodes both with and without time marks",
+		ifs.fileName(),ifs.lineNo());
       }
     }
   }
+  // set the object attribute from what was determined when reading
+  // the nodes, and also based on the global attribute.
+  _timeMarks = _startTimeMarks && !_ignoreLatticeNodeTimeMarks;
+
+  // Maybe this next check is not necessary, if a user has a system setup with time
+  // parents and wants to check things out quickly w/o use time, why not let them?
+  // 
+  //   if (!_timeMarks && useTimeParent())
+  //     error("Error in lattice '%s', must use time marks for lattice that requries time parent",
+  // 	  ifs.fileName());
+
 
   // make sure end node has the latest time
-  if ( _latticeNodes[_end].time < latestTime )
-    error("When reading lattice '%s', lattice end node %d has a time of %f which is not the latest found time which is %f.",ifs.fileName(),_end,_latticeNodes[_end].time,latestTime);
+  if ( _timeMarks && _latticeNodes[_end].time < latestTime )
+    error("When reading lattice '%s', lattice end node %d has a time of %f which is not the latest found time which is %f.",
+	  ifs.fileName(),
+	  _end,
+	  _latticeNodes[_end].time,
+	  latestTime);
+
 
 
   ////////////////////////////
@@ -364,7 +415,7 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab)
 
 
     // make sure the end time is later than start time
-    if ( _latticeNodes[id].time >= _latticeNodes[endNodeId].time )
+    if ( _timeMarks && _latticeNodes[id].time >= _latticeNodes[endNodeId].time )
       error("Error in lattice '%s', lattice edge %d, start node %d time (%f) should be earlier than end node %d time(%f)",
 	    ifs.fileName(),
 	    i, 
@@ -400,7 +451,7 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab)
 
   }
 
-  if ( _latticeNodes[_start].time >= _latticeNodes[_end].time )
+  if ( _timeMarks && _latticeNodes[_start].time >= _latticeNodes[_end].time )
     error("Error in lattice '%s', overall start node %d time (%f) should be earlier than end node %d time(%f)",
 	  ifs.fileName(),
 	  _start, _latticeNodes[_start].time, 

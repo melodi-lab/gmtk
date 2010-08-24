@@ -5249,3 +5249,9 @@ Mon Aug 23 22:07:53 2010
     CPT will also need to be iterable.
           - include a picture of this in the docs.
 
+Tue Aug 24 15:50:38 2010
+  - parallel, thread, thread safe
+    - take a look at use of strtok in various places. This	
+      can't be done in inference code, but it should be ok to do it during
+      reading of CPTS (such as lattices).
+
