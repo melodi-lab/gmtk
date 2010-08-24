@@ -1,0 +1,3 @@
+noinst_LIBRARIES = libmiscSupport.a
+libmiscSupport_a_SOURCES = error.h error.cc bp_range.h bp_range.cc range.h range.cc arguments.h arguments.cc logp.h logp.cc rand.h rand.cc sArray.h sArray.cc cArray.h cArray.cc general.h general.cc lineqsolve.h lineqsolve.cc debug.h debug.cc fileParser.h fileParser.cc hash_abstract.h hash_abstract.cc mul_mdmd_md.h mul_mdmd_md.c mul_mdmd_md_l0g.h mul_mdmd_md_l0g.c mul_mdmd_md_l0nf.h mul_mdmd_md_l0nf.c eig.h eig.c bin_search.h bin_search.cc lms_filter.h lms_filter.cc rls_filter.h rls_filter.cc
+libmiscSupport_a_CXXFLAGS = -g -O3 -DHAVE_NONSTANDARD_ARITHMETIC -ansi -pedantic -Wall
