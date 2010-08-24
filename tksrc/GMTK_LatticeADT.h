@@ -36,6 +36,17 @@
  */
 class LatticeADT : public NamedObject {
  public:
+
+  // set to true if the lattice nodes cpt for (node,node) use a score
+  // which is the max of the score over all edges for a given
+  // (node,node), or if it should return one. In the case of max, then
+  // the lattice edges must divide out this max, so this variable
+  // is used by both the lattice edge and lattice node cpts.
+  static bool _latticeNodeUseMaxScore;
+
+  /** frame rate **/
+  static double _defaultFrameRate;
+
   LatticeADT();
   ~LatticeADT();
 
@@ -44,6 +55,10 @@ class LatticeADT : public NamedObject {
 
   // read from GMTK master file
   void read(iDataStreamFile &is);
+  
+  // read the score options and return them encoded in an int.
+  unsigned readScoreOptions(iDataStreamFile &is);
+  void printScoreOptions(FILE* f);
 
   // this lattice is iterable
   inline bool iterable() const { return _latticeFile != NULL; }
@@ -55,7 +70,8 @@ class LatticeADT : public NamedObject {
 
   // reset the frame indices
   void resetFrameIndices(unsigned numFrames);
-  void useScore(unsigned option);
+  void setGMTKScores();
+  void printLatticeInfo(FILE*f);
 
   inline bool useTimeParent() const {
     return _timeCardinality != 0;
@@ -121,12 +137,6 @@ class LatticeADT : public NamedObject {
     ~LatticeNode(); 
   };
 
-  // set to true if the lattice nodes cpt for (node,node) use a score
-  // which is the max of the score over all edges for a given
-  // (node,node), or if it should return one. In the case of max, then
-  // the lattice edges must divide out this max, so this variable
-  // is used by both the lattice edge and lattice node cpts.
-  static bool _latticeNodeUseMaxScore;
 
   /**
    * renormalize posterior
@@ -149,13 +159,10 @@ class LatticeADT : public NamedObject {
   double _wdpenalty;
   /** acoustic model scale */
   double _acscale;
-  /** ? */
-  double _amscale;
   /** log base **/
   double _base;
 
-  /** frame rate **/
-  static double _defaultFrameRate;
+
   // frameRate is the frame rate (e.g., in units of frames per second,
   // if the time marks in the lattice are in seconds).
   double _frameRate;
@@ -179,6 +186,8 @@ class LatticeADT : public NamedObject {
   // lattice can optionally have time as parent.  In this
   // case, we need time cardinality. 0 mean no time parent.
   unsigned _timeCardinality;
+
+  unsigned score_options;
 };
 
 

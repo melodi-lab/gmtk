@@ -72,6 +72,7 @@ VCID("$Header$")
 #define GMTK_ARG_CHECK_TRI_FILE_CARD
 #define GMTK_ARG_JT_INFO_FILE
 #define GMTK_ARG_JTW_UB
+#define GMTK_ARG_LATTICE_PARAMS
 
 
 /*************************   CONTINUOUS RANDOM VARIABLE OPTIONS       *******************************************/
