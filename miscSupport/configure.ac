@@ -3,10 +3,11 @@
 
 AC_PREREQ(2.59)
 AC_INIT(GMTK, 0.0, https://lungs.ee.washington.edu/gmtk/newticket)
+: ${CXXFLAGS=""}
 AC_CONFIG_SRCDIR([adaptive_filter.h])
 AC_CONFIG_HEADER([config.h])
 
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 
 # Checks for programs.
 AC_PROG_CXX
@@ -14,6 +15,7 @@ AC_PROG_CC
 AC_PROG_RANLIB
 
 # Checks for libraries.
+#AC_CHECK_LIB([m])
 
 # Checks for header files.
 AC_FUNC_ALLOCA
