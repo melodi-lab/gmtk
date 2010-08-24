@@ -2,9 +2,10 @@
 //
 // sArray: a Simple Array class that is basically a glorified type*.
 // 
-// This class is NOT meant for protection. It is mean to have type*
-// (such as an int*, float*, double*, etc.)  and where the underlying
-// pointer is easy to access for low level loops. But this class also
+// This class is NOT meant for protection or abstraction. It is mean
+// to have type* (such as an int*, float*, double*, etc.)  and where
+// the underlying pointer is easy to access for low level loops (and
+// where a few simple ones a provided for you). But this class also
 // provides for convenient managing of lengths, allocation,
 // deallocation, and resizing. It also includes a simple sort routine
 // that will work as long as the object T has an operator<(), copy
@@ -42,7 +43,7 @@
 #include "assert.h"
 
 template <class T>
-class sArray {
+class sArray_nd {
 
   int _size;
 
@@ -84,7 +85,7 @@ class sArray {
 
   T *ptr;
 
-  sArray(int arg_size=0) {
+  sArray_nd(int arg_size=0) {
     _size = arg_size;
     ptr = NULL;
     if (_size < 0)
@@ -93,20 +94,20 @@ class sArray {
       ptr = new T[_size];
   }
 
-  ~sArray() {
-    delete [] ptr;
+  ~sArray_nd() {
+    // delete [] ptr;
   }
 
   // We don't create an operator= since we don't
   // use this array like a regular container class.
-  sArray<T>* makeCopyOfSelf()  {
+  sArray_nd<T>* makeCopyOfSelf()  {
     // makes a copy of self with duplicated memory
-    sArray<T>* cpy = new sArray<T>(_size);
+    sArray_nd<T>* cpy = new sArray_nd<T>(_size);
     ::memcpy((void*)cpy->ptr,(void*)ptr,sizeof(T)*_size);
     return cpy;
   }
 
-  void copyOtherIntoSelf(sArray<T>& other)  {
+  void copyOtherIntoSelf(sArray_nd<T>& other)  {
     delete [] ptr;
     _size  = other._size;
     ptr = new T[_size];
@@ -166,7 +167,7 @@ class sArray {
     // note that this could be a problem for objects that have
     // destructors, as this will call the destructor for the object
     // that still has live pointers. Care should be used when using an
-    // sArray for non pointer types.
+    // sArray_nd for non pointer types.
     delete [] ptr;
     _size = arg_size;
     ptr = tmp;
@@ -190,7 +191,7 @@ class sArray {
       resizeAndCopy((int)(f*arg_size+1.0));
   }
 
-  void swapPtrs(sArray<T>& sa) {
+  void swapPtrs(sArray_nd<T>& sa) {
     if (_size != sa._size)
       coredump("Error: Sarray:swapPtrs, different sizes");
     T *tmp = ptr;
@@ -199,7 +200,7 @@ class sArray {
   }
 
 
-  void swap(sArray<T>& sa) {
+  void swap(sArray_nd<T>& sa) {
     T *tmp = ptr;
     ptr = sa.ptr;
     sa.ptr = tmp;
@@ -209,7 +210,7 @@ class sArray {
   }
 
   // Append array y to the end of this one
-  void concatenate(sArray<T>& y)
+  void concatenate(sArray_nd<T>& y)
   {
     // Resize ourselves
     if (y._size <= 0)
@@ -263,21 +264,21 @@ class sArray {
   }
 
 
-  inline sArray<T>& operator += (sArray<T> &s){
+  inline sArray_nd<T>& operator += (sArray_nd<T> &s){
     assert(_size == s.len());
     for (int i=0; i<_size; i++)
       ptr[i] += s[i];
     return *this;
   }
 
-  inline sArray<T>& operator -= (sArray<T> &s){
+  inline sArray_nd<T>& operator -= (sArray_nd<T> &s){
     assert(_size == s.len());
     for (int i=0; i<_size; i++)
       ptr[i] -= s[i];
     return *this;
   }
 
-  inline sArray<T>& operator /= (const T n){
+  inline sArray_nd<T>& operator /= (const T n){
     for (int i=0; i<_size; i++)
       ptr[i] /= n;
     return *this;
@@ -285,6 +286,18 @@ class sArray {
 
 
 };
+
+
+// sArray with a destructor.
+template <class T>
+class sArray : public sArray_nd <T> {
+public:
+  sArray(int arg_size=0)  : sArray_nd<T>(arg_size) {}
+  ~sArray() {
+    delete [] sArray_nd<T>::ptr;
+  }
+}; 
+
 
 
 template<class T>
@@ -329,24 +342,6 @@ inline sArray<double> operator * (const double a, const sArray<float> &s){
   return rval;
 }
 
-
-// sArray with no destructor (nd): A version of the above class but
-// that does not have a destructor (the assumption is that users of
-// the class will call clear() when they want to reclaim
-// memory. Warning: don't use this version unless you wish to perform
-// some low-level memor management yourself (this is here to enable
-// hash tables of sArrays that can resize without double freeing, and
-// without the further added problem of one more level of
-// indirection).
-template <class T>
-class sArray_nd : public sArray <T> {
-public:
-  sArray_nd(int arg_size=0)  : sArray<T>(arg_size) {}
-  // An empty destructor, if this object gets destroyed, it is up to
-  // the user to free the allocated memory. This can be done using
-  // this->clear() before calling the destructor.
-  ~sArray_nd() {}
-}; 
 
 
 #endif
