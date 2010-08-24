@@ -114,10 +114,10 @@ main()
 	 tmp3.unlog(),
 	 tmp4.unlog());
 
-  printf("sizeof(logp<float,float>) = %d\n",sizeof(logp<float,float>));
-  printf("sizeof(logp<double,float>) = %d\n",sizeof(logp<double,float>));
-  printf("sizeof(logp<float,double>) = %d\n",sizeof(logp<float,double>));
-  printf("sizeof(logp<double,double>) = %d\n",sizeof(logp<double,double>));
+  printf("sizeof(logp<float,float>) = %lu\n",sizeof(logp<float,float>));
+  printf("sizeof(logp<double,float>) = %lu\n",sizeof(logp<double,float>));
+  printf("sizeof(logp<float,double>) = %lu\n",sizeof(logp<float,double>));
+  printf("sizeof(logp<double,double>) = %lu\n",sizeof(logp<double,double>));
 
 
   foo(tmp,tmp);
