@@ -81,7 +81,7 @@ VCID("$Header$")
 #define GMTK_ARG_JT_INFO_FILE
 #define GMTK_ARG_JT_INFO_FILE_DEF_VAL NULL
 #define GMTK_ARG_JTW_UB
-
+#define GMTK_ARG_LATTICE_PARAMS
 
 /*************************   CONTINUOUS RANDOM VARIABLE OPTIONS       *******************************************/
 #define GMTK_ARG_VAR_FLOOR

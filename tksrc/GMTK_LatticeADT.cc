@@ -61,7 +61,7 @@ LatticeADT::LatticeADT()
   : _latticeNodes(NULL), _numberOfNodes(0),
     _numberOfLinks(0), _start(0), _end(0),
     _lmscale(0), _wdpenalty(0), _acscale(1.0),
-    _amscale(0), _base(0), 
+    _base(0), 
     // we initialize frame rate with the absolute value as that gets
     // the case either that it was done on the command line (and thus
     // positive) or done via the default value above (and thus
@@ -69,7 +69,7 @@ LatticeADT::LatticeADT()
     _frameRate(fabs(_defaultFrameRate)), 
     _frameRelax(0),
     _latticeFile(NULL), _numLattices(0), _curNum(0),
-    _nodeCardinality(0), _wordCardinality(0), _timeCardinality(0) {
+    _nodeCardinality(0), _wordCardinality(0), _timeCardinality(0), score_options(0) {
 }
 
 
@@ -105,13 +105,18 @@ LatticeADT::LatticeNode::~LatticeNode() {
   // We need to do an iterator through the hash table and free up any
   // memory for used cells.
   shash_map_iter<unsigned, LatticeEdgeList>::iterator it;
-  edges.begin(it);
-  do {
-   LatticeEdgeList& cur_list = (*it);
-   // need to clear this explicitl since we're using an sArray_sd,
-   // which does no have its own destructor.
-   cur_list.edge_array.clear();
-  } while ( it.next() );
+  if (edges.begin(it)) {
+    // unsigned i=0;
+    do {
+      LatticeEdgeList& cur_list = (*it);
+      // need to clear this explicitl since we're using an sArray_sd,
+      // which does no have its own destructor.
+      //       printf("clearning edge array %d, size = %d, ptr = 0x%X\n",i++,
+      // 	     cur_list.edge_array.size(),
+      // 	     (unsigned)cur_list.edge_array.ptr);
+      cur_list.edge_array.clear();
+    } while ( it.next() );
+  }
 
 }
 
@@ -166,16 +171,12 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab)
       // parse log base
       ptr = strchr(s_tmp, '=');
       _base = atof(++ptr);
-    } else if ( strstr(s_tmp, "acscale") != NULL ) {
-      // parse acoustic likelyhood scale
-      ptr = strchr(s_tmp, '=');
-      _amscale = atof(++ptr);
     } else if ( strstr(s_tmp, "START=") != NULL || strstr(s_tmp, "start=") != NULL ) {
       // parse start node id
       ptr = strchr(s_tmp, '=');
       _start = (unsigned)atoi(++ptr);
     } else if ( strstr(s_tmp, "END=") != NULL || strstr(s_tmp, "end=") != NULL ) {
-      // parse start node id
+      // parse end node id
       ptr = strchr(s_tmp, '=');
       _end = (unsigned)atoi(++ptr);
     } else if ( (strstr(s_tmp, "N=") != NULL ) || (strstr(s_tmp, "NODES=") != NULL )) {
@@ -409,6 +410,93 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab)
 }
 
 
+// Binary encodings of score options.
+// 
+// 0x1 AC
+// 0x2 AC with ACScale applied
+// 
+// 0x4 LM
+// 0x8 LM with LMScale applied
+// 
+// 0x10 also apply WDPenalty
+// 
+// 0x20 use posterior, overides all other options which are not used in this case.
+// 
+#define LADT_SCORE_OPTION_AC 0x1
+#define LADT_SCORE_OPTION_ACSCALE 0x2
+#define LADT_SCORE_OPTION_LM 0x4
+#define LADT_SCORE_OPTION_LMSCALE 0x8
+#define LADT_SCORE_OPTION_WDPENALTY 0x10
+#define LADT_SCORE_OPTION_POSTERIOR 0x20
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * LatticeADT::read(ifs)
+ *     read the score options from the lattice object 
+ *
+ * Results:
+ *     encoding of the score options in an uint
+ *
+ *-----------------------------------------------------------------------
+ */
+unsigned LatticeADT::readScoreOptions(iDataStreamFile &is) 
+{
+
+  // There are a number of different scores in a lattice, and the user
+  // specifies which scores to use and how to combine them. We have
+  // a binary string that specifies the options for choosing scores.
+  //    Words to know:
+  //        AC = acoustic likelyhood of a lattice link
+  //        ACScale = a scale of the acoustic likelihood
+  //        LM = language model (ngram) likelihood of a link
+  //        LMScale = scale fo rthe language model
+  //        WDPenalty = word penalty to use
+  //        Posterior = the posterior probability of the link (this typically comes from fwrd,bckwrd).
+  //
+  // In general, see the HTK book for more documentation. 
+  // 
+  // 0x1 AC
+  // 0x2 AC with ACScale applied
+  // 
+  // 0x4 LM
+  // 0x8 LM with LMScale applied
+  // 
+  // 0x10 also apply WDPenalty
+  // 
+  // 0x20 use posterior, overides all other options which are not used in this case.
+  // 
+  unsigned score_options = 0;
+  string trigger = "UseScore";
+  if ( is.readIfMatch(trigger, "reading score options") ) {
+    char *str = new char[1024];
+    is.read(str, "reading score options");
+    if ( strcmp(str, "Posterior") == 0 ) {
+      score_options = LADT_SCORE_OPTION_POSTERIOR;
+    } else {
+      char *tok = strtok(str, "+");
+      while ( tok != NULL ) {
+	if ( strcmp(tok, "AC") == 0 ) {
+	  score_options |= LADT_SCORE_OPTION_AC;
+	} else if ( strcmp(tok, "ACScale") == 0 ) {
+	  score_options |= LADT_SCORE_OPTION_ACSCALE;
+	} else if ( strcmp(tok, "LM") == 0 ) {
+	  score_options |= LADT_SCORE_OPTION_LM;
+	} else if ( strcmp(tok, "LMScale") == 0 ) {
+	  score_options |= LADT_SCORE_OPTION_LMSCALE;
+	} else if ( strcmp(tok, "WDPenalty") == 0 ) {
+	  score_options |= LADT_SCORE_OPTION_WDPENALTY;
+	} else
+	  error("Error: reading file '%s' line '%d', unknown score option '%s'", is.fileName(), is.lineNo(), tok);
+	tok = strtok(NULL, "+");
+      }
+    }
+    delete [] str;
+  }
+  return score_options;
+}
+
+
 /*-
  *-----------------------------------------------------------------------
  * LatticeADT::read(ifs)
@@ -430,8 +518,11 @@ void LatticeADT::read(iDataStreamFile &is) {
   // read in node cardinality or lattice list filename
   is.read(_latticeFileName, "Can't read lattice file or number of fetures");
 
-  // if lattice file name is a string, then it is a list of lattices
+  // if next field is a string, then it is a list of lattices, and if
+  // it is an int, then it is the node cardinality.
   if ( ! strIsInt(_latticeFileName.c_str(), (int*)&_nodeCardinality) ) {
+    // then the GMTK object is saying this should be an iterable
+    // lattice. First check if it is already iterable (which would be an error).[q
     if ( iterable() )
       error("ERROR: in lattices named '%s' in file '%s' line %d, can't have lattices defined recursively in files", name().c_str(),is.fileName(),is.lineNo());
 
@@ -473,50 +564,8 @@ void LatticeADT::read(iDataStreamFile &is) {
 
     _wordCardinality = vocab->size();
 
-    // read in options for choosing scores
-    // 0x0,0x3 no AC
-    // 0x1 AC
-    // 0x2 ACScale
-    // 0x0,0x3 (<<2) no LM
-    // 0x1 (<<2) LM
-    // 0x2 (<<2) LMScale
-    // 0x0 (<<4) no WDPenalty
-    // 0x1 (<<4) WDPenalty
-    // 0x0 (<<5) no posterior
-    // 0x1 (<<5) posterior
-    // note: if posterior is used, all the others are disabled
-    unsigned option = 0;
-    string trigger = "UseScore";
-    if ( is.readIfMatch(trigger, "reading score options") ) {
-      char *str = new char[1024];
-      is.read(str, "reading score options");
-      if ( strcmp(str, "Posterior") == 0 ) {
-	option = 0x1u << 5;
-      } else {
-	char *tok = strtok(str, "+");
-	while ( tok != NULL ) {
-	  if ( strcmp(tok, "AC") == 0 ) {
-	    option &= ~0x3;
-	    option |= 0x1;
-	  } else if ( strcmp(tok, "ACScale") == 0 ) {
-	    option &= ~0x3;
-	    option |= 0x2;
-	  } else if ( strcmp(tok, "LM") == 0 ) {
-	    option &= ~0xc;
-	    option |= 0x4;
-	  } else if ( strcmp(tok, "LMScale") == 0 ) {
-	    option &= ~0xc;
-	    option |= 0x8;
-	  } else if ( strcmp(tok, "WDPenalty") == 0 ) {
-	    option |= 0x10;
-	  } else
-	    error("Error: reading file '%s' line '%d', unknown score option '%s'", is.fileName(), is.lineNo(), tok);
-	  tok = strtok(NULL, "+");
-	}
-      }
-      delete [] str;
-    }
-    useScore(option);
+    score_options = readScoreOptions(is);
+    setGMTKScores();
 
     // read in frame relaxation
     is.read(_frameRelax, "Can't read lattice frame relaxation");
@@ -683,53 +732,8 @@ void LatticeADT::nextIterableLattice()
   _wordCardinality = vocab->size();
   delete [] latticeFile;
 
-  // read in options for choosing scores
-  // 0x0,0x3 no AC
-  // 0x1 AC
-  // 0x2 ACScale
-  // 0x0,0x3 (<<2) no LM
-  // 0x1 (<<2) LM
-  // 0x2 (<<2) LMScale
-  // 0x0 (<<4) no WDPenalty
-  // 0x1 (<<4) WDPenalty
-  // 0x0 (<<5) no posterior
-  // 0x1 (<<5) posterior
-  // note: if posterior is used, all the others are disabled
-  unsigned option = 0;
-  string trigger = "UseScore";
-  if ( _latticeFile->readIfMatch(trigger, "reading score options") ) {
-    char* str = NULL;
-    // note, read will allocate the string, but we need to free it below.
-    // since this is called only once, not too bad to allocate and delete here.
-    _latticeFile->read(str, "reading score options");
-
-    if ( strcmp(str, "Posterior") == 0 ) {
-      option = 0x1u << 5;
-    } else {
-      char *tok = strtok(str, "+");
-      while ( tok != NULL ) {
-	if ( strcmp(tok, "AC") == 0 ) {
-	  option &= ~0x3;
-	  option |= 0x1;
-	} else if ( strcmp(tok, "ACScale") == 0 ) {
-	  option &= ~0x3;
-	  option |= 0x2;
-	} else if ( strcmp(tok, "LM") == 0 ) {
-	  option &= ~0xc;
-	  option |= 0x4;
-	} else if ( strcmp(tok, "LMScale") == 0 ) {
-	  option &= ~0xc;
-	  option |= 0x8;
-	} else if ( strcmp(tok, "WDPenalty") == 0 ) {
-	  option |= 0x10;
-	} else
-	  error("Error: reading file '%s' line '%d', unknown score option '%s'", _latticeFile->fileName(), _latticeFile->lineNo(), tok);
-	tok = strtok(NULL, "+");
-      }
-    }
-    free(str);
-  }
-  useScore(option);
+  score_options = readScoreOptions(*_latticeFile);
+  setGMTKScores();
 
   // read in frame relaxation
   _latticeFile->read(_frameRelax, "Can't read lattice frame relaxation");
@@ -739,8 +743,9 @@ void LatticeADT::nextIterableLattice()
 /*-
  *-----------------------------------------------------------------------
  * LatticeADT::resetFrameIndices(lastFrameId)
- *     reset all frame indices when global observation matrix is loaded
- *     into memory.  This is a simple linear warping.
+ *     reset all frame indices based on the current global observation matrix.
+ *     This is either a simple linear warping (frames/time) or based on 
+ *     a given frame rate.
  *
  * Results:
  *     no results:
@@ -772,17 +777,23 @@ void LatticeADT::resetFrameIndices(unsigned numFrames) {
 
   // special treatment for end
   _latticeNodes[_end].startFrame = _latticeNodes[_end].endFrame = lastFrameId;
+
+
+  if (IM::messageGlb(IM::Mega)) {
+    printLatticeInfo(stdout);
+  }
+
 }
 
 
 /*-
  *-----------------------------------------------------------------------
- * LatticeADT::useScore
- *     use difference score options
- *     refer read for what option means
+ * LatticeADT::setGMTKScores
+ *     set the scores that GMTK is to use from the lattice.
+ *     See above for what the encodings into score_options.
  *-----------------------------------------------------------------------
  */
-void LatticeADT::useScore(unsigned option) 
+void LatticeADT::setGMTKScores()
 {
 
   for ( unsigned i = 0; i < _numberOfNodes; ++i ) {
@@ -796,46 +807,51 @@ void LatticeADT::useScore(unsigned option)
 	for (unsigned edge_ctr=0;edge_ctr < edge_list.num_edges; edge_ctr ++ ) {
 	  LatticeEdge &edge = edge_list.edge_array[edge_ctr];
 
-	  // score of the edge in ln value
+	  // the final score of the edge in ln value that GMTK will
+	  // use. This is a log score, so our initial score is unity
+	  // (log(unity) = 0). This means that the lattice is only
+	  // used as a sequencer that does nothing other than provide
+	  // valid values, and does not produce any score.
 	  double score = 0;
 
-	  if ( option & (0x1u<<5) ) {
-	    // use only posterior
+	  if ( score_options & LADT_SCORE_OPTION_POSTERIOR ) {
+	    // use only posterior, ignore all the other scores.
 	    score = edge.posterior.val();
 	  } else {
+
+	    bool assigned = false;
 	    // do we use AC score?
-	    unsigned x = option & 0x3;
-	    switch ( x ) {
-	    case 1:	// AM score only
+	    if (score_options & LADT_SCORE_OPTION_AC) {
+	      // AC score only
 	      score = edge.ac_score.val();
-	      break;
-	    case 2: // AM^a
+	      assigned = true;
+	    } else if (score_options & LADT_SCORE_OPTION_ACSCALE) {
+	      // ac^acscale
 	      score = edge.ac_score.val() * _acscale;
-	      break;
-	    default: // no AM score
-	      break;
+	      assigned = true;
 	    }
 
-	    // do we use LM score?
-	    x = (option >> 2) & 0x3;
-	    switch ( x ) {
-	    case 1: // LM score only
-	      score += edge.lm_score.val();
-	      break;
-	    case 2: // LM^b
-	      score += edge.lm_score.val() * _lmscale;
-	      break;
-	    default: // no LM score
-	      break;
+	    if (score_options & LADT_SCORE_OPTION_LMSCALE) {
+	      if (assigned) 
+		score += edge.lm_score.val();
+	      else 
+		score = edge.lm_score.val();
+	      assigned = true;
+	    } else if (score_options & LADT_SCORE_OPTION_LM) {
+	      if (assigned)
+		score += edge.lm_score.val() * _lmscale;
+	      else
+		score = edge.lm_score.val() * _lmscale;
+	      assigned = true;
 	    }
-
+	    
 	    // do we use insertion penalty?
-	    // Amar: there  a bug in the next line w.r.t not multiplying by 
-	    // by log(_base) and it has now been fixed. 
-
-
-	    if ( option & 0x10 )
-	      score += log(_base)*_wdpenalty;
+	    if ( score_options & 0x10 ) {
+	      if (assigned)
+		score += log(_base)*_wdpenalty;
+	      else
+		score = log(_base)*_wdpenalty;
+	    }
 	  }
 
 	  // check whether the score is too small that will have zero
@@ -854,45 +870,96 @@ void LatticeADT::useScore(unsigned option)
 	    LatticeEdge &edge = edge_list.edge_array[edge_ctr];
 	    edge.gmtk_score = edge.gmtk_score / edge_list.max_gmtk_score;
 	  }
+	} else {
+	  // need to reset the max scores to 1 so that they are
+	  // effectively not used.
+	  edge_list.max_gmtk_score.set_to_one();
 	}
       } while ( it.next() );
     }
   }
+}
 
 
-  if (IM::messageGlb(IM::Max)) {
-      // print the lattice for debugging reasons. Note that this will
-      // be quite a bit of output, so we only do this at maximum
-      // debugging levels.
-      printf("------------------\n");
-      printf("--- Printing Lattice Information ---\n");
-      printf("acscale=%f, amscale=%f, lmscale=%f\n", _acscale, _amscale, _lmscale);
-      printf("starting %d and end %d\n", _start, _end);
-      printf("total number of lattice nodes = %d\n",_numberOfNodes);
-      for ( unsigned i = 0; i < _numberOfNodes; i++ ) {
-	printf("node %d at frame (%u,%u):\n", i, 
-	       _latticeNodes[i].startFrame, _latticeNodes[i].endFrame);
-	printf("\tNumber of outgoing adjacent nodes = %d\n",
-	       _latticeNodes[i].edges.totalNumberEntries());
+void LatticeADT::printScoreOptions(FILE* f)
+{
+  // print the current score options 
+  fprintf(f,"Score options:");
+  if (score_options & LADT_SCORE_OPTION_POSTERIOR)
+    fprintf(f," posterior");
+  else {
+    bool do_plus = false;
+    if (score_options & LADT_SCORE_OPTION_ACSCALE) {
+      fprintf(f," ac^acscale");
+      do_plus = true;
+    } else if (score_options & LADT_SCORE_OPTION_AC) {
+      fprintf(f," ac");
+      do_plus = true;
+    }
 
-	if ( _latticeNodes[i].edges.totalNumberEntries() > 0 ) {
-	  shash_map_iter<unsigned, LatticeEdgeList>::iterator it;
-	  _latticeNodes[i].edges.begin(it);
-	  do {
-	    LatticeEdgeList &edge_list = (*it);
-	    printf("\tOutgoing node %u, %d edges\n",it.key(),edge_list.num_edges);
-	    for (unsigned edge_ctr=0;edge_ctr < edge_list.num_edges; edge_ctr ++ ) {
-	      LatticeEdge &edge = edge_list.edge_array[edge_ctr];
-	      printf("\tto %u, w=%d, ac=%f, lm=%f, p=%f, t=%f gmtk=%f\n", 
-		     it.key(), 
-		     edge.emissionId, edge.ac_score.val(), edge.lm_score.val(), 
-		     edge.posterior.val(), _latticeNodes[it.key()].time, edge.gmtk_score.val());
-	    }
-	  } while ( it.next() );
-	}
-      }
-      printf("--- Done Printing Lattice Information ---\n");
+    if (score_options & LADT_SCORE_OPTION_LMSCALE) {
+      if (do_plus)
+	fprintf(f," +");
+      fprintf(f," lm^lmscale");
+      do_plus = true;
+    } else if (score_options & LADT_SCORE_OPTION_LM) {
+      if (do_plus)
+	fprintf(f," +");
+      fprintf(f," lm");
+      do_plus = true;
+    }
+    if ( score_options & 0x10 ) {
+      if (do_plus)
+	fprintf(f," +");
+      fprintf(f," wdpenalty");
+    }
   }
+  fprintf(f,"\n");
+}
+
+
+void LatticeADT::printLatticeInfo(FILE *f) 
+{
+  // print the lattice for debugging reasons. Note that this will
+  // be quite a bit of output, so we only do this at maximum
+  // debugging levels.
+  fprintf(f,"------------------\n");
+  fprintf(f,"--- Printing Lattice Information ---\n");
+  fprintf(f,"default frame rate = %f, frame rate = %f, max score use = %d\n",
+	  _defaultFrameRate,_frameRate,_latticeNodeUseMaxScore);
+  fprintf(f,"acscale=%f, lmscale=%f\n", _acscale, _lmscale);
+  printScoreOptions(f);
+  fprintf(f,"node start %d and end %d\n", _start, _end);
+  fprintf(f,"total: # lattice nodes = %d, # lattice links = %d\n",_numberOfNodes,_numberOfLinks);
+  for ( unsigned i = 0; i < _numberOfNodes; i++ ) {
+    fprintf(f,"node %d at (start_frame,end_frame)= (%u,%u):\n", 
+	    i, 
+	   _latticeNodes[i].startFrame, _latticeNodes[i].endFrame);
+    fprintf(f,"\tNumber of outgoing adjacent nodes = %d\n",
+	   _latticeNodes[i].edges.totalNumberEntries());
+
+    if ( _latticeNodes[i].edges.totalNumberEntries() > 0 ) {
+      shash_map_iter<unsigned, LatticeEdgeList>::iterator it;
+      bool res = _latticeNodes[i].edges.begin(it);
+      assert ( res ); // there has to be at least one edge.
+      do {
+	LatticeEdgeList &edge_list = (*it);
+	fprintf(f,"\tOutgoing node %u, %d edge(s), node pair (%d,%d) gmtk score = %f\n",
+		it.key(),
+		edge_list.num_edges,
+		i,it.key(),
+		edge_list.max_gmtk_score.val());
+	for (unsigned edge_ctr=0;edge_ctr < edge_list.num_edges; edge_ctr ++ ) {
+	  LatticeEdge &edge = edge_list.edge_array[edge_ctr];
+	  fprintf(f,"\t-- to %u, w=%d, ac=%f, lm=%f, p=%f, t=%f gmtk score=%f\n", 
+		 it.key(), 
+		 edge.emissionId, edge.ac_score.val(), edge.lm_score.val(), 
+		 edge.posterior.val(), _latticeNodes[it.key()].time, edge.gmtk_score.val());
+	}
+      } while ( it.next() );
+    }
+  }
+  fprintf(f,"--- Done Printing Lattice Information ---\n");
 }
 
 
