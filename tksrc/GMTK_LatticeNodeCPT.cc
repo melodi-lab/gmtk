@@ -70,19 +70,145 @@ LatticeNodeCPT::~LatticeNodeCPT() {
  */
 logpr LatticeNodeCPT::probGivenParents(vector< RV* >& parents, DiscRV* drv)
 {
-  LatticeADT::LatticeEdgeList* outEdges
-    = _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].edges.find(drv->val);
+  logpr rc;
+  if ( _latticeAdt->useTimeParent() ) {
+    // see below for documentation.
 
-  if ( outEdges == NULL )
-    return logpr(0.0);
-  else {
-    if (LatticeADT::_latticeNodeUseMaxScore) {
-      return outEdges->max_gmtk_score;
+    unsigned lat_time = 
+      (unsigned)round(_latticeAdt->_frameRate * 
+		      _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].time
+		      );
+
+    // case on the current time.
+    // Same as no time parent case, we also allow some relaxation
+    // of time.
+    if (_latticeAdt->_timeMarks && RV2DRV(parents[2])->val < lat_time - _latticeAdt->_frameRelax ) {
+      // then the current time is less than the previous lattice node.
+      if ( RV2DRV(parents[1])->val ) {
+	// a (word) transition is being hypothesized, but we do not allow it. Give it a
+	// zero probability.
+	rc.set_to_zero();
+      } else {
+	// a (word) transition is not being hypothesized, so
+	// we copy the previous lattice node's value (from previous frame) to drv.
+	if (drv->val == RV2DRV(parents[0])->val)
+	  rc.set_to_one();
+	else 
+	  rc.set_to_zero();
+      }
+    } else if (_latticeAdt->_timeMarks && RV2DRV(parents[2])->val > lat_time + _latticeAdt->_frameRelax ) {
+      // Then, the current time (i.e., parent[2]'s time value) is
+      // already ahead (i.e., after, later) of when a transition for
+      // the previous lattice node value may occur. We also want to
+      // force this not to happen by setting prob to zero. While
+      // you might think this might be valid, only allow jumping
+      // from the prevous lattice node when the time is exactly
+      // equal to the previous lattice nodes.
+      rc.set_to_zero();
     } else {
-      return logpr(1.0);
+      // In range for one reason or another.
+
+      // (RV2DRV(parents[2])->val == lat_time), which means that the
+      // current time is right at (or in the range of) the point that
+      // we allow the previous lattice node to jump to the next set of
+      // possible lattice nodes.
+
+      // Next, we check that the 'transition' variable (word
+      // transition in the 2006 paper) is set, and it is stored in
+      // parent[1]. Note we assume that parent[1] is a binary
+      // variable, and use its value as a boolean int.
+      if ( RV2DRV(parents[1])->val ) {
+	// Then a transition is being asked for.
+
+	// iterate next lattice nodes find the out going edge
+	LatticeADT::LatticeNode &node = _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val];
+
+	// if the lattice node is the end, return prob zero
+	if ( node.edges.totalNumberEntries() == 0 ) {
+	  rc.set_to_zero();
+	} else {
+	  LatticeADT::LatticeEdgeList* outEdges
+	    = _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].edges.find(drv->val);
+	  if ( outEdges == NULL )
+	    rc.set_to_zero();
+	  else {
+	    if (LatticeADT::_latticeNodeUseMaxScore) {
+	      rc = outEdges->max_gmtk_score;
+	    } else {
+	      rc.set_to_one();
+	    }
+	  }
+	}
+      } else {
+	// No word transition is being asked for, so we copy the value
+	// value from the parent lattice node to the child node in
+	// accordance with the event that no transition occurs.
+
+	if (drv->val == RV2DRV(parents[0])->val)
+	  rc.set_to_one();
+	else 
+	  rc.set_to_zero();
+      }
+    }
+  } else {
+    // In this case, we are not using the time parent, and we assume
+    // that the time value comes from 'drv'.
+
+    // Note: we don't adjust for frame relax here as that's already
+    // been done in LatticeADT::resetFrameIndices(unsigned numFrames).
+
+    // case on the current frame index
+    if ( _latticeAdt->_timeMarks && drv->frame() < _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].startFrame ) {
+      if ( RV2DRV(parents[1])->val ) {
+	// a (word) transition is being hypothesized, but we do not allow it. Give it a
+	// zero probability.
+	rc.set_to_zero();
+      } else {
+	// a (word) transition is not being hypothesized, so
+	// we copy the previous lattice node's value (from previous frame) to drv.
+	if (drv->val == RV2DRV(parents[0])->val)
+	  rc.set_to_one();
+	else
+	  rc.set_to_zero();
+      }
+    } else if ( _latticeAdt->_timeMarks && drv->frame() > _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].endFrame ) {
+      // we force this cannot happen by setting prob to zero
+      rc.set_to_zero();
+    } else {
+      // in range.
+
+      if ( RV2DRV(parents[1])->val ) {
+	// find the out going edge
+	LatticeADT::LatticeNode &node = _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val];
+	// if the lattice node is the end, return prob zero
+	if ( node.edges.totalNumberEntries() == 0 ) {
+	  rc.set_to_zero();
+	} else {
+	  LatticeADT::LatticeEdgeList* outEdges
+	    = _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].edges.find(drv->val);
+	  if ( outEdges == NULL )
+	    rc.set_to_zero();
+	  else {
+	    if (LatticeADT::_latticeNodeUseMaxScore) {
+	      rc = outEdges->max_gmtk_score;
+	    } else {
+	      rc.set_to_one();
+	    }
+	  }
+	}
+      } else {
+	// No word transition is being asked for, so we score a copy
+	// of the value value from the parent lattice node to the
+	// child node in accordance with the event that no
+	// transition occurs.
+	if (drv->val == RV2DRV(parents[0])->val)
+	  rc.set_to_one();
+	else 
+	  rc.set_to_zero();
+      }
     }
   }
-
+  return rc;
 }
 
 
@@ -131,7 +257,9 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
 
   if ( _latticeAdt->useTimeParent() )
   {
-    // use time parent to check time
+    // use time parent to check time. In this case,
+    // _ignoreLatticeNodeTimeMarks has no effect.
+
 
     // Since we're using a time parent, the number of frames in the
     // observation file does not indicate the number of true frames of
@@ -139,6 +267,7 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
     // the node time relaxation inline in the below.  See
     // LatticeADT::resetFrameIndices(unsigned numFrames) for the case
     // of when this adjustment is done without a time parent.
+
 
     // First, compute lat_time, the time of the previous lattice node
     // rounded to the closest frame. parent[0] contains the value of
@@ -153,7 +282,7 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
     // case on the current time.
     // Same as no time parent case, we also allow some relaxation
     // of time.
-    if ( RV2DRV(parents[2])->val < lat_time - _latticeAdt->_frameRelax ) {
+    if (_latticeAdt->_timeMarks && RV2DRV(parents[2])->val < lat_time - _latticeAdt->_frameRelax ) {
       // then the current time is less than the previous lattice node.
       if ( RV2DRV(parents[1])->val ) {
 	// a (word) transition is being hypothesized, but we do not allow it. Give it a
@@ -167,7 +296,7 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
 	drv->val = RV2DRV(parents[0])->val;
 	p.set_to_one();
       }
-    } else if ( RV2DRV(parents[2])->val > lat_time + _latticeAdt->_frameRelax ) {
+    } else if (_latticeAdt->_timeMarks && RV2DRV(parents[2])->val > lat_time + _latticeAdt->_frameRelax ) {
       // Then, the current time (i.e., parent[2]'s time value) is
       // already ahead (i.e., after, later) of when a transition for
       // the previous lattice node value may occur. We also want to
@@ -179,7 +308,7 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
       it.internalStatePtr = NULL;
       p.set_to_zero();
     } else {
-      // in range.
+      // In range for one reason or another.
 
       // (RV2DRV(parents[2])->val == lat_time), which means that the
       // current time is right at (or in the range of) the point that
@@ -244,7 +373,7 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
     // been done in LatticeADT::resetFrameIndices(unsigned numFrames).
 
     // case on the current frame index
-    if ( drv->frame() < _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].startFrame ) {
+    if ( _latticeAdt->_timeMarks && drv->frame() < _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].startFrame ) {
       if ( RV2DRV(parents[1])->val ) {
 	// a (word) transition is being hypothesized, but we do not allow it. Give it a
 	// zero probability.
@@ -257,7 +386,7 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
         drv->val = RV2DRV(parents[0])->val;
         p.set_to_one();
       }
-    } else if ( drv->frame() > _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].endFrame ) {
+    } else if ( _latticeAdt->_timeMarks && drv->frame() > _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].endFrame ) {
       // we force this cannot happen by setting prob to zero
       it.internalStatePtr = NULL;
       p.set_to_zero();

@@ -47,6 +47,10 @@ class LatticeADT : public NamedObject {
   /** frame rate **/
   static double _defaultFrameRate;
 
+  /** do we ignore time information in all lattices */
+  static bool _ignoreLatticeNodeTimeMarks;
+
+
   LatticeADT();
   ~LatticeADT();
 
@@ -145,6 +149,8 @@ class LatticeADT : public NamedObject {
 
   /** lattice nodes */
   LatticeNode *_latticeNodes;
+  /* are there node time marks in this lattice */
+  bool _timeMarks;
   /** number of nodes in lattice this should be smaller than node cardinality */
   unsigned _numberOfNodes;
   /** number of links in lattice */

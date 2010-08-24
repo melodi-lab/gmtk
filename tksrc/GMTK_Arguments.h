@@ -2134,6 +2134,7 @@ static char *loadCmdFile = NULL;
 
   Arg("latticeDefaultFrameRate",Arg::Opt,LatticeADT::_defaultFrameRate,"Lattice, default frame rate (if negative, compute from file)"),
   Arg("latticeUseMaxScore",Arg::Opt,LatticeADT::_latticeNodeUseMaxScore,"Lattice, use max edge score for node CPT"),
+  Arg("latticeIgnoreNodeTimeMarks",Arg::Opt,LatticeADT::_ignoreLatticeNodeTimeMarks,"Lattice, ignore lattice node time marks in all lattices"),
 
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
