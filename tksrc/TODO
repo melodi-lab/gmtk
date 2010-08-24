@@ -5239,7 +5239,13 @@ Wed Jul 21 13:35:00 2010
     an option to gmtkTriangulate (but hopefully won't modify the trifile 
     format).
 
+Mon Aug 23 22:07:53 2010
+  - for DOCS: in a latticeCPT, what happens if the number of observations runs out
+    before we get to the end of the lattice? In such case, it is still
+    possible to get a non-zero score, even though we have not fully decoded
+    the lattice. In such case, an extra virtual child (=1) needs to be
+    included in the epilogue that insists that we make a transition out of
+    the last node of the current lattice. For iterable lattices, this
+    CPT will also need to be iterable.
+          - include a picture of this in the docs.
 
-
-
-     
