@@ -151,7 +151,7 @@ public:
   // log addition: Return sum x + y on log scale, 
   // sum < LSMALL is floored to LZERO
   friend inline 
-    logp<FT,iFT> operator+(logp<FT,iFT> x, logp<FT,iFT> y) {
+  logp<FT,iFT> operator+(logp<FT,iFT> x, logp<FT,iFT> y) {
     if (x.v<y.v) {
       FT temp = x.v; x.v = y.v; y.v = temp;
     }

@@ -267,8 +267,13 @@ public:
     isDeterministic = false;
     for (unsigned i=0;i<discImplementations.size();i++) {
       if ((discImplementations[i] != CPT::di_MTCPT) 
-	  &&
-	  (discImplementations[i] != CPT::di_LatticeEdgeCPT))
+	  // this is no longer deterministic, eventually remove comment. Once
+	  // we add other cpt types (such as hash CPT, we'll have other
+	  // deterministic categories as well, but perhaps the CPT should
+	  // tell us, rather than we specifying it here explicitly).
+	  // &&
+	  // (discImplementations[i] != CPT::di_LatticeEdgeCPT)
+	  )
 	return false; 
     }
     isDeterministic = true;

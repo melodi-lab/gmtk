@@ -3,7 +3,8 @@
  *
  *   General data structure for a scalar-based hash-table
  *   implementation of a map. Each element of the map has a scalar
- *   key. This hash map one has an iterator.
+ *   key. This hash map one has an iterator. Acutally, this object
+ *   should probably be called shash_map_witer (With Iter).
  *
  * Written by Gang Ji <gang@ee.washington.edu>
  * Mods by <bilmes@ee.washington.edu>

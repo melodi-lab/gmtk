@@ -1,7 +1,7 @@
 /*-
  * GMTK_LatticeADT.cc
  *
- *  Written by Gang Ji <gang@ee.washington.edu>
+ *  Written by Gang Ji <gang@ee.washington.edu> and Jeff Bilmes <bilmes@uw.edu>
  * 
  *  $Header$
  * 
@@ -29,6 +29,25 @@
 #include "error.h"
 
 
+// The default frame rate for lattices. This is needed in order to
+// calculate the actual GMTK frame that corresponds to the time that
+// is marked for each lattice node. We use a negative value to
+// indicate that the value has not been specified on the command line,
+// which is necessary in some case. The actual value used is
+// abs(_defaultFrameRate).
+double LatticeADT::_defaultFrameRate = -100.0;
+// cases:
+//  time parent
+//    - default frame rate (100).
+//    - should allow frame rate to be user specifialbe on command line.
+//  no time parent
+//    - calculate frame rate (local to lattice) as done now (numframes/(end-start)).
+//    - user supplied frame rate (on command line)
+
+
+bool LatticeADT::_latticeNodeUseMaxScore = true;
+
+
 /*-
  *-----------------------------------------------------------------------
  * LatticeADT::LatticeADT(ifs, vocab)
@@ -42,7 +61,13 @@ LatticeADT::LatticeADT()
   : _latticeNodes(NULL), _numberOfNodes(0),
     _numberOfLinks(0), _start(0), _end(0),
     _lmscale(0), _wdpenalty(0), _acscale(1.0),
-    _amscale(0), _base(0), _frameRelax(0),
+    _amscale(0), _base(0), 
+    // we initialize frame rate with the absolute value as that gets
+    // the case either that it was done on the command line (and thus
+    // positive) or done via the default value above (and thus
+    // negative).
+    _frameRate(fabs(_defaultFrameRate)), 
+    _frameRelax(0),
     _latticeFile(NULL), _numLattices(0), _curNum(0),
     _nodeCardinality(0), _wordCardinality(0), _timeCardinality(0) {
 }
@@ -50,7 +75,7 @@ LatticeADT::LatticeADT()
 
 /*-
  *-----------------------------------------------------------------------
- * LatticeADT::~LatticeADT(ifs, vocab)
+ * LatticeADT::~LatticeADT()
  *     default destructor
  *
  * Results:
@@ -62,6 +87,32 @@ LatticeADT::~LatticeADT() {
     delete [] _latticeNodes;
   if ( _latticeFile )
     delete _latticeFile;
+  
+
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * LatticeADT::LaticeNode::~LatticeNode();
+ *     default destructor
+ *
+ * Results:
+ *     no results:
+ *-----------------------------------------------------------------------
+ */
+LatticeADT::LatticeNode::~LatticeNode() {
+  // We need to do an iterator through the hash table and free up any
+  // memory for used cells.
+  shash_map_iter<unsigned, LatticeEdgeList>::iterator it;
+  edges.begin(it);
+  do {
+   LatticeEdgeList& cur_list = (*it);
+   // need to clear this explicitl since we're using an sArray_sd,
+   // which does no have its own destructor.
+   cur_list.edge_array.clear();
+  } while ( it.next() );
+
 }
 
 
@@ -241,7 +292,10 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab)
       error("Error in lattice '%s', line %d,  node id %d is bigger than number of lattice nodes %d", 
 	    ifs.fileName(), ifs.lineNo(), id, _numberOfNodes);
 
+
+
     LatticeEdge edge;
+
     while ( (ptr = strtok(NULL, seps)) != NULL ) {
       switch ( ptr[0] ) {
       case 'E':
@@ -316,7 +370,32 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab)
 	    id, _latticeNodes[id].time, 
 	    endNodeId, _latticeNodes[endNodeId].time);
 
-    _latticeNodes[id].edges.insert(endNodeId, edge);
+    LatticeEdgeList* edge_listp = _latticeNodes[id].edges.find(endNodeId);
+    if (edge_listp == NULL) {
+      // need to insert new edge list
+      LatticeEdgeList edge_list;
+      // start with only one edge (conserve memory)
+      edge_list.edge_array.resize(1);
+      // place edge (using copy).
+      edge_list.edge_array[0] = edge;
+      // record edge.
+      edge_list.num_edges  = 1;
+      // and lastly, insert it in the hash table
+      _latticeNodes[id].edges.insert(endNodeId,edge_list);
+    } else {
+      // edge list already there, add to the end.
+      assert ( edge_listp->num_edges > 0 );
+
+      // make sure there is room for at least one more, use a
+      // conservative growth rate
+      const float growth_rate = 1.25;
+      edge_listp->edge_array.growByFIfNeededAndCopy(growth_rate,
+						    edge_listp->num_edges+1);
+
+      // place edge (using copy).
+      edge_listp->edge_array[edge_listp->num_edges] = edge;
+      edge_listp->num_edges++;
+    }
 
   }
 
@@ -669,11 +748,19 @@ void LatticeADT::nextIterableLattice()
  */
 void LatticeADT::resetFrameIndices(unsigned numFrames) {
   const unsigned lastFrameId = numFrames - 1;
-  float warpRate = lastFrameId / _latticeNodes[_end].time;
 
-  unsigned frame;
+  // potentially recalculate frame rate for this lattice as it might
+  // be iterable.
+  if (_defaultFrameRate <= 0) {
+    // no command line
+    _frameRate = (double) lastFrameId / (double) _latticeNodes[_end].time;
+  } else {
+    // use command line specified value.
+    _frameRate = _defaultFrameRate;
+  }
+
   for ( unsigned i = 0; i < _numberOfNodes; i++ ) {
-    frame = (unsigned)roundf(warpRate * _latticeNodes[i].time);
+    unsigned frame = (unsigned)round(_frameRate * _latticeNodes[i].time);
     _latticeNodes[i].startFrame = (frame < _frameRelax) ? 0 : frame - _frameRelax;
 
     frame += _frameRelax;
@@ -697,79 +784,115 @@ void LatticeADT::resetFrameIndices(unsigned numFrames) {
  */
 void LatticeADT::useScore(unsigned option) 
 {
+
   for ( unsigned i = 0; i < _numberOfNodes; ++i ) {
     if ( _latticeNodes[i].edges.totalNumberEntries() > 0 ) {
-      shash_map_iter<unsigned, LatticeEdge>::iterator it;
+      shash_map_iter<unsigned, LatticeEdgeList>::iterator it;
       _latticeNodes[i].edges.begin(it);
       do {
-	// score of the edge in ln value
-	double score = 0;
+	
+	LatticeEdgeList	&edge_list = (*it);
+	edge_list.max_gmtk_score.set_to_zero();	
+	for (unsigned edge_ctr=0;edge_ctr < edge_list.num_edges; edge_ctr ++ ) {
+	  LatticeEdge &edge = edge_list.edge_array[edge_ctr];
 
-	if ( option & (0x1u<<5) ) {
-	  // use only posterior
-	  score = (*it).posterior.val();
-	} else {
-	  // do we use AC score?
-	  unsigned x = option & 0x3;
-	  switch ( x ) {
-	  case 1:	// AM score only
-	    score = (*it).ac_score.val();
-	    break;
-	  case 2: // AM^a
-	    score = (*it).ac_score.val() * _acscale;
-	    break;
-	  default: // no AM score
-	    break;
+	  // score of the edge in ln value
+	  double score = 0;
+
+	  if ( option & (0x1u<<5) ) {
+	    // use only posterior
+	    score = edge.posterior.val();
+	  } else {
+	    // do we use AC score?
+	    unsigned x = option & 0x3;
+	    switch ( x ) {
+	    case 1:	// AM score only
+	      score = edge.ac_score.val();
+	      break;
+	    case 2: // AM^a
+	      score = edge.ac_score.val() * _acscale;
+	      break;
+	    default: // no AM score
+	      break;
+	    }
+
+	    // do we use LM score?
+	    x = (option >> 2) & 0x3;
+	    switch ( x ) {
+	    case 1: // LM score only
+	      score += edge.lm_score.val();
+	      break;
+	    case 2: // LM^b
+	      score += edge.lm_score.val() * _lmscale;
+	      break;
+	    default: // no LM score
+	      break;
+	    }
+
+	    // do we use insertion penalty?
+	    // Amar: there  a bug in the next line w.r.t not multiplying by 
+	    // by log(_base) and it has now been fixed. 
+
+
+	    if ( option & 0x10 )
+	      score += log(_base)*_wdpenalty;
 	  }
 
-	  // do we use LM score?
-	  x = (option >> 2) & 0x3;
-	  switch ( x ) {
-	  case 1: // LM score only
-	    score += (*it).lm_score.val();
-	    break;
-	  case 2: // LM^b
-	    score += (*it).lm_score.val() * _lmscale;
-	    break;
-	  default: // no LM score
-	    break;
-	  }
+	  // check whether the score is too small that will have zero
+	  // probability.
+	  if ( score <= LSMALL )
+	    warning("score is essentially zero in lattice\n");
 
-	  // do we use insertion penalty?
-	  // Amar: there  a bug in the next line w.r.t not multiplying by 
-	  // by log(_base) and it has now been fixed. 
-
-
-	  if ( option & 0x10 )
-	    score += log(_base)*_wdpenalty;
+	  edge.gmtk_score.setFromLogP(score);
+	  if (edge.gmtk_score > edge_list.max_gmtk_score) 
+	    edge_list.max_gmtk_score = edge.gmtk_score;
 	}
 
-	// check whether the score is too small that will have zero
-	// probability.
-	if ( score <= LSMALL )
-          warning("score is essentially zero in lattice\n");
-
-	(*it).gmtk_score.setFromLogP(score);
+	if (_latticeNodeUseMaxScore) {
+	  // need to renormize the edge scores.
+	  for (unsigned edge_ctr=0;edge_ctr < edge_list.num_edges; edge_ctr ++ ) {
+	    LatticeEdge &edge = edge_list.edge_array[edge_ctr];
+	    edge.gmtk_score = edge.gmtk_score / edge_list.max_gmtk_score;
+	  }
+	}
       } while ( it.next() );
     }
   }
 
-#if 0
-  // print the lattice for debugging reasons
-  printf("acscale=%f, amscale=%f, lmscale=%f\n", _acscale, _amscale, _lmscale);
-  printf("starting %d and end %d\n", _start, _end);
-  for ( unsigned i = 0; i < _numberOfNodes; i++ ) {
-    printf("node %d at frame (%u,%u):\n", i, _latticeNodes[i].startFrame, _latticeNodes[i].endFrame);
-    if ( _latticeNodes[i].edges.totalNumberEntries() > 0 ) {
-      shash_map_iter<unsigned, LatticeEdge>::iterator it;
-      _latticeNodes[i].edges.begin(it);
-      do {
-	LatticeEdge &edge = *it;
-	printf("\tto %u, w=%d, ac=%f, lm=%f, p=%f, t=%f gmtk=%f\n", it.key(), edge.emissionId, edge.ac_score.val(), edge.lm_score.val(), edge.posterior.val(), _latticeNodes[it.key()].time, edge.gmtk_score.val());
-      } while ( it.next() );
-    }
+
+  if (IM::messageGlb(IM::Max)) {
+      // print the lattice for debugging reasons. Note that this will
+      // be quite a bit of output, so we only do this at maximum
+      // debugging levels.
+      printf("------------------\n");
+      printf("--- Printing Lattice Information ---\n");
+      printf("acscale=%f, amscale=%f, lmscale=%f\n", _acscale, _amscale, _lmscale);
+      printf("starting %d and end %d\n", _start, _end);
+      printf("total number of lattice nodes = %d\n",_numberOfNodes);
+      for ( unsigned i = 0; i < _numberOfNodes; i++ ) {
+	printf("node %d at frame (%u,%u):\n", i, 
+	       _latticeNodes[i].startFrame, _latticeNodes[i].endFrame);
+	printf("\tNumber of outgoing adjacent nodes = %d\n",
+	       _latticeNodes[i].edges.totalNumberEntries());
+
+	if ( _latticeNodes[i].edges.totalNumberEntries() > 0 ) {
+	  shash_map_iter<unsigned, LatticeEdgeList>::iterator it;
+	  _latticeNodes[i].edges.begin(it);
+	  do {
+	    LatticeEdgeList &edge_list = (*it);
+	    printf("\tOutgoing node %u, %d edges\n",it.key(),edge_list.num_edges);
+	    for (unsigned edge_ctr=0;edge_ctr < edge_list.num_edges; edge_ctr ++ ) {
+	      LatticeEdge &edge = edge_list.edge_array[edge_ctr];
+	      printf("\tto %u, w=%d, ac=%f, lm=%f, p=%f, t=%f gmtk=%f\n", 
+		     it.key(), 
+		     edge.emissionId, edge.ac_score.val(), edge.lm_score.val(), 
+		     edge.posterior.val(), _latticeNodes[it.key()].time, edge.gmtk_score.val());
+	    }
+	  } while ( it.next() );
+	}
+      }
+      printf("--- Done Printing Lattice Information ---\n");
   }
-#endif
 }
 
 
@@ -789,21 +912,31 @@ void LatticeADT::normalizePosterior() {
   // with proper scale factors.
   for ( unsigned i = 0; i < _numberOfNodes; ++i ) {
     if ( _latticeNodes[i].edges.totalNumberEntries() > 0 ) {
-      shash_map_iter<unsigned, LatticeEdge>::iterator it;
+      shash_map_iter<unsigned, LatticeEdgeList>::iterator it;
       _latticeNodes[i].edges.begin(it);
       logpr sum;
       sum.set_to_zero();
-      do {
-	sum += (*it).posterior;
-      } while ( it.next() );
-
+      {
+	do {
+	  LatticeEdgeList &edge_list = (*it);
+	  for (unsigned edge_ctr=0;edge_ctr < edge_list.num_edges; edge_ctr ++ ) {
+	    LatticeEdge &edge = edge_list.edge_array[edge_ctr];
+	    sum += edge.posterior;
+	  }
+	} while ( it.next() );
+      }
+      // start iter again
       _latticeNodes[i].edges.begin(it);
-      do {
-	(*it).posterior = (*it).posterior / sum;
-      } while ( it.next() );
+      {
+	do {
+	  LatticeEdgeList &edge_list = (*it);
+	  for (unsigned edge_ctr=0;edge_ctr < edge_list.num_edges; edge_ctr ++ ) {
+	    LatticeEdge &edge = edge_list.edge_array[edge_ctr];
+	    edge.posterior = edge.posterior / sum;
+	  }
+	} while ( it.next() );
+      }
     }
   }
 }
 
-
-const double LatticeADT::_frameRate = 100.0;
