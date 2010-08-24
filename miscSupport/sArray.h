@@ -329,4 +329,24 @@ inline sArray<double> operator * (const double a, const sArray<float> &s){
   return rval;
 }
 
+
+// sArray with no destructor (nd): A version of the above class but
+// that does not have a destructor (the assumption is that users of
+// the class will call clear() when they want to reclaim
+// memory. Warning: don't use this version unless you wish to perform
+// some low-level memor management yourself (this is here to enable
+// hash tables of sArrays that can resize without double freeing, and
+// without the further added problem of one more level of
+// indirection).
+template <class T>
+class sArray_nd : public sArray <T> {
+public:
+  sArray_nd(int arg_size=0)  : sArray<T>(arg_size) {}
+  // An empty destructor, if this object gets destroyed, it is up to
+  // the user to free the allocated memory. This can be done using
+  // this->clear() before calling the destructor.
+  ~sArray_nd() {}
+}; 
+
+
 #endif

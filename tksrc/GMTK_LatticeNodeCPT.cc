@@ -1,7 +1,7 @@
 /*-
  * GMTK_LatticeNodeCPT.cc
  *
- *  Written by Gang Ji <gang@ee.washington.edu>
+ *  Written by Gang Ji <gang@ee.washington.edu> and Jeff Bilmes <bilmes@ee.washington.edu>
  * 
  *  $Header$
  * 
@@ -54,6 +54,39 @@ LatticeNodeCPT::~LatticeNodeCPT() {
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * LatticeNodeCPT::probGivenParents(vector< RV* >& parents, DiscRV* drv)
+ *     calculate the probability with known parent/child values
+ *     parents[0] has previous node, and drv has current node value.
+ *
+ * Results:
+ *     log probability of child given the parents
+ * 
+ * Notes:
+ *     need more implementation on different scores
+ *-----------------------------------------------------------------------
+ */
+logpr LatticeNodeCPT::probGivenParents(vector< RV* >& parents, DiscRV* drv)
+{
+  LatticeADT::LatticeEdgeList* outEdges
+    = _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].edges.find(drv->val);
+
+  if ( outEdges == NULL )
+    return logpr(0.0);
+  else {
+    if (LatticeADT::_latticeNodeUseMaxScore) {
+      return outEdges->max_gmtk_score;
+    } else {
+      return logpr(1.0);
+    }
+  }
+
+}
+
+
+
 /*-
  *-----------------------------------------------------------------------
  * LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parents, iterator &it, DiscRV* drv, logpr& p)
@@ -66,49 +99,56 @@ LatticeNodeCPT::~LatticeNodeCPT() {
  *     need more implementation on different scores
  *-----------------------------------------------------------------------
  */
-void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parents, iterator &it, DiscRV* drv, logpr& p) {
+void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parents, 
+							   iterator &it, 
+							   DiscRV* drv, 
+							   logpr& p) 
+{
   // 
-  // We assume that there are either 2 or 3 parents,
-  // in both cases, 
+  // Note that there can be either 2 or 3 parents:
+  // 
+  // In both cases: 
   //    drv is the current lattice node.
-  // In the case of 2 parents, (where time is normally obtained from 'drv', the current lattice node)
-  //      parent[0] is the previous lattice node
-  //      parent[1] is the  "word transition" (or variable that is acting like such a construct)
-  // In the case of 3 parents, 
-  //      parent[0] is the previous lattice node
-  //      parent[1] is the the "word transition" (or variable that is acting like such a construct)
-  //      parent[2] is the "time observation", namely it is a variable that is presumably observed that
-  //                keeps track of the time frame to use (rather than using the time frame of 'drv').
   // 
-  // For simplity reason, here cardinality of lattice nodes can be
-  // bigger than number of real nodes in some particular lattice.
-  // This is because in iterable lattices, different lattices can
-  // have different number of nodes.  But in master file, we can
-  // just specify the max of those.
+  // In the case of 2 parents, (where time is normally obtained from 'drv', the current lattice node):
+  //    parent[0] is the previous lattice node
+  //    parent[1] is the  "word transition" (or variable that is acting like such a construct)
+  // 
+  // In the case of 3 parents, 
+  //    parent[0] is the previous lattice node
+  //    parent[1] is the the "word transition" (or variable that is acting like such a construct)
+  //    parent[2] is the "time observation", namely it is a variable that is presumably observed that
+  //              keeps track of the time frame to use (rather than using the time frame of 'drv').
+  // 
+  // For simplicity, the cardinality of lattice nodes can be bigger
+  // than number of real nodes in some particular lattice.  This is
+  // because in iterable lattices, different lattices can have
+  // different number of nodes.  But in master file, we can just
+  // specify the max of those.
 
   // initialize it to something always at least valid.
   drv->val = 0;
-
-#if 0
-  // TODO: why is this here?
-
-  if ( RV2DRV(parents[0])->val > _latticeAdt->_end ) {
-    it.internalStatePtr = NULL;
-    p.set_to_zero();
-    return;
-  }
-#endif
 
   if ( _latticeAdt->useTimeParent() )
   {
     // use time parent to check time
 
-    // first, compute lat_time, the time of the previous lattice node
+    // Since we're using a time parent, the number of frames in the
+    // observation file does not indicate the number of true frames of
+    // the segment, so we are not able to compute a frame rate.  We do
+    // the node time relaxation inline in the below.  See
+    // LatticeADT::resetFrameIndices(unsigned numFrames) for the case
+    // of when this adjustment is done without a time parent.
+
+    // First, compute lat_time, the time of the previous lattice node
     // rounded to the closest frame. parent[0] contains the value of
     // the previous lattice node, and we need to do a lookup in the
     // lattce to find the actual previous lattice node to get its
     // time.
-    unsigned lat_time = (unsigned)round(_latticeAdt->_frameRate * _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].time);
+    unsigned lat_time = 
+      (unsigned)round(_latticeAdt->_frameRate * 
+		      _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].time
+		      );
 
     // case on the current time.
     // Same as no time parent case, we also allow some relaxation
@@ -139,15 +179,21 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
       it.internalStatePtr = NULL;
       p.set_to_zero();
     } else {
+      // in range.
+
       // (RV2DRV(parents[2])->val == lat_time), which means that the
-      // current time is right at the point that we allow the previous
-      // lattice node to jump to the next set of possible lattice
-      // nodes.
+      // current time is right at (or in the range of) the point that
+      // we allow the previous lattice node to jump to the next set of
+      // possible lattice nodes.
 
-
+      // Next, we check that the 'transition' variable (word
+      // transition in the 2006 paper) is set, and it is stored in
+      // parent[1]. Note we assume that parent[1] is a binary
+      // variable, and use its value as a boolean int.
       if ( RV2DRV(parents[1])->val ) {
-	// iterate next lattice nodes
-	// find the out going edge
+	// Then a transition is being asked for.
+
+	// iterate next lattice nodes find the out going edge
 	LatticeADT::LatticeNode &node = _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val];
 
 	// if the lattice node is the end, return prob zero
@@ -158,7 +204,8 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
 	}
 
 	// check out the out-going edges based on parent value
-	shash_map_iter<unsigned, LatticeADT::LatticeEdge>::iterator *pit = new shash_map_iter<unsigned, LatticeADT::LatticeEdge>::iterator();
+	shash_map_iter<unsigned, LatticeADT::LatticeEdgeList>::iterator *pit 
+	  = new shash_map_iter<unsigned, LatticeADT::LatticeEdgeList>::iterator();
 
 	// now the current node can have next transition
 	// find the correct iterators
@@ -171,23 +218,41 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
 
 	drv->val = pit->key();
 
-	p = (**pit).gmtk_score;
+	if (LatticeADT::_latticeNodeUseMaxScore) {
+	  p = (**pit).max_gmtk_score;
+	} else {
+	  // then the various lattice edges handle the scoring
+	  p.set_to_one();
+	}
       } else {
-	// no word transition, copy value
+
+	// No word transition is being asked for, so we copy the value
+	// value from the parent lattice node to the child node in
+	// accordance with the event that no transition occurs.
+
 	it.internalStatePtr = NULL;
 	drv->val = RV2DRV(parents[0])->val;
 	p.set_to_one();
+
       }
     }
   } else {
+    // In this case, we are not using the time parent, and we assume
+    // that the time value comes from 'drv'.
+
+    // Note: we don't adjust for frame relax here as that's already
+    // been done in LatticeADT::resetFrameIndices(unsigned numFrames).
+
     // case on the current frame index
     if ( drv->frame() < _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].startFrame ) {
       if ( RV2DRV(parents[1])->val ) {
-        // word transition not allowed
+	// a (word) transition is being hypothesized, but we do not allow it. Give it a
+	// zero probability.
         it.internalStatePtr = NULL;
         p.set_to_zero();
       } else {
-        // no word transition, just copy values from previous frame
+	// a (word) transition is not being hypothesized, so
+	// we copy the previous lattice node's value (from previous frame) to drv.
         it.internalStatePtr = NULL;
         drv->val = RV2DRV(parents[0])->val;
         p.set_to_one();
@@ -197,6 +262,8 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
       it.internalStatePtr = NULL;
       p.set_to_zero();
     } else {
+      // in range.
+
       if ( RV2DRV(parents[1])->val ) {
         // iterate next lattice nodes
         // find the out going edge
@@ -210,7 +277,8 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
         }
 
         // check out the out-going edges based on parent value
-        shash_map_iter<unsigned, LatticeADT::LatticeEdge>::iterator *pit = new shash_map_iter<unsigned, LatticeADT::LatticeEdge>::iterator();
+        shash_map_iter<unsigned, LatticeADT::LatticeEdgeList>::iterator *pit 
+	  = new shash_map_iter<unsigned, LatticeADT::LatticeEdgeList>::iterator();
 
         // now the current node can have next transition
         // find the correct iterators
@@ -222,9 +290,20 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
         it.drv = drv;
 
         drv->val = pit->key();
-        p = (**pit).gmtk_score;
+
+	if (LatticeADT::_latticeNodeUseMaxScore) {
+	  p = (**pit).max_gmtk_score;
+	} else {
+	  // then the various lattice edges handle the scoring
+	  p.set_to_one();
+	}
+
       } else {
-        // no word transition, copy value
+
+	// No word transition is being asked for, so we copy the value
+	// value from the parent lattice node to the child node in
+	// accordance with the event that no transition occurs.
+
         it.internalStatePtr = NULL;
         drv->val = RV2DRV(parents[0])->val;
         p.set_to_one();
@@ -233,27 +312,6 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
   }
 }
 
-
-/*-
- *-----------------------------------------------------------------------
- * LatticeNodeCPT::probGivenParents(vector< RV* >& parents, DiscRV* drv)
- *     calculate the probability with known parent/child values
- *
- * Results:
- *     log probability of child given the parents
- * 
- * Notes:
- *     need more implementation on different scores
- *-----------------------------------------------------------------------
- */
-logpr LatticeNodeCPT::probGivenParents(vector< RV* >& parents, DiscRV* drv) {
-	LatticeADT::LatticeEdge* outEdge = _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].edges.find(drv->val);
-
-	if ( outEdge == NULL )
-		return logpr(0.0);
-	else
-		return outEdge->gmtk_score;
-}
 
 
 /*-
@@ -269,7 +327,8 @@ logpr LatticeNodeCPT::probGivenParents(vector< RV* >& parents, DiscRV* drv) {
  *-----------------------------------------------------------------------
  */
 bool LatticeNodeCPT::next(iterator &it, logpr& p) {
-  shash_map_iter<unsigned, LatticeADT::LatticeEdge>::iterator* pit = (shash_map_iter<unsigned, LatticeADT::LatticeEdge>::iterator*) it.internalStatePtr;
+  shash_map_iter<unsigned, LatticeADT::LatticeEdgeList>::iterator* pit 
+    = (shash_map_iter<unsigned, LatticeADT::LatticeEdgeList>::iterator*) it.internalStatePtr;
 
   // check whether pit is null
   if ( pit == NULL ) {
@@ -285,12 +344,19 @@ bool LatticeNodeCPT::next(iterator &it, logpr& p) {
   if ( pit->next() ) {
     // set up the values
     it.drv->val = pit->key();
-    p = (**pit).gmtk_score;
+
+    if (LatticeADT::_latticeNodeUseMaxScore) {
+      p = (**pit).max_gmtk_score;
+    } else {
+      p.set_to_one();
+    }
 
     return true;
   } else {
-    // we didn't find anything satisfying the frame constrain
+    // we're done with all the next nodes for this current node
+    // so we free things up.
     delete pit;
+    // and return that we're done.
     it.internalStatePtr = NULL;
     p.set_to_zero();
     return false;

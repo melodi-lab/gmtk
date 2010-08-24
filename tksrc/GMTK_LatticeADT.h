@@ -3,7 +3,7 @@
  *      .h file for GMTK_LatticeADT.cc, HTK lattice support
  *      distributions.
  *
- *  Written by Gang Ji <gang@ee.washington.edu>
+ *  Written by Gang Ji <gang@ee.washington.edu> and Jeff Bilmes <bilmes@uw.edu>
  * 
  *  $Header$
  * 
@@ -83,6 +83,27 @@ class LatticeADT : public NamedObject {
     LatticeEdge() : emissionId(0), gmtk_score(1.0) {}
   };
 
+  /*
+   * For every pair of connected, nodes there can be one or more
+   * edges.  This list contains those edges associated with a
+   * connected pair of nodes. This also contains the precomputed score
+   * to be used for the node->node transition for this set of edges
+   * (which can either be unity, or can be the max score of each of
+   * the edges) -- depending on this score, the lattice node will need
+   * to be scored differently.
+   */
+  struct LatticeEdgeList {
+    unsigned num_edges;
+    // use an sArray without a destructor, so that when hash table
+    // resizes, it doesn't delete the memory used.
+    sArray_nd < LatticeADT::LatticeEdge > edge_array;
+
+    /** max score used in GMTK for all the edges */
+    logpr max_gmtk_score;
+
+    LatticeEdgeList() : num_edges(0) {} 
+  };
+
   /**
    * lattice node information
    */
@@ -94,10 +115,18 @@ class LatticeADT : public NamedObject {
     /** ending frame number */
     unsigned endFrame;
     /** possible out-going edges */
-    shash_map_iter<unsigned, LatticeEdge> edges;
+    shash_map_iter<unsigned, LatticeEdgeList > edges;
 
-    LatticeNode() : startFrame(0), endFrame(0), edges(shash_map_iter<unsigned, LatticeEdge>(1)) {}
+    LatticeNode() : startFrame(0), endFrame(0), edges(shash_map_iter<unsigned, LatticeEdgeList>(1)) {}
+    ~LatticeNode(); 
   };
+
+  // set to true if the lattice nodes cpt for (node,node) use a score
+  // which is the max of the score over all edges for a given
+  // (node,node), or if it should return one. In the case of max, then
+  // the lattice edges must divide out this max, so this variable
+  // is used by both the lattice edge and lattice node cpts.
+  static bool _latticeNodeUseMaxScore;
 
   /**
    * renormalize posterior
@@ -122,12 +151,18 @@ class LatticeADT : public NamedObject {
   double _acscale;
   /** ? */
   double _amscale;
-  /** log base */
+  /** log base **/
   double _base;
 
-  /** frame rate */
-  static const double _frameRate;
-  /** how many frame relaxation is allowed in CPT */
+  /** frame rate **/
+  static double _defaultFrameRate;
+  // frameRate is the frame rate (e.g., in units of frames per second,
+  // if the time marks in the lattice are in seconds).
+  double _frameRate;
+  /*
+   * How many frames of "relaxation" is allowed in CPT, both to the
+   * left and to the right of the lattice node transition.
+   */
   unsigned _frameRelax;
 
   /** if this is an iterable cpt */

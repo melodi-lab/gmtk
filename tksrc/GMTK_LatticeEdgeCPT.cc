@@ -53,6 +53,43 @@ LatticeEdgeCPT::~LatticeEdgeCPT() {
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * Function LatticeEdgeCPT::probGivenParents
+ *   Get probability with parents and child value known.
+ *   Here, parents[0] is the previous lattice node, parents[1] is the current
+ *   lattice node, and we map from a pair of lattice nodes to a lattice edge list
+ *   which is one or more lattice edges.
+ *
+ * Results:
+ *      Probability.
+ *
+ *-----------------------------------------------------------------------
+ */
+logpr LatticeEdgeCPT::probGivenParents(vector< RV* >& parents, DiscRV* drv) {
+  LatticeADT::LatticeEdgeList* outEdges
+    = _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].edges.find(RV2DRV(parents[1])->val);
+  if ( outEdges == NULL) {
+    // then this is an impossible pair of nodes, so give it zero
+    // probability.
+    return logpr(0.0);
+  }
+  // we've got an edge, but how many?  We've got to search to find
+  // one with a matching drv->val.
+  for (unsigned edge_ctr=0;edge_ctr < outEdges->num_edges; edge_ctr ++ ) {
+    LatticeADT::LatticeEdge &edge = outEdges->edge_array[edge_ctr];
+    if (edge.emissionId == drv->val) {
+      return edge.gmtk_score;
+    }
+  }
+
+  // still here? return 0, since not found.
+  return logpr(0.0);
+}
+
+
+
 /*-
  *-----------------------------------------------------------------------
  * Function LatticeEdgeCPT::becomeAwareOfParentValuesAndIterBegin
@@ -62,57 +99,49 @@ LatticeEdgeCPT::~LatticeEdgeCPT() {
  *      None.
  *-----------------------------------------------------------------------
  */
-void LatticeEdgeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parents, iterator &it, DiscRV* drv, logpr& p) {
-	LatticeADT::LatticeEdge* outEdge = _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].edges.find(RV2DRV(parents[1])->val);
-	if ( outEdge == NULL ) {
-	  // If this occurs, it means that there is no outgoing edge
-	  // in the lattice starting from the node with value parent0->val.
-	  // We are guaranteed that the corresponding LatticeNodeCPT, when
-	  // this occurs, will do two things:
-	  //    1) it will give this event zero probability
-	  //    2) the value given to the child in LatticeNodeCPT will
-	  //       be the same node value as the parent, meaning that
-	  //       parent0->val == parent1->val.
-	  // Note that if the graph is evaluated topologically, then
-	  // the LatticeNodeCPT will be evaluated first (before this)
-	  // and inference should prune away before we ever get to this
-	  // case. For some triangluations, however, the LatticeEdgeCPT might
-	  // be evaluated first, so we need to cover this case here.
+void LatticeEdgeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parents, 
+							   iterator &it, 
+							   DiscRV* drv, 
+							   logpr& p) 
+{
+  LatticeADT::LatticeEdgeList* outEdge 
+    = _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].edges.find(RV2DRV(parents[1])->val);
+  if ( outEdge == NULL ) {
+    // If this occurs, it means that there is no outgoing edge
+    // in the lattice starting from the node with value parent0->val.
+    // We are guaranteed that the corresponding LatticeNodeCPT, when
+    // this occurs, will do two things:
+    //    1) it will give this event zero probability
+    //    2) the value given to the child in LatticeNodeCPT will
+    //       be the same node value as the parent, meaning that
+    //       parent0->val == parent1->val.
+    // Note that if the graph is evaluated topologically, then
+    // the LatticeNodeCPT will be evaluated first (before this)
+    // and inference should prune away before we ever get to this
+    // case. For some triangluations, however, the LatticeEdgeCPT might
+    // be evaluated first, so we need to cover this case here.
 
-	  // ultimately, since the LatticeNodeCPT gives this zero probabilty,
-	  // we know this case will get trimmed away, but for now we just
-	  // give some junk values.
+    // ultimately, since the LatticeNodeCPT gives this zero probabilty,
+    // we know this case will get trimmed away, but for now we just
+    // give some junk values.
 
-	  it.drv = drv;
-	  drv->val = 0;	// some junk number
-	  p.set_to_zero();
-	  return;
-	}
+    it.drv = drv;
+    // Set to zero (0), a dummy number that has no meaning.
+    drv->val = 0;	
+    p.set_to_zero();
+    return;
+  }
 
-	it.drv = drv;
-	drv->val = outEdge->emissionId;
-	p.set_to_one();
+  // get first edge of list, we are guaranteed that there is at least
+  // one edge in the array.
+  assert ( outEdge->edge_array.size() > 0 );
+  it.drv = drv;
+  it.uInternalState = 0;
+  it.internalStatePtr = outEdge;
+  drv->val = outEdge->edge_array[it.uInternalState].emissionId;
+  p = outEdge->edge_array[it.uInternalState].gmtk_score;
 }
 
-
-/*-
- *-----------------------------------------------------------------------
- * Function LatticeEdgeCPT::probGivenParents
- *      Get probability with parents and child value known.
- *
- * Results:
- *      Probability.
- *
- *-----------------------------------------------------------------------
- */
-logpr LatticeEdgeCPT::probGivenParents(vector< RV* >& parents, DiscRV* drv) {
-	LatticeADT::LatticeEdge* outEdge = _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].edges.find(RV2DRV(parents[1])->val);
-	if ( outEdge == NULL || outEdge->emissionId != drv->val ) {
-		return logpr(0.0);
-	} else {
-		return logpr(1.0);
-	}
-}
 
 
 /*-
@@ -121,18 +150,27 @@ logpr LatticeEdgeCPT::probGivenParents(vector< RV* >& parents, DiscRV* drv) {
  *      Advance an iterator.
  *
  * Results:
- *      Always return false since this is a deterministic mapping.
+ *      True if there is a next one.
  *-----------------------------------------------------------------------
  */
-bool LatticeEdgeCPT::next(iterator &it, logpr& p) {
-  // already return zero here.
-  // for each start/end lattice node pair, there is only one
-  // edge (link) between them.  So after begin iteration, the
-  // next iteration will always return false.
-  p.set_to_zero();
-  return false;
+bool LatticeEdgeCPT::next(iterator &it, logpr& p)
+{
+  LatticeADT::LatticeEdgeList* outEdge =
+    (LatticeADT::LatticeEdgeList*) it.internalStatePtr;
+  if (it.uInternalState+1 < outEdge->edge_array.size()) {
+    it.uInternalState++;
+    it.drv->val = outEdge->edge_array[it.uInternalState].emissionId;
+    p = outEdge->edge_array[it.uInternalState].gmtk_score;
+    return true;
+  } else {
+    p.set_to_zero();
+    return false;
+  }
 }
 
+
+#if 0
+// this is no longer determinisic 
 
 /*-
  *-----------------------------------------------------------------------
@@ -166,8 +204,7 @@ void LatticeEdgeCPT::assignDeterministicChild( vector < RV* >& parents, DiscRV* 
   } else
     drv->val = outEdge->emissionId;
 }
-
-
+#endif
 
 
 /*-
@@ -179,16 +216,16 @@ void LatticeEdgeCPT::assignDeterministicChild( vector < RV* >& parents, DiscRV* 
  *      None.
  *-----------------------------------------------------------------------
  */
-void LatticeEdgeCPT::setLatticeADT(const LatticeADT &latticeAdt) {
+void LatticeEdgeCPT::setLatticeADT(const LatticeADT &latticeAdt) 
+{
   _latticeAdt = &latticeAdt;
 
-  // in addition to lattice ADT, also set the cardinalties of
-  // the parents.
+  // In addition to lattice ADT, also set the cardinalties of the
+  // parents.
 
-  // typically, cardinalities comes from structure file or master
-  // file.  But in this case, we hope to support iterable lattice
-  // CPTs which will have different number of lattice nodes for
-  // each one.
+  // Typically, cardinalities comes from structure file or master
+  // file. But in this case, we support iterable lattice CPTs which
+  // will have different number of lattice nodes for each one.
   cardinalities[0] = cardinalities[1] = _latticeAdt->_nodeCardinality;
   _card = _latticeAdt->_wordCardinality;
 }
