@@ -72,12 +72,14 @@ public:
 	// A version that takes an iterator as argument and so
 	// can be used with an existing iterator w/o needing to
 	// create tmp objects with lots of construction/destruction.
-	const void begin(iterator &it) {
-		it.b = this->table.ptr;
-		it.end_b = it.b + this->table.len();
-		while ( it.b != it.end_b && (! it.b->active) ) {
-			++it.b;
-		}
+	const bool begin(iterator &it) {
+	  it.b = this->table.ptr;
+	  it.end_b = it.b + this->table.len();
+	  while ( it.b != it.end_b && (! it.b->active) ) {
+	    ++it.b;
+	  }
+	  // return true if there is an item here.
+	  return it.b != it.end_b;
 	}
 };
 
