@@ -16,13 +16,18 @@
  *
  */
 
-
+#include "config.h"
 #include "general.h"
 VCID("$Header$")
 
 #ifdef MAIN
 #define COLLECT_COLLISION_STATISTICS
 #include <string>
+#if HAVE_CONFIG_H
+#  if HAVE_LIMITS_H
+#     include <limits.h>
+#  endif
+#endif
 #endif
 
 #include "vhash_set.h"
