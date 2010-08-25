@@ -5,9 +5,9 @@ EXLDFLAGS  =
 DEBUGFLAGS = -g
 OPTFLAGS = -O3 -DHAVE_NONSTANDARD_ARITHMETIC
 
-ANSI=-ansi
-PEDANTIC=-pedantic
-WALL=-Wall
+ANSI = -ansi
+PEDANTIC = -pedantic
+WALL = -Wall
 
 # Build libmiscSupport.a, but don't install it in $(libdir)
 noinst_LIBRARIES = libmiscSupport.a
@@ -55,21 +55,23 @@ LDADD = libmiscSupport.a
 # These are test programs, so they only need to be built for make check.
 # They are not installed anywhere
 check_PROGRAMS = \
+testError \
+testBPRange \
 testArguments testLogp testRand testsArray testcArray fileParserTest \
 testHashMapList testHashTree testVHashSet testVHashMap testSHashSet \
 testSHashMap testVSHashMap testRLS testLMS
 
-# testError testDebug testBPRange      don't compile?
-#testError_SOURCES = error.cc
+# testDebug      doesn't compile?
+testError_SOURCES = error.cc error.h
 #testDebug_SOURCES = debug.cc debug.h
-#testBPRange_SOURCES = bp_range.cc 
+testBPRange_SOURCES = bp_range.cc bp_range.h
 
 # The sources that comprise each test program
-testArguments_SOURCES = arguments.cc
-testLogp_SOURCES = logp.cc
-testRand_SOURCES = rand.cc
+testArguments_SOURCES = arguments.cc arguments.h
+testLogp_SOURCES = logp.cc logp.h
+testRand_SOURCES = rand.cc rand.h
 testsArray_SOURCES = sArray.cc sArray.h
-testcArray_SOURCES = cArray.cc
+testcArray_SOURCES = cArray.cc cArray.h
 fileParserTest_SOURCES = fileParser.cc fileParser.h
 
 testHashMapList_SOURCES = hash_map_list.cc hash_map_list.h
@@ -83,6 +85,7 @@ testVSHashMap_SOURCES = vshash_map.h vshash_map.cc
 testRLS_SOURCES = rls_filter.cc rls_filter.h  adaptive_filter.h
 testLMS_SOURCES = lms_filter.cc lms_filter.h  adaptive_filter.h
 
+.PHONY: testHashDrivers
 testHashDrivers: \
 testHashMapList testHashTree testVHashSet testVHashMap testSHashSet \
 testSHashMap testVSHashMap
