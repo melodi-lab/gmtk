@@ -4,23 +4,24 @@
 # autoconf initialization
 AC_PREREQ(2.59)
 AC_INIT(GMTK, 0.0, https://lungs.ee.washington.edu/gmtk/newticket)
+: ${CXXFLAGS=""}
 
-# This identifies the target CPU/OS to select the source files containing
+# This identifies the CPU/OS to select the source files containing
 # the correct platform-specific FPU code for the target. The source files
-# are named ieeeFPsetup_$(IEEEFLAVOR).{h,cc} in the Makefile.
+# are named ieeeFPsetup_@host_cpu@_@host_os@.{h,cc} in the Makefile.
+AC_CANONICAL_HOST
 
-# TODO: rename IEEE support files ieeeFPsetup_$(target_cpu)_$(target_os).{h,cc}
-#       or maybe $(target_fpu)_$(target_os) [would have to invent target_fpu]
-#       The code really depends on both OS and (C|F)PU, but x86_64 and i*86 probably
-#       both use the same x87 FPU code. I wonder if x86_64 CPUs show up as
-#       i*86 $(target_cpu) when running 32-bit OSes?
-AC_CANONICAL_TARGET
-IEEEFLAVOR=${target_cpu}_${target_os}
-AC_SUBST(IEEEFLAVOR) 
-AM_INIT_AUTOMAKE
+# Turn on automake error checking and turn off whinging about missing
+# some files GNU projects are supposed to have
+AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 
-# Check that we're in the correct directory by verifying the existence of the file
+# Check that we're in the correct directory by verifying the existence 
+# of the file
 AC_CONFIG_SRCDIR([ieeeFPsetup_x86_64_linux-gnu.cc])
+
+# In case we need config.h to let the source code know about the 
+# build environment
+AC_CONFIG_HEADER([config.h])
 
 # Checks for programs.
 AC_PROG_CXX
@@ -42,5 +43,20 @@ AC_CHECK_FUNCS([memset])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
 
-
-echo IEEEFLAVOR is ${IEEEFLAVOR}
+if test -f "${srcdir}/ieeeFPsetup_${host_cpu}_${host_os}.cc"; then
+   echo Building IEEE floating point support for ${host_cpu}-${host_os}
+else
+   cp ${srcdir}/ieeeFPsetup_ANY_ANY.h \
+      ${srcdir}/ieeeFPsetup_${host_cpu}_${host_os}.h
+   cp ${srcdir}/ieeeFPsetup_ANY_ANY.cc \
+      ${srcdir}/ieeeFPsetup_${host_cpu}_${host_os}.cc
+   AC_WARN([
+---------------------------------------------------------------
+  No IEEE floating point support for ${host_cpu}-${host_os}
+  GMTK will still build successfully, but with limited support 
+  for debugging floating point exceptions. Edit the files
+  IEEEFloatingpoint/ieeeFPsetup_${host_cpu}_${host_os}.{h,cc}
+  to add reporting for floating point exceptions.
+---------------------------------------------------------------
+])
+fi
