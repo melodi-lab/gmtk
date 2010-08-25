@@ -11,6 +11,16 @@
 #include "error.h"
 #include "general.h"
 
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
+#if HAVE_STDINT_H
+#  include <stdint.h>
+#elif HAVE_INTTYPES_H
+#  include <inttypes.h>
+#endif
+
 // This is the size of the PFile header
 #define PFILE_HEADER_SIZE (32768)
 
@@ -20,8 +30,8 @@
 #define PRIsst "zd"
 
 
-typedef int intv_int32_t;
-typedef unsigned int intv_uint32_t;
+typedef int32_t intv_int32_t;
+typedef uint32_t intv_uint32_t;
 
 typedef long SegID;
 enum {
@@ -50,31 +60,29 @@ typedef union
     Int32 l; float f;
 } PFile_Val;
 
-// Adapted from the latest (2004-10-26) Quicknet distribution to
-// support 64 bit pfiles. I am defining _FILE_OFFSET_BITS here but it
-// should be set during config time.  -- Karim
-
-#define _FILE_OFFSET_BITS 64
-
+#if 0
 // same deal as with _FILE_OFFSET_BITS --arthur 6/23/2009
 #define PF_HAVE_LONG_LONG 1
 #define PF_HAVE_FSEEKO 1
+#else
+#define PF_HAVE_LONG_LONG 0
+#endif
 
 // Some stuff to deal with large file support
 //  First make sure things still work if we do not have fseeko/ftello
-#ifdef PF_HAVE_FSEEKO
+#if HAVE_FSEEKO
 #define pfile_fseek(a,b,c) fseeko(a,b,c)
 #define pfile_ftell(a) ftello(a)
 typedef off64_t pfile_off_t;
 #else
 #define pfile_fseek(a,b,c) fseek(a,b,c)
 #define pfile_ftell(a) ftell(a)
-typedef long pfile_off_t;
+typedef off_t pfile_off_t;
 #endif
 
 // Set up long long types if we have them, along with approriate format
 // string segments
-#if defined(PF_HAVE_LONG_LONG)
+#if PF_HAVE_LONG_LONG
 typedef long long pfile_longlong_t;
 typedef unsigned long long pfile_ulonglong_t;
 #define PF_LLU "%llu"
@@ -87,7 +95,7 @@ typedef unsigned long pfile_ulonglong_t;
 #endif
 
 // Define PFILE_LARGE if we support large PFiles
-#if (defined(PF_HAVE_FSEEKO) && defined(PF_HAVE_LONG_LONG) && (_FILE_OFFSET_BITS==64))
+#if (HAVE_FSEEKO && (PF_HAVE_LONG_LONG || (SIZEOF_LONG >= 8)))
 #define PFILE_LARGEFILES 1
 #else
 #error "Now we need large file support"
