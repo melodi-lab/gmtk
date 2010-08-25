@@ -5255,3 +5255,10 @@ Tue Aug 24 15:50:38 2010
       can't be done in inference code, but it should be ok to do it during
       reading of CPTS (such as lattices).
 
+Tue Aug 24 20:59:55 2010
+  - make lattice CPTs trainable. I.e., the lattice node CPT would be an easy
+    way to specify a sparce cpt over pair variables P(N_t |N_{t-1}). We could
+    easily make them trainable of the scores were simple, i.e, the
+    score could just be, say, the LM score.
+    We would then need to be able to write the CPT back out to disk.
+    Iterable lattice CPTs would not work apply.
