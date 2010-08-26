@@ -3,7 +3,7 @@ EXCCFLAGS =
 EXCXXFLAGS = 
 EXLDFLAGS  = 
 DEBUGFLAGS = -g
-OPTFLAGS = -O3 -DHAVE_NONSTANDARD_ARITHMETIC
+OPTFLAGS = -O3
 
 ANSI = -ansi
 PEDANTIC = -pedantic
@@ -39,7 +39,7 @@ rls_filter.h rls_filter.cc
 # be appended)
 libmiscSupport_a_CXXFLAGS = \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
-libmiscSupport_a_CCFLAGS = \
+libmiscSupport_a_CFLAGS = \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCCFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 
 
