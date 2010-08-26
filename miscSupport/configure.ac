@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT(GMTK, 0.0, https://lungs.ee.washington.edu/gmtk/newticket)
+AC_INIT(GMTK, 0.0, https://lungs.ee.washington.edu/trac/gmtk/newticket)
 : ${CXXFLAGS=""}
 AC_CONFIG_SRCDIR([adaptive_filter.h])
 AC_CONFIG_HEADER([config.h])

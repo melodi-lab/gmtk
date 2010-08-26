@@ -3,7 +3,7 @@
 
 # autoconf initialization
 AC_PREREQ(2.59)
-AC_INIT(GMTK, 0.0, https://lungs.ee.washington.edu/gmtk/newticket)
+AC_INIT(GMTK, 0.0, https://lungs.ee.washington.edu/trac/gmtk/newticket)
 : ${CXXFLAGS=""}
 
 # This identifies the CPU/OS to select the source files containing
@@ -27,6 +27,7 @@ AC_CONFIG_HEADER([config.h])
 AC_PROG_CXX
 AC_PROG_CC
 AC_PROG_RANLIB
+AC_PROG_LN_S
 
 # Checks for libraries.
 
