@@ -23,11 +23,13 @@ VCID("$Header$")
 #ifdef MAIN
 #define COLLECT_COLLISION_STATISTICS
 #include <string>
+
 #if HAVE_CONFIG_H
-#  if HAVE_LIMITS_H
-#     include <limits.h>
-#  endif
+#  include <config.h>
 #endif
+
+#if HAVE_LIMITS_H
+#  include <limits.h>
 #endif
 
 #include "vhash_set.h"
