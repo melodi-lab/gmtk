@@ -17,7 +17,8 @@
 #include <sys/signal.h>
 
 #include "general.h"
-//#include "ieeeFPsetup.h"
+#warning "Change the ANY_ANY below to $(host_cpu)_$(host_os)" 
+#include "ieeeFPsetup_ANY_ANY.h"
 #include "error.h"
 
 
