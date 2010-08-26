@@ -12,7 +12,7 @@ WALL = -Wall
 
 AM_CPPFLAGS = -I$(srcdir)/../miscSupport -I$(srcdir)/../IEEEFloatingpoint
 
-AM_CCFLAGS = \
+AM_CFLAGS = \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCCFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 
 AM_CXXFLAGS = \
