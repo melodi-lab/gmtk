@@ -18,12 +18,16 @@ noinst_LIBRARIES = libIEEEsupport.a
 libIEEEsupport_a_SOURCES = \
 ieeeFPsetup_@host_cpu@_@host_os@.h \
 ieeeFPsetup_@host_cpu@_@host_os@.cc
+libIEEEsupport_a_DEPENDENCIES = ieeeFPsetup.h
+
+ieeeFPsetup.h: ieeeFPsetup_@host_cpu@_@host_os@.h
+	$(LN_S) ieeeFPsetup_@host_cpu@_@host_os@.h ieeeFPsetup.h
 
 # Compilation flags for IEEEsupport library objects (user's CXXFLAGS will
 # be appended)
 libIEEEsupport_a_CXXFLAGS = \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
-libIEEEsupport_a_CCFLAGS = \
+libIEEEsupport_a_CFLAGS = \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCCFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 
 AM_CPPFLAGS = -I$(srcdir)/../miscSupport
