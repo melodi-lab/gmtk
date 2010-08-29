@@ -18,6 +18,12 @@ noinst_LIBRARIES = libmiscSupport.a
 
 # The source files libmiscSupport.a depends on
 libmiscSupport_a_SOURCES = \
+counted_ptr.h \
+fixed_filter.h \
+hash_mtable.h \
+matrix.h \
+shash_map_iter.h \
+strhash_map.h \
 error.h error.cc \
 bp_range.h bp_range.cc \
 range.h range.cc \
