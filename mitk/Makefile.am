@@ -24,7 +24,7 @@ $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 AM_CXXFLAGS = \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 
-EXTRA_DIST = global-parameters.h
+EXTRA_DIST = global-parameters.h mixNormal.h
 noinst_PROGRAMS = multivariate-mi bivariate-mi
 check_PROGRAMS = mvnrnd testReadRange test-matrix-ops
 

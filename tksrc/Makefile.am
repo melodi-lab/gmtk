@@ -17,7 +17,10 @@ $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 # extra optimization options for certain GMTK sources, used below.
 XOPTFLAGS = -funroll-loops -fargument-noalias-global
 
-AM_CPPFLAGS = -I../miscSupport -I../IEEEFloatingpoint -I../featureFileIO
+AM_CPPFLAGS = \
+-I$(srcdir)/../miscSupport \
+-I$(srcdir)/../IEEEFloatingpoint \
+-I$(srcdir)/../featureFileIO
 
 LDADD = libGMTK.a libXOPT.a \
 $(builddir)/../featureFileIO/libgmtkio.a \
@@ -81,8 +84,31 @@ GMTK_Sw_ObsDiscRV.h GMTK_Sw_ObsDiscRV.cc \
 GMTK_VECPT.h GMTK_VECPT.cc \
 GMTK_NetworkFlow.h GMTK_NetworkFlow.cc \
 GMTK_NetworkFlowTriangulate.h GMTK_NetworkFlowTriangulate.cc \
-GMTK_LatticeADT.h GMTK_LatticeADT.cc \
-GMTK_LatticeNodeCPT.h GMTK_LatticeNodeCPT.cc \
+GMTK_LatticeADT.h GMTK_LatticeADT.cc GMTK_LatticeADT.h GMTK_LatticeNodeCPT.h \
+GMTK_FileTokenizer.cc \
+GMTK_LatticeNodeCPT.cc \
+GMTK_ScPnSh_HidDiscRV.cc \
+GMTK_WeightMatrix.cc \
+GMTK_NamedObject.h \
+GMTK_Arguments.h \
+GMTK_DiscRVType.h \
+GMTK_FactorInfo.h \
+GMTK_JunctionTreeNBestVals.h \
+GMTK_NamedObject.h \
+GMTK_ProgramDefaultParms.h \
+GMTK_ScPnSh_HidDiscRV.h \
+GMTK_ScPnSh_ObsContRV.h \
+GMTK_ScPnSh_ObsDiscRV.h \
+GMTK_ScPnSh_Sw_HidDiscRV.h \
+GMTK_ScPnSh_Sw_ObsContRV.h \
+GMTK_ScPnSh_Sw_ObsDiscRV.h \
+GMTK_SpaceManager.h \
+GMTK_SwContRV.h \
+GMTK_UnityScoreMixture.h \
+GMTK_USCPT.h \
+GMTK_WeightMatrix.h \
+GMTK_ZeroScoreMixture.h \
+tieStructures.h \
 GMTK_LatticeEdgeCPT.h GMTK_LatticeEdgeCPT.cc \
 GMTK_Tie.h GMTK_Tie.cc \
 tieSupport.h tieSupport.cc \
@@ -94,7 +120,12 @@ GMTK_JT_Partition.h GMTK_JT_Partition.cc \
 GMTK_PartitionTables.h GMTK_PartitionTables.cc \
 GMTK_PartitionStructures.h GMTK_PartitionStructures.cc \
 GMTK_JunctionTreeMessagePassing.cc \
-GMTK_JunctionTreeIslandMessagePassing.cc
+GMTK_JunctionTreeIslandMessagePassing.cc \
+version.h
+
+# GMTK_MissingFeatureScaledDiagGaussian.cc 
+# GMTK_MissingFeatureScaledDiagGaussian.h 
+ 
 
 libXOPT_a_SOURCES = \
 GMTK_DiagGaussianOpt.cc \
