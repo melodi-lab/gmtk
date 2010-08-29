@@ -20,9 +20,9 @@ XOPTFLAGS = -funroll-loops -fargument-noalias-global
 AM_CPPFLAGS = -I../miscSupport -I../IEEEFloatingpoint -I../featureFileIO
 
 LDADD = libGMTK.a libXOPT.a \
-../featureFileIO/libgmtkio.a \
-../miscSupport/libmiscSupport.a \
-../IEEEFloatingpoint/libIEEEsupport.a
+$(builddir)/../featureFileIO/libgmtkio.a \
+$(builddir)/../miscSupport/libmiscSupport.a \
+$(builddir)/../IEEEFloatingpoint/libIEEEsupport.a
 
 LIBS += $(LEXLIB)
 
@@ -91,11 +91,9 @@ GMTK_GammaComponent.h GMTK_GammaComponent.cc \
 GMTK_BetaComponent.h GMTK_BetaComponent.cc \
 GMTK_Partition.h GMTK_Partition.cc \
 GMTK_JT_Partition.h GMTK_JT_Partition.cc \
-GMTK_JT_Partition.h GMTK_JT_Partition.cc \
 GMTK_PartitionTables.h GMTK_PartitionTables.cc \
 GMTK_PartitionStructures.h GMTK_PartitionStructures.cc \
-GMTK_JunctionTreeMessagePassing.h GMTK_JunctionTreeMessagePassing.cc \
-GMTK_JunctionTreeIslandMessagePassing.h \
+GMTK_JunctionTreeMessagePassing.cc \
 GMTK_JunctionTreeIslandMessagePassing.cc
 
 libXOPT_a_SOURCES = \
@@ -136,8 +134,9 @@ $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 gmtkViz_LDFLAGS = $(EXLDFLAGS) $(VIZLDFLAGS)
 
 
-check_PROGRAMS = testMDCPT testMTCPT testHash testHashTree \
+check_PROGRAMS = testMDCPT testMTCPT \
 testRngDecisionTree testPackCliqueValue testGMParms testFileParser lex.yy
+# testHash testHashTree?
 
 testMDCPT_SOURCES = GMTK_MDCPT.cc GMTK_MDCPT.h
 testMDCPT_CXXFLAGS = -DMAIN \
@@ -147,13 +146,13 @@ testMTCPT_SOURCES = GMTK_MTCPT.cc GMTK_MTCPT.h
 testMTCPT_CXXFLAGS = -DMAIN \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 
-testHash_SOURCES = GMTK_Hash.cc GMTK_Hash.h 
-testHash_CXXFLAGS = -DMAIN \
-$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+#testHash_SOURCES = GMTK_Hash.cc 
+#testHash_CXXFLAGS = -DMAIN \
+#$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 
-testHashTree_SOURCES = GMTK_HashTree.cc GMTK_HashTree.h 
-testHashTree_CXXFLAGS = -DMAIN \
-$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+#testHashTree_SOURCES = GMTK_HashTree.cc 
+#testHashTree_CXXFLAGS = -DMAIN \
+#$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 
 testRngDecisionTree_SOURCES = GMTK_RngDecisionTree.cc \
 GMTK_RngDecisionTree.h GMTK_RV.cc GMTK_RV.h GMTK_DiscRV.cc GMTK_DiscRV.h

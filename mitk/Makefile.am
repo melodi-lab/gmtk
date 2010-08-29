@@ -1,10 +1,13 @@
 
-AM_CPPFLAGS = -I../miscSupport  -I../featureFileIO -I../IEEEFloatingpoint
+AM_CPPFLAGS = \
+-I$(srcdir)/../miscSupport \
+-I$(srcdir)/../featureFileIO \
+-I$(srcdir)/../IEEEFloatingpoint
 
 LDADD = \
-../featureFileIO/libgmtkio.a \
-../miscSupport/libmiscSupport.a \
-../IEEEFloatingpoint/libIEEEsupport.a
+$(builddir)/../featureFileIO/libgmtkio.a \
+$(builddir)/../miscSupport/libmiscSupport.a \
+$(builddir)/../IEEEFloatingpoint/libIEEEsupport.a
 
 EXCCFLAGS = 
 EXCXXFLAGS = 
@@ -21,6 +24,7 @@ $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 AM_CXXFLAGS = \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 
+EXTRA_DIST = global-parameters.h
 noinst_PROGRAMS = multivariate-mi bivariate-mi
 check_PROGRAMS = mvnrnd testReadRange test-matrix-ops
 

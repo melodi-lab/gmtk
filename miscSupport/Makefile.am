@@ -10,6 +10,9 @@ ANSI = -ansi
 PEDANTIC = -pedantic
 WALL = -Wall
 
+# used by clients of miscSupport
+noinst_HEADERS = machine-dependent.h
+
 # Build libmiscSupport.a, but don't install it in $(libdir)
 noinst_LIBRARIES = libmiscSupport.a
 
@@ -28,11 +31,11 @@ lineqsolve.h lineqsolve.cc \
 debug.h debug.cc \
 fileParser.h fileParser.cc \
 hash_abstract.h hash_abstract.cc \
-mul_mdmd_md.h mul_mdmd_md.c \
-mul_mdmd_md_l0g.h mul_mdmd_md_l0g.c \
-mul_mdmd_md_l0nf.h mul_mdmd_md_l0nf.c \
+mul_mdmd_md.c \
+mul_mdmd_md_l0g.c \
+mul_mdmd_md_l0nf.c \
 eig.h eig.c \
-bin_search.h bin_search.cc \
+bin_search.cc \
 lms_filter.h lms_filter.cc \
 rls_filter.h rls_filter.cc
 
