@@ -9,6 +9,9 @@ ANSI = -ansi
 PEDANTIC = -pedantic
 WALL = -Wall
 
+# TODO: Need a better mechanism for picking the sources.
+#       I'm not sure the @variables@ are legal in _SOURCES,
+#       and this will include ieeeFPsetup.h in the dist
 
 # Build libIEEEsupport.a, but don't install it in $(libdir)
 noinst_LIBRARIES = libIEEEsupport.a
@@ -36,6 +39,7 @@ AM_CPPFLAGS = -I$(srcdir)/../miscSupport
 # That would leave out the IEEEsupport files for all the platforms except
 # the host's. So this lists them all to be sure they're included.
 EXTRA_DIST = \
+ieeeFPsetup.h \
 ieeeFPsetup_ANY_ANY.cc \
 ieeeFPsetup_ANY_ANY.h \
 ieeeFPsetup_cygwin.cc \

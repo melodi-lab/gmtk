@@ -1,12 +1,12 @@
 
 AM_CPPFLAGS = \
--I../../miscSupport \
--I../../featureFileIO \
--I../../IEEEFloatingpoint
+-I$(srcdir)/../../miscSupport \
+-I$(srcdir)/../../featureFileIO \
+-I$(srcdir)/../../IEEEFloatingpoint
 
 LDADD = \
-../../miscSupport/libmiscSupport.a \
-../../featureFileIO/libgmtkio.a
+$(builddir)/../../miscSupport/libmiscSupport.a \
+$(builddir)/../../featureFileIO/libgmtkio.a
 
 
 EXCCFLAGS = 
