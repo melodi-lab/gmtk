@@ -2165,7 +2165,7 @@ nozoomwxPrintPreview::nozoomwxPrintPreview(GmtkPrintout* printout,
 : wxPrintPreview(printout, printoutForPrinting, data)
 {
 	wxPrintPreview::SetZoom(200);
-};
+}
 
 void nozoomwxPrintPreview::SetZoom(int zoom)
 {
@@ -2173,7 +2173,7 @@ void nozoomwxPrintPreview::SetZoom(int zoom)
 	new wxTipWindow(NULL, "Zooming has been known to cause crashes when\n"
 			"non-solid lines are used so zooming has been disabled.", 500, NULL);
 	return;
-};
+}
 
 void GFrame::OnMenuFilePrint(wxCommandEvent &event)
 {
