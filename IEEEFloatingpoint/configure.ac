@@ -3,7 +3,7 @@
 
 # autoconf initialization
 AC_PREREQ(2.59)
-AC_INIT(GMTK, 0.0, https://lungs.ee.washington.edu/trac/gmtk/newticket)
+AC_INIT([GMTK], m4_esyscmd(echo -n `head -n 1 ../RELEASE`), [https://lungs.ee.washington.edu/trac/gmtk/newticket])
 : ${CXXFLAGS=""}
 
 # This identifies the CPU/OS to select the source files containing
