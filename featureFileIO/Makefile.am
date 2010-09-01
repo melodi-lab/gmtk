@@ -40,7 +40,7 @@ libgmtkio_a_LIBADD = \
 $(builddir)/../miscSupport/libmiscSupport.a \
 $(builddir)/../IEEEFloatingpoint/libIEEEsupport.a
 
-noinst_PROGRAMS = obs-print obs-info obs-skmeans obs-concat obs-diff
+bin_PROGRAMS = obs-print obs-info obs-skmeans obs-concat obs-diff
 check_PROGRAMS = gmtest
 
 gmtest_SOURCES = gmtest.cc
