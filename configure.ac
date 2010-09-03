@@ -8,7 +8,7 @@ AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 # Checks for programs.
 
 AC_CHECK_PROG([HAVE_HG],[hg],[yes])
-AC_CHECK_FILE([.hg/hgrc],[
+AC_CHECK_FILE([.hg/dirstate],[
   # the builddir has the repository
   if test x"$HAVE_HG" = x"yes"; then
     # build host has Mercurial installed, so use it to keep
