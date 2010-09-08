@@ -19,6 +19,14 @@
  *
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+
+#ifdef HAVE_HG_H
+#include "hgstamp.h"
+#endif
+#endif
+
 #include "GMTK_ProgramDefaultParms.h"
 
 /*-----------------------------------------------------------------------------------------------------------*/
@@ -1145,7 +1153,11 @@ extern bool ObservationsAllowNan;
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
   if (print_version_and_exit) {
-    printf("%s\n",gmtk_version_id);
+#ifdef HAVE_CONFIG_H
+    printf("%s (Mercurial id: %s)\n",gmtk_version_id,HGID);
+#else
+    printf("%s\n", gmtk_version_id);
+#endif
     exit(0);
   }
 
