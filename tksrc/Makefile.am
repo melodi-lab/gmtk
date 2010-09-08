@@ -1,4 +1,13 @@
 
+if HAVE_HG
+.PHONY: hgstamp.h
+hgstamp.h:
+	echo -n "#define HGID \"" > hgstamp.h
+	hg id $(srcdir)/.. | tr -d \\n >> hgstamp.h
+	echo \" >> hgstamp.h
+endif
+
+
 EXCCFLAGS =
 EXCXXFLAGS =
 EXLDFLAGS =  
@@ -32,6 +41,7 @@ LIBS += $(LEXLIB)
 noinst_LIBRARIES = libXOPT.a libGMTK.a
 
 libGMTK_a_SOURCES = \
+hgstamp.h \
 GMTK_Dense1DPMF.h GMTK_Dense1DPMF.cc \
 GMTK_Sparse1DPMF.h GMTK_Sparse1DPMF.cc \
 GMTK_MeanVector.h GMTK_MeanVector.cc \
@@ -125,7 +135,6 @@ version.h
 
 # GMTK_MissingFeatureScaledDiagGaussian.cc 
 # GMTK_MissingFeatureScaledDiagGaussian.h 
- 
 
 libXOPT_a_SOURCES = \
 GMTK_DiagGaussianOpt.cc \
