@@ -1,5 +1,7 @@
 
 if HAVE_HG
+# this will keep the Mercurial revision id current if you're building 
+# in a working directory. If you're not, use the distributed hgstamp.h
 .PHONY: hgstamp.h
 hgstamp.h:
 	echo -n "#define HGID \"" > hgstamp.h
