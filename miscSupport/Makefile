@@ -8,7 +8,7 @@
 #
 # instead.
 #
-# $Header$
+# $Header: /u/bilmes/.cvsroot/gmtk_dev/miscSupport/Makefile,v 1.35 2009/01/04 18:49:28 bilmes Exp $
 #
 # 
 
@@ -88,7 +88,7 @@ all: libmiscSupport.a
 # Define the standard library modules
 #----------------------------------------------------------------------------
 
-objs = error.o bp_range.o range.o arguments.o logp.o rand.o sArray.o cArray.o general.o lineqsolve.o debug.o fileParser.o hash_abstract.o mul_mdmd_md.o mul_mdmd_md_l0g.o mul_mdmd_md_l0nf.o eig.o bin_search.o
+objs = error.o bp_range.o range.o arguments.o logp.o rand.o sArray.o cArray.o general.o lineqsolve.o debug.o fileParser.o hash_abstract.o mul_mdmd_md.o mul_mdmd_md_l0g.o mul_mdmd_md_l0nf.o eig.o bin_search.o lms_filter.o rls_filter.o
 
 #----------------------------------------------------------------------------
 # Main build programs.
@@ -155,6 +155,11 @@ testSHashMap: shash_map.h shash_map.cc hash_abstract.o hash_abstract.cc hash_abs
 testVSHashMap: vshash_map.h vshash_map.cc hash_abstract.o hash_abstract.cc hash_abstract.h general.o $(objs)
 	$(compile.cc.link) -Wall -g -DMAIN $(HASH) -o $@ vshash_map.cc error.o hash_abstract.cc general.o
 
+testRLS: rls_filter.cc rls_filter.h  adaptive_filter.h libmiscSupport.a
+	$(compile.cc.link) -Wall -g -DMAIN -o $@ rls_filter.cc libmiscSupport.a
+
+testLMS: lms_filter.cc lms_filter.h  adaptive_filter.h libmiscSupport.a
+	$(compile.cc.link) -Wall -g -DMAIN -o $@ lms_filter.cc libmiscSupport.a
 
 
 #----------------------------------------------------------------------------
@@ -163,7 +168,7 @@ testVSHashMap: vshash_map.h vshash_map.cc hash_abstract.o hash_abstract.cc hash_
 
 all_srcs = error.cc bp_range.cc range.cc arguments.cc logp.cc rand.cc sArray.cc cArray.cc general.cc lineqsolve.cc debug.cc fileParser.cc hash_map_list.cc hash_abstract.cc  mul_mdmd_md.c mul_mdmd_md_l0g.c mul_mdmd_md_l0nf.c eig.c bin_search.cc # string_err.cc
 
-all_hdrs = error.h debug.h fileParser.h hash_map_list.h hash_abstract.h eig.h
+all_hdrs = error.h debug.h fileParser.h hash_map_list.h hash_abstract.h eig.h 
 
 all_objs = 
 

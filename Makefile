@@ -1,24 +1,47 @@
 #
 # Top-level Makefile for GMTK
 #
-# $Header$
+# $Header: /u/bilmes/.cvsroot/gmtk_dev/Makefile,v 1.38 2010/08/11 05:58:51 bilmes Exp $
 #
 
+# Compiling notes:
+#   cygwin: make ANSI= ...
+#   linux:
+#   solaris:
+#   mac:
+#   ibm:
+
+
 # compiler selection flags
-CC=/usr/nikola/pkgs/gcc/.4.2.1/bin/gcc
-CXX=/usr/nikola/pkgs/gcc/.4.2.1/bin/g++
-# CC=gcc
-# CXX=g++
+CC=gcc
+CXX=g++
 # extra flags to compilers and linker, allows user to control this from top level make run.
 EXCCFLAGS=
 # EXCXXFLAGS=-Wno-deprecated
 EXCXXFLAGS=
 EXLDFLAGS =  
-# optimization flags
-OPTFLAGS =-g -O3 -march=pentium4 -mfpmath=sse -mfpmath=sse2 -ffast-math
+# optimization flags for intel (activate the appropriate one to get faster results).
+# Ultimately, also add -fno-exceptions and possibly -fno-rtti (run-time type info)
+# OPTFLAGS =-g -O3 -march=pentium4 -mfpmath=sse -ffast-math
+# OPTFLAGS=-g -O3 -march=pentium4 -mfpmath=sse -msse -ffast-math
+# OPTFLAGS=-g -O3 -march=prescott -mfpmath=sse -msse2 -ffast-math
+# OPTFLAGS=-g -O3 -march=nocona -mfpmath=sse -msse3 -ffast-math
+OPTFLAGS=-g -O3 -march=nocona -mfpmath=sse -msse3 
+# OPTFLAGS=-g -O3 -march=core2 -mfpmath=sse -msse4 -ffast-math
+# OPTFLAGS=-g -O3 -march=core2 -mfpmath=sse -msse4
+# OPTFLAGS=-g -O3 -march=core2 -mfpmath=sse -msse4
+# OPTFLAGS=-g -O3 -march=core2 -mfpmath=sse
+# Other -march flags to try are:
+#       -march=pentium4      - includes MMX, SSE, SSE2, instructions.
+#       -march=prescott      - includes MMX, SSE, SSE2, SSE3 instructions + better p4 scheduling
+#       -march=nocona        - includes MMX, SSE, SSE2, SSE3 and 64-bit instructions + better p4 scheduling
+#       -march=core2 -sse4   - uses SSE4
+#
+# Extra optimization flags for some sources that may benefit from them.
+XOPTFLAGS=-funroll-loops -fargument-noalias-global
 # other general optional flags, optionally turned off at top level command line.
 ANSI=-ansi
-PEDANTIC=-pedantic
+PEDANTIC=-pedantic -Wno-long-long
 WALL=-Wall
 # specific flags to C and C++, and combining the above together.
 CCFLAGS = -g $(OPTFLAGS)  $(EXCCFLAGS) $(WALL) $(ANSI) $(PEDANTIC) -DOPTIMIZE_FOR_MEMORY_USAGE -DHASH_PRIME_SIZE
@@ -32,7 +55,7 @@ MODULES = \
 	featureFileIO \
 	tksrc
 
-# files/dirs that should not be contained in distribution. 
+# files/dirs that should not be contained in src distribution. 
 EXCLUDE = \
 	tests_and_development \
 	EXCLUDE
@@ -42,6 +65,7 @@ MAKE_VARS = \
 	CC="$(CC)" \
 	CXX="$(CXX)" \
 	EXLDFLAGS="$(EXLDFLAGS)" \
+	XOPTFLAGS="$(XOPTFLAGS)" \
 	CCFLAGS="$(CCFLAGS)" \
 	CXXFLAGS="$(CXXFLAGS)"
 
@@ -50,7 +74,8 @@ all clean:
 		(cd $$subdir; $(MAKE) $(MAKE_VARS) $@); \
 	done
 
-linux solaris ibm cygwin:
+
+linux solaris ibm cygwin osx:
 	for subdir in IEEEFloatingpoint; do \
 		(cd $$subdir; $(MAKE) $(MAKE_VARS) $@); \
 	done
@@ -73,13 +98,26 @@ World:
 	$(MAKE) depend
 	$(MAKE) all
 
-TAR = /bin/tar
+TAR = /usr/bin/tar
 
 package:  EXCLUDE
 	$(TAR) cvzXf EXCLUDE ../gmtk-`cat RELEASE`.tar.gz .
 
+# use this to make dated source for myself
 date:  EXCLUDE
 	$(TAR) cvzXf EXCLUDE - . > ../gmtk-`date +%a_%b_%d_%Y_%k:%M | sed -e 's, ,,g'`.tar.gz
+
+# same as date, but does a copy
+BHOST=bilmes@cuba.ee.washington.edu:tmp/.
+hbackup:  EXCLUDE
+	( BFILENAME=../gmtk-`date +%a_%b_%d_%Y_%k:%M | sed -e 's, ,,g'`.tar.gz; \
+	$(TAR) cvzXf EXCLUDE - . > $$BFILENAME; \
+	scp $$BFILENAME $(BHOST); )
+
+# use this to make dated source for others.
+datedist:  EXCLUDEDIST
+	$(TAR) cvzXf EXCLUDE - . > ../gmtk-`date +%a_%b_%d_%Y_%k:%M | sed -e 's, ,,g'`.tar.gz
+
 
 # always remake this target when called.
 EXCLUDE: force
@@ -87,7 +125,20 @@ EXCLUDE: force
 	find . \( -name "*~" -o -name "*~[0-9]*" -o -name "core*" -o -name "*.o" -o -name "*.a" -o -name "#*" -o -name ".#*" -o -name "*_bak" \) -print; \
 	find $(MODULES) -type f -perm +0111 \! \( -name '*.cc' -o -name '*.h' \) ; \
 	find . -name CVS -print; \
-	find . -name RCS -print) | \
+	find . -name RCS -print; \
+	find . -type d -name old -print ) | \
+	sed 's,^\./,,' > $@
+
+
+# always remake this target when called.
+EXCLUDEDIST: force
+	(find $(EXCLUDE) -type d -print -prune ; \
+	find . \( -name "*~" -o -name "*~[0-9]*" -o -name "core*" -o -name "*.o" -o -name "*.a" -o -name "#*" -o -name ".#*" -o -name "*_bak" \) -print; \
+	find $(MODULES) -type f -perm +0111 \! \( -name '*.cc' -o -name '*.h' \) ; \
+	find . -name CVS -print; \
+	find . -name RCS -print; \
+	find . -type d -name old -print; \
+	find . \( -name TODO -o -name notes -o -name depends.make \) -print ) | \
 	sed 's,^\./,,' > $@
 
 
