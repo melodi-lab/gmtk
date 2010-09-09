@@ -2,7 +2,8 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.65])
-AC_INIT([GMTK], m4_esyscmd(echo -n `head -n 1 ../RELEASE`), [https://lungs.ee.washington.edu/trac/gmtk/newticket])
+AC_INIT([GMTK], m4_esyscmd(echo -n `head -n 1 ../RELEASE`), 
+        [https://lungs.ee.washington.edu/trac/gmtk/newticket])
 : ${CXXFLAGS=""}
 : ${CFLAGS=""}
 AC_CANONICAL_HOST
@@ -17,13 +18,6 @@ AC_PROG_CC
 AM_PROG_LEX
 AC_PROG_INSTALL
 AC_PROG_RANLIB
-
-AC_CHECK_PROG([HAVE_WXWIDGETS],[wx-config],[yes],[no])
-if test x"$HAVE_WXWIDGETS" = x"yes"; then
-   AC_SUBST([GMTKVIZ],[gmtkViz])
-   AC_SUBST([VIZCXXFLAGS],[`wx-config --cxxflags`])
-   AC_SUBST([VIZLDFLAGS],[`wx-config --libs`])
-fi
 
 AC_CHECK_FILE([../.hg/dirstate],[
   AC_CHECK_PROG([HAVE_HG],[hg],[yes])
@@ -42,6 +36,30 @@ AC_CHECK_FILE([../.hg/dirstate],[
 AM_CONDITIONAL([HAVE_HG],[test  x$HAVE_HG = xyes])
 
 # Checks for libraries.
+
+AC_CHECK_PROG([HAVE_WXCONFIG],[wx-config],[yes])
+if test x"$HAVE_WXCONFIG" = x"yes"; then
+  AC_LANG_PUSH([C++])
+  wx_check_save_CXXFLAGS=${CXXFLAGS}
+  CXXFLAGS=`wx-config --cxxflags`
+  wx_check_save_LDFLAGS=${LDFLAGS}
+  LDFLAGS=`wx-config --libs`
+  AC_LINK_IFELSE(
+    AC_LANG_PROGRAM([#include "wx/wx.h"],[wxString s("foo");s.SDFCapitalize()]),
+    AC_SUBST([HAVE_WXWIDGETS],[yes]),
+    AC_MSG_WARN(
+      [wx-config found but not wxWidgets >= 2.9. gmtkViz will not be built.])
+  )
+  LDFLAGS=${wx_check_save_LDFLAGS}
+  CXXFLAGS=${wx_check_save_CXXFLAGS}
+  AC_LANG_POP([C++])
+fi
+if test x"$HAVE_WXWIDGETS" = x"yes"; then
+   AC_SUBST([GMTKVIZ],[gmtkViz])
+   AC_SUBST([VIZCXXFLAGS],[`wx-config --cxxflags`])
+   AC_SUBST([VIZLDFLAGS],[`wx-config --libs`])
+fi
+
 case "${host}" in
 *-sun-solaris*) AC_CHECK_LIB([sunmath],[annuity]) ;;
 esac
