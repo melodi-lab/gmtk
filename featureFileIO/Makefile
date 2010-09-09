@@ -8,7 +8,7 @@
 #
 # instead.
 #
-# $Header$
+# $Header: /u/bilmes/.cvsroot/gmtk_dev/featureFileIO/Makefile,v 1.24 2010/08/11 05:59:30 bilmes Exp $
 #
 # 
 
@@ -34,7 +34,7 @@ EXCXXFLAGS=
 EXLDFLAGS =  
 OPTFLAGS =-g -O3
 ANSI=-ansi
-PEDANTIC=-pedantic
+PEDANTIC=-pedantic -Wno-long-long
 WALL=-Wall
 CCFLAGS = -g $(OPTFLAGS)  $(EXCCFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 CXXFLAGS = -g $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)

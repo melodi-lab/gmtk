@@ -7,7 +7,7 @@
 #
 # instead.
 #
-# $Header$
+# $Header: /u/bilmes/.cvsroot/gmtk_dev/IEEEFloatingpoint/Makefile,v 1.12 2007/10/06 00:08:02 bilmes Exp $
 #
 # 
 
