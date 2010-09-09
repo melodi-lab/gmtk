@@ -45,7 +45,7 @@ if test x"$HAVE_WXCONFIG" = x"yes"; then
   wx_check_save_LDFLAGS=${LDFLAGS}
   LDFLAGS=`wx-config --libs`
   AC_LINK_IFELSE(
-    AC_LANG_PROGRAM([#include "wx/wx.h"],[wxString s("foo");s.SDFCapitalize()]),
+    AC_LANG_PROGRAM([#include "wx/wx.h"],[wxString s("foo");s.Capitalize()]),
     AC_SUBST([HAVE_WXWIDGETS],[yes]),
     AC_MSG_WARN(
       [wx-config found but not wxWidgets >= 2.9. gmtkViz will not be built.])
