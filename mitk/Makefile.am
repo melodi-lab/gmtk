@@ -2,7 +2,7 @@
 AM_CPPFLAGS = \
 -I$(srcdir)/../miscSupport \
 -I$(srcdir)/../featureFileIO \
--I$(srcdir)/../IEEEFloatingpoint
+-I$(builddir)/../IEEEFloatingpoint
 
 LDADD = \
 $(builddir)/../featureFileIO/libgmtkio.a \

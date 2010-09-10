@@ -25,7 +25,7 @@ ieeeFPsetup_@host_cpu@_@host_os@.cc
 BUILT_SOURCES = ieeeFPsetup.h
 CLEANFILES = ieeeFPsetup.h
 ieeeFPsetup.h: ieeeFPsetup_@host_cpu@_@host_os@.h
-	$(LN_S) ieeeFPsetup_@host_cpu@_@host_os@.h ieeeFPsetup.h
+	$(LN_S) $(top_srcdir)/ieeeFPsetup_@host_cpu@_@host_os@.h ieeeFPsetup.h
 
 # Compilation flags for IEEEsupport library objects (user's CXXFLAGS will
 # be appended)

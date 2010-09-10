@@ -10,7 +10,7 @@ PEDANTIC = -pedantic -Wno-long-long
 WALL = -Wall
 
 
-AM_CPPFLAGS = -I$(srcdir)/../miscSupport -I$(srcdir)/../IEEEFloatingpoint
+AM_CPPFLAGS = -I$(srcdir)/../miscSupport -I$(builddir)/../IEEEFloatingpoint
 
 AM_CFLAGS = \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCCFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
@@ -35,10 +35,6 @@ GMTK_WordOrganization.h GMTK_WordOrganization.cc \
 GMTK_ObsStats.h GMTK_ObsStats.cc \
 pfile.h pfile.cc \
 vbyteswapping.h vbyteswapping.cc
-
-libgmtkio_a_LIBADD = \
-$(builddir)/../miscSupport/libmiscSupport.a \
-$(builddir)/../IEEEFloatingpoint/libIEEEsupport.a
 
 bin_PROGRAMS = obs-print obs-info obs-skmeans obs-concat obs-diff
 #check_PROGRAMS = gmtest
