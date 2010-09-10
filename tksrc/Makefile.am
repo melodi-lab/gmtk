@@ -30,7 +30,7 @@ XOPTFLAGS = -funroll-loops -fargument-noalias-global
 
 AM_CPPFLAGS = \
 -I$(srcdir)/../miscSupport \
--I$(srcdir)/../IEEEFloatingpoint \
+-I$(builddir)/../IEEEFloatingpoint \
 -I$(srcdir)/../featureFileIO
 
 LDADD = libGMTK.a libXOPT.a \
