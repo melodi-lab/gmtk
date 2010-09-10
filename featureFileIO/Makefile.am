@@ -41,9 +41,9 @@ $(builddir)/../miscSupport/libmiscSupport.a \
 $(builddir)/../IEEEFloatingpoint/libIEEEsupport.a
 
 bin_PROGRAMS = obs-print obs-info obs-skmeans obs-concat obs-diff
-check_PROGRAMS = gmtest
+#check_PROGRAMS = gmtest
 
-gmtest_SOURCES = gmtest.cc
+#gmtest_SOURCES = gmtest.cc
 
 obs_print_SOURCES = \
 GMTK_ObsPrint.h GMTK_ObsPrint.cc \

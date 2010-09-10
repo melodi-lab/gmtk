@@ -43,7 +43,8 @@ mul_mdmd_md_l0nf.c \
 eig.h eig.c \
 bin_search.cc \
 lms_filter.h lms_filter.cc \
-rls_filter.h rls_filter.cc
+rls_filter.h rls_filter.cc \
+vhash_set.h
 
 # Compilation flags for miscSupport library objects (user's CXXFLAGS will
 # be appended)
@@ -68,8 +69,9 @@ check_PROGRAMS = \
 testError \
 testBPRange \
 testArguments testLogp testRand testsArray testcArray fileParserTest \
-testHashMapList testHashTree testVHashSet testVHashMap testSHashSet \
+testHashMapList testHashTree testVHashMap testSHashSet \
 testSHashMap testVSHashMap testRLS testLMS
+# testVHashSet 
 
 # testDebug      doesn't compile?
 testError_SOURCES = error.cc error.h
@@ -86,7 +88,7 @@ fileParserTest_SOURCES = fileParser.cc fileParser.h
 
 testHashMapList_SOURCES = hash_map_list.cc hash_map_list.h
 testHashTree_SOURCES = hash_tree.h hash_tree.cc
-testVHashSet_SOURCES = vhash_set.h vhash_set.cc
+#testVHashSet_SOURCES = vhash_set.h vhash_set.cc
 testVHashMap_SOURCES = vhash_map.h vhash_map.cc
 testSHashSet_SOURCES = shash_set.h shash_set.cc
 testSHashMap_SOURCES = shash_map.h shash_map.cc
