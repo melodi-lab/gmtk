@@ -9,20 +9,21 @@ ANSI = -ansi
 PEDANTIC = -pedantic
 WALL = -Wall
 
-# TODO: Need a better mechanism for picking the sources.
-#       I'm not sure the @variables@ are legal in _SOURCES,
-#       and this will include ieeeFPsetup.h in the dist
-
 # Build libIEEEsupport.a, but don't install it in $(libdir)
 noinst_LIBRARIES = libIEEEsupport.a
 
 # The source files libIEEEsupport.a depends on. This depends on both
 # the CPU (FPU) and OS, which are identified by autoconf
-libIEEEsupport_a_SOURCES = \
+nodist_libIEEEsupport_a_SOURCES = \
+ieeeFPsetup.h \
 ieeeFPsetup_@host_cpu@_@host_os@.h \
 ieeeFPsetup_@host_cpu@_@host_os@.cc
-libIEEEsupport_a_DEPENDENCIES = ieeeFPsetup.h
 
+# The clients want to include ieeeFPsetup.h wihtout caring
+# about the platform. We'll link the platform-specific
+# header to create it.
+BUILT_SOURCES = ieeeFPsetup.h
+CLEANFILES = ieeeFPsetup.h
 ieeeFPsetup.h: ieeeFPsetup_@host_cpu@_@host_os@.h
 	$(LN_S) ieeeFPsetup_@host_cpu@_@host_os@.h ieeeFPsetup.h
 
@@ -39,7 +40,6 @@ AM_CPPFLAGS = -I$(srcdir)/../miscSupport
 # That would leave out the IEEEsupport files for all the platforms except
 # the host's. So this lists them all to be sure they're included.
 EXTRA_DIST = \
-ieeeFPsetup.h \
 ieeeFPsetup_ANY_ANY.cc \
 ieeeFPsetup_ANY_ANY.h \
 ieeeFPsetup_cygwin.cc \
