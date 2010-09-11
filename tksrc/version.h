@@ -20,7 +20,7 @@
 
 #if HAVE_CONFIG_H
 #include <config.h>
-static const char * gmtk_version_id = PACKAGE_VERSION;
+static const char * gmtk_version_id = PACKAGE_STRING;
 #else
 // TODO: automate the process of updating this string.
 static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 2004";

@@ -78,6 +78,15 @@ using namespace std;
 #include <cctype>
 #include <assert.h>
 
+// config.h defines PACKAGE_STRING = "GMTK <release #>"
+// either config.h or hgstamp.h will define HGID="<revision id>"
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+
+#ifdef HAVE_HG_H
+#include "hgstamp.h"
+#endif
+#endif
 
 #include "error.h"
 #include "arguments.h"
@@ -1350,6 +1359,18 @@ bool Arg::parse(int argc,char** argv)
     exit(0);
   }
 
+  arg_ptr=searchArgs(Args,"version");
+  if (arg_ptr!=NULL) {
+    cnt=arg_ptr->getCount();
+  }
+  if (cnt > 0) {
+#ifdef HAVE_CONFIG_H
+    printf("%s (Mercurial id: %s)\n",PACKAGE_STRING,HGID);
+#else
+    printf("Use the Autotools build to get a working -version argument\n");
+#endif
+    exit(0);
+  }
   if (cnt==0 && rc == ARG_MISSING) {
     Arg::checkMissing(true);
   }
