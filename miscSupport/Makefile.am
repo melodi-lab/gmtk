@@ -1,4 +1,17 @@
 
+if HAVE_HG
+# this will keep the Mercurial revision id current if you're building 
+# in a working directory. If you're not, use the distributed hgstamp.h
+.PHONY: hgstamp.h testHashDrivers
+hgstamp.h:
+	echo -n "#define HGID \"" > hgstamp.h
+	hg id $(srcdir)/.. | tr -d \\n >> hgstamp.h
+	echo \" >> hgstamp.h
+else
+.PHONY: testHashDrivers
+endif
+
+
 EXCCFLAGS = 
 EXCXXFLAGS = 
 EXLDFLAGS  = 
@@ -97,7 +110,6 @@ testVSHashMap_SOURCES = vshash_map.h vshash_map.cc
 testRLS_SOURCES = rls_filter.cc rls_filter.h  adaptive_filter.h
 testLMS_SOURCES = lms_filter.cc lms_filter.h  adaptive_filter.h
 
-.PHONY: testHashDrivers
 testHashDrivers: \
 testHashMapList testHashTree testVHashSet testVHashMap testSHashSet \
 testSHashMap testVSHashMap
