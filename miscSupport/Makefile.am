@@ -31,6 +31,7 @@ noinst_LIBRARIES = libmiscSupport.a
 
 # The source files libmiscSupport.a depends on
 libmiscSupport_a_SOURCES = \
+hgstamp.h \
 counted_ptr.h \
 fixed_filter.h \
 hash_mtable.h \
