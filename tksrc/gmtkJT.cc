@@ -34,7 +34,6 @@
 
 #include "GMTK_WordOrganization.h"
 
-
 VCID("$Header$")
 
 #include "GMTK_FileParser.h"
