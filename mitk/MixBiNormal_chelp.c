@@ -17,13 +17,31 @@
 */
 
 
+#if HAVE_CONFIG_H
+#include <config.h>
+
+#if HAVE_MATH_H
+#include <math.h>
+#endif
+
+#if HAVE_VALUES_H
+#include <values.h>
+#endif
+
+#if HAVE_LIMITS_H
+#include <limits.h>
+#endif
+
+#if HAVE_FLOAT_H
+#include <float.h>
+#endif
+
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
-#include <values.h>
-#include <math.h>
-#include <float.h>
 
 /*
 #ifdef HAVE_SYS_IEEEFP_H

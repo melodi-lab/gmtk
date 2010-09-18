@@ -5,6 +5,16 @@
 #include <fstream>
 #include <cfloat>
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#if HAVE_MATH_H
+#include <math.h>
+#endif
+#if !HAVE_FINITE
+#error "I need the finite function"
+#endif
+#endif
+
 #include "rand.h"
 #include "mixNormal.h"
 #include "matrix-ops.h"
@@ -728,7 +738,7 @@ start:
 #if defined(WIN32)
     if ( ! _finite(invDet) ) {
 #else
-    if ( ! finite(invDet) ) {
+    if ( ! isfinite(invDet) ) {
 #endif
       if ( reRandOnlyOneComp ) {
 	randomize(l);

@@ -29,13 +29,31 @@
 extern "C" void nonstandard_arithmetic();
 #endif
 
+#if HAVE_CONFIG_H
+#include <config.h>
+
+#if HAVE_MATH_H
+#include <math.h>
+#endif
+
+#if HAVE_VALUES_H
+#include <values.h>
+#endif
+
+#if HAVE_LIMITS_H
+#include <limits.h>
+#endif
+
+#if HAVE_FLOAT_H
+#include <float.h>
+#endif
+
+#endif
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
-#include <values.h>
-#include <math.h>
 #include <signal.h>
 #include <sys/types.h>
 #include <time.h>
@@ -1976,7 +1994,7 @@ int main(int argc, const char *argv[])
     int num_active_to_stop = 0;
 
     bool compute_mi = true;
-    int max_em_iterations = MAXINT;
+    int max_em_iterations = INT_MAX;
 
     double varianceFloor = 0.0;
     int re_rands = 5;
