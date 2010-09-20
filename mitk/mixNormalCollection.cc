@@ -223,7 +223,7 @@ int MixNormalCollection::reComputeNumActive(double &maxDist,
 					    unsigned numEMIter) {
   maxDist = 0.0;
   aveDist = 0.0;
-  minDist = HUGE;
+  minDist = MAXFLOAT;
   double tmp;
 
   int numSum = 0;

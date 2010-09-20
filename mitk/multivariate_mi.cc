@@ -15,6 +15,9 @@
 */
 
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 
 #include <cstdlib>
@@ -22,7 +25,9 @@
 #include <iostream>
 #include <errno.h>
 #include <cstring>
+#if HAVE_VALUES_H
 #include <values.h>
+#endif
 #include <cmath>
 #include <cassert>
 #include <ctime>

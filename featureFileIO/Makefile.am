@@ -5,8 +5,11 @@ EXLDFLAGS =
 DEBUGFLAGS = -g
 OPTFLAGS = -O3
 
-ANSI = -ansi
-PEDANTIC = -pedantic -Wno-long-long
+#ANSI = -ansi
+#PEDANTIC = -pedantic -Wno-long-long
+ANSI =
+PEDANTIC = -Wno-long-long
+
 WALL = -Wall
 
 

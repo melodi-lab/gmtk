@@ -13,13 +13,23 @@
 //     ftp://ftp.icsi.berkeley.edu/pub/techreports/1997/tr-97-021.ps
 // 
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#if HAVE_VALUES_H
 #include <values.h>
+#endif
+#if HAVE_MATH_H
 #include <math.h>
+#endif
+#if HAVE_FLOAT_H
 #include <float.h>
+#endif
 #include <assert.h>
 
 #include "rand.h"
