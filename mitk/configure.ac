@@ -18,7 +18,7 @@ AC_PROG_CC
 AC_CHECK_LIB([m], [log])
 
 # Checks for header files.
-AC_CHECK_HEADERS([float.h limits.h stdlib.h string.h sys/time.h values.h])
+AC_CHECK_HEADERS([float.h math.h limits.h stdlib.h string.h sys/time.h values.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
