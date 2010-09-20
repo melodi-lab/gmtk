@@ -11,6 +11,16 @@
 #include "error.h"
 #include "general.h"
 
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+#if HAVE_INTTYPES_H
+#  include <inttypes.h>
+#endif
+#if HAVE_STDINT_H
+#  include <stdint.h>
+#endif
+
 // This is the size of the PFile header
 #define PFILE_HEADER_SIZE (32768)
 
@@ -19,9 +29,8 @@
 // a print command for ssize_t similar to what you might find in inttypes.h
 #define PRIsst "zd"
 
-
-typedef int intv_int32_t;
-typedef unsigned int intv_uint32_t;
+typedef int32_t intv_int32_t;
+typedef uint32_t intv_uint32_t;
 
 typedef long SegID;
 enum {
@@ -50,52 +59,34 @@ typedef union
     Int32 l; float f;
 } PFile_Val;
 
-// Adapted from the latest (2004-10-26) Quicknet distribution to
-// support 64 bit pfiles. I am defining _FILE_OFFSET_BITS here but it
-// should be set during config time.  -- Karim
-
-#define _FILE_OFFSET_BITS 64
-
-// same deal as with _FILE_OFFSET_BITS --arthur 6/23/2009
-#define PF_HAVE_LONG_LONG 1
-#define PF_HAVE_FSEEKO 1
-
 // Some stuff to deal with large file support
 //  First make sure things still work if we do not have fseeko/ftello
-#ifdef PF_HAVE_FSEEKO
-#define pfile_fseek(a,b,c) fseeko(a,b,c)
-#define pfile_ftell(a) ftello(a)
-// #if defined(__FreeBSD__)
-// typedef off_t off64_t
-// #endif
-// typedef off64_t pfile_off_t;
-// TODO: the above was commented out to get working on OSX, but
-// this compiles fine on Linux. We need to have a proper build for
-// both 32 and 64 bit architectures for both oss, so this needs to be
-// addressed and fixed.
-typedef long pfile_off_t;
+#if HAVE_FSEEKO
+#  define pfile_fseek(a,b,c) fseeko(a,b,c)
+#  define pfile_ftell(a) ftello(a)
+   typedef off_t pfile_off_t;
 #else
-#define pfile_fseek(a,b,c) fseek(a,b,c)
-#define pfile_ftell(a) ftell(a)
-typedef long pfile_off_t;
+#  define pfile_fseek(a,b,c) fseek(a,b,c)
+#  define pfile_ftell(a) ftell(a)
+   typedef long pfile_off_t;
 #endif
 
 // Set up long long types if we have them, along with approriate format
 // string segments
-#if defined(PF_HAVE_LONG_LONG)
-typedef long long int pfile_longlong_t;
-typedef long long unsigned pfile_ulonglong_t;
-#define PF_LLU "%llu"
-#define PF_LLD "%lld"
+#if HAVE_LONG_LONG_INT
+   typedef long long int pfile_longlong_t;
+   typedef unsigned long long int pfile_ulonglong_t;
+#  define PF_LLU "%llu"
+#  define PF_LLD "%lld"
 #else
-typedef long int pfile_longlong_t;
-typedef long unsigned pfile_ulonglong_t;
-#define PF_LLU "%lu"
-#define PF_LLD "%ld"
+   typedef long pfile_longlong_t;
+   typedef long unsigned pfile_ulonglong_t;
+#  define PF_LLU "%lu"
+#  define PF_LLD "%ld"
 #endif
 
 // Define PFILE_LARGE if we support large PFiles
-#if (defined(PF_HAVE_FSEEKO) && defined(PF_HAVE_LONG_LONG) && (_FILE_OFFSET_BITS==64))
+#if (HAVE_FSEEKO || (SIZEOF_LONG >= 8))
 #define PFILE_LARGEFILES 1
 #else
 #error "Now we need large file support"

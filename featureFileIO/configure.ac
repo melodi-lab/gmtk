@@ -22,7 +22,7 @@ AC_CHECK_LIB([m], [sqrt])
 # Checks for header files.
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS([float.h limits.h stdlib.h string.h unistd.h inttypes.h stdint.h])
+AC_CHECK_HEADERS([float.h limits.h math.h stdlib.h string.h unistd.h inttypes.h stdint.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
@@ -38,6 +38,7 @@ AC_TYPE_LONG_LONG_INT
 AC_TYPE_UNSIGNED_LONG_LONG_INT
 AC_TYPE_OFF_T
 AC_CHECK_SIZEOF([long])
+AC_CHECK_DECLS([M_SQRT1_2,M_SQRT2],,,[#include <math.h>])
 
 # Checks for library functions.
 AC_FUNC_ERROR_AT_LINE

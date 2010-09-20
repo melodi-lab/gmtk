@@ -29,13 +29,26 @@
 extern "C" void nonstandard_arithmetic();
 #endif
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#if HAVE_LIMITS_H
+#include <limits.h>
+#endif
+#if HAVE_VALUES_H
 #include <values.h>
+#endif
+#if HAVE_MATH_H
 #include <math.h>
+#endif
+#if HAVE_FLOAT_H
+#include <float.h>
+#endif
 #include <signal.h>
 #include <sys/types.h>
 #include <time.h>
@@ -83,6 +96,14 @@ extern "C" void nonstandard_arithmetic();
 
 #define MIN(a,b) ((a)<(b)?(a):(b))
 
+
+#if defined HAVE_DECL_MAXINT && !HAVE_DECL_MAXINT
+#if defined INT_MAX
+#define MAXINT INT_MAX
+#else
+#error "maximum int value unknown"
+#endif
+#endif
 
 //GLOBAL VARIBLES
 static const char* program_name;
@@ -1152,7 +1173,7 @@ MBN_Col::recomputeNumActive(double &max_dist, double &avg_dist,
   MixBiNormal *ftr_mi_p = ftr_mi;
   max_dist = 0.0;
   avg_dist = 0.0;
-  min_dist = HUGE;
+  min_dist = MAXFLOAT;
   int numSum = 0;
   int numActive=0;
   while (ftr_mi_p != ftr_mi_endp) {

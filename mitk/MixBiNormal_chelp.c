@@ -17,13 +17,23 @@
 */
 
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#if HAVE_VALUES_H
 #include <values.h>
+#endif
+#if HAVE_MATH_H
 #include <math.h>
+#endif
+#if HAVE_FLOAT_H
 #include <float.h>
+#endif
 
 /*
 #ifdef HAVE_SYS_IEEEFP_H

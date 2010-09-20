@@ -11,14 +11,23 @@
     Karim Filali <karim@cs.washington.edu>
 */
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#if HAVE_LIMITS_H
 #include <limits.h>
+#endif
+#if HAVE_FLOAT_H
 #include <float.h>
+#endif
+#if HAVE_MATH_H
 #include <math.h>
+#endif
 
 #include "general.h"
 
@@ -35,6 +44,12 @@
 #include "error.h"
 //#include "Range.H"
 
+#if defined HAVE_DECL_M_SQRT1_2 && !HAVE_DECL_M_SQRT1_2
+#define M_SQRT1_2	0.70710678118654752440
+#endif
+#if defined HAVE_DECL_M_SQRT2 && !HAVE_DECL_M_SQRT2
+#define M_SQRT2		1.41421356237309504880
+#endif
 
 #include "GMTK_ObsGaussianNorm.h"
 

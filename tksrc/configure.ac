@@ -91,6 +91,7 @@ AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 AC_FUNC_STRTOD
 AC_CHECK_FUNCS([alarm floor memset pow regcomp sqrt strchr strerror strstr strtol])
+AC_FUNC_FSEEKO
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
