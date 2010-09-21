@@ -1,7 +1,8 @@
 syntax: glob
 
+*~
 *.deps
-*.in
+{Makefile,config.h}.in
 *.a
 *.o
 *.Po
