@@ -67,7 +67,9 @@ case "${host}" in
     AC_SUBST([OSXBUNDLE],[gmtkViz.app])
   fi ;;
 *-sun-solaris*) AC_CHECK_LIB([sunmath],[annuity]) ;;
+*cygwin*) AC_SUBST([XOPEN],[-D__USE_XOPEN2K]) ;;
 esac
+AM_CONDITIONAL([CYGWIN_FLAGS],[test x"$XOPEN" = x"-D__USE_XOPEN2K"])
 AM_CONDITIONAL([MAKE_BUNDLE],[test  x$OSXBUNDLE = xgmtkViz.app])
 AC_CHECK_LIB([m], [log])
 
