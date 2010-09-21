@@ -23,13 +23,14 @@ ieeeFPsetup_@host_cpu@_@host_os@.cc
 # about the platform. We'll link the platform-specific
 # header to create it.
 BUILT_SOURCES = ieeeFPsetup.h
-CLEANFILES = \
-ieeeFPsetup.h \
-ieeeFPsetup_@host_cpu@_@host_os@.h \
-ieeeFPsetup_@host_cpu@_@host_os@.cc
+CLEANFILES = ieeeFPsetup.h 
 
 ieeeFPsetup.h: ieeeFPsetup_@host_cpu@_@host_os@.h
-	$(LN_S) ieeeFPsetup_@host_cpu@_@host_os@.h ieeeFPsetup.h
+	if test -f $(top_srcdir)/ieeeFPsetup_@host_cpu@_@host_os@.h; then \
+	 $(LN_S) $(top_srcdir)/ieeeFPsetup_@host_cpu@_@host_os@.h ieeeFPsetup.h; \
+	else \
+	 $(LN_S) ieeeFPsetup_@host_cpu@_@host_os@.h ieeeFPsetup.h; \
+	fi
 
 # Compilation flags for IEEEsupport library objects (user's CXXFLAGS will
 # be appended)
