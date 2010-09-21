@@ -17,8 +17,14 @@ EXLDFLAGS =
 DEBUGFLAGS = -g
 OPTFLAGS = -O3
 
+if CYGWIN_FLAGS
+ANSI = 
+PEDANTIC =
+else
 ANSI = -ansi
 PEDANTIC = -pedantic -Wno-long-long
+endif
+
 WALL = -Wall
 
 AM_CFLAGS = \
