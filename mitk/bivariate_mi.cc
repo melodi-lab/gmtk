@@ -37,6 +37,7 @@ extern "C" void nonstandard_arithmetic();
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+
 #if HAVE_LIMITS_H
 #include <limits.h>
 #endif
@@ -49,6 +50,7 @@ extern "C" void nonstandard_arithmetic();
 #if HAVE_FLOAT_H
 #include <float.h>
 #endif
+
 #include <signal.h>
 #include <sys/types.h>
 #include <time.h>
@@ -1997,7 +1999,7 @@ int main(int argc, const char *argv[])
     int num_active_to_stop = 0;
 
     bool compute_mi = true;
-    int max_em_iterations = MAXINT;
+    int max_em_iterations = INT_MAX;
 
     double varianceFloor = 0.0;
     int re_rands = 5;
