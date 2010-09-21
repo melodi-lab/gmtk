@@ -7,6 +7,7 @@ AC_INIT([GMTK], m4_esyscmd(printf %s `head -n 1 ../RELEASE`),
 : ${CXXFLAGS=""}
 : ${CFLAGS=""}
 AC_CANONICAL_HOST
+
 AC_CONFIG_SRCDIR([GMTK_DlinkMatrix.h])
 AC_CONFIG_HEADERS([config.h])
 
@@ -61,8 +62,13 @@ if test x"$HAVE_WXWIDGETS" = x"yes"; then
 fi
 
 case "${host}" in
+*apple*) 
+  if test x"$HAVE_WXWIDGETS" = x"yes"; then
+    AC_SUBST([OSXBUNDLE],[gmtkViz.app])
+  fi ;;
 *-sun-solaris*) AC_CHECK_LIB([sunmath],[annuity]) ;;
 esac
+AM_CONDITIONAL([MAKE_BUNDLE],[test  x$OSXBUNDLE = xgmtkViz.app])
 AC_CHECK_LIB([m], [log])
 
 # Checks for header files.
@@ -91,7 +97,6 @@ AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 AC_FUNC_STRTOD
 AC_CHECK_FUNCS([alarm floor memset pow regcomp sqrt strchr strerror strstr strtol])
-AC_FUNC_FSEEKO
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
