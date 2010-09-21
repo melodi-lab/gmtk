@@ -49,9 +49,9 @@ if test -f "${srcdir}/ieeeFPsetup_${host_cpu}_${host_os}.cc"; then
    echo Building IEEE floating point support for ${host_cpu}-${host_os}
 else
    cp ${srcdir}/ieeeFPsetup_ANY_ANY.h \
-      ${srcdir}/ieeeFPsetup_${host_cpu}_${host_os}.h
+      ieeeFPsetup_${host_cpu}_${host_os}.h
    cp ${srcdir}/ieeeFPsetup_ANY_ANY.cc \
-      ${srcdir}/ieeeFPsetup_${host_cpu}_${host_os}.cc
+      ieeeFPsetup_${host_cpu}_${host_os}.cc
    AC_WARN([
 ---------------------------------------------------------------
   No IEEE floating point support for ${host_cpu}-${host_os}

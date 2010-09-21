@@ -20,10 +20,10 @@ DEBUGFLAGS = -g
 OPTFLAGS = -O3
 HASH = 
 
-ANSI = 
-PEDANTIC =
-#ANSI = -ansi
-#PEDANTIC = -pedantic
+#ANSI = 
+#PEDANTIC =
+ANSI = -ansi
+PEDANTIC = -pedantic
 WALL = -Wall
 
 # used by clients of miscSupport

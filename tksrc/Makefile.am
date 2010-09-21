@@ -17,10 +17,8 @@ EXLDFLAGS =
 DEBUGFLAGS = -g
 OPTFLAGS = -O3
 
-ANSI = 
-PEDANTIC = -Wno-long-long
-#ANSI = -ansi
-#PEDANTIC = -pedantic -Wno-long-long
+ANSI = -ansi
+PEDANTIC = -pedantic -Wno-long-long
 WALL = -Wall
 
 AM_CFLAGS = \
@@ -152,8 +150,9 @@ $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 
 bin_PROGRAMS = \
 gmtkTime gmtkJT gmtkEMtrainNew gmtkKernel gmtkViterbi gmtkTriangulate \
-gmtkParmConvert gmtkTFmerge gmtkDTindex gmtkNGramIndex gmtkTie $(GMTKVIZ)
-EXTRA_PROGRAMS = gmtkViz
+gmtkParmConvert gmtkTFmerge gmtkDTindex gmtkNGramIndex gmtkTie \
+$(GMTKVIZ) $(OSXBUNDLE)
+EXTRA_PROGRAMS = gmtkViz gmtkViz.app
 
 gmtkTie_SOURCES = gmtkTie.cc
 gmtkJT_SOURCES = gmtkJT.cc
@@ -178,6 +177,26 @@ gmtkViz_CXXFLAGS = $(VIZCXXFLAGS) \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC) $(X_CFLAGS)
 gmtkViz_LDFLAGS = $(EXLDFLAGS) $(VIZLDFLAGS) $(X_PRE_LIBS) $(X_LIBS) $(X_EXTRA_LIBS) -lX11
 
+gmtkViz_app_SOURCES = Info.plist.in wxmac.icns
+
+if MAKE_BUNDLE
+CLEANFILES = $(OSXBUNDLE)
+
+gmtkViz.app: gmtkViz.app/Contents/PkgInfo
+
+gmtkViz.app/Contents/PkgInfo: gmtkViz$(EXEEXT) $(srcdir)/Info.plist.in \
+                              $(srcdir)/wxmac.icns
+	mkdir -p gmtkViz.app/Contents
+	mkdir -p gmtkViz.app/Contents/MacOS
+	mkdir -p gmtkViz.app/Contents/Resources
+	sed -e "s/IDENTIFIER/gmtkViz/" \
+	-e "s/EXECUTABLE/gmtkViz/" \
+	-e "s/VERSION/$(PACKAGE_VERSION)/" \
+	$(srcdir)/Info.plist.in >gmtkViz.app/Contents/Info.plist
+	/bin/echo -n "APPL????" >gmtkViz.app/Contents/PkgInfo
+	ln -f gmtkViz$(EXEEXT) gmtkViz.app/Contents/MacOS/gmtkViz
+	cp -f $(srcdir)/wxmac.icns gmtkViz.app/Contents/Resources/wxmac.icns
+endif
 
 check_PROGRAMS =  \
 testPackCliqueValue 
