@@ -4,9 +4,10 @@ if HAVE_HG
 # in a working directory. If you're not, use the distributed hgstamp.h
 .PHONY: hgstamp.h testHashDrivers
 hgstamp.h:
-	printf %s "#define HGID \"" > hgstamp.h
-	hg id $(srcdir)/.. | tr -d \\n >> hgstamp.h
-	printf \"\\n >> hgstamp.h
+	test -f $@ || touch $@
+	printf "#define HGID \"%s\"\n" "`hg id ../ | tr -d \\n`" | \
+	  cmp -s $@ - || \
+	  printf "#define HGID \"%s\"\n" "`hg id ../ | tr -d \\n`" > $@
 else
 .PHONY: testHashDrivers
 endif
