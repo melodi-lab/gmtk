@@ -2,7 +2,8 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT([GMTK], m4_esyscmd(echo -n `head -n 1 ../RELEASE`), [https://lungs.ee.washington.edu/trac/gmtk/newticket])
+AC_INIT([GMTK], m4_esyscmd(printf %s `head -n 1 ../RELEASE`),
+        [https://lungs.ee.washington.edu/trac/gmtk/newticket])
 : ${CXXFLAGS=""}
 AC_CONFIG_SRCDIR([adaptive_filter.h])
 AC_CONFIG_HEADER([config.h])
@@ -18,7 +19,7 @@ AC_CHECK_FILE([../.hg/dirstate],[
   AC_CHECK_PROG([HAVE_HG],[hg],[yes])
   if test x$HAVE_HG = xyes; then
     HGREVID=`hg id ..`  
-    echo "#define HGID \"$HGREVID\"" > hgstamp.h
+    printf "#define HGID \"$HGREVID\"\n" > hgstamp.h
     AC_DEFINE([HAVE_HG_H],[1],[Live Mercurial revision id header available?])
   fi
 ],[

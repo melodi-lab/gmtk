@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.65])
-AC_INIT([GMTK],m4_esyscmd(echo -n `head -n 1 RELEASE`), 
+AC_INIT([GMTK],m4_esyscmd([printf %s `head -n 1 RELEASE`]),
         [https://lungs.ee.washington.edu/trac/gmtk/newticket])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 
