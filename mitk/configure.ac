@@ -2,7 +2,8 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.65])
-AC_INIT([GMTK], m4_esyscmd(echo -n `head -n 1 ../RELEASE`), [https://lungs.ee.washington.edu/trac/gmtk/newticket])
+AC_INIT([GMTK], m4_esyscmd(printf %s `head -n 1 ../RELEASE`),
+        [https://lungs.ee.washington.edu/trac/gmtk/newticket])
 : ${CXXFLAGS=""}
 : ${CFLAGS=""}
 AC_CONFIG_SRCDIR([data-points.cc])
@@ -18,7 +19,7 @@ AC_PROG_CC
 AC_CHECK_LIB([m], [log])
 
 # Checks for header files.
-AC_CHECK_HEADERS([float.h stdlib.h string.h sys/time.h values.h])
+AC_CHECK_HEADERS([float.h limits.h math.h stdlib.h string.h sys/time.h values.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
@@ -36,7 +37,7 @@ AC_CHECK_SIZEOF([long])
 # Checks for library functions.
 AC_FUNC_ERROR_AT_LINE
 AC_FUNC_STRTOD
-AC_CHECK_FUNCS([memset pow sqrt strchr strspn strtol])
+AC_CHECK_FUNCS([memset pow sqrt finite strchr strspn strtol])
 
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_SUBDIRS([discrete-mi])

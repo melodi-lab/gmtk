@@ -13,13 +13,31 @@
 //     ftp://ftp.icsi.berkeley.edu/pub/techreports/1997/tr-97-021.ps
 // 
 
+#if HAVE_CONFIG_H
+#include <config.h>
+
+#if HAVE_MATH_H
+#include <math.h>
+#endif
+
+#if HAVE_VALUES_H
+#include <values.h>
+#endif
+
+#if HAVE_LIMITS_H
+#include <limits.h>
+#endif
+
+#if HAVE_FLOAT_H
+#include <float.h>
+#endif
+
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
-#include <values.h>
-#include <math.h>
-#include <float.h>
 #include <assert.h>
 
 #include "rand.h"
@@ -1040,7 +1058,7 @@ start:
       goto start;
     }
     const double inv_det = 1.0/det;
-    if (!finite(inv_det)) {
+    if (!isfinite(inv_det)) {
       // In theory, we don't need this check if we also
       // do the DBL_MIN check above. We keep this here
       // just in case.
