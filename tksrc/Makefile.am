@@ -4,9 +4,9 @@ if HAVE_HG
 # in a working directory. If you're not, use the distributed hgstamp.h
 .PHONY: hgstamp.h
 hgstamp.h:
-	echo -n "#define HGID \"" > hgstamp.h
+	printf %s "#define HGID \"" > hgstamp.h
 	hg id $(srcdir)/.. | tr -d \\n >> hgstamp.h
-	echo \" >> hgstamp.h
+	printf \"\\n >> hgstamp.h
 endif
 
 
@@ -174,8 +174,8 @@ gmtkNGramIndex_SOURCES = gmtkNGramIndex.cc
 
 gmtkViz_SOURCES = gmtkViz.cc
 gmtkViz_CXXFLAGS = $(VIZCXXFLAGS) \
-$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
-gmtkViz_LDFLAGS = $(EXLDFLAGS) $(VIZLDFLAGS)
+$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC) $(X_CFLAGS)
+gmtkViz_LDFLAGS = $(EXLDFLAGS) $(VIZLDFLAGS) $(X_PRE_LIBS) $(X_LIBS) $(X_EXTRA_LIBS) -lX11
 
 
 check_PROGRAMS =  \

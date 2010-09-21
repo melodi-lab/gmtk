@@ -2,7 +2,8 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.65])
-AC_INIT([GMTK], m4_esyscmd(echo -n `head -n 1 ../RELEASE`), [https://lungs.ee.washington.edu/trac/gmtk/newticket])
+AC_INIT([GMTK], m4_esyscmd(printf %s `head -n 1 ../RELEASE`),
+        [https://lungs.ee.washington.edu/trac/gmtk/newticket])
 : ${CXXFLAGS=""}
 : ${CFLAGS=""}
 AC_CONFIG_SRCDIR([data-points.cc])
@@ -47,7 +48,7 @@ AC_CHECK_DECLS([DBL_MIN,MAXINT],[],[],[
 # Checks for library functions.
 AC_FUNC_ERROR_AT_LINE
 AC_FUNC_STRTOD
-AC_CHECK_FUNCS([memset pow sqrt strchr strspn strtol])
+AC_CHECK_FUNCS([memset pow sqrt finite strchr strspn strtol])
 # needed to make pfile.h happy
 AC_FUNC_FSEEKO
 

@@ -19,14 +19,18 @@
 #include <config.h>
 #endif
 
-
 #include <cstdlib>
 #include <cstdio>
 #include <iostream>
 #include <errno.h>
 #include <cstring>
 #if HAVE_VALUES_H
-#include <values.h>
+#  include <values.h>
+#elif HAVE_FLOAT_H and HAVE_LIMITS_H
+#  include <float.h>
+#  include <limits.h>
+#else
+#  error "I need values.h or (float.h and limits.h)"
 #endif
 #include <cmath>
 #include <cassert>
