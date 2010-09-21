@@ -7,6 +7,9 @@ syntax: glob
 *.o
 *.Po
 *.tar.gz
+mitk/discrete-mi/ac_config.h
+mitk/discrete-mi/ac_config.h.in
+tksrc/GMTK_FileTokenizer.cc
 hgstamp.h
 Makefile
 aclocal.m4
