@@ -131,7 +131,6 @@ VCID("$Header$")
 #define GMTK_ARG_HELP
 #define GMTK_ARG_VERSION
 
-
 /****************************         INFERENCE OPTIONS           ***********************************************/
 #define GMTK_ARG_ISLAND
 #define GMTK_ARG_CLIQUE_TABLE_NORMALIZE
