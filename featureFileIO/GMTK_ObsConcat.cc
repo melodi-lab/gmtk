@@ -263,86 +263,86 @@ static void obsConcat(FILE *out_fp,
     // Outer loop around input filenames
     unsigned global_seg_num=0;
     for (int file_ix = 0; file_ix < n_input_fnames; ++file_ix) {
-	file_name = input_fname[file_ix];
-	// in_fp actually already open first time into the loop (i.e. for file_ix==0)
-	if (in_fp == NULL) {
-	    in_fp = fopen(file_name, "r");
-	    if (in_fp==NULL) {
-		error("Couldn't open input file %s for reading.",file_name);
-	    }
-
-	    
-	    globalObservationMatrix.openFiles(1,  // number of files
-					      (const char**)&file_name,
-					      (const char**)&fr_str[file_ix],
-					      (const char**)&lr_str[file_ix],
-					      (unsigned*)&nfs[file_ix],
-					      (unsigned*)&nis[file_ix],
-					      (unsigned*)&ifmt[file_ix],
-					      (bool*)&iswap[file_ix],
-					      startSkip,
-					      endSkip,
-					      cppIfAscii,
-					      cppCommandOptions,
-					      (const char**)&spr_str[file_ix],
-					      NULL, // actionIfDiffNumFrames,
-					      NULL, //actionIfDiffNumSents,
-					      &perStreamTransforms[file_ix],
-					      postTransforms);
-	    
-	    unsigned check_n_ftrs = globalObservationMatrix.numContinuous();
-	    unsigned check_n_labs = globalObservationMatrix.numDiscrete();
-
-
-	    // Check that this input pfile is the same size as predecessors
-	    if(check_n_ftrs != n_ftrs || check_n_labs != n_labs) {
-	      sprintf(errmsg, "Features/labels of %s (%d/%d) don't match first input file (%d/%d)", file_name, check_n_labs, check_n_ftrs, n_labs, n_ftrs);
-	      error(errmsg);
-	    }
-	}
-	
-	// create the sentence-range iterator specifically for this 
-	// input file
-	Range sr_rng(sr_str[file_ix],0,globalObservationMatrix.numSegments());
-	
-	for (Range::iterator srit=sr_rng.begin();!srit.at_end();srit++,global_seg_num++) {
-	  globalObservationMatrix.loadSegment(*srit);
-	  const size_t n_frames = globalObservationMatrix.numFrames();
-	  
-	  if (!quiet && (*srit) % 100 == 0)
-	    printf("Processing sentence %d of file %s\n",
-		   (*srit), file_name);
-	  
-	  // Increase size of buffers if needed.
-	  if (n_frames > buf_size){
-	    // Free old buffers.
-	    delete lab_buf;
-	    delete ftr_buf;
-	    // Make twice as big to cut down on future reallocs.
-	    buf_size = n_frames * 2;
-	      // Allocate new larger buffers.
-	    ftr_buf = new float[buf_size * n_ftrs];
-	    lab_buf = new UInt32[buf_size * n_labs];
-	  }
-
-	  for(unsigned frame_no = 0;  frame_no < n_frames; ++frame_no) {
-	    const float* start_of_frame = globalObservationMatrix.floatVecAtFrame(frame_no);
-	    const UInt32* start_of_unsigned_frame = globalObservationMatrix.unsignedAtFrame(frame_no);
-	    for(unsigned feat_no = 0;  feat_no < n_ftrs; ++feat_no) {
-	      ftr_buf[frame_no * n_ftrs + feat_no] = *(start_of_frame  + feat_no);
-	    }
-	    for(unsigned unsigned_feat_no = 0;  unsigned_feat_no < n_labs; ++unsigned_feat_no) {
-	      lab_buf[frame_no*n_labs + unsigned_feat_no] = *(start_of_unsigned_frame+unsigned_feat_no);
-	    }
-	      
-	    // Write output.
-	    printSegment(global_seg_num, out_fp, ftr_buf,n_ftrs,lab_buf,n_labs,n_frames, dontPrintFrameID,quiet, ofmt, debug_level, oswap, out_stream);
-	  }
-	  
-	  fclose(in_fp);
-	  // make sure top of loop knows to open next file
-	  in_fp = NULL;
-	}
+		file_name = input_fname[file_ix];
+		// in_fp actually already open first time into the loop (i.e. for file_ix==0)
+		if (in_fp == NULL) {
+			in_fp = fopen(file_name, "r");
+			if (in_fp==NULL) {
+				error("Couldn't open input file %s for reading.",file_name);
+			}
+			
+			
+			globalObservationMatrix.openFiles(1,  // number of files
+											  (const char**)&file_name,
+											  (const char**)&fr_str[file_ix],
+											  (const char**)&lr_str[file_ix],
+											  (unsigned*)&nfs[file_ix],
+											  (unsigned*)&nis[file_ix],
+											  (unsigned*)&ifmt[file_ix],
+											  (bool*)&iswap[file_ix],
+											  startSkip,
+											  endSkip,
+											  cppIfAscii,
+											  cppCommandOptions,
+											  (const char**)&spr_str[file_ix],
+											  NULL, // actionIfDiffNumFrames,
+											  NULL, //actionIfDiffNumSents,
+											  &perStreamTransforms[file_ix],
+											  postTransforms);
+			
+			unsigned check_n_ftrs = globalObservationMatrix.numContinuous();
+			unsigned check_n_labs = globalObservationMatrix.numDiscrete();
+			
+			
+			// Check that this input pfile is the same size as predecessors
+			if(check_n_ftrs != n_ftrs || check_n_labs != n_labs) {
+				sprintf(errmsg, "Features/labels of %s (%d/%d) don't match first input file (%d/%d)", file_name, check_n_labs, check_n_ftrs, n_labs, n_ftrs);
+				error(errmsg);
+			}
+		}
+		
+		// create the sentence-range iterator specifically for this 
+		// input file
+		Range sr_rng(sr_str[file_ix],0,globalObservationMatrix.numSegments());
+		
+		for (Range::iterator srit=sr_rng.begin();!srit.at_end();srit++,global_seg_num++) {
+			globalObservationMatrix.loadSegment(*srit);
+			const size_t n_frames = globalObservationMatrix.numFrames();
+			
+			if (!quiet && (*srit) % 100 == 0)
+				printf("Processing sentence %d of file %s\n",
+					   (*srit), file_name);
+			
+			// Increase size of buffers if needed.
+			if (n_frames > buf_size){
+				// Free old buffers.
+				delete lab_buf;
+				delete ftr_buf;
+				// Make twice as big to cut down on future reallocs.
+				buf_size = n_frames * 2;
+				// Allocate new larger buffers.
+				ftr_buf = new float[buf_size * n_ftrs];
+				lab_buf = new UInt32[buf_size * n_labs];
+			}
+			
+			for(unsigned frame_no = 0;  frame_no < n_frames; ++frame_no) {
+				const float* start_of_frame = globalObservationMatrix.floatVecAtFrame(frame_no);
+				const UInt32* start_of_unsigned_frame = globalObservationMatrix.unsignedAtFrame(frame_no);
+				for(unsigned feat_no = 0;  feat_no < n_ftrs; ++feat_no) {
+					ftr_buf[frame_no * n_ftrs + feat_no] = *(start_of_frame  + feat_no);
+				}
+				for(unsigned unsigned_feat_no = 0;  unsigned_feat_no < n_labs; ++unsigned_feat_no) {
+					lab_buf[frame_no*n_labs + unsigned_feat_no] = *(start_of_unsigned_frame+unsigned_feat_no);
+				}
+				
+			}
+			// Write output.
+			printSegment(global_seg_num, out_fp, ftr_buf,n_ftrs,lab_buf,n_labs,n_frames, dontPrintFrameID,quiet, ofmt, debug_level, oswap, out_stream);
+			
+			fclose(in_fp);
+			// make sure top of loop knows to open next file
+			in_fp = NULL;
+		}
     }
     
     // All done; close output
