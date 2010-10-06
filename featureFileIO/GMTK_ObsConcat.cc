@@ -338,11 +338,10 @@ static void obsConcat(FILE *out_fp,
 			}
 			// Write output.
 			printSegment(global_seg_num, out_fp, ftr_buf,n_ftrs,lab_buf,n_labs,n_frames, dontPrintFrameID,quiet, ofmt, debug_level, oswap, out_stream);
-			
-			fclose(in_fp);
-			// make sure top of loop knows to open next file
-			in_fp = NULL;
 		}
+		fclose(in_fp);
+		// make sure top of loop knows to open next file
+		in_fp = NULL;
     }
     
     // All done; close output
