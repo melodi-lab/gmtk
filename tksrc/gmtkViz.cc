@@ -3892,6 +3892,9 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 	wxToolTip::SetDelay(250);
 	wxToolTip::Enable(drawToolTips);
 
+	// initialize displayScale
+	setScale(ZOOM_1_INDEX);
+
 //	// mangle the name and set the tab title and status bar
 //	int beginning, ending;
 //	if ( (beginning = file.rfind('/') + 1) < 1 )
