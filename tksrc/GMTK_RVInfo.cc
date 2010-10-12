@@ -83,7 +83,7 @@ RVInfo::clear() {
     symbolTableCollectionName.clear();
     symbolTable = NULL;
 
-    delete rv;
+    if (rv) delete rv;
     rv = NULL;
 }
 

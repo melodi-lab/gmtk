@@ -7073,7 +7073,7 @@ StructPage::Save( void )
 					line.sprintf( "arcs[%d][%d]=1\n", i, j);
 					gvp.Write(line);
 					line.sprintf( "arcs[%d][%d].numCPs=%d\n",
-							  i,j,arcs[i][j]->cps->size() );
+						      i,j,(int)arcs[i][j]->cps->size() );
 					gvp.Write(line);
 					for (unsigned int k=1;k<arcs[i][j]->cps->size()-1;k++){
 						line.sprintf("arcs[%d][%d].cps[%d]"
@@ -7093,7 +7093,7 @@ StructPage::Save( void )
 			}
 
 			// frame separators
-			line.sprintf( "numFrames=%d\n", frameEnds.size()+1 );
+			line.sprintf( "numFrames=%d\n", (int)frameEnds.size()+1 );
 			gvp.Write(line);
 			for (unsigned int i = 0; i < frameEnds.size(); i++) {
 				line.sprintf( "frameEnds[%d].x=%d\n", i, frameEnds[i]->x );
@@ -8440,6 +8440,12 @@ VizNode::VizNode( const wxPoint& pos, RVInfo *newRvi, StructPage *newPage )
 	center.y = pos.y;
 	//copy the newRvi object (deep copy)
 	rvi = new RVInfo(*newRvi);
+	// the RVInfo copy constructor does not really do a deep copy,
+	// so the rv and symbolTable members here are pointers to 
+	// destroyed objects. NULL them so that the dangling pointers
+	// don't try to re-destroy the objects.
+	rvi->rv = NULL;
+	rvi->symbolTable = NULL;
 	rvId.first = rvi->name;
 	rvId.second = rvi->frame;
 	page = newPage;
@@ -8477,6 +8483,12 @@ VizNode::VizNode(const VizNode &original) : nametag(original.nametag)
 	center.x = original.center.x;
 	center.y = original.center.y;
 	rvi = new RVInfo(*(original.rvi));
+	// the RVInfo copy constructor does not really do a deep copy,
+	// so the rv and symbolTable members here are pointers to 
+	// destroyed objects. NULL them so that the dangling pointers
+	// don't try to re-destroy the objects.
+	rvi->rv = NULL;
+	rvi->symbolTable = NULL;
 	rvId.first = original.rvId.first;
 	rvId.second = original.rvId.second;
 	page = original.page;
