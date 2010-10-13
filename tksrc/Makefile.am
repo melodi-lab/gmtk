@@ -155,7 +155,7 @@ $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 
 
 bin_PROGRAMS = \
-gmtkTime gmtkJT gmtkEMtrainNew gmtkKernel gmtkViterbi gmtkTriangulate \
+gmtkTime gmtkJT gmtkEMtrain gmtkKernel gmtkViterbi gmtkTriangulate \
 gmtkParmConvert gmtkTFmerge gmtkDTindex gmtkNGramIndex gmtkTie \
 $(GMTKVIZ) $(OSXBUNDLE)
 EXTRA_PROGRAMS = gmtkViz gmtkViz.app
@@ -163,7 +163,7 @@ EXTRA_PROGRAMS = gmtkViz gmtkViz.app
 gmtkTie_SOURCES = gmtkTie.cc
 gmtkJT_SOURCES = gmtkJT.cc
 gmtkTime_SOURCES = gmtkTime.cc
-gmtkEMtrainNew_SOURCES = gmtkEMtrainNew.cc
+gmtkEMtrain_SOURCES = gmtkEMtrain.cc
 gmtkKernel_SOURCES = gmtkKernel.cc
 gmtkViterbi_SOURCES = gmtkViterbi.cc
 gmtkTriangulate_SOURCES = gmtkTriangulate.cc
