@@ -1546,8 +1546,6 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	about_pane = new wxPanel(struct_notebook, -1);
 	MainVizWindow_menubar = new wxMenuBar();
 
-	// A bunch of menu bar stuff
-	SetMenuBar(MainVizWindow_menubar);
 	// The File menu
 	wxMenu* menu_file = new wxMenu();
 	menu_file->Append(MENU_FILE_NEW, wxT("&New...\tCtrl+N"), wxT("Create a new placement file (requires an existing structure file)"), wxITEM_NORMAL);
@@ -1600,8 +1598,7 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	menu_view->Append(MENU_VIEW_BOUNDING_BOX, wxT("Draw Bounding Box\t0"), wxT("Toggle display of bounding box"), wxITEM_CHECK);
 	// XXX: menu_view->Append(MENU_VIEW_TOOLTIPS, wxT("Draw Tool Tips"), wxT("Toggle display of tool tips for node names"), wxITEM_CHECK);
 	MainVizWindow_menubar->Append(menu_view, wxT("View"));
-	// Doesn't make sense unless a document is active, so disable it for now.
-	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), false);
+
 	// The Zoom menu
 	wxMenu* menu_zoom = new wxMenu();
 	for (int i = 0; i < MENU_ZOOM_END - MENU_ZOOM_BEGIN - 1; i++) {
@@ -1611,8 +1608,6 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 					wxEmptyString, wxITEM_RADIO );
 	}
 	MainVizWindow_menubar->Append(menu_zoom, wxT("Zoom"));
-	// Also doesn't make sense without a document
-	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);
 	// The Customize menu
 	wxMenu* menu_customize = new wxMenu();
 	menu_customize->Append( MENU_CUSTOMIZE_FONT, wxT("Change Font..."),
@@ -1801,9 +1796,42 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	wxMenu* help_menu = new wxMenu();
 	help_menu->Append(MENU_HELP, wxT("Help"), wxT("Pop Up the Help Info Window"), wxITEM_NORMAL);
 	MainVizWindow_menubar->Append(help_menu, wxT("Help"));
-	
+
+	// A bunch of menu bar stuff
+	SetMenuBar(MainVizWindow_menubar);
+
+#ifndef DONT_ENABLE_TOP
+	// Doesn't make sense unless a document is active, so disable it for now.
+	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), false);
+	// Also doesn't make sense without a document
+	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);	
 	// Again, needs a document to make sense.
 	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
+#else
+	MainVizWindow_menubar->Enable(MENU_VIEW_HIDELABELS, false);
+	MainVizWindow_menubar->Enable(MENU_VIEW_SHOW_NODE_LABELS, false);
+	MainVizWindow_menubar->Enable(MENU_VIEW_SHOW_FRAME_LABELS, false);
+	MainVizWindow_menubar->Enable(MENU_VIEW_ALL_NODES_VISIBLE, false);
+	MainVizWindow_menubar->Enable(MENU_VIEW_CPS, false);
+	MainVizWindow_menubar->Enable(MENU_VIEW_LINES, false);
+	MainVizWindow_menubar->Enable(MENU_VIEW_SPLINES, false);
+	MainVizWindow_menubar->Enable(MENU_VIEW_ARROW_HEADS, false);
+	MainVizWindow_menubar->Enable(MENU_VIEW_NODES, false);
+	MainVizWindow_menubar->Enable(MENU_VIEW_GRIDS, false);
+	MainVizWindow_menubar->Enable(MENU_VIEW_DIRECT_LINES, false);
+	MainVizWindow_menubar->Enable(MENU_VIEW_FRAME_SEPS, false);
+	MainVizWindow_menubar->Enable(MENU_VIEW_NODE_NAMES, false);
+	MainVizWindow_menubar->Enable(MENU_VIEW_FRAME_NAMES, false);
+	MainVizWindow_menubar->Enable(MENU_VIEW_BOUNDING_BOX, false);
+
+	for (int i = 0; i < MENU_ZOOM_END - MENU_ZOOM_BEGIN - 1; i++) {
+	  MainVizWindow_menubar->Enable( i + MENU_ZOOM_BEGIN + 1,false);
+	}
+
+	MainVizWindow_menubar->Enable(MENU_CUSTOMIZE_FONT, false);
+	MainVizWindow_menubar->Enable(MENU_CUSTOMIZE_PENS, false);
+#endif
+
 
 	// The status bar (with 2 fields)
 	MainVizWindow_statusbar = CreateStatusBar(2);
@@ -3656,11 +3684,40 @@ GFrame::OnNotebookPageChanged(wxNotebookEvent &event)
 		MainVizWindow_menubar->Enable(MENU_FILE_PRINT_EPS, true);
 		MainVizWindow_menubar->Enable(MENU_FILE_CLOSE, true);
 		// and this menu
+#ifndef DONT_ENABLE_TOP
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Edit")), true);
+#else
+		MainVizWindow_menubar->Enable(MENU_EDIT_UNDO, true);
+		MainVizWindow_menubar->Enable(MENU_EDIT_REDO, true);
+		MainVizWindow_menubar->Enable(MENU_EDIT_SELECTALL, true);
+		MainVizWindow_menubar->Enable(MENU_EDIT_SNAPTOGRID, true);
+		MainVizWindow_menubar->Enable(MENU_EDIT_CANVASWIDTH, true);
+		MainVizWindow_menubar->Enable(MENU_EDIT_CANVASHEIGHT, true);
+		MainVizWindow_menubar->Enable(MENU_EDIT_COPYFRAMELAYOUT, true);
+		MainVizWindow_menubar->Enable(MENU_EDIT_COPYPARTITIONLAYOUT, true);
+#endif
 		MainVizWindow_menubar->Check( MENU_EDIT_SNAPTOGRID,
 						  curPage->getSnapToGrid() );
 		// and this menu
+#ifndef DONT_ENABLE_TOP
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), true);
+#else
+		MainVizWindow_menubar->Enable(MENU_VIEW_HIDELABELS, true);
+		MainVizWindow_menubar->Enable(MENU_VIEW_SHOW_NODE_LABELS, true);
+		MainVizWindow_menubar->Enable(MENU_VIEW_SHOW_FRAME_LABELS, true);
+		MainVizWindow_menubar->Enable(MENU_VIEW_ALL_NODES_VISIBLE, true);
+		MainVizWindow_menubar->Enable(MENU_VIEW_CPS, true);
+		MainVizWindow_menubar->Enable(MENU_VIEW_LINES, true);
+		MainVizWindow_menubar->Enable(MENU_VIEW_SPLINES, true);
+		MainVizWindow_menubar->Enable(MENU_VIEW_ARROW_HEADS, true);
+		MainVizWindow_menubar->Enable(MENU_VIEW_NODES, true);
+		MainVizWindow_menubar->Enable(MENU_VIEW_GRIDS, true);
+		MainVizWindow_menubar->Enable(MENU_VIEW_DIRECT_LINES, true);
+		MainVizWindow_menubar->Enable(MENU_VIEW_FRAME_SEPS, true);
+		MainVizWindow_menubar->Enable(MENU_VIEW_NODE_NAMES, true);
+		MainVizWindow_menubar->Enable(MENU_VIEW_FRAME_NAMES, true);
+		MainVizWindow_menubar->Enable(MENU_VIEW_BOUNDING_BOX, true);
+#endif
 		// restore the checked status of each item
 		UpdateMenuChecks(curPage);
 
@@ -3668,7 +3725,13 @@ GFrame::OnNotebookPageChanged(wxNotebookEvent &event)
 		// XXX: MainVizWindow_menubar->Check( MENU_VIEW_TOOLTIPS,
 		// curPage->getViewToolTips() );
 		// Zoom should be enabled for documents
+#ifndef DONT_ENABLE_TOP
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), true);
+#else
+		for (int i = 0; i < MENU_ZOOM_END - MENU_ZOOM_BEGIN - 1; i++) {
+	  	  MainVizWindow_menubar->Enable( i + MENU_ZOOM_BEGIN + 1,true);
+		}
+#endif
 		// since they are radio items, keeping only one selected is
 		// handled automatically
 		/*for (int i = 0, scale = curPage->getScale(); i < MENU_ZOOM_END - MENU_ZOOM_BEGIN - 1; i++) {
@@ -3678,7 +3741,12 @@ GFrame::OnNotebookPageChanged(wxNotebookEvent &event)
 //		MainVizWindow_menubar->Check( curPage->getScale()+MENU_ZOOM_BEGIN+1,
 //						  true );
 		// and the Customize menu should be shown for documents as well
+#ifndef DONT_ENABLE_TOP
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), true);
+#else
+		MainVizWindow_menubar->Enable(MENU_CUSTOMIZE_FONT, true);
+		MainVizWindow_menubar->Enable(MENU_CUSTOMIZE_PENS, true);
+#endif
 	}
 	else {
 		// otherwise we set the status bar to some default values
@@ -3690,10 +3758,44 @@ GFrame::OnNotebookPageChanged(wxNotebookEvent &event)
 		MainVizWindow_menubar->Enable(MENU_FILE_PRINT, false);
 		MainVizWindow_menubar->Enable(MENU_FILE_PRINT_EPS, false);
 		MainVizWindow_menubar->Enable(MENU_FILE_CLOSE, false);
+#ifndef DONT_ENABLE_TOP
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Edit")), false);
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), false);
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
+#else
+		MainVizWindow_menubar->Enable(MENU_EDIT_UNDO, false);
+		MainVizWindow_menubar->Enable(MENU_EDIT_REDO, false);
+		MainVizWindow_menubar->Enable(MENU_EDIT_SELECTALL, false);
+		MainVizWindow_menubar->Enable(MENU_EDIT_SNAPTOGRID, false);
+		MainVizWindow_menubar->Enable(MENU_EDIT_CANVASWIDTH, false);
+		MainVizWindow_menubar->Enable(MENU_EDIT_CANVASHEIGHT, false);
+		MainVizWindow_menubar->Enable(MENU_EDIT_COPYFRAMELAYOUT, false);
+		MainVizWindow_menubar->Enable(MENU_EDIT_COPYPARTITIONLAYOUT, false);
+
+		MainVizWindow_menubar->Enable(MENU_VIEW_HIDELABELS, false);
+		MainVizWindow_menubar->Enable(MENU_VIEW_SHOW_NODE_LABELS, false);
+		MainVizWindow_menubar->Enable(MENU_VIEW_SHOW_FRAME_LABELS, false);
+		MainVizWindow_menubar->Enable(MENU_VIEW_ALL_NODES_VISIBLE, false);
+		MainVizWindow_menubar->Enable(MENU_VIEW_CPS, false);
+		MainVizWindow_menubar->Enable(MENU_VIEW_LINES, false);
+		MainVizWindow_menubar->Enable(MENU_VIEW_SPLINES, false);
+		MainVizWindow_menubar->Enable(MENU_VIEW_ARROW_HEADS, false);
+		MainVizWindow_menubar->Enable(MENU_VIEW_NODES, false);
+		MainVizWindow_menubar->Enable(MENU_VIEW_GRIDS, false);
+		MainVizWindow_menubar->Enable(MENU_VIEW_DIRECT_LINES, false);
+		MainVizWindow_menubar->Enable(MENU_VIEW_FRAME_SEPS, false);
+		MainVizWindow_menubar->Enable(MENU_VIEW_NODE_NAMES, false);
+		MainVizWindow_menubar->Enable(MENU_VIEW_FRAME_NAMES, false);
+		MainVizWindow_menubar->Enable(MENU_VIEW_BOUNDING_BOX, false);
+
+		for (int i = 0; i < MENU_ZOOM_END - MENU_ZOOM_BEGIN - 1; i++) {
+	  	  MainVizWindow_menubar->Enable( i + MENU_ZOOM_BEGIN + 1,false);
+		}
+
+		MainVizWindow_menubar->Enable(MENU_CUSTOMIZE_FONT, false);
+		MainVizWindow_menubar->Enable(MENU_CUSTOMIZE_PENS, false);
+#endif
 	}
 }
 
