@@ -5262,3 +5262,10 @@ Tue Aug 24 20:59:55 2010
     score could just be, say, the LM score.
     We would then need to be able to write the CPT back out to disk.
     Iterable lattice CPTs would not work apply.
+
+Tue Oct 19 15:08:22 2010
+  - When T is just too large, have an option to print out viterbi values backwards
+    but that never stores anything of lenght O(T).
+    This will also need the observation code not to load in all O(T) of the observations
+    (i.e., the observation code needs to include an interface that the island algorithm
+     can use).
