@@ -1808,28 +1808,9 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	// Again, needs a document to make sense.
 	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
 #else
-	MainVizWindow_menubar->Enable(MENU_VIEW_HIDELABELS, false);
-	MainVizWindow_menubar->Enable(MENU_VIEW_SHOW_NODE_LABELS, false);
-	MainVizWindow_menubar->Enable(MENU_VIEW_SHOW_FRAME_LABELS, false);
-	MainVizWindow_menubar->Enable(MENU_VIEW_ALL_NODES_VISIBLE, false);
-	MainVizWindow_menubar->Enable(MENU_VIEW_CPS, false);
-	MainVizWindow_menubar->Enable(MENU_VIEW_LINES, false);
-	MainVizWindow_menubar->Enable(MENU_VIEW_SPLINES, false);
-	MainVizWindow_menubar->Enable(MENU_VIEW_ARROW_HEADS, false);
-	MainVizWindow_menubar->Enable(MENU_VIEW_NODES, false);
-	MainVizWindow_menubar->Enable(MENU_VIEW_GRIDS, false);
-	MainVizWindow_menubar->Enable(MENU_VIEW_DIRECT_LINES, false);
-	MainVizWindow_menubar->Enable(MENU_VIEW_FRAME_SEPS, false);
-	MainVizWindow_menubar->Enable(MENU_VIEW_NODE_NAMES, false);
-	MainVizWindow_menubar->Enable(MENU_VIEW_FRAME_NAMES, false);
-	MainVizWindow_menubar->Enable(MENU_VIEW_BOUNDING_BOX, false);
-
-	for (int i = 0; i < MENU_ZOOM_END - MENU_ZOOM_BEGIN - 1; i++) {
-	  MainVizWindow_menubar->Enable( i + MENU_ZOOM_BEGIN + 1,false);
-	}
-
-	MainVizWindow_menubar->Enable(MENU_CUSTOMIZE_FONT, false);
-	MainVizWindow_menubar->Enable(MENU_CUSTOMIZE_PENS, false);
+	MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("View")), false);
+	MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);	
+	MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
 #endif
 
 
@@ -2394,6 +2375,32 @@ void GFrame::OnMenuFileClose(wxCommandEvent &event)
 		// delete the page only if it says it's okay
 		if (curPage->RequestClose()) {
 			struct_notebook->DeletePage(curPageNum);
+			// wxOSX doesn't seem to notice the page change when the last
+			// StructPage is closed leaving only the About page. Thus we
+			// need to check here if only the About page is left so we can
+			// disable the menus/menu items inappropriate for the About page.
+			if (struct_notebook->GetPageCount() == 1) {
+				// otherwise we set the status bar to some default values
+				SetStatusText(wxEmptyString, 1);
+				SetStatusText(wxT("About GMTKStructViz"), 0);
+				// diable menus and menu items that don't apply to the About tab
+				MainVizWindow_menubar->Enable(MENU_FILE_SAVE, false);
+				MainVizWindow_menubar->Enable(MENU_FILE_SAVEAS, false);
+				MainVizWindow_menubar->Enable(MENU_FILE_PRINT, false);
+				MainVizWindow_menubar->Enable(MENU_FILE_PRINT_EPS, false);
+				MainVizWindow_menubar->Enable(MENU_FILE_CLOSE, false);
+#ifndef DONT_ENABLE_TOP
+				MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Edit")), false);
+				MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), false);
+				MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);
+				MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
+#else
+				MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Edit")), false);
+				MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("View")), false);
+				MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);
+				MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
+#endif
+			}
 		}
 	}
 }
@@ -3687,14 +3694,7 @@ GFrame::OnNotebookPageChanged(wxNotebookEvent &event)
 #ifndef DONT_ENABLE_TOP
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Edit")), true);
 #else
-		MainVizWindow_menubar->Enable(MENU_EDIT_UNDO, true);
-		MainVizWindow_menubar->Enable(MENU_EDIT_REDO, true);
-		MainVizWindow_menubar->Enable(MENU_EDIT_SELECTALL, true);
-		MainVizWindow_menubar->Enable(MENU_EDIT_SNAPTOGRID, true);
-		MainVizWindow_menubar->Enable(MENU_EDIT_CANVASWIDTH, true);
-		MainVizWindow_menubar->Enable(MENU_EDIT_CANVASHEIGHT, true);
-		MainVizWindow_menubar->Enable(MENU_EDIT_COPYFRAMELAYOUT, true);
-		MainVizWindow_menubar->Enable(MENU_EDIT_COPYPARTITIONLAYOUT, true);
+		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Edit")), true);
 #endif
 		MainVizWindow_menubar->Check( MENU_EDIT_SNAPTOGRID,
 						  curPage->getSnapToGrid() );
@@ -3702,21 +3702,7 @@ GFrame::OnNotebookPageChanged(wxNotebookEvent &event)
 #ifndef DONT_ENABLE_TOP
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), true);
 #else
-		MainVizWindow_menubar->Enable(MENU_VIEW_HIDELABELS, true);
-		MainVizWindow_menubar->Enable(MENU_VIEW_SHOW_NODE_LABELS, true);
-		MainVizWindow_menubar->Enable(MENU_VIEW_SHOW_FRAME_LABELS, true);
-		MainVizWindow_menubar->Enable(MENU_VIEW_ALL_NODES_VISIBLE, true);
-		MainVizWindow_menubar->Enable(MENU_VIEW_CPS, true);
-		MainVizWindow_menubar->Enable(MENU_VIEW_LINES, true);
-		MainVizWindow_menubar->Enable(MENU_VIEW_SPLINES, true);
-		MainVizWindow_menubar->Enable(MENU_VIEW_ARROW_HEADS, true);
-		MainVizWindow_menubar->Enable(MENU_VIEW_NODES, true);
-		MainVizWindow_menubar->Enable(MENU_VIEW_GRIDS, true);
-		MainVizWindow_menubar->Enable(MENU_VIEW_DIRECT_LINES, true);
-		MainVizWindow_menubar->Enable(MENU_VIEW_FRAME_SEPS, true);
-		MainVizWindow_menubar->Enable(MENU_VIEW_NODE_NAMES, true);
-		MainVizWindow_menubar->Enable(MENU_VIEW_FRAME_NAMES, true);
-		MainVizWindow_menubar->Enable(MENU_VIEW_BOUNDING_BOX, true);
+		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("View")), true);
 #endif
 		// restore the checked status of each item
 		UpdateMenuChecks(curPage);
@@ -3728,9 +3714,7 @@ GFrame::OnNotebookPageChanged(wxNotebookEvent &event)
 #ifndef DONT_ENABLE_TOP
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), true);
 #else
-		for (int i = 0; i < MENU_ZOOM_END - MENU_ZOOM_BEGIN - 1; i++) {
-	  	  MainVizWindow_menubar->Enable( i + MENU_ZOOM_BEGIN + 1,true);
-		}
+		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Zoom")), true);
 #endif
 		// since they are radio items, keeping only one selected is
 		// handled automatically
@@ -3744,8 +3728,7 @@ GFrame::OnNotebookPageChanged(wxNotebookEvent &event)
 #ifndef DONT_ENABLE_TOP
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), true);
 #else
-		MainVizWindow_menubar->Enable(MENU_CUSTOMIZE_FONT, true);
-		MainVizWindow_menubar->Enable(MENU_CUSTOMIZE_PENS, true);
+		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Customize")), true);
 #endif
 	}
 	else {
@@ -3764,37 +3747,10 @@ GFrame::OnNotebookPageChanged(wxNotebookEvent &event)
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
 #else
-		MainVizWindow_menubar->Enable(MENU_EDIT_UNDO, false);
-		MainVizWindow_menubar->Enable(MENU_EDIT_REDO, false);
-		MainVizWindow_menubar->Enable(MENU_EDIT_SELECTALL, false);
-		MainVizWindow_menubar->Enable(MENU_EDIT_SNAPTOGRID, false);
-		MainVizWindow_menubar->Enable(MENU_EDIT_CANVASWIDTH, false);
-		MainVizWindow_menubar->Enable(MENU_EDIT_CANVASHEIGHT, false);
-		MainVizWindow_menubar->Enable(MENU_EDIT_COPYFRAMELAYOUT, false);
-		MainVizWindow_menubar->Enable(MENU_EDIT_COPYPARTITIONLAYOUT, false);
-
-		MainVizWindow_menubar->Enable(MENU_VIEW_HIDELABELS, false);
-		MainVizWindow_menubar->Enable(MENU_VIEW_SHOW_NODE_LABELS, false);
-		MainVizWindow_menubar->Enable(MENU_VIEW_SHOW_FRAME_LABELS, false);
-		MainVizWindow_menubar->Enable(MENU_VIEW_ALL_NODES_VISIBLE, false);
-		MainVizWindow_menubar->Enable(MENU_VIEW_CPS, false);
-		MainVizWindow_menubar->Enable(MENU_VIEW_LINES, false);
-		MainVizWindow_menubar->Enable(MENU_VIEW_SPLINES, false);
-		MainVizWindow_menubar->Enable(MENU_VIEW_ARROW_HEADS, false);
-		MainVizWindow_menubar->Enable(MENU_VIEW_NODES, false);
-		MainVizWindow_menubar->Enable(MENU_VIEW_GRIDS, false);
-		MainVizWindow_menubar->Enable(MENU_VIEW_DIRECT_LINES, false);
-		MainVizWindow_menubar->Enable(MENU_VIEW_FRAME_SEPS, false);
-		MainVizWindow_menubar->Enable(MENU_VIEW_NODE_NAMES, false);
-		MainVizWindow_menubar->Enable(MENU_VIEW_FRAME_NAMES, false);
-		MainVizWindow_menubar->Enable(MENU_VIEW_BOUNDING_BOX, false);
-
-		for (int i = 0; i < MENU_ZOOM_END - MENU_ZOOM_BEGIN - 1; i++) {
-	  	  MainVizWindow_menubar->Enable( i + MENU_ZOOM_BEGIN + 1,false);
-		}
-
-		MainVizWindow_menubar->Enable(MENU_CUSTOMIZE_FONT, false);
-		MainVizWindow_menubar->Enable(MENU_CUSTOMIZE_PENS, false);
+		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Edit")), false);
+		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("View")), false);
+		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);
+		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
 #endif
 	}
 }
