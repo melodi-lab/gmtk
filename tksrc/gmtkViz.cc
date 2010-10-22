@@ -1800,7 +1800,7 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	// A bunch of menu bar stuff
 	SetMenuBar(MainVizWindow_menubar);
 
-#ifndef DONT_ENABLE_TOP
+#ifndef ENABLE_TOP_OFFSET
 	// Doesn't make sense unless a document is active, so disable it for now.
 	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), false);
 	// Also doesn't make sense without a document
@@ -2389,7 +2389,7 @@ void GFrame::OnMenuFileClose(wxCommandEvent &event)
 				MainVizWindow_menubar->Enable(MENU_FILE_PRINT, false);
 				MainVizWindow_menubar->Enable(MENU_FILE_PRINT_EPS, false);
 				MainVizWindow_menubar->Enable(MENU_FILE_CLOSE, false);
-#ifndef DONT_ENABLE_TOP
+#ifndef ENABLE_TOP_OFFSET
 				MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Edit")), false);
 				MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), false);
 				MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);
@@ -3691,7 +3691,7 @@ GFrame::OnNotebookPageChanged(wxNotebookEvent &event)
 		MainVizWindow_menubar->Enable(MENU_FILE_PRINT_EPS, true);
 		MainVizWindow_menubar->Enable(MENU_FILE_CLOSE, true);
 		// and this menu
-#ifndef DONT_ENABLE_TOP
+#ifndef ENABLE_TOP_OFFSET
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Edit")), true);
 #else
 		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Edit")), true);
@@ -3699,7 +3699,7 @@ GFrame::OnNotebookPageChanged(wxNotebookEvent &event)
 		MainVizWindow_menubar->Check( MENU_EDIT_SNAPTOGRID,
 						  curPage->getSnapToGrid() );
 		// and this menu
-#ifndef DONT_ENABLE_TOP
+#ifndef ENABLE_TOP_OFFSET
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), true);
 #else
 		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("View")), true);
@@ -3711,7 +3711,7 @@ GFrame::OnNotebookPageChanged(wxNotebookEvent &event)
 		// XXX: MainVizWindow_menubar->Check( MENU_VIEW_TOOLTIPS,
 		// curPage->getViewToolTips() );
 		// Zoom should be enabled for documents
-#ifndef DONT_ENABLE_TOP
+#ifndef ENABLE_TOP_OFFSET
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), true);
 #else
 		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Zoom")), true);
@@ -3725,7 +3725,7 @@ GFrame::OnNotebookPageChanged(wxNotebookEvent &event)
 //		MainVizWindow_menubar->Check( curPage->getScale()+MENU_ZOOM_BEGIN+1,
 //						  true );
 		// and the Customize menu should be shown for documents as well
-#ifndef DONT_ENABLE_TOP
+#ifndef ENABLE_TOP_OFFSET
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), true);
 #else
 		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Customize")), true);
@@ -3741,7 +3741,7 @@ GFrame::OnNotebookPageChanged(wxNotebookEvent &event)
 		MainVizWindow_menubar->Enable(MENU_FILE_PRINT, false);
 		MainVizWindow_menubar->Enable(MENU_FILE_PRINT_EPS, false);
 		MainVizWindow_menubar->Enable(MENU_FILE_CLOSE, false);
-#ifndef DONT_ENABLE_TOP
+#ifndef ENABLE_TOP_OFFSET
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Edit")), false);
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), false);
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);
@@ -5873,6 +5873,7 @@ StructPage::blit( wxDC& dc )
 {
 	// Clear away what used to be there to keep the background clean
 	dc.SetBackground(*wxLIGHT_GREY_BRUSH);
+#if 0
 	wxCoord w, h;
 	dc.GetSize(&w, &h);
 	wxRegion tempClip(0, 0, w, h);
@@ -5880,10 +5881,15 @@ StructPage::blit( wxDC& dc )
 		(int)round(getWidth()*gZoomMap[displayScale]),
 		(int)round(getHeight()*gZoomMap[displayScale]) ));
 	dc.SetDeviceClippingRegion(tempClip);
+#endif
 	dc.Clear();
+#if 0
 	dc.DestroyClippingRegion();
 	// all the action is the constructor and destructor
 	wxBufferedDC bdc( &dc, *content );
+#else
+	dc.DrawBitmap(*content,0,0);
+#endif
 }
 
 /**
@@ -6859,6 +6865,7 @@ StructPage::redraw( void )
 	dc.SetUserScale(gZoomMap[displayScale], gZoomMap[displayScale]);
 	// Do the actual drawing.
 	draw(dc);
+	dc.SelectObject(wxNullBitmap);
 }
 
 /**
