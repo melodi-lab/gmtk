@@ -65,7 +65,7 @@ case "${host}" in
 *apple*) 
   if test x"$HAVE_WXWIDGETS" = x"yes"; then
     AC_SUBST([OSXBUNDLE],[gmtkViz.app])
-    AC_DEFINE([DONT_ENABLE_TOP],[],[wxFame::EnableTop doesn't seem to work on the Mac])
+    AC_DEFINE([ENABLE_TOP_OFFSET],[1],[wxFame::EnableTop doesn't seem to work on the Mac])
   fi ;;
 *-sun-solaris*) AC_CHECK_LIB([sunmath],[annuity]) ;;
 *cygwin*) AC_SUBST([XOPEN],[-D__USE_XOPEN2K]) ;;
