@@ -8603,8 +8603,12 @@ VizNode::draw( wxDC *dc )
 	if (!visible)
 		return;
 	wxBrush oldBrush = dc->GetBrush();
+	wxBrush detBrush = wxBrush(*wxMEDIUM_GREY_BRUSH);
+        detBrush.SetStyle(wxBRUSHSTYLE_CROSSDIAG_HATCH);
 	if (rvi->rvDisp == RVInfo::d_observed) {
 		dc->SetBrush(*wxLIGHT_GREY_BRUSH);
+	} else if (rvi->deterministic()) {
+	  dc->SetBrush(detBrush);
 	}
 
 	if (highlight_state != off){
