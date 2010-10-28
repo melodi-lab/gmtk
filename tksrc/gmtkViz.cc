@@ -151,7 +151,7 @@ class VizArc;
 class VizSep;
 class Selectable;
 class ControlPoint;
-
+class vizNotebook;
 class gmtkPen;
 
 static wxFont defaultFont;
@@ -496,7 +496,7 @@ class StructPage: public wxScrolledWindow
 	public:
 		// constructor
 		StructPage(wxWindow *parent, wxWindowID id,
-				wxFrame *parentFrame, wxNotebook *parentNotebook,
+				wxFrame *parentFrame, vizNotebook *parentNotebook,
 				const wxString &file, bool old = true);
 		// destructor
 		virtual ~StructPage();
@@ -677,7 +677,7 @@ class StructPage: public wxScrolledWindow
 			std::stack<StructPage_state *> undo_stack;
 			std::stack<StructPage_state *> redo_stack;
 			wxFrame *parentFrame;
-			wxNotebook *parentNotebook;
+			vizNotebook *parentNotebook;
 			wxBitmap *content; // the drawing buffer
 			std::map< RVInfo::rvParent, unsigned int > nameVizNodeMap;
 			wxRect selectBox;
@@ -745,6 +745,31 @@ class StructPage: public wxScrolledWindow
 			bool data_parsed; //indicates if the str file parsed or not
 };
 
+
+
+
+
+class vizNotebook: public wxNotebook {
+public:
+  vizNotebook(wxWindow* parent, wxWindowID id, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = 0, const wxString& name = wxNotebookNameStr) :
+    wxNotebook(parent, id, pos, size, style, name) {};
+  void OnChar( wxKeyEvent &event );
+  DECLARE_EVENT_TABLE()
+};
+BEGIN_EVENT_TABLE(vizNotebook, wxNotebook)
+  EVT_CHAR(vizNotebook::OnChar)
+END_EVENT_TABLE()
+
+void 
+vizNotebook::OnChar(wxKeyEvent &event) {
+  StructPage *curPage = dynamic_cast<StructPage*> (GetCurrentPage());
+#if 0
+  fprintf(stderr, "vizNotebook::OnChar('%c') %s\n", event.GetKeyCode(), curPage ? "-> StructPage::OnChar" : "swallowed");
+#endif
+  if (curPage) {
+    curPage->OnChar(event);
+  }
+}
 
 /// Represents anything that can be selected
 class Selectable {
@@ -1189,7 +1214,7 @@ protected:
 	wxStaticText* about_label;
 	wxTextCtrl* about_info;
 	wxPanel* about_pane;
-	wxNotebook* struct_notebook;
+	vizNotebook* struct_notebook;
 
 	DECLARE_EVENT_TABLE()
 };
@@ -1542,7 +1567,7 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	: wxFrame( parent, id, title, pos, size, style )
 {
 	// create widgets
-	struct_notebook = new wxNotebook(this, -1, wxDefaultPosition, wxDefaultSize, wxCLIP_CHILDREN);
+	struct_notebook = new vizNotebook(this, -1, wxDefaultPosition, wxDefaultSize, wxCLIP_CHILDREN);
 	about_pane = new wxPanel(struct_notebook, -1);
 	MainVizWindow_menubar = new wxMenuBar();
 
@@ -3742,7 +3767,7 @@ END_EVENT_TABLE()
  * \return Nothing.
  *******************************************************************/
 StructPage::StructPage(wxWindow *parent, wxWindowID id,
-			   wxFrame *parentFrame, wxNotebook *parentNotebook,
+			   wxFrame *parentFrame, vizNotebook *parentNotebook,
 			   const wxString &file, bool old)
 	: wxScrolledWindow( parent, id, wxDefaultPosition, wxDefaultSize,
 			wxSUNKEN_BORDER | wxTAB_TRAVERSAL, _T("") ),
