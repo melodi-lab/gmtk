@@ -757,15 +757,15 @@ public:
   DECLARE_EVENT_TABLE()
 };
 BEGIN_EVENT_TABLE(vizNotebook, wxNotebook)
+#if 0
   EVT_CHAR(vizNotebook::OnChar)
+#endif
 END_EVENT_TABLE()
 
 void 
 vizNotebook::OnChar(wxKeyEvent &event) {
+  wxLogDebug(wxT("vizNotebook::OnChar"));
   StructPage *curPage = dynamic_cast<StructPage*> (GetCurrentPage());
-#if 0
-  fprintf(stderr, "vizNotebook::OnChar('%c') %s\n", event.GetKeyCode(), curPage ? "-> StructPage::OnChar" : "swallowed");
-#endif
   if (curPage) {
     curPage->OnChar(event);
   }
@@ -1195,6 +1195,8 @@ public:
 
 	//update the menu to reflect the given structpage
 	void UpdateMenuChecks(StructPage *);
+
+  void OnChar(wxKeyEvent &event);
 
 private:
 	// initialize the status bar
@@ -1958,8 +1960,19 @@ BEGIN_EVENT_TABLE(GFrame, wxFrame)
 	EVT_MENU(MENU_CUSTOMIZE_PENS, GFrame::OnMenuCustomizePen)
 //	EVT_MENU_RANGE(MENU_CUSTOMIZE_PENS_BEGIN+1, MENU_CUSTOMIZE_PENS_END-1, GFrame::OnMenuCustomizePen)
 	EVT_NOTEBOOK_PAGE_CHANGED(wxID_ANY, GFrame::OnNotebookPageChanged)
+EVT_CHAR(GFrame::OnChar)
 	EVT_CLOSE(GFrame::OnClose)
 END_EVENT_TABLE()
+
+
+void 
+GFrame::OnChar(wxKeyEvent &event) {
+  wxLogDebug(wxT("GFrame::OnChar"));
+  StructPage *curPage = dynamic_cast<StructPage*> (struct_notebook->GetCurrentPage());
+  if (curPage) {
+    curPage->OnChar(event);
+  }
+}
 
 
 /**
