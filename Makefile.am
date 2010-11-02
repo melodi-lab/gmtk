@@ -1,4 +1,11 @@
-EXTRA_DIST = RELEASE scripts contrib
+EXTRA_DIST = RELEASE contrib
+
+dist_bin_SCRIPTS = \
+scripts/generate_random_graph.pl \
+scripts/triangulateGA \
+scripts/triangulateParallel \
+scripts/triangulateTimings
+
 SUBDIRS = IEEEFloatingpoint miscSupport featureFileIO mitk tksrc
 
 .PHONY: revdist datedist
