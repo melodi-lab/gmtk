@@ -1,4 +1,4 @@
-EXTRA_DIST = RELEASE scripts
+EXTRA_DIST = RELEASE scripts contrib
 SUBDIRS = IEEEFloatingpoint miscSupport featureFileIO mitk tksrc
 
 .PHONY: revdist datedist
