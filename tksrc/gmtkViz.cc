@@ -1639,8 +1639,6 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	about_pane = new wxPanel(struct_notebook, -1);
 	MainVizWindow_menubar = new wxMenuBar();
 
-	// A bunch of menu bar stuff
-	SetMenuBar(MainVizWindow_menubar);
 	// The File menu
 	wxMenu* menu_file = new wxMenu();
 	menu_file->Append(MENU_FILE_NEW, wxT("&New...\tCtrl+N"), wxT("Create a new placement file (requires an existing structure file)"), wxITEM_NORMAL);
@@ -1693,8 +1691,7 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	menu_view->Append(MENU_VIEW_BOUNDING_BOX, wxT("Draw Bounding Box\t0"), wxT("Toggle display of bounding box"), wxITEM_CHECK);
 	// XXX: menu_view->Append(MENU_VIEW_TOOLTIPS, wxT("Draw Tool Tips"), wxT("Toggle display of tool tips for node names"), wxITEM_CHECK);
 	MainVizWindow_menubar->Append(menu_view, wxT("View"));
-	// Doesn't make sense unless a document is active, so disable it for now.
-	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), false);
+
 	// The Zoom menu
 	wxMenu* menu_zoom = new wxMenu();
 	for (int i = 0; i < MENU_ZOOM_END - MENU_ZOOM_BEGIN - 1; i++) {
@@ -1704,8 +1701,6 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 					wxEmptyString, wxITEM_RADIO );
 	}
 	MainVizWindow_menubar->Append(menu_zoom, wxT("Zoom"));
-	// Also doesn't make sense without a document
-	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);
 	// The Customize menu
 	wxMenu* menu_customize = new wxMenu();
 	menu_customize->Append( MENU_CUSTOMIZE_FONT, wxT("Change Font..."),
@@ -1894,9 +1889,23 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	wxMenu* help_menu = new wxMenu();
 	help_menu->Append(MENU_HELP, wxT("Help"), wxT("Pop Up the Help Info Window"), wxITEM_NORMAL);
 	MainVizWindow_menubar->Append(help_menu, wxT("Help"));
-	
+
+	// A bunch of menu bar stuff
+	SetMenuBar(MainVizWindow_menubar);
+
+#ifndef ENABLE_TOP_OFFSET
+	// Doesn't make sense unless a document is active, so disable it for now.
+	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), false);
+	// Also doesn't make sense without a document
+	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);	
 	// Again, needs a document to make sense.
 	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
+#else
+	MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("View")), false);
+	MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);	
+	MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
+#endif
+
 
 	// The status bar (with 2 fields)
 	MainVizWindow_statusbar = CreateStatusBar(2);
@@ -2482,6 +2491,32 @@ void GFrame::OnMenuFileClose(wxCommandEvent &event)
 		// delete the page only if it says it's okay
 		if (curPage->RequestClose()) {
 			struct_notebook->DeletePage(curPageNum);
+			// wxOSX doesn't seem to notice the page change when the last
+			// StructPage is closed leaving only the About page. Thus we
+			// need to check here if only the About page is left so we can
+			// disable the menus/menu items inappropriate for the About page.
+			if (struct_notebook->GetPageCount() == 1) {
+				// otherwise we set the status bar to some default values
+				SetStatusText(wxEmptyString, 1);
+				SetStatusText(wxT("About GMTKStructViz"), 0);
+				// diable menus and menu items that don't apply to the About tab
+				MainVizWindow_menubar->Enable(MENU_FILE_SAVE, false);
+				MainVizWindow_menubar->Enable(MENU_FILE_SAVEAS, false);
+				MainVizWindow_menubar->Enable(MENU_FILE_PRINT, false);
+				MainVizWindow_menubar->Enable(MENU_FILE_PRINT_EPS, false);
+				MainVizWindow_menubar->Enable(MENU_FILE_CLOSE, false);
+#ifndef ENABLE_TOP_OFFSET
+				MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Edit")), false);
+				MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), false);
+				MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);
+				MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
+#else
+				MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Edit")), false);
+				MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("View")), false);
+				MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);
+				MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
+#endif
+			}
 		}
 	}
 }
@@ -3772,11 +3807,19 @@ GFrame::OnNotebookPageChanged(wxNotebookEvent &event)
 		MainVizWindow_menubar->Enable(MENU_FILE_PRINT_EPS, true);
 		MainVizWindow_menubar->Enable(MENU_FILE_CLOSE, true);
 		// and this menu
+#ifndef ENABLE_TOP_OFFSET
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Edit")), true);
+#else
+		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Edit")), true);
+#endif
 		MainVizWindow_menubar->Check( MENU_EDIT_SNAPTOGRID,
 						  curPage->getSnapToGrid() );
 		// and this menu
+#ifndef ENABLE_TOP_OFFSET
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), true);
+#else
+		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("View")), true);
+#endif
 		// restore the checked status of each item
 		UpdateMenuChecks(curPage);
 
@@ -3784,7 +3827,11 @@ GFrame::OnNotebookPageChanged(wxNotebookEvent &event)
 		// XXX: MainVizWindow_menubar->Check( MENU_VIEW_TOOLTIPS,
 		// curPage->getViewToolTips() );
 		// Zoom should be enabled for documents
+#ifndef ENABLE_TOP_OFFSET
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), true);
+#else
+		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Zoom")), true);
+#endif
 		// since they are radio items, keeping only one selected is
 		// handled automatically
 		/*for (int i = 0, scale = curPage->getScale(); i < MENU_ZOOM_END - MENU_ZOOM_BEGIN - 1; i++) {
@@ -3794,7 +3841,11 @@ GFrame::OnNotebookPageChanged(wxNotebookEvent &event)
 //		MainVizWindow_menubar->Check( curPage->getScale()+MENU_ZOOM_BEGIN+1,
 //						  true );
 		// and the Customize menu should be shown for documents as well
+#ifndef ENABLE_TOP_OFFSET
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), true);
+#else
+		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Customize")), true);
+#endif
 	}
 	else {
 		// otherwise we set the status bar to some default values
@@ -3806,10 +3857,17 @@ GFrame::OnNotebookPageChanged(wxNotebookEvent &event)
 		MainVizWindow_menubar->Enable(MENU_FILE_PRINT, false);
 		MainVizWindow_menubar->Enable(MENU_FILE_PRINT_EPS, false);
 		MainVizWindow_menubar->Enable(MENU_FILE_CLOSE, false);
+#ifndef ENABLE_TOP_OFFSET
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Edit")), false);
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), false);
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
+#else
+		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Edit")), false);
+		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("View")), false);
+		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);
+		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
+#endif
 	}
 }
 
@@ -5932,6 +5990,7 @@ StructPage::blit( wxDC& dc )
 {
 	// Clear away what used to be there to keep the background clean
 	dc.SetBackground(*wxLIGHT_GREY_BRUSH);
+#if 0
 	wxCoord w, h;
 	dc.GetSize(&w, &h);
 	wxRegion tempClip(0, 0, w, h);
@@ -5939,10 +5998,15 @@ StructPage::blit( wxDC& dc )
 		(int)round(getWidth()*gZoomMap[displayScale]),
 		(int)round(getHeight()*gZoomMap[displayScale]) ));
 	dc.SetDeviceClippingRegion(tempClip);
+#endif
 	dc.Clear();
+#if 0
 	dc.DestroyClippingRegion();
 	// all the action is the constructor and destructor
 	wxBufferedDC bdc( &dc, *content );
+#else
+	dc.DrawBitmap(*content,0,0);
+#endif
 }
 
 /**
@@ -6954,6 +7018,7 @@ StructPage::redraw( void )
 	dc.SetUserScale(gZoomMap[displayScale], gZoomMap[displayScale]);
 	// Do the actual drawing.
 	draw(dc);
+	dc.SelectObject(wxNullBitmap);
 }
 
 /**
