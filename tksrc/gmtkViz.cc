@@ -142,6 +142,7 @@ enum highlight_states {off,on,children,parents,both};
 
 //forward declarations of things that GFrame needs
 class wxgmtk1toManyDialog;
+class wxTicket71Dialog;
 class	GmtkHelp;
 
 // forward declarations of things StructPage needs
@@ -526,6 +527,7 @@ class StructPage: public wxScrolledWindow
 		// Did everything parse successfully?
 		bool Ready( void ) { return !gvpAborted; }
 
+void ticket71(void);
 		// things related to selecting
 		Selectable *itemAt( const wxPoint& pt );
 		void setAllSelected( bool newSelected );
@@ -985,6 +987,70 @@ BEGIN_EVENT_TABLE(GmtkHelp, wxFrame)
 	EVT_CLOSE(GmtkHelp::OnClose)
 	EVT_BUTTON(wxID_CLOSE, GmtkHelp::OnCloseButton)
 END_EVENT_TABLE()
+
+
+
+/* Hack to work around https://lungs.ee.washington.edu/trac/gmtk/ticket/71
+ */
+class wxTicket71Dialog : public wxDialog {
+	public:
+		wxTicket71Dialog( wxWindow *parent,
+				wxWindowID id,
+				const wxString &title,
+				const wxPoint& position = wxDefaultPosition,
+				const wxSize& size = wxDefaultSize,
+				long style = wxDEFAULT_DIALOG_STYLE );
+		~wxTicket71Dialog();
+	private:
+		void OnOk( wxCommandEvent &event );
+  //void (*function)(wxTicket71Dialog);
+		DECLARE_EVENT_TABLE()
+
+};
+
+BEGIN_EVENT_TABLE(wxTicket71Dialog,wxDialog)
+    EVT_BUTTON( wxID_OK, wxTicket71Dialog::OnOk )
+END_EVENT_TABLE()
+
+wxTicket71Dialog::wxTicket71Dialog( wxWindow *parent,
+		wxWindowID id,
+		const wxString &title,
+		const wxPoint& position,
+		const wxSize& size,
+		long style) : 
+wxDialog( parent, id, title, position, size, style )
+{
+  wxBoxSizer *topsizer = new wxBoxSizer( wxVERTICAL );
+  
+  wxStaticText *caption = 
+    new wxStaticText(this,-1, wxT("Click Ok to make keyboard commands work"), 
+		     wxDefaultPosition);
+  topsizer->Add(caption, 0, wxALL | wxALIGN_CENTER, 5);
+  
+  //create buttons and add them
+  wxBoxSizer *button_sizer = new wxBoxSizer( wxHORIZONTAL );
+  button_sizer->Add( new wxButton( this, wxID_OK, "Ok" ), 0, wxALL, 10 );
+  
+  //add the buttons, align them along the center of the dialog box
+  topsizer->Add( button_sizer, 0, wxALIGN_CENTER );
+  
+  SetAutoLayout( true );     // tell dialog to use sizer
+  SetSizer( topsizer );      // actually set the sizer
+  
+  topsizer->Fit( this );            // set size to minimum size as calculated by the sizer
+  topsizer->SetSizeHints( this );   // set size hints to honour mininum size
+}
+
+wxTicket71Dialog::~wxTicket71Dialog(){
+}
+
+void wxTicket71Dialog::OnOk( wxCommandEvent &event ){
+  event.Skip();
+}
+
+
+
+
 
 /// This is the main window
 class GFrame: public wxFrame {
@@ -1960,7 +2026,9 @@ BEGIN_EVENT_TABLE(GFrame, wxFrame)
 	EVT_MENU(MENU_CUSTOMIZE_PENS, GFrame::OnMenuCustomizePen)
 //	EVT_MENU_RANGE(MENU_CUSTOMIZE_PENS_BEGIN+1, MENU_CUSTOMIZE_PENS_END-1, GFrame::OnMenuCustomizePen)
 	EVT_NOTEBOOK_PAGE_CHANGED(wxID_ANY, GFrame::OnNotebookPageChanged)
+#if 0
 EVT_CHAR(GFrame::OnChar)
+#endif
 	EVT_CLOSE(GFrame::OnClose)
 END_EVENT_TABLE()
 
@@ -2005,10 +2073,20 @@ GFrame::file(wxString &fileName, bool gvpFormat)
 			 page->getWidth()/ACTUAL_SCALE+25 : w,
 			 h<page->getHeight()/ACTUAL_SCALE+100 ?
 			 page->getHeight()/ACTUAL_SCALE+100 : h );
+
+#if 0
+	wxTicket71Dialog *ticket71 = new wxTicket71Dialog((wxWindow*)this,
+			-1,
+			wxString("Make keyboard commands work")
+			);
+	ticket71->ShowModal();
+#endif
+
 		// We won't get an event for this new notebook page coming to
 		// the front, so we'll just pretend we did
 		wxNotebookEvent dummy;
 		OnNotebookPageChanged(dummy);
+		page->ticket71();
 	} else {
 		delete page;
 	}
@@ -4356,6 +4434,7 @@ StructPage::~StructPage( void )
 	content = NULL;
 }
 
+
 /**
  *******************************************************************
  * Fills the config map with the keys and values specified in the
@@ -6514,6 +6593,42 @@ void wxgmtk1toManyDialog::OnCancel( wxCommandEvent &event ){
 }
 void wxgmtk1toManyDialog::OnApply( wxCommandEvent &event ){
 	event.Skip();
+}
+
+
+
+
+void
+StructPage::ticket71(void) {
+#if 1 
+	wxTicket71Dialog *ticket71 = new wxTicket71Dialog((wxWindow*)this,
+			-1,
+			wxString("Make keyboard commands work")
+			);
+	ticket71->ShowModal();
+	delete ticket71;
+#else
+	int from = 0, count;
+	wxString temp_string;
+	wxArrayInt selections_Many;
+	wxString *choices = new wxString [numFrames];
+	int to;
+
+	for (int i = 0; i < numFrames; i++){
+		temp_string.Printf("%i", i);
+		choices[i] = temp_string;
+	}
+
+
+	wxgmtk1toManyDialog *copyDialog = new wxgmtk1toManyDialog((wxWindow*)this,
+			-1,
+			wxString("Make keyboard commands work"),
+			choices, choices, numFrames, numFrames,
+			wxString("Copy Layout From:"),
+			wxString("To:")
+			);
+	copyDialog->ShowModal();
+#endif
 }
 
 
