@@ -11,9 +11,20 @@ hgstamp.h:
 endif
 
 
+
+if MAKE_BUNDLE
+# Must be OSX, diddle the flags
+EXCCFLAGS = -m32
+EXCXXFLAGS = -m32
+EXLDDFLAGS = -m32
+OSXLDFLAGS = -dylib_file /System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib
+else
+OSXLDFLAGS =
 EXCCFLAGS =
 EXCXXFLAGS =
-EXLDFLAGS =  
+EXLDFLAGS = 
+endif
+ 
 DEBUGFLAGS = -g
 OPTFLAGS = -O3
 
@@ -178,10 +189,11 @@ gmtkNGramIndex_SOURCES = gmtkNGramIndex.cc
 #	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkUnroll.o $(LIBS)
 
 
+
 gmtkViz_SOURCES = gmtkViz.cc
 gmtkViz_CXXFLAGS = $(VIZCXXFLAGS) \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC) $(X_CFLAGS)
-gmtkViz_LDFLAGS = $(EXLDFLAGS) $(VIZLDFLAGS) $(X_PRE_LIBS) $(X_LIBS) $(X_EXTRA_LIBS) -lX11
+gmtkViz_LDFLAGS = $(EXLDFLAGS) $(VIZLDFLAGS) $(X_PRE_LIBS) $(X_LIBS) $(X_EXTRA_LIBS) -lX11 $(OSXLDFLAGS)
 
 gmtkViz_app_SOURCES = Info.plist.in wxmac.icns
 
