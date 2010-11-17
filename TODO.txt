@@ -5269,3 +5269,19 @@ Tue Oct 19 15:08:22 2010
     This will also need the observation code not to load in all O(T) of the observations
     (i.e., the observation code needs to include an interface that the island algorithm
      can use).
+
+
+Tue Nov 16 23:50:10 2010
+   - Regarding the DT entry from Wed Apr 20 00:46:19 2005, instead of
+     having all of thes functions, have instead user-defined DT
+     mappers (i.e., there'd be one extra file called something like
+     GMTK_UserDTs.cc which by default is a stub, but has a few
+     commented examples of how to define and then register named
+     decision trees that become available as would a DT that is
+     defined in a master file. In fact, this could be the way to add a
+     number of interall DTs that I've been wanting to add and that are
+     often used (such as copy parent if other parent is non-zero,
+     etc). This would also allow loops, etc. (and would go along with
+     the source release we're going to do soon). The overhead would
+     still be calling a function via a pointer-to-function but that's
+     still much better than what we've currently got ...
