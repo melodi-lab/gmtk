@@ -59,7 +59,7 @@
 // Internal functions, do not modify anything here.
 
 
-void
+DiscRVType 
 cFunctionDeterministicMapping_copyparent(
         const vector< RV* >& parent_variables,
 	const RV* const child_rv)
@@ -68,9 +68,10 @@ cFunctionDeterministicMapping_copyparent(
   return foo + p0;
 }
 
-DEFINE_FUNCTION_MAPPER_C_CODE(copysingleparent)
+DEFINE_FUNCTION_MAPPER_C_CODE(copyParent,1)
 {
-  return p0;
+  DiscRVType rv = p0; 
+  return rv;
 }
 
 
@@ -89,7 +90,7 @@ registerAllMappers()
 {
 
   // DO Not change anything here.
-  registerDeterministicCMapper("internal:copyparent",1,cFunctionDeterministicMapping_copyparent);
+  registerDeterministicCMapper("internal:copyParent",1,cFunctionDeterministicMapping_copyparent);
   registerDeterministicCMapper("internal:incrementIfTrue",5,cFunctionDeterministicMapping_increment);
 
   // Uncomment to register user defined DTs.

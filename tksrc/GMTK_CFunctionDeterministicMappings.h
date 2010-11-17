@@ -24,8 +24,10 @@
 #ifndef GMTK_C_FUNCTION_DETERMINISTIC_MAPPINGS_H
 #define GMTK_C_FUNCTION_DETERMINISTIC_MAPPINGS_H
 
-#define DEFINE_DETERMINISTIC_MAPPER_C_CODE(name)
+wid#define DETERMINISTIC_MAPPER_C_CODE_NAME(name) cFunctionDeterministicMapping_##name
 
+#define DEFINE_DETERMINISTIC_MAPPER_C_CODE(name,numFeatures) \
+DiscRVType cFunctionDeterministicMapping_##name(const vector< RV* >& parent_variables,const RV* const child_rv)
 
 
 ///// Macros for easy access to variable names.
