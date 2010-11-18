@@ -60,22 +60,18 @@
 #include "GMTK_DiscRV.h"
 #incldue "GMTK_GMParams.h"
 
+#define DEFINE_DETERMINISTIC_MAPPER_MACROS
+#include "GMTK_CFunctionDecisionTrees.h"
+
+
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 // GMTK Internal C function deterministic mapping functions.
 // DO NOT MODIFY ANYTHING IN THE NEXT BIT OF CODE STARTING HERE.
 
-DiscRVType 
-cFunctionDeterministicMapping_copyparent(
-        const vector< RV* >& parent_variables,
-	const RV* const child_rv)
-{
-  DiscRVType foo;
-  return foo + p0;
-}
-
-DEFINE_DETERMINISTIC_MAPPER_C_CODE(copyParent,1)
+#define COPYPARENT_NUM_FEATURES 1
+DEFINE_DETERMINISTIC_MAPPER_C_CODE(copyParent,COPYPARENT_NUM_FEATURES)
 {
   DiscRVType rv = p0; 
   return rv;
@@ -86,14 +82,6 @@ DEFINE_DETERMINISTIC_MAPPER_C_CODE(copyParent,1)
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-
-
-DEFINE_DETERMINISTIC_MAPPER_C_CODE(userDTbinMapping,1)
-{
-  DiscRVType rv = p0; 
-  return rv;
-}
-
 
 
 
@@ -107,8 +95,14 @@ DEFINE_DETERMINISTIC_MAPPER_C_CODE(userDTbinMapping,1)
 // mapping.
 
 
-
-
+#define USERDTBINMAPPING_NUM_FEATURES 10
+DEFINE_DETERMINISTIC_MAPPER_C_CODE(userDTbinMapping,USERDTBINMAPPING_NUM_FEATURES)
+{ 
+  const DiscRVType SHIFT_ZERO=0;
+  return (p0 > 0 ? (((p1+1 - 17*p7 - 18*p8 + p9)~/p0) + 1*(p6-SHIFT_ZERO) >= 3 ? ( ((p1 + 1 - 17*p7 - 18*p8 + p9)~/p0) + 1*(p6-SHIFT_ZERO) < 4 ? 1 : 0) : 0) : 0) 
+    ||
+    (p3 > 0 ? (((p4+19 - 17*p7 - 18*p8 + p9)~/p3) + 1*(p6-SHIFT_ZERO) >= 3 ? ( ((p4+19 - 17*p7 - 18*p8 + p9)~/p3 + 1*(p6-SHIFT_ZERO)) < 4 ? 1 : 0) : 0) : 0);
+}
 
 
 
@@ -124,10 +118,7 @@ registerAllCFunctionDeterministicMappings()
   ///////////////////////////////////////////////////////////////////////
   // DO NOT CHANGE ANYTHING IN THE FOLLOWING FEW LINES STARTING HERE.
   registerDeterministicCMapper("internal:copyParent",
-			       1,
-			       DETERMINISTIC_MAPPER_C_CODE_NAME(copyparent));
-  registerDeterministicCMapper("internal:copyParent",
-			       1,
+			       COPYPARENT_NUM_FEATURES,
 			       DETERMINISTIC_MAPPER_C_CODE_NAME(copyparent));
   // DO NOT CHANGE ANYTHING IN THE ABOVE FEW LINES ENDING HERE.
   ///////////////////////////////////////////////////////////////////////
@@ -145,7 +136,9 @@ registerAllCFunctionDeterministicMappings()
   //          C function above, use macro
   //        );
 
-
+  registerDeterministicCMapper("cmapper:userDTbinMapping",
+			       USERDTBINMAPPING_NUM_FEATURES,
+			       DETERMINISTIC_MAPPER_C_CODE_NAME(userDTbinMapping));
 
        "internal:copyParent",1,cFunctionDeterministicMapping_copyparent);
 
