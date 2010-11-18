@@ -18,7 +18,7 @@ AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 
 # Check that we're in the correct directory by verifying the existence 
 # of the file
-AC_CONFIG_SRCDIR([ieeeFPsetup_x86_64_linux-gnu.cc])
+AC_CONFIG_SRCDIR([ieeeFPsetup_ANY_ANY.cc])
 
 # In case we need config.h to let the source code know about the 
 # build environment
@@ -54,11 +54,12 @@ else
       ieeeFPsetup_${host_cpu}_${host_os}.cc
    AC_WARN([
 ---------------------------------------------------------------
-  No IEEE floating point support for ${host_cpu}-${host_os}
-  GMTK will still build successfully, but with limited support 
-  for debugging floating point exceptions. Edit the files
-  IEEEFloatingpoint/ieeeFPsetup_${host_cpu}_${host_os}.{h,cc}
-  to add reporting for floating point exceptions.
+  Unable to catch internal floating point exceptions for ${host_cpu}-${host_os}
+  GMTK will still build and run successfully, but with limited
+  support for debugging floating point exceptions. Edit the 
+  files IEEEFloatingpoint/ieeeFPsetup_${host_cpu}_${host_os}.{h,cc}
+  to add reporting for floating point exceptions if you want
+  to debug floating point exceptions on ${host_cpu}-${host_os}.
 ---------------------------------------------------------------
 ])
 fi
