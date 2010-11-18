@@ -6,6 +6,11 @@ AC_INIT([GMTK],m4_esyscmd([printf %s `head -n 1 RELEASE`]),
         [https://lungs.ee.washington.edu/trac/gmtk/newticket])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 
+AC_ARG_ENABLE([gmtkViz], 
+              [AS_HELP_STRING([--disable-gmtkViz],
+                              [disable gmtkViz @<:@default: no@:>@])],
+              [gmtkViz=${enableval}], [gmtkViz=yes])
+
 # Checks for programs.
 
 # Checks for libraries.
