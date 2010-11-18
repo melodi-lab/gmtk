@@ -1,5 +1,6 @@
 /*-
  * GMTK_CFunctionDecisionTrees.cc
+ *
  *     Code that defines and declares internal pre-defined GMTK deterministic
  *     mapping functions, that map from a set of random variables (nominally a
  *     set of parent variables and one child variable) that are non-negative integer
@@ -20,7 +21,7 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (c) 2010, < fill in later >
  *
  * Permission to use, copy, modify, and distribute this
  * software and its documentation for any non-commercial purpose
@@ -48,16 +49,14 @@
 #include "rand.h"
 #include "sArray.h"
 
-#include "GMTK_DiscRV.h"
-#include "GMTK_HidDiscRV.h"
-#include "GMTK_ObsDiscRV.h"
-#include "GMTK_PackCliqueValue.h"
 #include "GMTK_RngDecisionTree.h"
+#incldue "GMTK_GMParams.h"
 
-
-
-// Internal functions, do not modify anything here.
-
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+// GMTK Internal C function deterministic mapping functions.
+// DO NOT MODIFY ANYTHING HERE OR YOU WILL VOID YOUR WARRANTY!!
 
 DiscRVType 
 cFunctionDeterministicMapping_copyparent(
@@ -68,30 +67,56 @@ cFunctionDeterministicMapping_copyparent(
   return foo + p0;
 }
 
-DEFINE_FUNCTION_MAPPER_C_CODE(copyParent,1)
+DEFINE_DETERMINISTIC_MAPPER_C_CODE(copyParent,1)
 {
   DiscRVType rv = p0; 
   return rv;
 }
 
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+// Additional user defined DTs. A few examples are given, you can uncomment and
+// modify at will, and then recompile GMTK and these deterministic functions
+// will be available to you to use just like any decision tree-based deterministic
+// mapping.
 
 
-// Additional user defined DTs. Uncomment, change to the name you want
-// and then register this below.
 
 
 
-
-// DT registraiton code.
-
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+// Registration code.
 
 void
-registerAllMappers()
+registerAllCFunctionDeterministicMappings()
 {
 
-  // DO Not change anything here.
-  registerDeterministicCMapper("internal:copyParent",1,cFunctionDeterministicMapping_copyparent);
-  registerDeterministicCMapper("internal:incrementIfTrue",5,cFunctionDeterministicMapping_increment);
+  ///////////////////////////////////////////////////////////////////////
+  // DO NOT CHANGE ANYTHING IN THE FOLLOWING FEW LINES
+  registerDeterministicCMapper("internal:copyParent",
+			       1,
+			       DETERMINISTIC_MAPPER_C_CODE_NAME(copyparent));
+
+  registerDeterministicCMapper("internal:copyParent",
+			       1,
+			       DETERMINISTIC_MAPPER_C_CODE_NAME(copyparent));
+
+  ///////////////////////////////////////////////////////////////////////
+
+
+
+  ///////////////////////////////////////////////////////////////////////
+  // ADD USER DEFINED C FUNCTION DETERMINISTIC MAPPING REGISTRATIONS HERE.
+  // Arguments are:
+  //   registerDeterministicCMapper(
+  //          name_of_deterministic_mapping which is of type char*,
+  //          number of features (just like when defining a decision tree),
+  //          C function above, use macro 
+
+       "internal:copyParent",1,cFunctionDeterministicMapping_copyparent);
 
   // Uncomment to register user defined DTs.
   // 

@@ -24,7 +24,11 @@
 #ifndef GMTK_C_FUNCTION_DETERMINISTIC_MAPPINGS_H
 #define GMTK_C_FUNCTION_DETERMINISTIC_MAPPINGS_H
 
-wid#define DETERMINISTIC_MAPPER_C_CODE_NAME(name) cFunctionDeterministicMapping_##name
+extern void registerAllCFunctionDeterministicMappings();
+
+#ifdef DEFINE_DETERMINISTIC_MAPPER_MACROS
+
+#define DETERMINISTIC_MAPPER_C_CODE_NAME(name) cFunctionDeterministicMapping_##name
 
 #define DEFINE_DETERMINISTIC_MAPPER_C_CODE(name,numFeatures) \
 DiscRVType cFunctionDeterministicMapping_##name(const vector< RV* >& parent_variables,const RV* const child_rv)
@@ -101,8 +105,10 @@ DiscRVType cFunctionDeterministicMapping_##name(const vector< RV* >& parent_vari
 #define cp31 (RV2DRV(variables[31])->cardinality)
 
 // child cardinality
-
 #define cc (RV2DRV(rv)->cardinality)
+
+#endif // #ifdef DEFINE_DETERMINISTIC_MAPPER_MACROS
+
 
 #endif 
 
