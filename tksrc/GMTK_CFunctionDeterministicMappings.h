@@ -24,6 +24,9 @@
 #ifndef GMTK_C_FUNCTION_DETERMINISTIC_MAPPINGS_H
 #define GMTK_C_FUNCTION_DETERMINISTIC_MAPPINGS_H
 
+#include "GMTK_DiscRV.h"
+#include "GMTK_GMParams.h"
+
 extern void registerAllCFunctionDeterministicMappings();
 
 #ifdef DEFINE_DETERMINISTIC_MAPPER_MACROS

@@ -18,6 +18,13 @@
  *            point, and so on).  
  *            In this case, the user must make sure that their function doesn't have
  *            infinite loops, and so on, as otherwise inference will just stall.
+ *    How to use this file?
+ *         1) Search for the tag REGISTRATION_OF_USER_DEFINED_DETERMINISTIC_MAPPERS:
+ *            Here you define a bunch of C-like functions that become deterministic mappers.
+ *            You can define any C subroutines in this region of the code as well.
+ *         2) Next, search for the tag REGISTRATION_OF_USER_DEFINED_DETERMINISTIC_MAPPERS:
+ *            below and copy/uncomment necessary code to register your newly defined 
+ *            deterministic mappers.
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
@@ -50,13 +57,14 @@
 #include "sArray.h"
 
 #include "GMTK_RngDecisionTree.h"
+#include "GMTK_DiscRV.h"
 #incldue "GMTK_GMParams.h"
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 // GMTK Internal C function deterministic mapping functions.
-// DO NOT MODIFY ANYTHING HERE OR YOU WILL VOID YOUR WARRANTY!!
+// DO NOT MODIFY ANYTHING IN THE NEXT BIT OF CODE STARTING HERE.
 
 DiscRVType 
 cFunctionDeterministicMapping_copyparent(
@@ -73,13 +81,32 @@ DEFINE_DETERMINISTIC_MAPPER_C_CODE(copyParent,1)
   return rv;
 }
 
+// DO NOT MODIFY ANYTHING IN THE NEXT BIT OF CODE ENDING HERE.
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
+
+DEFINE_DETERMINISTIC_MAPPER_C_CODE(userDTbinMapping,1)
+{
+  DiscRVType rv = p0; 
+  return rv;
+}
+
+
+
+
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+// DEFINITION_OF_USER_DEFINED_DETERMINISTIC_MAPPERS: 
 // Additional user defined DTs. A few examples are given, you can uncomment and
 // modify at will, and then recompile GMTK and these deterministic functions
 // will be available to you to use just like any decision tree-based deterministic
 // mapping.
+
+
 
 
 
@@ -95,26 +122,30 @@ registerAllCFunctionDeterministicMappings()
 {
 
   ///////////////////////////////////////////////////////////////////////
-  // DO NOT CHANGE ANYTHING IN THE FOLLOWING FEW LINES
+  // DO NOT CHANGE ANYTHING IN THE FOLLOWING FEW LINES STARTING HERE.
   registerDeterministicCMapper("internal:copyParent",
 			       1,
 			       DETERMINISTIC_MAPPER_C_CODE_NAME(copyparent));
-
   registerDeterministicCMapper("internal:copyParent",
 			       1,
 			       DETERMINISTIC_MAPPER_C_CODE_NAME(copyparent));
-
+  // DO NOT CHANGE ANYTHING IN THE ABOVE FEW LINES ENDING HERE.
   ///////////////////////////////////////////////////////////////////////
 
 
 
+
   ///////////////////////////////////////////////////////////////////////
+  // REGISTRATION_OF_USER_DEFINED_DETERMINISTIC_MAPPERS: 
   // ADD USER DEFINED C FUNCTION DETERMINISTIC MAPPING REGISTRATIONS HERE.
   // Arguments are:
   //   registerDeterministicCMapper(
   //          name_of_deterministic_mapping which is of type char*,
   //          number of features (just like when defining a decision tree),
-  //          C function above, use macro 
+  //          C function above, use macro
+  //        );
+
+
 
        "internal:copyParent",1,cFunctionDeterministicMapping_copyparent);
 
