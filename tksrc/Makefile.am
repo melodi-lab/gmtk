@@ -31,6 +31,8 @@ AM_CFLAGS = \
 $(DEBUGFLAGS) $(OPTFLAGS)  $(EXCCFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 AM_CXXFLAGS = \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+AM_LDFLAGS = \
+$(EXLDFLAGS)
 
 # extra optimization options for certain GMTK sources, used below.
 XOPTFLAGS = -funroll-loops -fargument-noalias-global
