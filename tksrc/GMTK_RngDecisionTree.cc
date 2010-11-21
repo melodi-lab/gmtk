@@ -100,6 +100,38 @@ RAND rnd(true);
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * RngDecisionTree
+ *      constructor of a DT that consists of a C function deterministic mapping.
+ * 
+ * Preconditions:
+ *      object is empty (i.e., do no use this to reallocate on top of an existing object.
+ *
+ * Postconditions:
+ *      object is filled in as a C function mapper.
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      nothing
+ *
+ *-----------------------------------------------------------------------
+ */
+RngDecisionTree::RngDecisionTree(string name, CFunctionMapperType _func,unsigned numFeatures)
+  : indexFile(NULL), dtFile(NULL), firstDT(0), root(NULL)
+{
+  setName(name);
+  _numFeatures = numFeatures;
+  root = new Node;
+  root->nodeType = LeafNodeCFunction;
+  new (&root->ln_c()) LeafNodeCFunctionStruct();
+  root->ln_c().function_ptr = _func;
+}
+
 /*-
  *-----------------------------------------------------------------------
  * ~RngDecisionTree
@@ -203,6 +235,10 @@ RngDecisionTree::destructorRecurse(RngDecisionTree::Node* node)
     // printf("deleting LeafNodeEquation\n");
     // make sure anything in an equation gets deleted
     node->ln_e().~LeafNodeEquationStruct();
+    break;
+
+  case LeafNodeCFunction:
+    node->ln_c().~LeafNodeCFunctionStruct();
     break;
 
   default:
@@ -2835,6 +2871,8 @@ leafNodeValType RngDecisionTree::queryRecurse(const vector < RV* >& arr,
 
   if (n->nodeType == LeafNodeVal) {
     return n->ln_v().value;
+  } else if  (n->nodeType == LeafNodeCFunction) {
+    return (*(n->ln_c().function_ptr))(arr,rv);
   } else if  (n->nodeType == LeafNodeEquation) {
     leafNodeValType answer;
     answer = n->ln_e().equation.evaluateFormula( arr, rv );
