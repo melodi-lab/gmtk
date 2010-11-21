@@ -56,12 +56,14 @@
 #include "rand.h"
 #include "sArray.h"
 
+#define DEFINE_DETERMINISTIC_MAPPER_MACROS 1
+#include "GMTK_CFunctionDeterministicMappings.h"
 #include "GMTK_RngDecisionTree.h"
 #include "GMTK_DiscRV.h"
-#incldue "GMTK_GMParams.h"
+#include "GMTK_GMParms.h"
 
-#define DEFINE_DETERMINISTIC_MAPPER_MACROS
-#include "GMTK_CFunctionDecisionTrees.h"
+
+
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -69,14 +71,41 @@
 //////////////////////////////////////////////////////////////////////////////
 // GMTK Internal C function deterministic mapping functions.
 // DO NOT MODIFY ANYTHING IN THE NEXT BIT OF CODE STARTING HERE.
-
+//
 #define COPYPARENT_NUM_FEATURES 1
 DEFINE_DETERMINISTIC_MAPPER_C_CODE(copyParent,COPYPARENT_NUM_FEATURES)
 {
   DiscRVType rv = p0; 
   return rv;
 }
-
+//
+#define ALWAYSZERO_NUM_FEATURES 0
+DEFINE_DETERMINISTIC_MAPPER_C_CODE(alwaysZero,ALWAYSZERO_NUM_FEATURES)
+{
+  return (DiscRVType) 0;
+}
+//
+#define ALWAYSONE_NUM_FEATURES 0
+DEFINE_DETERMINISTIC_MAPPER_C_CODE(alwaysOne,ALWAYSONE_NUM_FEATURES)
+{
+  return (DiscRVType) 1;
+}
+//
+#define INCREMENT_NUM_FEATURES 1
+DEFINE_DETERMINISTIC_MAPPER_C_CODE(increment,INCREMENT_NUM_FEATURES)
+{
+  return (p0+1);
+}
+//
+#define CONDITIONAL_INCREMENT_NUM_FEATURES 2
+DEFINE_DETERMINISTIC_MAPPER_C_CODE(conditionalIncrement,CONDITIONAL_INCREMENT_NUM_FEATURES)
+{
+  // increments p0 if p1 is non-zero, otherwise returns p0.
+  if (p1)
+    return (p0+1);
+  else
+    return (p0);
+}
 // DO NOT MODIFY ANYTHING IN THE NEXT BIT OF CODE ENDING HERE.
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
@@ -94,32 +123,65 @@ DEFINE_DETERMINISTIC_MAPPER_C_CODE(copyParent,COPYPARENT_NUM_FEATURES)
 // will be available to you to use just like any decision tree-based deterministic
 // mapping.
 
+// note: when a, b are integers, a/b = floor(a/b).
+// To get ceil and round, using only integer ops, we have that:
+//    ceil((float)a/(float)b) = (a + a - 1)/b
+//    round((float)a/(float)b) = (a + a/2)/b = (a + (a>>1))/b.
+// One is free here to convert to/from floating point, but often one need not do that.
 
-#define USERDTBINMAPPING_NUM_FEATURES 10
-DEFINE_DETERMINISTIC_MAPPER_C_CODE(userDTbinMapping,USERDTBINMAPPING_NUM_FEATURES)
+/*
+ * Here is an example mapping that one might want to define.
+ * Uncomment to activate.
+#define AJIT_MAPPING_NUM_FEATURES 10
+DEFINE_DETERMINISTIC_MAPPER_C_CODE(ajitMapping,AJIT_MAPPING_NUM_FEATURES)
 { 
   const DiscRVType SHIFT_ZERO=0;
-  return (p0 > 0 ? (((p1+1 - 17*p7 - 18*p8 + p9)~/p0) + 1*(p6-SHIFT_ZERO) >= 3 ? ( ((p1 + 1 - 17*p7 - 18*p8 + p9)~/p0) + 1*(p6-SHIFT_ZERO) < 4 ? 1 : 0) : 0) : 0) 
+
+  return (p0 > 0 ? ((  ( (p1+1 - 17*p7 - 18*p8 + p9) + (p0>>1))/p0) + 1*(p6-SHIFT_ZERO) >= 3 ? ( ( ((p1 + 1 - 17*p7 - 18*p8 + p9) + (p0>>1))/p0) + 1*(p6-SHIFT_ZERO) < 4 ? 1 : 0) : 0) : 0) 
     ||
-    (p3 > 0 ? (((p4+19 - 17*p7 - 18*p8 + p9)~/p3) + 1*(p6-SHIFT_ZERO) >= 3 ? ( ((p4+19 - 17*p7 - 18*p8 + p9)~/p3 + 1*(p6-SHIFT_ZERO)) < 4 ? 1 : 0) : 0) : 0);
+    (p3 > 0 ? (( ((p4+19 - 17*p7 - 18*p8 + p9) + (p3>>1))/p3) + 1*(p6-SHIFT_ZERO) >= 3 ? ( ( ((p4+19 - 17*p7 - 18*p8 + p9) + (p3>>1))/p3 + 1*(p6-SHIFT_ZERO)) < 4 ? 1 : 0) : 0) : 0);
 }
+*/
 
+//
+// add more deterministic mapping functions here as desired ...
+// 
 
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-// Registration code.
+// Registration code. This registers all deterministic mapping
+// functions that were defined above. Once  they are registered, with a given
+// name, they may be used like any decision tree.
+//
+// NOTE: please give all decision trees registered as such a name
+// starting with "internal:" and any user defined functions
+// a name starting with "user_internal:"
+
+
 
 void
-registerAllCFunctionDeterministicMappings()
+registerAllCFunctionDeterministicMappings(GMParms& gmp)
 {
 
   ///////////////////////////////////////////////////////////////////////
   // DO NOT CHANGE ANYTHING IN THE FOLLOWING FEW LINES STARTING HERE.
-  registerDeterministicCMapper("internal:copyParent",
-			       COPYPARENT_NUM_FEATURES,
-			       DETERMINISTIC_MAPPER_C_CODE_NAME(copyparent));
+  gmp.registerDeterministicCMapper("internal:copyParent",
+				   COPYPARENT_NUM_FEATURES,
+				   DETERMINISTIC_MAPPER_C_CODE_NAME(copyParent));
+  gmp.registerDeterministicCMapper("internal:alwaysZero",
+				   ALWAYSZERO_NUM_FEATURES,
+				   DETERMINISTIC_MAPPER_C_CODE_NAME(alwaysZero));
+  gmp.registerDeterministicCMapper("internal:alwaysOne",
+				   ALWAYSONE_NUM_FEATURES,
+				   DETERMINISTIC_MAPPER_C_CODE_NAME(alwaysOne));
+  gmp.registerDeterministicCMapper("internal:increment",
+				   INCREMENT_NUM_FEATURES,
+				   DETERMINISTIC_MAPPER_C_CODE_NAME(increment));
+  gmp.registerDeterministicCMapper("internal:conditionalIncrement",
+				   CONDITIONAL_INCREMENT_NUM_FEATURES,
+				   DETERMINISTIC_MAPPER_C_CODE_NAME(conditionalIncrement));
   // DO NOT CHANGE ANYTHING IN THE ABOVE FEW LINES ENDING HERE.
   ///////////////////////////////////////////////////////////////////////
 
@@ -136,39 +198,15 @@ registerAllCFunctionDeterministicMappings()
   //          C function above, use macro
   //        );
 
-  registerDeterministicCMapper("cmapper:userDTbinMapping",
-			       USERDTBINMAPPING_NUM_FEATURES,
-			       DETERMINISTIC_MAPPER_C_CODE_NAME(userDTbinMapping));
-
-       "internal:copyParent",1,cFunctionDeterministicMapping_copyparent);
+  /*
+   * Here is an example mapping registration that one might want to define.
+   * Uncomment to activate.
+  gmp.registerDeterministicCMapper("user_internal:ajitMapping",
+				   AJIT_MAPPING_NUM_FEATURES,
+				   DETERMINISTIC_MAPPER_C_CODE_NAME(ajitMapping));
+  */
 
   // Uncomment to register user defined DTs.
   // 
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

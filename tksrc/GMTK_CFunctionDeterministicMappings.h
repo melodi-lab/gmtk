@@ -25,11 +25,10 @@
 #define GMTK_C_FUNCTION_DETERMINISTIC_MAPPINGS_H
 
 #include "GMTK_DiscRV.h"
-#include "GMTK_GMParams.h"
+#include "GMTK_GMParms.h"
 
-extern void registerAllCFunctionDeterministicMappings();
+void registerAllCFunctionDeterministicMappings(GMParms&);
 
-typedef DiscRVType (*CFunctionMapperType)(const vector< RV* >&, const RV* const);
 
 #ifdef DEFINE_DETERMINISTIC_MAPPER_MACROS
 
