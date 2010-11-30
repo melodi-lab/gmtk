@@ -10,6 +10,11 @@ AC_ARG_ENABLE([gmtkViz],
               [AS_HELP_STRING([--disable-gmtkViz],
                               [disable gmtkViz @<:@default: no@:>@])],
               [gmtkViz=${enableval}], [gmtkViz=yes])
+AC_ARG_WITH([logp], 
+            [AS_HELP_STRING([--with-logp],
+              [select logp implementation (log, table, smart, renorm) @<:@default=log@:>@])],
+            [],
+            [with_logp=log])
 
 # Checks for programs.
 

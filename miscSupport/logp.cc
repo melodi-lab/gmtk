@@ -28,7 +28,7 @@ double log_FLT_MIN = log(FLT_MIN)+LOG_FLT_MIN_CNST;
 double log_DBL_MIN = log(DBL_MIN)+LOG_DBL_MIN_CNST;
 
 #ifdef _TABLE_
-#include <iostream.h>
+#include <iostream>
 template <class FT, class iFT >
   FT logp<FT, iFT>::table[table_size];
 template <class FT, class iFT >
