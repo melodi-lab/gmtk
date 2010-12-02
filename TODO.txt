@@ -5269,3 +5269,14 @@ Tue Oct 19 15:08:22 2010
     This will also need the observation code not to load in all O(T) of the observations
     (i.e., the observation code needs to include an interface that the island algorithm
      can use).
+
+
+Wed Nov 24 15:58:24 2010
+  - have a compile time option that turns off all bounds checking. Ie.,
+    things like checking the output of a DT/deterministic mapping, array bounds
+    checking in DT evaluations, and any other bounds checking. This
+    compiler flag should interact with the NDEBUG compile time macro. I.e.,
+    there should be a one-stop option to turn off all bounds checking
+    and assertions at compile time. Or perhaps there could be separate
+    macros for different ones, and then a one-stop macro definition that
+    turns them all off.
