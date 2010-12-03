@@ -10,7 +10,7 @@
 #include "pfile.h"
 #include "GMTK_WordOrganization.h"
 
-#define DEBUG 1
+#define DEBUG 0
 
 int
 readFrame(OutFtrLabStream_PFile *pfile, char *fname, FILE *in, bool &eof, 
