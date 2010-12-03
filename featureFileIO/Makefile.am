@@ -39,7 +39,7 @@ GMTK_ObsStats.h GMTK_ObsStats.cc \
 pfile.h pfile.cc \
 vbyteswapping.h vbyteswapping.cc
 
-bin_PROGRAMS = obs-print obs-info obs-skmeans obs-concat obs-diff
+bin_PROGRAMS = obs-print obs-info obs-skmeans obs-concat obs-diff obs-adam
 #check_PROGRAMS = gmtest
 
 #gmtest_SOURCES = gmtest.cc
@@ -62,4 +62,4 @@ obs_concat_SOURCES = GMTK_ObsConcat.cc
 
 obs_diff_SOURCES = GMTK_ObsDiff.cc
 
-
+obs_adam_SOURCES = obs-adam.cc
