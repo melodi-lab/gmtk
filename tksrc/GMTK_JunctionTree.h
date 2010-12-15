@@ -1140,6 +1140,7 @@ public:
 
 
 
+  void createUnprimingMap();
 
   // actuall message routines.
   // void collectMessage(MaxClique& from,MaxClique& to);

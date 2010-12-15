@@ -405,6 +405,40 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 
 
 
+void JunctionTree::createUnprimingMap() {
+  unsigned M = gm_template.M;
+  unsigned S = gm_template.S;
+  fprintf(stderr,"creating C' -> C map, (M,S) = (%u,%u)    frames in (P,C,E) = (%d,%d,%d)\n", 
+	  M, S, fp.numFramesInP(), fp.numFramesInC(), fp.numFramesInE());
+  vector<RV*> map_rvs;
+  map<RVInfo::rvParent, unsigned> mapUnroll_pos;
+  fp.unroll(2*M+S-1, map_rvs, mapUnroll_pos);
+
+  fprintf(stderr,"unrolled %u times:\n", 2*M+S-1);
+  for (vector<RV*>::iterator it = map_rvs.begin(); it != map_rvs.end(); ++it) {
+    fprintf(stderr, "%s(%u)\n", (*it)->name().c_str(), (*it)->frame());
+  }
+
+  fprintf(stderr, "\n-----------------------------\n");
+
+  fprintf(stderr, "\nP':\n");
+  set<RV*> P = gm_template.P.nodes;
+  for (set<RV*>::iterator it = P.begin(); it != P.end(); ++it) {
+    fprintf(stderr, "%s(%u)\n", (*it)->name().c_str(), (*it)->frame());
+  }
+  fprintf(stderr, "\nC':\n");
+  set<RV*> C = gm_template.C.nodes;
+  for (set<RV*>::iterator it = C.begin(); it != C.end(); ++it) {
+    fprintf(stderr, "%s(%u)\n", (*it)->name().c_str(), (*it)->frame());
+  }
+  fprintf(stderr, "\nE':\n");
+  set<RV*> E = gm_template.E.nodes;
+  for (set<RV*>::iterator it = E.begin(); it != E.end(); ++it) {
+    fprintf(stderr, "%s(%u)\n", (*it)->name().c_str(), (*it)->frame());
+  }
+
+}
+
 
 
 /*-
