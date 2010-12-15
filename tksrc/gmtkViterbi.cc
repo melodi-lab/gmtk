@@ -294,6 +294,8 @@ main(int argc,char*argv[])
   else 
     tri_file = string(triFileName);
   GMTemplate gm_template(fp);
+
+
   {
     // do this in scope so that is gets deleted now rather than later.
     iDataStreamFile is(tri_file.c_str());
@@ -404,6 +406,7 @@ main(int argc,char*argv[])
     }
   }
 
+  myjt.createUnprimingMap();
 
 
 
