@@ -406,8 +406,84 @@ main(int argc,char*argv[])
     }
   }
 
-  myjt.createUnprimingMap();
 
+  vector<RV*> unrolled_rvs;
+  map<RVInfo::rvParent, unsigned> unrolled_map;
+
+  set<RV*> P_rvs;      // original P for printing
+  vector<RV*> Pprime_rvs; // modified P' for unpacking
+
+  vector<set<RV*> > C_rvs; // original Cs for printing
+  vector<vector<RV*> > Cprime_rvs; // modified C's for unpacking
+
+  set<RV*> E_rvs; // ... printing
+  vector<vector<RV*> > Eprime_rvs; // ... unpacking
+
+  sArray<DiscRVType *>PprimeValuePtrs;
+  vector<sArray<DiscRVType *> > CprimeValuePtrs;
+  vector<sArray<DiscRVType *> > EprimeValuePtrs;
+
+  myjt.createUnprimingMap(unrolled_rvs, unrolled_map, 
+			  P_rvs, Pprime_rvs, C_rvs, Cprime_rvs, E_rvs, Eprime_rvs, 
+			  PprimeValuePtrs, CprimeValuePtrs, EprimeValuePtrs);
+
+  fprintf(stderr, "G' -> G mapping:\n\n");
+  unsigned NP = fp.numFramesInP();
+  unsigned NC = fp.numFramesInC();
+  unsigned nCs = C_rvs.size();
+  unsigned nCprimes = Cprime_rvs.size();
+#define FTOC(P,C,f) \
+  ( ((f) - (P)) / (C) )
+
+
+  for (vector<RV*>::iterator it = Pprime_rvs.begin(); 
+       it != Pprime_rvs.end();
+       ++it)
+  {
+    RV *v = *it;
+    if (P_rvs.find(v) == P_rvs.end()) {
+      fprintf(stderr, "P'    C[%u]: %s(%u)\n", FTOC(NP,NC,v->frame()), v->name().c_str(), v->frame());
+    } else {
+      fprintf(stderr, "P'    P   : %s(%u)\n", v->name().c_str(), v->frame());
+    }
+  }
+  for (unsigned i=0; i < nCprimes; i+=1) {
+    fprintf(stderr, "-----------------------------\n");
+    for (vector<RV*>::iterator it = Cprime_rvs[i].begin();
+	 it != Cprime_rvs[i].end();
+	 ++it)
+    {
+      RV *v = *it;
+      fprintf(stderr, "C'[%u] C[%u]: %s(%u)\n", i, FTOC(NP,NC,v->frame()),v->name().c_str(), v->frame());
+    }
+  }
+
+  for (unsigned i=0; i < nCprimes; i+=1) {
+    fprintf(stderr, "-----------------------------\n");
+    for (vector<RV*>::iterator it = Eprime_rvs[i].begin(); 
+       it != Eprime_rvs[i].end();
+       ++it)
+    {
+      RV *v = *it;
+      unsigned c = FTOC(NP,NC,v->frame());
+      if (c < nCs) {
+	fprintf(stderr, "E'[%u] C[%u]: %s(%u)\n", i, c, v->name().c_str(), v->frame());
+      } else {
+	fprintf(stderr, "E'[%u] E   : %s(%u)\n", i, v->name().c_str(), v->frame());
+      }
+    }
+  }
+
+#if 0
+  fprintf(stderr, "-----------------------------\n");
+  for (set<RV*>::iterator it = E_rvs.begin();
+       it != E_rvs.end();
+       ++it)
+  {
+    RV *v = *it;
+    fprintf(stderr, "E'    E   : %s(%u)\n", v->name().c_str(), v->frame());
+  }
+#endif
 
 
   while (!dcdrng_it->at_end()) {

@@ -1140,7 +1140,17 @@ public:
 
 
 
-  void createUnprimingMap();
+  void createUnprimingMap(vector<RV*> &unrolled_rvs, 
+			  map<RVInfo::rvParent, unsigned> &unrolled_map,
+			  set<RV*> &P_rvs, 
+			  vector<RV*> &Pprime_rvs,
+			  vector<set<RV*> > &C_rvs, 
+			  vector<vector<RV*> > &Cprime_rvs,
+			  set<RV*> &E_rvs, 
+			  vector<vector<RV*> > &Eprime_rvs,
+			  sArray<DiscRVType*> &PprimeValuePtrs, 
+			  vector<sArray<DiscRVType *> > &CprimeValuePtrs, 
+			  vector<sArray<DiscRVType *> > &EprimeValuePtrs);
 
   // actuall message routines.
   // void collectMessage(MaxClique& from,MaxClique& to);

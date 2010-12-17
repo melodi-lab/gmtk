@@ -408,7 +408,15 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 #define FTOC(P,C,f) \
   ( ((f) - (P)) / (C) )
 
-void JunctionTree::createUnprimingMap() {
+void JunctionTree::createUnprimingMap(
+  vector<RV*> &unrolled_rvs, map<RVInfo::rvParent, unsigned> &unrolled_map,
+  set<RV*> &P_rvs, vector<RV*> &Pprime_rvs,
+  vector<set<RV*> > &C_rvs, vector<vector<RV*> > &Cprime_rvs,
+  set<RV*> &E_rvs, vector<vector<RV*> > &Eprime_rvs,
+  sArray<DiscRVType*> &PprimeValuePtrs, 
+  vector<sArray<DiscRVType *> > &CprimeValuePtrs, 
+  vector<sArray<DiscRVType *> > &EprimeValuePtrs) 
+{
 
 #if 0
   set<RV*> PPP = gm_template.P.nodes;
@@ -438,8 +446,10 @@ void JunctionTree::createUnprimingMap() {
   unsigned nCs = nCprimes * S;
 
   // unroll to create RV instances shared by the printing & unpacking sets
+#if 0
   vector<RV*> unrolled_rvs;
   map<RVInfo::rvParent, unsigned> unrolled_map;
+#endif
   fp.unroll(nCs-1, unrolled_rvs, unrolled_map);
 
 #if 0
@@ -455,6 +465,7 @@ void JunctionTree::createUnprimingMap() {
   unsigned NC = fp.numFramesInC();
 //  unsigned NE = fp.numFramesInE();
 
+#if 0
   set<RV*> P_rvs;      // original P for printing
   vector<RV*> Pprime_rvs; // modified P' for unpacking
 
@@ -463,6 +474,13 @@ void JunctionTree::createUnprimingMap() {
 
   set<RV*> E_rvs; // ... printing
   vector<vector<RV*> > Eprime_rvs(nCprimes); // ... unpacking
+#else
+  C_rvs.resize(nCs);
+  Cprime_rvs.resize(nCprimes);
+  Eprime_rvs.resize(nCprimes);
+  CprimeValuePtrs.resize(nCprimes);
+  EprimeValuePtrs.resize(nCprimes);
+#endif
   // the unpacking could end at any of the C' sets, which
   // in turn means that we don't know which of the C sets
   // unpacking E' will complete. So, we setup an E' set for
@@ -483,6 +501,11 @@ void JunctionTree::createUnprimingMap() {
       C_rvs[t].insert(v);
 //      fprintf(stderr, "%s(%u) -> C(%u)\n", (*it)->name().c_str(), (*it)->frame(), t);
     }
+  }
+  PprimeValuePtrs.resize(Pprime_rvs.size());
+  for (unsigned i=0; i < Pprime_rvs.size(); i+=1) {
+    DiscRV *drv = (DiscRV *) Pprime_rvs[i];
+    PprimeValuePtrs[i] = &(drv->val);
   }
 
   // Map the first C' variables (gm_template instances) to their 
@@ -518,6 +541,14 @@ void JunctionTree::createUnprimingMap() {
 //      fprintf(stderr, "C(%u) C'[%u] : %s(%u)\n", t, i, target.first.c_str(), target.second);
     }
   }
+  for (unsigned i=0; i < nCprimes; i+=1) {
+    CprimeValuePtrs[i].resize(Cprime_rvs[i].size());
+    for (unsigned j=0; j < Cprime_rvs[i].size(); j+=1) {
+      DiscRV *drv = (DiscRV *) Cprime_rvs[i][j];
+      CprimeValuePtrs[i][j] = &(drv->val);
+    }
+  }
+
 
 //  fprintf(stderr, "\nE':\n");
   unsigned firstEframe = NP + (M+S) * NC;
@@ -529,7 +560,7 @@ void JunctionTree::createUnprimingMap() {
       RV *rv = getRV(unrolled_rvs, unrolled_map, v, shift);
       if (v->frame() >= firstEframe) { // v is in E and E'
 	E_rvs.insert(rv);
-#if 0
+#if 1
 	for (unsigned i=0; i < nCprimes; i+=1) {
 	  Eprime_rvs[i].push_back(rv);
 	}
@@ -547,51 +578,14 @@ void JunctionTree::createUnprimingMap() {
       }
     }
   }
-
-
-  fprintf(stderr, "G' -> G mapping:\n\n");
-
-  for (vector<RV*>::iterator it = Pprime_rvs.begin(); 
-       it != Pprime_rvs.end();
-       ++it)
-  {
-    RV *v = *it;
-    if (P_rvs.find(v) == P_rvs.end()) {
-      fprintf(stderr, "P'    C[%u]: %s(%u)\n", FTOC(NP,NC,v->frame()), v->name().c_str(), v->frame());
-    } else {
-      fprintf(stderr, "P'    P   : %s(%u)\n", v->name().c_str(), v->frame());
-    }
-  }
   for (unsigned i=0; i < nCprimes; i+=1) {
-    fprintf(stderr, "-----------------------------\n");
-    for (vector<RV*>::iterator it = Cprime_rvs[i].begin();
-	 it != Cprime_rvs[i].end();
-	 ++it)
-    {
-      RV *v = *it;
-      fprintf(stderr, "C'[%u] C[%u]: %s(%u)\n", i, FTOC(NP,NC,v->frame()),v->name().c_str(), v->frame());
+    EprimeValuePtrs[i].resize(Eprime_rvs[i].size());
+    for (unsigned j=0; j < Eprime_rvs[i].size(); j+=1) {
+      DiscRV *drv = (DiscRV *) Eprime_rvs[i][j];
+      EprimeValuePtrs[i][j] = &(drv->val);
     }
   }
 
-  for (unsigned i=0; i < nCprimes; i+=1) {
-    fprintf(stderr, "-----------------------------\n");
-    for (vector<RV*>::iterator it = Eprime_rvs[i].begin(); 
-       it != Eprime_rvs[i].end();
-       ++it)
-    {
-      RV *v = *it;
-      fprintf(stderr, "E'[%u] C[%u]: %s(%u)\n", i, FTOC(NP,NC,v->frame()), v->name().c_str(), v->frame());
-    }
-  }
-
-  fprintf(stderr, "-----------------------------\n");
-  for (set<RV*>::iterator it = E_rvs.begin();
-       it != E_rvs.end();
-       ++it)
-  {
-    RV *v = *it;
-    fprintf(stderr, "E'    E   : %s(%u)\n", v->name().c_str(), v->frame());
-  }
 }
 
 
