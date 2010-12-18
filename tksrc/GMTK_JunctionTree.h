@@ -1142,15 +1142,20 @@ public:
 
   void createUnprimingMap(vector<RV*> &unrolled_rvs, 
 			  map<RVInfo::rvParent, unsigned> &unrolled_map,
-			  set<RV*> &P_rvs, 
-			  vector<RV*> &Pprime_rvs,
-			  vector<set<RV*> > &C_rvs, 
-			  vector<vector<RV*> > &Cprime_rvs,
-			  set<RV*> &E_rvs, 
-			  vector<vector<RV*> > &Eprime_rvs,
+			  vector<RV*> &P_rvs, vector<RV*> &hidP_rvs,
+			  vector<RV*> &Pprime_rvs, vector<RV*> &hidPprime_rvs,
+			  vector<vector<RV*> > &C_rvs, vector<vector<RV*> > &hidC_rvs,
+			  vector<vector<RV*> > &Cprime_rvs, vector<vector<RV*> > &hidCprime_rvs,
+			  vector<RV*> &E_rvs,  vector<RV*> &hidE_rvs,
+			  vector<vector<RV*> > &Eprime_rvs, vector<vector<RV*> > &hidEprime_rvs,
 			  sArray<DiscRVType*> &PprimeValuePtrs, 
 			  vector<sArray<DiscRVType *> > &CprimeValuePtrs, 
 			  vector<sArray<DiscRVType *> > &EprimeValuePtrs);
+
+  void printSavedViterbiValues(FILE*,
+			       bool printObserved,
+			       regex_t *preg,
+			       char* partRangeFilter);
 
   // actuall message routines.
   // void collectMessage(MaxClique& from,MaxClique& to);

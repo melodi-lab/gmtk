@@ -407,24 +407,33 @@ main(int argc,char*argv[])
   }
 
 
+#if 0
   vector<RV*> unrolled_rvs;
   map<RVInfo::rvParent, unsigned> unrolled_map;
 
-  set<RV*> P_rvs;      // original P for printing
+  vector<RV*> P_rvs;      // original P for printing
   vector<RV*> Pprime_rvs; // modified P' for unpacking
+  vector<RV*> hidP_rvs;      // hidden subset of original P for printing
+  vector<RV*> hidPprime_rvs; // hidden subset modified P' for unpacking
 
-  vector<set<RV*> > C_rvs; // original Cs for printing
+  vector<vector<RV*> > C_rvs; // original Cs for printing
   vector<vector<RV*> > Cprime_rvs; // modified C's for unpacking
+  vector<vector<RV*> > hidC_rvs; // hidden subset of original Cs for printing
+  vector<vector<RV*> > hidCprime_rvs; // hidden subset of modified C's for unpacking
 
-  set<RV*> E_rvs; // ... printing
+  vector<RV*> E_rvs; // ... printing
   vector<vector<RV*> > Eprime_rvs; // ... unpacking
+  vector<RV*> hidE_rvs; // ... printing
+  vector<vector<RV*> > hidEprime_rvs; // ... unpacking
 
   sArray<DiscRVType *>PprimeValuePtrs;
   vector<sArray<DiscRVType *> > CprimeValuePtrs;
   vector<sArray<DiscRVType *> > EprimeValuePtrs;
 
   myjt.createUnprimingMap(unrolled_rvs, unrolled_map, 
-			  P_rvs, Pprime_rvs, C_rvs, Cprime_rvs, E_rvs, Eprime_rvs, 
+			  P_rvs, hidP_rvs, Pprime_rvs, hidPprime_rvs,
+			  C_rvs, hidC_rvs, Cprime_rvs, hidCprime_rvs,
+			  E_rvs, hidE_rvs, Eprime_rvs, hidEprime_rvs, 
 			  PprimeValuePtrs, CprimeValuePtrs, EprimeValuePtrs);
 
   fprintf(stderr, "G' -> G mapping:\n\n");
@@ -436,12 +445,13 @@ main(int argc,char*argv[])
   ( ((f) - (P)) / (C) )
 
 
-  for (vector<RV*>::iterator it = Pprime_rvs.begin(); 
-       it != Pprime_rvs.end();
+  set<RV*> pset(P_rvs.begin(), P_rvs.end());
+  for (vector<RV*>::iterator it = hidPprime_rvs.begin(); 
+       it != hidPprime_rvs.end();
        ++it)
   {
     RV *v = *it;
-    if (P_rvs.find(v) == P_rvs.end()) {
+    if (pset.find(v) == pset.end()) {
       fprintf(stderr, "P'    C[%u]: %s(%u)\n", FTOC(NP,NC,v->frame()), v->name().c_str(), v->frame());
     } else {
       fprintf(stderr, "P'    P   : %s(%u)\n", v->name().c_str(), v->frame());
@@ -449,8 +459,8 @@ main(int argc,char*argv[])
   }
   for (unsigned i=0; i < nCprimes; i+=1) {
     fprintf(stderr, "-----------------------------\n");
-    for (vector<RV*>::iterator it = Cprime_rvs[i].begin();
-	 it != Cprime_rvs[i].end();
+    for (vector<RV*>::iterator it = hidCprime_rvs[i].begin();
+	 it != hidCprime_rvs[i].end();
 	 ++it)
     {
       RV *v = *it;
@@ -460,8 +470,8 @@ main(int argc,char*argv[])
 
   for (unsigned i=0; i < nCprimes; i+=1) {
     fprintf(stderr, "-----------------------------\n");
-    for (vector<RV*>::iterator it = Eprime_rvs[i].begin(); 
-       it != Eprime_rvs[i].end();
+    for (vector<RV*>::iterator it = hidEprime_rvs[i].begin(); 
+       it != hidEprime_rvs[i].end();
        ++it)
     {
       RV *v = *it;
@@ -474,15 +484,16 @@ main(int argc,char*argv[])
     }
   }
 
-#if 0
+#if 1
   fprintf(stderr, "-----------------------------\n");
-  for (set<RV*>::iterator it = E_rvs.begin();
-       it != E_rvs.end();
+  for (vector<RV*>::iterator it = hidE_rvs.begin();
+       it != hidE_rvs.end();
        ++it)
   {
     RV *v = *it;
     fprintf(stderr, "E'    E   : %s(%u)\n", v->name().c_str(), v->frame());
   }
+#endif
 #endif
 
 
@@ -543,13 +554,13 @@ main(int argc,char*argv[])
       warning("Segment %d: Not printing Viterbi values since segment has zero probability\n",
 	      segment);
     else {
-      fprintf(pVitValsFile,"========\nSegment %d, number of frames = %d, viteri-score = %f\n",
+      fprintf(pVitValsFile,"========\nSegment %d, number of frames = %d, vitebri-score = %f\n",
 	      segment,numFrames,probe.val());
       if (pVitValsFile)
-	myjt.printSavedPartitionViterbiValues(pVitValsFile,
-					      pVitAlsoPrintObservedVariables,
-					      pVitPreg,
-					      pVitPartRangeFilter);
+	myjt.printSavedViterbiValues(pVitValsFile,
+				     pVitAlsoPrintObservedVariables,
+				     pVitPreg,
+				     pVitPartRangeFilter);
 
 #if 0      
       if (vitValsFile)
