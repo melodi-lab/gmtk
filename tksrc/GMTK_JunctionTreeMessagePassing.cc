@@ -451,9 +451,11 @@ void JunctionTree::createUnprimingMap(
   Pprime_rvs.clear(); hidPprime_rvs.clear();
 
   C_rvs.resize(nCs); hidC_rvs.resize(nCs);
+  vector<set<RV*> > Calready(nCs);
   for (unsigned i=0; i < nCs; i+=1) {
     C_rvs[i].clear();
     hidC_rvs[i].clear();
+    Calready[i].clear();
   }
   Cprime_rvs.resize(nCprimes); hidCprime_rvs.resize(nCprimes); 
   for (unsigned i=0; i < nCprimes; i+=1) {
@@ -491,6 +493,7 @@ void JunctionTree::createUnprimingMap(
       Pprime_rvs.push_back(v);
       unsigned t = FTOC(NP,NC,(*it)->frame()); // the unmodified C index this variable belongs in
       C_rvs[t].push_back(v);
+      Calready[t].insert(v);
       if (v->hidden()) {
 	hidPprime_rvs.push_back(v);
 	hidC_rvs[t].push_back(v);
@@ -514,6 +517,7 @@ void JunctionTree::createUnprimingMap(
       RV *v = getRV(unrolled_rvs, unrolled_map, *it);
       unsigned t = FTOC(NP,NC,(*it)->frame()); // the unmodified C index this variable belongs in
       C_rvs[t].push_back(v);
+      Calready[t].insert(v);
       Cprime_rvs[0].push_back(v);
       if (v->hidden()) {
 	hidC_rvs[t].push_back(v);
@@ -540,11 +544,15 @@ void JunctionTree::createUnprimingMap(
       // BUG HERE: rv may already be in (hid?)C_rvs[t], resulting in excess length when printing C.
       //           We want the ordering of a vector, but the single membership of a set...
       //           Does need to be added to (hid?)Cprime_rvs[i], as that is newly constructed...
-      C_rvs[t].push_back(rv);
-
+      if (Calready[t].find(rv) == Calready[t].end()) {
+	C_rvs[t].push_back(rv);
+	if (rv->hidden()) {
+	  hidC_rvs[t].push_back(rv);
+	}
+	Calready[t].insert(rv);
+      }
       Cprime_rvs[i].push_back(rv);
       if (rv->hidden()) {
-	hidC_rvs[t].push_back(rv);
 	hidCprime_rvs[i].push_back(rv);
       }
 //      fprintf(stderr, "C(%u) C'[%u] : %s(%u)\n", t, i, target.first.c_str(), target.second);
