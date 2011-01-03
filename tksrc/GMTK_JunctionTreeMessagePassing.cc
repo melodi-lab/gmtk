@@ -84,6 +84,7 @@ JunctionTree::init_CC_CE_rvs(ptps_iterator& ptps_it)
     cur_CE_rvs.clear();
   } 
   cur_cc_shift = cur_ce_shift = 0;
+  cur_unprime_shift = 0;
   ptps_it.go_to_part_no(0);
 }
 
@@ -111,6 +112,86 @@ JunctionTree::shiftCCtoPosition(int pos)
 }
 
 
+
+
+void
+JunctionTree::shiftUnprimeVarstoPosition(vector<RV*> rvs, int pos, int &prevPos, int unprimeIndex)
+{
+  set<RV*> uprvs(rvs.begin(),rvs.end());
+  if (prevPos > 0) {
+    adjustFramesBy(uprvs, -prevPos);
+  }
+  int delta = gm_template.S * fp.numFramesInC() * (pos - unprimeIndex - 1);
+  adjustFramesBy(uprvs, delta);
+  prevPos = delta;
+#if 0
+  int posFrame, prevFrame;
+  if (prevPos > 0) {
+    prevFrame = (prevPos - 1) * gm_template.S * fp.numFramesInC() + fp.numFramesInP();
+  } else {
+    prevFrame = 0;
+  }
+  if (pos > 0) {
+    posFrame = (pos - 1) * gm_template.S * fp.numFramesInC() + fp.numFramesInP();
+  } else {
+    posFrame = 0;
+  }
+#endif
+#if 0
+  for (set<RV*>::iterator it = uprvs.begin(); it != uprvs.end(); ++it) {
+    RV *rv = *it;
+    printf("%s(%d) + (%d - %d) = %d\n", rv->name().c_str(), rv->frame(), posFrame, prevFrame, rv->frame() + posFrame - prevFrame);
+  }
+#endif
+#if 0
+  adjustFramesBy(uprvs, posFrame - prevFrame);
+  prevPos = pos;
+#endif
+#if 0
+  int startFrame;
+  if (pos > 0) {
+    startFrame = (pos - 1) * gm_template.S * fp.numFramesInC() + fp.numFramesInP();
+  } else {
+    startFrame = 0;
+  }
+  int delta = startFrame - cur_unprime_shift;
+  adjustFramesBy(uprvs, delta);
+  cur_unprime_shift = startFrame;
+#endif
+#if 0
+  if (cur_unprime_shift != 0) {
+    // we need to get CE back to zero.
+    adjustFramesBy (uprvs, -cur_unprime_shift
+		    *gm_template.S*fp.numFramesInC());
+    cur_unprime_shift = 0;
+  }
+  int delta = pos - cur_unprime_cc_shift;
+  adjustFramesBy (uprvs, delta
+		  *gm_template.S*fp.numFramesInC());
+  cur_unprime_shift = pos;
+#endif
+}
+
+
+
+
+void
+JunctionTree::shiftUnprimeCCtoPosition(set<RV*> rvs, int pos)
+{
+  if (cur_unprime_ce_shift != 0) {
+    assert ( cur_unprime_cc_shift == 0 );
+    // we need to get CE back to zero.
+    adjustFramesBy (rvs, -cur_unprime_ce_shift
+		    *gm_template.S*fp.numFramesInC());
+    cur_unprime_ce_shift = 0;
+  }
+  int delta = pos - cur_unprime_cc_shift;
+  adjustFramesBy (rvs, delta
+		  *gm_template.S*fp.numFramesInC());
+  cur_unprime_cc_shift = pos;
+}
+
+
 /*
  * shiftCCtoPosition(int pos)
  *  Given an absolute partition number 'pos', we shift the pair of
@@ -132,6 +213,23 @@ JunctionTree::shiftCEtoPosition(int pos)
   adjustFramesBy (cur_CE_rvs, delta
 		  *gm_template.S*fp.numFramesInC());
   cur_ce_shift = pos;
+}
+
+
+void
+JunctionTree::shiftUnprimeCEtoPosition(set<RV*> rvs, int pos)
+{
+  if (cur_unprime_cc_shift != 0) {
+    assert ( cur_unprime_ce_shift == 0 );
+    // we need to get CC back to zero.
+    adjustFramesBy (cur_CC_rvs, -cur_unprime_cc_shift
+		    *gm_template.S*fp.numFramesInC());
+    cur_unprime_cc_shift = 0;
+  }
+  int delta = pos - cur_unprime_ce_shift;
+  adjustFramesBy (cur_CE_rvs, delta
+		  *gm_template.S*fp.numFramesInC());
+  cur_unprime_ce_shift = pos;
 }
 
 
@@ -196,6 +294,45 @@ JunctionTree::setCurrentInferenceShiftTo(int pos)
 	shiftCCtoPosition(0);
       else 
 	shiftCCtoPosition(pos-2);
+    }
+  }
+}
+
+
+void
+JunctionTree::setUnprimeShiftTo(vector<RV*> rv_vector, int pos)
+{
+  set<RV*> rvs(rv_vector.begin(), rv_vector.end());
+  if (inference_it.at_entry(pos)) {
+    // printf("== Already at shift %d\n",pos);
+    return;
+  }
+
+  //   printf("========================================\n");
+  //   printf("== Setting current inference shift to %d\n",pos);
+  //   printf("========================================\n");
+
+  if (inference_it.num_c_partitions() <= 2) {
+    // then do nothing, since nothing is never shifted away from zero.
+  } else {
+    // need to do some work. We need to get the right
+    // of the appropriate pair (either the second C of CC in PCCE,
+    // or the E of CE in PCCE) to be at position pos.
+    if (inference_it.at_p()) {
+      // P has an intersection with the first C in PCCE, so we need
+      // to get that first C into the right position. We do that
+      // by getting both CC's into the right position.
+      shiftUnprimeCCtoPosition(rvs, 0);
+    } else if (inference_it.at_e()) {
+      // get the CE into the right position
+      shiftUnprimeCEtoPosition(rvs, pos - 3);
+    } else {
+      // Get CC into the right position, where 'pos' corresponds
+      // to the second C in PCCE.
+      if (pos <= 2)
+	shiftUnprimeCCtoPosition(rvs, 0);
+      else 
+	shiftUnprimeCCtoPosition(rvs, pos-2);
     }
   }
 }
@@ -726,9 +863,15 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 		     PprimeValuePtrs, CprimeValuePtrs, EprimeValuePtrs);
 
   fprintf(f,"Printing random variables from (P,C,E)=(%d,%d,%d) partitions\n",
+#if 0
 	  (int)P_rvs.size(),
 	  (int)C_rvs[0].size(),
 	  (int)E_rvs.size());
+#else
+	  P_partition_values.size(),
+	  C_partition_values.size(),
+	  E_partition_values.size());
+#endif
 
   Range* partRange = NULL;
   if (partRangeFilter != NULL) {
@@ -744,6 +887,19 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 
   Range::iterator* partRange_it = new Range::iterator(partRange->begin());
 
+  int Ppos = 0;
+  vector<int> Cpos(C_rvs.size());
+  vector<int> Epos(C_rvs.size());
+
+  for (int i=0; i < Cpos.size(); i+=1) {
+#if 0
+    Cpos[i] = fp.numFramesInP() + gm_template.S * fp.numFramesInC() * i;
+#else
+    Cpos[i] = 0;
+#endif
+    Epos[i] = Cpos[i];
+  }
+
   unsigned primeIndex = 0;
   unsigned unprimeIndex = 0;
   int previous_C = -1;
@@ -753,9 +909,16 @@ JunctionTree::printSavedViterbiValues(FILE* f,
     setCurrentInferenceShiftTo(part);
 
     PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
-
+#if 0
+    fprintf(stderr, "ps hid rvs:");
+    for (vector<RV*>::iterator it = ps.hidRVVector.begin(); it != ps.hidRVVector.end(); ++it) {
+      fprintf(stderr, " %s(%d)", (*it)->name().c_str(), (*it)->frame());
+    }
+    fprintf(stderr, "\n");
+#endif
     if (ps.packer.packedLen() > 0) {
       if (inference_it.at_p()) {
+//	shiftUnprimeVarstoPosition(Pprime_rvs, (int)part, Ppos);
 	// print P partition
 	fprintf(f,"Ptn-%d P: ",part);
 	ps.packer.unpack(P_partition_values.ptr,PprimeValuePtrs.ptr);
@@ -765,10 +928,12 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 	  printRVSetAndValues(f,hidP_rvs,true,preg);
       } else if (inference_it.at_e()) {
 	primeIndex = (primeIndex + Eprime_rvs.size() - 1) % Eprime_rvs.size(); // primeIndex -= 1 mod nCprimes
-	PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+	PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];	  
+//	shiftUnprimeVarstoPosition(Eprime_rvs[primeIndex], (int)part, Epos[primeIndex]);
 	ps.packer.unpack(E_partition_values.ptr,EprimeValuePtrs[primeIndex].ptr);
 	// print completed C partitions
 	for (unsigned i=0; i < gm_template.M; i+=1) { // unpacking E' completes the last M Cs
+	  shiftUnprimeVarstoPosition(C_rvs[unprimeIndex], (int)part, Cpos[unprimeIndex], unprimeIndex);
 	  fprintf(f,"Ptn-%d C:",part);
 	  if (printObserved)
 	    printRVSetAndValues(f,C_rvs[unprimeIndex],true,preg);
@@ -783,7 +948,7 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 	else
 	  printRVSetAndValues(f,hidE_rvs,true,preg);
       } else {
-	assert ( inference_it.at_c() );      
+	assert ( inference_it.at_c() );
 	// print C partition
 	  {
 	    ps.packer.unpack(C_partition_values.ptr
@@ -793,6 +958,7 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 	    primeIndex = (primeIndex + 1) % Cprime_rvs.size();
 	    
 	    for (unsigned i=0; i < gm_template.S; i+=1) { // unpacking a C' completes S Cs
+	      shiftUnprimeVarstoPosition(C_rvs[unprimeIndex], (int)part, Cpos[unprimeIndex], unprimeIndex);
 	      fprintf(f,"Ptn-%d C: ",part);
 	      if (printObserved) 
 		printRVSetAndValues(f,C_rvs[unprimeIndex],true,preg);
