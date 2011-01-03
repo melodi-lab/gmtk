@@ -2283,6 +2283,18 @@ MaxCliqueTable::SharedLocalStructure::returnRVsAsSet()
 }
 
 
+vector <RV*> 
+MaxCliqueTable::SharedLocalStructure::returnRVsAsVector()
+{
+  vector<RV*> rc;
+  for (unsigned i=0;i<fNodes.size();i++) {
+    rc.push_back(fNodes[i]);
+  }
+  assert(rc.size() == fNodes.size());
+  return rc;
+}
+
+
 
 //
 // TODO: make proper comments to all of the functions below.
