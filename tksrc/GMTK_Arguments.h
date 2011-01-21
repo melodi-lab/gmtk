@@ -1763,12 +1763,12 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
   static bool pVitAlsoPrintObservedVariables = false;
 
   // arguments for frame-based Viterbi printing.
-//  static char* vitValsFileName = NULL;
+  static char* vitValsFileName = NULL;
   // TODO: get binary printing working
   // static bool vitValsFileBinp = false;
   static char* vitRegexFilter = NULL;
   static bool vitCaseSensitiveRegexFilter = false;
-//  static bool vitAlsoPrintObservedVariables = false;
+  static bool vitAlsoPrintObservedVariables = false;
 //  static bool vitReverseOrder = false;
 #define MAX_VITERBI_TRIGGERS 3
   const char   *vitTriggerVariables[MAX_VITERBI_TRIGGERS] = { NULL, NULL, NULL };
@@ -1779,7 +1779,7 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   // partition based 
-  Arg("pVitValsFile",Arg::Req,pVitValsFileName,"Partition Vit: file to print viterbi values, '-' for stdout"),
+  Arg("pVitValsFile",Arg::Opt,pVitValsFileName,"Partition Vit: file to print viterbi values, '-' for stdout"),
   // TODO: not currently used, but should add.
   // Arg("pVitBinVitValsFile",Arg::Opt,pVitValsFileBinp,"Partition Vit: Should file to print viterbi values be binary? (T/F) "),
 
@@ -1790,10 +1790,8 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 
   Arg("pVitPrintObservedVariables",Arg::Opt,pVitAlsoPrintObservedVariables,"Partition Vit: also print observed random variables in addtion to hidden"),
 
-#if 0
-  // this is not implemented yet.
   // frame based
-  Arg("vitValsFile",Arg::Req,vitValsFileName,"Vit: file to print viterbi values, '-' for stdout"),
+  Arg("vitValsFile",Arg::Opt,vitValsFileName,"Vit: file to print viterbi values, '-' for stdout"),
   // TODO: not currently used, but should add.
   // Arg("vitBinVitValsFile",Arg::Opt,vitValsFileBinp,"Vit: Should file to print viterbi values be binary? (T/F) "),
 
@@ -1802,6 +1800,8 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 
   Arg("vitPrintObservedVariables",Arg::Opt,vitAlsoPrintObservedVariables,"Vit: also print observed random variables in addtion to hidden"),
 
+#if 0
+  // this is not implemented yet.
   Arg("vitReverseOrder",Arg::Opt,vitReverseOrder,"Vit: print values in reverse order."),
 
   Arg("vitTriggerVar", Arg::Opt,vitTriggerVariables,"Viterbi: Trigger variable. Replace X with trigger variable number",Arg::ARRAY,MAX_VITERBI_TRIGGERS),

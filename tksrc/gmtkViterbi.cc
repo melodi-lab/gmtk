@@ -354,19 +354,26 @@ main(int argc,char*argv[])
   // writters/debugging which is the reason that we have both of them
   // here.
   FILE* pVitValsFile = NULL;
-  if (strcmp("-",pVitValsFileName) == 0)
-    pVitValsFile = stdout;
-  else {
-    if ((pVitValsFile = fopen(pVitValsFileName, "w")) == NULL)
-      error("Can't open file '%s' for writing\n",pVitValsFileName);
+  if (pVitValsFileName) {
+    if (strcmp("-",pVitValsFileName) == 0)
+      pVitValsFile = stdout;
+    else {
+      if ((pVitValsFile = fopen(pVitValsFileName, "w")) == NULL)
+	error("Can't open file '%s' for writing\n",pVitValsFileName);
+    }
   }
-#if 0
+#if 1
   FILE* vitValsFile = NULL;
-  if (strcmp("-",vitValsFileName) == 0)
-    vitValsFile = stdout;
-  else {
-    if ((vitValsFile = fopen(vitValsFileName, "w")) == NULL)
-      error("Can't open file '%s' for writing\n",vitValsFileName);
+  if (vitValsFileName) {
+    if (vitValsFileName && strcmp("-",vitValsFileName) == 0)
+      vitValsFile = stdout;
+    else {
+      if ((vitValsFile = fopen(vitValsFileName, "w")) == NULL)
+	error("Can't open file '%s' for writing\n",vitValsFileName);
+    }
+  }
+  if (!pVitValsFile && !vitValsFile) {
+    error("Argument Error: Missing REQUIRED argument: -pVitValsFile <str>  OR  -vitValsFile <str>\n");
   }
 #endif
 
@@ -554,23 +561,24 @@ main(int argc,char*argv[])
       warning("Segment %d: Not printing Viterbi values since segment has zero probability\n",
 	      segment);
     else {
-      fprintf(pVitValsFile,"========\nSegment %d, number of frames = %d, vitebri-score = %f\n",
-	      segment,numFrames,probe.val());
-      if (pVitValsFile)
-	myjt.printSavedViterbiValues(pVitValsFile,
-				     pVitAlsoPrintObservedVariables,
-				     pVitPreg,
-				     pVitPartRangeFilter);
+      if (pVitValsFile) {
+	fprintf(pVitValsFile,"========\nSegment %d, number of frames = %d, vitebri-score = %f\n",
+		segment,numFrames,probe.val());
+	myjt.printSavedPartitionViterbiValues(pVitValsFile,
+					      pVitAlsoPrintObservedVariables,
+					      pVitPreg,
+					      pVitPartRangeFilter);
+      }
 
-#if 0      
-      if (vitValsFile)
+#if 1      
+      if (vitValsFile) {
+	fprintf(vitValsFile,"========\nSegment %d, number of frames = %d, vitebri-score = %f\n",
+		segment,numFrames,probe.val());
 	myjt.printSavedViterbiValues(vitValsFile,
 				     vitAlsoPrintObservedVariables,
 				     vitPreg,
-				     vitReverseOrder,
-				     MAX_VITERBI_TRIGGERS,
-				     vitTriggerVariables,
-				     vitTriggerSets);
+				     pVitPartRangeFilter);
+      }
 #endif
 
     }
@@ -595,7 +603,7 @@ main(int argc,char*argv[])
 
   if (pVitValsFile != stdout)
     fclose(pVitValsFile);
-#if 0
+#if 1
   if (vitValsFile != stdout)
     fclose(vitValsFile);
 #endif
