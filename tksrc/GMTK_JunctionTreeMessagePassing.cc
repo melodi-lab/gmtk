@@ -614,7 +614,7 @@ void JunctionTree::createUnprimingMap(
   // each possible case, and use the sentence length to 
   // determine which to use at unpacking time
 
-//  fprintf(stderr, "\nP':\n");
+  fprintf(stderr, "\nP':\n");
   set<RV*> P = gm_template.P.nodes;
   for (set<RV*>::iterator it = P.begin(); it != P.end(); ++it) {
     RV *v = getRV(unrolled_rvs, unrolled_map, *it);
@@ -625,7 +625,7 @@ void JunctionTree::createUnprimingMap(
 	hidP_rvs.push_back(v);
 	hidPprime_rvs.push_back(v);
       }
-//      fprintf(stderr, "%s(%u) -> P\n", (*it)->name().c_str(), (*it)->frame());
+      fprintf(stderr, "%s(%u) -> P\n", (*it)->name().c_str(), (*it)->frame());
     } else {                     // v is in P' but not P
       Pprime_rvs.push_back(v);
       unsigned t = FTOC(NP,NC,(*it)->frame()); // the unmodified C index this variable belongs in
@@ -635,7 +635,7 @@ void JunctionTree::createUnprimingMap(
 	hidPprime_rvs.push_back(v);
 	hidC_rvs[t].push_back(v);
       }
-//      fprintf(stderr, "%s(%u) -> C(%u)\n", (*it)->name().c_str(), (*it)->frame(), t);
+      fprintf(stderr, "%s(%u) -> C(%u)\n", (*it)->name().c_str(), (*it)->frame(), t);
     }
   }
   PprimeValuePtrs.resize(hidPprime_rvs.size());
@@ -646,7 +646,7 @@ void JunctionTree::createUnprimingMap(
 
   // Map the first C' variables (gm_template instances) to their 
   // corresponding C (for printing) and C' (for unpacking) instances
-//  fprintf(stderr, "\nC':\n");
+  fprintf(stderr, "\nC':\n");
   set<RV*> C = gm_template.C.nodes;
   for (set<RV*>::iterator it = C.begin(); it != C.end(); ++it) {
     if (gm_template.PCInterface_in_C.find(*it) == gm_template.PCInterface_in_C.end()) {
@@ -660,7 +660,7 @@ void JunctionTree::createUnprimingMap(
 	hidC_rvs[t].push_back(v);
 	hidCprime_rvs[0].push_back(v);
       }
-//      fprintf(stderr, "C(%u) C'[0] : %s(%u)\n", FTOC(NP,NC,(*it)->frame()), (*it)->name().c_str(), (*it)->frame());
+      fprintf(stderr, "C(%u) C'[0] : %s(%u)\n", FTOC(NP,NC,(*it)->frame()), (*it)->name().c_str(), (*it)->frame());
     }
   }
 
@@ -692,7 +692,7 @@ void JunctionTree::createUnprimingMap(
       if (rv->hidden()) {
 	hidCprime_rvs[i].push_back(rv);
       }
-//      fprintf(stderr, "C(%u) C'[%u] : %s(%u)\n", t, i, target.first.c_str(), target.second);
+      fprintf(stderr, "C(%u) C'[%u] : %s(%u)\n", t, i, target.first.c_str(), target.second);
     }
   }
   for (unsigned i=0; i < nCprimes; i+=1) {
@@ -704,13 +704,13 @@ void JunctionTree::createUnprimingMap(
   }
 
 
-//  fprintf(stderr, "\nE':\n");
+  fprintf(stderr, "\nE':\n");
   unsigned firstEframe = NP + (M+S) * NC;
   set<RV*> E = gm_template.E.nodes;
   for (set<RV*>::iterator it = E.begin(); it != E.end(); ++it) {
     RV *v = *it;
     if (gm_template.CEInterface_in_E.find(v) == gm_template.CEInterface_in_E.end()) { // E' contains the redundant C'E' interface
-      int shift = ((int)(M + S) - (int)nCs) * (int) NC;
+      int shift = ((int)nCs - (int)(M + S)) * (int) NC;
       RV *rv = getRV(unrolled_rvs, unrolled_map, v, shift);
       if (v->frame() >= firstEframe) { // v is in E and E'
 	E_rvs.push_back(rv);
@@ -719,8 +719,7 @@ void JunctionTree::createUnprimingMap(
 	  Eprime_rvs[i].push_back(rv);
 	  if (rv->hidden()) hidEprime_rvs[i].push_back(rv);
 	}
-
-//	fprintf(stderr, "%s(%u) -> E\n", rv->name().c_str(), rv->frame());
+	fprintf(stderr, "%s(%u) -> %s(%u) -> E\n", v->name().c_str(), v->frame(), rv->name().c_str(), rv->frame());
       } else { // v is in E' but not E
 	// The C'E' transition could occur after unpacking any of the nCprimes C' sets,
 	// so Eprime_rvs[i] handles the C'[i]E' transition
@@ -730,7 +729,7 @@ void JunctionTree::createUnprimingMap(
 	  Eprime_rvs[i].push_back(rv_shifted);
 	  if (rv_shifted->hidden()) hidEprime_rvs[i].push_back(rv_shifted);
 	}
-//	fprintf(stderr, "%s(%u) -> C(%u)\n", rv->name().c_str(), rv->frame(), FTOC(NP,NC,rv->frame()));
+	fprintf(stderr, "%s(%u) -> %s(%u) -> C(%u)\n", v->name().c_str(), v->frame(), rv->name().c_str(), rv->frame(), FTOC(NP,NC,rv->frame()));
       }
     }
   }
