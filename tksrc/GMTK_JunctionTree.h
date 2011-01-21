@@ -587,6 +587,7 @@ class JunctionTree {
   void shiftCEtoPosition(int);
   void shiftUnprimeCEtoPosition(set<RV*>, int);
   void shiftUnprimeVarstoPosition(vector<RV*> rvs, int pos, int &prevPos, int unprimeIndex);
+  void shiftUnprimeVarstoPosition(vector<RV*> rvs, int pos, int &prevPos);
   void shiftCErelative(int delta) { shiftCEtoPosition(cur_cc_shift+delta); }
   void init_CC_CE_rvs(ptps_iterator& ptps_it);
   void setCurrentInferenceShiftTo(int pos);

@@ -113,10 +113,24 @@ JunctionTree::shiftCCtoPosition(int pos)
 
 
 
+void
+JunctionTree::shiftUnprimeVarstoPosition(vector<RV*> rvs, int pos, int &prevPos)
+{
+  set<RV*> uprvs(rvs.begin(),rvs.end());
+  int delta = (pos - prevPos);
+  adjustFramesBy(uprvs, delta);
+  prevPos = pos;
+}
 
 void
 JunctionTree::shiftUnprimeVarstoPosition(vector<RV*> rvs, int pos, int &prevPos, int unprimeIndex)
 {
+#if 1
+  set<RV*> uprvs(rvs.begin(),rvs.end());
+  int delta = (pos - 1 - prevPos) * gm_template.S * fp.numFramesInC();
+  adjustFramesBy(uprvs, delta);
+  prevPos = pos;
+#else
   set<RV*> uprvs(rvs.begin(),rvs.end());
   if (prevPos > 0) {
     adjustFramesBy(uprvs, -prevPos);
@@ -124,6 +138,7 @@ JunctionTree::shiftUnprimeVarstoPosition(vector<RV*> rvs, int pos, int &prevPos,
   int delta = gm_template.S * fp.numFramesInC() * (pos - unprimeIndex - 1);
   adjustFramesBy(uprvs, delta);
   prevPos = delta;
+#endif
 #if 0
   int posFrame, prevFrame;
   if (prevPos > 0) {
@@ -614,7 +629,7 @@ void JunctionTree::createUnprimingMap(
   // each possible case, and use the sentence length to 
   // determine which to use at unpacking time
 
-  fprintf(stderr, "\nP':\n");
+fprintf(stderr, "\nP':\n");
   set<RV*> P = gm_template.P.nodes;
   for (set<RV*>::iterator it = P.begin(); it != P.end(); ++it) {
     RV *v = getRV(unrolled_rvs, unrolled_map, *it);
@@ -625,7 +640,7 @@ void JunctionTree::createUnprimingMap(
 	hidP_rvs.push_back(v);
 	hidPprime_rvs.push_back(v);
       }
-      fprintf(stderr, "%s(%u) -> P\n", (*it)->name().c_str(), (*it)->frame());
+fprintf(stderr, "%s(%u) -> P\n", (*it)->name().c_str(), (*it)->frame());
     } else {                     // v is in P' but not P
       Pprime_rvs.push_back(v);
       unsigned t = FTOC(NP,NC,(*it)->frame()); // the unmodified C index this variable belongs in
@@ -635,7 +650,7 @@ void JunctionTree::createUnprimingMap(
 	hidPprime_rvs.push_back(v);
 	hidC_rvs[t].push_back(v);
       }
-      fprintf(stderr, "%s(%u) -> C(%u)\n", (*it)->name().c_str(), (*it)->frame(), t);
+fprintf(stderr, "%s(%u) -> C(%u)\n", (*it)->name().c_str(), (*it)->frame(), t);
     }
   }
   PprimeValuePtrs.resize(hidPprime_rvs.size());
@@ -646,11 +661,11 @@ void JunctionTree::createUnprimingMap(
 
   // Map the first C' variables (gm_template instances) to their 
   // corresponding C (for printing) and C' (for unpacking) instances
-  fprintf(stderr, "\nC':\n");
+fprintf(stderr, "\nC':\n");
   set<RV*> C = gm_template.C.nodes;
   for (set<RV*>::iterator it = C.begin(); it != C.end(); ++it) {
     if (gm_template.PCInterface_in_C.find(*it) == gm_template.PCInterface_in_C.end()) {
-//    if (Pprime_rvs.find(v) == Pprime_rvs.end()) { // v is not in the P'C' interface
+      //if (Pprime_rvs.find(v) == Pprime_rvs.end()) { // v is not in the P'C' interface
       RV *v = getRV(unrolled_rvs, unrolled_map, *it);
       unsigned t = FTOC(NP,NC,(*it)->frame()); // the unmodified C index this variable belongs in
       C_rvs[t].push_back(v);
@@ -660,14 +675,14 @@ void JunctionTree::createUnprimingMap(
 	hidC_rvs[t].push_back(v);
 	hidCprime_rvs[0].push_back(v);
       }
-      fprintf(stderr, "C(%u) C'[0] : %s(%u)\n", FTOC(NP,NC,(*it)->frame()), (*it)->name().c_str(), (*it)->frame());
+fprintf(stderr, "C(%u) C'[0] : %s(%u)\n", FTOC(NP,NC,(*it)->frame()), (*it)->name().c_str(), (*it)->frame());
     }
   }
 
   // Slide each C'[0] variable forward S Cs to compute the
   // remaining C's
   for (unsigned i=1; i < nCprimes; i+=1) {
-    fprintf(stderr, "\n");
+fprintf(stderr, "\n");
     for (vector<RV*>::iterator it = Cprime_rvs[i-1].begin(); 
 	 it != Cprime_rvs[i-1].end();
 	 ++it)
@@ -692,7 +707,7 @@ void JunctionTree::createUnprimingMap(
       if (rv->hidden()) {
 	hidCprime_rvs[i].push_back(rv);
       }
-      fprintf(stderr, "C(%u) C'[%u] : %s(%u)\n", t, i, target.first.c_str(), target.second);
+fprintf(stderr, "C(%u) C'[%u] : %s(%u)\n", t, i, target.first.c_str(), target.second);
     }
   }
   for (unsigned i=0; i < nCprimes; i+=1) {
@@ -704,32 +719,36 @@ void JunctionTree::createUnprimingMap(
   }
 
 
-  fprintf(stderr, "\nE':\n");
+fprintf(stderr, "\nE':\n");
   unsigned firstEframe = NP + (M+S) * NC;
   set<RV*> E = gm_template.E.nodes;
   for (set<RV*>::iterator it = E.begin(); it != E.end(); ++it) {
     RV *v = *it;
     if (gm_template.CEInterface_in_E.find(v) == gm_template.CEInterface_in_E.end()) { // E' contains the redundant C'E' interface
-      int shift = ((int)nCs - (int)(M + S)) * (int) NC;
-      RV *rv = getRV(unrolled_rvs, unrolled_map, v, shift);
       if (v->frame() >= firstEframe) { // v is in E and E'
+	int shift = ((int)nCs - (int)(M + S)) * (int) NC;
+	RV *rv = getRV(unrolled_rvs, unrolled_map, v, shift);
 	E_rvs.push_back(rv);
 	if (rv->hidden()) hidE_rvs.push_back(rv);
 	for (unsigned i=0; i < nCprimes; i+=1) {
 	  Eprime_rvs[i].push_back(rv);
 	  if (rv->hidden()) hidEprime_rvs[i].push_back(rv);
 	}
-	fprintf(stderr, "%s(%u) -> %s(%u) -> E\n", v->name().c_str(), v->frame(), rv->name().c_str(), rv->frame());
+fprintf(stderr, "%s(%u) -> %s(%u) -> E\n", v->name().c_str(), v->frame(), rv->name().c_str(), rv->frame());
       } else { // v is in E' but not E
 	// The C'E' transition could occur after unpacking any of the nCprimes C' sets,
 	// so Eprime_rvs[i] handles the C'[i]E' transition
 	for (unsigned i=0; i < nCprimes; i+=1) {
-	  RVInfo::rvParent target(rv->name(), NP + (rv->frame() - NP + S * NC * i) % (NC * nCs));
+#if 0
+	  RVInfo::rvParent target(v->name(), (v->frame() + S * NC * i) % (NC * nCs));
+#else
+	  RVInfo::rvParent target(v->name(), fp.numFramesInP() + (v->frame() - fp.numFramesInP() + S * NC * i) % (NC * nCs));
+#endif
 	  RV *rv_shifted = getRV(unrolled_rvs, unrolled_map, target);
 	  Eprime_rvs[i].push_back(rv_shifted);
 	  if (rv_shifted->hidden()) hidEprime_rvs[i].push_back(rv_shifted);
 	}
-	fprintf(stderr, "%s(%u) -> %s(%u) -> C(%u)\n", v->name().c_str(), v->frame(), rv->name().c_str(), rv->frame(), FTOC(NP,NC,rv->frame()));
+fprintf(stderr, "%s(%u) -> C(%u)\n", v->name().c_str(), v->frame(), FTOC(NP,NC,v->frame()));
       }
     }
   }
@@ -788,7 +807,7 @@ void JunctionTree::createUnprimingMap(
     }
   }
 
-#if 1
+#if 0
   fprintf(stderr, "-----------------------------\n");
   for (vector<RV*>::iterator it = hidE_rvs.begin();
        it != hidE_rvs.end();
@@ -861,7 +880,7 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 		     E_rvs, hidE_rvs, Eprime_rvs, hidEprime_rvs,
 		     PprimeValuePtrs, CprimeValuePtrs, EprimeValuePtrs);
 
-  fprintf(f,"Printing random variables from (P,C,E)=(%d,%d,%d) partitions\n",
+  fprintf(f,"Printing random variables from (P',C',E')=(%d,%d,%d) modified partitions\n",
 #if 0
 	  (int)P_rvs.size(),
 	  (int)C_rvs[0].size(),
@@ -886,22 +905,16 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 
   Range::iterator* partRange_it = new Range::iterator(partRange->begin());
 
-  int Ppos = 0;
   vector<int> Cpos(C_rvs.size());
-  vector<int> Epos(C_rvs.size());
+  for (int i=0; i < Cpos.size(); i+=1) 
+    Cpos[i] = fp.numFramesInP() + i * fp.numFramesInC();
+  int Epos = fp.numFramesInP() + C_rvs.size() * fp.numFramesInC();
 
-  for (int i=0; i < Cpos.size(); i+=1) {
-#if 0
-    Cpos[i] = fp.numFramesInP() + gm_template.S * fp.numFramesInC() * i;
-#else
-    Cpos[i] = 0;
-#endif
-    Epos[i] = Cpos[i];
-  }
 
   unsigned primeIndex = 0;
   unsigned unprimeIndex = 0;
   int previous_C = -1;
+
   while (!partRange_it->at_end()) {
 
     unsigned part = (*partRange_it);
@@ -919,7 +932,7 @@ JunctionTree::printSavedViterbiValues(FILE* f,
       if (inference_it.at_p()) {
 //	shiftUnprimeVarstoPosition(Pprime_rvs, (int)part, Ppos);
 	// print P partition
-	fprintf(f,"Ptn-%d P: ",part);
+	fprintf(f,"P'[%3d]   P     : ",part);
 	ps.packer.unpack(P_partition_values.ptr,PprimeValuePtrs.ptr);
 	if (printObserved) 
 	  printRVSetAndValues(f,P_rvs,true,preg);
@@ -931,17 +944,20 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 //	shiftUnprimeVarstoPosition(Eprime_rvs[primeIndex], (int)part, Epos[primeIndex]);
 	ps.packer.unpack(E_partition_values.ptr,EprimeValuePtrs[primeIndex].ptr);
 	// print completed C partitions
+ int targetFrame = fp.numFramesInP() + (int)(part-1) * gm_template.S * fp.numFramesInC();
 	for (unsigned i=0; i < gm_template.M; i+=1) { // unpacking E' completes the last M Cs
-	  shiftUnprimeVarstoPosition(C_rvs[unprimeIndex], (int)part, Cpos[unprimeIndex], unprimeIndex);
-	  fprintf(f,"Ptn-%d C:",part);
+	  shiftUnprimeVarstoPosition(C_rvs[unprimeIndex], targetFrame, Cpos[unprimeIndex]);
+	  fprintf(f,"E'[%3d] %1d C[%3d]:",part,primeIndex,(targetFrame - fp.numFramesInP()) / fp.numFramesInC());
 	  if (printObserved)
 	    printRVSetAndValues(f,C_rvs[unprimeIndex],true,preg);
 	  else
 	    printRVSetAndValues(f,hidC_rvs[unprimeIndex],true,preg);
 	  unprimeIndex = (unprimeIndex + 1) % C_rvs.size();
+	  targetFrame += fp.numFramesInC();
 	} 
 	// print E partition
-	fprintf(f,"Ptn-%d E: ",part);
+	shiftUnprimeVarstoPosition(E_rvs, targetFrame, Epos);
+	fprintf(f,"E'[%3d] %1d E     : ",part, primeIndex);
 	if (printObserved) 
 	  printRVSetAndValues(f,E_rvs,true,preg);
 	else
@@ -954,17 +970,26 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 			     + 
 			     (inference_it.pt_i()-1)*ps.packer.packedLen(),
 			     CprimeValuePtrs[primeIndex].ptr);
-	    primeIndex = (primeIndex + 1) % Cprime_rvs.size();
-	    
+#if 0
+shiftUnprimeVarstoPosition(Cprime_rvs[primeIndex], (int)part, CprimePos[primeIndex], unprimeIndex);
+#endif	    
+
+ int targetFrame = fp.numFramesInP() + (int)(part-1) * gm_template.S * fp.numFramesInC();
 	    for (unsigned i=0; i < gm_template.S; i+=1) { // unpacking a C' completes S Cs
+#if 0
 	      shiftUnprimeVarstoPosition(C_rvs[unprimeIndex], (int)part, Cpos[unprimeIndex], unprimeIndex);
-	      fprintf(f,"Ptn-%d C: ",part);
+#else
+	      shiftUnprimeVarstoPosition(C_rvs[unprimeIndex], targetFrame, Cpos[unprimeIndex]);
+#endif
+	      fprintf(f,"C'[%3d] %1d C[%3d]: ",part,primeIndex, (targetFrame - fp.numFramesInP()) / fp.numFramesInC());
 	      if (printObserved) 
 		printRVSetAndValues(f,C_rvs[unprimeIndex],true,preg);
 	      else
 		printRVSetAndValues(f,hidC_rvs[unprimeIndex],true,preg);
 	      unprimeIndex = (unprimeIndex + 1) % C_rvs.size();
+	      targetFrame += fp.numFramesInC();
 	    }
+	    primeIndex = (primeIndex + 1) % Cprime_rvs.size();
 	  }
 	previous_C = inference_it.pt_i();
       }
