@@ -32,7 +32,14 @@ void registerAllCFunctionDeterministicMappings(GMParms&);
 
 #ifdef DEFINE_DETERMINISTIC_MAPPER_MACROS
 
+// this defines the name of the routine in the C++ namespace
 #define DETERMINISTIC_MAPPER_C_CODE_NAME(name) cFunctionDeterministicMapping_##name
+
+// use this value if a C decision tree (CDT) has a variale number of
+// features, in which case the C routine needs to check the size of
+// the variable array (macros for this are given below).
+#define CDT_VARIABLE_NUMBER_FEATURES (~0x0)
+
 
 // Note, numFeatures is not currently used but might be in future.
 #define DEFINE_DETERMINISTIC_MAPPER_C_CODE(name,numFeatures) \
@@ -75,7 +82,15 @@ DiscRVType cFunctionDeterministicMapping_##name(const vector< RV* >& parent_vari
 #define p30 (RV2DRV(parent_variables[30])->val)
 #define p31 (RV2DRV(parent_variables[31])->val)
 
-// parent cardinality
+// Grab a parent value using a variable index, must make sure that
+// index is in range, or a run-time error will occur.
+#define numParents ((parent_variables.size()))
+
+// Grab a parent value using a variable index, must make sure that
+// index is in range, or a run-time error will occur.
+#define par(i) (RV2DRV(parent_variables[(i)])->val)
+
+// cardinality of parent (cp).
 #define cp0 (RV2DRV(parent_variables[0])->cardinality)
 #define cp1 (RV2DRV(parent_variables[1])->cardinality)
 #define cp2 (RV2DRV(parent_variables[2])->cardinality)
@@ -108,6 +123,10 @@ DiscRVType cFunctionDeterministicMapping_##name(const vector< RV* >& parent_vari
 #define cp29 (RV2DRV(parent_variables[29])->cardinality)
 #define cp30 (RV2DRV(parent_variables[30])->cardinality)
 #define cp31 (RV2DRV(parent_variables[31])->cardinality)
+
+// Grab a parent cardinality value using a variable index, must make
+// sure that index is in range, or a run-time error will occur.
+#define cardPar(i) (RV2DRV(parent_variables[(i)])->cardinality)
 
 // child cardinality
 #define cc (RV2DRV(child_rv)->cardinality)

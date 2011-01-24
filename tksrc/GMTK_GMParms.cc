@@ -1473,7 +1473,7 @@ writeDecisionTreeIndexFiles()
  */
 void 
 GMParms::
-registerDeterministicCMapper(char *name,
+registerDeterministicCMapper(const char *name,
 			     unsigned num_features,
 			     CFunctionMapperType func)
 {
