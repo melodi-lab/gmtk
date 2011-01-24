@@ -97,6 +97,12 @@ DEFINE_DETERMINISTIC_MAPPER_C_CODE(increment,INCREMENT_NUM_FEATURES)
   return (p0+1);
 }
 //
+#define DECREMENT_NUM_FEATURES 1
+DEFINE_DETERMINISTIC_MAPPER_C_CODE(decrement,DECREMENT_NUM_FEATURES)
+{
+  return (p0-1);
+}
+//
 #define CONDITIONAL_INCREMENT_NUM_FEATURES 2
 DEFINE_DETERMINISTIC_MAPPER_C_CODE(conditionalIncrement,CONDITIONAL_INCREMENT_NUM_FEATURES)
 {
@@ -106,6 +112,79 @@ DEFINE_DETERMINISTIC_MAPPER_C_CODE(conditionalIncrement,CONDITIONAL_INCREMENT_NU
   else
     return (p0);
 }
+//
+#define CONDITIONAL_DECREMENT_NUM_FEATURES 2
+DEFINE_DETERMINISTIC_MAPPER_C_CODE(conditionalDecrement,CONDITIONAL_DECREMENT_NUM_FEATURES)
+{
+  // decrements p0 if p1 is non-zero, otherwise returns p0.
+  if (p1)
+    return (p0-1);
+  else
+    return (p0);
+}
+//
+#define CONDITIONAL_LIMITED_INCREMENT_NUM_FEATURES 3
+DEFINE_DETERMINISTIC_MAPPER_C_CODE(conditionalLimitedIncrement,CONDITIONAL_LIMITED_INCREMENT_NUM_FEATURES)
+{
+  // increments p0 if p1 is non-zero. Increment up to and including value given by p2
+  // but not beyond. Otherwise returns p0.
+  if (p1 && p0 < p2)
+    return (p0+1);
+  else
+    return (p0);
+}
+//
+#define CONDITIONAL_LIMITED_DECREMENT_NUM_FEATURES 3
+DEFINE_DETERMINISTIC_MAPPER_C_CODE(conditionalLimitedDecrement,CONDITIONAL_LIMITED_DECREMENT_NUM_FEATURES)
+{
+  // decrements p0 if p1 is non-zero. Decrement down to and including value given by p2
+  // but not below. Otherwise returns p0.
+  if (p1 && p0 > p2)
+    return (p0-1);
+  else
+    return (p0);
+}
+
+
+// TODO: get the below working, need to change DT code to allow variable num features.
+// Routines with a variable number of parents.
+//
+DEFINE_DETERMINISTIC_MAPPER_C_CODE(allParentsEqual,CDT_VARIABLE_NUMBER_FEATURES)
+{
+  // returns 1 if all parents are equal, and otherwise returns zero.
+  // Note that this works for any number of parents.
+  if ( numParents == 0 ) {
+    error("CDT allParentsEqual called with zero features. Need to have at least 1.");
+  }
+  DiscRVType rv = p0; 
+  for (unsigned i = 1 ; i < numParents ; i++ ) {
+    if (par(i) != rv)
+      return (DiscRVType) 0;
+  }
+  return (DiscRVType) 1;
+}
+//
+DEFINE_DETERMINISTIC_MAPPER_C_CODE(allParentsUnEqual,CDT_VARIABLE_NUMBER_FEATURES)
+{
+  // returns 1 if all parents are *un*equal, and otherwise returns zero.
+  // Note that this works for any number of parents.
+  if ( numParents == 0 ) {
+    error("CDT allParentsUnEqual called with zero features. Need to have at least 1.");
+  }
+  // return 0 if we find any two parents that are equal. 
+  // TODO: Is there a faster way than O(N^2) to do this?
+  for (unsigned i = 0 ; i < numParents ; i++ ) {
+    for (unsigned j = i+1 ; j < numParents ; j++ ) {
+      if (par(i) == par(j))
+	return (DiscRVType) 0;
+    }
+  }
+  return (DiscRVType) 1;
+}
+
+
+
+
 // DO NOT MODIFY ANYTHING IN THE NEXT BIT OF CODE ENDING HERE.
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
@@ -179,9 +258,21 @@ registerAllCFunctionDeterministicMappings(GMParms& gmp)
   gmp.registerDeterministicCMapper("internal:increment",
 				   INCREMENT_NUM_FEATURES,
 				   DETERMINISTIC_MAPPER_C_CODE_NAME(increment));
+  gmp.registerDeterministicCMapper("internal:decrement",
+				   DECREMENT_NUM_FEATURES,
+				   DETERMINISTIC_MAPPER_C_CODE_NAME(decrement));
   gmp.registerDeterministicCMapper("internal:conditionalIncrement",
 				   CONDITIONAL_INCREMENT_NUM_FEATURES,
 				   DETERMINISTIC_MAPPER_C_CODE_NAME(conditionalIncrement));
+  gmp.registerDeterministicCMapper("internal:conditionalDecrement",
+				   CONDITIONAL_DECREMENT_NUM_FEATURES,
+				   DETERMINISTIC_MAPPER_C_CODE_NAME(conditionalDecrement));
+  gmp.registerDeterministicCMapper("internal:conditionalLimitedIncrement",
+				   CONDITIONAL_LIMITED_INCREMENT_NUM_FEATURES,
+				   DETERMINISTIC_MAPPER_C_CODE_NAME(conditionalLimitedIncrement));
+  gmp.registerDeterministicCMapper("internal:conditionalLimitedDecrement",
+				   CONDITIONAL_LIMITED_DECREMENT_NUM_FEATURES,
+				   DETERMINISTIC_MAPPER_C_CODE_NAME(conditionalLimitedDecrement));
   // DO NOT CHANGE ANYTHING IN THE ABOVE FEW LINES ENDING HERE.
   ///////////////////////////////////////////////////////////////////////
 

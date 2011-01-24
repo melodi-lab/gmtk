@@ -499,7 +499,7 @@ public:
 
   ////////////////////////////////////////////////////////////////////////////
   // Register a C function determinisic mapping function as a decision tree.
-  void registerDeterministicCMapper(char *name,
+  void registerDeterministicCMapper(const char *name,
 				    unsigned num_features,
 				    CFunctionMapperType);
 
