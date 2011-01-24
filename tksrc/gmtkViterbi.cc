@@ -601,10 +601,10 @@ main(int argc,char*argv[])
     reportTiming(rus,rue,userTime,sysTime,stdout);
   }
 
-  if (pVitValsFile != stdout)
+  if (pVitValsFile && pVitValsFile != stdout)
     fclose(pVitValsFile);
 #if 1
-  if (vitValsFile != stdout)
+  if (vitValsFile && vitValsFile != stdout)
     fclose(vitValsFile);
 #endif
 
