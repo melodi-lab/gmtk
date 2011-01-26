@@ -1820,7 +1820,7 @@ RngDecisionTree::EquationClass::parseQuestionMark(
   //////////////////////////////////////////////////////////////////////////
   // Add the branch commands and the commands for the true and false clauses 
   //////////////////////////////////////////////////////////////////////////
-  new_command = MAKE_COMMAND( COMMAND_BRANCH_IF_FALSE, true_commands.size()+1 );
+  new_command = MAKE_COMMAND( COMMAND_BRANCH_IF_FALSE, (true_commands.size()+1) );
   commands.push_back(new_command);
   changeDepth( -1, depth );
   copy( true_commands.begin(), true_commands.end(), inserter(commands, 
