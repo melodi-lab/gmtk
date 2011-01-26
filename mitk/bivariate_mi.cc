@@ -1589,7 +1589,7 @@ pfile_mi_mg(FILE *out_fp, // where to put output MI values
       em_iter ++;
 
       if ((time(0)-timeOfLastPrint) > NUM_SECONDS_PER_PRINT) {
-	printf("Iter %d: Starting Iter\n",em_iter);
+	printf("Iter %lu: Starting Iter\n",(unsigned long)em_iter);
 	fflush(stdout);
 	timeOfLastPrint = time(0);
       }
@@ -1610,7 +1610,7 @@ pfile_mi_mg(FILE *out_fp, // where to put output MI values
 	//	globalLabelMatrix.printSegmentInfo();
 
 	if ((time(0)-timeOfLastPrint) > NUM_SECONDS_PER_PRINT) {
-	    printf("Iter %d, sentence %d\n",em_iter,(*srit));
+	  printf("Iter %lu, sentence %d\n",(unsigned long)em_iter,(*srit));
 	    fflush(stdout);
 	    timeOfLastPrint = time(0);
 	}
@@ -1792,7 +1792,7 @@ pfile_mi_mg(FILE *out_fp, // where to put output MI values
 
       mbn.endEpoch();
       if ((time(0)-timeOfLastPrint) > NUM_SECONDS_PER_PRINT) {
-	printf("Iter %d: Finished Iter\n",em_iter);
+	printf("Iter %lu: Finished Iter\n",(unsigned long)em_iter);
 	fflush(stdout);
 	timeOfLastPrint = time(0);
       }
@@ -1806,9 +1806,9 @@ pfile_mi_mg(FILE *out_fp, // where to put output MI values
 
       if ((numActive < prevNumActive) || 
 	  ((time(0) - timeOfLastPrintNumActive) > MINTIMEPERPRINTNUMACTIVE)) {
-	printf("Iter %d: NA=%d/%d(%.0f%%), PNA=%d, dist Max(%e) Avg(%e) Min(%e)\n",
-	       em_iter,
-	       numActive,n_mis,100*numActive/(double)n_mis,
+	printf("Iter %lu: NA=%d/%lu(%.0f%%), PNA=%d, dist Max(%e) Avg(%e) Min(%e)\n",
+	       (unsigned long)em_iter,
+	       numActive,(unsigned long)n_mis,100*numActive/(double)n_mis,
 	       prevNumActive,
 	       max_dist,
 	       avg_dist,
@@ -1824,7 +1824,7 @@ pfile_mi_mg(FILE *out_fp, // where to put output MI values
         // the middle
 	// of saving the parameters. So, instead of saving, we forfeit
 	// the work done during this em_iter for safety's sake.
-	printf("Iter %d: Not Saving Mixture Parameters Since Received SIGUSR2.\n",em_iter); fflush(stdout);
+	printf("Iter %lu: Not Saving Mixture Parameters Since Received SIGUSR2.\n",(unsigned long)em_iter); fflush(stdout);
       } else if (po_fp != NULL && 
 		 ((numActive+nacps <= prevNumActive) ||
 		  (numActive == num_active_to_stop) ||
@@ -1839,7 +1839,7 @@ pfile_mi_mg(FILE *out_fp, // where to put output MI values
     delete counts;
 
     if (usr2_terminate) {
-      printf("Iter %d: Exiting early with failure due to received SIGUSR2\n",em_iter);
+      printf("Iter %lu: Exiting early with failure due to received SIGUSR2\n",(unsigned long)em_iter);
       exit (EXIT_FAILURE);
     }
 
@@ -1853,8 +1853,8 @@ pfile_mi_mg(FILE *out_fp, // where to put output MI values
       printf("Finished computing Mutual Information\n");
       fflush(stdout);
     } else {
-      printf("Early stop at EM iter %d, Num Active=%d, not computing MI\n",
-	     em_iter,numActive);
+      printf("Early stop at EM iter %lu, Num Active=%d, not computing MI\n",
+	     (unsigned long)em_iter,numActive);
     }
 
     // restore signals.
@@ -1930,6 +1930,8 @@ parse_long(const char*const s)
     return val;
 }
 
+#if 0
+// this is currently unused. commented out to silence warning
 static float
 parse_float(const char*const s)
 {
@@ -1941,7 +1943,7 @@ parse_float(const char*const s)
         error("Not an floating point argument.");
     return val;
 }
-
+#endif
 
 static double
 parse_double(const char*const s)
