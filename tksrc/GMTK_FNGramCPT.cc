@@ -1439,7 +1439,7 @@ unsigned FNGramImp::boNode(unsigned val, unsigned nodeId, BackoffGraphNode::Hash
 		if ( a_bg_child == ~0x0u )
 			a_bg_child = bg_child;
 
-		if ( domax && (score > bestScore) || ! domax && (score < bestScore) ) {
+		if ( (domax && (score > bestScore)) || (!domax && (score < bestScore)) ) {
 			chosen_bg_child = bg_child;
 			bestScore = score;
 		}
@@ -1472,7 +1472,7 @@ unsigned FNGramImp::boNode(unsigned val, unsigned nodeId, BackoffGraphNode::Hash
 					while ( gciter.next(bg_grandchild) ) {
 						double tmp = backoffValueRSubCtxW(val, bgNode.backoffStrategy, bg_grandchild, contextEntries, parentsValues);
 						// compute local max min of offspring
-						if ( domax && (tmp > score) || ! domax && (tmp < score) ) {
+						if ( (domax && (tmp > score)) || (!domax && (tmp < score)) ) {
 							score = tmp;
 						}
 					}
@@ -1482,7 +1482,7 @@ unsigned FNGramImp::boNode(unsigned val, unsigned nodeId, BackoffGraphNode::Hash
 					unsigned bg_grandchild;
 					while ( descendant_iter.next(bg_grandchild) ) {
 						double tmp = backoffValueRSubCtxW(val, bgNode.backoffStrategy, bg_grandchild, contextEntries, parentsValues);
-						if ( domax && (tmp > score) || ! domax && (tmp < score) ) {
+						if ( (domax && (tmp > score)) || (!domax && (tmp < score)) ) {
 							score = tmp;
 						}
 					}
@@ -1490,7 +1490,7 @@ unsigned FNGramImp::boNode(unsigned val, unsigned nodeId, BackoffGraphNode::Hash
 
 				if ( score == -1e200 )		// TODO: change this to NaN or Inf, and a #define (also see above)
 					continue;		// presumably because of a NULL counts objects
-				if ( domax && (score > bestScore) || ! domax && (score < bestScore) ) {
+				if ( (domax && (score > bestScore)) || (!domax && (score < bestScore)) ) {
 					chosen_bg_child = bg_child;
 					bestScore = score;
 				}

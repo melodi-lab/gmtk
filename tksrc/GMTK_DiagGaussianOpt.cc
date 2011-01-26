@@ -149,7 +149,7 @@ DiagGaussian::log_p(const float *const x,
     } while (xp != x_endp);
 
     if (_dim & 0x4) {
-      if (_dim & 0x3 == 0x3) {
+      if ((_dim & 0x3) == 0x3) {
 	// remainder is 7
 	
 	const DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE tmp0
@@ -250,7 +250,7 @@ DiagGaussian::log_p(const float *const x,
 
       }
     } else {
-      if (_dim & 0x3 == 0x3) {
+      if ((_dim & 0x3) == 0x3) {
 	// remainder is 3
 
 	const DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE tmp0
@@ -321,7 +321,7 @@ DiagGaussian::log_p(const float *const x,
       var_inv_p +=4;
     } while (xp != x_endp);
 
-    if (_dim & 0x3 == 0x3) {
+    if ((_dim & 0x3) == 0x3) {
       const DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE tmp0
 	= (xp[0] - mean_p[0]);
       d0 += (tmp0*(var_inv_p[0]))*tmp0;
