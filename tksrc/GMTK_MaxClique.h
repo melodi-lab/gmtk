@@ -1298,7 +1298,7 @@ class ConditionalSeparatorTable : public IM
     // make a union to share space between doing
     // backward inference and backward viterbi pass
     union {
-      char _bpo[sizeof(logpr)];
+      char _bpo[sizeof(logpr)] __attribute__((may_alias));
       // TODO: make this an unsigned* to be able
       // todo n-best.
       unsigned backPointer;

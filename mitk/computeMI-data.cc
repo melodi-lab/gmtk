@@ -115,10 +115,10 @@ void MixNormalCollection::endEpochMI(FILE *outFileMI, FILE* rangeFileFP){
   i = 0;
   for( MixNormal *p = _ftrMI; p != _ftrMI_endp; p++ ){
     I = p->endEpochMI(Hx, Hy, Hxy); // When we calculate entropy Hy and Hxy will be zero.
-    fgets(line,MAX_LINE_LEN,rangeFileFP); 
+    char *ok = fgets(line,MAX_LINE_LEN,rangeFileFP); 
     // remove comments
     do {
-      fgets(line,MAX_LINE_LEN,rangeFileFP); 
+      ok = fgets(line,MAX_LINE_LEN,rangeFileFP); 
       if( ( pos = strchr(line,'#') ) != NULL ) *pos = '\0';  //remove comments
       else pos = line;
       while(isspace(*pos)) ++pos;  //eat spaces
