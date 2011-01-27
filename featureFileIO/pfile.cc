@@ -930,7 +930,7 @@ OutFtrLabStream_PFile::write_index()
     if (bswap) 
       swapb_vi32_vi32(current_sent+1, (intv_int32_t*) index,
 		   (intv_int32_t*) index);
-    fwrite(index, (current_sent+1) * sizeof(UInt32), 1, file);
+    size_t result __attribute__((unused))= fwrite(index, (current_sent+1) * sizeof(UInt32), 1, file);
 
     // Swap it back just in case we want to use it again
 
