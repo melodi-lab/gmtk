@@ -12,7 +12,9 @@
 GMTK now has a simple GNU Autotools build process. The familiar
 ./configure && make && make install
 should work on the target platforms (Linux, OSX, and Windows/Cygwin).
-Other POSIX-like platforms might work too.
+Other POSIX-like platforms might work too. See
+./configure --help
+for full informations on the available configure options.
 
 There are a few variables that control the flags passed to the C++
 compiler. You may want to specify them to the make command, though
