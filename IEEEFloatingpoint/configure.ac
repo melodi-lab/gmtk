@@ -7,6 +7,20 @@ AC_INIT([GMTK], m4_esyscmd(printf %s `head -n 1 ../RELEASE`),
         [https://lungs.ee.washington.edu/trac/gmtk/newticket])
 : ${CXXFLAGS=""}
 
+
+AC_ARG_ENABLE([assertions],
+              [AS_HELP_STRING([--disable-assertions],
+                              [disable assertion checking @<:@default: no@:>@])],
+              [assertions=${enableval}], [assertions=yes])
+
+AC_ARG_ENABLE([model-checks],
+              [AS_HELP_STRING([--disable-model-checks],
+                              [disable run-time checks for models @<:@default: no@:>@])],
+              [model_checks=${enableval}], [model_checks=yes])
+
+AM_CONDITIONAL([NO_ASSERTIONS],[test x$assertions != xyes])
+AM_CONDITIONAL([NO_MODEL_CHECKS],[test x$model_checks != xyes])
+
 # This identifies the CPU/OS to select the source files containing
 # the correct platform-specific FPU code for the target. The source files
 # are named ieeeFPsetup_@host_cpu@_@host_os@.{h,cc} in the Makefile.
