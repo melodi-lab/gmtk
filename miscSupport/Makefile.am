@@ -2,16 +2,12 @@
 if HAVE_HG
 # this will keep the Mercurial revision id current if you're building 
 # in a working directory. If you're not, use the distributed hgstamp.h
-.PHONY: hgstamp.h testHashDrivers
-hgstamp.h:
-	test -f $@ || touch $@
-	printf "#define HGID \"%s\"\n" "`hg id ../ | tr -d \\n`" | \
-	  cmp -s $@ - || \
-	  printf "#define HGID \"%s\"\n" "`hg id ../ | tr -d \\n`" > $@
+HGID = $(shell hg id)
+VERSIONFLAG = -DHGID="\"$(HGID)\""
 else
-.PHONY: testHashDrivers
+VERSIONFLAG = 
 endif
-
+.PHONY: testHashDrivers
 
 EXCCFLAGS = 
 EXCXXFLAGS = 
@@ -71,14 +67,14 @@ vhash_set.h
 
 # Compilation flags for miscSupport library objects (user's CXXFLAGS will
 # be appended)
-libmiscSupport_a_CXXFLAGS = \
+libmiscSupport_a_CXXFLAGS = $(VERSIONFLAG) \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC) $(HASH)
-libmiscSupport_a_CFLAGS = \
+libmiscSupport_a_CFLAGS = $(VERSIONFLAG) \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCCFLAGS) $(WALL) $(ANSI) $(PEDANTIC) $(HASH)
 
 
 # Complilation flags for test programs (user's CXXFLAGS will be appended)
-AM_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC) $(HASH) -DMAIN
+AM_CXXFLAGS = $(VERSIONFLAG) $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC) $(HASH) -DMAIN
 
 # Linker flags for test programs (user's LDFLAGS will be appended)
 AM_LDFLAGS = $(EXLDFLAGS)

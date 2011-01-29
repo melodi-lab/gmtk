@@ -9,6 +9,9 @@
 //             bilmes@ee.washington.edu
 
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <stdio.h>
 #include <string.h>
@@ -17,6 +20,7 @@
 #include <signal.h>
 #include <sys/signal.h>
 
+#include "hgstamp.h"
 #include "general.h"
 #include "ieeeFPsetup.h"
 #include "error.h"
@@ -24,7 +28,7 @@
 #include <xmmintrin.h>
 
 
-VCID("$Header$")
+VCID(HGID)
 
 
 void sighandler(int sigarg) 

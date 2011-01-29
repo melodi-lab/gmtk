@@ -9,6 +9,9 @@
 //             bilmes@icsi.berkeley.edu
 
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <stdio.h>
 #include <string.h>
@@ -23,13 +26,14 @@
 #include <signal.h>
 #include <sys/signal.h>
 
+#include "hgstamp.h"
 #include <siginfo.h>
 #include "general.h"
 #include "ieeeFPsetup.h"
 #include "error.h"
 
 
-VCID("$Header$");
+VCID(HGID);
 
 #ifdef HAVE_NONSTANDARD_ARITHMETIC
 extern "C" void nonstandard_arithmetic();

@@ -4,6 +4,11 @@
 // Written by: Jeff Bilmes
 //             bilmes@ee.wasington.edu
 
+
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <ctype.h>
 #include <sys/time.h>
 #include <time.h>
@@ -17,12 +22,13 @@
 #include <string>
 #include <string.h>
 
+#include "hgstamp.h"
 #include "general.h"
 #include "rand.h"
 #include "error.h"
 
 
-VCID("$Header$")
+VCID(HGID)
 
 char *copyToNewStr(const char *const str)
 {

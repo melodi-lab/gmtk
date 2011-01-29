@@ -17,6 +17,9 @@
  */
 
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <math.h>
 #include <stdlib.h>
@@ -32,6 +35,7 @@
 #include <set>
 #include <algorithm>
 
+#include "hgstamp.h"
 #include "general.h"
 #include "error.h"
 #include "debug.h"
@@ -39,7 +43,7 @@
 
 #include "hash_tree.h"
 
-VCID("$Header$")
+VCID(HGID)
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////

@@ -9,6 +9,10 @@
 //             bilmes@ee.washington.edu
 
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
@@ -21,8 +25,9 @@
 extern "C" { char *index(const char* str, int c); }
 #endif
 
+#include "hgstamp.h"
 #include "general.h"
-VCID("$Header$")
+VCID(HGID)
 #include "error.h"
 #include "fileParser.h"
 #include "sArray.h"

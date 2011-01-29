@@ -34,7 +34,14 @@
 #include "GMTK_MTCPT.h"
 #include "GMTK_DiscRV.h"
 
-VCID("$Header$")
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
+VCID(HGID)
+
 
 
 

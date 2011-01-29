@@ -2,12 +2,10 @@
 if HAVE_HG
 # this will keep the Mercurial revision id current if you're building 
 # in a working directory. If you're not, use the distributed hgstamp.h
-.PHONY: hgstamp.h
-hgstamp.h:
-	test -f $@ || touch $@
-	printf "#define HGID \"%s\"\n" "`hg id ../ | tr -d \\n`" | \
-	  cmp -s $@ - || \
-	  printf "#define HGID \"%s\"\n" "`hg id ../ | tr -d \\n`" > $@
+HGID = $(shell hg id)
+VERSIONFLAG = -DHGID="\"$(HGID)\""
+else
+VERSIONFLAG = 
 endif
 
 
@@ -33,9 +31,9 @@ endif
 
 WALL = -Wall
 
-AM_CFLAGS = \
+AM_CFLAGS = $(VERSIONFLAG) \
 $(DEBUGFLAGS) $(OPTFLAGS)  $(EXCCFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
-AM_CXXFLAGS = \
+AM_CXXFLAGS = $(VERSIONFLAG) \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 AM_LDFLAGS = \
 $(EXLDFLAGS)
@@ -157,7 +155,7 @@ libXOPT_a_SOURCES = \
 GMTK_DiagGaussianOpt.cc \
 GMTK_LinMeanCondDiagGaussianOpt.cc \
 GMTK_PackCliqueValueOpt.cc
-libXOPT_a_CXXFLAGS = $(XOPTFLAGS) \
+libXOPT_a_CXXFLAGS = $(VERSIONFLAG) $(XOPTFLAGS) \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 
 
@@ -187,7 +185,7 @@ gmtkNGramIndex_SOURCES = gmtkNGramIndex.cc
 
 
 gmtkViz_SOURCES = gmtkViz.cc
-gmtkViz_CXXFLAGS = $(VIZCXXFLAGS) \
+gmtkViz_CXXFLAGS = $(VERSIONFLAG) $(VIZCXXFLAGS) \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC) $(X_CFLAGS)
 gmtkViz_LDFLAGS = $(EXLDFLAGS) $(VIZLDFLAGS) $(X_PRE_LIBS) $(X_LIBS) $(X_EXTRA_LIBS) -lX11
 
@@ -241,7 +239,7 @@ testPackCliqueValue
 #$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 
 testPackCliqueValue_SOURCES = GMTK_PackCliqueValue.cc  GMTK_PackCliqueValue.h
-testPackCliqueValue_CXXFLAGS = -DMAIN \
+testPackCliqueValue_CXXFLAGS = -DMAIN $(VERSIONFLAG) \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 
 #testGMParms_SOURCES = GMTK_GMParms.cc GMTK_GMParms.h
