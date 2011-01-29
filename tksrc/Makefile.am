@@ -22,7 +22,7 @@ ANSI =
 PEDANTIC =
 else
 ANSI = -ansi
-PEDANTIC = -pedantic -Wno-long-long
+PEDANTIC = -pedantic
 endif
 
 WALL = -Wall
@@ -182,7 +182,7 @@ gmtkNGramIndex_SOURCES = gmtkNGramIndex.cc
 
 gmtkViz_SOURCES = gmtkViz.cc
 gmtkViz_CXXFLAGS = $(VIZCXXFLAGS) \
-$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC) $(X_CFLAGS)
+$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(X_CFLAGS)
 gmtkViz_LDFLAGS = $(EXLDFLAGS) $(VIZLDFLAGS) $(X_PRE_LIBS) $(X_LIBS) $(X_EXTRA_LIBS) -lX11
 
 gmtkViz_app_SOURCES = Info.plist.in wxmac.icns
