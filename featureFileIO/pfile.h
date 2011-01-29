@@ -94,9 +94,6 @@ typedef union
 typedef int64_t  pfile_longlong_t;
 typedef uint64_t pfile_ulonglong_t;
 
-#ifndef SCNu64
-#error "no SCNu64"
-#endif
 
 // Define PFILE_LARGE if we support large PFiles
 #if (HAVE_FSEEKO || (SIZEOF_LONG >= 8))
