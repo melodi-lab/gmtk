@@ -7,7 +7,12 @@
 // Written by: Jeff Bilmes
 //             bilmes@ee.washington.edu
 
-
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
 
 #include <stdio.h>
 #include <string.h>
@@ -15,14 +20,13 @@
 
 #include <signal.h>
 #include <sys/signal.h>
-
 #include "general.h"
 #warning "Change the ANY_ANY below to $(host_cpu)_$(host_os)" 
 #include "ieeeFPsetup_ANY_ANY.h"
 #include "error.h"
 
 
-VCID("$Header$")
+VCID(HGID)
 
 
 void ieeeFPsetup()

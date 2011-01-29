@@ -65,7 +65,14 @@
 #include "GMTK_GraphicalModel.h"
 #include "GMTK_RVInfo.h"
 
-VCID("$Header$")
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
+VCID(HGID)
+
 
 #ifdef DECLARE_POPEN_FUNCTIONS_EXTERN_C
 extern "C" {

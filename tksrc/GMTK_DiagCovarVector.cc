@@ -43,7 +43,14 @@
 #define M_PI               3.14159265358979323846  /* pi */
 #endif
 
-VCID("$Header$")
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
+VCID(HGID)
+
 
 ////////////////////////////////////////////////////////////////////
 //        Static members

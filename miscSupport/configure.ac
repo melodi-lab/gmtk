@@ -32,7 +32,7 @@ AC_CHECK_FILE([../.hg/dirstate],[
   AC_CHECK_PROG([HAVE_HG],[hg],[yes])
   if test x$HAVE_HG = xyes; then
     HGREVID=`hg id ..`  
-    printf "#define HGID \"$HGREVID\"\n" > hgstamp.h
+    printf "#ifndef HGID\n#define HGID \"$HGREVID\"\n#endif\n" > hgstamp.h
     AC_DEFINE([HAVE_HG_H],[1],[Live Mercurial revision id header available?])
   fi
 ],[
