@@ -1298,7 +1298,7 @@ class ConditionalSeparatorTable : public IM
     // make a union to share space between doing
     // backward inference and backward viterbi pass
     union {
-      char _bpo[sizeof(logpr)] __attribute__((may_alias));
+      char _bpo[sizeof(logpr)];
       // TODO: make this an unsigned* to be able
       // todo n-best.
       unsigned backPointer;
@@ -1309,7 +1309,7 @@ class ConditionalSeparatorTable : public IM
 
     // probability for distribute evidence pass
     // easy access to different fields
-    inline logpr& bp() { return (*((logpr*)(&_bpo[0]))); }
+    inline logpr& bp() { return (*((logpr*)(void*)(&_bpo[0]))); }
 
     RemainderValue() { 
       bp().set_to_zero(); 

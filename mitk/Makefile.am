@@ -19,7 +19,7 @@ ANSI = -ansi
 #ANSI = 
 
 #PEDANTIC = -pedantic
-PEDANTIC = -pedantic -Wno-long-long
+PEDANTIC = -pedantic
 #PEDANTIC = -Wno-long-long
 
 WALL = -Wall

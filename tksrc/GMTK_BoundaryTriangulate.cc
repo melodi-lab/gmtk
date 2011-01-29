@@ -3739,7 +3739,7 @@ triangulateRandom(
   vector<triangulateNode>::iterator crrnt_node; 
   vector<triangulateNode>::iterator end_node;
 
-  double     best_graph_weight;   // Best overal graph weight
+  double     best_graph_weight = DBL_MAX;   // Best overal graph weight
   double     best_this_weight;    // Best graph weight on most recent trial
   unsigned   moves_accepted;
   double     weight_sum = 0;      // Sum of weights (for variance calculation)
