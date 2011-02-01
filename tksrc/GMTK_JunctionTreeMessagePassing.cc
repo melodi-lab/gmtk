@@ -932,7 +932,11 @@ JunctionTree::printSavedViterbiValues(FILE* f,
       if (inference_it.at_p()) {
 //	shiftUnprimeVarstoPosition(Pprime_rvs, (int)part, Ppos);
 	// print P partition
+#if 0
 	fprintf(f,"P'[%3d]   P     : ",part);
+#else	
+	fprintf(f,"P     : ");
+#endif
 	ps.packer.unpack(P_partition_values.ptr,PprimeValuePtrs.ptr);
 	if (printObserved) 
 	  printRVSetAndValues(f,P_rvs,true,preg);
@@ -947,7 +951,11 @@ JunctionTree::printSavedViterbiValues(FILE* f,
  int targetFrame = fp.numFramesInP() + (int)(part-1) * gm_template.S * fp.numFramesInC();
 	for (unsigned i=0; i < gm_template.M; i+=1) { // unpacking E' completes the last M Cs
 	  shiftUnprimeVarstoPosition(C_rvs[unprimeIndex], targetFrame, Cpos[unprimeIndex]);
+#if 0
 	  fprintf(f,"E'[%3d] %1d C[%3d]:",part,primeIndex,(targetFrame - fp.numFramesInP()) / fp.numFramesInC());
+#else
+	  fprintf(f,"C[%3d]: ",(targetFrame - fp.numFramesInP()) / fp.numFramesInC());
+#endif
 	  if (printObserved)
 	    printRVSetAndValues(f,C_rvs[unprimeIndex],true,preg);
 	  else
@@ -957,7 +965,11 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 	} 
 	// print E partition
 	shiftUnprimeVarstoPosition(E_rvs, targetFrame, Epos);
+#if 0
 	fprintf(f,"E'[%3d] %1d E     : ",part, primeIndex);
+#else
+	fprintf(f,"E     : ");
+#endif
 	if (printObserved) 
 	  printRVSetAndValues(f,E_rvs,true,preg);
 	else
@@ -981,7 +993,11 @@ shiftUnprimeVarstoPosition(Cprime_rvs[primeIndex], (int)part, CprimePos[primeInd
 #else
 	      shiftUnprimeVarstoPosition(C_rvs[unprimeIndex], targetFrame, Cpos[unprimeIndex]);
 #endif
+#if 0
 	      fprintf(f,"C'[%3d] %1d C[%3d]: ",part,primeIndex, (targetFrame - fp.numFramesInP()) / fp.numFramesInC());
+#else
+	      fprintf(f,"C[%3d]: ",(targetFrame - fp.numFramesInP()) / fp.numFramesInC());
+#endif
 	      if (printObserved) 
 		printRVSetAndValues(f,C_rvs[unprimeIndex],true,preg);
 	      else
