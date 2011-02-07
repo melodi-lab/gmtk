@@ -44,6 +44,22 @@ AC_PROG_CC
 AC_PROG_RANLIB
 AC_PROG_LN_S
 
+AC_CHECK_FILE([../.hg/dirstate],[
+  AC_CHECK_PROG([HAVE_HG],[hg],[yes])
+  if test x$HAVE_HG = xyes; then
+    HGREVID=`hg id ..`  
+    printf "#ifndef HGID\n#define HGID \"$HGREVID\"\n#endif\n" > hgstamp.h
+    AC_DEFINE([HAVE_HG_H],[1],[Live Mercurial revision id header available?])
+  fi
+],[
+  AC_CHECK_FILE([hgstamp.h],[
+    AC_DEFINE([HAVE_HG_H],[1],[Distributed Mercurial revision id header available?])
+  ],[
+    AC_DEFINE([HGID],"UNKNOWN",[Unknown Mercurial revision id - broken distribution?])
+  ])
+])
+AM_CONDITIONAL([HAVE_HG],[test  x$HAVE_HG = xyes])
+
 # Checks for libraries.
 
 # Checks for header files.

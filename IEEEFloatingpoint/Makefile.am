@@ -1,3 +1,11 @@
+if HAVE_HG
+# this will keep the Mercurial revision id current if you're building 
+# in a working directory. If you're not, use the distributed hgstamp.h
+HGID = $(shell hg id)
+VERSIONFLAG = -DHGID="\"$(HGID)\""
+else
+VERSIONFLAG = 
+endif
 
 EXCCFLAGS = 
 EXCXXFLAGS = 
@@ -40,9 +48,9 @@ ieeeFPsetup.h: ieeeFPsetup_@host_cpu@_@host_os@.h
 
 # Compilation flags for IEEEsupport library objects (user's CXXFLAGS will
 # be appended)
-libIEEEsupport_a_CXXFLAGS = \
+libIEEEsupport_a_CXXFLAGS = $(VERSIONFLAG) \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
-libIEEEsupport_a_CFLAGS = \
+libIEEEsupport_a_CFLAGS = $(VERSIONFLAG) \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCCFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 
 AM_CPPFLAGS = -I$(srcdir)/../miscSupport
