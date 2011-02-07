@@ -8,6 +8,10 @@
 // Written by: Jeff Bilmes
 //             bilmes@icsi.berkeley.edu
 
+
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
@@ -16,8 +20,9 @@
 #include <float.h>
 #include <assert.h>
 
+#include "hgstamp.h"
 #include "general.h"
-VCID("$Header$")
+VCID(HGID)
 #include "error.h"
 
 #include "sArray.h"
