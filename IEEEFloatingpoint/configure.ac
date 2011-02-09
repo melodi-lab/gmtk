@@ -62,3 +62,4 @@ else
 ---------------------------------------------------------------
 ])
 fi
+AM_CONDITIONAL([UNKNOWN_PLATFORM],[test ! -f "${srcdir}/ieeeFPsetup_${host_cpu}_${host_os}.cc"])
