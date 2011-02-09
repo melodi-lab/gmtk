@@ -18,6 +18,8 @@ EXCCFLAGS = -m32
 EXCXXFLAGS = -m32
 EXLDDFLAGS = -m32
 OSXLDFLAGS = -dylib_file /System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib
+distclean-local:
+	-rm -rf gmtkViz.app
 else
 OSXLDFLAGS =
 EXCCFLAGS =
