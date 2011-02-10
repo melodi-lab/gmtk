@@ -46,6 +46,10 @@ ieeeFPsetup.h: ieeeFPsetup_@host_cpu@_@host_os@.h
 	 $(LN_S) ieeeFPsetup_@host_cpu@_@host_os@.h ieeeFPsetup.h; \
 	fi
 
+if UNKNOWN_PLATFORM 
+DISTCLEANFILES = ieeeFPsetup_@host_cpu@_@host_os@.h ieeeFPsetup_@host_cpu@_@host_os@.cc 
+endif 
+
 # Compilation flags for IEEEsupport library objects (user's CXXFLAGS will
 # be appended)
 libIEEEsupport_a_CXXFLAGS = $(VERSIONFLAG) \
