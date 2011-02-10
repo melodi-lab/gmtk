@@ -75,3 +75,8 @@ ieeeFPsetup_solaris.cc \
 ieeeFPsetup_solaris.h \
 ieeeFPsetup_x86_64_linux-gnu.cc \
 ieeeFPsetup_x86_64_linux-gnu.h 
+
+
+check_PROGRAMS = ieeeTest
+ieeeTest_SOURCES = ieeeTest.cc
+ieeeTest_LDADD = libIEEEsupport.a
