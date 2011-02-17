@@ -212,11 +212,16 @@ gmtkViz.app/Contents/PkgInfo: gmtkViz$(EXEEXT) $(srcdir)/Info.plist.in \
 endif
 
 check_PROGRAMS =  \
-testPackCliqueValue 
-
+testPackCliqueValue \
+testViterbi
 # testMDCPT testMTCPT
 #testRngDecisionTree testGMParms testFileParser lex.yy
 # testHash testHashTree?
+
+
+testViterbi_SOURCES = testViterbi.ll
+
+
 
 #testMDCPT_SOURCES = GMTK_MDCPT.cc GMTK_MDCPT.h
 #testMDCPT_CXXFLAGS = -DMAIN \
