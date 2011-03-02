@@ -186,7 +186,7 @@ gmtkNGramIndex_SOURCES = gmtkNGramIndex.cc
 
 gmtkViz_SOURCES = gmtkViz.cc
 gmtkViz_CXXFLAGS = $(VERSIONFLAG) $(VIZCXXFLAGS) \
-$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC) $(X_CFLAGS)
+$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(X_CFLAGS)
 gmtkViz_LDFLAGS = $(EXLDFLAGS) $(VIZLDFLAGS) $(X_PRE_LIBS) $(X_LIBS) $(X_EXTRA_LIBS) -lX11
 
 gmtkViz_app_SOURCES = Info.plist.in wxmac.icns
