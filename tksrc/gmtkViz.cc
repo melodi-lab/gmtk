@@ -6974,7 +6974,17 @@ StructPage::Save( void )
 			wxString tempFileName = wxString::Format("%s/%s",
 					dirname((char *)tempGVP.char_str(wxConvUTF8)), 
 					strFile.c_str());
-			if(strFile.GetChar(0) == '/' && stat(strFile.c_str(), &strFile_stat) == 0){
+
+			// ticket 96: if the .gvp and .str files are in the same directory,
+			//            act as if the .str path is relative
+			tempGVP = wxString::Format("%s",gvpFile.wc_str());
+			wxString tempStr = wxString::Format("%s",strFile.wc_str());
+			bool forceRelative = strcmp(dirname((char *)tempGVP.char_str(wxConvUTF8)),
+						    dirname((char *)tempStr.char_str(wxConvUTF8))) == 0;
+			if (forceRelative && stat(strFile.c_str(), &strFile_stat) == 0) {
+			  tempStr = wxString::Format("%s",strFile.wc_str());
+			  line.sprintf("strFile=%s\n", basename((char *)tempStr.char_str(wxConvUTF8)));
+			} else if(strFile.GetChar(0) == '/' && stat(strFile.c_str(), &strFile_stat) == 0){
 				//this is an absolute path so we should use this
 				line.sprintf("strFile=%s\n", strFile.c_str());
 			} else if(stat(tempFileName.c_str(), &strFile_stat) == 0){
