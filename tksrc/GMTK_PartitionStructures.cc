@@ -128,7 +128,11 @@ PartitionStructures::PartitionStructures(JT_Partition& from_part,
     // each clique.
     // 
   
- 
+    // Also, to support the new Viterbi printing (ticket #85), we
+    // need to ensure that the order doesn't change from segment
+    // to segment. Thus I changed this to force a consistant
+    // ordering - Richard
+
     set<RV*> lirvs;
     if (has_li_separator)
       lirvs = separatorCliquesSharedStructure[separatorCliquesSharedStructure.size()-1].returnRVsAsSet();
