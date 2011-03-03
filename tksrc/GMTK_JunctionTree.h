@@ -576,23 +576,15 @@ class JunctionTree {
   // sets of random variables for frame shifting.
   set <RV*> cur_CC_rvs;
   unsigned cur_cc_shift;
-  unsigned cur_unprime_cc_shift;
-  unsigned cur_unprime_shift;
   set <RV*> cur_CE_rvs;
   unsigned cur_ce_shift;
-  unsigned cur_unprime_ce_shift;
   void shiftCCtoPosition(int);
-  void shiftUnprimeCCtoPosition(set<RV*>, int);
   void shiftCCrelative(int delta) { shiftCCtoPosition(cur_cc_shift+delta); }
   void shiftCEtoPosition(int);
-  void shiftUnprimeCEtoPosition(set<RV*>, int);
-  void shiftUnprimeVarstoPosition(vector<RV*> rvs, int pos, int &prevPos, int unprimeIndex);
   void shiftUnprimeVarstoPosition(vector<RV*> rvs, int pos, int &prevPos);
   void shiftCErelative(int delta) { shiftCEtoPosition(cur_cc_shift+delta); }
   void init_CC_CE_rvs(ptps_iterator& ptps_it);
   void setCurrentInferenceShiftTo(int pos);
-  void setUnprimeShiftTo(vector<RV*>,int pos);
-
 
 
   ////////////////////////////////////////////////////////////////////////

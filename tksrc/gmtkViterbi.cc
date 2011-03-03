@@ -413,97 +413,6 @@ main(int argc,char*argv[])
     }
   }
 
-
-#if 0
-  vector<RV*> unrolled_rvs;
-  map<RVInfo::rvParent, unsigned> unrolled_map;
-
-  vector<RV*> P_rvs;      // original P for printing
-  vector<RV*> Pprime_rvs; // modified P' for unpacking
-  vector<RV*> hidP_rvs;      // hidden subset of original P for printing
-  vector<RV*> hidPprime_rvs; // hidden subset modified P' for unpacking
-
-  vector<vector<RV*> > C_rvs; // original Cs for printing
-  vector<vector<RV*> > Cprime_rvs; // modified C's for unpacking
-  vector<vector<RV*> > hidC_rvs; // hidden subset of original Cs for printing
-  vector<vector<RV*> > hidCprime_rvs; // hidden subset of modified C's for unpacking
-
-  vector<RV*> E_rvs; // ... printing
-  vector<vector<RV*> > Eprime_rvs; // ... unpacking
-  vector<RV*> hidE_rvs; // ... printing
-  vector<vector<RV*> > hidEprime_rvs; // ... unpacking
-
-  sArray<DiscRVType *>PprimeValuePtrs;
-  vector<sArray<DiscRVType *> > CprimeValuePtrs;
-  vector<sArray<DiscRVType *> > EprimeValuePtrs;
-
-  myjt.createUnprimingMap(unrolled_rvs, unrolled_map, 
-			  P_rvs, hidP_rvs, Pprime_rvs, hidPprime_rvs,
-			  C_rvs, hidC_rvs, Cprime_rvs, hidCprime_rvs,
-			  E_rvs, hidE_rvs, Eprime_rvs, hidEprime_rvs, 
-			  PprimeValuePtrs, CprimeValuePtrs, EprimeValuePtrs);
-
-  fprintf(stderr, "G' -> G mapping:\n\n");
-  unsigned NP = fp.numFramesInP();
-  unsigned NC = fp.numFramesInC();
-  unsigned nCs = C_rvs.size();
-  unsigned nCprimes = Cprime_rvs.size();
-#define FTOC(P,C,f) \
-  ( ((f) - (P)) / (C) )
-
-
-  set<RV*> pset(P_rvs.begin(), P_rvs.end());
-  for (vector<RV*>::iterator it = hidPprime_rvs.begin(); 
-       it != hidPprime_rvs.end();
-       ++it)
-  {
-    RV *v = *it;
-    if (pset.find(v) == pset.end()) {
-      fprintf(stderr, "P'    C[%u]: %s(%u)\n", FTOC(NP,NC,v->frame()), v->name().c_str(), v->frame());
-    } else {
-      fprintf(stderr, "P'    P   : %s(%u)\n", v->name().c_str(), v->frame());
-    }
-  }
-  for (unsigned i=0; i < nCprimes; i+=1) {
-    fprintf(stderr, "-----------------------------\n");
-    for (vector<RV*>::iterator it = hidCprime_rvs[i].begin();
-	 it != hidCprime_rvs[i].end();
-	 ++it)
-    {
-      RV *v = *it;
-      fprintf(stderr, "C'[%u] C[%u]: %s(%u)\n", i, FTOC(NP,NC,v->frame()),v->name().c_str(), v->frame());
-    }
-  }
-
-  for (unsigned i=0; i < nCprimes; i+=1) {
-    fprintf(stderr, "-----------------------------\n");
-    for (vector<RV*>::iterator it = hidEprime_rvs[i].begin(); 
-       it != hidEprime_rvs[i].end();
-       ++it)
-    {
-      RV *v = *it;
-      unsigned c = FTOC(NP,NC,v->frame());
-      if (c < nCs) {
-	fprintf(stderr, "E'[%u] C[%u]: %s(%u)\n", i, c, v->name().c_str(), v->frame());
-      } else {
-	fprintf(stderr, "E'[%u] E   : %s(%u)\n", i, v->name().c_str(), v->frame());
-      }
-    }
-  }
-
-#if 1
-  fprintf(stderr, "-----------------------------\n");
-  for (vector<RV*>::iterator it = hidE_rvs.begin();
-       it != hidE_rvs.end();
-       ++it)
-  {
-    RV *v = *it;
-    fprintf(stderr, "E'    E   : %s(%u)\n", v->name().c_str(), v->frame());
-  }
-#endif
-#endif
-
-
   while (!dcdrng_it->at_end()) {
     const unsigned segment = (unsigned)(*(*dcdrng_it));
     if (globalObservationMatrix.numSegments() < (segment+1)) 
@@ -562,7 +471,7 @@ main(int argc,char*argv[])
 	      segment);
     else {
       if (pVitValsFile) {
-	fprintf(pVitValsFile,"========\nSegment %d, number of frames = %d, vitebri-score = %f\n",
+	fprintf(pVitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
 		segment,numFrames,probe.val());
 	myjt.printSavedPartitionViterbiValues(pVitValsFile,
 					      pVitAlsoPrintObservedVariables,
@@ -572,7 +481,7 @@ main(int argc,char*argv[])
 
 #if 1      
       if (vitValsFile) {
-	fprintf(vitValsFile,"========\nSegment %d, number of frames = %d, vitebri-score = %f\n",
+	fprintf(vitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
 		segment,numFrames,probe.val());
 	myjt.printSavedViterbiValues(vitValsFile,
 				     vitAlsoPrintObservedVariables,
