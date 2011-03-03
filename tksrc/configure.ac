@@ -61,15 +61,15 @@ if test x"$gmtkViz" = x"yes"; then
      AC_LANG_PUSH([C++])
      wx_check_save_CXXFLAGS=${CXXFLAGS}
      CXXFLAGS=`wx-config --cxxflags`
-     wx_check_save_LDFLAGS=${LDFLAGS}
-     LDFLAGS=`wx-config --libs`
+     wx_check_save_LIBS=${LIBS}
+     LIBS=`wx-config --libs`
      AC_LINK_IFELSE([AC_LANG_PROGRAM([#include "wx/wx.h"],
                                      [wxString s("foo");s.Capitalize()])],
         AC_SUBST([HAVE_WXWIDGETS],[yes]),
         AC_MSG_WARN(
 	 [wx-config found but not wxWidgets >= 2.9. gmtkViz will not be built.])
      )
-     LDFLAGS=${wx_check_save_LDFLAGS}
+     LIBS=${wx_check_save_LIBS}
      CXXFLAGS=${wx_check_save_CXXFLAGS}
      AC_LANG_POP([C++])
    fi
@@ -84,6 +84,7 @@ case "${host}" in
 *apple*) 
   if test x"$HAVE_WXWIDGETS" = x"yes"; then
     AC_SUBST([OSXBUNDLE],[gmtkViz.app])
+    AC_DEFINE([ENABLE_TOP_OFFSET],[1],[wxFame::EnableTop doesn't seem to work on the Mac])
   fi ;;
 *-sun-solaris*) AC_CHECK_LIB([sunmath],[annuity]) ;;
 *cygwin*) AC_SUBST([XOPEN],[-D__USE_XOPEN2K]) ;;
