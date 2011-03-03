@@ -37,7 +37,7 @@
  * for any purpose. It is provided "as is" without express or implied warranty.
  *
  */
-
+  
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -62,7 +62,14 @@
 
 #include "GMTK_WordOrganization.h"
 
-VCID("$Header$")
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
+VCID(HGID)
+
 
 #include "GMTK_FileParser.h"
 #include "GMTK_RV.h"

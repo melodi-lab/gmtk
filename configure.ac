@@ -11,6 +11,16 @@ AC_ARG_ENABLE([gmtkViz],
                               [disable gmtkViz @<:@default: no@:>@])],
               [gmtkViz=${enableval}], [gmtkViz=yes])
 
+AC_ARG_ENABLE([assertions],
+              [AS_HELP_STRING([--disable-assertions],
+                              [disable assertion checking @<:@default: no@:>@])],
+              [assertions=${enableval}], [assertions=yes])
+
+AC_ARG_ENABLE([model-checks],
+              [AS_HELP_STRING([--disable-model-checks],
+                              [disable run-time checks for models @<:@default: no@:>@])],
+              [model_checks=${enableval}], [model_checks=yes])
+
 # Checks for programs.
 
 # Checks for libraries.
