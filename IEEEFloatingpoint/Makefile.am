@@ -1,8 +1,22 @@
+if HAVE_HG
+# this will keep the Mercurial revision id current if you're building 
+# in a working directory. If you're not, use the distributed hgstamp.h
+HGID = $(shell hg id)
+VERSIONFLAG = -DHGID="\"$(HGID)\""
+else
+VERSIONFLAG = 
+endif
 
 EXCCFLAGS = 
 EXCXXFLAGS = 
 EXLDFLAGS  = 
 DEBUGFLAGS = -g
+if NO_ASSERTIONS
+DEBUGFLAGS += -DNDEBUG
+endif
+if NO_MODEL_CHECKS
+DEBUGFLAGS += -DNMODELCHECK
+endif
 OPTFLAGS = -O3
 
 ANSI = -ansi
@@ -32,11 +46,15 @@ ieeeFPsetup.h: ieeeFPsetup_@host_cpu@_@host_os@.h
 	 $(LN_S) ieeeFPsetup_@host_cpu@_@host_os@.h ieeeFPsetup.h; \
 	fi
 
+if UNKNOWN_PLATFORM
+DISTCLEANFILES = ieeeFPsetup_@host_cpu@_@host_os@.h ieeeFPsetup_@host_cpu@_@host_os@.cc
+endif
+
 # Compilation flags for IEEEsupport library objects (user's CXXFLAGS will
 # be appended)
-libIEEEsupport_a_CXXFLAGS = \
+libIEEEsupport_a_CXXFLAGS = $(VERSIONFLAG) \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
-libIEEEsupport_a_CFLAGS = \
+libIEEEsupport_a_CFLAGS = $(VERSIONFLAG) \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCCFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 
 AM_CPPFLAGS = -I$(srcdir)/../miscSupport
@@ -57,3 +75,8 @@ ieeeFPsetup_solaris.cc \
 ieeeFPsetup_solaris.h \
 ieeeFPsetup_x86_64_linux-gnu.cc \
 ieeeFPsetup_x86_64_linux-gnu.h 
+
+
+check_PROGRAMS = ieeeTest
+ieeeTest_SOURCES = ieeeTest.cc
+ieeeTest_LDADD = libIEEEsupport.a

@@ -1,4 +1,8 @@
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -7,12 +11,13 @@
 #include <float.h>
 #include <assert.h>
 
+#include "hgstamp.h"
 #include "general.h"
 #include "error.h"
 #include "rand.h"
 #include "lms_filter.h"
 
-VCID("$Header$")
+VCID(HGID)
 
 LMSFilter::LMSFilter(unsigned _order, double _learning_rate)
 : AdaptiveFilter(_order), learning_rate(_learning_rate)

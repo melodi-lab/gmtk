@@ -142,6 +142,7 @@ enum highlight_states {off,on,children,parents,both};
 
 //forward declarations of things that GFrame needs
 class wxgmtk1toManyDialog;
+class wxTicket71Dialog;
 class	GmtkHelp;
 
 // forward declarations of things StructPage needs
@@ -151,7 +152,7 @@ class VizArc;
 class VizSep;
 class Selectable;
 class ControlPoint;
-
+class vizNotebook;
 class gmtkPen;
 
 static wxFont defaultFont;
@@ -496,7 +497,7 @@ class StructPage: public wxScrolledWindow
 	public:
 		// constructor
 		StructPage(wxWindow *parent, wxWindowID id,
-				wxFrame *parentFrame, wxNotebook *parentNotebook,
+				wxFrame *parentFrame, vizNotebook *parentNotebook,
 				const wxString &file, bool old = true);
 		// destructor
 		virtual ~StructPage();
@@ -526,6 +527,7 @@ class StructPage: public wxScrolledWindow
 		// Did everything parse successfully?
 		bool Ready( void ) { return !gvpAborted; }
 
+void ticket71(void);
 		// things related to selecting
 		Selectable *itemAt( const wxPoint& pt );
 		void setAllSelected( bool newSelected );
@@ -677,7 +679,7 @@ class StructPage: public wxScrolledWindow
 			std::stack<StructPage_state *> undo_stack;
 			std::stack<StructPage_state *> redo_stack;
 			wxFrame *parentFrame;
-			wxNotebook *parentNotebook;
+			vizNotebook *parentNotebook;
 			wxBitmap *content; // the drawing buffer
 			std::map< RVInfo::rvParent, unsigned int > nameVizNodeMap;
 			wxRect selectBox;
@@ -745,6 +747,31 @@ class StructPage: public wxScrolledWindow
 			bool data_parsed; //indicates if the str file parsed or not
 };
 
+
+
+
+
+class vizNotebook: public wxNotebook {
+public:
+  vizNotebook(wxWindow* parent, wxWindowID id, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = 0, const wxString& name = wxNotebookNameStr) :
+    wxNotebook(parent, id, pos, size, style, name) {};
+  void OnChar( wxKeyEvent &event );
+  DECLARE_EVENT_TABLE()
+};
+BEGIN_EVENT_TABLE(vizNotebook, wxNotebook)
+#if 0
+  EVT_CHAR(vizNotebook::OnChar)
+#endif
+END_EVENT_TABLE()
+
+void 
+vizNotebook::OnChar(wxKeyEvent &event) {
+  wxLogDebug(wxT("vizNotebook::OnChar"));
+  StructPage *curPage = dynamic_cast<StructPage*> (GetCurrentPage());
+  if (curPage) {
+    curPage->OnChar(event);
+  }
+}
 
 /// Represents anything that can be selected
 class Selectable {
@@ -961,6 +988,70 @@ BEGIN_EVENT_TABLE(GmtkHelp, wxFrame)
 	EVT_BUTTON(wxID_CLOSE, GmtkHelp::OnCloseButton)
 END_EVENT_TABLE()
 
+
+
+/* Hack to work around https://lungs.ee.washington.edu/trac/gmtk/ticket/71
+ */
+class wxTicket71Dialog : public wxDialog {
+	public:
+		wxTicket71Dialog( wxWindow *parent,
+				wxWindowID id,
+				const wxString &title,
+				const wxPoint& position = wxDefaultPosition,
+				const wxSize& size = wxDefaultSize,
+				long style = wxDEFAULT_DIALOG_STYLE );
+		~wxTicket71Dialog();
+	private:
+		void OnOk( wxCommandEvent &event );
+  //void (*function)(wxTicket71Dialog);
+		DECLARE_EVENT_TABLE()
+
+};
+
+BEGIN_EVENT_TABLE(wxTicket71Dialog,wxDialog)
+    EVT_BUTTON( wxID_OK, wxTicket71Dialog::OnOk )
+END_EVENT_TABLE()
+
+wxTicket71Dialog::wxTicket71Dialog( wxWindow *parent,
+		wxWindowID id,
+		const wxString &title,
+		const wxPoint& position,
+		const wxSize& size,
+		long style) : 
+wxDialog( parent, id, title, position, size, style )
+{
+  wxBoxSizer *topsizer = new wxBoxSizer( wxVERTICAL );
+  
+  wxStaticText *caption = 
+    new wxStaticText(this,-1, wxT("Click Ok to make keyboard commands work"), 
+		     wxDefaultPosition);
+  topsizer->Add(caption, 0, wxALL | wxALIGN_CENTER, 5);
+  
+  //create buttons and add them
+  wxBoxSizer *button_sizer = new wxBoxSizer( wxHORIZONTAL );
+  button_sizer->Add( new wxButton( this, wxID_OK, "Ok" ), 0, wxALL, 10 );
+  
+  //add the buttons, align them along the center of the dialog box
+  topsizer->Add( button_sizer, 0, wxALIGN_CENTER );
+  
+  SetAutoLayout( true );     // tell dialog to use sizer
+  SetSizer( topsizer );      // actually set the sizer
+  
+  topsizer->Fit( this );            // set size to minimum size as calculated by the sizer
+  topsizer->SetSizeHints( this );   // set size hints to honour mininum size
+}
+
+wxTicket71Dialog::~wxTicket71Dialog(){
+}
+
+void wxTicket71Dialog::OnOk( wxCommandEvent &event ){
+  event.Skip();
+}
+
+
+
+
+
 /// This is the main window
 class GFrame: public wxFrame {
 public:
@@ -1171,6 +1262,8 @@ public:
 	//update the menu to reflect the given structpage
 	void UpdateMenuChecks(StructPage *);
 
+  void OnChar(wxKeyEvent &event);
+
 private:
 	// initialize the status bar
 	void set_properties();
@@ -1189,7 +1282,7 @@ protected:
 	wxStaticText* about_label;
 	wxTextCtrl* about_info;
 	wxPanel* about_pane;
-	wxNotebook* struct_notebook;
+	vizNotebook* struct_notebook;
 
 	DECLARE_EVENT_TABLE()
 };
@@ -1542,12 +1635,10 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	: wxFrame( parent, id, title, pos, size, style )
 {
 	// create widgets
-	struct_notebook = new wxNotebook(this, -1, wxDefaultPosition, wxDefaultSize, wxCLIP_CHILDREN);
+	struct_notebook = new vizNotebook(this, -1, wxDefaultPosition, wxDefaultSize, wxCLIP_CHILDREN);
 	about_pane = new wxPanel(struct_notebook, -1);
 	MainVizWindow_menubar = new wxMenuBar();
 
-	// A bunch of menu bar stuff
-	SetMenuBar(MainVizWindow_menubar);
 	// The File menu
 	wxMenu* menu_file = new wxMenu();
 	menu_file->Append(MENU_FILE_NEW, wxT("&New...\tCtrl+N"), wxT("Create a new placement file (requires an existing structure file)"), wxITEM_NORMAL);
@@ -1600,8 +1691,7 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	menu_view->Append(MENU_VIEW_BOUNDING_BOX, wxT("Draw Bounding Box\t0"), wxT("Toggle display of bounding box"), wxITEM_CHECK);
 	// XXX: menu_view->Append(MENU_VIEW_TOOLTIPS, wxT("Draw Tool Tips"), wxT("Toggle display of tool tips for node names"), wxITEM_CHECK);
 	MainVizWindow_menubar->Append(menu_view, wxT("View"));
-	// Doesn't make sense unless a document is active, so disable it for now.
-	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), false);
+
 	// The Zoom menu
 	wxMenu* menu_zoom = new wxMenu();
 	for (int i = 0; i < MENU_ZOOM_END - MENU_ZOOM_BEGIN - 1; i++) {
@@ -1611,8 +1701,6 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 					wxEmptyString, wxITEM_RADIO );
 	}
 	MainVizWindow_menubar->Append(menu_zoom, wxT("Zoom"));
-	// Also doesn't make sense without a document
-	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);
 	// The Customize menu
 	wxMenu* menu_customize = new wxMenu();
 	menu_customize->Append( MENU_CUSTOMIZE_FONT, wxT("Change Font..."),
@@ -1801,9 +1889,23 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	wxMenu* help_menu = new wxMenu();
 	help_menu->Append(MENU_HELP, wxT("Help"), wxT("Pop Up the Help Info Window"), wxITEM_NORMAL);
 	MainVizWindow_menubar->Append(help_menu, wxT("Help"));
-	
+
+	// A bunch of menu bar stuff
+	SetMenuBar(MainVizWindow_menubar);
+
+#ifndef ENABLE_TOP_OFFSET
+	// Doesn't make sense unless a document is active, so disable it for now.
+	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), false);
+	// Also doesn't make sense without a document
+	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);	
 	// Again, needs a document to make sense.
 	MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
+#else
+	MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("View")), false);
+	MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);	
+	MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
+#endif
+
 
 	// The status bar (with 2 fields)
 	MainVizWindow_statusbar = CreateStatusBar(2);
@@ -1933,8 +2035,21 @@ BEGIN_EVENT_TABLE(GFrame, wxFrame)
 	EVT_MENU(MENU_CUSTOMIZE_PENS, GFrame::OnMenuCustomizePen)
 //	EVT_MENU_RANGE(MENU_CUSTOMIZE_PENS_BEGIN+1, MENU_CUSTOMIZE_PENS_END-1, GFrame::OnMenuCustomizePen)
 	EVT_NOTEBOOK_PAGE_CHANGED(wxID_ANY, GFrame::OnNotebookPageChanged)
+#if 0
+EVT_CHAR(GFrame::OnChar)
+#endif
 	EVT_CLOSE(GFrame::OnClose)
 END_EVENT_TABLE()
+
+
+void 
+GFrame::OnChar(wxKeyEvent &event) {
+  wxLogDebug(wxT("GFrame::OnChar"));
+  StructPage *curPage = dynamic_cast<StructPage*> (struct_notebook->GetCurrentPage());
+  if (curPage) {
+    curPage->OnChar(event);
+  }
+}
 
 
 /**
@@ -1967,10 +2082,20 @@ GFrame::file(wxString &fileName, bool gvpFormat)
 			 page->getWidth()/ACTUAL_SCALE+25 : w,
 			 h<page->getHeight()/ACTUAL_SCALE+100 ?
 			 page->getHeight()/ACTUAL_SCALE+100 : h );
+
+#if 0
+	wxTicket71Dialog *ticket71 = new wxTicket71Dialog((wxWindow*)this,
+			-1,
+			wxString("Make keyboard commands work")
+			);
+	ticket71->ShowModal();
+#endif
+
 		// We won't get an event for this new notebook page coming to
 		// the front, so we'll just pretend we did
 		wxNotebookEvent dummy;
 		OnNotebookPageChanged(dummy);
+		page->ticket71();
 	} else {
 		delete page;
 	}
@@ -2366,6 +2491,32 @@ void GFrame::OnMenuFileClose(wxCommandEvent &event)
 		// delete the page only if it says it's okay
 		if (curPage->RequestClose()) {
 			struct_notebook->DeletePage(curPageNum);
+			// wxOSX doesn't seem to notice the page change when the last
+			// StructPage is closed leaving only the About page. Thus we
+			// need to check here if only the About page is left so we can
+			// disable the menus/menu items inappropriate for the About page.
+			if (struct_notebook->GetPageCount() == 1) {
+				// otherwise we set the status bar to some default values
+				SetStatusText(wxEmptyString, 1);
+				SetStatusText(wxT("About GMTKStructViz"), 0);
+				// diable menus and menu items that don't apply to the About tab
+				MainVizWindow_menubar->Enable(MENU_FILE_SAVE, false);
+				MainVizWindow_menubar->Enable(MENU_FILE_SAVEAS, false);
+				MainVizWindow_menubar->Enable(MENU_FILE_PRINT, false);
+				MainVizWindow_menubar->Enable(MENU_FILE_PRINT_EPS, false);
+				MainVizWindow_menubar->Enable(MENU_FILE_CLOSE, false);
+#ifndef ENABLE_TOP_OFFSET
+				MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Edit")), false);
+				MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), false);
+				MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);
+				MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
+#else
+				MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Edit")), false);
+				MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("View")), false);
+				MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);
+				MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
+#endif
+			}
 		}
 	}
 }
@@ -3656,11 +3807,19 @@ GFrame::OnNotebookPageChanged(wxNotebookEvent &event)
 		MainVizWindow_menubar->Enable(MENU_FILE_PRINT_EPS, true);
 		MainVizWindow_menubar->Enable(MENU_FILE_CLOSE, true);
 		// and this menu
+#ifndef ENABLE_TOP_OFFSET
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Edit")), true);
+#else
+		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Edit")), true);
+#endif
 		MainVizWindow_menubar->Check( MENU_EDIT_SNAPTOGRID,
 						  curPage->getSnapToGrid() );
 		// and this menu
+#ifndef ENABLE_TOP_OFFSET
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), true);
+#else
+		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("View")), true);
+#endif
 		// restore the checked status of each item
 		UpdateMenuChecks(curPage);
 
@@ -3668,7 +3827,11 @@ GFrame::OnNotebookPageChanged(wxNotebookEvent &event)
 		// XXX: MainVizWindow_menubar->Check( MENU_VIEW_TOOLTIPS,
 		// curPage->getViewToolTips() );
 		// Zoom should be enabled for documents
+#ifndef ENABLE_TOP_OFFSET
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), true);
+#else
+		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Zoom")), true);
+#endif
 		// since they are radio items, keeping only one selected is
 		// handled automatically
 		/*for (int i = 0, scale = curPage->getScale(); i < MENU_ZOOM_END - MENU_ZOOM_BEGIN - 1; i++) {
@@ -3678,7 +3841,11 @@ GFrame::OnNotebookPageChanged(wxNotebookEvent &event)
 //		MainVizWindow_menubar->Check( curPage->getScale()+MENU_ZOOM_BEGIN+1,
 //						  true );
 		// and the Customize menu should be shown for documents as well
+#ifndef ENABLE_TOP_OFFSET
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), true);
+#else
+		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Customize")), true);
+#endif
 	}
 	else {
 		// otherwise we set the status bar to some default values
@@ -3690,10 +3857,17 @@ GFrame::OnNotebookPageChanged(wxNotebookEvent &event)
 		MainVizWindow_menubar->Enable(MENU_FILE_PRINT, false);
 		MainVizWindow_menubar->Enable(MENU_FILE_PRINT_EPS, false);
 		MainVizWindow_menubar->Enable(MENU_FILE_CLOSE, false);
+#ifndef ENABLE_TOP_OFFSET
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Edit")), false);
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("View")), false);
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);
 		MainVizWindow_menubar->EnableTop(MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
+#else
+		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Edit")), false);
+		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("View")), false);
+		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Zoom")), false);
+		MainVizWindow_menubar->EnableTop(1+MainVizWindow_menubar->FindMenu(wxT("Customize")), false);
+#endif
 	}
 }
 
@@ -3742,7 +3916,7 @@ END_EVENT_TABLE()
  * \return Nothing.
  *******************************************************************/
 StructPage::StructPage(wxWindow *parent, wxWindowID id,
-			   wxFrame *parentFrame, wxNotebook *parentNotebook,
+			   wxFrame *parentFrame, vizNotebook *parentNotebook,
 			   const wxString &file, bool old)
 	: wxScrolledWindow( parent, id, wxDefaultPosition, wxDefaultSize,
 			wxSUNKEN_BORDER | wxTAB_TRAVERSAL, _T("") ),
@@ -4317,6 +4491,7 @@ StructPage::~StructPage( void )
 		delete content;
 	content = NULL;
 }
+
 
 /**
  *******************************************************************
@@ -5815,6 +5990,7 @@ StructPage::blit( wxDC& dc )
 {
 	// Clear away what used to be there to keep the background clean
 	dc.SetBackground(*wxLIGHT_GREY_BRUSH);
+#if 0
 	wxCoord w, h;
 	dc.GetSize(&w, &h);
 	wxRegion tempClip(0, 0, w, h);
@@ -5822,10 +5998,15 @@ StructPage::blit( wxDC& dc )
 		(int)round(getWidth()*gZoomMap[displayScale]),
 		(int)round(getHeight()*gZoomMap[displayScale]) ));
 	dc.SetDeviceClippingRegion(tempClip);
+#endif
 	dc.Clear();
+#if 0
 	dc.DestroyClippingRegion();
 	// all the action is the constructor and destructor
 	wxBufferedDC bdc( &dc, *content );
+#else
+	dc.DrawBitmap(*content,0,0);
+#endif
 }
 
 /**
@@ -6479,6 +6660,42 @@ void wxgmtk1toManyDialog::OnApply( wxCommandEvent &event ){
 }
 
 
+
+
+void
+StructPage::ticket71(void) {
+#if 1 
+	wxTicket71Dialog *ticket71 = new wxTicket71Dialog((wxWindow*)this,
+			-1,
+			wxString("Make keyboard commands work")
+			);
+	ticket71->ShowModal();
+	delete ticket71;
+#else
+	int from = 0, count;
+	wxString temp_string;
+	wxArrayInt selections_Many;
+	wxString *choices = new wxString [numFrames];
+	int to;
+
+	for (int i = 0; i < numFrames; i++){
+		temp_string.Printf("%i", i);
+		choices[i] = temp_string;
+	}
+
+
+	wxgmtk1toManyDialog *copyDialog = new wxgmtk1toManyDialog((wxWindow*)this,
+			-1,
+			wxString("Make keyboard commands work"),
+			choices, choices, numFrames, numFrames,
+			wxString("Copy Layout From:"),
+			wxString("To:")
+			);
+	copyDialog->ShowModal();
+#endif
+}
+
+
 /**
  *******************************************************************
  * Ask the user which frame's layout they would like copied to which
@@ -6801,6 +7018,7 @@ StructPage::redraw( void )
 	dc.SetUserScale(gZoomMap[displayScale], gZoomMap[displayScale]);
 	// Do the actual drawing.
 	draw(dc);
+	dc.SelectObject(wxNullBitmap);
 }
 
 /**
@@ -6974,7 +7192,17 @@ StructPage::Save( void )
 			wxString tempFileName = wxString::Format("%s/%s",
 					dirname((char *)tempGVP.char_str(wxConvUTF8)), 
 					strFile.c_str());
-			if(strFile.GetChar(0) == '/' && stat(strFile.c_str(), &strFile_stat) == 0){
+
+			// ticket 96: if the .gvp and .str files are in the same directory,
+			//            act as if the .str path is relative
+			tempGVP = wxString::Format("%s",gvpFile.wc_str());
+			wxString tempStr = wxString::Format("%s",strFile.wc_str());
+			bool forceRelative = strcmp(dirname((char *)tempGVP.char_str(wxConvUTF8)),
+						    dirname((char *)tempStr.char_str(wxConvUTF8))) == 0;
+			if (forceRelative && stat(strFile.c_str(), &strFile_stat) == 0) {
+			  tempStr = wxString::Format("%s",strFile.wc_str());
+			  line.sprintf("strFile=%s\n", basename((char *)tempStr.char_str(wxConvUTF8)));
+			} else if(strFile.GetChar(0) == '/' && stat(strFile.c_str(), &strFile_stat) == 0){
 				//this is an absolute path so we should use this
 				line.sprintf("strFile=%s\n", strFile.c_str());
 			} else if(stat(tempFileName.c_str(), &strFile_stat) == 0){

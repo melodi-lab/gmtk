@@ -17,8 +17,13 @@
  */
 
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#include "hgstamp.h"
 #include "general.h"
-VCID("$Header$")
+VCID(HGID)
 
 #ifdef MAIN
 #define COLLECT_COLLISION_STATISTICS

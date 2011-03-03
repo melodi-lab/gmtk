@@ -23,7 +23,14 @@
 #include "tieSupport.h"
 #include <limits>
 #include <algorithm>
-VCID("$Header$")
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
+VCID(HGID)
+
 
 
 

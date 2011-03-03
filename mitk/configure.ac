@@ -11,6 +11,19 @@ AC_CONFIG_HEADERS([config.h])
 
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 
+AC_ARG_ENABLE([assertions],
+              [AS_HELP_STRING([--disable-assertions],
+                              [disable assertion checking @<:@default: no@:>@])],
+              [assertions=${enableval}], [assertions=yes])
+
+AC_ARG_ENABLE([model-checks],
+              [AS_HELP_STRING([--disable-model-checks],
+                              [disable run-time checks for models @<:@default: no@:>@])],
+              [model_checks=${enableval}], [model_checks=yes])
+
+AM_CONDITIONAL([NO_ASSERTIONS],[test x$assertions != xyes])
+AM_CONDITIONAL([NO_MODEL_CHECKS],[test x$model_checks != xyes])
+
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC

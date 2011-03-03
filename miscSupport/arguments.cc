@@ -53,7 +53,7 @@
 
  I also changed the names of the C style include files to get rid of
  warnings.  There are still a few warnings left though.
-
+ 
  Implementation-wise I replaced the previous MultiArg union mechanism
  by one in which I just use a void pointer and cast appropriately.  I
  needed to do that because the MultiArg union could not handle array
@@ -80,12 +80,12 @@ using namespace std;
 
 // config.h defines PACKAGE_STRING = "GMTK <release #>"
 // either config.h or hgstamp.h will define HGID="<revision id>"
-#ifdef HAVE_CONFIG_H
+#if HAVE_CONFIG_H
 #include <config.h>
-
-#ifdef HAVE_HG_H
-#include "hgstamp.h"
 #endif
+
+#if HAVE_HG_H
+#include "hgstamp.h"
 #endif
 
 #include "error.h"

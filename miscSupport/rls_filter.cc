@@ -18,6 +18,9 @@
  */
 
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -26,12 +29,13 @@
 #include <float.h>
 #include <assert.h>
 
+#include "hgstamp.h"
 #include "general.h"
 #include "error.h"
 #include "rand.h"
 #include "rls_filter.h"
 
-VCID("$Header$")
+VCID(HGID)
 
 RLSFilter::RLSFilter(unsigned _order, double _forgetting_coef)
 : AdaptiveFilter(_order), forgetting_coef(_forgetting_coef)
