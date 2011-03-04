@@ -769,6 +769,7 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 
   unsigned primeIndex = 0;
   unsigned unprimeIndex = 0;
+  unsigned Ccount = 1;
   int previous_C = -1;
 
   while (!partRange_it->at_end()) {
@@ -790,7 +791,7 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 #if 0
 	fprintf(f,"P'[%3d]   P     : ",part);
 #else	
-	fprintf(f,"P     : ");
+	fprintf(f,"Ptn-0 P: ");
 #endif
 	ps.packer.unpack(P_partition_values.ptr,PprimeValuePtrs.ptr);
 	if (printObserved) 
@@ -807,8 +808,9 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 	  shiftUnprimeVarstoPosition(C_rvs[unprimeIndex], targetFrame, Cpos[unprimeIndex]);
 #if 0
 	  fprintf(f,"E'[%3d] %1d C[%3d]:",part,primeIndex,(targetFrame - fp.numFramesInP()) / fp.numFramesInC());
-#else
 	  fprintf(f,"C[%3d]: ",(targetFrame - fp.numFramesInP()) / fp.numFramesInC());
+#else
+	  fprintf(f,"Ptn-%u C: ", Ccount++);
 #endif
 	  if (printObserved)
 	    printRVSetAndValues(f,C_rvs[unprimeIndex],true,preg);
@@ -822,7 +824,7 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 #if 0
 	fprintf(f,"E'[%3d] %1d E     : ",part, primeIndex);
 #else
-	fprintf(f,"E     : ");
+	fprintf(f,"Ptn-%u E: ", Ccount);
 #endif
 	if (printObserved) 
 	  printRVSetAndValues(f,E_rvs,true,preg);
@@ -841,8 +843,9 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 	      shiftUnprimeVarstoPosition(C_rvs[unprimeIndex], targetFrame, Cpos[unprimeIndex]);
 #if 0
 	      fprintf(f,"C'[%3d] %1d C[%3d]: ",part,primeIndex, (targetFrame - fp.numFramesInP()) / fp.numFramesInC());
-#else
 	      fprintf(f,"C[%3d]: ",(targetFrame - fp.numFramesInP()) / fp.numFramesInC());
+#else
+	      fprintf(f,"Ptn-%u C: ", Ccount++);
 #endif
 	      if (printObserved) 
 		printRVSetAndValues(f,C_rvs[unprimeIndex],true,preg);
