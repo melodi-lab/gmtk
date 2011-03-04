@@ -46,7 +46,7 @@ If you wish to create static binaries (i.e., ones that are not dependent
 on shared libraries), then assuming you've got the static libraries 
 installed, do
 
-    make EXLDFLAGS=-static
+    ./configure --disable-gmtkViz && make EXLDFLAGS=-static
 
 Note, many of the above options can be combined.
 
