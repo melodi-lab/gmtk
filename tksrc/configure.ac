@@ -37,7 +37,8 @@ AC_CHECK_FILE([../.hg/dirstate],[
   AC_CHECK_PROG([HAVE_HG],[hg],[yes])
   if test x$HAVE_HG = xyes; then
     HGREVID=`hg id ..`  
-    printf "#ifndef HGID\n#define HGID \"$HGREVID\"\n#endif\n" > hgstamp.h
+    HGDATE=`hg parents --template '{date|date}'`
+    printf "#ifndef HGID\n#define HGID \"$HGREVID\"\n#define HGDATE \"$HGDATE\"\n#endif\n" > hgstamp.h
     AC_DEFINE([HAVE_HG_H],[1],[Live Mercurial revision id header available?])
   fi
 ],[
@@ -45,6 +46,7 @@ AC_CHECK_FILE([../.hg/dirstate],[
     AC_DEFINE([HAVE_HG_H],[1],[Distributed Mercurial revision id header available?])
   ],[
     AC_DEFINE([HGID],"UNKNOWN",[Unknown Mercurial revision id - broken distribution?])
+    AC_DEFINE([HGDATE],"UNKOWN",[Unkown Mercurial checkin date - broken distribution?])
   ])
 ])
 AM_CONDITIONAL([HAVE_HG],[test  x$HAVE_HG = xyes])
