@@ -13,6 +13,7 @@
 
 unsigned IM::globalMessageLevel = IM::Nano;
 bool IM::globalFlush = true;
+unsigned IM::globalModuleLevel[(unsigned)ModuleCount];
 
 #ifdef MAIN
 
