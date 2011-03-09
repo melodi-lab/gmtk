@@ -493,11 +493,16 @@ protected:
 
     unsigned char _buffer[MAX_OF_5(sizeof(NonLeafNodeArrayStruct),sizeof(NonLeafNodeHashStruct),sizeof(NonLeafNodeRngsStruct),sizeof(LeafNodeValStruct),sizeof(LeafNodeEquationStruct))];
 
-    inline NonLeafNodeArrayStruct& nln_a()  { return (*((NonLeafNodeArrayStruct*)&_buffer)); }
-    inline NonLeafNodeHashStruct&  nln_h()  { return (*((NonLeafNodeHashStruct*)&_buffer)); }
-    inline NonLeafNodeRngsStruct&  nln_r()  { return (*((NonLeafNodeRngsStruct*)&_buffer)); }
-    inline LeafNodeValStruct&      ln_v()   { return (*((LeafNodeValStruct*)&_buffer)); }
-    inline LeafNodeEquationStruct& ln_e()   { return (*((LeafNodeEquationStruct*)&_buffer)); }
+
+    // note that these cast through void * to avoid a type
+    // punning warning. this is potentially unsafe, but we
+    // believe it works OK on our target platforms
+
+    inline NonLeafNodeArrayStruct& nln_a()  { return (*((NonLeafNodeArrayStruct*)(void*)&_buffer)); }
+    inline NonLeafNodeHashStruct&  nln_h()  { return (*((NonLeafNodeHashStruct*)(void*)&_buffer)); }
+    inline NonLeafNodeRngsStruct&  nln_r()  { return (*((NonLeafNodeRngsStruct*)(void*)&_buffer)); }
+    inline LeafNodeValStruct&      ln_v()   { return (*((LeafNodeValStruct*)(void*)&_buffer)); }
+    inline LeafNodeEquationStruct& ln_e()   { return (*((LeafNodeEquationStruct*)(void*)&_buffer)); }
 
 
 #if 0

@@ -976,7 +976,7 @@ int Range::iterator::read_next (int *result, FILE *file_handle, const char* file
 	    delete [] buf;
 	    buf = newbuf;
 	    buflen = newbuflen;
-	    fgets(buf+got, buflen, file_handle);
+	    ok = fgets(buf+got, buflen, file_handle);
 	    got = strlen(buf);
 	}
 	++bufline;

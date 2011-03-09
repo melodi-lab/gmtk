@@ -41,7 +41,7 @@ void MixNormalCollection::computeMI(FILE *out_fp, unsigned nSamples,
     }
     // remove comment lines
     do {
-      fgets(line,MAX_LINE_LEN,rangeFileFP); 
+      char * __attribute__ ((unused)) ok = fgets(line,MAX_LINE_LEN,rangeFileFP); 
       if( ( pos = strchr(line,'#') ) != NULL ) *pos = '\0';  //remove comments
       else pos = line;
       while(isspace(*pos)) ++pos;  //eat spaces

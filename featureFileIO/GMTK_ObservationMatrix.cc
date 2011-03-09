@@ -1982,7 +1982,7 @@ size_t ObservationMatrix::openAsciiFile(StreamInfo *f,size_t sentno) {
 }
 
 void ObservationMatrix::parseSentenceSpec(const string& sentLoc, int* startFrame, int* endFrame, string& fnameStr) const{
-  unsigned int fNameLen;
+  size_t fNameLen;
   *startFrame=0, *endFrame=-1; //these are the right values if the frame range is not specified
   if(sentLoc[sentLoc.length()-1]==']'){
 	  //have a subrange spec

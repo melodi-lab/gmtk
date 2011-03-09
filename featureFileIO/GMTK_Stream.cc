@@ -260,7 +260,7 @@ size_t StreamInfo::calcNumFileNames(FILE* &f) {
   if(cppIfAscii) {
     while (fgets(line,sizeof(line),f) != NULL) {
       int l = strlen(line);
-      if(l==0 || l==1 && line[0]=='\n') continue;
+      if(l==0 || (l==1 && line[0]=='\n')) continue;
       if(line[0]==CPP_DIRECTIVE_CHAR) continue;  // lines that start with # are CPP directives 
       numFileNames++;
     }
@@ -309,7 +309,7 @@ size_t StreamInfo::readFof(FILE *f) {
   n_lines = 0;
   while (fgets(line,sizeof(line),f) != NULL) {
     int l = strlen(line);
-    if(l==0|| l==1 && line[0]=='\n') continue;
+    if(l==0|| (l==1 && line[0]=='\n')) continue;
     if(line[0]==CPP_DIRECTIVE_CHAR) continue;
     if (line[l-1] != '\n') {
       if (n_lines < numFileNames-1) 

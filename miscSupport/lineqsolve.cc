@@ -178,56 +178,56 @@ void ludcmp(double *a, // nXn matrix
 	    int *indx, // row permutation by partial piviting.
 	    double *d)
 {
-  int i,imax=0,j,k;
+  unsigned int i,imax=0,j,k, nn = (unsigned) n;
   double big,dum,sum,temp;
   double *vv;
 
   vv= (double*) malloc((size_t) (n*sizeof(double)));
   *d=1.0;
-  for (i=0;i<n;i++) {
+  for (i=0;i<nn;i++) {
     big=0.0;
-    for (j=0;j<n;j++)
-      if ((temp=fabs(a[i*n+j])) > big) 
+    for (j=0;j<nn;j++)
+      if ((temp=fabs(a[i*nn+j])) > big) 
 	big=temp;
     if (big == 0.0) {
       error("ERROR: LU Decomposition routine given a singular matrix");
     }
     vv[i]=1.0/big;
   }
-  for (j=0;j<n;j++) {
+  for (j=0;j<nn;j++) {
     for (i=0;i<j;i++) {
-      sum=a[i*n+j];
+      sum=a[i*nn+j];
       for (k=0;k<i;k++)
-	sum -= a[i*n+k]*a[k*n+j];
-      a[i*n+j]=sum;
+	sum -= a[i*nn+k]*a[k*nn+j];
+      a[i*nn+j]=sum;
     }
     big=0.0;
-    for (i=j;i<n;i++) {
-      sum=a[i*n+j];
+    for (i=j;i<nn;i++) {
+      sum=a[i*nn+j];
       for (k=0;k<j;k++)
-	sum -= a[i*n+k]*a[k*n+j];
-      a[i*n+j]=sum;
+	sum -= a[i*nn+k]*a[k*nn+j];
+      a[i*nn+j]=sum;
       if ( (dum=vv[i]*fabs(sum)) >= big) {
 	big=dum;
 	imax=i;
       }
     }
     if (j != imax) {
-      for (k=0;k<n;k++) {
-	dum=a[imax*n+k];
-	a[imax*n+k]=a[j*n+k];
-	a[j*n+k]=dum;
+      for (k=0;k<nn;k++) {
+	dum=a[imax*nn+k];
+	a[imax*nn+k]=a[j*nn+k];
+	a[j*nn+k]=dum;
       }
       *d = -(*d);
       vv[imax]=vv[j];
     }
     indx[j]=imax;
-    if (a[j*n+j] == 0.0) 
-      a[j*n+j]=DOUBLE_TINY;
-    if (j != n) {
-      dum=1.0/(a[j*n+j]);
-      for (i=j+1;i<n;i++) 
-	a[i*n+j] *= dum;
+    if (a[j*nn+j] == 0.0) 
+      a[j*nn+j]=DOUBLE_TINY;
+    if (j != nn) {
+      dum=1.0/(a[j*nn+j]);
+      for (i=j+1;i<nn;i++) 
+	a[i*nn+j] *= dum;
     }
   }
   free((void*)vv);
