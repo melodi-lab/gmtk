@@ -1309,6 +1309,10 @@ class ConditionalSeparatorTable : public IM
 
     // probability for distribute evidence pass
     // easy access to different fields
+
+    // note that this casts through void * to avoid a type
+    // punning warning. this is potentially unsafe, but we
+    // believe it works OK on our target platforms
     inline logpr& bp() { return (*((logpr*)(void*)(&_bpo[0]))); }
 
     RemainderValue() { 
@@ -1496,7 +1500,6 @@ class MaxCliqueTable  : public IM
     SharedLocalStructure() : origin(NULL) {}
 
     set <RV*> returnRVsAsSet();
-    vector<RV*> returnRVsAsVector();
 
     // return as as set the random variables and any of their observed
     // parents as a set. The main use of this routine is to return the
