@@ -40,7 +40,7 @@ ANSI =
 PEDANTIC =
 else
 ANSI = -ansi
-PEDANTIC = -pedantic -Wno-long-long
+PEDANTIC = -pedantic
 endif
 
 WALL = -Wall

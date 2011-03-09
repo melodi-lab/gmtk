@@ -629,22 +629,25 @@ GraphicalModel::topologicalSortWPriority(const set<RV*>& inputVarList,
 	DiscRV* drv = RV2DRV(rv);
 
 	unsigned useCard;
-	if (drv->deterministic() || drv->observed())
+	if (drv->deterministic() || drv->observed()) {
 	  useCard = 1; // TODO: possibly use rv's useCardinality() routine.
-	else 
+	} else {
 	  useCard = drv->cardinality;
+	}
 	// find number of children of drv within the current set.
 	unsigned numChildrenInSet = 0;
 	for (unsigned c=0;c<rv->allChildren.size();c++) {
-	  if (inputVarList.find(rv->allChildren[c]) != inputVarList.end())
+	  if (inputVarList.find(rv->allChildren[c]) != inputVarList.end()) {
 	    if (curCase == 'M') {
 	      // then we count all children, ignore the deterministic condition of the child.
 	      numChildrenInSet++;
 	    } else {
 	      // then we count only deterministic children.
-	      if (rv->allChildren[c]->discrete() && RV2DRV(rv->allChildren[c])->deterministic())
+	      if (rv->allChildren[c]->discrete() && RV2DRV(rv->allChildren[c])->deterministic()) {
 		numChildrenInSet++;
+	      }
 	    }
+	  }
 	}
 	pair< pair<unsigned,int> , RV*> pr ( pair<unsigned,int>(useCard,-(int)numChildrenInSet), rv );
 	cardSortedNodes.insert(pr);    

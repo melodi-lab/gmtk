@@ -501,7 +501,7 @@ GMTK_Tie::read_feature_definition_set(iDataStreamFile& is)
 
     // now parse feature values - would be nicer to use regex groups,
     // but posix sucks, so we can't do that easily
-    unsigned ws_index;
+    size_t ws_index;
     unsigned j=0;
     while ( (ws_index=s.find_first_of(" ")) != std::string::npos){
       val = s.substr(0,ws_index);

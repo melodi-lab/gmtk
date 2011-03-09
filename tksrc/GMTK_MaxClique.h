@@ -1309,7 +1309,7 @@ class ConditionalSeparatorTable : public IM
 
     // probability for distribute evidence pass
     // easy access to different fields
-    inline logpr& bp() { return (*((logpr*)(&_bpo[0]))); }
+    inline logpr& bp() { return (*((logpr*)(void*)(&_bpo[0]))); }
 
     RemainderValue() { 
       bp().set_to_zero(); 

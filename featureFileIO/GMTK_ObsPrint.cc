@@ -206,6 +206,7 @@ void printSegment(unsigned sent_no, FILE* out_fp, float* cont_buf, unsigned num_
 
     float* cont_buf_p = cont_buf;
     UInt32* disc_buf_p = disc_buf;
+    size_t fwrite_result;
     //////////  Print the frames ////////////////////////////////////
     for (unsigned frame_no=0; frame_no < num_frames ; ++frame_no) {
       bool ns = false;
@@ -213,8 +214,8 @@ void printSegment(unsigned sent_no, FILE* out_fp, float* cont_buf, unsigned num_
 	if (ofmt==FLATBIN || ofmt==RAWBIN) {
 	  copy_swap_func_ptr(1,(int*)&sent_no,(int*)&sent_no);
 	  copy_swap_func_ptr(1,(int*)&frame_no,(int*)&frame_no);
-	  fwrite(&sent_no,sizeof(sent_no),1,out_fp);
-	  fwrite(&frame_no,sizeof(frame_no),1,out_fp);
+	  fwrite_result = fwrite(&sent_no,sizeof(sent_no),1,out_fp);
+	  fwrite_result = fwrite(&frame_no,sizeof(frame_no),1,out_fp);
 	} else if(ofmt==FLATASC || ofmt==RAWASC ){
 	  fprintf(out_fp,"%d %u",sent_no,frame_no);
 	  ns = true;
@@ -226,7 +227,7 @@ void printSegment(unsigned sent_no, FILE* out_fp, float* cont_buf, unsigned num_
 	if (ofmt==FLATBIN || ofmt==RAWBIN || ofmt==HTK) {
 	  DBGFPRINTF((stderr,"obsPrint: Printing HTK float %f.\n",cont_buf_p[frit]));
 	  copy_swap_func_ptr(1,(int*)&cont_buf_p[frit],(int*)&cont_buf_p[frit]);
-	  fwrite(&cont_buf_p[frit], sizeof(cont_buf_p[frit]),  1,out_fp);
+	  fwrite_result = fwrite(&cont_buf_p[frit], sizeof(cont_buf_p[frit]),  1,out_fp);
 	} 
 	else if(ofmt==FLATASC || ofmt==RAWASC){
 	  if (ns) fprintf(out_fp," ");
@@ -240,7 +241,7 @@ void printSegment(unsigned sent_no, FILE* out_fp, float* cont_buf, unsigned num_
       for (unsigned lrit=0;lrit<num_discrete; ++lrit) {
 	if (ofmt==FLATBIN || ofmt==RAWBIN || (ofmt==HTK && num_continuous>0) ) {
 	  copy_swap_func_ptr(1,(int*)&disc_buf_p[lrit],(int*)&disc_buf_p[lrit]);
-	  fwrite(&disc_buf_p[lrit],  sizeof(disc_buf_p[lrit]), 1,out_fp);
+	  fwrite_result = fwrite(&disc_buf_p[lrit],  sizeof(disc_buf_p[lrit]), 1,out_fp);
 	} 
 	else if(ofmt==HTK && num_continuous==0) { // in the HTK format we
   // cannot mix floats with discrete data; that's why if there is at
@@ -250,7 +251,7 @@ void printSegment(unsigned sent_no, FILE* out_fp, float* cont_buf, unsigned num_
 	   if (oswap) {
 	     short_lab_buf_p = swapb_short_short(short_lab_buf_p);
 	   }
-	  fwrite(&short_lab_buf_p,  sizeof(short_lab_buf_p), 1,out_fp);
+	  fwrite_result = fwrite(&short_lab_buf_p,  sizeof(short_lab_buf_p), 1,out_fp);
 	}
 	else if(ofmt==FLATASC || ofmt==RAWASC) {
 	  if (ns) fprintf(out_fp," ");	    
@@ -347,6 +348,7 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
       printHTKHeader(out_fp,oswap,n_labs,n_ftrs,prrng.length(),(short)HTK_Param_Kind, HTK_Sample_Period);
     }
 
+    size_t fwrite_result;
     for (Range::iterator prit=prrng.begin(); !prit.at_end() ; ++prit) {
       bool ns = false;
       ftr_buf_p = globalObservationMatrix.floatVecAtFrame((*prit));
@@ -360,8 +362,8 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
 	  copy_swap_func_ptr(1,(int*)&sent_no,(int*)&sent_no);
 	  copy_swap_func_ptr(1,(int*)&frame_no,(int*)&frame_no);
 
-	  fwrite(&sent_no,sizeof(sent_no),1,out_fp);
-	  fwrite(&frame_no,sizeof(frame_no),1,out_fp);
+	  fwrite_result = fwrite(&sent_no,sizeof(sent_no),1,out_fp);
+	  fwrite_result = fwrite(&frame_no,sizeof(frame_no),1,out_fp);
 	} else if(ofmt==FLATASC || ofmt==RAWASC ){
 	  fprintf(out_fp,"%d %u",*srit,*prit);
 	  ns = true;
@@ -372,7 +374,7 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
 	if (ofmt==FLATBIN || ofmt==RAWBIN || ofmt==HTK) {
 	  DBGFPRINTF((stderr,"obsPrint: Printing HTK float %f.\n",ftr_buf_p[frit]));
 	  copy_swap_func_ptr(1,(int*)&ftr_buf_p[frit],(int*)&ftr_buf_p[frit]);
-	  fwrite(&ftr_buf_p[frit], sizeof(ftr_buf_p[frit]),  1,out_fp);
+	  fwrite_result = fwrite(&ftr_buf_p[frit], sizeof(ftr_buf_p[frit]),  1,out_fp);
 	} 
 	else if(ofmt==PFILE) {
 	  *oftr_buf_p++ = ftr_buf_p[frit];
@@ -386,7 +388,7 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
       for (unsigned lrit=0;lrit<globalObservationMatrix.numDiscrete(); ++lrit) {
 	if (ofmt==FLATBIN || ofmt==RAWBIN || (ofmt==HTK && n_ftrs>0) ) {
 	  copy_swap_func_ptr(1,(int*)&lab_buf_p[lrit],(int*)&lab_buf_p[lrit]);
-	  fwrite(&lab_buf_p[lrit],  sizeof(lab_buf_p[lrit]), 1,out_fp);
+	  fwrite_result = fwrite(&lab_buf_p[lrit],  sizeof(lab_buf_p[lrit]), 1,out_fp);
 	} 
 	else if(ofmt==HTK && n_ftrs==0) { // in the HTK format we
   // cannot mix floats with discrete data; that's why if there is at
@@ -396,7 +398,7 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
 	   if (oswap) {
 	     short_lab_buf = swapb_short_short(short_lab_buf);
 	   }
-	  fwrite(&short_lab_buf,  sizeof(short_lab_buf), 1,out_fp);
+	  fwrite_result = fwrite(&short_lab_buf,  sizeof(short_lab_buf), 1,out_fp);
 	}
 	else if(ofmt==PFILE) {
 	  *olab_buf_p++ = lab_buf_p[lrit];
