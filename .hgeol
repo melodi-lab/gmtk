@@ -1,4 +1,4 @@
-[parrterns]
+[patterns]
 **.cc = native
 **.c = native
 **.h = native
