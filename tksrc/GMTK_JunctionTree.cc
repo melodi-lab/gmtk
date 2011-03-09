@@ -3,7 +3,7 @@
  *     Junction Tree
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
- * 
+ *
  * Copyright (c) 2003, < fill in later >
  *
  * Permission to use, copy, modify, and distribute this
