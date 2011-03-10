@@ -25,6 +25,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
+#include <errno.h>
+
+#include "error.h"
 
 // set this to zero to make all the routines nop stubs.
 #define INFO_MESSAGES_ON 1
@@ -55,6 +59,7 @@ public:
 protected:
   static unsigned globalModuleLevel[(unsigned)ModuleCount];
   unsigned moduleLevel[(unsigned)ModuleCount];
+  static const char*moduleString[(unsigned)ModuleCount];
 
 public:
 
@@ -237,6 +242,48 @@ public:
   static unsigned setGlbMsgLevel(ModuleName module, const unsigned ml) { 
     globalModuleLevel[module] = ml; 
     return ml; 
+  }
+
+  static unsigned setGlbMsgLevel(const char*name, const unsigned ml) {
+    if (strcmp(name,"all") == 0) {
+      for (unsigned m=DefaultModule; m < ModuleCount; m+=1) {
+	setGlbMsgLevel((ModuleName)m, ml);
+      }
+      return ml;
+    } 
+    for (unsigned m=DefaultModule; m < ModuleCount; m=m+1) {
+      if (strcmp(name, moduleString[m]) == 0) {
+	setGlbMsgLevel((ModuleName)m, ml);
+	return ml;
+      }
+    }
+    error("ERROR: unknown module name '%s'", name);
+    return 0; // to shutup the warning about reaching end of non-void function
+  }
+
+  // handle either moduleName=level or level
+  static unsigned setGlbMsgLevel(const char*levelAssignment) {
+    char *s = strdup(levelAssignment);
+    char *endp;
+    char *equals = strchr(s, '=');
+    unsigned ml;
+    errno = 0;
+    if (!equals) {
+      ml = strtoul(s, &endp, 0);
+      if (errno || (*endp != 0) || (endp == s)) {
+	error("ERROR: invalid module error level specifier '%s'", levelAssignment);
+      }
+      setGlbMsgLevel(ml);
+    } else {
+      *equals = 0;
+      ml = strtoul(equals+1, &endp, 0);
+      if (errno || (*endp != 0) || (endp == equals+1)) {
+	error("ERROR: invalid module error level specifier '%s'", levelAssignment);
+      }
+      setGlbMsgLevel((const char *)s, ml);
+    }
+    free(s);
+    return ml;
   }
 
 };
