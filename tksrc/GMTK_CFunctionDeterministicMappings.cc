@@ -223,7 +223,9 @@ DEFINE_DETERMINISTIC_MAPPER_C_CODE(ajitMapping,AJIT_MAPPING_NUM_FEATURES)
 //
 // add more deterministic mapping functions here as desired ...
 // 
-
+#ifdef USER_INTERNAL_CFUNC_DTS
+#include "user_internal_cfunc_dts.cc"
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
@@ -297,7 +299,12 @@ registerAllCFunctionDeterministicMappings(GMParms& gmp)
 				   DETERMINISTIC_MAPPER_C_CODE_NAME(ajitMapping));
   */
 
-  // Uncomment to register user defined DTs.
+  // Uncomment to register user defined DTs. You can defiine them in the below file if you like.
   // 
+
+#ifdef USER_INTERNAL_CFUNC_DTS
+#include "register_user_internal_cfunc_dts.cc"
+#endif
+
 
 }
