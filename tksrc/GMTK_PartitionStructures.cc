@@ -52,7 +52,14 @@
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 
-VCID("$Header$")
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
+VCID(HGID)
+
 
 
 ////////////////////////////////////////////////////////////////////
@@ -128,10 +135,32 @@ PartitionStructures::PartitionStructures(JT_Partition& from_part,
     // each clique.
     // 
   
+    // Also, to support the new Viterbi printing (ticket #85), we
+    // need to ensure that the order doesn't change from segment
+    // to segment. Thus I changed this to force a consistant
+    // ordering - Richard
+
+    set<RV*> lirvs;
+    if (has_li_separator)
+      lirvs = separatorCliquesSharedStructure[separatorCliquesSharedStructure.size()-1].returnRVsAsSet();
+
+    vector<RV*> allrvs_vec;
+    for (unsigned i=0;i<maxCliquesSharedStructure.size();i++) {
+      vector<RV*> cur_vec = maxCliquesSharedStructure[i].returnRVsAsVector();
+      for (vector<RV*>::iterator it = cur_vec.begin();
+	   it != cur_vec.end();
+	   ++it)
+      {
+	if ( (!has_li_separator) || (lirvs.find(*it) == lirvs.end()) ) 
+	  allrvs_vec.push_back(*it);
+      }
+    }
+    assert(allrvs_vec.size() == allrvs.size());
+
     // now need to create the packer for the hidden variables.
     hidRVVector.clear();
-    for (set <RV*>::iterator it = allrvs.begin();
-	 it != allrvs.end(); it++) {
+    for (vector<RV*>::iterator it = allrvs_vec.begin();
+	 it != allrvs_vec.end(); it++) {
       RV* rv = (*it);
       // TODO: could save even more space by storing only the values
       // that can't be derived from the other values!!

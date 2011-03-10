@@ -581,10 +581,10 @@ class JunctionTree {
   void shiftCCtoPosition(int);
   void shiftCCrelative(int delta) { shiftCCtoPosition(cur_cc_shift+delta); }
   void shiftCEtoPosition(int);
+  void shiftUnprimeVarstoPosition(vector<RV*> rvs, int pos, int &prevPos);
   void shiftCErelative(int delta) { shiftCEtoPosition(cur_cc_shift+delta); }
   void init_CC_CE_rvs(ptps_iterator& ptps_it);
   void setCurrentInferenceShiftTo(int pos);
-
 
 
   ////////////////////////////////////////////////////////////////////////
@@ -1140,6 +1140,22 @@ public:
 
 
 
+  void createUnprimingMap(vector<RV*> &unrolled_rvs, 
+			  map<RVInfo::rvParent, unsigned> &unrolled_map,
+			  vector<RV*> &P_rvs, vector<RV*> &hidP_rvs,
+			  vector<RV*> &Pprime_rvs, vector<RV*> &hidPprime_rvs,
+			  vector<vector<RV*> > &C_rvs, vector<vector<RV*> > &hidC_rvs,
+			  vector<vector<RV*> > &Cprime_rvs, vector<vector<RV*> > &hidCprime_rvs,
+			  vector<RV*> &E_rvs,  vector<RV*> &hidE_rvs,
+			  vector<vector<RV*> > &Eprime_rvs, vector<vector<RV*> > &hidEprime_rvs,
+			  sArray<DiscRVType*> &PprimeValuePtrs, 
+			  vector<sArray<DiscRVType *> > &CprimeValuePtrs, 
+			  vector<sArray<DiscRVType *> > &EprimeValuePtrs);
+
+  void printSavedViterbiValues(FILE*,
+			       bool printObserved,
+			       regex_t *preg,
+			       char* partRangeFilter);
 
   // actuall message routines.
   // void collectMessage(MaxClique& from,MaxClique& to);

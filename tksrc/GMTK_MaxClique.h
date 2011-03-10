@@ -1496,6 +1496,7 @@ class MaxCliqueTable  : public IM
     SharedLocalStructure() : origin(NULL) {}
 
     set <RV*> returnRVsAsSet();
+    vector<RV*> returnRVsAsVector();
 
     // return as as set the random variables and any of their observed
     // parents as a set. The main use of this routine is to return the

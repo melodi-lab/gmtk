@@ -7,6 +7,20 @@ AC_INIT([GMTK], m4_esyscmd(printf %s `head -n 1 ../RELEASE`),
         [https://lungs.ee.washington.edu/trac/gmtk/newticket])
 : ${CXXFLAGS=""}
 
+
+AC_ARG_ENABLE([assertions],
+              [AS_HELP_STRING([--disable-assertions],
+                              [disable assertion checking @<:@default: no@:>@])],
+              [assertions=${enableval}], [assertions=yes])
+
+AC_ARG_ENABLE([model-checks],
+              [AS_HELP_STRING([--disable-model-checks],
+                              [disable run-time checks for models @<:@default: no@:>@])],
+              [model_checks=${enableval}], [model_checks=yes])
+
+AM_CONDITIONAL([NO_ASSERTIONS],[test x$assertions != xyes])
+AM_CONDITIONAL([NO_MODEL_CHECKS],[test x$model_checks != xyes])
+
 # This identifies the CPU/OS to select the source files containing
 # the correct platform-specific FPU code for the target. The source files
 # are named ieeeFPsetup_@host_cpu@_@host_os@.{h,cc} in the Makefile.
@@ -18,7 +32,7 @@ AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 
 # Check that we're in the correct directory by verifying the existence 
 # of the file
-AC_CONFIG_SRCDIR([ieeeFPsetup_x86_64_linux-gnu.cc])
+AC_CONFIG_SRCDIR([ieeeFPsetup_ANY_ANY.cc])
 
 # In case we need config.h to let the source code know about the 
 # build environment
@@ -29,6 +43,24 @@ AC_PROG_CXX
 AC_PROG_CC
 AC_PROG_RANLIB
 AC_PROG_LN_S
+
+AC_CHECK_FILE([../.hg/dirstate],[
+  AC_CHECK_PROG([HAVE_HG],[hg],[yes])
+  if test x$HAVE_HG = xyes; then
+    HGREVID=`hg id ..`  
+    HGDATE=`hg parents --template '{date|date}'`
+    printf "#ifndef HGID\n#define HGID \"$HGREVID\"\n#define HGDATE \"$HGDATE\"\n#endif\n" > hgstamp.h
+    AC_DEFINE([HAVE_HG_H],[1],[Live Mercurial revision id available?])
+  fi
+],[
+  AC_CHECK_FILE([hgstamp.h],[
+    AC_DEFINE([HAVE_HG_H],[1],[Distributed Mercurial revision id header available?])
+  ],[
+    AC_DEFINE([HGID],"UNKNOWN",[Unknown Mercurial revision id - broken distribution?])
+    AC_DEFINE([HGDATE],"UNKOWN",[Unkown Mercurial checkin date - broken distribution?])
+  ])
+])
+AM_CONDITIONAL([HAVE_HG],[test  x$HAVE_HG = xyes])
 
 # Checks for libraries.
 
@@ -54,11 +86,13 @@ else
       ieeeFPsetup_${host_cpu}_${host_os}.cc
    AC_WARN([
 ---------------------------------------------------------------
-  No IEEE floating point support for ${host_cpu}-${host_os}
-  GMTK will still build successfully, but with limited support 
-  for debugging floating point exceptions. Edit the files
-  IEEEFloatingpoint/ieeeFPsetup_${host_cpu}_${host_os}.{h,cc}
-  to add reporting for floating point exceptions.
+  Unable to catch internal floating point exceptions for ${host_cpu}-${host_os}
+  GMTK will still build and run successfully, but with limited
+  support for debugging floating point exceptions. Edit the 
+  files IEEEFloatingpoint/ieeeFPsetup_${host_cpu}_${host_os}.{h,cc}
+  to add reporting for floating point exceptions if you want
+  to debug floating point exceptions on ${host_cpu}-${host_os}.
 ---------------------------------------------------------------
 ])
 fi
+AM_CONDITIONAL([UNKNOWN_PLATFORM],[test ! -f "${srcdir}/ieeeFPsetup_${host_cpu}_${host_os}.cc"])

@@ -2,19 +2,37 @@
 if HAVE_HG
 # this will keep the Mercurial revision id current if you're building 
 # in a working directory. If you're not, use the distributed hgstamp.h
-.PHONY: hgstamp.h
-hgstamp.h:
-	test -f $@ || touch $@
-	printf "#define HGID \"%s\"\n" "`hg id ../ | tr -d \\n`" | \
-	  cmp -s $@ - || \
-	  printf "#define HGID \"%s\"\n" "`hg id ../ | tr -d \\n`" > $@
+HGID = $(shell hg id)
+HGDATE = $(shell hg parents --template '{date|date}')
+VERSIONFLAG = -DHGID="\"$(HGID)\"" -DHGDATE="\"$(HGDATE)\""
+else
+VERSIONFLAG = 
 endif
 
 
+
+if MAKE_BUNDLE
+# Must be OSX, diddle the flags
+EXCCFLAGS = -m32
+EXCXXFLAGS = -m32
+EXLDDFLAGS = -m32
+OSXLDFLAGS = -dylib_file /System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib
+distclean-local:
+	-rm -rf gmtkViz.app
+else
+OSXLDFLAGS =
 EXCCFLAGS =
 EXCXXFLAGS =
-EXLDFLAGS =  
+EXLDFLAGS = 
+endif
+ 
 DEBUGFLAGS = -g
+if NO_ASSERTIONS
+DEBUGFLAGS += -DNDEBUG
+endif
+if NO_MODEL_CHECKS
+DEBUGFLAGS += -DNMODELCHECK
+endif
 OPTFLAGS = -O3
 
 if CYGWIN_FLAGS
@@ -27,9 +45,9 @@ endif
 
 WALL = -Wall
 
-AM_CFLAGS = \
+AM_CFLAGS = $(VERSIONFLAG) \
 $(DEBUGFLAGS) $(OPTFLAGS)  $(EXCCFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
-AM_CXXFLAGS = \
+AM_CXXFLAGS = $(VERSIONFLAG) \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 
 # extra optimization options for certain GMTK sources, used below.
@@ -151,7 +169,7 @@ libXOPT_a_SOURCES = \
 GMTK_DiagGaussianOpt.cc \
 GMTK_LinMeanCondDiagGaussianOpt.cc \
 GMTK_PackCliqueValueOpt.cc
-libXOPT_a_CXXFLAGS = $(XOPTFLAGS) \
+libXOPT_a_CXXFLAGS = $(VERSIONFLAG) $(XOPTFLAGS) \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 
 
@@ -180,15 +198,16 @@ gmtkNGramIndex_SOURCES = gmtkNGramIndex.cc
 #	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkUnroll.o $(LIBS)
 
 
-gmtkViz_SOURCES = gmtkViz.cc
-gmtkViz_CXXFLAGS = $(VIZCXXFLAGS) \
-$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC) $(X_CFLAGS)
-gmtkViz_LDFLAGS = $(EXLDFLAGS) $(VIZLDFLAGS) $(X_PRE_LIBS) $(X_LIBS) $(X_EXTRA_LIBS) -lX11
 
+gmtkViz_SOURCES = gmtkViz.cc
+gmtkViz_CXXFLAGS = $(VERSIONFLAG) $(VIZCXXFLAGS) \
+$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(X_CFLAGS)
+gmtkViz_LDFLAGS = $(EXLDFLAGS) $(VIZLDFLAGS) $(X_PRE_LIBS) $(X_LIBS) $(X_EXTRA_LIBS) -lX11 $(OSXLDFLAGS)
 gmtkViz_app_SOURCES = Info.plist.in wxmac.icns
 
 if MAKE_BUNDLE
-CLEANFILES = $(OSXBUNDLE)
+distclean-local:
+	-rm -rf gmtkViz.app
 
 gmtkViz.app: gmtkViz.app/Contents/PkgInfo
 
@@ -207,11 +226,17 @@ gmtkViz.app/Contents/PkgInfo: gmtkViz$(EXEEXT) $(srcdir)/Info.plist.in \
 endif
 
 check_PROGRAMS =  \
-testPackCliqueValue 
+testPackCliqueValue \
+testViterbi
 
 # testMDCPT testMTCPT
 #testRngDecisionTree testGMParms testFileParser lex.yy
 # testHash testHashTree?
+
+
+testViterbi_SOURCES = testViterbi.ll
+
+
 
 #testMDCPT_SOURCES = GMTK_MDCPT.cc GMTK_MDCPT.h
 #testMDCPT_CXXFLAGS = -DMAIN \
@@ -235,7 +260,7 @@ testPackCliqueValue
 #$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 
 testPackCliqueValue_SOURCES = GMTK_PackCliqueValue.cc  GMTK_PackCliqueValue.h
-testPackCliqueValue_CXXFLAGS = -DMAIN \
+testPackCliqueValue_CXXFLAGS = -DMAIN $(VERSIONFLAG) \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 
 #testGMParms_SOURCES = GMTK_GMParms.cc GMTK_GMParms.h

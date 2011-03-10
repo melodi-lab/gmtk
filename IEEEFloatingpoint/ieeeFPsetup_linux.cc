@@ -14,17 +14,21 @@
 */
 
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include<stdio.h>
 #include<fpu_control.h>
 #include <signal.h>
 #include <stdlib.h>
 
+#include "hgstamp.h"
 #include "general.h"
 #include "ieeeFPsetup.h"
 #include "error.h"
 
-VCID("$Header$")
+VCID(HGID)
 
 /*
 ** Gets the i386 status bits
