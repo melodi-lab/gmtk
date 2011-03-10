@@ -49,6 +49,13 @@ get_pfile_ulonglong(const char* hdr, const char* argname, pfile_ulonglong_t* val
     // Go past argument name
     p += strlen(argname);
     // Get value from stfing
+
+    // TODO: on some platforms (OSX), this will generate a warning that
+    // the 'll' modifier is not supported by ISO C++. The printf/scanf
+    // implementations should support them just fine, but I haven't
+    // found a way to handle 64-bit integer types in C++98 without
+    // generating warnings on some target platform. - Richard
+
     sscanf(p, " %" SCNu64 "%n", val, &count);
 
     // We expect to pass one space, so need >1 characters for success.
