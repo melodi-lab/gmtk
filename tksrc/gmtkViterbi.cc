@@ -37,7 +37,7 @@
  * for any purpose. It is provided "as is" without express or implied warranty.
  *
  */
-
+  
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -62,7 +62,14 @@
 
 #include "GMTK_WordOrganization.h"
 
-VCID("$Header$")
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
+VCID(HGID)
+
 
 #include "GMTK_FileParser.h"
 #include "GMTK_RV.h"
@@ -294,6 +301,8 @@ main(int argc,char*argv[])
   else 
     tri_file = string(triFileName);
   GMTemplate gm_template(fp);
+
+
   {
     // do this in scope so that is gets deleted now rather than later.
     iDataStreamFile is(tri_file.c_str());
@@ -352,19 +361,26 @@ main(int argc,char*argv[])
   // writters/debugging which is the reason that we have both of them
   // here.
   FILE* pVitValsFile = NULL;
-  if (strcmp("-",pVitValsFileName) == 0)
-    pVitValsFile = stdout;
-  else {
-    if ((pVitValsFile = fopen(pVitValsFileName, "w")) == NULL)
-      error("Can't open file '%s' for writing\n",pVitValsFileName);
+  if (pVitValsFileName) {
+    if (strcmp("-",pVitValsFileName) == 0)
+      pVitValsFile = stdout;
+    else {
+      if ((pVitValsFile = fopen(pVitValsFileName, "w")) == NULL)
+	error("Can't open file '%s' for writing\n",pVitValsFileName);
+    }
   }
-#if 0
+#if 1
   FILE* vitValsFile = NULL;
-  if (strcmp("-",vitValsFileName) == 0)
-    vitValsFile = stdout;
-  else {
-    if ((vitValsFile = fopen(vitValsFileName, "w")) == NULL)
-      error("Can't open file '%s' for writing\n",vitValsFileName);
+  if (vitValsFileName) {
+    if (vitValsFileName && strcmp("-",vitValsFileName) == 0)
+      vitValsFile = stdout;
+    else {
+      if ((vitValsFile = fopen(vitValsFileName, "w")) == NULL)
+	error("Can't open file '%s' for writing\n",vitValsFileName);
+    }
+  }
+  if (!pVitValsFile && !vitValsFile) {
+    error("Argument Error: Missing REQUIRED argument: -pVitValsFile <str>  OR  -vitValsFile <str>\n");
   }
 #endif
 
@@ -403,9 +419,6 @@ main(int argc,char*argv[])
       error("ERROR: problem with regular expression filter string '%s'\n",vitRegexFilter);
     }
   }
-
-
-
 
   while (!dcdrng_it->at_end()) {
     const unsigned segment = (unsigned)(*(*dcdrng_it));
@@ -464,23 +477,24 @@ main(int argc,char*argv[])
       warning("Segment %d: Not printing Viterbi values since segment has zero probability\n",
 	      segment);
     else {
-      fprintf(pVitValsFile,"========\nSegment %d, number of frames = %d, viteri-score = %f\n",
-	      segment,numFrames,probe.val());
-      if (pVitValsFile)
+      if (pVitValsFile) {
+	fprintf(pVitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
+		segment,numFrames,probe.val());
 	myjt.printSavedPartitionViterbiValues(pVitValsFile,
 					      pVitAlsoPrintObservedVariables,
 					      pVitPreg,
 					      pVitPartRangeFilter);
+      }
 
-#if 0      
-      if (vitValsFile)
+#if 1      
+      if (vitValsFile) {
+	fprintf(vitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
+		segment,numFrames,probe.val());
 	myjt.printSavedViterbiValues(vitValsFile,
 				     vitAlsoPrintObservedVariables,
 				     vitPreg,
-				     vitReverseOrder,
-				     MAX_VITERBI_TRIGGERS,
-				     vitTriggerVariables,
-				     vitTriggerSets);
+				     pVitPartRangeFilter);
+      }
 #endif
 
     }
@@ -503,10 +517,10 @@ main(int argc,char*argv[])
     reportTiming(rus,rue,userTime,sysTime,stdout);
   }
 
-  if (pVitValsFile != stdout)
+  if (pVitValsFile && pVitValsFile != stdout)
     fclose(pVitValsFile);
-#if 0
-  if (vitValsFile != stdout)
+#if 1
+  if (vitValsFile && vitValsFile != stdout)
     fclose(vitValsFile);
 #endif
 

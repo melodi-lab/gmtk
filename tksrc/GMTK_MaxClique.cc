@@ -78,7 +78,14 @@
 #include "GMTK_ObservationMatrix.h"
 #include "GMTK_JunctionTree.h"
 
-VCID("$Header$")
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
+VCID(HGID)
+
 
 
 ////////////////////////////////////////////////////////////////////
@@ -2279,6 +2286,18 @@ MaxCliqueTable::SharedLocalStructure::returnRVsAsSet()
   for (unsigned i=0;i<fNodes.size();i++) {
     rc.insert(fNodes[i]);
   }
+  return rc;
+}
+
+
+vector <RV*> 
+MaxCliqueTable::SharedLocalStructure::returnRVsAsVector()
+{
+  vector<RV*> rc;
+  for (unsigned i=0;i<fNodes.size();i++) {
+    rc.push_back(fNodes[i]);
+  }
+  assert(rc.size() == fNodes.size());
   return rc;
 }
 

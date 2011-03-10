@@ -17,6 +17,7 @@
  *
  */
 
+%option nounput
 %{
 /* need this for the call to atof() below */
 #include <math.h>

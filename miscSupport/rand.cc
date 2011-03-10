@@ -6,6 +6,9 @@
 //             bilmes@icsi.berkeley.edu
 
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
@@ -16,8 +19,9 @@
 #include <limits.h>
 #include <assert.h>
 
+#include "hgstamp.h"
 #include "general.h"
-VCID("$Header$")
+VCID(HGID)
 #include "error.h"
 
 #include "rand.h"

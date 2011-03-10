@@ -36,7 +36,14 @@
 #include "GMTK_ContRV.h"
 #include "GMTK_GraphicalModel.h"
 
-VCID("$Header$")
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
+VCID(HGID)
+
 
 ////////////////////////////////////////////////////////////////////
 //        General create, read, destroy routines 
