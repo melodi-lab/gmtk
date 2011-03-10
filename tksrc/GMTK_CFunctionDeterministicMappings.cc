@@ -146,8 +146,10 @@ DEFINE_DETERMINISTIC_MAPPER_C_CODE(conditionalLimitedDecrement,CONDITIONAL_LIMIT
 }
 
 
-// TODO: get the below working, need to change DT code to allow variable num features.
-// Routines with a variable number of parents.
+//
+// The below includes routines with a variable number of parents.
+// TODO: get the below working, with variable numbers of parents, we
+// need to change DT code to allow variable num features.
 //
 DEFINE_DETERMINISTIC_MAPPER_C_CODE(allParentsEqual,CDT_VARIABLE_NUMBER_FEATURES)
 {
@@ -181,11 +183,7 @@ DEFINE_DETERMINISTIC_MAPPER_C_CODE(allParentsUnEqual,CDT_VARIABLE_NUMBER_FEATURE
   }
   return (DiscRVType) 1;
 }
-
-
-
-
-// DO NOT MODIFY ANYTHING IN THE NEXT BIT OF CODE ENDING HERE.
+// DO NOT MODIFY ANYTHING IN THE ABOVE BIT OF CODE ENDING HERE.
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
@@ -273,6 +271,8 @@ registerAllCFunctionDeterministicMappings(GMParms& gmp)
   gmp.registerDeterministicCMapper("internal:conditionalLimitedDecrement",
 				   CONDITIONAL_LIMITED_DECREMENT_NUM_FEATURES,
 				   DETERMINISTIC_MAPPER_C_CODE_NAME(conditionalLimitedDecrement));
+  // TODO: add the variable parent deterministic mappers once the DT code can accept variable numbers of parens.
+  // ...
   // DO NOT CHANGE ANYTHING IN THE ABOVE FEW LINES ENDING HERE.
   ///////////////////////////////////////////////////////////////////////
 
