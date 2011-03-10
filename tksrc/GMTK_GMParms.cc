@@ -68,6 +68,7 @@
 #include "GMTK_UnityScoreMixture.h"
 
 #include "GMTK_ObservationMatrix.h"
+#include "GMTK_CFunctionDeterministicMappings.h"
 
 #if HAVE_CONFIG_H
 #include <config.h>
@@ -111,6 +112,8 @@ Mixture* find_Mixture(std::string &name);
 
 GMParms::GMParms()
 {
+  // Read in all interal C-function deterministic mappers.
+  registerAllCFunctionDeterministicMappings(*this);
 }
 
 
@@ -869,6 +872,9 @@ GMParms::readDTs(
   if (num > GMPARMS_MAX_NUM) error("ERROR: number of DTs (%d) in file '%s' line %d exceeds maximum",
 				   num,is.fileName(),is.lineNo());
   if (reset) {
+    // TODO: this is dangerous to do, as this also removes all
+    // the internal C function mapping functions. Think carefully
+    // if you ever call this function with 'reset = true'.
     start = 0;
     dts.resize(num);
   } else {
@@ -1451,6 +1457,49 @@ writeDecisionTreeIndexFiles()
     (*crrnt_tree)->writeIndexFile();
   } 
 }
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * GMParms::registerDeterministicCMapper()
+ *
+ * Preconditions:
+ *    none
+ *
+ * Postconditions:
+ *    C function "decision trees" are registered and usable.
+ *
+ * Side Effects:
+ *    modifies the DT data strucures.
+ *
+ * Results:
+ *    none
+ *-----------------------------------------------------------------------
+ */
+void 
+GMParms::
+registerDeterministicCMapper(const char *name,
+			     unsigned num_features,
+			     CFunctionMapperType func)
+{
+  unsigned start = dts.size();
+  dts.resize(start+1);
+  RngDecisionTree* ob = new RngDecisionTree(name,func,num_features);
+  // make sure that the name is not alread used. If this is the case,
+  // the user who added decision trees has made an error in the function
+  // GMTK_CFunctionDeterministicMappings.cc. Names *must* be unique.
+  if (dtsMap.find(ob->name()) != dtsMap.end())
+    error("ERROR: C function deterministic mapper named '%s' already defined but is specified for a second time. Need o check .cc file",ob->name().c_str());
+  // everything looks ok, so continue.
+  dts[start] = ob;
+  dtsMap[ob->name()] = start;
+  // printf("regsitered internal DT %s\n",ob->name().c_str());
+  // these are never iterable, so nothing more to do.
+}
+
+
 
 
 /*-
