@@ -1094,15 +1094,27 @@ extern bool ObservationsAllowNan;
   static unsigned verbosity = IM::Default;
 #endif
 
+  static const char *modularVerbosity = NULL;
+
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("verbosity",Arg::Opt,verbosity,"Verbosity (0 <= v <= 100) of informational/debugging msgs"),
+  Arg("verbosity",Arg::Opt,modularVerbosity,"Verbosity (0 <= v <= 100) of informational/debugging msgs"),
   Arg("printIntValues",Arg::Opt,RV::alwaysPrintIntegerRVValues,"always print rv values as integer rather than symbols"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
   (void) IM::setGlbMsgLevel(verbosity);
   GM_Parms.setMsgLevel(verbosity);
+  
+  if (modularVerbosity) {
+    char *token, *copy;
+    const char delimiters[] = ",";
+    copy = strdup(modularVerbosity);
+    for (token=strtok(copy, delimiters); token; token=strtok(NULL, delimiters)) {
+      (void) IM::setGlbMsgLevel(token);
+      // GM_Parms.setMsgLevel(token);
+    }
+  }
 
 #else
 #endif
