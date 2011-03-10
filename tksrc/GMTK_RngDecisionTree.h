@@ -45,6 +45,7 @@
 #include "shash_map.h"
 
 #include "GMTK_DiscRV.h"
+#include "GMTK_CFunctionDeterministicMappings.h"
 
 #include <algorithm>
 #include <map>
@@ -404,7 +405,7 @@ protected:
   // Node Structure Types. 
   ///////////////////////////////////////////////////////////////    
   enum NodeType{NonLeafNodeArray, NonLeafNodeHash, NonLeafNodeRngs, 
-		LeafNodeVal, LeafNodeEquation };
+		LeafNodeVal, LeafNodeEquation, LeafNodeCFunction };
 
   // forward declaration.
   struct Node;
@@ -479,6 +480,13 @@ protected:
     EquationClass equation;
   } ;
 
+
+  struct LeafNodeCFunctionStruct {
+    // Used when the leaf node is a pointer to a C function
+    CFunctionMapperType function_ptr;
+  };
+
+
   ///////////////////////////////////////////////////////////    
   // Node structure (nonLeafNode and leafNodes can not be 
   // unioned because they have entries with constructors)  
@@ -491,13 +499,14 @@ protected:
   struct Node {
     NodeType nodeType;
 
-    unsigned char _buffer[MAX_OF_5(sizeof(NonLeafNodeArrayStruct),sizeof(NonLeafNodeHashStruct),sizeof(NonLeafNodeRngsStruct),sizeof(LeafNodeValStruct),sizeof(LeafNodeEquationStruct))];
+    unsigned char _buffer[MAX_OF_6(sizeof(NonLeafNodeArrayStruct),sizeof(NonLeafNodeHashStruct),sizeof(NonLeafNodeRngsStruct),sizeof(LeafNodeValStruct),sizeof(LeafNodeEquationStruct),sizeof(LeafNodeCFunctionStruct))];
 
     inline NonLeafNodeArrayStruct& nln_a()  { return (*((NonLeafNodeArrayStruct*)&_buffer)); }
     inline NonLeafNodeHashStruct&  nln_h()  { return (*((NonLeafNodeHashStruct*)&_buffer)); }
     inline NonLeafNodeRngsStruct&  nln_r()  { return (*((NonLeafNodeRngsStruct*)&_buffer)); }
     inline LeafNodeValStruct&      ln_v()   { return (*((LeafNodeValStruct*)&_buffer)); }
     inline LeafNodeEquationStruct& ln_e()   { return (*((LeafNodeEquationStruct*)&_buffer)); }
+    inline LeafNodeCFunctionStruct& ln_c()   { return (*((LeafNodeCFunctionStruct*)&_buffer)); }
 
 
 #if 0
@@ -599,8 +608,12 @@ protected:
 
 public:
 
+  // constructors
   RngDecisionTree() : indexFile(NULL), dtFile(NULL), firstDT(0), root(NULL) {}; 
   ~RngDecisionTree();
+
+  // Create a "decision tree" that has a single internal C function.
+  RngDecisionTree(string name, CFunctionMapperType _func,unsigned numFeatures);
 
   // return true if this DT changes from one segment to the next. We
   // know this by if the dtFile is available (if it is, presumably
