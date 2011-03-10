@@ -18,7 +18,7 @@ Other POSIX-like platforms might work too. See
 
    ./configure --help
 
-for full informations on the available configure options.
+for full information on the available configure options.
 
 Note that the main development compiler used for GMTK is GNU
 gcc/g++. Other compilers have also been tested (such as the Intel C++
@@ -50,7 +50,7 @@ executation, but is very useful when debugging the code.
 
 If you wish to compile a 64-bit version, then do:
 
-     make EXCCFLAGS=-m64 EXCXXFLAGS=-m64
+     make CFLAGS=-m64 CXXFLAGS=-m64
 
 (although keep in mind that 64-bit GMTK has not been as extensively tested
 as when running under 32-bit mode).
@@ -59,7 +59,7 @@ If you wish to create static binaries (i.e., ones that are not dependent
 on shared libraries), then assuming you've got the static libraries 
 installed, do
 
-    ./configure --disable-gmtkViz && make EXLDFLAGS=-static
+    ./configure --disable-gmtkViz && make LDFLAGS=-static
 
 Note, many of the above options can be combined.
 
@@ -75,7 +75,7 @@ paper), see the following documentation:
 
 https://j.ee.washington.edu/trac/gmtk/wiki/GmtkVizBuildHowTo
 
-gmtkViz is not build by default since it requires wxWidgets
+gmtkViz is not built by default since it requires wxWidgets
 (http://www.wxwidgets.org/) to be installed. Note that this is the
 only external dependence needed to compile any of GMTK.
 
@@ -86,6 +86,7 @@ enjoy!!
      For general questions:
         -- gmtk-users@ssli.ee.washington.edu
         -- gmtk-users-request@ssli.ee.washington.edu
+
      For bugs:
         -- https://lungs.ee.washington.edu/trac/gmtk/newticket
 
