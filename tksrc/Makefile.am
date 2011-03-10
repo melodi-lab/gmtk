@@ -105,6 +105,7 @@ GMTK_NetworkFlow.h GMTK_NetworkFlow.cc \
 GMTK_NetworkFlowTriangulate.h GMTK_NetworkFlowTriangulate.cc \
 GMTK_LatticeADT.h GMTK_LatticeADT.cc GMTK_LatticeADT.h GMTK_LatticeNodeCPT.h \
 GMTK_CFunctionDeterministicMappings.cc GMTK_CFunctionDeterministicMappings.h \
+user_internal_cfunc_dts.cc register_user_internal_cfunc_dts.cc \
 GMTK_FileTokenizer.cc \
 GMTK_LatticeNodeCPT.cc \
 GMTK_ScPnSh_HidDiscRV.cc \
