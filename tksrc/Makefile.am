@@ -211,18 +211,21 @@ distclean-local:
 
 gmtkViz.app: gmtkViz.app/Contents/PkgInfo
 
+app_verbose   = $(app_verbose_$(V))
+app_verbose_  = $(app_verbose_$(AM_DEFAULT_VERBOSITY))
+app_verbose_0 = @echo "  APP\t gmtkViz.app";
+
 gmtkViz.app/Contents/PkgInfo: gmtkViz$(EXEEXT) $(srcdir)/Info.plist.in \
                               $(srcdir)/wxmac.icns
-	mkdir -p gmtkViz.app/Contents
-	mkdir -p gmtkViz.app/Contents/MacOS
-	mkdir -p gmtkViz.app/Contents/Resources
-	sed -e "s/IDENTIFIER/gmtkViz/" \
+	$(app_verbose)mkdir -p gmtkViz.app/Contents/MacOS
+	$(AM_V_at)mkdir -p gmtkViz.app/Contents/Resources
+	$(AM_V_at)sed -e "s/IDENTIFIER/gmtkViz/" \
 	-e "s/EXECUTABLE/gmtkViz/" \
 	-e "s/VERSION/$(PACKAGE_VERSION)/" \
 	$(srcdir)/Info.plist.in >gmtkViz.app/Contents/Info.plist
-	/bin/echo -n "APPL????" >gmtkViz.app/Contents/PkgInfo
-	ln -f gmtkViz$(EXEEXT) gmtkViz.app/Contents/MacOS/gmtkViz
-	cp -f $(srcdir)/wxmac.icns gmtkViz.app/Contents/Resources/wxmac.icns
+	$(AM_V_at)/bin/echo -n "APPL????" >gmtkViz.app/Contents/PkgInfo
+	$(AM_V_at)ln -f gmtkViz$(EXEEXT) gmtkViz.app/Contents/MacOS/gmtkViz
+	$(AM_V_at)cp -f $(srcdir)/wxmac.icns gmtkViz.app/Contents/Resources/wxmac.icns
 endif
 
 check_PROGRAMS =  \
