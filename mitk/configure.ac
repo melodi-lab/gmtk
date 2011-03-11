@@ -9,7 +9,7 @@ AC_INIT([GMTK], m4_esyscmd(printf %s `head -n 1 ../RELEASE`),
 AC_CONFIG_SRCDIR([data-points.cc])
 AC_CONFIG_HEADERS([config.h])
 
-AM_INIT_AUTOMAKE([-Wall -Werror foreign])
+AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
 
 AC_ARG_ENABLE([assertions],
               [AS_HELP_STRING([--disable-assertions],
