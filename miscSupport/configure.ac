@@ -8,7 +8,7 @@ AC_INIT([GMTK], m4_esyscmd(printf %s `head -n 1 ../RELEASE`),
 AC_CONFIG_SRCDIR([adaptive_filter.h])
 AC_CONFIG_HEADER([config.h])
 
-AM_INIT_AUTOMAKE([-Wall -Werror foreign])
+AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
 
 AC_ARG_ENABLE([assertions],
               [AS_HELP_STRING([--disable-assertions],
@@ -32,7 +32,8 @@ AC_CHECK_FILE([../.hg/dirstate],[
   AC_CHECK_PROG([HAVE_HG],[hg],[yes])
   if test x$HAVE_HG = xyes; then
     HGREVID=`hg id ..`  
-    printf "#ifndef HGID\n#define HGID \"$HGREVID\"\n#endif\n" > hgstamp.h
+    HGDATE=`hg parents --template '{date|date}'`
+    printf "#ifndef HGID\n#define HGID \"$HGREVID\"\n#define HGDATE \"$HGDATE\"\n#endif\n" > hgstamp.h
     AC_DEFINE([HAVE_HG_H],[1],[Live Mercurial revision id header available?])
   fi
 ],[
@@ -42,6 +43,7 @@ e?])
   ],[
     AC_DEFINE([HGID],"UNKNOWN",[Unknown Mercurial revision id - broken distribut
 ion?])
+    AC_DEFINE([HGDATE],"UNKOWN",[Unkown Mercurial checkin date - broken distribution?])
   ])
 ])
 AM_CONDITIONAL([HAVE_HG],[test  x$HAVE_HG = xyes])

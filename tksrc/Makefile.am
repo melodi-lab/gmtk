@@ -3,7 +3,8 @@ if HAVE_HG
 # this will keep the Mercurial revision id current if you're building 
 # in a working directory. If you're not, use the distributed hgstamp.h
 HGID = $(shell hg id)
-VERSIONFLAG = -DHGID="\"$(HGID)\""
+HGDATE = $(shell hg parents --template '{date|date}')
+VERSIONFLAG = -DHGID="\"$(HGID)\"" -DHGDATE="\"$(HGDATE)\""
 else
 VERSIONFLAG = 
 endif
@@ -121,6 +122,8 @@ GMTK_VECPT.h GMTK_VECPT.cc \
 GMTK_NetworkFlow.h GMTK_NetworkFlow.cc \
 GMTK_NetworkFlowTriangulate.h GMTK_NetworkFlowTriangulate.cc \
 GMTK_LatticeADT.h GMTK_LatticeADT.cc GMTK_LatticeADT.h GMTK_LatticeNodeCPT.h \
+GMTK_CFunctionDeterministicMappings.cc GMTK_CFunctionDeterministicMappings.h \
+user_internal_cfunc_dts.cc register_user_internal_cfunc_dts.cc \
 GMTK_FileTokenizer.cc \
 GMTK_LatticeNodeCPT.cc \
 GMTK_ScPnSh_HidDiscRV.cc \
@@ -208,18 +211,21 @@ distclean-local:
 
 gmtkViz.app: gmtkViz.app/Contents/PkgInfo
 
+app_verbose   = $(app_verbose_$(V))
+app_verbose_  = $(app_verbose_$(AM_DEFAULT_VERBOSITY))
+app_verbose_0 = @echo "  APP\t gmtkViz.app";
+
 gmtkViz.app/Contents/PkgInfo: gmtkViz$(EXEEXT) $(srcdir)/Info.plist.in \
                               $(srcdir)/wxmac.icns
-	mkdir -p gmtkViz.app/Contents
-	mkdir -p gmtkViz.app/Contents/MacOS
-	mkdir -p gmtkViz.app/Contents/Resources
-	sed -e "s/IDENTIFIER/gmtkViz/" \
+	$(app_verbose)mkdir -p gmtkViz.app/Contents/MacOS
+	$(AM_V_at)mkdir -p gmtkViz.app/Contents/Resources
+	$(AM_V_at)sed -e "s/IDENTIFIER/gmtkViz/" \
 	-e "s/EXECUTABLE/gmtkViz/" \
 	-e "s/VERSION/$(PACKAGE_VERSION)/" \
 	$(srcdir)/Info.plist.in >gmtkViz.app/Contents/Info.plist
-	/bin/echo -n "APPL????" >gmtkViz.app/Contents/PkgInfo
-	ln -f gmtkViz$(EXEEXT) gmtkViz.app/Contents/MacOS/gmtkViz
-	cp -f $(srcdir)/wxmac.icns gmtkViz.app/Contents/Resources/wxmac.icns
+	$(AM_V_at)/bin/echo -n "APPL????" >gmtkViz.app/Contents/PkgInfo
+	$(AM_V_at)ln -f gmtkViz$(EXEEXT) gmtkViz.app/Contents/MacOS/gmtkViz
+	$(AM_V_at)cp -f $(srcdir)/wxmac.icns gmtkViz.app/Contents/Resources/wxmac.icns
 endif
 
 check_PROGRAMS =  \

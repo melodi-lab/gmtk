@@ -2,7 +2,8 @@ if HAVE_HG
 # this will keep the Mercurial revision id current if you're building 
 # in a working directory. If you're not, use the distributed hgstamp.h
 HGID = $(shell hg id)
-VERSIONFLAG = -DHGID="\"$(HGID)\""
+HGDATE = $(shell hg parents --template '{date|date}')
+VERSIONFLAG = -DHGID="\"$(HGID)\"" -DHGDATE="\"$(HGDATE)\""
 else
 VERSIONFLAG = 
 endif
@@ -40,7 +41,7 @@ BUILT_SOURCES = ieeeFPsetup.h
 CLEANFILES = ieeeFPsetup.h 
 
 ieeeFPsetup.h: ieeeFPsetup_@host_cpu@_@host_os@.h
-	if test -f $(top_srcdir)/ieeeFPsetup_@host_cpu@_@host_os@.h; then \
+	$(AM_V_GEN)if test -f $(top_srcdir)/ieeeFPsetup_@host_cpu@_@host_os@.h; then \
 	 $(LN_S) $(top_srcdir)/ieeeFPsetup_@host_cpu@_@host_os@.h ieeeFPsetup.h; \
 	else \
 	 $(LN_S) ieeeFPsetup_@host_cpu@_@host_os@.h ieeeFPsetup.h; \
