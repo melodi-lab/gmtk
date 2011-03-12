@@ -14,3 +14,6 @@ revdist:
 
 datedist:
 	make VERSION=`date +"%Y-%m-%d_%H%M"` dist
+
+hgdatedist:
+	make VERSION=`date +"%Y-%m-%d"`.`hg id | tr ' ' _` dist

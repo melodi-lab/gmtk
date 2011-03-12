@@ -1,0 +1,9 @@
+[patterns]
+**.cc = native
+**.c = native
+**.h = native
+**.ll = native
+**.txt = native
+**Makefile.am = native
+**configure.ac = native
+**README = native

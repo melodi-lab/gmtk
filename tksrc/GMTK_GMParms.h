@@ -72,7 +72,14 @@ class RngDecisionTree;
 class Dlinks;
 class NameCollection;
 class GMTK_GM;
+class GMParms;
 
+#include "GMTK_DiscRVType.h"
+#include "GMTK_RV.h"
+// typedef for a C function that acts as a surrogate for a decision tree.
+// I.e., this is a C function that takes RVs of parents and child and returns
+// a rv value. These are defined in GMTK_CFunctionDeterministicMappings.{cc,h}
+typedef DiscRVType (*CFunctionMapperType)(const vector< RV* >&, const RV* const);
 
 class GMParms : public IM  {
 public:
@@ -489,6 +496,12 @@ public:
   ////////////////////////////////////////////////////////////////////////////
   // Write index files for iterable decision trees 
   void writeDecisionTreeIndexFiles();
+
+  ////////////////////////////////////////////////////////////////////////////
+  // Register a C function determinisic mapping function as a decision tree.
+  void registerDeterministicCMapper(const char *name,
+				    unsigned num_features,
+				    CFunctionMapperType);
 
 private:
 
