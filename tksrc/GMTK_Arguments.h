@@ -1903,6 +1903,8 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
   static bool longStrCheck = false;
   static bool findBestBoundary = true;
 
+  static bool writeComments = true;
+
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   Arg("triangulationHeuristic",
@@ -2004,6 +2006,7 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
   Arg("printResults",Arg::Opt,printResults,"Print information about result of triangulation."),
 
   Arg("longStrCheck",Arg::Opt,longStrCheck,"Set to true to do the long check for structure file validity"),
+  Arg("writeComments",Arg::Opt,writeComments,"true/false status of if we should write comments in ouptut trifiles"),
 
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)

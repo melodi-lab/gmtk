@@ -484,6 +484,7 @@ main(int argc,char*argv[])
 
       backupTriFile(output_tri_file);
       oDataStreamFile os(output_tri_file.c_str());
+      os.setWriteCommentsStatus(writeComments);
       fp.writeGMId(os);
       string clStr;
       createCommandLineOptionString(clStr);
@@ -566,7 +567,7 @@ main(int argc,char*argv[])
       // write everything out anew
       backupTriFile(output_tri_file);
       oDataStreamFile os(output_tri_file.c_str());
-
+      os.setWriteCommentsStatus(writeComments);
       fp.writeGMId(os);
       string clStr;
       createCommandLineOptionString(clStr);
@@ -776,6 +777,7 @@ void triangulateCrossover(
 
   backupTriFile(output_crossover_tri_file);
   oDataStreamFile cos(output_crossover_tri_file.c_str());
+  cos.setWriteCommentsStatus(writeComments);
   fp.writeGMId(cos);
   string clStr;
   createCommandLineOptionString(clStr);
