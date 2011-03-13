@@ -797,8 +797,8 @@ char iDataStreamFile::peekChar(const char *msg) {
 //////////////////////////////////////////////////////////////////////
 
 
-oDataStreamFile::oDataStreamFile(const char *const _name,bool _Binary, bool _Append)
-  : ioDataStreamFile(_name,_Binary)
+oDataStreamFile::oDataStreamFile(const char *const _name,bool _Binary, bool _Append, bool _writeComments)
+  : ioDataStreamFile(_name,_Binary), writeComments(_writeComments)
 {
   if (_name == NULL)
     error("Error: Can't open null file for reading.");
@@ -991,7 +991,7 @@ bool oDataStreamFile::writeComment(const char *comment, ...)
   if (Binary) {
     // do nothing.
     return true;
-  } else {
+  } else if (writeComments) {
     if (fprintf(fh,"%c ",COMMENTCHAR) == 0)
       return errorReturn("writeComment",comment);
     va_list ap;

@@ -187,10 +187,14 @@ class iDataStreamFile : public ioDataStreamFile {
 class oDataStreamFile : public ioDataStreamFile {
   int float_space;
   int double_space;
+  bool writeComments; // if ascii, do we also write comments
 
  public:
-  oDataStreamFile(const char *_name, bool _Binary = false, bool _Append = false);
+  oDataStreamFile(const char *_name, bool _Binary = false, bool _Append = false, bool _writeComments = true);
   ~oDataStreamFile();
+
+  void setWriteCommentsStatus(bool _status)
+      { writeComments = _status; }
 
   // type explicit
   bool writeStr(const char * const str, const char *msg=NULL,const bool writeSpaceSuffixAscii=true);
