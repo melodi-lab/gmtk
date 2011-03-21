@@ -99,15 +99,9 @@ sentRange:all
 #include "GMTK_DiscRV.h"
 #include "GMTK_ObservationMatrix.h"
 
-#if HAVE_CONFIG_H
-#include <config.h>
-#endif
-#if HAVE_HG_H
-#include "hgstamp.h"
-#endif
-VCID(HGID)
+VCID("$Header$")
 
-
+#define FILE_NAME_WHEN_USING_GLOBAL_OBSERVATION_FILE "**global**"
 
 ////////////////////////////////////////////////////////////////////
 //        General create, read, destroy routines 
@@ -138,6 +132,8 @@ VECPT::read(iDataStreamFile& is)
   // _numParents and _card already initialized in VECPT constructor
   cardinalities[0]=0; // triggers an error if not updated
   nfs=0;  // idem
+  obs_file_foffset = 0;
+  obs_file_ioffset = 0;
   nis=0;
   frs="all";
   irs="all";
@@ -181,17 +177,6 @@ VECPT::read(iDataStreamFile& is)
   // next read the file name from which this is going to get its probabilties.
   is.read(obsFileName,"Can't read VirtualEvidenceCPT's obs file name");
 
-
-  ///////////////////////////////////////////////////////////////////////
-  // Next, we have a set of optional arguments that the user may give
-  // to the observation code. If an optional argument is not given,
-  // then the default value may be used.  These optional arguments
-  // consist of lines of a "flag : value" syntax, where "flag"
-  // indicates the current argument, and "value" is its value.
-  // The optional arguments must end with the string "END"
-
-  //  bool done=false;
-
   try {
 
     if(obsFileName.length()==0) {
@@ -206,104 +191,311 @@ VECPT::read(iDataStreamFile& is)
       throw(error_message);
     }
 
-    is.read(str);
-    while(! (is.isEOF() || str=="END")) {
-      lineNum++;
 
-      // parse the string we have just read
-      string::size_type len=str.length();
-      string::size_type pos=str.find(":",0);
-      if (pos == string::npos || len < 3 || pos == 0) {
-	string error_message;
-	stringprintf(error_message,"Invalid format '%s' which should be of form 'flag:value' where 'flag' is the option name and 'value' the option value",
-		     str.c_str());
-	throw(error_message);
-      }
+    // We have two options: The VECPT values can either come from a
+    // separate observation file, or can come from the global
+    // observation matrix. In this later case, then the options change
+    // (and we can specify an optional float and int offset into this
+    // file).
 
-      option_name = str.substr(0,pos);
-      option_value = str.substr(pos+1,len-pos-1);
+    if (obsFileName == FILE_NAME_WHEN_USING_GLOBAL_OBSERVATION_FILE) {
+      // we take observations from the global observation matrix.
+      obs = &globalObservationMatrix;
+    
+      is.read(str);
+      while(! (is.isEOF() || str=="END")) {
+	lineNum++;
 
-
-      if(option_name == "nfs") {
-	if (!strIsInt(option_value.c_str(),&nfs)) {
+	// parse the string we have just read
+	string::size_type len=str.length();
+	string::size_type pos=str.find(":",0);
+	if (pos == string::npos || len < 3 || pos == 0) {
 	  string error_message;
-	  stringprintf(error_message,"Invalid value '%s' for number floats option. Must be integer.",option_value.c_str());
+	  stringprintf(error_message,"Invalid format '%s' which should be of form 'flag:value' where 'flag' is the option name and 'value' the option value",
+		       str.c_str());
 	  throw(error_message);
 	}
-      }
-      else if(option_name == "nis") {
-	if (!strIsInt(option_value.c_str(),&nis)) {
-	  string error_message;
-	  stringprintf(error_message,"Invalid value '%s' for number int option. Must be integer.",option_value.c_str());
-	  throw(error_message);
+
+	option_name = str.substr(0,pos);
+	option_value = str.substr(pos+1,len-pos-1);
+
+	if (option_name == "f_offset") {
+	  if (!strIsInt(option_value.c_str(),&obs_file_foffset)) {
+	    string error_message;
+	    stringprintf(error_message,"Invalid value '%s' for float offset 'f_offset', must be integer.",option_value.c_str());
+	    throw(error_message);
+	  }
 	}
-      }  
-      else if(option_name == "frs") {
-	// range code needs to check this syntax.
-	frs=option_value;
-      }  
-      else if(option_name == "irs") {
-	// range code needs to check this syntax.
-	irs=option_value;
-      }  
-      else if(option_name == "pr") {
-	// range code needs to check this syntax.
-	pr_rs=new char[option_value.length()];
-	strcpy(pr_rs,option_value.c_str());
-      }  
-      else if(option_name == "fmt") {
-	// observation file code needs to check this syntax.
-	fmt=option_value;
-      }  
-      else if(option_name == "swap") {
-	char c = (option_value.c_str())[0];
-	if (c == 't' || c == 'T')
-	  iswp = true;
-	else if (c == 'f' || c == 'F')
-	  iswp = false;
+	else if (option_name == "i_offset") {
+	  if (!strIsInt(option_value.c_str(),&obs_file_ioffset)) {
+	    string error_message;
+	    stringprintf(error_message,"Invalid value '%s' for ints offset 'i_offset', must be integer.",option_value.c_str());
+	    throw(error_message);
+	  }
+	}
+	else if(option_name == "nfs") {
+	  if (!strIsInt(option_value.c_str(),&nfs)) {
+	    string error_message;
+	    stringprintf(error_message,"Invalid value '%s' for number floats option 'nfs'. Must be integer.",option_value.c_str());
+	    throw(error_message);
+	  }
+	}  
+	else if(option_name == "nis") {
+	  if (!strIsInt(option_value.c_str(),&nis)) {
+	    string error_message;
+	    stringprintf(error_message,"Invalid value '%s' for number int option 'nis'. Must be integer.",option_value.c_str());
+	    throw(error_message);
+	  }
+	}  
 	else {
 	  string error_message;
-	  stringprintf(error_message,"Endian swap condition given as '%c', must be T or F",c);
+	  stringprintf(error_message,"Unknown option:value pair '%s'",str.c_str());
 	  throw(error_message);
 	}
-      }
-      else if(option_name == "preTransforms") {
-	preTransforms=new char[option_value.length()];
-	strcpy(preTransforms,option_value.c_str());
-      }  
-      else if(option_name == "postTransforms") {
-	postTransforms=new char[option_value.length()];
-	strcpy(postTransforms,option_value.c_str());
-      }
-      else if(option_name == "sentRange") {
-	sentRange=new char[option_value.length()];
-	strcpy(sentRange,option_value.c_str());
-      }  
-      else {
+
+	// is.read() returns (via errorReturn() in
+	// miscSupport/fileParser.{h,cc}) false when a problem occurs, in
+	// particular, when we reach the EOF.  Alternatively we could
+	// check for the end of file directly, feof(fh), which I am doing here
+	is.read(str);
+      } 
+
+      // only dense case is supported when VECPT scores come from global observation matrix.
+      // veMode = VE_Dense;
+
+      // check valid number of ints. 
+      if (!(nis == 0 || (nis == nfs))) {
 	string error_message;
-	stringprintf(error_message,"Unknown option:value pair '%s'",str.c_str());
+	stringprintf(error_message,"specifies %d ints and %d floats, but must have either 0 ints, or same number of ints as floats",
+		     nis,nfs);
+	throw(error_message);
+      }
+      if (nfs == 0) {
+	string error_message;
+	stringprintf(error_message,"specifies %d floats, but must have > 0 floats",
+		     nfs);
 	throw(error_message);
       }
 
-      // is.read() returns (via errorReturn() in
-      // miscSupport/fileParser.{h,cc}) false when a problem occurs, in
-      // particular, when we reach the EOF.  Alternatively we could
-      // check for the end of file directly, feof(fh), which I am doing here
-      is.read(str);
-    } 
+      if (nis == 0) {
+	// check that it works with the current global observation matrix.
+	if (nfs + obs_file_foffset > globalObservationMatrix.numContinuous()) {
+	  string error_message;
+	  stringprintf(error_message,"specifies %d floats and offset %d, but global observation matrix only has %d",
+		       nfs,obs_file_foffset,globalObservationMatrix.numContinuous());
+	  throw(error_message);
+	}
+	if (cardinalities[0] != nfs) {
+	  string error_message;
+	  stringprintf(error_message,"specifies %d floats and offset %d, but random variable has cardinality %d",
+		       nfs,obs_file_foffset,cardinalities[0]);
+	  throw(error_message);
+	}
+	// must mean dense mode.
+	veMode = VE_Dense;
+      } else if (nis > 0) {
+	if (nis != nfs) {
+	  error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' with %d ints and %d floats. Must be equal in sparse case.",
+		is.fileName(),is.lineNo(),name().c_str(),nis,nfs);
+	}
+	// check that it works with the current global observation matrix.
+	if (nfs + obs_file_foffset > globalObservationMatrix.numContinuous()) {
+	  string error_message;
+	  stringprintf(error_message,"specifies %d floats and offset %d, but global observation matrix only has %d real entries per frame",
+		       nfs,obs_file_foffset,globalObservationMatrix.numContinuous());
+	  throw(error_message);
+	}
+	if (nis + obs_file_ioffset > globalObservationMatrix.numDiscrete()) {
+	  string error_message;
+	  stringprintf(error_message,"specifies %d ints and offset %d, but global observation matrix only has %d discrete entries per frame",
+		       nis,obs_file_ioffset,globalObservationMatrix.numDiscrete());
+	  throw(error_message);
+	}
 
-    // check valid number of ints. 
-    if (!(nis == 0 || (nis == nfs))) {
-      string error_message;
-      stringprintf(error_message,"specifies %d ints and %d floats, but must have either 0 ints, or same number of ints as floats",
-		   nis,nfs);
-      throw(error_message);
-    }
-    if (nfs == 0) {
-      string error_message;
-      stringprintf(error_message,"specifies %d ints and %d floats, but must have > 0 floats",
-		   nis,nfs);
-      throw(error_message);
+	if (cardinalities[0] < nfs) {
+	  string error_message;
+	  stringprintf(error_message,"specifies %d floats/ints but random variable has cardinality %d",
+		       nfs,cardinalities[0]);
+	  throw(error_message);
+	}	
+
+	// must mean sparse mode.
+	veMode = VE_Sparse;
+      } 
+
+    } else {
+
+      ///////////////////////////////////////////////////////////////////////
+      // Next, we have a set of optional arguments that the user may give
+      // to the observation code. If an optional argument is not given,
+      // then the default value may be used.  These optional arguments
+      // consist of lines of a "flag : value" syntax, where "flag"
+      // indicates the current argument, and "value" is its value.
+      // The optional arguments must end with the string "END"
+
+      //  bool done=false;
+
+      is.read(str);
+      while(! (is.isEOF() || str=="END")) {
+	lineNum++;
+
+	// parse the string we have just read
+	string::size_type len=str.length();
+	string::size_type pos=str.find(":",0);
+	if (pos == string::npos || len < 3 || pos == 0) {
+	  string error_message;
+	  stringprintf(error_message,"Invalid format '%s' which should be of form 'flag:value' where 'flag' is the option name and 'value' the option value",
+		       str.c_str());
+	  throw(error_message);
+	}
+
+	option_name = str.substr(0,pos);
+	option_value = str.substr(pos+1,len-pos-1);
+
+
+	if(option_name == "nfs") {
+	  if (!strIsInt(option_value.c_str(),&nfs)) {
+	    string error_message;
+	    stringprintf(error_message,"Invalid value '%s' for number floats option 'nfs'. Must be integer.",option_value.c_str());
+	    throw(error_message);
+	  }
+	}
+	else if(option_name == "nis") {
+	  if (!strIsInt(option_value.c_str(),&nis)) {
+	    string error_message;
+	    stringprintf(error_message,"Invalid value '%s' for number int option 'nis'. Must be integer.",option_value.c_str());
+	    throw(error_message);
+	  }
+	}  
+	else if(option_name == "frs") {
+	  // range code needs to check this syntax.
+	  frs=option_value;
+	}  
+	else if(option_name == "irs") {
+	  // range code needs to check this syntax.
+	  irs=option_value;
+	}  
+	else if(option_name == "pr") {
+	  // range code needs to check this syntax.
+	  pr_rs=new char[option_value.length()];
+	  strcpy(pr_rs,option_value.c_str());
+	}  
+	else if(option_name == "fmt") {
+	  // observation file code needs to check this syntax.
+	  fmt=option_value;
+	}  
+	else if(option_name == "swap") {
+	  char c = (option_value.c_str())[0];
+	  if (c == 't' || c == 'T')
+	    iswp = true;
+	  else if (c == 'f' || c == 'F')
+	    iswp = false;
+	  else {
+	    string error_message;
+	    stringprintf(error_message,"Endian swap condition given as '%c', must be T or F",c);
+	    throw(error_message);
+	  }
+	}
+	else if(option_name == "preTransforms") {
+	  preTransforms=new char[option_value.length()];
+	  strcpy(preTransforms,option_value.c_str());
+	}  
+	else if(option_name == "postTransforms") {
+	  postTransforms=new char[option_value.length()];
+	  strcpy(postTransforms,option_value.c_str());
+	}
+	else if(option_name == "sentRange") {
+	  sentRange=new char[option_value.length()];
+	  strcpy(sentRange,option_value.c_str());
+	}  
+	else {
+	  string error_message;
+	  stringprintf(error_message,"Unknown option:value pair '%s'",str.c_str());
+	  throw(error_message);
+	}
+
+	// is.read() returns (via errorReturn() in
+	// miscSupport/fileParser.{h,cc}) false when a problem occurs, in
+	// particular, when we reach the EOF.  Alternatively we could
+	// check for the end of file directly, feof(fh), which I am doing here
+	is.read(str);
+      } 
+
+      // check valid number of ints. 
+      if (!(nis == 0 || (nis == nfs))) {
+	string error_message;
+	stringprintf(error_message,"specifies %d ints and %d floats, but must have either 0 ints, or same number of ints as floats",
+		     nis,nfs);
+	throw(error_message);
+      }
+      if (nfs == 0) {
+	string error_message;
+	stringprintf(error_message,"specifies %d ints and %d floats, but must have > 0 floats",
+		     nis,nfs);
+	throw(error_message);
+      }
+
+      obs = new ObservationMatrix;
+      // Now try opening the file:
+      obs->openFile(obsFileName.c_str(),
+		    frs.c_str(),
+		    irs.c_str(),
+		    nfs,
+		    nis,
+		    obs->formatStrToNumber(fmt.c_str()),
+		    iswp,
+		    globalObservationMatrix.startSkip(),
+		    globalObservationMatrix.endSkip(),
+		    false,  // ); // do not run CPP if ascii file.
+		    NULL,
+		    //	       (const char**)&pr_str,
+		    (const char**)&pr_rs,
+		    NULL,
+		    NULL,
+		    &preTransforms,
+		    postTransforms,
+		    0,  // FTROP_NONE
+		    //	       (const char**)&sentRangeStr
+		    (const char**)&sentRange
+		    );
+
+      // still here? Do more error checking.
+
+      if (obs->numContinuous() == 0) {
+	error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' and reading observation file '%s' with %d ints and %d floats. Range string '%s'. Must have or specify > 0 floats",
+	      is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs,frs.c_str());
+      }
+
+      if (!((obs->numDiscrete() == 0) || (obs->numDiscrete() == obs->numContinuous()))) {
+	error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' and reading observation file '%s' with %d ints and %d floats. Float range string is '%s', int range string is '%s'. Must have or specify either 0 ints, or same number of ints as floats",
+	      is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs,frs.c_str(),irs.c_str());
+      }
+
+      // make sure we have same number of segments as global observation case.
+      if (globalObservationMatrix.numSegments() != obs->numSegments()) {
+	error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' and reading observation file '%s' with %d ints and %d floats. Number of segments %d must match that of the global observation file, which has %d segments",
+	      is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs,obs->numSegments(),globalObservationMatrix.numSegments());
+      }
+
+      // we check that the cardinality is compatible with the VECPT.
+      // we need either that
+      //    1. obs->numDiscrete() == 0 and parent_random_var_card == obs->numContinuous()
+      // or
+      //    2. (obs->numDiscrete() == obs->numContinuous()), and (obs->numDiscrete() <= parent_random_var_card), and
+      //       all discrete values are in the range 0 <= val <= (parent_random_var_card-1)
+      // 
+
+      if (obs->numDiscrete() == 0 && cardinalities[0] == obs->numContinuous()) {
+	veMode = VE_Dense;
+      } else if ( obs->numDiscrete() == obs->numContinuous() && 
+		  obs->numDiscrete() <= cardinalities[0] )  {
+	veMode = VE_Sparse;
+      } else {
+	error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' with parent cardinality %d and reading observation file '%s' with %d ints and %d floats. Either num floats in obs file must match parent cardinality, or alternatively obs file must have same number floats as ints, and both must be no more than parent cardinality.",
+	      is.fileName(),is.lineNo(),name().c_str(),cardinalities[0],
+	      obsFileName.c_str(),nis,nfs);
+      }
+
     }
   } catch ( string error_message ) {
     error("ERROR: reading file '%s' line %u, of VirtualEvidenceCPT spec '%s': %s",
@@ -313,66 +505,7 @@ VECPT::read(iDataStreamFile& is)
 	  is.fileName(),is.lineNo(),name().c_str(),error_message);
   }
 
-  // Now try opening the file:
-  obs.openFile(obsFileName.c_str(),
-	       frs.c_str(),
-	       irs.c_str(),
-	       nfs,
-	       nis,
-	       obs.formatStrToNumber(fmt.c_str()),
-	       iswp,
-	       globalObservationMatrix.startSkip(),
-	       globalObservationMatrix.endSkip(),
-	       false,  // ); // do not run CPP if ascii file.
-	       NULL,
-	       //	       (const char**)&pr_str,
-	       (const char**)&pr_rs,
-	       NULL,
-	       NULL,
-	       &preTransforms,
-	       postTransforms,
-	       0,  // FTROP_NONE
-	       //	       (const char**)&sentRangeStr
-	       (const char**)&sentRange
-	       );
 
-
-  // still here? Do more error checking.
-
-  if (obs.numContinuous() == 0) {
-    error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' and reading observation file '%s' with %d ints and %d floats. Range string '%s'. Must have or specify > 0 floats",
-	  is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs,frs.c_str());
-  }
-
-  if (!((obs.numDiscrete() == 0) || (obs.numDiscrete() == obs.numContinuous()))) {
-    error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' and reading observation file '%s' with %d ints and %d floats. Float range string is '%s', int range string is '%s'. Must have or specify either 0 ints, or same number of ints as floats",
-	  is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs,frs.c_str(),irs.c_str());
-  }
-
-  // make sure we have same number of segments as global observation case.
-  if (globalObservationMatrix.numSegments() != obs.numSegments()) {
-    error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' and reading observation file '%s' with %d ints and %d floats. Number of segments %d must match that of the global observation file, which has %d segments",
-	  is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs,obs.numSegments(),globalObservationMatrix.numSegments());
-  }
-
-  // we check that the cardinality is compatible with the VECPT.
-  // we need either that
-  //    1. obs.numDiscrete() == 0 and parent_random_var_card == obs.numContinuous()
-  // or
-  //    2. (obs.numDiscrete() == obs.numContinuous()), and (obs.numDiscrete() <= parent_random_var_card), and
-  //       all discrete values are in the range 0 <= val <= (parent_random_var_card-1)
-  // 
-
-  if (obs.numDiscrete() == 0 && cardinalities[0] == obs.numContinuous()) {
-    veMode = VE_Dense;
-  } else if ( obs.numDiscrete() == obs.numContinuous() && 
-	       obs.numDiscrete() <= cardinalities[0] )  {
-    veMode = VE_Sparse;
-  } else {
-    error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' with parent cardinality %d and reading observation file '%s' with %d ints and %d floats. Either num floats in obs file must match parent cardinality, or alternatively obs file must have same number floats as ints, and both must be no more than parent cardinality.",
-	  is.fileName(),is.lineNo(),name().c_str(),cardinalities[0],
-	  obsFileName.c_str(),nis,nfs);
-  }
 
   setBasicAllocatedBit();
 }
@@ -410,26 +543,35 @@ VECPT::write(oDataStreamFile& os)
   os.write("selfCard:2"); // self card
   sprintf(tmp,"of:%s",obsFileName.c_str());
   os.write(tmp);
-  sprintf(tmp,"nfs:%u",nfs);
-  os.write(tmp);
-  sprintf(tmp,"nis:%u",nis);
-  os.write(tmp);
-  sprintf(tmp,"frs:%s",frs.c_str());
-  os.write(tmp);
-  sprintf(tmp,"nfs:%s",irs.c_str());
-  os.write(tmp);
-  sprintf(tmp,"pr_rs:%s",pr_rs);
-  os.write(tmp);
-  sprintf(tmp,"fmt:%s",fmt.c_str());
-  os.write(fmt);
-  sprintf(tmp,"swap:%s",iswp?"T":"F");
-  os.write((iswp?"T":"F"));
-  sprintf(tmp,"preTransforms:%s",preTransforms);
-  os.write(tmp);
-  sprintf(tmp,"postTransforms:%s",postTransforms);
-  os.write(tmp);
-  sprintf(tmp,"sentRange:%s",sentRange);
-  os.write(tmp);
+  if (obsFileName == FILE_NAME_WHEN_USING_GLOBAL_OBSERVATION_FILE) {
+    sprintf(tmp,"f_offset:%u",obs_file_foffset);
+    os.write(tmp);
+    sprintf(tmp,"i_offset:%u",obs_file_ioffset);
+    os.write(tmp);
+    sprintf(tmp,"nfs:%u",nfs);
+    os.write(tmp);
+  } else {
+    sprintf(tmp,"nfs:%u",nfs);
+    os.write(tmp);
+    sprintf(tmp,"nis:%u",nis);
+    os.write(tmp);
+    sprintf(tmp,"frs:%s",frs.c_str());
+    os.write(tmp);
+    sprintf(tmp,"nfs:%s",irs.c_str());
+    os.write(tmp);
+    sprintf(tmp,"pr_rs:%s",pr_rs);
+    os.write(tmp);
+    sprintf(tmp,"fmt:%s",fmt.c_str());
+    os.write(fmt);
+    sprintf(tmp,"swap:%s",iswp?"T":"F");
+    os.write((iswp?"T":"F"));
+    sprintf(tmp,"preTransforms:%s",preTransforms);
+    os.write(tmp);
+    sprintf(tmp,"postTransforms:%s",postTransforms);
+    os.write(tmp);
+    sprintf(tmp,"sentRange:%s",sentRange);
+    os.write(tmp);
+  }
   os.write("EOF");
   os.nl();
   os.nl();
@@ -448,35 +590,62 @@ void VECPT::becomeAwareOfParentValues( vector <RV *>& parents,
   curParentValue = RV2DRV(parents[0])->val;
 }
 
-void VECPT::begin(iterator& it,DiscRV* drv, logpr& p) 
+
+logpr VECPT::probGivenParents(vector <RV *>& parents,
+			      DiscRV * drv) 
 {
   assert ( bitmask & bm_basicAllocated );
-  it.setCPT(this);
-  it.drv = drv;
-  it.uInternalState = curParentValue;
-  drv->val = 0;
+  curParentValue = RV2DRV(parents[0])->val;
+  register DiscRVType val = drv->val;
 
+  logpr p((void*)NULL);
   if (veMode == VE_Dense) {
-    p.valref() = (*obs.floatVecAtFrame(drv->frame(),curParentValue));
-    p = 1.0 - p;
+    p.valref() = (*obs->floatVecAtFrame(drv->frame(),curParentValue+obs_file_foffset));
+    // The obseved value (1) is the one corresponding
+    // to the value in the file. I.e., the score 
+    // in the file corresponds to Pr(child = 1 | parent = j) = f_t(j), 
+    // and f_t(j) is the value stored in the file.  
+    if (val == 0) {
+      // if the child RV has zero value, then we invert the probability.
+      // see comment 'zero valued child case' elsewhere in this file.
+      p = 1.0 - p;
+    }
   } else {
     // do a slow linear search since order can be anything.
-    unsigned *base = obs.unsignedAtFrame(drv->frame());
+    // TODO: make sorted assumption and do binary search.
+    unsigned *base = obs->unsignedAtFrame(drv->frame());
     unsigned i;
-    for (i=0;i<obs.numDiscrete();i++) {
+    for (i=obs_file_ioffset;i<obs->numDiscrete();i++) {
       if (base[i] == curParentValue)
 	break;
     }
-    // since this is a begin, this case corresponds to where
-    // the child is hidden and equal to value 0, so we use the zero-value case.
-    if (i<obs.numDiscrete()) {
-      p.valref() = (*obs.floatVecAtFrame(drv->frame(),i));
-      p = 1.0 - p;
+    if (i<obs->numDiscrete()) {
+      p.valref() = (*obs->floatVecAtFrame(drv->frame(),i));
+      // The obseved value (1) is the one corresponding
+      // to the value in the file.
+      if (val == 0) {
+	p = 1.0 - p;
+      }
     } else {
-      p.set_to_one();
+      // parent value is not in the table of parent values in the
+      // current frame's int observation vector.
+      if (val == 0) {
+	// see comment 'zero valued child case' elsewhere in this file.
+	p.set_to_one();
+      } else {
+        // default: If the child is == 1, and there are any parent
+	// values that occur during inference that are not given in the observation
+	// file (which can happen in this case since the parent values are sparses),
+	// then for this case we give any of those parent values a zero score.
+	// I.e., this corresponds to Pr( child = 1 | parents = j) = f_t(j)
+	//  unspecified entries in the file for f_t(j) are presumed to be zero.
+	p.set_to_zero();
+      }
     }
   }
+  return p;
 }
+
 
 void VECPT::becomeAwareOfParentValuesAndIterBegin(vector < RV *>& parents, 
 						  iterator &it,
@@ -488,63 +657,67 @@ void VECPT::becomeAwareOfParentValuesAndIterBegin(vector < RV *>& parents,
   begin(it,drv,p);
 }
 
-logpr VECPT::probGivenParents(vector <RV *>& parents,
-			      DiscRV * drv) 
+void VECPT::begin(iterator& it,DiscRV* drv, logpr& p) 
 {
   assert ( bitmask & bm_basicAllocated );
-  curParentValue = RV2DRV(parents[0])->val;
-  register DiscRVType val = drv->val;
+  it.setCPT(this);
+  it.drv = drv;
+  it.uInternalState = curParentValue;
+  drv->val = 0;
 
-  logpr p((void*)NULL);
   if (veMode == VE_Dense) {
-    p.valref() = (*obs.floatVecAtFrame(drv->frame(),curParentValue));
-    // The obseved value (1) is the one corresponding
-    // to the value in the file.
-    if (val == 0) {
-      p = 1.0 - p;
-    }
+    p.valref() = (*obs->floatVecAtFrame(drv->frame(),curParentValue+obs_file_foffset));
+    // zero valued child case: since this is the zero value of the
+    // child, and the child is presumed to be binary, and since the
+    // values stored in the observaion file correspond to Pr(child =
+    // 1| parents), we need to invert the value in this case (assuming
+    // that it is a probability). Of course, if the values in the
+    // observaion file are not probabilities (which is valid if we
+    // want to use the VECPT as an arbitrary score), then this next
+    // operation does not make sense, but then in that case the child
+    // should not be hidden in which case this code is not run.
+    p = 1.0 - p;
   } else {
+    // Sparse case.
+    // 
     // do a slow linear search since order can be anything.
-    // TODO: make sorted assumption and do binary search.
-    unsigned *base = obs.unsignedAtFrame(drv->frame());
+    unsigned *base = obs->unsignedAtFrame(drv->frame());
     unsigned i;
-    for (i=0;i<obs.numDiscrete();i++) {
+    for (i=obs_file_ioffset;i<obs->numDiscrete();i++) {
       if (base[i] == curParentValue)
 	break;
     }
-    if (i<obs.numDiscrete()) {
-      p.valref() = (*obs.floatVecAtFrame(drv->frame(),i));
-      // The obseved value (1) is the one corresponding
-      // to the value in the file.
-      if (val == 0) {
-	p = 1.0 - p;
-      }
+    // since this is a begin, this case corresponds to where
+    // the child is hidden and equal to value 0, so we use the zero-value case.
+    if (i<obs->numDiscrete()) {
+      // then we found an entry in the observation file corresponding to the current parent value,
+      // and we use the score in the observaion file at this position.
+      p.valref() = (*obs->floatVecAtFrame(drv->frame(),i));
+      // zero valued child case: see comment above.
+      p = 1.0 - p;
     } else {
-      if (val == 0) {
-	p.set_to_one();
-      } else {
-	// default: If the child is == 1, and there are any unspecified parent
-	// values that occur, unspecified in that they are not given in the sparse
-	// table, then give those parent values a zero score.
-	p.set_to_zero();
-      }
+      // we did not find a parent value for this case, so this
+      // means that 
+      // Pr(child = 0 | parent) = 1 for the zero valued child case.
+      p.set_to_one();
     }
   }
-  return p;
 }
 
 bool VECPT::next(iterator &it,logpr& p)
 {
   if (it.drv->val == 1)
     return false;
+  // here, the RV child now gets value 1.
   it.drv->val = 1;
   if (veMode == VE_Dense) {
-    p.valref() = (*obs.floatVecAtFrame(it.drv->frame(),it.uInternalState));
+    p.valref() = (*obs->floatVecAtFrame(it.drv->frame(),it.uInternalState + obs_file_foffset));
+    // we don't invert the score since this is the Pr(child = 1 | parent) case.
   } else {
     // do a slow linear search since order can be anything.
-    unsigned *base = obs.unsignedAtFrame(it.drv->frame());
+    unsigned *base = obs->unsignedAtFrame(it.drv->frame());
     unsigned i;
-    for (i=0;i<obs.numDiscrete();i++) {
+    for (i=obs_file_ioffset;i<obs->numDiscrete();i++) {
       if (base[i] == it.uInternalState)
 	break;
     }
@@ -552,9 +725,12 @@ bool VECPT::next(iterator &it,logpr& p)
     // here it is the case that the child is at iteration where it
     // it is instantiated to 1 (unity). So we take the scores for
     // the =1 case.
-    if (i<obs.numDiscrete()) {
-      p.valref() = (*obs.floatVecAtFrame(it.drv->frame(),i));
+    if (i<obs->numDiscrete()) {
+      p.valref() = (*obs->floatVecAtFrame(it.drv->frame(),i));
     } else {
+      // we did not find a parent value for this case, so this
+      // means that 
+      // Pr(child = 0 | parent) = 0 for the unity valued child case.
       p.set_to_zero();
     }
   }
@@ -579,11 +755,12 @@ bool VECPT::next(iterator &it,logpr& p)
 int VECPT::randomSample(DiscRV* drv)
 {
   // sum up the observations in current frame.
+  // TODO: this routine is currently not correct (but it is not used).
 
   logpr sum;
-  for (unsigned i=0;i<obs.numContinuous();i++) {
+  for (unsigned i=0;i<obs->numContinuous();i++) {
     logpr tmp((void*)NULL);
-    tmp.valref() = (*obs.floatVecAtFrame(drv->frame(),i));
+    tmp.valref() = (*obs->floatVecAtFrame(drv->frame(),i));
     sum += tmp;
   }
   logpr uniform = (rnd.drand48()*sum.unlog());
@@ -591,17 +768,17 @@ int VECPT::randomSample(DiscRV* drv)
   unsigned i=0;
   do {
     logpr tmp((void*)NULL);
-    tmp.valref() = (*obs.floatVecAtFrame(drv->frame(),i));
+    tmp.valref() = (*obs->floatVecAtFrame(drv->frame(),i));
     sum += tmp;
     if (uniform <= sum)
       break;
-  } while (++i < obs.numContinuous());
+  } while (++i < obs->numContinuous());
 
   if (veMode == VE_Dense) {
     return i;
   } else {
     // this assumes that ints in sparse case are ordered
-    return *(obs.unsignedAtFrame(drv->frame()) + i); 
+    return *(obs->unsignedAtFrame(drv->frame()) + i); 
   }
 
 }
