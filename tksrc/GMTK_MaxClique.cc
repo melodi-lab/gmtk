@@ -2505,13 +2505,20 @@ ceGatherFromIncommingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStru
     }
   }
 
-  // if (numCliqueValuesUsed == 278664)
-  // printCliqueEntries(sharedStructure,stdout,NULL,false,false);
+  // In case that USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL is defined:
+  // Note that if you want to print the entries here before pruning,
+  // and if you want to call printing in the form of say:
+  //
+  //     printCliqueEntries(sharedStructure,stdout,NULL,false,false);
+  // 
+  // then you will need to change the printCliqueEntries routine to
+  // not use the perment shared structures.
 
-  // We prune here right away. If the temporary clique value
-  // pool is being used, we prune here, *before* we copy
-  // things out of the temporary pool so that pruned entries
-  // are not inserted into permanent locations.
+
+  // Now, we do pruning here. If the temporary clique value pool is
+  // being used, we prune here, *before* we copy things out of the
+  // temporary pool so that pruned entries are not inserted into
+  // permanent locations.
   ceDoAllPruning(origin,maxCEValue);
 
 
@@ -5819,67 +5826,6 @@ cliqueEntropy()
 
 
 
-/*-
- *-----------------------------------------------------------------------
- * MaxCliqueTable::cliqueDiversity()
- *
- *    Compute the clique diversity of the clique.
- *
- * Preconditions:
- *      Clique data structures must be created. In the default version
- *      of this routine, all of the clique entries must have been
- *      removed from the temporary local clique value pool and placed
- *      in the permanent arrays before calling this routine. But you
- *      can, by change the #define below if you want to, use this
- *      routine for debugging before the tmp entries have been copied
- *      out (which might be useful to print before pruning has
- *      occured).
- *
- *
- * Postconditions:
- *      none
- *
- * Side Effects:
- *      None
- *
- * Results:
- *     sum of probabilities of all elements in the clique.
- *
- *-----------------------------------------------------------------------
- */
-double
-MaxCliqueTable::
-cliqueDiversity(MaxClique& origin)
-{
-  double D = 0.0;
-  if (numCliqueValuesUsed > 0) {
-    for (unsigned i=1;i<numCliqueValuesUsed;i++) {
-      for (unsigned j=i;j<numCliqueValuesUsed;j++) {
-	unsigned* i_key_p; 
-	unsigned* j_key_p; 
-#if defined(USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL) && defined(CLIQUE_DIVERSITY_USING_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL)
-	// then we print the entries that are currently stored in the temporary clique value pool.
-	// This might be useful for debugging to print the entries before they are copied into their
-	// permanent locations (i.e., if we wish to print before pruning has occured).
-	i_key_p =
-	  &origin.temporaryCliqueValuePool.ptr[cliqueValues.ptr[i].ival];
-	j_key_p =
-	  &origin.temporaryCliqueValuePool.ptr[cliqueValues.ptr[j].ival];
-#else
-	i_key_p = (unsigned*)cliqueValues.ptr[i].ptr;
-	j_key_p = (unsigned*)cliqueValues.ptr[j].ptr;
-#endif	
-	double cur_dist = 
-	  origin.packer.use_distance(i_key_p,j_key_p);
-	D += cur_dist;
-      }
-    }
-  }
-  D = D /(  ((double)numCliqueValuesUsed)* ((double)(numCliqueValuesUsed+1))/2.0 );
-  return D;
-}
-
-
 
 
 /*-
@@ -6047,6 +5993,69 @@ maxProb()
 }
 
 
+
+/*-
+ *-----------------------------------------------------------------------
+ * MaxCliqueTable::cliqueDiversity()
+ *
+ *    Compute the clique diversity of the clique.
+ *
+ * Preconditions:
+ *      Clique data structures must be created. In the default version
+ *      of this routine, all of the clique entries must have been
+ *      removed from the temporary local clique value pool and placed
+ *      in the permanent arrays before calling this routine. But you
+ *      can, by change the #define below if you want to, use this
+ *      routine for debugging before the tmp entries have been copied
+ *      out (which might be useful to print before pruning has
+ *      occured).
+ *
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      None
+ *
+ * Results:
+ *     sum of probabilities of all elements in the clique.
+ *
+ *-----------------------------------------------------------------------
+ */
+double
+MaxCliqueTable::
+cliqueDiversity(MaxClique& origin)
+{
+  double D = 0.0;
+  if (numCliqueValuesUsed > 0) {
+    for (unsigned i=1;i<numCliqueValuesUsed;i++) {
+      for (unsigned j=i;j<numCliqueValuesUsed;j++) {
+	unsigned* i_key_p; 
+	unsigned* j_key_p; 
+#if defined(USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL) && defined(CLIQUE_DIVERSITY_USING_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL)
+	// then we print the entries that are currently stored in the temporary clique value pool.
+	// This might be useful for debugging to print the entries before they are copied into their
+	// permanent locations (i.e., if we wish to print before pruning has occured).
+	i_key_p =
+	  &origin.temporaryCliqueValuePool.ptr[cliqueValues.ptr[i].ival];
+	j_key_p =
+	  &origin.temporaryCliqueValuePool.ptr[cliqueValues.ptr[j].ival];
+#else
+	i_key_p = (unsigned*)cliqueValues.ptr[i].ptr;
+	j_key_p = (unsigned*)cliqueValues.ptr[j].ptr;
+#endif	
+	double cur_dist = 
+	  origin.packer.use_distance(i_key_p,j_key_p);
+	D += cur_dist;
+      }
+    }
+  }
+  D = D /(  ((double)numCliqueValuesUsed)* ((double)(numCliqueValuesUsed+1))/2.0 );
+  return D;
+}
+
+
+
 /*-
  *-----------------------------------------------------------------------
  * MaxCliqueTable::printCliqueEntries()
@@ -6094,9 +6103,8 @@ printCliqueEntries(MaxCliqueTable::SharedLocalStructure& sharedStructure,
   if (str != NULL)
     fprintf(f,"%s ",str);
   
-  // TODO: also have a cliqueDiversity routine that can compute the
-  // variability/diversity in a clique in terms of its random
-  // variables.
+  // TODO: might also want to optionally print the cliqueDiversity() of this
+  // clique as well as the entropy.
 
   fprintf(f,"Printing Clique with %d variables, %d entries, H=%e\n",
 	  sharedStructure.fNodes.size(),numCliqueValuesUsed,cliqueEntropy());
