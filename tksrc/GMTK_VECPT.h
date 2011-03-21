@@ -75,7 +75,7 @@ class VECPT : public CPT {
   // (constructor creates an empty object). Note that these
   // observation temporal lengths here must exactly match that of the
   // observation file.
-  ObservationMatrix obs;
+  ObservationMatrix *obs;
   
   // TODO: redo all this so that it works well
   // with obs.openFile(). Either change to char* and make
@@ -101,8 +101,17 @@ class VECPT : public CPT {
   // Observation Matrix transforms
   char* preTransforms;
   char* postTransforms;
-
+  
   char* sentRange;
+
+  // these variables are used in case that we
+  // get the VECPT information from the global
+  // observation matrix directly, rather than
+  // from a local observation file here. Otherwise,
+  // this variable is set to zero. We have
+  // two offsets, one for floats and one for ints.
+  unsigned obs_file_foffset;
+  unsigned obs_file_ioffset;
 
   ////////////////
   // current parent value
@@ -210,11 +219,11 @@ public:
 
   // support to change the segment number
   void setSegment(const unsigned segNo) {
-    obs.loadSegment(segNo);
+    obs->loadSegment(segNo);
   }
   unsigned numFrames() {
     // return the number of frames in the current segment.
-    return obs.numFrames();
+    return obs->numFrames();
   }
 
 };
