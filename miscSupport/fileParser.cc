@@ -990,7 +990,6 @@ bool oDataStreamFile::writeComment(const char *comment, ...)
 {
   if (Binary) {
     // do nothing.
-    return true;
   } else if (writeComments) {
     if (fprintf(fh,"%c ",COMMENTCHAR) == 0)
       return errorReturn("writeComment",comment);
@@ -998,8 +997,8 @@ bool oDataStreamFile::writeComment(const char *comment, ...)
     va_start(ap,comment);
     (void) vfprintf(fh, comment, ap);
     va_end(ap);
-    return true;
   }
+  return true;
 }
 
 
