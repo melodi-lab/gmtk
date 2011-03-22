@@ -25,6 +25,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
+#include <errno.h>
+
+#include "error.h"
 
 // set this to zero to make all the routines nop stubs.
 #define INFO_MESSAGES_ON 1
@@ -32,14 +36,37 @@
 class IM {
   friend class InferenceMaxClique;
   static unsigned globalMessageLevel;
-  unsigned messageLevel;
+  //  unsigned messageLevel;
   bool flush;
 
 public:
   static bool globalFlush;
 
+  // Each module has an independent debugging level.
+  // DefaultModule sets the debug level for any code that doesn't belong to a specific module
+  // ALLMODULES (re)sets the debug level for all modules
+#define ALLMODULES -1
+  enum ModuleName {
+    DefaultModule,
+    Inference,
+    Triangulation,
+    Boundary,
+    Unrolling,
+    Printing,
+    ModuleCount  // must always be the last enum element
+  };
+
+protected:
+  static unsigned globalModuleLevel[(unsigned)ModuleCount];
+  unsigned moduleLevel[(unsigned)ModuleCount];
+  static const char*moduleString[(unsigned)ModuleCount];
+
+public:
+
   IM() {
-    messageLevel = globalMessageLevel;
+    for (int m = DefaultModule; m < ModuleCount; m+=1) {
+      moduleLevel[m] = globalMessageLevel;
+    }
     flush = true;
   }
 
@@ -83,10 +110,17 @@ public:
     // to get something between tiny and low.
   };
 
-
   inline bool message(unsigned v) {
 #if INFO_MESSAGES_ON
-    return (v <= messageLevel);
+    return (v <= moduleLevel[DefaultModule]);
+#else 
+    return false;
+#endif
+  }
+
+  inline bool message(ModuleName module, unsigned v) {
+#if INFO_MESSAGES_ON
+    return (v <= moduleLevel[module]);
 #else 
     return false;
 #endif
@@ -94,7 +128,15 @@ public:
 
   static inline bool messageGlb(unsigned v) {
 #if INFO_MESSAGES_ON
-    return (v <= globalMessageLevel);
+    return (v <= globalModuleLevel[DefaultModule]);
+#else
+    return false;
+#endif    
+  }
+
+  static inline bool messageGlb(ModuleName module, unsigned v) {
+#if INFO_MESSAGES_ON
+    return (v <= globalModuleLevel[module]);
 #else
     return false;
 #endif    
@@ -117,10 +159,44 @@ public:
 #endif
   }
 
+  inline void infoMsg(ModuleName module, unsigned v,const char* format, ...) 
+  {
+#if INFO_MESSAGES_ON
+    if (message(module, v)) {
+      va_list ap;
+      va_start(ap,format);
+      if (v == Warning)
+	(void) vfprintf(stderr, format, ap);
+      else {
+	(void) vfprintf(stdout, format, ap);
+	if (flush) fflush(stdout);
+      }
+      va_end(ap);
+    }
+#endif
+  }
+
   inline void infoMsg(const char* format, ...) 
   {
 #if INFO_MESSAGES_ON
     if (message(Default)) {
+      va_list ap;
+      va_start(ap,format);
+      if (Default == Warning)
+	(void) vfprintf(stderr, format, ap);
+      else {
+	(void) vfprintf(stdout, format, ap);
+	if (flush) fflush(stdout);
+      }
+      va_end(ap);
+    }
+#endif
+  }
+
+  inline void infoMsg(ModuleName module, const char* format, ...) 
+  {
+#if INFO_MESSAGES_ON
+    if (message(module, Default)) {
       va_list ap;
       va_start(ap,format);
       if (Default == Warning)
@@ -153,12 +229,61 @@ public:
 #endif
   }
 
-  unsigned msgLevel() { return messageLevel; }
-  unsigned setMsgLevel(const unsigned ml) { messageLevel = ml; return ml; }
-  static unsigned glbMsgLevel() { return globalMessageLevel; }
+  unsigned msgLevel() { return moduleLevel[DefaultModule]; }
+  unsigned msgLevel(ModuleName module) { return moduleLevel[module]; }
+  unsigned setMsgLevel(const unsigned ml) { moduleLevel[DefaultModule] = ml; return ml; }
+  unsigned setMsgLevel(ModuleName module, const unsigned ml) { moduleLevel[module] = ml; return ml; }
+  static unsigned glbMsgLevel() { return globalModuleLevel[DefaultModule]; }
+  static unsigned glbMsgLevel(ModuleName module) { return globalModuleLevel[module]; }
   static unsigned setGlbMsgLevel(const unsigned ml) { 
-    globalMessageLevel = ml; 
+    globalModuleLevel[DefaultModule] = ml; 
     return ml; 
+  }
+  static unsigned setGlbMsgLevel(ModuleName module, const unsigned ml) { 
+    globalModuleLevel[module] = ml; 
+    return ml; 
+  }
+
+  static unsigned setGlbMsgLevel(const char*name, const unsigned ml) {
+    if (strcmp(name,"all") == 0) {
+      for (unsigned m=DefaultModule; m < ModuleCount; m+=1) {
+	setGlbMsgLevel((ModuleName)m, ml);
+      }
+      return ml;
+    } 
+    for (unsigned m=DefaultModule; m < ModuleCount; m=m+1) {
+      if (strcmp(name, moduleString[m]) == 0) {
+	setGlbMsgLevel((ModuleName)m, ml);
+	return ml;
+      }
+    }
+    error("ERROR: unknown module name '%s'", name);
+    return 0; // to shutup the warning about reaching end of non-void function
+  }
+
+  // handle either moduleName=level or level
+  static unsigned setGlbMsgLevel(const char*levelAssignment) {
+    char *s = strdup(levelAssignment);
+    char *endp;
+    char *equals = strchr(s, '=');
+    unsigned ml;
+    errno = 0;
+    if (!equals) {
+      ml = strtoul(s, &endp, 0);
+      if (errno || (*endp != 0) || (endp == s)) {
+	error("ERROR: invalid module error level specifier '%s'", levelAssignment);
+      }
+      setGlbMsgLevel(ml);
+    } else {
+      *equals = 0;
+      ml = strtoul(equals+1, &endp, 0);
+      if (errno || (*endp != 0) || (endp == equals+1)) {
+	error("ERROR: invalid module error level specifier '%s'", levelAssignment);
+      }
+      setGlbMsgLevel((const char *)s, ml);
+    }
+    free(s);
+    return ml;
   }
 
 };
@@ -181,10 +306,27 @@ inline void infoMsg(unsigned v,const char* format, ...)
 #endif
 }
 
-inline void infoMsg(const char* format, ...) 
+inline void infoMsg(IM::ModuleName module, unsigned v,const char* format, ...) 
 {
 #if INFO_MESSAGES_ON
-  if (IM::messageGlb(IM::Default)) {
+  if (IM::messageGlb(module, v)) {
+    va_list ap;
+    va_start(ap,format);
+    if (v == IM::Warning)
+      (void) vfprintf(stderr, format, ap);
+    else {
+      (void) vfprintf(stdout, format, ap);
+      if (IM::globalFlush) fflush(stdout);
+    }
+    va_end(ap);
+  }
+#endif
+}
+
+inline void infoMsg(IM::ModuleName module, const char* format, ...) 
+{
+#if INFO_MESSAGES_ON
+  if (IM::messageGlb(module, IM::Default)) {
     va_list ap;
     va_start(ap,format);
     if (IM::Default == IM::Warning)
@@ -213,7 +355,5 @@ inline void infoMsgForce(const char* format, ...)
     va_end(ap);
 #endif
 }
-
-
 
 #endif
