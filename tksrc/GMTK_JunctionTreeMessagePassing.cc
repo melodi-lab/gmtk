@@ -762,7 +762,7 @@ JunctionTree::printSavedViterbiValues(FILE* f,
   Range::iterator* partRange_it = new Range::iterator(partRange->begin());
 
   vector<int> Cpos(C_rvs.size());
-  for (int i=0; i < Cpos.size(); i+=1) 
+  for (unsigned int i=0; i < Cpos.size(); i+=1) 
     Cpos[i] = fp.numFramesInP() + i * fp.numFramesInC();
   int Epos = fp.numFramesInP() + C_rvs.size() * fp.numFramesInC();
 

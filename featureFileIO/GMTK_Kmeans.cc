@@ -281,8 +281,9 @@ void kmeans::writeMgDoubleRecord2D(FILE *stream) {
   if (vector_length != 2) 
     error("kmeans::writeMgDoubleRecord2D, vl = %d, this function must have length 2 vectors\n",vector_length);
 
+  size_t fwrite_result;
   char char_k = kmeans_k;
-  fwrite(&char_k,sizeof(char_k),1,stream);
+  fwrite_result = fwrite(&char_k,sizeof(char_k),1,stream);
 
   int i;
   int total_count = 0;
@@ -297,27 +298,27 @@ void kmeans::writeMgDoubleRecord2D(FILE *stream) {
 
     // mean x
     tmp = meansp[0];
-    fwrite(&tmp,sizeof(tmp),1,stream);
+    fwrite_result = fwrite(&tmp,sizeof(tmp),1,stream);
 
     // mean y
     tmp = meansp[1];
-    fwrite(&tmp,sizeof(tmp),1,stream);
+    fwrite_result = fwrite(&tmp,sizeof(tmp),1,stream);
 
     // var x
     tmp = varsp[0];
-    fwrite(&tmp,sizeof(tmp),1,stream);
+    fwrite_result = fwrite(&tmp,sizeof(tmp),1,stream);
 
     // cov xy
     tmp = 0.0;
-    fwrite(&tmp,sizeof(tmp),1,stream);
+    fwrite_result = fwrite(&tmp,sizeof(tmp),1,stream);
 
     // var y
     tmp = varsp[1];
-    fwrite(&tmp,sizeof(tmp),1,stream);
+    fwrite_result = fwrite(&tmp,sizeof(tmp),1,stream);
 
     // coef
     tmp = saved_counts[i]/(double)total_count;
-    fwrite(&tmp,sizeof(tmp),1,stream);
+    fwrite_result = fwrite(&tmp,sizeof(tmp),1,stream);
 
     meansp += vector_length;
     varsp += vector_length;
