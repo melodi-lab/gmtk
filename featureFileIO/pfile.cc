@@ -49,7 +49,14 @@ get_pfile_ulonglong(const char* hdr, const char* argname, pfile_ulonglong_t* val
     // Go past argument name
     p += strlen(argname);
     // Get value from stfing
-    sscanf(p, " " LLU "%n", val, &count);
+
+    // TODO: on some platforms (OSX), this will generate a warning that
+    // the 'll' modifier is not supported by ISO C++. The printf/scanf
+    // implementations should support them just fine, but I haven't
+    // found a way to handle 64-bit integer types in C++98 without
+    // generating warnings on some target platform. - Richard
+
+    sscanf(p, " %" SCNu64 "%n", val, &count);
 
     // We expect to pass one space, so need >1 characters for success.
     if (count > 1)
@@ -69,7 +76,7 @@ get_uint(const char* hdr, const char* argname, unsigned int* val)
 	//printf("get_uint: get_pfile_ulonglong(%s) status=%d, val = " LLU "\n",argname,success,v);
     if (success==0){
         if(v>INT_MAX){
-            error("header argname %s has value " LLU " which overflows INT_MAX. Failed to read pfile header.",
+            error("header argname %s has value %" PRIu64 " which overflows INT_MAX. Failed to read pfile header.",
                    argname, v);
         } 
         *val=(unsigned int) v;
@@ -184,7 +191,7 @@ InFtrLabStream_PFile::read_header()
 	error("Cannot find pfile -data parameter in header of"
 		 " '%s'.", filename);
 
-    sscanf(p, "-data size " LLU " offset " LLD " ndim %u nrow %u ncol %u",
+    sscanf(p, "-data size %" SCNu64 " offset %" SCNd64 " ndim %u nrow %u ncol %u",
 	   &size, &offset, &ndim, &rows, &cols);
     if (offset!=0 || ndim!=2 || ((pfile_ulonglong_t)rows*cols)!=size)
 	error("Bad or unrecognized pfile header -data args in"
@@ -314,7 +321,7 @@ InFtrLabStream_PFile::read_header()
     p = strstr(header, "-sent_table_data");
     if (p!=NULL)
     {
-	sscanf(p, "-sent_table_data size " LLU " offset " LLD " ndim %u",
+	sscanf(p, "-sent_table_data size %" SCNu64 " offset %" SCNd64 " ndim %u",
 	       &size, &offset, &ndim);
 	if (size!=total_sents+1 || ndim!=1)
 	{
@@ -349,7 +356,7 @@ InFtrLabStream_PFile::build_index_from_sentind_sect()
     if (pfile_fseek(file, (pfile_off_t) sentind_offset, SEEK_SET)!=0)
     {
         error("Failed to move to start of sentence index data, "
-		  "sentind_offset=" LLD " - probably a corrupted PFile.",
+		  "sentind_offset=%" PRId64 " - probably a corrupted PFile.",
 		  sentind_offset);
     }
     long size = sizeof(PFile_Val) * (total_sents + 1);
@@ -393,7 +400,7 @@ InFtrLabStream_PFile::build_index_from_data_sect()
     if (pfile_fseek(file, (pfile_off_t) data_offset, SEEK_SET)!=0)
     {
         error("Failed to move to start of data in '%s',"
-		  " data_offset=" LLD " - probably a corrupted PFile.",
+		  " data_offset=%" PRId64 " - probably a corrupted PFile.",
 		  filename, data_offset);
     }
 
@@ -411,7 +418,7 @@ InFtrLabStream_PFile::build_index_from_data_sect()
 	    {
 		error("Failed to read pfile record from '%s',"
 			 "last_sentno=%li next_frameno=%li abs_frameno=%li "
-			 "filepos=" LLD " - probably a corrupted PFile.",
+			 "filepos=%" PRId64 " - probably a corrupted PFile.",
 			 filename,
 			 last_sentno, next_frameno, abs_frameno, (pfile_longlong_t) pfile_ftell(file));
 	    }
@@ -508,7 +515,7 @@ InFtrLabStream_PFile::read_frame()
 	else
 	{
 	    error("Failed to read frame from PFile"
-		     " '%s', sent=%li frame=%li row=%li file_offset=" LLD ".",
+		     " '%s', sent=%li frame=%li row=%li file_offset=%" PRId64 ".",
 		     filename, current_sent, current_frame,
 		     current_row, (pfile_longlong_t) pfile_ftell(file));
 	}
@@ -536,7 +543,7 @@ InFtrLabStream_PFile::rewind()
     if (pfile_fseek(file, (pfile_off_t) data_offset, SEEK_SET)!=0)
     {
 	error("Rewind failed to move to start of data in "
-		 "'%s', data_offset=" LLD " - probably corrupted PFile.",
+		 "'%s', data_offset=%" PRId64 " - probably corrupted PFile.",
 		 filename, data_offset);
     }
     current_sent = -1;
@@ -685,7 +692,7 @@ InFtrLabStream_PFile::set_pos(size_t segno, size_t frameno)
 	if (pfile_fseek(file, (pfile_off_t) offset, SEEK_SET)!=0)
 	{
 	    error("Seek failed in PFile "
-		     "'%s', offset=" LLD " - file problem?",
+		     "'%s', offset=%" PRId64 " - file problem?",
 		     filename, offset);
 	}
 	current_sent = segno;
@@ -930,7 +937,7 @@ OutFtrLabStream_PFile::write_index()
     if (bswap) 
       swapb_vi32_vi32(current_sent+1, (intv_int32_t*) index,
 		   (intv_int32_t*) index);
-    fwrite(index, (current_sent+1) * sizeof(UInt32), 1, file);
+    size_t result __attribute__((unused))= fwrite(index, (current_sent+1) * sizeof(UInt32), 1, file);
 
     // Swap it back just in case we want to use it again
 
@@ -1001,7 +1008,7 @@ OutFtrLabStream_PFile::write_header()
     // The details of the data sections.
     size_t cols = num_ftr_cols + num_lab_cols + 2;
     size_t data_size = cols * current_row;
-    sprintf(ptr, "-data size " LLU " offset %lu ndim %lu nrow %lu ncol %lu\n",
+    sprintf(ptr, "-data size %" PRIu64 " offset %lu ndim %lu nrow %lu ncol %lu\n",
 	    (pfile_ulonglong_t) data_size, (unsigned long) 0, (unsigned long) 2,
 	    (unsigned long) current_row, (unsigned long) cols);
     chars = strlen(ptr);
@@ -1011,7 +1018,7 @@ OutFtrLabStream_PFile::write_header()
     if (indexed)
     {
 	size_t sentind_size = current_sent + 1;
-	sprintf(ptr, "-sent_table_data size %lu offset " LLU " ndim 1\n",
+	sprintf(ptr, "-sent_table_data size %lu offset %" PRIu64 " ndim 1\n",
 		(unsigned long) sentind_size, (pfile_ulonglong_t) data_size);
 	chars = strlen(ptr);
 	count += chars; ptr += chars;

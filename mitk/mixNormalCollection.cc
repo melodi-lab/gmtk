@@ -185,11 +185,13 @@ void MixNormalCollection::addToEpoch(ObservationMatrix* obsMat,
       pointerSet.setDim(tuple.getSize());
       BUFFER_DATA_TYPE* obsMatPtr = (BUFFER_DATA_TYPE*) obsMat->baseAtFrame(0);
       numFramesProcessed = pointerSet.initialize(obsMatPtr, totalNumFramesInSentence, numFramesToProcess, firstFrameToProcess, tuple);
-      if (numFramesProcessed != 0)
-	if(p->_fullCoVar)
+      if (numFramesProcessed != 0) {
+	if(p->_fullCoVar) {
 	  p->addToEpoch(pointerSet);
-	else
+	} else {
 	  p->addToEpochDiag(pointerSet);
+	}
+      }
     }
     ++i;
   }

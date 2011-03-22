@@ -279,7 +279,7 @@ int tokFile::getNextTok(char **ret) {
             delete [] buf;
             buf = newbuf;
             buflen = newbuflen;
-            fgets(buf+got, buflen, file);
+            ok = fgets(buf+got, buflen, file);
             got = strlen(buf);
         }
         ++linect;
