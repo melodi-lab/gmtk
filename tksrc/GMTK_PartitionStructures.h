@@ -93,6 +93,8 @@ public:
   // all the random variables in this partition, other than the left
   // interface (i.e., so this is the partition's innovation).
   set<RV*> allrvs;
+  vector<RV*> allrvs_vec;
+
   // Information needed to compute viterbi values.
   vector <RV*> hidRVVector;
   // direct pointers to the values of all discrete hidden variables in
