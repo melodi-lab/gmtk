@@ -7,3 +7,5 @@
 **Makefile.am = native
 **configure.ac = native
 **README = native
+**RELEASE = native
+**ChangeLog =native
