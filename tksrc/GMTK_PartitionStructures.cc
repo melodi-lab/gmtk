@@ -144,15 +144,20 @@ PartitionStructures::PartitionStructures(JT_Partition& from_part,
     if (has_li_separator)
       lirvs = separatorCliquesSharedStructure[separatorCliquesSharedStructure.size()-1].returnRVsAsSet();
 
-    vector<RV*> allrvs_vec;
+    allrvs_vec.clear();
+    set<RV*> already_added; 
     for (unsigned i=0;i<maxCliquesSharedStructure.size();i++) {
       vector<RV*> cur_vec = maxCliquesSharedStructure[i].returnRVsAsVector();
       for (vector<RV*>::iterator it = cur_vec.begin();
 	   it != cur_vec.end();
 	   ++it)
       {
-	if ( (!has_li_separator) || (lirvs.find(*it) == lirvs.end()) ) 
+        if ( already_added.find(*it) == already_added.end() && 
+             ( (!has_li_separator) || (lirvs.find(*it) == lirvs.end()) ) ) 
+	{
+          already_added.insert(*it);
 	  allrvs_vec.push_back(*it);
+	}
       }
     }
     assert(allrvs_vec.size() == allrvs.size());
