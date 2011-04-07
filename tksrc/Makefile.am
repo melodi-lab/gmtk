@@ -206,9 +206,6 @@ gmtkViz_LDFLAGS = $(EXLDFLAGS) $(VIZLDFLAGS) $(X_PRE_LIBS) $(X_LIBS) $(X_EXTRA_L
 gmtkViz_app_SOURCES = Info.plist.in wxmac.icns
 
 if MAKE_BUNDLE
-distclean-local:
-	-rm -rf gmtkViz.app
-
 gmtkViz.app: gmtkViz.app/Contents/PkgInfo
 
 app_verbose   = $(app_verbose_$(V))
