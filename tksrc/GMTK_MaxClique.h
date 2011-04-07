@@ -1313,7 +1313,11 @@ class ConditionalSeparatorTable : public IM
     // note that this casts through void * to avoid a type
     // punning warning. this is potentially unsafe, but we
     // believe it works OK on our target platforms
-    inline logpr& bp() { return (*((logpr*)(void*)(&_bpo[0]))); }
+    inline logpr& bp() { 
+	void *t = (void*) (&_bpo[0]);
+	logpr *p = reinterpret_cast<logpr*>(t);
+	return *p ;
+    }
 
     RemainderValue() { 
       bp().set_to_zero(); 

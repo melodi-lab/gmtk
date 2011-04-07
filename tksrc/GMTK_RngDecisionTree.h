@@ -505,12 +505,14 @@ protected:
     // punning warning. this is potentially unsafe, but we
     // believe it works OK on our target platforms
 
-    inline NonLeafNodeArrayStruct& nln_a()  { return (*((NonLeafNodeArrayStruct*)(void*)&_buffer)); }
-    inline NonLeafNodeHashStruct&  nln_h()  { return (*((NonLeafNodeHashStruct*)(void*)&_buffer)); }
-    inline NonLeafNodeRngsStruct&  nln_r()  { return (*((NonLeafNodeRngsStruct*)(void*)&_buffer)); }
-    inline LeafNodeValStruct&      ln_v()   { return (*((LeafNodeValStruct*)(void*)&_buffer)); }
-    inline LeafNodeEquationStruct& ln_e()   { return (*((LeafNodeEquationStruct*)(void*)&_buffer)); }
-    inline LeafNodeCFunctionStruct& ln_c()   { return (*((LeafNodeCFunctionStruct*)(void*)&_buffer)); }
+#define POINTERPUN(dest) void *t = (void*) (&_buffer); dest *p = reinterpret_cast<dest*>(t); return *p;
+
+    inline NonLeafNodeArrayStruct& nln_a()  { POINTERPUN(NonLeafNodeArrayStruct) }
+    inline NonLeafNodeHashStruct&  nln_h()  { POINTERPUN(NonLeafNodeHashStruct) }
+    inline NonLeafNodeRngsStruct&  nln_r()  { POINTERPUN(NonLeafNodeRngsStruct) }
+    inline LeafNodeValStruct&      ln_v()   { POINTERPUN(LeafNodeValStruct) }
+    inline LeafNodeEquationStruct& ln_e()   { POINTERPUN(LeafNodeEquationStruct) }
+    inline LeafNodeCFunctionStruct& ln_c()  { POINTERPUN(LeafNodeCFunctionStruct) }
 
 #if 0
     Node(const Node&nd) { 
