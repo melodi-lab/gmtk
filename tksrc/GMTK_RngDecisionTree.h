@@ -501,13 +501,18 @@ protected:
 
     unsigned char _buffer[MAX_OF_6(sizeof(NonLeafNodeArrayStruct),sizeof(NonLeafNodeHashStruct),sizeof(NonLeafNodeRngsStruct),sizeof(LeafNodeValStruct),sizeof(LeafNodeEquationStruct),sizeof(LeafNodeCFunctionStruct))];
 
-    inline NonLeafNodeArrayStruct& nln_a()  { return (*((NonLeafNodeArrayStruct*)&_buffer)); }
-    inline NonLeafNodeHashStruct&  nln_h()  { return (*((NonLeafNodeHashStruct*)&_buffer)); }
-    inline NonLeafNodeRngsStruct&  nln_r()  { return (*((NonLeafNodeRngsStruct*)&_buffer)); }
-    inline LeafNodeValStruct&      ln_v()   { return (*((LeafNodeValStruct*)&_buffer)); }
-    inline LeafNodeEquationStruct& ln_e()   { return (*((LeafNodeEquationStruct*)&_buffer)); }
-    inline LeafNodeCFunctionStruct& ln_c()   { return (*((LeafNodeCFunctionStruct*)&_buffer)); }
+    // note that these cast through void * to avoid a type
+    // punning warning. this is potentially unsafe, but we
+    // believe it works OK on our target platforms
 
+#define POINTERPUN(dest) void *t = (void*) (&_buffer); dest *p = reinterpret_cast<dest*>(t); return *p;
+
+    inline NonLeafNodeArrayStruct& nln_a()  { POINTERPUN(NonLeafNodeArrayStruct) }
+    inline NonLeafNodeHashStruct&  nln_h()  { POINTERPUN(NonLeafNodeHashStruct) }
+    inline NonLeafNodeRngsStruct&  nln_r()  { POINTERPUN(NonLeafNodeRngsStruct) }
+    inline LeafNodeValStruct&      ln_v()   { POINTERPUN(LeafNodeValStruct) }
+    inline LeafNodeEquationStruct& ln_e()   { POINTERPUN(LeafNodeEquationStruct) }
+    inline LeafNodeCFunctionStruct& ln_c()  { POINTERPUN(LeafNodeCFunctionStruct) }
 
 #if 0
     Node(const Node&nd) { 
