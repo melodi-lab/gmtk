@@ -15,9 +15,11 @@
 #include <math.h>
 #include <assert.h>
 
-#include "error.h"
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
 
-#define HAVE_LOG1P 1
+#include "error.h"
 
 
 // use a lookup table? If so, define the following,
