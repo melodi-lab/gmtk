@@ -21,11 +21,15 @@ DEBUGFLAGS += -DNMODELCHECK
 endif
 OPTFLAGS = -O3
 
-#ANSI = -ansi
-ANSI = 
-PEDANTIC = -Wno-long-long
-#PEDANTIC = -pedantic -Wno-long-long
-WALL = -Wall -Wno-deprecated
+ANSI = -ansi
+#ANSI = 
+
+#PEDANTIC = -pedantic
+PEDANTIC = -pedantic
+#PEDANTIC = -Wno-long-long
+
+WALL = -Wall
+#WALL = -Wall -Wno-deprecated
 
 AM_CFLAGS = \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)

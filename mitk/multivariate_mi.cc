@@ -67,9 +67,9 @@ ObservationMatrix  globalLabelMatrix;
 char       *Input_Fname[MAX_NUM_OBS_FILES] = { NULL,NULL,NULL,NULL,NULL };  // Input file name.
 unsigned    Num_Floats[MAX_NUM_OBS_FILES]  = { 0, 0, 0, 0, 0 };
 unsigned    Num_Ints[MAX_NUM_OBS_FILES] = { 0, 0, 0, 0, 0 };
-char *Float_Range_Str[MAX_NUM_OBS_FILES] = { "all", "all", "all", "all", "all" };
-char *Int_Range_Str[MAX_NUM_OBS_FILES]   = { "all", "all", "all", "all", "all" };
-char *Fmt_Str[MAX_NUM_OBS_FILES]  = { "pfile", "pfile", "pfile", "pfile", "pfile" };
+const char *Float_Range_Str[MAX_NUM_OBS_FILES] = { "all", "all", "all", "all", "all" };
+const char *Int_Range_Str[MAX_NUM_OBS_FILES]   = { "all", "all", "all", "all", "all" };
+const char *Fmt_Str[MAX_NUM_OBS_FILES]  = { "pfile", "pfile", "pfile", "pfile", "pfile" };
 
 char       *Output_Fname                = NULL;
 
@@ -88,9 +88,9 @@ bool     Swap[MAX_NUM_OBS_FILES] = {true,true,true,true,true};
 bool     Swap[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 #endif
 
-char*    Action_If_Diff_Num_Frames_Str[MAX_NUM_OBS_FILES]={"er","er","er","er","er"};   //
+const char*    Action_If_Diff_Num_Frames_Str[MAX_NUM_OBS_FILES]={"er","er","er","er","er"};   //
 unsigned Action_If_Diff_Num_Frames[MAX_NUM_OBS_FILES]={FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR};
-char*    Action_If_Diff_Num_Sents_Str[MAX_NUM_OBS_FILES]={"te","te","te","te","te"};
+const char*    Action_If_Diff_Num_Sents_Str[MAX_NUM_OBS_FILES]={"te","te","te","te","te"};
 unsigned Action_If_Diff_Num_Sents[MAX_NUM_OBS_FILES]={SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END};   //
 
 bool     Cpp_If_Ascii        = true;
@@ -110,11 +110,11 @@ char *Output_MG_Fname = NULL;       // parameter mg output file name
 char *Kmeans_Input_MG_Fname  = NULL;      // parameter kmeans input file name
 char *Kmeans_Output_MG_Fname = NULL;      // parameter kmeans output file name
 
-char *Sentence_Range_Str        = "all";         // sentence range string
-char *Kmeans_Sentence_Range_Str = "all";     // kmeans sentence range string
-char *MI_Sentence_Range_Str     = "all";         // mi data sentence range string
+const char *Sentence_Range_Str        = "all";         // sentence range string
+const char *Kmeans_Sentence_Range_Str = "all";     // kmeans sentence range string
+const char *MI_Sentence_Range_Str     = "all";         // mi data sentence range string
 //char *Frame_Range_Str[MAX_NUM_OBS_FILES] = {NULL,NULL,NULL,NULL,NULL};   // per stream per sentence range string
-char *Frame_Range_Str[MAX_NUM_OBS_FILES] = {"all","all","all","all","all"};   // per stream per sentence range string
+const char *Frame_Range_Str[MAX_NUM_OBS_FILES] = {"all","all","all","all","all"};   // per stream per sentence range string
 
 int   Label_Position = -1;                   // If computing conditional mi and the labels are in the same pfile as features, labpos is the index of the label.  -1 means we are using the last discrete feature in each frame of the pfile as the label.
 
@@ -141,7 +141,7 @@ unsigned  End_Skip    = 0;
 char    *Per_Stream_Transforms[MAX_NUM_OBS_FILES]={NULL,NULL,NULL,NULL,NULL};   //
 char    *Post_Transforms=NULL;
 
-char    *Ftr_Combo_Str="none";
+const char    *Ftr_Combo_Str="none";
 unsigned Ftr_Combo=FTROP_NONE;
 
 int    numSecondsPerPrint       = NUM_SECONDS_PER_PRINT;

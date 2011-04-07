@@ -55,7 +55,7 @@ void readStats(FILE*f, size_t N, bool ascii, double *cor, double *means, double 
 
 void writeStats(FILE*f, size_t N, bool ascii, double *cor, double *means, double *vecs, double *vals) {
   size_t i,j;
-
+  size_t fwrite_result;
   for (i=0;i<N;i++) {
     if (ascii) {
       for (j=0;j<N;j++)
@@ -65,10 +65,10 @@ void writeStats(FILE*f, size_t N, bool ascii, double *cor, double *means, double
 	fprintf(f,"%.15f ",vecs[i*N+j]);
       fprintf(f,"%.15f\n",vals[i]);
     } else {
-      fwrite(&cor[i*N],sizeof(double),N,f);
-      fwrite(&means[i],sizeof(double),1,f);
-      fwrite(&vecs[i*N],sizeof(double),N,f);
-      fwrite(&vals[i],sizeof(double),1,f);
+      fwrite_result = fwrite(&cor[i*N],sizeof(double),N,f);
+      fwrite_result = fwrite(&means[i],sizeof(double),1,f);
+      fwrite_result = fwrite(&vecs[i*N],sizeof(double),N,f);
+      fwrite_result = fwrite(&vals[i],sizeof(double),1,f);
     }
   }
 }

@@ -7,19 +7,22 @@
 // is synonymous with "segment", the later being a generalization of the
 // former with no functional difference.
 
-#include <stdio.h>
-#include "error.h"
-#include "general.h"
-
 #if HAVE_CONFIG_H
 #  include <config.h>
 #endif
 #if HAVE_INTTYPES_H
+   // The ISO C99 standard specifies that the macros in inttypes.h must
+   //  only be defined if explicitly requested. 
+#  define __STDC_FORMAT_MACROS 1
 #  include <inttypes.h>
 #endif
 #if HAVE_STDINT_H
 #  include <stdint.h>
 #endif
+
+#include <stdio.h>
+#include "error.h"
+#include "general.h"
 
 // This is the size of the PFile header
 #define PFILE_HEADER_SIZE (32768)
@@ -71,6 +74,8 @@ typedef union
    typedef long pfile_off_t;
 #endif
 
+// the following is handled elegantly and portably by autotools
+#if 0
 // Set up long long types if we have them, along with approriate format
 // string segments
 #if HAVE_LONG_LONG_INT
@@ -84,6 +89,11 @@ typedef union
 #  define PF_LLU "%lu"
 #  define PF_LLD "%ld"
 #endif
+#endif
+
+typedef int64_t  pfile_longlong_t;
+typedef uint64_t pfile_ulonglong_t;
+
 
 // Define PFILE_LARGE if we support large PFiles
 #if (HAVE_FSEEKO || (SIZEOF_LONG >= 8))

@@ -1439,7 +1439,7 @@ unsigned FNGramImp::boNode(unsigned val, unsigned nodeId, BackoffGraphNode::Hash
 		if ( a_bg_child == ~0x0u )
 			a_bg_child = bg_child;
 
-		if ( domax && (score > bestScore) || ! domax && (score < bestScore) ) {
+		if ( (domax && (score > bestScore)) || (!domax && (score < bestScore)) ) {
 			chosen_bg_child = bg_child;
 			bestScore = score;
 		}
@@ -1472,7 +1472,7 @@ unsigned FNGramImp::boNode(unsigned val, unsigned nodeId, BackoffGraphNode::Hash
 					while ( gciter.next(bg_grandchild) ) {
 						double tmp = backoffValueRSubCtxW(val, bgNode.backoffStrategy, bg_grandchild, contextEntries, parentsValues);
 						// compute local max min of offspring
-						if ( domax && (tmp > score) || ! domax && (tmp < score) ) {
+						if ( (domax && (tmp > score)) || (!domax && (tmp < score)) ) {
 							score = tmp;
 						}
 					}
@@ -1482,7 +1482,7 @@ unsigned FNGramImp::boNode(unsigned val, unsigned nodeId, BackoffGraphNode::Hash
 					unsigned bg_grandchild;
 					while ( descendant_iter.next(bg_grandchild) ) {
 						double tmp = backoffValueRSubCtxW(val, bgNode.backoffStrategy, bg_grandchild, contextEntries, parentsValues);
-						if ( domax && (tmp > score) || ! domax && (tmp < score) ) {
+						if ( (domax && (tmp > score)) || (!domax && (tmp < score)) ) {
 							score = tmp;
 						}
 					}
@@ -1490,7 +1490,7 @@ unsigned FNGramImp::boNode(unsigned val, unsigned nodeId, BackoffGraphNode::Hash
 
 				if ( score == -1e200 )		// TODO: change this to NaN or Inf, and a #define (also see above)
 					continue;		// presumably because of a NULL counts objects
-				if ( domax && (score > bestScore) || ! domax && (score < bestScore) ) {
+				if ( (domax && (score > bestScore)) || (!domax && (score < bestScore)) ) {
 					chosen_bg_child = bg_child;
 					bestScore = score;
 				}
@@ -2124,7 +2124,10 @@ void FNGramCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV*>& parents,
 		FNGramImp::LevelIter liter(_numParents, level);
 		for ( unsigned nodeAtLevel; liter.next(nodeAtLevel); ) {
 			// we make sure it is somewhere below startNode
-			if ( _fngram->_bgNodes[nodeAtLevel].valid && (nodeAtLevel | _startNode == _startNode) ) {
+
+		  // TODO: This if condition does not make sense. See ticket #98
+		  // Determine what was really meant here and fix it.
+		  if ( _fngram->_bgNodes[nodeAtLevel].valid && (nodeAtLevel | _startNode == _startNode) ) {
 				// figure out which bits are on
 				std::vector<unsigned> onPos = FNGramImp::bitsOn(nodeAtLevel);	// this will be something like 0, 1, 3
 				for ( unsigned i = 0; i < _fngram->_bgNodes[nodeAtLevel].order - 1; i++ ) {
@@ -2185,7 +2188,10 @@ logpr FNGramCPT::probGivenParents(vector < RV* >& parents, DiscRV* drv) {
 		FNGramImp::LevelIter liter(_numParents, level);
 		for ( unsigned nodeAtLevel; liter.next(nodeAtLevel); ) {
 			// we make sure it is somewhere below startNode
-			if ( _fngram->_bgNodes[nodeAtLevel].valid && (nodeAtLevel | _startNode == _startNode) ) {
+
+		  // TODO: This if condition does not make sense. See ticket #98
+		  // Determine what was really meant here and fix it.
+		  if ( _fngram->_bgNodes[nodeAtLevel].valid && (nodeAtLevel | _startNode == _startNode) ) {
 				// figure out which bits are on
 				std::vector<unsigned> onPos = FNGramImp::bitsOn(nodeAtLevel);	// this will be something like 0, 1, 3
 				for ( unsigned i = 0; i < _fngram->_bgNodes[nodeAtLevel].order - 1; i++ ) {
