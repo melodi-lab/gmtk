@@ -1,6 +1,6 @@
 static char *rcsid = "$Id$";
 
-#include <iostream.h>
+#include <iostream>
 #include "GM_io.h"
 
 
