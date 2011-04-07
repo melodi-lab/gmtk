@@ -49,7 +49,7 @@ ion?])
 AM_CONDITIONAL([HAVE_HG],[test  x$HAVE_HG = xyes])
 
 # Checks for libraries.
-#AC_CHECK_LIB([m])
+AC_CHECK_LIB([m],[sqrt])
 
 # Checks for header files.
 AC_FUNC_ALLOCA
@@ -71,7 +71,29 @@ AC_FUNC_MALLOC
 AC_FUNC_STRFTIME
 AC_FUNC_STRTOD
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS([floor pow sqrt strchr strerror strspn strtol strtoul])
+AC_CHECK_FUNCS([floor pow sqrt strchr strerror strspn strtol strtoul log1p])
+
+AC_ARG_WITH([logp], 
+            [AS_HELP_STRING([--with-logp],
+              [select logp implementation (log, table, smart, renorm) @<:@default=log@:>@])],
+            [],
+            [with_logp=log])
+case "${with_logp}" in
+log) 
+  ;;
+table)
+  AC_DEFINE([_TABLE_], [1], [Define to use table logp implementation]) 
+  ;;
+smart)
+  AC_MSG_ERROR([the smart logp table is not yet implemented]) 
+  ;;
+renorm)
+  AC_MSG_ERROR([renormalization is not yet implemented]) 
+  ;;
+*)
+  AC_MSG_ERROR([Must specify --with-logp= one of log, table, smart, renorm]) 
+  ;;
+esac
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
