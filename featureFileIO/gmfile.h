@@ -1,6 +1,6 @@
 static char rcsid = "$Id$";
 
-#include <iostream.h>
+#include <iostream>
 #include <stdlib.h>
 #include "GM_type.h"
 #include "sArray.h"
