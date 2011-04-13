@@ -62,6 +62,17 @@ VCID(HGID)
 #include "GMTK_DiagCovarVector.h"
 #include "GMTK_DlinkMatrix.h"
 
+#include "GMTK_WordOrganization.h"
+
+
+#define GMTK_ARG_OBS_FILES
+/****************************      FILE RANGE OPTIONS             ***********************************************/
+#define GMTK_ARG_DCDRNG
+#define GMTK_ARG_START_END_SKIP
+/************************  OBSERVATION MATRIX TRANSFORMATION OPTIONS   ******************************************/
+#define GMTK_ARG_OBS_MATRIX_XFORMATION
+
+
 #define GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG
 #define GMTK_ARG_OUTPUT_MASTER_FILE
 #define GMTK_ARG_OUTPUT_TRAINABLE_PARAMS
@@ -112,6 +123,8 @@ main(int argc,char*argv[])
   // or divide by zero, we actually get a FPE
   ieeeFPsetup();
 
+  CODE_TO_COMPUTE_ENDIAN;
+
   ////////////////////////////////////////////
   // parse arguments
   bool parse_was_ok = Arg::parse(argc,(char**)argv);
@@ -138,6 +151,35 @@ main(int argc,char*argv[])
       error("");
     }
   }
+
+
+  infoMsg(IM::Max,"Opening Files ...\n");
+
+  globalObservationMatrix.openFiles(nfiles,
+                                    (const char**)&ofs,
+                                    (const char**)&frs,
+                                    (const char**)&irs,
+                                    (unsigned*)&nfs,
+                                    (unsigned*)&nis,
+                                    (unsigned*)&ifmts,
+                                    (bool*)&iswp,
+                                    startSkip,
+                                    endSkip,
+                                    Cpp_If_Ascii,
+                                    cppCommandOptions,
+                                    (const char**)&postpr,  //Frame_Range_Str,
+                                    Action_If_Diff_Num_Frames,
+                                    Action_If_Diff_Num_Sents,
+                                    Per_Stream_Transforms,
+                                    Post_Transforms,
+                                    Ftr_Combo,
+                                    (const char**)&sr,
+                                    (const char**)&prepr,
+                                    gpr_str);
+
+  infoMsg(IM::Max,"Finished opening files.\n");
+
+
 
   ////////////////////////////////////////////
   if (inputMasterFile != NULL) {
@@ -206,6 +248,33 @@ main(int argc,char*argv[])
   unsigned minRVcard = (unsigned)(-1);
   unsigned maxRVdim = 0;
   unsigned minRVdim = (unsigned)(-1);
+  unsigned nRVs = unrolled_rvs.size();
+  unsigned NP = fp.numFramesInP();
+  unsigned NC = fp.numFramesInC();
+  unsigned NE = fp.numFramesInE();
+  bool swPar = false;
+  bool scale = false;
+  bool penalty = false;
+  bool shift = false;
+  bool symTab = false;
+  bool denseCPT  = GM_Parms.mdCpts.size() > 0;
+  bool sparseCPT = GM_Parms.msCpts.size() > 0;
+  bool determCPT = GM_Parms.mtCpts.size() > 0;
+  bool diagGauss = false;
+  bool decTree = false;
+  bool itDT = false;
+  bool internalDT = false;
+  bool Fngram = GM_Parms.fngramCpts.size() > 0;
+  bool ngram  = GM_Parms.ngramCpts.size() > 0;
+  bool lattice = false;
+  bool sparseGauss = false;
+  bool l1Reg = false;
+  bool l2Reg = false;
+  bool expDist = false;
+  bool gammaDist = false;
+  bool betaDist = false;
+  bool veCPT = GM_Parms.veCpts.size() > 0;
+  bool veSep = false;
 
   for (vector<RV*>::iterator it = unrolled_rvs.begin(); it != unrolled_rvs.end(); ++it) {
     if ((*it)->frame() < fp.firstChunkFrame()) {
@@ -231,13 +300,26 @@ main(int argc,char*argv[])
     } else if ((*it)->observed()) {
       nObsRVs += 1;
     }
-
+    if ((*it)->switching()) {
+      swPar = true;
+    }
+    if ((*it)->scale()) {
+      scale = true;
+    }
+    if ((*it)->penalty()) {
+      penalty = true;
+    }
+    if ((*it)->shift()) {
+      shift = true;
+    }
+      
   }
   if (nContRVs == 0) {
     minRVdim = 0;
   }
-  unsigned nRVs = unrolled_rvs.size();
-  printf("%u %u %u %u %u %u %u %u %u %u %u %u\n", nRVs, nRVsInP, nRVsInC, nRVsInE, nDiscRVs, nContRVs, minRVcard, maxRVcard, nHidRVs, nObsRVs, minRVdim, maxRVdim);
+
+#define PB(b) ((b) ? 1 : 0)
+  printf("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u  sw %u  sc %u  pn %u  sh %u  dCPT %u  sCPT %u  det %u  fng %u  ng %u  veCPT %u\n", nRVs, nRVsInP, nRVsInC, nRVsInE, nDiscRVs, nContRVs, minRVcard, maxRVcard, nHidRVs, nObsRVs, minRVdim, maxRVdim, NP, NC, NE, PB(swPar), PB(scale), PB(penalty), PB(shift), PB(denseCPT), PB(sparseCPT), PB(determCPT), PB(Fngram), PB(ngram), PB(veCPT));
   assert(nRVs = nRVsInP + nRVsInC + nRVsInE);
   assert(nRVs = nObsRVs + nHidRVs);
   assert(nRVs = nDiscRVs + nContRVs);
