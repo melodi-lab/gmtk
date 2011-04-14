@@ -289,6 +289,8 @@ main(int argc,char*argv[])
       unsigned card = ((DiscRV *)(*it))->cardinality;
       if (card > maxRVcard) maxRVcard = card;
       if (card < minRVcard) minRVcard = card;
+      DiscRV *drv = (DiscRV *) (*it);
+      symTab = symTab || drv->symbolTable();
     } else if ((*it)->continuous()) {
       nContRVs += 1;
       unsigned dim = (unsigned) ((ContRV*)(*it))->dimensionality();
@@ -319,7 +321,7 @@ main(int argc,char*argv[])
   }
 
 #define PB(b) ((b) ? 1 : 0)
-  printf("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u  sw %u  sc %u  pn %u  sh %u  dCPT %u  sCPT %u  det %u  fng %u  ng %u  veCPT %u\n", nRVs, nRVsInP, nRVsInC, nRVsInE, nDiscRVs, nContRVs, minRVcard, maxRVcard, nHidRVs, nObsRVs, minRVdim, maxRVdim, NP, NC, NE, PB(swPar), PB(scale), PB(penalty), PB(shift), PB(denseCPT), PB(sparseCPT), PB(determCPT), PB(Fngram), PB(ngram), PB(veCPT));
+  printf("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u  sw %u  sc %u  pn %u  sh %u  sym %u   dCPT %u  sCPT %u  det %u  fng %u  ng %u  veCPT %u\n", nRVs, nRVsInP, nRVsInC, nRVsInE, nDiscRVs, nContRVs, minRVcard, maxRVcard, nHidRVs, nObsRVs, minRVdim, maxRVdim, NP, NC, NE, PB(swPar), PB(scale), PB(penalty), PB(shift), PB(symTab), PB(denseCPT), PB(sparseCPT), PB(determCPT), PB(Fngram), PB(ngram), PB(veCPT));
   assert(nRVs = nRVsInP + nRVsInC + nRVsInE);
   assert(nRVs = nObsRVs + nHidRVs);
   assert(nRVs = nDiscRVs + nContRVs);

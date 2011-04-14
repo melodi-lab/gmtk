@@ -104,6 +104,8 @@ public:
 
   virtual ~DiscRV() {;}
 
+  bool symbolTable() const { return rv_info.symbolTable != NULL; }
+
   // printing routines.
   virtual void printNameFrameValue(FILE *f,bool nl=true) {
     RV::printNameFrame(f,false);
