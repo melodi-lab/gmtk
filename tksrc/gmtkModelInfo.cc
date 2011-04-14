@@ -152,33 +152,29 @@ main(int argc,char*argv[])
     }
   }
 
-
   infoMsg(IM::Max,"Opening Files ...\n");
-
   globalObservationMatrix.openFiles(nfiles,
-                                    (const char**)&ofs,
-                                    (const char**)&frs,
-                                    (const char**)&irs,
-                                    (unsigned*)&nfs,
-                                    (unsigned*)&nis,
-                                    (unsigned*)&ifmts,
-                                    (bool*)&iswp,
-                                    startSkip,
-                                    endSkip,
-                                    Cpp_If_Ascii,
-                                    cppCommandOptions,
-                                    (const char**)&postpr,  //Frame_Range_Str,
-                                    Action_If_Diff_Num_Frames,
-                                    Action_If_Diff_Num_Sents,
-                                    Per_Stream_Transforms,
-                                    Post_Transforms,
-                                    Ftr_Combo,
-                                    (const char**)&sr,
-                                    (const char**)&prepr,
-                                    gpr_str);
-
+				    (const char**)&ofs,
+				    (const char**)&frs,
+				    (const char**)&irs,
+				    (unsigned*)&nfs,
+				    (unsigned*)&nis,
+				    (unsigned*)&ifmts,
+				    (bool*)&iswp,
+				    startSkip,
+				    endSkip,
+				    Cpp_If_Ascii,
+				    cppCommandOptions,
+				    (const char**)&postpr,  //Frame_Range_Str,
+				    Action_If_Diff_Num_Frames,
+				    Action_If_Diff_Num_Sents,
+				    Per_Stream_Transforms,
+				    Post_Transforms,
+				    Ftr_Combo,
+				    (const char**)&sr,
+				    (const char**)&prepr,
+				    gpr_str);
   infoMsg(IM::Max,"Finished opening files.\n");
-
 
 
   ////////////////////////////////////////////
@@ -234,8 +230,6 @@ main(int argc,char*argv[])
   vector<RV*> unrolled_rvs;
   map<RVInfo::rvParent, unsigned> unrolled_map;
   fp.unroll(0, unrolled_rvs, unrolled_map);
-
-  // #rvs  #rvs in P C E  #Drvs  #Crvs  min card  max card  #hid  #obs  min Crv dim  max Crv dim  gr comp.  #frames P C E  min fr  max fr  sw par  sw wght  sym  dense  sparse  det  DT  ItDT  IDT  Fng  Ng  Lat  sparseG  l1  l2  exp  gamma  beta  VECPT  VESEP
   
   unsigned nRVsInP = 0;
   unsigned nRVsInC = 0;
@@ -323,8 +317,19 @@ main(int argc,char*argv[])
     minRVdim = 0;
   }
 
+#define BF "%u"
 #define PB(b) ((b) ? 1 : 0)
-  printf("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u  sw %u  sc %u  pn %u  sh %u  sym %u   dCPT %u  sCPT %u  det %u  dGau %u  DT %u  itDT %u  fng %u  ng %u  lat %u  spG X  veCPT %u\n", nRVs, nRVsInP, nRVsInC, nRVsInE, nDiscRVs, nContRVs, minRVcard, maxRVcard, nHidRVs, nObsRVs, minRVdim, maxRVdim, NP, NC, NE, PB(swPar), PB(scale), PB(penalty), PB(shift), PB(symTab), PB(denseCPT), PB(sparseCPT), PB(determCPT), PB(diagGauss), PB(decTree), PB(itDT), PB(Fngram), PB(ngram), PB(lattice), /*PB(sparseGauss),*/ PB(veCPT));
+
+  char swWght[4] = {0,0,0,0};
+  int idx = 0;
+  if (scale)   swWght[idx++] = 's';
+  if (penalty) swWght[idx++] = 'p';
+  if (shift)   swWght[idx++] = 'h';
+//#rvs  #rvs in P C E  #Drvs  #Crvs  min card  max card  #hid  #obs  min Crv dim  max Crv dim  gr comp.  #frames P C E  min fr  max fr
+//sw par  sw wght  sym  dense  sparse  det  DT  ItDT  IDT  Fng  Ng  Lat  sparseG  l1  l2  exp  gamma  beta  VECPT  VESEP format
+  printf("%u %u %u %u %u %u %u %u %u %u %u %u XXX %u %u %u XXX XXX "BF" '%s' "BF" "BF" "BF" "BF" "BF" "BF" "BF" "BF" "BF" "BF" X X X X X X "BF" X %s\n", 
+	 nRVs, nRVsInP, nRVsInC, nRVsInE, nDiscRVs, nContRVs, minRVcard, maxRVcard, nHidRVs, nObsRVs, minRVdim, maxRVdim, NP, NC, NE, 
+	 PB(swPar), swWght, PB(symTab), PB(denseCPT), PB(sparseCPT), PB(determCPT), PB(diagGauss), PB(decTree), PB(itDT), PB(Fngram), PB(ngram), PB(lattice), /*PB(sparseGauss),*/ PB(veCPT), fmts[0]);
   assert(nRVs = nRVsInP + nRVsInC + nRVsInE);
   assert(nRVs = nObsRVs + nHidRVs);
   assert(nRVs = nDiscRVs + nContRVs);
