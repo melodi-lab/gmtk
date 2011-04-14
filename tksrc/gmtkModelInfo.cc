@@ -260,14 +260,17 @@ main(int argc,char*argv[])
   bool denseCPT  = GM_Parms.mdCpts.size() > 0;
   bool sparseCPT = GM_Parms.msCpts.size() > 0;
   bool determCPT = GM_Parms.mtCpts.size() > 0;
-  bool diagGauss = false;
-  bool decTree = false;
-  bool itDT = false;
+  bool diagGauss = GM_Parms.covars.size() > 0;
+  bool decTree = GM_Parms.dts.size() > 0;
+  bool itDT = GM_Parms.iterableDts.size() > 0;
   bool internalDT = false;
   bool Fngram = GM_Parms.fngramCpts.size() > 0;
   bool ngram  = GM_Parms.ngramCpts.size() > 0;
-  bool lattice = false;
-  bool sparseGauss = false;
+  bool lattice = GM_Parms.latticeAdts.size() > 0 ||
+                 GM_Parms.iterableLatticeAdts.size() > 0 ||
+                 GM_Parms.latticeNodeCpts.size() > 0 ||
+                 GM_Parms.latticeEdgeCpts.size() > 0;
+  bool sparseGauss = false; // GM_Parms.sPmfs.size() > 0;
   bool l1Reg = false;
   bool l2Reg = false;
   bool expDist = false;
@@ -321,7 +324,7 @@ main(int argc,char*argv[])
   }
 
 #define PB(b) ((b) ? 1 : 0)
-  printf("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u  sw %u  sc %u  pn %u  sh %u  sym %u   dCPT %u  sCPT %u  det %u  fng %u  ng %u  veCPT %u\n", nRVs, nRVsInP, nRVsInC, nRVsInE, nDiscRVs, nContRVs, minRVcard, maxRVcard, nHidRVs, nObsRVs, minRVdim, maxRVdim, NP, NC, NE, PB(swPar), PB(scale), PB(penalty), PB(shift), PB(symTab), PB(denseCPT), PB(sparseCPT), PB(determCPT), PB(Fngram), PB(ngram), PB(veCPT));
+  printf("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u  sw %u  sc %u  pn %u  sh %u  sym %u   dCPT %u  sCPT %u  det %u  dGau %u  DT %u  itDT %u  fng %u  ng %u  lat %u  spG X  veCPT %u\n", nRVs, nRVsInP, nRVsInC, nRVsInE, nDiscRVs, nContRVs, minRVcard, maxRVcard, nHidRVs, nObsRVs, minRVdim, maxRVdim, NP, NC, NE, PB(swPar), PB(scale), PB(penalty), PB(shift), PB(symTab), PB(denseCPT), PB(sparseCPT), PB(determCPT), PB(diagGauss), PB(decTree), PB(itDT), PB(Fngram), PB(ngram), PB(lattice), /*PB(sparseGauss),*/ PB(veCPT));
   assert(nRVs = nRVsInP + nRVsInC + nRVsInE);
   assert(nRVs = nObsRVs + nHidRVs);
   assert(nRVs = nDiscRVs + nContRVs);
