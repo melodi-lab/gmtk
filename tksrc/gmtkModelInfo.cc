@@ -327,7 +327,7 @@ main(int argc,char*argv[])
   if (shift)   swWght[idx++] = 'h';
 //#rvs  #rvs in P C E  #Drvs  #Crvs  min card  max card  #hid  #obs  min Crv dim  max Crv dim  gr comp.  #frames P C E  min fr  max fr
 //sw par  sw wght  sym  dense  sparse  det  DT  ItDT  IDT  Fng  Ng  Lat  sparseG  l1  l2  exp  gamma  beta  VECPT  VESEP format
-  printf("%u %u %u %u %u %u %u %u %u %u %u %u XXX %u %u %u XXX XXX "BF" '%s' "BF" "BF" "BF" "BF" "BF" "BF" "BF" "BF" "BF" "BF" X X X X X X "BF" X %s\n", 
+  printf("%u %u %u %u %u %u %u %u %u %u %u %u XXX %u %u %u XXX XXX "BF" '%s' "BF" "BF" "BF" "BF" "BF" "BF" "BF" X "BF" "BF" "BF" X X X X X X "BF" X %s\n", 
 	 nRVs, nRVsInP, nRVsInC, nRVsInE, nDiscRVs, nContRVs, minRVcard, maxRVcard, nHidRVs, nObsRVs, minRVdim, maxRVdim, NP, NC, NE, 
 	 PB(swPar), swWght, PB(symTab), PB(denseCPT), PB(sparseCPT), PB(determCPT), PB(diagGauss), PB(decTree), PB(itDT), PB(Fngram), PB(ngram), PB(lattice), /*PB(sparseGauss),*/ PB(veCPT), fmts[0]);
   assert(nRVs = nRVsInP + nRVsInC + nRVsInE);
