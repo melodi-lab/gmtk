@@ -14,7 +14,20 @@ AC_ARG_ENABLE([assertions],
               [AS_HELP_STRING([--disable-assertions],
                               [disable assertion checking @<:@default: no@:>@])],
               [assertions=${enableval}], [assertions=yes])
-
+AC_ARG_ENABLE([gzipPipe],
+	      [AS_HELP_STRING([--disable-gzip],
+                              [disable piping .gz files through gzip @<:@default: no@:>@])],
+	      [gzipPipe=${enableval}], [gzipPipe=yes])
+AC_ARG_ENABLE([bzipPipe],
+	      [AS_HELP_STRING([--disable-bzip2],
+                              [disable piping .bz2 files through bzip2 @<:@default: no@:>@])],
+	      [bzipPipe=${enableval}], [bzipPipe=yes])
+if test x"$gzipPipe" = x"yes"; then
+  AC_DEFINE([ENABLE_GZIP],[1],[Pipe .gz files through gzip])
+fi
+if test x"$bzipPipe" = x"yes"; then
+  AC_DEFINE([ENABLE_BZIP2],[1],[Pipe .bz2 files through bzip2])
+fi
 AC_ARG_ENABLE([model-checks],
               [AS_HELP_STRING([--disable-model-checks],
                               [disable run-time checks for models @<:@default: no@:>@])],

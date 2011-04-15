@@ -334,6 +334,24 @@ const char * CPP_Command()
   return rc;
 }
 
+const char * gzip_Command() 
+{
+  const char * rc = getenv("GMTK_GZIP_CMD");
+  if (rc == NULL)
+    rc = "zcat";
+  // fprintf(stdout,"gzip command got is (%s)\n",rc);
+  return rc;
+}
+
+const char * bzip2_Command() 
+{
+  const char * rc = getenv("GMTK_BZIP2_CMD");
+  if (rc == NULL)
+    rc = "bzcat";
+  // fprintf(stdout,"bzip2 command got is (%s)\n",rc);
+  return rc;
+}
+
 bool
 freadUntilEOF(FILE *f)
 {

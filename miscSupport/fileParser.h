@@ -19,6 +19,9 @@
 // need to change the comment character above.
 #define PIPE_ASCII_FILES_THROUGH_CPP
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <string>
 #include <vector>
@@ -62,6 +65,9 @@ class iDataStreamFile : public ioDataStreamFile {
   enum State { GetNextLine, UseCurLine } state;
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
   const bool cppIfAscii;
+#endif
+#if defined(ENABLE_GZIP) || defined(ENABLE_BZIP2)
+  bool piped;
 #endif
   const char extraCommentChar;
 
