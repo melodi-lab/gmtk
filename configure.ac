@@ -10,6 +10,14 @@ AC_ARG_ENABLE([gmtkViz],
               [AS_HELP_STRING([--disable-gmtkViz],
                               [disable gmtkViz @<:@default: no@:>@])],
               [gmtkViz=${enableval}], [gmtkViz=yes])
+AC_ARG_ENABLE([gzipPipe],
+	      [AS_HELP_STRING([--disable-gzip],
+                              [disable piping .gz files through gzip @<:@default: no@:>@])],
+	      [gzipPipe=${enableval}], [gzipPipe=yes])
+AC_ARG_ENABLE([bzipPipe],
+	      [AS_HELP_STRING([--disable-bzip2],
+                              [disable piping .bz2 files through bzip2 @<:@default: no@:>@])],
+	      [bzipPipe=${enableval}], [bzipPipe=yes])
 AC_ARG_WITH([logp], 
             [AS_HELP_STRING([--with-logp],
               [select logp implementation (log, table, smart, renorm) @<:@default=log@:>@])],

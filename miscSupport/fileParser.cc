@@ -85,6 +85,54 @@ iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary,const cha
 {
   if (_name == NULL)
     error("Error: Can't open null file for reading.");
+
+#ifdef ENABLE_GZIP
+  if (!Binary) {
+    string path = _name;
+    size_t dotPos = path.rfind(".");
+    if (dotPos != string::npos) {
+      size_t extLen = path.length() - dotPos + 1;
+      if (path.compare(dotPos, extLen, ".gz") == 0) {
+	// make sure the file  exists first.
+	if ((fh = ::fopen(_name,"r")) == NULL) {
+	  error("ERROR: unable to open file (%s) for reading",_name);
+	}
+	fclose(fh);
+	string unzipCommand = gzip_Command() + string(" ") + path;
+	piped = true;
+	fh = ::popen(unzipCommand.c_str(), "r");
+	buff = new char[MAXLINSIZEPLUS1];
+	buffp = buff;
+	state = GetNextLine;
+	return;
+      }
+    }
+  }
+#endif
+#ifdef ENABLE_BZIP2
+  if (!Binary) {
+    string path = _name;
+    size_t dotPos = path.rfind(".");
+    if (dotPos != string::npos) {
+      size_t extLen = path.length() - dotPos + 1;
+      if (path.compare(dotPos, extLen, ".bz2")==0) {
+	// make sure the file  exists first.
+	if ((fh = ::fopen(_name,"r")) == NULL) {
+	  error("ERROR: unable to open file (%s) for reading",_name);
+	}
+	fclose(fh);
+	string unzipCommand = bzip2_Command() + string(" ") + path;
+	piped = true;
+	fh = ::popen(unzipCommand.c_str(), "r");
+	buff = new char[MAXLINSIZEPLUS1];
+	buffp = buff;
+	state = GetNextLine;
+	return;
+      }
+    }
+  }
+#endif
+
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
   if (!Binary) {
     if (cppIfAscii) {
@@ -160,8 +208,8 @@ iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary,const cha
 
 iDataStreamFile::~iDataStreamFile()
 {
-#ifdef PIPE_ASCII_FILES_THROUGH_CPP
-  if (cppIfAscii) {
+#if defined(PIPE_ASCII_FILES_THROUGH_CPP) || defined(ENABLE_GZIP) || defined(ENABLE_BIZP2)
+  if (cppIfAscii || piped) {
     // first, scan until end of file since sometimes it appears
     // that closing a pipe when not at the end causes an error (e.g., mac osx)
     freadUntilEOF(fh);
@@ -297,7 +345,7 @@ iDataStreamFile::prepareNext()
 
 void iDataStreamFile::rewind()
 {
-  assert ( Binary || ! cppIfAscii );
+  assert ( Binary || ! cppIfAscii || ! piped);
   if (::fseek (fh, 0L, SEEK_SET) != 0)
     error("ERROR: trouble seeking to beginning of file '%s', %s\n",
 	  fileName(),strerror(errno));
