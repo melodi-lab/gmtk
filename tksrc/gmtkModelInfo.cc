@@ -36,6 +36,7 @@
 #include "rand.h"
 #include "arguments.h"
 #include "ieeeFPsetup.h"
+#include "debug.h"
 //#include "spi.h"
 #include "version.h"
 
@@ -89,6 +90,9 @@ VCID(HGID)
 #define GMTK_ARG_VAR_FLOOR_ON_READ
 #define GMTK_ARG_CPT_NORM_THRES
 
+#define GMTK_ARG_INFOSEPARATOR
+#define GMTK_ARG_INFOFIELDFILE
+
 #define GMTK_ARGUMENTS_DEFINITION
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_DEFINITION
@@ -114,6 +118,63 @@ Arg Arg::Args[] = {
 RAND rnd(false);
 GMParms GM_Parms;
 ObservationMatrix globalObservationMatrix;
+
+  // these are the available fields
+  enum fields {
+    nRVsInP_F,
+    nRVsInC_F,
+    nRVsInE_F,
+    nDiscRVs_F,
+    nContRVs_F,
+    nObsRVs_F,
+    nHidRVs_F,
+    maxRVcard_F,
+    minRVcard_F,
+    maxRVdim_F,
+    minRVdim_F,
+    graphComp_F,
+    nRVs_F,
+    NP_F,
+    NC_F,
+    NE_F,
+    minFrames_F,
+    maxFrames_F,
+    swPar_F,
+    swWght_F,
+    symTab_F,
+    denseCPT_F,
+    sparseCPT_F,
+    determCPT_F,
+    diagGauss_F,
+    decTree_F,
+    itDT_F,
+    internalDT_F,
+    Fngram_F,
+    ngram_F,
+    lattice_F,
+    sparseGauss_F,
+    l1Reg_F,
+    l2Reg_F,
+    expDist_F,
+    gammaDist_F,
+    betaDist_F,
+    veCPT_F,
+    veSep_F,
+    format_F,
+    unknown_F, // use this for fields you don't know how to compute
+    done}; // done must always be last!
+
+fields
+lookup(const char*list[], char *target) {
+  unsigned i;
+  for (i=0; strcmp(target, list[i]) && strcmp("done", list[i]); i+=1)
+    ;
+  if (strcmp(target, list[i]) == 0)
+    return (fields)i;
+  else
+    return done;
+}
+
 
 int
 main(int argc,char*argv[])
@@ -358,50 +419,6 @@ main(int argc,char*argv[])
 	 nRVs, nRVsInP, nRVsInC, nRVsInE, nDiscRVs, nContRVs, minRVcard, maxRVcard, nHidRVs, nObsRVs, minRVdim, maxRVdim, NP, NC, NE, 
 	 PB(swPar), swWght, PB(symTab), PB(denseCPT), PB(sparseCPT), PB(determCPT), PB(diagGauss), PB(decTree), PB(itDT), PB(Fngram), PB(ngram), PB(lattice), /*PB(sparseGauss),*/ l1Reg, l2Reg, PB(veCPT), fmts[0]);
 #else
-  // these are the available fields
-  enum fields {
-    nRVsInP_F,
-    nRVsInC_F,
-    nRVsInE_F,
-    nDiscRVs_F,
-    nContRVs_F,
-    nObsRVs_F,
-    nHidRVs_F,
-    maxRVcard_F,
-    minRVcard_F,
-    maxRVdim_F,
-    minRVdim_F,
-    graphComp_F,
-    nRVs_F,
-    NP_F,
-    NC_F,
-    NE_F,
-    minFrames_F,
-    maxFrames_F,
-    swPar_F,
-    swWght_F,
-    symTab_F,
-    denseCPT_F,
-    sparseCPT_F,
-    determCPT_F,
-    diagGauss_F,
-    decTree_F,
-    itDT_F,
-    internalDT_F,
-    Fngram_F,
-    ngram_F,
-    lattice_F,
-    sparseGauss_F,
-    l1Reg_F,
-    l2Reg_F,
-    expDist_F,
-    gammaDist_F,
-    betaDist_F,
-    veCPT_F,
-    veSep_F,
-    format_F,
-    unknown_F, // use this for fields you don't know how to compute
-    done}; // done must always be last!
 
   // short name for each field
   const char* fieldNames[done+1] = {
@@ -490,11 +507,44 @@ main(int argc,char*argv[])
     "VE CPTs",
     "VE separators",
     "data format",
-    "unknown field value",
+    "unknown field",
     "done"};
 
   // output the fields in this order
   fields outputOrder[done+1] = {
+#if 1
+    nRVs_F, 
+    nRVsInP_F, 
+    nRVsInC_F, 
+    nRVsInE_F, 
+    nDiscRVs_F, 
+    nContRVs_F, 
+    minRVcard_F, 
+    maxRVcard_F, 
+    nHidRVs_F, 
+    nObsRVs_F, 
+    minRVdim_F, 
+    maxRVdim_F, 
+    NP_F,
+    NC_F, 
+    NE_F, 
+    swPar_F, 
+    swWght_F,
+    symTab_F,
+    denseCPT_F,
+    sparseCPT_F,
+    determCPT_F, 
+    diagGauss_F, 
+    decTree_F, 
+    itDT_F, 
+    Fngram_F, 
+    ngram_F, 
+    lattice_F, 
+    l1Reg_F, 
+    l2Reg_F, 
+    veCPT_F, 
+    format_F,
+#else
     nRVs_F, 
     nRVsInP_F, 
     nRVsInC_F, 
@@ -535,11 +585,30 @@ main(int argc,char*argv[])
     veCPT_F, 
     unknown_F, // ve sep
     format_F,
+#endif
     done};
 
-  const char *separator = " ";
+  //  const char *fieldsSeparator = " ";
   enum outputFormat {terse, normal, verbose};
-  outputFormat mode = terse;
+  outputFormat mode = normal;
+
+#define MAX_FIELD_LENGTH 32
+  if (fieldFile) {
+    FILE *f = fopen(fieldFile, "r");
+    if (!f) error("Failed to open file: %s", fieldFile);
+    char field[MAX_FIELD_LENGTH];
+    unsigned i = 0;
+    for (; i < done-1 && fgets(field, MAX_FIELD_LENGTH, f) != NULL; ) {
+      field[strlen(field)-1] = 0;
+      outputOrder[i++] = lookup(fieldNames, field);
+    }
+    outputOrder[i] = done;
+  }
+  if (IM::glbMsgLevel(IM::ModelInfo) < IM::Default) 
+    mode = terse; 
+  else if (IM::glbMsgLevel(IM::ModelInfo) >= IM::Moderate)
+    mode = verbose;
+
   FILE *outF = stdout;
 
 #define BF "%u"
@@ -566,19 +635,19 @@ switch (mode) {\
 
   bool printSep = false;
   const char *sep;
-  const char **names;
+  const char **names = NULL;
   if (mode == normal) {
     names = fieldNames;
-    separator = "\n";
+    //    fieldsSeparator = "\n";
   } else if (mode == verbose) {
     names = longNames;
-    separator = "\n";
+    //    fieldsSeparator = "\n";
   }
 
   for (unsigned i=0; outputOrder[i] != done; i+=1) {
     //fprintf (stderr, "%u %u %u\n", i, outputOrder[i], done);
     if (printSep)
-      sep = separator;
+      sep = fieldSeparator;
     else
       sep = "";
     switch (outputOrder[i]) {
@@ -598,11 +667,19 @@ switch (mode) {\
     case NC_F:          PU(NC); break;
     case NE_F:          PU(NE); break;
     case swPar_F:       PB(swPar); break;
-    case swWght_F:      fprintf(outF,"%s%s '", sep, (mode==terse ? "" : names[outputOrder[i]])); 
+    case swWght_F:      if (mode == terse) {
+	                  fprintf(outF,"%s'%s'", sep, swWght);
+                        } else {
+			  fprintf(outF,"%s%s = '%s'", sep, names[outputOrder[i]], swWght); 
+                        }
+#if 0
+	  fprintf(outF,"%s%s'", sep, (mode==terse ? "" : names[outputOrder[i]]" = ")); 
                         if (scale) fprintf(outF, "s");
                         if (penalty) fprintf(outF, "p");
                         if (shift) fprintf(outF, "h");
                         fprintf(outF, "'"); break;
+#endif
+			break;
     case symTab_F:      PB(symTab); break;
     case denseCPT_F:    PB(denseCPT); break;
     case sparseCPT_F:   PB(sparseCPT); break;

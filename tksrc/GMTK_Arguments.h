@@ -1060,6 +1060,46 @@ extern bool ObservationsAllowNan;
 /*************************************************************************************************************/
 /*************************************************************************************************************/
 
+#if defined(GMTK_ARG_INFOSEPARATOR)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+  static const char *fieldSeparator = "\n";
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("fieldSeparator", Arg::Opt,fieldSeparator,"String that separates fields"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+#else
+#endif
+#endif // defined(GMTK_ARG_INFOSEPARATOR)
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+#if defined(GMTK_ARG_INFOFIELDFILE)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+  static char *fieldFile = NULL;
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("fieldFile", Arg::Opt,fieldFile,"File listing model info field order"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+#else
+#endif
+#endif // defined(GMTK_ARG_INFOSEPARATOR)
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
 
 #if defined(GMTK_ARG_SEED)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
@@ -1105,6 +1145,10 @@ extern bool ObservationsAllowNan;
 
   (void) IM::setGlbMsgLevel(verbosity);
   GM_Parms.setMsgLevel(verbosity);
+  for (unsigned i= 0; i < IM::ModuleCount; i+=1) {
+    IM::setGlbMsgLevel((IM::ModuleName)i, verbosity);
+    GM_Parms.setMsgLevel((IM::ModuleName)i, verbosity);
+  }
   
   if (modularVerbosity) {
     char *token, *copy;
