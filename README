@@ -75,9 +75,10 @@ paper), see the following documentation:
 
 https://j.ee.washington.edu/trac/gmtk/wiki/GmtkVizBuildHowTo
 
-gmtkViz is not built by default since it requires wxWidgets
-(http://www.wxwidgets.org/) to be installed. Note that this is the
-only external dependence needed to compile any of GMTK.
+gmtkViz is only built if a suitable wxWidgets (http://www.wxwidgets.org/) 
+installation (version 2.9 or later) is detected at configure time. 
+Note that this is the only external dependence needed to compile any 
+of GMTK.
 
 enjoy!!
 
