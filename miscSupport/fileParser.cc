@@ -18,6 +18,11 @@
 #include <strings.h>
 #include <ctype.h>
 #include <errno.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include <string>
 
 #ifdef __CYGWIN__
@@ -86,48 +91,57 @@ iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary,const cha
   if (_name == NULL)
     error("Error: Can't open null file for reading.");
 
-#ifdef ENABLE_GZIP
-  if (!Binary) {
-    string path = _name;
-    size_t dotPos = path.rfind(".");
-    if (dotPos != string::npos) {
-      size_t extLen = path.length() - dotPos + 1;
-      if (path.compare(dotPos, extLen, ".gz") == 0) {
-	// make sure the file  exists first.
-	if ((fh = ::fopen(_name,"r")) == NULL) {
-	  error("ERROR: unable to open file (%s) for reading",_name);
-	}
-	fclose(fh);
-	string unzipCommand = gzip_Command() + string(" ") + path;
-	piped = true;
-	fh = ::popen(unzipCommand.c_str(), "r");
-	buff = new char[MAXLINSIZEPLUS1];
-	buffp = buff;
-	state = GetNextLine;
-	return;
+  string fName(_name);
+  string plainName;
+  size_t nameLen = fName.length();
+  const char *name = _name;
+  int res;
+  struct stat buf;
+  
+#ifdef ENABLE_BZIP2
+  if (fName.rfind(".bz2") != string::npos) {
+    // Asked for filename.bz2, but we won't unzip it if we don't have to
+    plainName = fName.substr(0, nameLen-4);
+    res = stat(plainName.c_str(), &buf);
+    if (res != 0 && errno == ENOENT) {
+      // filename.bz2 exists, but filename does not
+      // so bunzip and use filename
+      string unzipCommand = bzip2_Command() + string(" ") + fName;
+      system(unzipCommand.c_str());
+    }
+    name = plainName.c_str();
+  } else {
+    res = stat(fName.c_str(), &buf);
+    if (res != 0 && errno == ENOENT) {
+      res = stat((fName + ".bz2").c_str(), &buf);
+      if (res == 0) {
+	// Asked for filename, which doesn't exist, but filename.bz2 does
+	string unzipCommand = bzip2_Command() + string(" ") + fName + ".bz2";
+	system(unzipCommand.c_str());
       }
     }
   }
 #endif
-#ifdef ENABLE_BZIP2
-  if (!Binary) {
-    string path = _name;
-    size_t dotPos = path.rfind(".");
-    if (dotPos != string::npos) {
-      size_t extLen = path.length() - dotPos + 1;
-      if (path.compare(dotPos, extLen, ".bz2")==0) {
-	// make sure the file  exists first.
-	if ((fh = ::fopen(_name,"r")) == NULL) {
-	  error("ERROR: unable to open file (%s) for reading",_name);
-	}
-	fclose(fh);
-	string unzipCommand = bzip2_Command() + string(" ") + path;
-	piped = true;
-	fh = ::popen(unzipCommand.c_str(), "r");
-	buff = new char[MAXLINSIZEPLUS1];
-	buffp = buff;
-	state = GetNextLine;
-	return;
+#ifdef ENABLE_GZIP
+  if (fName.rfind(".gz") != string::npos) {
+    // Asked for filename.gz, but we won't unzip it if we don't have to
+    plainName = fName.substr(0, nameLen-3);
+    res = stat(plainName.c_str(), &buf);
+    if (res != 0 && errno == ENOENT) {
+      // filename.gz exists, but filename does not
+      // so unzip and use filename
+      string unzipCommand = gzip_Command() + string(" ") + fName;
+      system(unzipCommand.c_str());
+    }
+    name = plainName.c_str();
+  } else {
+    res = stat(fName.c_str(), &buf);
+    if (res != 0 && errno == ENOENT) {
+      res = stat((fName + ".gz").c_str(), &buf);
+      if (res == 0) {
+	// Asked for filename, which doesn't exist, but filename.gz does
+	string unzipCommand = gzip_Command() + string(" ") + fName + ".gz";
+	system(unzipCommand.c_str());
       }
     }
   }
@@ -143,20 +157,20 @@ iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary,const cha
       if (_cppCommandOptions != NULL) {
 	cppCommand = cppCommand + string(" ") + string(_cppCommandOptions);
       }
-      if (!strcmp("-",_name)) {
+      if (!strcmp("-",name)) {
 	fh = ::popen(cppCommand.c_str(),"r");
 	if (fh == NULL) {
 	  error("ERROR: unable to open standard input via cpp");
 	}
       }  else {
 	// make sure the file  exists first.
-	if ((fh = ::fopen(_name,"r")) == NULL) {
-	  error("ERROR: unable to open file (%s) for reading",_name);
+	if ((fh = ::fopen(name,"r")) == NULL) {
+	  error("ERROR: unable to open file (%s) for reading",name);
 	}
 	fclose(fh);
 
 	// add path of file to include directory paths.
-	string path = _name;
+	string path = name;
 	unsigned long slashPos = path.rfind("/");
 	if (slashPos != string::npos) {
 	  // then '/' is found
@@ -167,36 +181,36 @@ iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary,const cha
 	// ones fail, cpp has this behavior.
 	cppCommand = cppCommand + string(" -I.");
 
-	// cppCommand = cppCommand + (" ") + string(_name);
+	// cppCommand = cppCommand + (" ") + string(name);
 	cppCommand = cppCommand + (" ") + path;
 
 	// printf("cppCommand = (%s)\n",cppCommand.c_str());
 	fh = ::popen(cppCommand.c_str(),"r");    
 	if (fh == NULL)
-	  error("ERROR, can't open file stream from (%s)",_name);
+	  error("ERROR, can't open file stream from (%s)",name);
       }
     } else {
-      if (!strcmp("-",_name)) {
+      if (!strcmp("-",name)) {
 	fh = stdin;
-      } else if ((fh=fopen(_name,"r")) == NULL) {
-	error("Error: Can't open file (%s) for reading.",_name);
+      } else if ((fh=fopen(name,"r")) == NULL) {
+	error("Error: Can't open file (%s) for reading.",name);
       }
     }
   } else {
     // then this is a binary file. It is important that we 
     // use fopen here to open the file, since if this is a
     // binary file we might change the file pointer using fseek().
-    if (!strcmp("-",_name)) {
+    if (!strcmp("-",name)) {
       fh = stdin;
-    } else if ((fh=fopen(_name,"r")) == NULL) {
-      error("Error: Can't open file (%s) for reading.",_name);
+    } else if ((fh=fopen(name,"r")) == NULL) {
+      error("Error: Can't open file (%s) for reading.",name);
     }
   }
 #else
-  if (!strcmp("-",_name)) {
+  if (!strcmp("-",name)) {
     fh = stdin;
-  } else if ((fh=fopen(_name,"r")) == NULL) {
-    error("Error: Can't open file (%s) for reading.",_name);
+  } else if ((fh=fopen(name,"r")) == NULL) {
+    error("Error: Can't open file (%s) for reading.",name);
   }
 #endif
   if (!Binary) {
@@ -208,8 +222,8 @@ iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary,const cha
 
 iDataStreamFile::~iDataStreamFile()
 {
-#if defined(PIPE_ASCII_FILES_THROUGH_CPP) || defined(ENABLE_GZIP) || defined(ENABLE_BIZP2)
-  if (cppIfAscii || piped) {
+#if defined(PIPE_ASCII_FILES_THROUGH_CPP)
+  if (cppIfAscii) {
     // first, scan until end of file since sometimes it appears
     // that closing a pipe when not at the end causes an error (e.g., mac osx)
     freadUntilEOF(fh);
@@ -345,7 +359,7 @@ iDataStreamFile::prepareNext()
 
 void iDataStreamFile::rewind()
 {
-  assert ( Binary || ! cppIfAscii || ! piped);
+  assert ( Binary || ! cppIfAscii );
   if (::fseek (fh, 0L, SEEK_SET) != 0)
     error("ERROR: trouble seeking to beginning of file '%s', %s\n",
 	  fileName(),strerror(errno));
