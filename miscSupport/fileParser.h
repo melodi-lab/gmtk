@@ -66,9 +66,6 @@ class iDataStreamFile : public ioDataStreamFile {
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
   const bool cppIfAscii;
 #endif
-#if defined(ENABLE_GZIP) || defined(ENABLE_BZIP2)
-  bool piped;
-#endif
   const char extraCommentChar;
 
  public:

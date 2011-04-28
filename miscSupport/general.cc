@@ -338,7 +338,7 @@ const char * gzip_Command()
 {
   const char * rc = getenv("GMTK_GZIP_CMD");
   if (rc == NULL)
-    rc = "zcat";
+    rc = "gunzip";
   // fprintf(stdout,"gzip command got is (%s)\n",rc);
   return rc;
 }
@@ -347,7 +347,7 @@ const char * bzip2_Command()
 {
   const char * rc = getenv("GMTK_BZIP2_CMD");
   if (rc == NULL)
-    rc = "bzcat";
+    rc = "bunzip2 -k";
   // fprintf(stdout,"bzip2 command got is (%s)\n",rc);
   return rc;
 }
