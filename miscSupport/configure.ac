@@ -75,7 +75,7 @@ AC_CHECK_FUNCS([floor pow sqrt strchr strerror strspn strtol strtoul log1p])
 
 AC_ARG_WITH([logp], 
             [AS_HELP_STRING([--with-logp],
-              [select logp implementation (log, table, smart, renorm) @<:@default=log@:>@])],
+              [select logp implementation (log, table, smart, renorm) @<:@default: log@:>@])],
             [],
             [with_logp=log])
 case "${with_logp}" in
@@ -94,6 +94,14 @@ renorm)
   AC_MSG_ERROR([Must specify --with-logp= one of log, table, smart, renorm]) 
   ;;
 esac
+
+AC_ARG_WITH([LZERO],
+            [AS_HELP_STRING([--with-LZERO],
+              [the smallest log value that we represent @<:@default: -1.0E10@:>@])],
+	    [],
+            [with_LZERO=(-1.0E10)])
+
+AC_DEFINE_UNQUOTED([LZERO], [(${with_LZERO})], [smallest log value that we represent])
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
