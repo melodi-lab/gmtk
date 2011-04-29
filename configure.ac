@@ -12,9 +12,15 @@ AC_ARG_ENABLE([gmtkViz],
               [gmtkViz=${enableval}], [gmtkViz=yes])
 AC_ARG_WITH([logp], 
             [AS_HELP_STRING([--with-logp],
-              [select logp implementation (log, table, smart, renorm) @<:@default=log@:>@])],
+              [select logp implementation (log, table, smart, renorm) @<:@default: log@:>@])],
             [],
             [with_logp=log])
+
+AC_ARG_WITH([LZERO],
+            [AS_HELP_STRING([--with-LZERO],
+              [the smallest log value that we represent @<:@default: -1.0E10@:>@])],
+	    [],
+            [with_LZERO=(-1.0E10)])
 
 AC_ARG_ENABLE([assertions],
               [AS_HELP_STRING([--disable-assertions],
