@@ -76,16 +76,9 @@ extern "C" {
 #endif
 
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
-iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary, bool _cppIfAscii, const char *const _cppCommandOptions,const char _extraCommentChar)
-  : ioDataStreamFile(_name,_Binary), cppIfAscii(!_Binary && _cppIfAscii), extraCommentChar(_extraCommentChar)
-#else
-iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary,const char _extraCommentChar)
-  : ioDataStreamFile(_name,_Binary),extraCommentChar(_extraCommentChar)
-#endif
+void iDataStreamFile::initialize()
 {
-  if (_name == NULL)
-    error("Error: Can't open null file for reading.");
-
+  const char *_name = _fileName.c_str();
 #ifdef ENABLE_GZIP
   if (!Binary) {
     string path = _name;
@@ -133,15 +126,14 @@ iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary,const cha
   }
 #endif
 
-#ifdef PIPE_ASCII_FILES_THROUGH_CPP
   if (!Binary) {
     if (cppIfAscii) {
       if (extraCommentChar == CPP_DIRECTIVE_CHAR)
 	warning("WARNING: opening file '%s' via cpp but also using char '%c' as a comment, unexpected results may occur",fileName(),extraCommentChar);
 
       string cppCommand = CPP_Command();
-      if (_cppCommandOptions != NULL) {
-	cppCommand = cppCommand + string(" ") + string(_cppCommandOptions);
+      if (cppCommandOptions != NULL) {
+	cppCommand = cppCommand + string(" ") + string(cppCommandOptions);
       }
       if (!strcmp("-",_name)) {
 	fh = ::popen(cppCommand.c_str(),"r");
@@ -192,18 +184,32 @@ iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary,const cha
       error("Error: Can't open file (%s) for reading.",_name);
     }
   }
-#else
-  if (!strcmp("-",_name)) {
-    fh = stdin;
-  } else if ((fh=fopen(_name,"r")) == NULL) {
-    error("Error: Can't open file (%s) for reading.",_name);
-  }
-#endif
   if (!Binary) {
     buff = new char[MAXLINSIZEPLUS1];
     buffp = buff;
     state = GetNextLine;
   }
+}
+#endif
+
+#ifdef PIPE_ASCII_FILES_THROUGH_CPP
+iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary, bool _cppIfAscii, const char *const _cppCommandOptions,const char _extraCommentChar)
+  : ioDataStreamFile(_name,_Binary), cppIfAscii(!_Binary && _cppIfAscii), extraCommentChar(_extraCommentChar)
+#else
+iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary,const char _extraCommentChar)
+  : ioDataStreamFile(_name,_Binary),extraCommentChar(_extraCommentChar)
+#endif
+{
+  if (_name == NULL)
+    error("Error: Can't open null file for reading.");
+
+
+#ifdef PIPE_ASCII_FILES_THROUGH_CPP
+  if (!Binary && cppIfAscii) {
+    cppCommandOptions = _cppCommandOptions;
+  }
+#endif
+  initialize();
 }
 
 iDataStreamFile::~iDataStreamFile()
@@ -345,14 +351,55 @@ iDataStreamFile::prepareNext()
 
 void iDataStreamFile::rewind()
 {
-  assert ( Binary || ! cppIfAscii || ! piped);
-  if (::fseek (fh, 0L, SEEK_SET) != 0)
-    error("ERROR: trouble seeking to beginning of file '%s', %s\n",
-	  fileName(),strerror(errno));
+  if ( Binary || !(cppIfAscii || piped)) {
+    if (::fseek (fh, 0L, SEEK_SET) != 0)
+      error("ERROR: trouble seeking to beginning of file '%s', %s\n",
+	    fileName(),strerror(errno));
+  } else {
+    // first, scan until end of file since sometimes it appears
+    // that closing a pipe when not at the end causes an error (e.g., mac osx)
+    freadUntilEOF(fh);
+    if (::pclose(fh) != 0) {
+      warning("WARNING: Can't close pipe '%s %s'.",CPP_Command(),fileName());
+    }
+    initialize();
+  }
   _curLineNo = 0;
   state = GetNextLine;
 }
 
+int
+iDataStreamFile::fseek ( long offset , int origin ) { 
+  if ( Binary || !(cppIfAscii || piped)) {
+    return (::fseek (fh, offset, origin));
+  } else {
+fprintf(stderr,"finish reading pipe contents\n");
+    // only "support" skipping over offset bytes from the beginning
+    // better hope the pipe results don't change between runs :)
+    assert(origin == SEEK_SET);
+    // first, scan until end of file since sometimes it appears
+    // that closing a pipe when not at the end causes an error (e.g., mac osx)
+    freadUntilEOF(fh);
+    if (::pclose(fh) != 0) {
+      warning("WARNING: Can't close pipe '%s %s'.",CPP_Command(),fileName());
+    }
+fprintf(stderr,"restarting process\n");
+    // re-start the process
+    initialize();
+
+fprintf(stderr, "skipping %ld bytes\n", offset);
+    // skip over offset bytes
+    char c;
+    for (long i=0; i < offset; i+=1) {
+      size_t rc = fread(&c, sizeof(char), 1, fh);
+      if (rc != 1) {
+	perror("skipping");
+	error("Error fseeking in piped stream");
+      }
+    }
+    return offset;
+  }
+}
 
 bool 
 iDataStreamFile::readChar(char& c, const char *msg) 
