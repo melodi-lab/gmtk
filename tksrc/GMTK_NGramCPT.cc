@@ -759,6 +759,7 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
     // step 1: set the block size and rewind file position
     _probStartBlockSize = startEntry.probBlockSize;
     // rewind the file pointer
+fprintf(stderr, "fseek to %ld\n", filePos -1);
     ifs.fseek(filePos-1,SEEK_SET);
 
     double prob;

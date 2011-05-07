@@ -65,6 +65,7 @@ class iDataStreamFile : public ioDataStreamFile {
   enum State { GetNextLine, UseCurLine } state;
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
   const bool cppIfAscii;
+  const char *cppCommandOptions;
 #endif
 #if defined(ENABLE_GZIP) || defined(ENABLE_BZIP2)
   bool piped;
@@ -77,6 +78,7 @@ class iDataStreamFile : public ioDataStreamFile {
 
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
   iDataStreamFile(const char *_name, bool _Binary = false, bool _cppIfAscii = true, const char * const _cppCommandOptions = NULL,const char extraCommentChar = IDATASTREAMFILE_DEFAULT_EXTRA_COMMENT_CHAR);
+  void initialize();
 #else
   iDataStreamFile(const char *_name, bool _Binary = false,const char extraCommentChar = IDATASTREAMFILE_DEFAULT_EXTRA_COMMENT_CHAR);
 #endif
@@ -86,6 +88,7 @@ class iDataStreamFile : public ioDataStreamFile {
   bool prepareNext();
   
   void rewind();
+  int  fseek ( long offset , int origin );
 
   bool isEOF() { 
     if(feof(fh)) return true;
