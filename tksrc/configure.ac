@@ -95,6 +95,26 @@ AM_CONDITIONAL([CYGWIN_FLAGS],[test x"$XOPEN" = x"-D__USE_XOPEN2K"])
 AM_CONDITIONAL([MAKE_BUNDLE],[test  x$OSXBUNDLE = xgmtkViz.app])
 AC_CHECK_LIB([m], [log])
 
+AC_ARG_WITH([detBrush],
+            [AS_HELP_STRING([--with-detBrush],
+              [select gmtkViz brush for deterministic nodes (none, cross, grey) @<:@default=none@:>@])],
+            [],
+            [with_detBrush=none])
+case "${with_detBrush}" in
+none)
+  AC_DEFINE([NO_DET_BRUSH],[1],[no special brush for deterministic variables])
+  ;;
+cross)
+  AC_DEFINE([CROSS_DET_BRUSH],[1],[cross-hatch brush for deterministic variables])
+  ;;
+grey)
+  AC_DEFINE([GREY_DET_BRUSH],[1],[solid grey brush for deterministic variables])
+  ;;
+*)
+  AC_MSG_ERROR([Must specify --with-detBrush= one of none, cross, grey]) 
+  ;;
+esac
+
 # Checks for header files.
 AC_PATH_XTRA
 AC_CHECK_HEADERS([float.h stdlib.h string.h sys/time.h unistd.h])
