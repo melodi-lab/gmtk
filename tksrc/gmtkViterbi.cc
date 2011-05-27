@@ -140,6 +140,7 @@ VCID(HGID)
 
 /****************************         INFERENCE OPTIONS           ***********************************************/
 #define GMTK_ARG_ISLAND
+#define GMTK_ARG_DEBUG_FRAME_RNG
 #define GMTK_ARG_CLIQUE_TABLE_NORMALIZE
 #define GMTK_ARG_CE_SEP_DRIVEN
 #define GMTK_ARG_MIXTURE_CACHE
@@ -383,6 +384,10 @@ main(int argc,char*argv[])
     error("Argument Error: Missing REQUIRED argument: -pVitValsFile <str>  OR  -vitValsFile <str>\n");
   }
 #endif
+
+  
+  Range* fdbrng = new Range(fdbrng_str,0,0x7FFFFFFF);
+  myjt.setFrameDebugRange(*fdbrng);
 
   // We always do viterbi scoring/option in this program.
   JunctionTree::viterbiScore = true;
