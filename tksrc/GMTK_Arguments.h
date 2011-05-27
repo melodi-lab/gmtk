@@ -1263,6 +1263,28 @@ static bool  cliquePrintOnlyEntropy = false;
 /*************************************************************************************************************/
 
 
+#if defined(GMTK_ARG_DEBUG_FRAME_RNG)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+  const static char *fdbrng_str="all";
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("debugFrames",Arg::Opt,fdbrng_str,"Frame range to generate debug output"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#else
+#endif
+#endif // defined(GMTK_ARG_DEBUG_FRAME_RNG)
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
 #if defined(GMTK_ARG_COMPONENT_CACHE)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
