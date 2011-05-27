@@ -15,7 +15,11 @@ AC_ARG_WITH([logp],
               [select logp implementation (log, table, smart, renorm) @<:@default=log@:>@])],
             [],
             [with_logp=log])
-
+AC_ARG_WITH([detBrush],
+            [AS_HELP_STRING([--with-detBrush],
+              [select gmtkViz brush for deterministic nodes (none, cross, grey) @<:@default=none@:>@])],
+            [],
+            [with_detBrush=none])
 AC_ARG_ENABLE([assertions],
               [AS_HELP_STRING([--disable-assertions],
                               [disable assertion checking @<:@default: no@:>@])],
