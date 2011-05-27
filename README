@@ -3,116 +3,93 @@
 ======================================================================
 ======================================================================
 
- 
+
 			 How to compile GMTK
 
-			  Updated: Jan 2009
+			  Updated: March, 2011
 
 
-Note, GMTK does not yet have a simple gnu configure style of
-compilation, although that would be desirable. Therefore, to get GMTK
-compiled, please follow the steps below.
+GMTK uses a simple GNU Autotools build process. The familiar
 
+   ./configure && make && make install
 
+should work on the target platforms (Linux, OSX, and Windows/Cygwin).
+Other POSIX-like platforms might work too. See
 
-1) CD to the main directory (where this file lives).
+   ./configure --help
 
-2) Edit the top level Makefile. The most important thing to set
-    is the 'OPTFLAGS' flag for your appropriate architecture.
-    Generic optimization is just 
-     'OPTFLAGS =-g -O3 -march=pentium4 -mfpmath=sse -ffast-math'
-    but you might want to use something more aggressive (but which
-    if you run on the wrong architecture will produce illegal instructions).
+for full information on the available configure options.
 
-    You might also want to change the version of gcc/g++ that you 
-    use to compile.
- 
-3) do a 'make clean' just to make sure.
+Note that the main development compiler used for GMTK is GNU
+gcc/g++. Other compilers have also been tested (such as the Intel C++
+compiler) but not nearly as extensively as gcc/g++. In the below, we
+will assume gcc/g++.
 
-4) do a 'make depend', you will get some errors about missing
-   files. Just ignore those.
+There are a few variables that control the flags passed to the C++
+compiler. You may want to specify them to the make command, though
+they all have reasonable defaults. For example, you might try
 
-5) Do a make for specific platforms. I.e., do only *one* of the following:
-    make linux
-    make cygwin
-    make solaris
-    make ibm
-    make osx 
+  make DEBUGFLAGS=-ggdb3 OPTFLAGS="-O3 -march=pentium4 -mfpmath=sse -ffast-math"
 
-6) Do a 'make depend' once again.
+The default is just generic optimization, but you might want to use
+something more aggressive (which can lead to significant speedups, but
+also are such that if you run on the wrong architecture will produce
+illegal instructions and/or a bus error).
 
-7) Do 'make' and it should compile (if you are running on a 2-core
-   box, do 'make -j 2' under gnumake to compile faster), but read on
-   below before you continue.
-
-   If you are running on cygwin do 'make ANSI=' to turn off the ansi
-   compatibility which is needed on that platform.
-
-   If you wish to make static binaries (i.e., ones that do not
-   depend on any shared libraries), do 'make EXLDFLAGS=-static'
-
-   You will see an error message about 'lex.yy.c', it is safe to
-   ignore it.
-
-   You might see an error message about 'ranlib', again safe to
-   ignore.
-
-   If you wish to use a particular compiler, you can do:
+You can also change the version of gcc/g++ that you use to compile 
+by specifying CC/CXX to the make command.
     
      make CC=gcc-4.2 CXX=g++-4.2
    
-   and if you wish to turn off all optimization, then do:
+and if you wish to turn off all optimization, then do:
 
      make OPTFLAGS= XOPTFLAGS=
 
-   If you wish to compile a 64-bit version, then do:
+Turning off all optimizations will lead to significantly slower
+executation, but is very useful when debugging the code.
 
-     make EXCCFLAGS=-m64 EXCXXFLAGS=-m64
+If you wish to compile a 64-bit version, then do:
 
-   (although keep in mind that 64-bit GMTK has not been as extensively tested
-    as when running under 32-bit mode).
+     make CFLAGS=-m64 CXXFLAGS=-m64
 
-   If you wish to create static binaries (i.e., ones that are not dependent on shared libraries),
-   then assuming you've got the static libraries installed, do
+(although keep in mind that 64-bit GMTK has not been as extensively tested
+as when running under 32-bit mode).
 
-    make EXLDFLAGS=-static
+If you wish to create static binaries (i.e., ones that are not dependent 
+on shared libraries), then assuming you've got the static libraries 
+installed, do
 
-   Note, many of the above options can be combined. See the top level
-   Makefile for more such options.
+    ./configure --disable-gmtkViz && make LDFLAGS=-static
 
-   If you run the binaries and get 'illegal instruction' errors, it is possible
-   you have compiled for an architecture that is not valid for where you are running.
-   See the top-level Makefile and adjust the default OPTFLAGS to your appropriate
-   architecture.
+Note, many of the above options can be combined.
 
-8) All of the runnable binaries should now live in the subdirectories:
-
-    ./tksrc -- the main GMTK binaries, all start with 'gmtk*'
-
-    ./featureFileIO -- a set of utilities to manipulate GMTK
-                   observation files (which includes pfile, raw
-                   binary, ascii, and HTK files). These can be useful
-                   for preparing GMTK input observation files.
- 
-    ./scripts -- There are a few scripts here that go through the GMTK
-                 triangulation programs in a variety of ways, and they
-                 sometimes find triangulations that are significantly
-                 faster than the default triangulation options.
-
-9) Don't forget to read the documentation. It can
-   be found at:
+Don't forget to read the documentation. It can be found at:
 
        http://ssli.ee.washington.edu/~bilmes/gmtk
 
-10) enjoy!!
+and will be updated in the near future. To build gmtkViz (which is a
+graphical user interface for taking an existing graph structure
+specified using a .str file, and quickly producing a nice layout of
+that graph, and a resulting .eps/.pdf file for, say, inclusion in a
+paper), see the following documentation:
+
+https://j.ee.washington.edu/trac/gmtk/wiki/GmtkVizBuildHowTo
+
+gmtkViz is only built if a suitable wxWidgets (http://www.wxwidgets.org/) 
+installation (version 2.9 or later) is detected at configure time. 
+Note that this is the only external dependence needed to compile any 
+of GMTK.
+
+enjoy!!
 
 	-- Jeff Bilmes
 
      For general questions:
         -- gmtk-users@ssli.ee.washington.edu
         -- gmtk-users-request@ssli.ee.washington.edu
+
      For bugs:
-        -- gmtk-bugs@ssli.ee.washington.edu
+        -- https://lungs.ee.washington.edu/trac/gmtk/newticket
 
    
 ======================================================================
