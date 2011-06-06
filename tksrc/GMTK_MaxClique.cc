@@ -7057,12 +7057,14 @@ deScatterToOutgoingSeparatorsViterbi(MaxCliqueTable::SharedLocalStructure& share
   // unpack clique value 'back_max_cvn' into corresponding random variables and expand
   // any deterministic values.
   const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH); 
-  if (imc_nwwoh_p) {
-    origin.packer.unpack((unsigned*)&(cliqueValues.ptr[back_max_cvn].val[0]),
-			 (unsigned**)sharedStructure.discreteValuePtrs.ptr);
-  } else {
-    origin.packer.unpack((unsigned*)cliqueValues.ptr[back_max_cvn].ptr,
-			 (unsigned**)sharedStructure.discreteValuePtrs.ptr);
+  if (origin.packer.packedLen() > 0) {
+    if (imc_nwwoh_p) {
+      origin.packer.unpack((unsigned*)&(cliqueValues.ptr[back_max_cvn].val[0]),
+			   (unsigned**)sharedStructure.discreteValuePtrs.ptr);
+    } else {
+      origin.packer.unpack((unsigned*)cliqueValues.ptr[back_max_cvn].ptr,
+			   (unsigned**)sharedStructure.discreteValuePtrs.ptr);
+    }
   }
   for (unsigned j=0;j<sharedStructure.fDeterminableNodes.size();j++) {
     RV* rv = sharedStructure.fDeterminableNodes.ptr[j];
