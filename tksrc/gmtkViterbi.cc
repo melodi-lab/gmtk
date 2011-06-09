@@ -239,16 +239,16 @@ main(int argc,char*argv[])
   /////////////////////////////////////////////
   // read in all the parameters
 
-  if (inputTrainableParameters) {
-    // flat, where everything is contained in one file
-    iDataStreamFile pf(inputTrainableParameters,binInputTrainableParameters,true,cppCommandOptions);
-    GM_Parms.readTrainable(pf);
-  }
-
   if (inputMasterFile) {
     // flat, where everything is contained in one file, always ASCII
     iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
     GM_Parms.read(pf);
+  }
+
+  if (inputTrainableParameters) {
+    // flat, where everything is contained in one file
+    iDataStreamFile pf(inputTrainableParameters,binInputTrainableParameters,true,cppCommandOptions);
+    GM_Parms.readTrainable(pf);
   }
 
   // comment for now Sun Jan 11 09:47:23 2004
