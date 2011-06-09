@@ -137,6 +137,7 @@ VCID(HGID)
 #define GMTK_ARG_VERB
 #define GMTK_ARG_HELP
 #define GMTK_ARG_VERSION
+#define GMTK_ARG_CLIQUE_PRINT
 
 /****************************         INFERENCE OPTIONS           ***********************************************/
 #define GMTK_ARG_ISLAND
@@ -239,16 +240,16 @@ main(int argc,char*argv[])
   /////////////////////////////////////////////
   // read in all the parameters
 
-  if (inputTrainableParameters) {
-    // flat, where everything is contained in one file
-    iDataStreamFile pf(inputTrainableParameters,binInputTrainableParameters,true,cppCommandOptions);
-    GM_Parms.readTrainable(pf);
-  }
-
   if (inputMasterFile) {
     // flat, where everything is contained in one file, always ASCII
     iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
     GM_Parms.read(pf);
+  }
+
+  if (inputTrainableParameters) {
+    // flat, where everything is contained in one file
+    iDataStreamFile pf(inputTrainableParameters,binInputTrainableParameters,true,cppCommandOptions);
+    GM_Parms.readTrainable(pf);
   }
 
   // comment for now Sun Jan 11 09:47:23 2004
@@ -334,6 +335,8 @@ main(int argc,char*argv[])
   myjt.prepareForUnrolling();
   if (jtFileName != NULL)
     myjt.printAllJTInfo(jtFileName);
+
+  myjt.setCliquePrintRanges(pPartCliquePrintRange,cPartCliquePrintRange,ePartCliquePrintRange);
   infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
   ////////////////////////////////////////////////////////////////////
 
@@ -477,6 +480,9 @@ main(int argc,char*argv[])
       warning("Segment %d: Not printing Viterbi values since segment has zero probability\n",
 	      segment);
     else {
+      if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange)
+	myjt.printAllCliques(stdout,true,cliquePrintOnlyEntropy);
+
       if (pVitValsFile) {
 	fprintf(pVitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
 		segment,numFrames,probe.val());
