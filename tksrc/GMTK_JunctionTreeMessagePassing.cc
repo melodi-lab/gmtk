@@ -965,6 +965,12 @@ JunctionTree::ceGatherIntoRoot(PartitionStructures& ps,
 			       const bool clearWhenDone,
 			       const bool alsoClearOrigins)
 {
+  unsigned inferenceDebugLevel = IM::glbMsgLevel(IM::Inference);
+
+  if (! fdbugRange.contains((int)part_num)) {
+    IM::setGlbMsgLevel(IM::Inference, IM::Nothing);
+  }
+
   // first check that this is not an empty partition.
   if (ps.maxCliquesSharedStructure.size() == 0)
     return;
@@ -973,16 +979,16 @@ JunctionTree::ceGatherIntoRoot(PartitionStructures& ps,
   for (unsigned msgNo=0;msgNo < message_order.size(); msgNo ++) {
     const unsigned from = message_order[msgNo].first;
     const unsigned to = message_order[msgNo].second;
-    if (fdbugRange.contains((int)part_num)) 
-      infoMsg(IM::Med+5,
+    infoMsg(IM::Inference, IM::Med+5,
 	    "CE: gathering into %s,part[%d]: clique %d\n",
 	    part_type_name,part_num,from);
+
     pt.maxCliques[from].
       ceGatherFromIncommingSeparators(ps.maxCliquesSharedStructure[from],
 				      pt.separatorCliques,
 				      ps.separatorCliquesSharedStructure.ptr);
-    if (fdbugRange.contains((int)part_num)) 
-      infoMsg(IM::Mod,
+  
+    infoMsg(IM::Inference, IM::Mod,
 	    "CE: message %s,part[%d]: clique %d --> clique %d\n",
 	    part_type_name,part_num,from,to);
     pt.maxCliques[from].
@@ -1007,8 +1013,7 @@ JunctionTree::ceGatherIntoRoot(PartitionStructures& ps,
     }
   }
   // collect to partition's root clique
-    if (fdbugRange.contains((int)part_num)) 
-      infoMsg(IM::Med+5,
+  infoMsg(IM::Inference, IM::Med+5,
 	  "CE: gathering into partition root %s,part[%d]: clique %d\n",
 	  part_type_name,part_num,root);
   pt.maxCliques[root].
@@ -1016,9 +1021,14 @@ JunctionTree::ceGatherIntoRoot(PartitionStructures& ps,
 				    pt.separatorCliques,
 				    ps.separatorCliquesSharedStructure.ptr);
 
-  if (fdbugRange.contains((int)part_num) && IM::messageGlb(IM::Med+9)) {
+  if (IM::messageGlb(IM::Med+9)) {
     pt.reportMemoryUsageTo(ps,stdout);
   }
+
+  if (! fdbugRange.contains((int)part_num)) {
+    IM::setGlbMsgLevel(IM::Inference, inferenceDebugLevel);
+  }
+
 }
 
 
@@ -1082,7 +1092,7 @@ JunctionTree::ceSendForwardsCrossPartitions(// previous partition
     return;
 
   if(fdbugRange.contains((int)previous_part_num))
-    infoMsg(IM::Mod,"CE: message %s,part[%d],clique(%d) --> %s,part[%d],clique(%d)\n",
+    infoMsg(IM::Inference, IM::Mod,"CE: message %s,part[%d],clique(%d) --> %s,part[%d],clique(%d)\n",
 	   previous_part_type_name,
 	   previous_part_num,
 	   previous_part_root,
@@ -1337,7 +1347,7 @@ JunctionTree::deScatterOutofRoot(// the partition
     return;
 
   if(fdbugRange.contains((int)part_num))
-    infoMsg(IM::Med+5,"DE: distributing out of partition root %s,part[%d]: clique %d\n",
+    infoMsg(IM::Inference, IM::Med+5,"DE: distributing out of partition root %s,part[%d]: clique %d\n",
 	  part_type_name,part_num,root);
   pt.maxCliques[root].
     deScatterToOutgoingSeparators(ps.maxCliquesSharedStructure[root],
@@ -1347,7 +1357,7 @@ JunctionTree::deScatterOutofRoot(// the partition
     const unsigned to = message_order[msgNoP1-1].first;
     const unsigned from = message_order[msgNoP1-1].second;
     if(fdbugRange.contains((int)part_num))
-      infoMsg(IM::Mod,"DE: message %s,part[%d]: clique %d <-- clique %d\n",
+      infoMsg(IM::Inference, IM::Mod,"DE: message %s,part[%d]: clique %d <-- clique %d\n",
 	    part_type_name,part_num,to,from);
     pt.maxCliques[to].
       deReceiveFromIncommingSeparator(ps.maxCliquesSharedStructure[to],
@@ -1355,7 +1365,7 @@ JunctionTree::deScatterOutofRoot(// the partition
 				      ps.separatorCliquesSharedStructure.ptr);
 
       if(fdbugRange.contains((int)part_num))
-	infoMsg(IM::Med+5,"DE: distributing out of %s,part[%d]: clique %d\n",
+	infoMsg(IM::Inference, IM::Med+5,"DE: distributing out of %s,part[%d]: clique %d\n",
 	    part_type_name,part_num,to);
     pt.maxCliques[to].
       deScatterToOutgoingSeparators(ps.maxCliquesSharedStructure[to],
@@ -1423,7 +1433,7 @@ JunctionTree::deSendBackwardsCrossPartitions(// previous partition
     return;
 
   if(fdbugRange.contains((int)previous_part_num))
-    infoMsg(IM::Mod,"DE: message %s,part[%d],clique(%d) <-- %s,part[%d],clique(%d)\n",
+    infoMsg(IM::Inference, IM::Mod,"DE: message %s,part[%d],clique(%d) <-- %s,part[%d],clique(%d)\n",
 	  previous_part_type_name,previous_part_num,previous_part_root,
 	  next_part_type_name,next_part_num,next_part_leaf);
   previous_pt.maxCliques[previous_part_root].

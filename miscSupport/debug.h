@@ -65,7 +65,7 @@ public:
 
   IM() {
     for (int m = DefaultModule; m < ModuleCount; m+=1) {
-      moduleLevel[m] = globalMessageLevel;
+      moduleLevel[m] = globalModuleLevel[m];
     }
     flush = true;
   }
