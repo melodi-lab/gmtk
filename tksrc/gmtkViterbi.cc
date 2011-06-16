@@ -457,9 +457,9 @@ main(int argc,char*argv[])
     } else {
       // linear space inference
       unsigned numUsableFrames = myjt.unroll(numFrames);
-      infoMsg(IM::Med,"Collecting Evidence\n");
+      infoMsg(IM::Inference, IM::Med,"Collecting Evidence\n");
       myjt.collectEvidence();
-      infoMsg(IM::Med,"Done Collecting Evidence\n");
+      infoMsg(IM::Inference, IM::Med,"Done Collecting Evidence\n");
       probe = myjt.probEvidence();
       infoMsg(IM::Default,"Segment %d, after CE, viterbi log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
 	     segment,
@@ -472,9 +472,9 @@ main(int argc,char*argv[])
       } else {
 	myjt.setRootToMaxCliqueValue();
 	total_data_prob *= probe;
-	infoMsg(IM::Low,"Distributing Evidence\n");
+	infoMsg(IM::Inference, IM::Low,"Distributing Evidence\n");
 	myjt.distributeEvidence();
-	infoMsg(IM::Low,"Done Distributing Evidence\n");
+	infoMsg(IM::Inference, IM::Low,"Done Distributing Evidence\n");
       }
     }
     
