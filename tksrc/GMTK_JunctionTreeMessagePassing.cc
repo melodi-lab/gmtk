@@ -1021,7 +1021,7 @@ JunctionTree::ceGatherIntoRoot(PartitionStructures& ps,
 				    pt.separatorCliques,
 				    ps.separatorCliquesSharedStructure.ptr);
 
-  if (IM::messageGlb(IM::Med+9)) {
+  if (IM::messageGlb(IM::Inference, IM::Med+9)) {
     pt.reportMemoryUsageTo(ps,stdout);
   }
 
@@ -1103,7 +1103,7 @@ JunctionTree::ceSendForwardsCrossPartitions(// previous partition
     ceSendToOutgoingSeparator(previous_ps.maxCliquesSharedStructure[previous_part_root],
 			      next_pt.separatorCliques[next_ps.separatorCliquesSharedStructure.size()-1],
 			      next_ps.separatorCliquesSharedStructure[next_ps.separatorCliquesSharedStructure.size()-1]);
-  if (fdbugRange.contains((int)previous_part_num) && IM::messageGlb(IM::Med+9)) {
+  if (fdbugRange.contains((int)previous_part_num) && IM::messageGlb(IM::Inference, IM::Med+9)) {
     previous_pt.reportMemoryUsageTo(previous_ps,stdout);
   }
 }

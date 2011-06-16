@@ -1103,8 +1103,8 @@ extern bool ObservationsAllowNan;
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
-  (void) IM::setGlbMsgLevel(verbosity);
-  GM_Parms.setMsgLevel(verbosity);
+  (void) IM::setGlbMsgLevel("all", verbosity);
+//  GM_Parms.setMsgLevel(verbosity);
   
   if (modularVerbosity) {
     char *token, *copy;
@@ -1112,7 +1112,7 @@ extern bool ObservationsAllowNan;
     copy = strdup(modularVerbosity);
     for (token=strtok(copy, delimiters); token; token=strtok(NULL, delimiters)) {
       (void) IM::setGlbMsgLevel(token);
-      GM_Parms.setMsgLevel(token);
+//      GM_Parms.setMsgLevel(token);
     }
   }
 

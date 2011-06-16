@@ -788,7 +788,7 @@ class JunctionTree {
 
 public:
 
-  void setFrameDebugRange(Range rng) { fprintf(stderr, "setting dbug range to %s %d:%d\n", rng.GetDefStr(), rng.first(), rng.last());fdbugRange.SetLimits(rng.first(), rng.last()); 
+  void setFrameDebugRange(Range rng) { fdbugRange.SetLimits(rng.first(), rng.last()); 
                                        fdbugRange.SetDefStr(rng.GetDefStr()); }
 
 
