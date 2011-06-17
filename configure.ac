@@ -32,6 +32,8 @@ AC_ARG_ENABLE([model-checks],
 
 # Checks for programs.
 
+AC_PROG_AWK
+
 # Checks for libraries.
 
 # Checks for header files.
@@ -39,6 +41,11 @@ AC_ARG_ENABLE([model-checks],
 # Checks for typedefs, structures, and compiler characteristics.
 
 # Checks for library functions.
+
+
+# Autotest suite
+AC_CONFIG_TESTDIR([tests],[tksrc])
+AC_CONFIG_FILES([tests/Makefile tests/atlocal])
 
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_SUBDIRS([IEEEFloatingpoint
