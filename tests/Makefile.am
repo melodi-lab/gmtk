@@ -21,6 +21,7 @@ $(srcdir)/package.m4: $(top_srcdir)/configure.ac
 EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE) atlocal.in
 TESTSUITE = testsuite
 
+.PHONY: test_and_dev.at
 test_and_dev.at:
 	touch $@
 	find $(TEST_AND_DEV) -type f -name gmtk_test_\*.at | \
