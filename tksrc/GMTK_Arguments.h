@@ -133,7 +133,7 @@ extern bool ObservationsAllowNan;
   Arg("sr",  Arg::Opt,sr,"Sentence range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("prepr", Arg::Opt, prepr,"Pre Per-segment frame Range for obs file X before any transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("postpr",Arg::Opt, postpr,"Post Per-segment frame Range for obs file X after per-stream transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("gpr",   Arg::Opt, gpr_str," Global Per-segment final frame Range"),
+  Arg("gpr",   Arg::Opt, gpr_str,"Global Per-segment final frame Range"),
   Arg("obsNAN",   Arg::Opt, ObservationsAllowNan," True if observation files allow FP NAN values"),
 
 
