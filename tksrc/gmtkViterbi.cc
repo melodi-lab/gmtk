@@ -486,7 +486,9 @@ main(int argc,char*argv[])
 					      pVitPartRangeFilter);
       }
 
-#if 1      
+#if 1     
+      if (pVitValsFile)
+	myjt.resetViterbiPrinting();
       if (vitValsFile) {
 	fprintf(vitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
 		segment,numFrames,probe.val());
