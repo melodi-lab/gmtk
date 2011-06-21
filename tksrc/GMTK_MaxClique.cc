@@ -1988,7 +1988,7 @@ MaxClique::computeVESeparators()
 	  if (logProdCard > SeparatorClique::veSeparatorLogProdCardLimit)
 	    continue;
 
-	  infoMsg(Max,"Found VE sep of type PCG (currently not using it).\n");
+	  infoMsg(Inference, Max,"Found VE sep of type PCG (currently not using it).\n");
 	  // uncomment when rest of code below is finished.
 
 	  // since p is assigned prob, all it parents live in the
@@ -2022,7 +2022,7 @@ MaxClique::computeVESeparators()
 	if (logProdCard > SeparatorClique::veSeparatorLogProdCardLimit)
 	  continue;
 
-	infoMsg(Max,"Found VE sep of type PC. iterable = %d\n",rv->iterable());
+	infoMsg(Inference, Max,"Found VE sep of type PC. iterable = %d\n",rv->iterable());
 
 	// since c is an assigned prob node, we know its parents live
 	// in current clique as well. We build a table of all parent
@@ -2594,7 +2594,7 @@ ceGatherFromIncommingSeparatorsCliqueObserved(MaxCliqueTable::SharedLocalStructu
 	psp2(stdout,spi*(traceIndent+1+nodeNumber));
 	printf("%d:assigned obs/prob app, Pr[",nodeNumber);
 	rv->printNameFrameValue(stdout,false);
-	if (message(IM::Inference, Mega)) {
+	if (message(Inference, Mega)) {
 	  if (rv->allParents.size() > 0) {
 	    printf("|");
 	    printRVSetAndValues(stdout,rv->allParents,false);
@@ -2624,7 +2624,7 @@ ceGatherFromIncommingSeparatorsCliqueObserved(MaxCliqueTable::SharedLocalStructu
 	psp2(stdout,spi*(traceIndent+1+nodeNumber));
 	printf("%d:assigned obs/zero rmv, Pr[",nodeNumber);
 	rv->printNameFrameValue(stdout,false);
-	if (message(IM::Inference, Mega)) {
+	if (message(Inference, Mega)) {
 	  if (rv->allParents.size() > 0) {
 	    printf("|");
 	    printRVSetAndValues(stdout,rv->allParents,false);
@@ -2996,7 +2996,7 @@ MaxCliqueTable::ceIterateSeparatorsRecurse(MaxCliqueTable::SharedLocalStructure&
   }
 
  ceIterateSeparatorsFinished:
-  if (message(IM::Inference, High+5))
+  if (message(Inference, High+5))
     traceIndent--;
 }
 
@@ -3708,9 +3708,9 @@ MaxCliqueTable::ceIterateAssignedNodesNoRecurse(MaxCliqueTable::SharedLocalStruc
        * routine will print this information.
        */
       /*
-	if (message(IM::Inference, Mega)) {
+	if (message(Inference, Mega)) {
 	// psp2(stdout,spi*traceIndent);
-	infoMsg(Mega,"Inserting New Clique Val,pr=%f,sm=%f: ",
+	infoMsg(Inference, Mega,"Inserting New Clique Val,pr=%f,sm=%f: ",
 	cliqueValues.ptr[numCliqueValuesUsed-1].p.val(),sumProbabilities().val());
 	printRVSetAndValues(stdout,fNodes);
 	}
@@ -7500,7 +7500,7 @@ SeparatorClique::prepareForUnrolling()
 
       if (generatingVESeparatorTables == true) {
 
-	if (message(IM::Inference, Low)) {
+	if (message(Inference, Low)) {
 	  float logProdCard = 
 	    log10((double)RV2DRV(odc->allParents[0])->cardinality);
 	  for (unsigned i=1;i<odc->allParents.size();i++) {
@@ -7651,7 +7651,7 @@ SeparatorClique::prepareForUnrolling()
 	    tmpset.insert(foo);
 	}
 #endif
-	if (message(IM::Inference, Max+5)) {
+	if (message(Inference, Max+5)) {
 	  printf("Inserting into PC VE separator:"); printRVSetAndValues(stdout,hiddenParents);
 	}
 	// insert current RV values into the separator. 
@@ -7730,7 +7730,7 @@ SeparatorClique::prepareForUnrolling()
       unsigned num = 0;
 
       if (generatingVESeparatorTables == true) {
-	if (message(IM::Inference, Low)) {
+	if (message(Inference, Low)) {
 	  float logProdCard = 
 	    log10((double)RV2DRV(dc->allParents[0])->cardinality);
 	  for (unsigned i=1;i<dc->allParents.size();i++) {
@@ -7878,7 +7878,7 @@ SeparatorClique::prepareForUnrolling()
       for (unsigned i=0;i<num;i++) {
 	parentPacker.unpack(&(packedParentVals.ptr[i*parentPacker.packedLen()]),
 			    hiddenNodeValPtrs.ptr);
-	if (message(IM::Inference, Max+5)) {
+	if (message(Inference, Max+5)) {
 	  printf("Inserting into PCG VE separator:"); printRVSetAndValues(stdout,hiddenParents);
 	}
 	// insert current RV values into the separator. 
@@ -8435,7 +8435,7 @@ void ConditionalSeparatorTable::insert(SeparatorClique& origin,
     assert ( numSeparatorValuesUsed <= separatorValues->size());
     if (numSeparatorValuesUsed >= separatorValues->size()) {
       
-      infoMsg(Max+5,"ac-rsz,");
+      infoMsg(Inference, Max+5,"ac-rsz,");
 
       const unsigned old_size = separatorValues->size();
       // TODO: optimize this size re-allocation.
