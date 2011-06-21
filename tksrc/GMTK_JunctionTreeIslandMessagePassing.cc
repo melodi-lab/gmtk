@@ -72,7 +72,7 @@ PartitionTables* JunctionTree::
 createPartition(const unsigned part)
 {
   setCurrentInferenceShiftTo(part);
-  infoMsg(IM::Mod,"$$$ createPartition: part = %d, nm = %s\n",
+  infoMsg(IM::Inference, IM::Mod,"$$$ createPartition: part = %d, nm = %s\n",
 	  part,inference_it.cur_nm());
   if (cur_prob_evidence.not_essentially_zero())
     return new PartitionTables(inference_it.cur_jt_partition());
@@ -188,7 +188,7 @@ void JunctionTree::
 deleteIsland(const unsigned part)
 {
   setCurrentInferenceShiftTo(part);
-  infoMsg(IM::Mod,"*** deleteIsland: part = %d (%s)\n",
+  infoMsg(IM::Inference, IM::Mod,"*** deleteIsland: part = %d (%s)\n",
 	  part,inference_it.cur_nm());
   map < unsigned, PartitionTables*>::iterator it;
   it = islandsMap.find(part);
@@ -206,7 +206,7 @@ storeIsland(const unsigned part,
 	    PartitionTables *pt)
 {
   setCurrentInferenceShiftTo(part);
-  infoMsg(IM::Mod,"$$$ storeIsland: part = %d, nm = %s\n",
+  infoMsg(IM::Inference, IM::Mod,"$$$ storeIsland: part = %d, nm = %s\n",
 	  part,inference_it.cur_nm());
   // check that it is not there already.
   map < unsigned, PartitionTables*>::iterator it;
@@ -221,7 +221,7 @@ PartitionTables* JunctionTree::
 retreiveIsland(const unsigned part)
 {
   setCurrentInferenceShiftTo(part);
-  infoMsg(IM::Mod,"$$$ retreiveIsland: part = %d, nm = %s\n",
+  infoMsg(IM::Inference, IM::Mod,"$$$ retreiveIsland: part = %d, nm = %s\n",
 	  part,inference_it.cur_nm());
   map < unsigned, PartitionTables*>::iterator it;
   it = islandsMap.find(part);
@@ -237,7 +237,7 @@ ceGatherIntoRoot(const unsigned part,
 		 PartitionTables *pt)
 {
   setCurrentInferenceShiftTo(part);
-  infoMsg(IM::Mod,"==> ceGatherIntoRoot: part = %d, nm = %s\n",
+  infoMsg(IM::Inference, IM::Mod,"==> ceGatherIntoRoot: part = %d, nm = %s\n",
 	  part,inference_it.cur_nm());
 
   // We check here the condition if the partition number is 1 (i.e.,
@@ -272,7 +272,7 @@ deScatterOutofRoot(const unsigned part,
 		   PartitionTables* pt)
 {
   setCurrentInferenceShiftTo(part);
-  infoMsg(IM::Mod,"<== deScatterOutofRoot: part = %d (%s)\n",
+  infoMsg(IM::Inference, IM::Mod,"<== deScatterOutofRoot: part = %d (%s)\n",
 	  part,inference_it.cur_nm());
 
   if (inference_it.at_first_c() && P1.cliques.size() == 0) {
@@ -310,7 +310,7 @@ ceSendForwardsCrossPartitions(const unsigned lpart,
   // need this since we're sending a message from 'lpart' to 'lpart+1'.
   setCurrentInferenceShiftTo(lpart+1);
 
-  infoMsg(IM::Mod,"--> ceSendForwardsCrossPartitions: left part[%d] (%s) --> right part[%d] (%s)\n",
+  infoMsg(IM::Inference, IM::Mod,"--> ceSendForwardsCrossPartitions: left part[%d] (%s) --> right part[%d] (%s)\n",
 	  inference_it.pt_prev_i(),inference_it.prev_nm(),
 	  inference_it.pt_i(),inference_it.cur_nm());
 
@@ -362,7 +362,7 @@ deSendBackwardsCrossPartitions(const unsigned left_part,
   // we shift the variables so that the right pair is aligned
   // with rpt.
   setCurrentInferenceShiftTo(left_part+1);
-  infoMsg(IM::Mod,
+  infoMsg(IM::Inference, IM::Mod,
          "<-- deSendBackwardsCrossPartitions: left part[%d] (%s) <-- right part[%d] (%s)\n",
 	  inference_it.pt_prev_i(),inference_it.prev_nm(),
 	  inference_it.pt_i(),inference_it.cur_nm());
@@ -391,7 +391,7 @@ JunctionTree::probEvidenceRoot(const unsigned part,
 {
   setCurrentInferenceShiftTo(part);
   // return the sum of probs for the root (right interface) clique of the given partition.
-  infoMsg(IM::Mod,"^^^ computing evidence for JT root: part = %d (%s)\n",
+  infoMsg(IM::Inference, IM::Mod,"^^^ computing evidence for JT root: part = %d (%s)\n",
 	  part,inference_it.cur_nm());
   return pt->maxCliques[inference_it.cur_ri()].sumProbabilities();
 }
@@ -403,7 +403,7 @@ JunctionTree::setRootToMaxCliqueValue(const unsigned part,
 {
   setCurrentInferenceShiftTo(part);
   // return the sum of probs for the root (right interface) clique of the given partition.
-  infoMsg(IM::Mod,"^^^ setting JT root to max clique value: part = %d (%s)\n",
+  infoMsg(IM::Inference, IM::Mod,"^^^ setting JT root to max clique value: part = %d (%s)\n",
 	  part,inference_it.cur_nm());
   return pt->maxCliques[inference_it.cur_ri()].maxProbability(partitionStructureArray[inference_it.ps_i()].maxCliquesSharedStructure[inference_it.cur_ri()]);
 }
@@ -614,7 +614,7 @@ JunctionTree::collectDistributeIslandBase(const unsigned start,
       // 'probEvidenceRoot' call above. If this routine changes
       // we'll need to uncomment the following line.
       // setCurrentInferenceShiftTo(part);
-      infoMsg(IM::Low,"XXX Island Finished Inference: part = %d (%s): log probE = %f\n",
+      infoMsg(IM::Inference, IM::Low,"XXX Island Finished Inference: part = %d (%s): log probE = %f\n",
 	      part,inference_it.cur_nm(),
 	      cur_prob_evidence.valref());
 
@@ -632,7 +632,7 @@ JunctionTree::collectDistributeIslandBase(const unsigned start,
 	}
       } else if (runViterbiAlgorithm) {
 	if (cur_prob_evidence.essentially_zero()) {
-	  infoMsg(IM::Default,"Island not decoding segment since probability is essentially zero\n");
+	  infoMsg(IM::Inference, IM::Default,"Island not decoding segment since probability is essentially zero\n");
 	  // note that we can't freely just jump out as we have to
 	  // free up all the memory that we allocated. We thus have to
 	  // check a bunch of conditions on the way out and do
@@ -682,8 +682,8 @@ JunctionTree::collectDistributeIslandBase(const unsigned start,
     // decoding, scoring, etc.
     if (cur_prob_evidence.not_essentially_zero()) {
 
-      if (IM::messageGlb(IM::Mod)) {
-	infoMsg(IM::Mod,"!!! finished partition: part = %d (%s)\n",
+      if (IM::messageGlb(IM::Inference, IM::Mod)) {
+	infoMsg(IM::Inference, IM::Mod,"!!! finished partition: part = %d (%s)\n",
 		part,inference_it.cur_nm());
 	printAllCliqueProbabilties(part,islandPartitionTableArray.ptr[part - start]);
       }
@@ -769,7 +769,7 @@ JunctionTree::collectDistributeIslandRecurse(const unsigned start,
     const unsigned section_size = len/base;
 
     if (section_size <= 1) {
-      infoMsg(IM::Huge,"Island collect/distribute inference, log base (%d) too large for current sect length (%d) & linear sect threshold (%d), it would result in sub sect len (%d). Backing off to linear case.\n",base,len,linear_section_threshold,section_size);
+      infoMsg(IM::Inference, IM::Huge,"Island collect/distribute inference, log base (%d) too large for current sect length (%d) & linear sect threshold (%d), it would result in sub sect len (%d). Backing off to linear case.\n",base,len,linear_section_threshold,section_size);
       // First, we might need to reallocate the linear size array since it it is possible that
       // we are jumping down to base before we have reached the linear threshold.
       islandPartitionTableArray.growIfNeeded(end-start+1);
