@@ -54,6 +54,9 @@ class JunctionTree {
   friend class GMTemplate;
   friend class BoundaryTriangulate;
 
+  // frame range for debugging output
+  Range fdbugRange;
+
   // The set of base partitions from which real unrolled things are cloned from.
   // When unrolling zero time, we get:
   //   u0: P' E'
@@ -785,6 +788,10 @@ class JunctionTree {
 
 public:
 
+  void setFrameDebugRange(Range rng) { fdbugRange.SetLimits(rng.first(), rng.last()); 
+                                       fdbugRange.SetDefStr(rng.GetDefStr()); }
+
+
 
   // Set to true if the JT should create extra separators for any
   // virtual evidence (VE) that might be usefully exploitable
@@ -855,7 +862,8 @@ public:
 
   // constructor
   JunctionTree(GMTemplate& arg_gm_template)
-    : curEMTrainingBeam(-LZERO),
+    : fdbugRange("all",0,0x7FFFFFFF),
+      curEMTrainingBeam(-LZERO),
       inference_it(*this),
       fp(arg_gm_template.fp),
       gm_template(arg_gm_template)

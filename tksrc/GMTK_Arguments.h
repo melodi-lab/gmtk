@@ -133,7 +133,7 @@ extern bool ObservationsAllowNan;
   Arg("sr",  Arg::Opt,sr,"Sentence range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("prepr", Arg::Opt, prepr,"Pre Per-segment frame Range for obs file X before any transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("postpr",Arg::Opt, postpr,"Post Per-segment frame Range for obs file X after per-stream transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("gpr",   Arg::Opt, gpr_str," Global Per-segment final frame Range"),
+  Arg("gpr",   Arg::Opt, gpr_str,"Global Per-segment final frame Range"),
   Arg("obsNAN",   Arg::Opt, ObservationsAllowNan," True if observation files allow FP NAN values"),
 
 
@@ -1103,8 +1103,8 @@ extern bool ObservationsAllowNan;
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
-  (void) IM::setGlbMsgLevel(verbosity);
-  GM_Parms.setMsgLevel(verbosity);
+  (void) IM::setGlbMsgLevel("all", verbosity);
+//  GM_Parms.setMsgLevel(verbosity);
   
   if (modularVerbosity) {
     char *token, *copy;
@@ -1112,7 +1112,7 @@ extern bool ObservationsAllowNan;
     copy = strdup(modularVerbosity);
     for (token=strtok(copy, delimiters); token; token=strtok(NULL, delimiters)) {
       (void) IM::setGlbMsgLevel(token);
-      GM_Parms.setMsgLevel(token);
+//      GM_Parms.setMsgLevel(token);
     }
   }
 
@@ -1256,6 +1256,28 @@ static bool  cliquePrintOnlyEntropy = false;
 #else
 #endif
 #endif // defined(GMTK_ARG_ISLAND)
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
+#if defined(GMTK_ARG_DEBUG_FRAME_RNG)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+  const static char *fdbrng_str="all";
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("debugFrames",Arg::Opt,fdbrng_str,"Frame range to generate debug output"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#else
+#endif
+#endif // defined(GMTK_ARG_DEBUG_FRAME_RNG)
+
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
