@@ -260,7 +260,7 @@ public:
       if (errno || (*endp != 0) || (endp == s)) {
 	error("ERROR: invalid module error level specifier '%s'", levelAssignment);
       }
-      setMsgLevel(ml);
+      setMsgLevel("all", ml);
     } else {
       *equals = 0;
       ml = strtoul(equals+1, &endp, 0);
