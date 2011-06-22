@@ -417,7 +417,7 @@ JunctionTree::emIncrementIsland(const unsigned part,
 {
   setCurrentInferenceShiftTo(part);
   // increment for this partition.
-  infoMsg(IM::Mod,"^^^ incrementing EM: part = %d (%s)\n",
+  infoMsg(IM::Training, IM::Mod,"^^^ incrementing EM: part = %d (%s)\n",
 	  part,inference_it.cur_nm());
   return pt->emIncrement(partitionStructureArray[inference_it.ps_i()],
 			 cur_prob_evidence,
@@ -622,7 +622,7 @@ JunctionTree::collectDistributeIslandBase(const unsigned start,
 	// TODO: Only initialize this if we are not doing
 	// localCliqueNormalization
 	if (cur_prob_evidence.essentially_zero()) {
-	  infoMsg(IM::Default,"Island not training segment since probability is essentially zero\n");
+	  infoMsg(IM::Training,IM::Default,"Island not training segment since probability is essentially zero\n");
 	  // Note that we can't freely just jump out as we have to
 	  // free up all the memory that we allocated. We thus have to
 	  // check a bunch of conditions on the way out and do EM

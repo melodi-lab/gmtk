@@ -1015,7 +1015,7 @@ JunctionTree::ceGatherIntoRoot(PartitionStructures& ps,
 				    pt.separatorCliques,
 				    ps.separatorCliquesSharedStructure.ptr);
 
-  if (IM::messageGlb(IM::Inference, IM::Med+9)) {
+  if (IM::messageGlb(IM::InferenceMemory, IM::Med+9)) {
     pt.reportMemoryUsageTo(ps,stdout);
   }
 }
@@ -1091,7 +1091,7 @@ JunctionTree::ceSendForwardsCrossPartitions(// previous partition
     ceSendToOutgoingSeparator(previous_ps.maxCliquesSharedStructure[previous_part_root],
 			      next_pt.separatorCliques[next_ps.separatorCliquesSharedStructure.size()-1],
 			      next_ps.separatorCliquesSharedStructure[next_ps.separatorCliquesSharedStructure.size()-1]);
-  if (IM::messageGlb(IM::Inference, IM::Med+9)) {
+  if (IM::messageGlb(IM::InferenceMemory, IM::Med+9)) {
     previous_pt.reportMemoryUsageTo(previous_ps,stdout);
   }
 }
@@ -1752,7 +1752,7 @@ JunctionTree::emIncrement(const logpr probE,
   // than normal EM???") we use the reverse order here.
   for (unsigned part=inference_it.pt_len();part > 0 ; part --) {
     setCurrentInferenceShiftTo(part-1);
-    infoMsg(IM::High-1,
+    infoMsg(IM::Training, IM::High-1,
 	    "EM: accumulating stats for %s,part[%d]\n",
 	    inference_it.cur_nm(),inference_it.pt_i());
     partitionTableArray[inference_it.pt_i()].
@@ -1782,7 +1782,7 @@ JunctionTree::emIncrement(const logpr probE,
   }
 
   while (1) {
-    infoMsg(IM::High-1,
+    infoMsg(IM::Training, IM::High-1,
 	    "EM: accumulating stats for %s,part[%d]\n",
 	    ptps_it.cur_nm(),ptps_it.pt_i());
 
