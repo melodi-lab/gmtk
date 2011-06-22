@@ -49,6 +49,8 @@ public:
   enum ModuleName {
     DefaultModule,
     Inference,
+    InferenceMemory,
+    Training,
     Triangulation,
     Boundary,
     Unrolling,
