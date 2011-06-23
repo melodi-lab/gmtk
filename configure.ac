@@ -17,7 +17,7 @@ AC_ARG_WITH([logp],
             [with_logp=log])
 AC_ARG_WITH([detBrush],
             [AS_HELP_STRING([--with-detBrush],
-              [select gmtkViz brush for deterministic nodes (none, cross, grey) @<:@default=none@:>@])],
+              [select gmtkViz brush for deterministic nodes (none, cross, grey) @<:@default: none@:>@])],
             [],
             [with_detBrush=none])
 
