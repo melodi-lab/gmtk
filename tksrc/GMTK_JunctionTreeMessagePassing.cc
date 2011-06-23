@@ -1378,7 +1378,7 @@ JunctionTree::deScatterOutofRoot(// the partition
   unsigned inferenceDebugLevel = IM::glbMsgLevel(IM::Inference);
   if (! fdbugRange.contains((int)part_num)) {
 #if 0
-    printf("distributeEvidence [part %u]: lowering inference level to %d\n", part, IM::glbMsgLevel(IM::DefaultModule));
+    printf("deScatter [part %u]: lowering inference level to %d\n", part, IM::glbMsgLevel(IM::DefaultModule));
 #endif
     IM::setGlbMsgLevel(IM::Inference, IM::glbMsgLevel(IM::DefaultModule));
   }
@@ -1409,7 +1409,7 @@ JunctionTree::deScatterOutofRoot(// the partition
 
   if (! fdbugRange.contains((int)part_num)) {
 #if 0
-    printf("distributedEvidence [part %u]: raising inference level to %d\n", part, inferenceDebugLevel);
+    printf("deScatter [part %u]: raising inference level to %d\n", part, inferenceDebugLevel);
 #endif
     IM::setGlbMsgLevel(IM::Inference, inferenceDebugLevel);
   }
@@ -1475,7 +1475,6 @@ JunctionTree::deSendBackwardsCrossPartitions(// previous partition
   if (previous_ps.maxCliquesSharedStructure.size() == 0 || next_ps.maxCliquesSharedStructure.size() == 0)
     return;
 
-
   unsigned inferenceDebugLevel = IM::glbMsgLevel(IM::Inference);
 
   if (! fdbugRange.contains((int)next_part_num)) {
@@ -1493,6 +1492,7 @@ JunctionTree::deSendBackwardsCrossPartitions(// previous partition
     deReceiveFromIncommingSeparator(previous_ps.maxCliquesSharedStructure[previous_part_root],
 				    next_pt.separatorCliques[next_ps.separatorCliquesSharedStructure.size()-1],
 				    next_ps.separatorCliquesSharedStructure[next_ps.separatorCliquesSharedStructure.size()-1]);
+
   if (! fdbugRange.contains((int)next_part_num)) {
 #if 0
     printf("deScatter [part %u]: raising inference level to %d\n", 
@@ -1500,8 +1500,6 @@ JunctionTree::deSendBackwardsCrossPartitions(// previous partition
 #endif
     IM::setGlbMsgLevel(IM::Inference, inferenceDebugLevel);
   }
-
-
 }
 
 
