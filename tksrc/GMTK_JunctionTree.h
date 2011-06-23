@@ -1139,6 +1139,7 @@ public:
 			       const char **triggerValSets = NULL);
 
 
+  void resetViterbiPrinting() { setCurrentInferenceShiftTo(0); }
 
   void createUnprimingMap(vector<RV*> &unrolled_rvs, 
 			  map<RVInfo::rvParent, unsigned> &unrolled_map,
