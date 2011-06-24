@@ -26,6 +26,14 @@ AC_ARG_ENABLE([model-checks],
 AM_CONDITIONAL([NO_ASSERTIONS],[test x$assertions != xyes])
 AM_CONDITIONAL([NO_MODEL_CHECKS],[test x$model_checks != xyes])
 
+AC_ARG_WITH([LZERO],
+            [AS_HELP_STRING([--with-LZERO],
+              [the smallest log value that we represent @<:@default: -1.0E10@:>@])],
+            [],
+            [with_LZERO=(-1.0E10)])
+
+AC_DEFINE_UNQUOTED([LZERO], [(${with_LZERO})], [smallest log value that we represent])
+
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC

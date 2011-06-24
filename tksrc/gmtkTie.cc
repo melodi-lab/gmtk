@@ -48,8 +48,13 @@
  *
  */
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
  
-
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -83,6 +88,8 @@
 
 #include "GMTK_Tie.h"
 #include "tieSupport.h"
+
+VCID(HGID)
 
 #define GMTK_ARG_HELP
 #define GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG
