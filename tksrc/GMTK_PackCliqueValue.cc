@@ -765,7 +765,7 @@ int main(int argc,char*argv[])
 {
 
   RAND myrnd(true);
-  printf("sizeof(PackCliqueValue::ValLocator) = %d\n",sizeof(PackCliqueValue::ValLocator));
+  printf("sizeof(PackCliqueValue::ValLocator) = %lu\n",sizeof(PackCliqueValue::ValLocator));
 
   const unsigned numEpochs = 50;
   for (unsigned epoch=0;epoch<numEpochs;epoch++) {
