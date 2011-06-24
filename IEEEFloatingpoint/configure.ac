@@ -74,8 +74,7 @@ AC_CHECK_HEADERS([float.h stdlib.h string.h])
 AC_TYPE_SIGNAL
 AC_CHECK_FUNCS([memset])
 
-AC_CONFIG_FILES([Makefile])
-AC_OUTPUT
+AM_CONDITIONAL([UNKNOWN_PLATFORM],[test ! -f "${srcdir}/ieeeFPsetup_${host_cpu}_${host_os}.cc"])
 
 if test -f "${srcdir}/ieeeFPsetup_${host_cpu}_${host_os}.cc"; then
    echo Building IEEE floating point support for ${host_cpu}-${host_os}
@@ -95,4 +94,6 @@ else
 ---------------------------------------------------------------
 ])
 fi
-AM_CONDITIONAL([UNKNOWN_PLATFORM],[test ! -f "${srcdir}/ieeeFPsetup_${host_cpu}_${host_os}.cc"])
+
+AC_CONFIG_FILES([Makefile])
+AC_OUTPUT
