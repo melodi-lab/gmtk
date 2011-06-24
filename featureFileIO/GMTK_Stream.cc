@@ -296,7 +296,7 @@ size_t StreamInfo::calcNumFileNames(FILE* &f) {
 
 }	
 
-size_t StreamInfo::readFof(FILE *f) {
+size_t StreamInfo::readFof(FILE * &f) {
 
   size_t n_lines = 0;
 
