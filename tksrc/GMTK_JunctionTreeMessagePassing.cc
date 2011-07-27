@@ -456,8 +456,7 @@ void JunctionTree::createUnprimingMap(
 
   // the # of original C partitions needed
   unsigned nCs = nCprimes * S;
-  infoMsg(IM::Printing, IM::Info+1, "# C' = %u   # C = %u\n", nCprimes, nCs);
-  infoMsg(IM::Printing, IM::Info+1, "partitionStructureArray.size() = %u\n", partitionStructureArray.size());
+  infoMsg(IM::Printing, IM::Moderate, "# C' = %u   # C = %u\n", nCprimes, nCs);
 
   // unroll to create RV instances shared by the printing & unpacking sets
   fp.unroll(nCs-1, unrolled_rvs, unrolled_map);
@@ -495,7 +494,7 @@ void JunctionTree::createUnprimingMap(
   // each possible case, and use the sentence length to 
   // determine which to use at unpacking time
 
-  infoMsg(IM::Printing, IM::Info+1, "\nP':\n");
+  infoMsg(IM::Printing, IM::Moderate, "\nP':\n");
   vector<RV*> P = partitionStructureArray[0].allrvs_vec;
   for (vector<RV*>::iterator it = P.begin(); it != P.end(); ++it) {
     RV *v = getRV(unrolled_rvs, unrolled_map, *it);
@@ -506,7 +505,7 @@ void JunctionTree::createUnprimingMap(
 	hidP_rvs.push_back(v);
 	hidPprime_rvs.push_back(v);
       }
-      infoMsg(IM::Printing, IM::Info+1, "%s(%u) -> P\n", (*it)->name().c_str(), (*it)->frame());
+      infoMsg(IM::Printing, IM::Moderate, "%s(%u) -> P\n", (*it)->name().c_str(), (*it)->frame());
     } else {                     // v is in P' but not P
       Pprime_rvs.push_back(v);
       unsigned t = FTOC(NP,NC,(*it)->frame()); // the unmodified C index this variable belongs in
@@ -516,7 +515,7 @@ void JunctionTree::createUnprimingMap(
 	hidPprime_rvs.push_back(v);
 	hidC_rvs[t].push_back(v);
       }
-      infoMsg(IM::Printing, IM::Info+1, "%s(%u) -> C(%u)\n", (*it)->name().c_str(), (*it)->frame(), t);
+      infoMsg(IM::Printing, IM::Moderate, "%s(%u) -> C(%u)\n", (*it)->name().c_str(), (*it)->frame(), t);
     }
   }
   PprimeValuePtrs.resize(hidPprime_rvs.size());
@@ -529,72 +528,70 @@ void JunctionTree::createUnprimingMap(
   // not contain a C' to base the C' -> C mapping on. But since there are no
   // C's to print, we don't need to construct the C' -> C mapping. Ticket #127
   if (partitionStructureArray.size() > 2) {
-
-
-  // Map the first C' variables to their corresponding C (for printing)
-  // and C' (for unpacking) instances
-  infoMsg(IM::Printing, IM::Info+1, "\nC':\n");
-  vector<RV*> C = partitionStructureArray[1].allrvs_vec;
-  for (vector<RV*>::iterator it = C.begin(); it != C.end(); ++it) {
-    RV *v = getRV(unrolled_rvs, unrolled_map, *it);
-    unsigned t = FTOC(NP,NC,(*it)->frame()); // the unmodified C index this variable belongs in
+    // Map the first C' variables to their corresponding C (for printing)
+    // and C' (for unpacking) instances
+    infoMsg(IM::Printing, IM::Moderate, "\nC':\n");
+    vector<RV*> C = partitionStructureArray[1].allrvs_vec;
+    for (vector<RV*>::iterator it = C.begin(); it != C.end(); ++it) {
+      RV *v = getRV(unrolled_rvs, unrolled_map, *it);
+      unsigned t = FTOC(NP,NC,(*it)->frame()); // the unmodified C index this variable belongs in
 #if 1
-    C_rvs[t].push_back(v);
-    Calready[t].insert(v);
-    Cprime_rvs[0].push_back(v);
-    if (v->hidden()) {
-      hidC_rvs[t].push_back(v);
-      hidCprime_rvs[0].push_back(v);
-    }
+      C_rvs[t].push_back(v);
+      Calready[t].insert(v);
+      Cprime_rvs[0].push_back(v);
+      if (v->hidden()) {
+	hidC_rvs[t].push_back(v);
+	hidCprime_rvs[0].push_back(v);
+      }
 #endif
-    infoMsg(IM::Printing, IM::Info+1, "C(%u) C'[0] : %s(%u)\n", FTOC(NP,NC,(*it)->frame()), (*it)->name().c_str(), (*it)->frame());
-  }
+      infoMsg(IM::Printing, IM::Moderate, "C(%u) C'[0] : %s(%u)\n", FTOC(NP,NC,(*it)->frame()), (*it)->name().c_str(), (*it)->frame());
+    }
 
-  // Slide each C'[0] variable forward S Cs to compute the
-  // remaining C's
-  for (unsigned i=1; i < nCprimes; i+=1) {
-    infoMsg(IM::Printing, IM::Info+1, "\n");
-    for (vector<RV*>::iterator it = Cprime_rvs[i-1].begin(); 
-	 it != Cprime_rvs[i-1].end();
-	 ++it)
-    {
-      RV *v = *it;
-      unsigned f = NP + ( v->frame() - NP + S * NC ) % (NC * nCs); // shift v over S original Cs (mod nCs)
-      RVInfo::rvParent target(v->name(), f);
-      RV *rv = getRV(unrolled_rvs, unrolled_map, target);
-      unsigned t = FTOC(NP,NC,f);
+    // Slide each C'[0] variable forward S Cs to compute the
+    // remaining C's
+    for (unsigned i=1; i < nCprimes; i+=1) {
+      infoMsg(IM::Printing, IM::Moderate, "\n");
+      for (vector<RV*>::iterator it = Cprime_rvs[i-1].begin(); 
+	   it != Cprime_rvs[i-1].end();
+	   ++it)
+	{
+	  RV *v = *it;
+	  unsigned f = NP + ( v->frame() - NP + S * NC ) % (NC * nCs); // shift v over S original Cs (mod nCs)
+	  RVInfo::rvParent target(v->name(), f);
+	  RV *rv = getRV(unrolled_rvs, unrolled_map, target);
+	  unsigned t = FTOC(NP,NC,f);
 
-      // rv may already be in (hid?)C_rvs[t], resulting in excess length when printing C.
-      // We want the ordering of a vector, but the single membership of a set...
-      // Does need to be added to (hid?)Cprime_rvs[i], as that is newly constructed...
-      if (Calready[t].find(rv) == Calready[t].end()) {
-	C_rvs[t].push_back(rv);
-	if (rv->hidden()) {
-	  hidC_rvs[t].push_back(rv);
+	  // rv may already be in (hid?)C_rvs[t], resulting in excess length when printing C.
+	  // We want the ordering of a vector, but the single membership of a set...
+	  // Does need to be added to (hid?)Cprime_rvs[i], as that is newly constructed...
+	  if (Calready[t].find(rv) == Calready[t].end()) {
+	    C_rvs[t].push_back(rv);
+	    if (rv->hidden()) {
+	      hidC_rvs[t].push_back(rv);
+	    }
+	    Calready[t].insert(rv);
+	  }
+	  Cprime_rvs[i].push_back(rv);
+	  if (rv->hidden()) {
+	    hidCprime_rvs[i].push_back(rv);
+	  }
+	  infoMsg(IM::Printing, IM::Moderate, "C(%u) C'[%u] : %s(%u)\n", t, i, target.first.c_str(), target.second);
 	}
-	Calready[t].insert(rv);
-      }
-      Cprime_rvs[i].push_back(rv);
-      if (rv->hidden()) {
-	hidCprime_rvs[i].push_back(rv);
-      }
-      infoMsg(IM::Printing, IM::Info+1, "C(%u) C'[%u] : %s(%u)\n", t, i, target.first.c_str(), target.second);
     }
-  }
-  for (unsigned i=0; i < nCprimes; i+=1) {
-    CprimeValuePtrs[i].resize(hidCprime_rvs[i].size());
-    for (unsigned j=0; j < hidCprime_rvs[i].size(); j+=1) {
-      DiscRV *drv = (DiscRV *) hidCprime_rvs[i][j];
-      CprimeValuePtrs[i][j] = &(drv->val);
+    for (unsigned i=0; i < nCprimes; i+=1) {
+      CprimeValuePtrs[i].resize(hidCprime_rvs[i].size());
+      for (unsigned j=0; j < hidCprime_rvs[i].size(); j+=1) {
+	DiscRV *drv = (DiscRV *) hidCprime_rvs[i][j];
+	CprimeValuePtrs[i][j] = &(drv->val);
+      }
     }
-  }
   }
 
-  infoMsg(IM::Printing, IM::Info+1, "\nE':\n");
+  infoMsg(IM::Printing, IM::Moderate, "\nE':\n");
   int Eidx  = partitionStructureArray.size() - 1;
   int delta = (nCs - ( (partitionStructureArray.size() - 2) * S + M ) ) * NC;
   unsigned firstEframe = NP + nCs * NC;
-  infoMsg(IM::Printing, IM::Info+1, "delta = %d    firstE = %u\n", delta, firstEframe);
+  infoMsg(IM::Printing, IM::Moderate, "delta = %d    firstE = %u\n", delta, firstEframe);
   vector<RV*> E = partitionStructureArray[Eidx].allrvs_vec;
   for (vector<RV*>::iterator it = E.begin(); it != E.end(); ++it) {
     RV *v = *it;
@@ -606,7 +603,7 @@ void JunctionTree::createUnprimingMap(
 	Eprime_rvs[i].push_back(rv);
 	if (rv->hidden()) hidEprime_rvs[i].push_back(rv);
       }
-      infoMsg(IM::Printing, IM::Info+1, "%s(%u) -> %s(%u) -> E\n", v->name().c_str(), v->frame()+delta, rv->name().c_str(), rv->frame());
+      infoMsg(IM::Printing, IM::Moderate, "%s(%u) -> %s(%u) -> E\n", v->name().c_str(), v->frame()+delta, rv->name().c_str(), rv->frame());
     } else { // v is in E' but not E
       // The C'E' transition could occur after unpacking any of the nCprimes C' sets,
       // so Eprime_rvs[i] handles the C'[i]E' transition
@@ -616,7 +613,7 @@ void JunctionTree::createUnprimingMap(
 	Eprime_rvs[i].push_back(rv_shifted);
 	if (rv_shifted->hidden()) hidEprime_rvs[i].push_back(rv_shifted);
       }
-      infoMsg(IM::Printing, IM::Info+1, "%s(%u) -> C(%u)\n", v->name().c_str(), v->frame()+delta, FTOC(NP,NC,v->frame()+delta));
+      infoMsg(IM::Printing, IM::Moderate, "%s(%u) -> C(%u)\n", v->name().c_str(), v->frame()+delta, FTOC(NP,NC,v->frame()+delta));
     }
   }
   for (unsigned i=0; i < nCprimes; i+=1) {
