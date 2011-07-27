@@ -456,6 +456,8 @@ void JunctionTree::createUnprimingMap(
 
   // the # of original C partitions needed
   unsigned nCs = nCprimes * S;
+  infoMsg(IM::Printing, IM::Info+1, "# C' = %u   # C = %u\n", nCprimes, nCs);
+  infoMsg(IM::Printing, IM::Info+1, "partitionStructureArray.size() = %u\n", partitionStructureArray.size());
 
   // unroll to create RV instances shared by the printing & unpacking sets
   fp.unroll(nCs-1, unrolled_rvs, unrolled_map);
@@ -523,6 +525,12 @@ void JunctionTree::createUnprimingMap(
     PprimeValuePtrs[i] = &(drv->val);
   }
 
+  // If the unrolling consists of just P'E' then partitionStructureArray does
+  // not contain a C' to base the C' -> C mapping on. But since there are no
+  // C's to print, we don't need to construct the C' -> C mapping. Ticket #127
+  if (partitionStructureArray.size() > 2) {
+
+
   // Map the first C' variables to their corresponding C (for printing)
   // and C' (for unpacking) instances
   infoMsg(IM::Printing, IM::Info+1, "\nC':\n");
@@ -530,6 +538,7 @@ void JunctionTree::createUnprimingMap(
   for (vector<RV*>::iterator it = C.begin(); it != C.end(); ++it) {
     RV *v = getRV(unrolled_rvs, unrolled_map, *it);
     unsigned t = FTOC(NP,NC,(*it)->frame()); // the unmodified C index this variable belongs in
+#if 1
     C_rvs[t].push_back(v);
     Calready[t].insert(v);
     Cprime_rvs[0].push_back(v);
@@ -537,6 +546,7 @@ void JunctionTree::createUnprimingMap(
       hidC_rvs[t].push_back(v);
       hidCprime_rvs[0].push_back(v);
     }
+#endif
     infoMsg(IM::Printing, IM::Info+1, "C(%u) C'[0] : %s(%u)\n", FTOC(NP,NC,(*it)->frame()), (*it)->name().c_str(), (*it)->frame());
   }
 
@@ -578,7 +588,7 @@ void JunctionTree::createUnprimingMap(
       CprimeValuePtrs[i][j] = &(drv->val);
     }
   }
-
+  }
 
   infoMsg(IM::Printing, IM::Info+1, "\nE':\n");
   int Eidx  = partitionStructureArray.size() - 1;
