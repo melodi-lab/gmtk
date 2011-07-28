@@ -118,15 +118,15 @@ JunctionTree::shiftCCtoPosition(int pos)
 }
 
 /*
- * shiftUnprimeVarstoPosition(vector<RV*> rvs, int pos, int &prevPos)
- *  Shift the random variables in 'rvs' from in time (frames) by
+ * shiftOriginalVarstoPosition(vector<RV*> rvs, int pos, int &prevPos)
+ *  Shift the random variables in 'rvs' in time (frames) by
  *  the difference between 'prevPos' and 'pos'. This is used  in 
  *  printSavedViterbiValues to adjust the rvs' frame numbers in
  *  the unpacking buffers.
  */
 
 void
-JunctionTree::shiftUnprimeVarstoPosition(vector<RV*> rvs, int pos, int &prevPos)
+JunctionTree::shiftOriginalVarstoPosition(vector<RV*> rvs, int pos, int &prevPos)
 {
   set<RV*> uprvs(rvs.begin(),rvs.end());
   int delta = (pos - prevPos);
@@ -437,7 +437,7 @@ JunctionTree::printSavedViterbiValues(FILE* f,
  * Create the printing (P,C,E _rvs) and unpacking (Pprime,Cprime,Eprime _rvs) buffers for printSavedViterbiValues
  */
 
-void JunctionTree::createUnprimingMap(
+void JunctionTree::createUnpackingMap(
   vector<RV*> &unrolled_rvs, map<RVInfo::rvParent, unsigned> &unrolled_map,
   vector<RV*> &P_rvs, vector<RV*> &hidP_rvs, vector<RV*> &Pprime_rvs, vector<RV *> &hidPprime_rvs,
   vector<vector<RV*> > &C_rvs, vector<vector<RV*> > &hidC_rvs, vector<vector<RV*> > &Cprime_rvs, vector<vector<RV*> > &hidCprime_rvs,
@@ -494,6 +494,11 @@ void JunctionTree::createUnprimingMap(
   // each possible case, and use the sentence length to 
   // determine which to use at unpacking time
 
+  // TODO: Since the mapping is now based on partitionStructureArray,
+  //       the number of C's in the unrolled model is known at map
+  //       creation time. Thus we should be able to construct only
+  //       the E' mapping for only the relevant C'E' transition 
+
   infoMsg(IM::Printing, IM::Moderate, "\nP':\n");
   vector<RV*> P = partitionStructureArray[0].allrvs_vec;
   for (vector<RV*>::iterator it = P.begin(); it != P.end(); ++it) {
@@ -526,7 +531,7 @@ void JunctionTree::createUnprimingMap(
 
   // If the unrolling consists of just P'E' then partitionStructureArray does
   // not contain a C' to base the C' -> C mapping on. But since there are no
-  // C's to print, we don't need to construct the C' -> C mapping. Ticket #127
+  // C's to unpack, we don't need to construct the C' -> C mapping. Ticket #127
   if (partitionStructureArray.size() > 2) {
     // Map the first C' variables to their corresponding C (for printing)
     // and C' (for unpacking) instances
@@ -734,7 +739,7 @@ JunctionTree::printSavedViterbiValues(FILE* f,
   vector<sArray<DiscRVType *> > CprimeValuePtrs;
   vector<sArray<DiscRVType *> > EprimeValuePtrs;
 
-  createUnprimingMap(unrolled_rvs, unrolled_map, 
+  createUnpackingMap(unrolled_rvs, unrolled_map, 
 		     P_rvs, hidP_rvs, Pprime_rvs, hidPprime_rvs, 
 		     C_rvs, hidC_rvs, Cprime_rvs, hidCprime_rvs,
 		     E_rvs, hidE_rvs, Eprime_rvs, hidEprime_rvs,
@@ -772,7 +777,7 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 
 
   unsigned primeIndex = 0;
-  unsigned unprimeIndex = 0;
+  unsigned originalIndex = 0;
   unsigned Ccount = 1;
   int previous_C = -1;
 
@@ -809,7 +814,7 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 	// print completed C partitions
 	int targetFrame = fp.numFramesInP() + (int)(part-1) * gm_template.S * fp.numFramesInC();
 	for (unsigned i=0; i < gm_template.M; i+=1) { // unpacking E' completes the last M Cs
-	  shiftUnprimeVarstoPosition(C_rvs[unprimeIndex], targetFrame, Cpos[unprimeIndex]);
+	  shiftOriginalVarstoPosition(C_rvs[originalIndex], targetFrame, Cpos[originalIndex]);
 #if 0
 	  fprintf(f,"E'[%3d] %1d C[%3d]:",part,primeIndex,(targetFrame - fp.numFramesInP()) / fp.numFramesInC());
 	  fprintf(f,"C[%3d]: ",(targetFrame - fp.numFramesInP()) / fp.numFramesInC());
@@ -817,14 +822,14 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 	  fprintf(f,"Ptn-%u C: ", Ccount++);
 #endif
 	  if (printObserved)
-	    printRVSetAndValues(f,C_rvs[unprimeIndex],true,preg);
+	    printRVSetAndValues(f,C_rvs[originalIndex],true,preg);
 	  else
-	    printRVSetAndValues(f,hidC_rvs[unprimeIndex],true,preg);
-	  unprimeIndex = (unprimeIndex + 1) % C_rvs.size();
+	    printRVSetAndValues(f,hidC_rvs[originalIndex],true,preg);
+	  originalIndex = (originalIndex + 1) % C_rvs.size();
 	  targetFrame += fp.numFramesInC();
 	} 
 	// print E partition
-	shiftUnprimeVarstoPosition(E_rvs, targetFrame, Epos);
+	shiftOriginalVarstoPosition(E_rvs, targetFrame, Epos);
 #if 0
 	fprintf(f,"E'[%3d] %1d E     : ",part, primeIndex);
 #else
@@ -844,7 +849,7 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 			     CprimeValuePtrs[primeIndex].ptr);
 	    int targetFrame = fp.numFramesInP() + (int)(part-1) * gm_template.S * fp.numFramesInC();
 	    for (unsigned i=0; i < gm_template.S; i+=1) { // unpacking a C' completes S Cs
-	      shiftUnprimeVarstoPosition(C_rvs[unprimeIndex], targetFrame, Cpos[unprimeIndex]);
+	      shiftOriginalVarstoPosition(C_rvs[originalIndex], targetFrame, Cpos[originalIndex]);
 #if 0
 	      fprintf(f,"C'[%3d] %1d C[%3d]: ",part,primeIndex, (targetFrame - fp.numFramesInP()) / fp.numFramesInC());
 	      fprintf(f,"C[%3d]: ",(targetFrame - fp.numFramesInP()) / fp.numFramesInC());
@@ -852,10 +857,10 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 	      fprintf(f,"Ptn-%u C: ", Ccount++);
 #endif
 	      if (printObserved) 
-		printRVSetAndValues(f,C_rvs[unprimeIndex],true,preg);
+		printRVSetAndValues(f,C_rvs[originalIndex],true,preg);
 	      else
-		printRVSetAndValues(f,hidC_rvs[unprimeIndex],true,preg);
-	      unprimeIndex = (unprimeIndex + 1) % C_rvs.size();
+		printRVSetAndValues(f,hidC_rvs[originalIndex],true,preg);
+	      originalIndex = (originalIndex + 1) % C_rvs.size();
 	      targetFrame += fp.numFramesInC();
 	    }
 	    primeIndex = (primeIndex + 1) % Cprime_rvs.size();
