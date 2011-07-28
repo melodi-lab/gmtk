@@ -40,6 +40,7 @@ AC_ARG_ENABLE([model-checks],
 # Checks for programs.
 
 AC_PROG_AWK
+AC_PROG_GREP
 
 # Checks for libraries.
 
