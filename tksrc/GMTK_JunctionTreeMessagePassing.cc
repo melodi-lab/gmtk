@@ -829,16 +829,18 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 	  targetFrame += fp.numFramesInC();
 	} 
 	// print E partition
-	shiftOriginalVarstoPosition(E_rvs, targetFrame, Epos);
+	if ( (hidE_rvs.size() > 0)  || (printObserved && E_rvs.size() > 0) ) {
+	  shiftOriginalVarstoPosition(E_rvs, targetFrame, Epos);
 #if 0
-	fprintf(f,"E'[%3d] %1d E     : ",part, primeIndex);
+	  fprintf(f,"E'[%3d] %1d E     : ",part, primeIndex);
 #else
-	fprintf(f,"Ptn-%u E: ", Ccount);
+	  fprintf(f,"Ptn-%u E: ", Ccount);
 #endif
-	if (printObserved) 
-	  printRVSetAndValues(f,E_rvs,true,preg);
-	else
-	  printRVSetAndValues(f,hidE_rvs,true,preg);
+	  if (printObserved) 
+	    printRVSetAndValues(f,E_rvs,true,preg);
+	  else
+	    printRVSetAndValues(f,hidE_rvs,true,preg);
+	}
       } else {
 	assert ( inference_it.at_c() );
 	// print C partition
