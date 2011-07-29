@@ -1,0 +1,28 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/127 is fixed
+
+# -vitValsFile will seg fault unless this bug is fixed.
+# The test requires the output of -vitValsFile and -pVitValsFile
+# to match in order to pass. The output is passed through
+# testViterbi and sort to put it in a canonical form so that
+# the two printing implementations can be diffed.
+
+AT_SETUP([new Viterbi printing 7-word (ticket 127)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/7-word])
+AT_CHECK([(cd $TEST_AND_DEV/7-word && \
+           gmtkViterbi -strFile params/model_3t3c7Wa.str \
+	    -triFile params/my7Wa.str.trifile \
+            -inputMasterFile params/master.3t3c7W \
+	    -of1 params/augFiles.list \
+            -fmt1 ascii -nf1 0 -ni1 27 -dcdrng 0:8 \
+            -cbeam 5 -cpbeam 5 -vcap I -pVitValsFile - | \
+           testViterbi | sort)],[],[stdout])
+AT_CHECK([(cd $TEST_AND_DEV/7-word && \
+           gmtkViterbi -strFile params/model_3t3c7Wa.str \
+	    -triFile params/my7Wa.str.trifile \
+            -inputMasterFile params/master.3t3c7W \
+	    -of1 params/augFiles.list \
+            -fmt1 ascii -nf1 0 -ni1 27 -dcdrng 0:8 \
+            -cbeam 5 -cpbeam 5 -vcap I -vitValsFile - | \
+           testViterbi | sort) | diff stdout -],[],[stdout])
+AT_CLEANUP

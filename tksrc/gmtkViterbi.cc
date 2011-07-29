@@ -37,6 +37,13 @@
  * for any purpose. It is provided "as is" without express or implied warranty.
  *
  */
+
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
   
 #include <math.h>
 #include <stdlib.h>
@@ -62,12 +69,6 @@
 
 #include "GMTK_WordOrganization.h"
 
-#if HAVE_CONFIG_H
-#include <config.h>
-#endif
-#if HAVE_HG_H
-#include "hgstamp.h"
-#endif
 VCID(HGID)
 
 
@@ -492,7 +493,9 @@ main(int argc,char*argv[])
 					      pVitPartRangeFilter);
       }
 
-#if 1      
+#if 1     
+      if (pVitValsFile)
+	myjt.resetViterbiPrinting();
       if (vitValsFile) {
 	fprintf(vitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
 		segment,numFrames,probe.val());

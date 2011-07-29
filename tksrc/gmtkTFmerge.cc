@@ -16,6 +16,13 @@
  *
  */
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
+
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -33,12 +40,6 @@
 //#include "spi.h"
 #include "version.h"
 
-#if HAVE_CONFIG_H
-#include <config.h>
-#endif
-#if HAVE_HG_H
-#include "hgstamp.h"
-#endif
 VCID(HGID)
 
 

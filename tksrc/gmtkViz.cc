@@ -11,6 +11,14 @@
 // pens. Instead of simply changing to the appropriate pen, create a
 // new pen with the properties of that pen and switch to the new pen.
 
+
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
+
 // the only parts of gmtk that gmtkViz needs to concern itself with
 #include "GMTK_FileParser.h"
 #include "GMTK_RVInfo.h"

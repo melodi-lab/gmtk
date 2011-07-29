@@ -1,0 +1,25 @@
+
+# Verify that -vitValsFile and -pVitValsFile produce consistent output
+
+# The test requires the output of -vitValsFile and -pVitValsFile
+# to match in order to pass. The output is passed through
+# testViterbi and sort to put it in a canonical form so that
+# the two printing implementations can be diffed.
+
+AT_SETUP([new Viterbi printing auroraTutorial])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
+          gmtkViterbi -of1 DATA/small.pfile \
+          -iswp1 T -nf1 42 -ni1 0 \
+	  -inputMasterFile PARAMS/nonTrainable.master \
+	  -inputTrainable PARAMS/highly_trained.gmp \
+	  -str PARAMS/aurora_decode.str \
+	  -pVitValsFile - | testViterbi | sort)],[],[stdout])
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
+          gmtkViterbi -of1 DATA/small.pfile \
+          -iswp1 T -nf1 42 -ni1 0 \
+	  -inputMasterFile PARAMS/nonTrainable.master \
+	  -inputTrainable PARAMS/highly_trained.gmp \
+	  -str PARAMS/aurora_decode.str \
+	  -vitValsFile - | testViterbi | sort) | diff stdout -],[],[ignore])
+AT_CLEANUP
