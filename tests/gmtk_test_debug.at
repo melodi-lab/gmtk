@@ -1,4 +1,20 @@
 
+# Verfiy that -verb X produces the same debugging output 
+# in the new modular debugging message framework as it 
+# did before.
+
+# The test runs gmtkViterbi with verbosities from 0 to 100
+# in increments of 5, and compares the results against a
+# version of gmtkViterbi prior to the introduction of the
+# modular debugging framework.
+
+# Note that this test requires the head command to accept
+# negative arguments. GNU head does, but the default OSX
+# head does not. 
+
+# TODO: write a test program that does the negative head
+# so that the test will be more platform independent.
+
 AT_SETUP([modular debugging output2])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
 AT_XFAIL_IF([ ! head -n -2 /dev/null >& /dev/null ])

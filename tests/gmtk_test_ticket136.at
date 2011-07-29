@@ -1,4 +1,7 @@
 
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/136 is fixed
+
+# gmtkViterbi will seg fault unless the bug is fixed
 AT_SETUP([ticket 136])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/trivial])
 AT_XFAIL_IF([true])
