@@ -13,6 +13,6 @@ AT_CHECK([(cd $TEST_AND_DEV/mouse4 && \
          gmtkJT -strF mouse4.str -inputM mouse4.mtr -of1 inMicePa.lst \
                 -fmt1 ascii -nf1 6 -cCliquePrintRange all | \
          grep response | sed 's/(/ /g; s/)/ /g' | awk '{print $4}' | \
-         sort -u | wc -l)],[],[51
+         sort -u | wc -l | tr -d ' ')],[],[51
 ])
 AT_CLEANUP
