@@ -18,13 +18,20 @@ $(srcdir)/package.m4: $(top_srcdir)/configure.ac
 	echo '  [$(PACKAGE_URL)])'; \
              } >'$(srcdir)/package.m4'
 
-EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE) atlocal.in
+LOCAL_GMTK_AT = $(wildcard gmtk_test_*.at)
+EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE) atlocal.in $(LOCAL_GMTK_AT)
 TESTSUITE = testsuite
 
 .PHONY: test_and_dev.at
 test_and_dev.at:
 	touch $@
 	find $(TEST_AND_DEV) -type f -name gmtk_test_\*.at | \
+	  $(AWK) '{print "m4_include(["$$1"])"}' > $@
+
+.PHONY: gmtk_tests.at
+gmtk_tests.at:
+	touch $@
+	find $(srcdir) -type f -name gmtk_test_\*.at | \
 	  $(AWK) '{print "m4_include(["$$1"])"}' > $@
 
 check-local: atconfig atlocal $(TESTSUITE)
@@ -46,6 +53,6 @@ clean-local:
 
 AUTOM4TE = $(SHELL) $(top_srcdir)/missing --run autom4te
 AUTOTEST = $(AUTOM4TE) --language=autotest
-$(TESTSUITE): $(srcdir)/testsuite.at test_and_dev.at $(srcdir)/package.m4
+$(TESTSUITE): $(srcdir)/testsuite.at $(srcdir)/gmtk_tests.at test_and_dev.at $(srcdir)/package.m4
 	$(AUTOTEST) -I '$(srcdir)' -o $@.tmp $@.at
 	mv $@.tmp $@
