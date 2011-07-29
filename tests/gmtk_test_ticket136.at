@@ -1,0 +1,8 @@
+
+AT_SETUP([ticket 136])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/trivial])
+AT_XFAIL_IF([true])
+AT_CHECK([(cd $TEST_AND_DEV/trivial && \
+          gmtkViterbi -strF test.str -inputM test.mtr -of1 filelist.txt \
+          -fmt1 ascii -ni1 1 -pVitValsFile -)],[],[ignore])
+AT_CLEANUP
