@@ -581,7 +581,7 @@ class JunctionTree {
   void shiftCCtoPosition(int);
   void shiftCCrelative(int delta) { shiftCCtoPosition(cur_cc_shift+delta); }
   void shiftCEtoPosition(int);
-  void shiftUnprimeVarstoPosition(vector<RV*> rvs, int pos, int &prevPos);
+  void shiftOriginalVarstoPosition(vector<RV*> rvs, int pos, int &prevPos);
   void shiftCErelative(int delta) { shiftCEtoPosition(cur_cc_shift+delta); }
   void init_CC_CE_rvs(ptps_iterator& ptps_it);
   void setCurrentInferenceShiftTo(int pos);
@@ -1141,7 +1141,7 @@ public:
 
   void resetViterbiPrinting() { setCurrentInferenceShiftTo(0); }
 
-  void createUnprimingMap(vector<RV*> &unrolled_rvs, 
+  void createUnpackingMap(vector<RV*> &unrolled_rvs, 
 			  map<RVInfo::rvParent, unsigned> &unrolled_map,
 			  vector<RV*> &P_rvs, vector<RV*> &hidP_rvs,
 			  vector<RV*> &Pprime_rvs, vector<RV*> &hidPprime_rvs,
