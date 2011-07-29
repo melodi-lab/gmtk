@@ -20,5 +20,5 @@ AT_CHECK([(cd $TEST_AND_DEV/2-stream && \
          -inputMasterFile misc/masterFile.0:3731.score \
          -strFile misc/nsh5_train_phoneT.str.sync -componentCache false \
          -cppCommandOptions "-w -DMISC=misc/ -DLEARNED_PARAMS=misc/learnedParams.phoneT.32M.exp5.sync" \
-         -dcdrng 0:10  -pVitValsFile -)],[],[ignore])
+         -dcdrng 0:10  -pVitValsFile -)],[],[ignore],[ignore])
 AT_CLEANUP
