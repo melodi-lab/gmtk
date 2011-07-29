@@ -34,10 +34,10 @@ gmtk_tests.at:
 	find $(srcdir) -type f -name gmtk_test_\*.at | \
 	  $(AWK) '{print "m4_include(["$$1"])"}' > $@
 
-check-local: atconfig atlocal $(TESTSUITE)
+check-local: atconfig atlocal $(TESTSUITE) gmtk_tests.at
 	$(SHELL) '$(TESTSUITE)' $(TESTSUITEFLAGS)
 
-installcheck-local: atconfig atlocal $(TESTSUITE)
+installcheck-local: atconfig atlocal $(TESTSUITE) gmtk_tests.at
 	$(SHELL) '$(TESTSUITE)' \
 	AUTOTEST_PATH='$(bindir):$(abs_top_builddir)/tksrc' \
 	$(TESTSUITEFLAGS)
@@ -48,8 +48,9 @@ clean-local:
 	test ! -f '$(TESTSUITE)' || \
 	$(SHELL) '$(TESTSUITE)' --clean
 	test ! -f test_and_dev.at || rm test_and_dev.at
+	test ! -f gmtk_tests.at || rm gmtk_tests.at
 	test ! -f $(TESTSUITE) || rm $(TESTSUITE)
-	test ! -f atconfig || rm atconfig
+#	test ! -f atconfig || rm atconfig
 
 AUTOM4TE = $(SHELL) $(top_srcdir)/missing --run autom4te
 AUTOTEST = $(AUTOM4TE) --language=autotest
