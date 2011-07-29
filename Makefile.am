@@ -6,7 +6,7 @@ scripts/triangulateGA \
 scripts/triangulateParallel \
 scripts/triangulateTimings
 
-SUBDIRS = IEEEFloatingpoint miscSupport featureFileIO mitk tksrc
+SUBDIRS = IEEEFloatingpoint miscSupport featureFileIO mitk tksrc tests
 
 .PHONY: revdist datedist
 revdist:
@@ -17,3 +17,4 @@ datedist:
 
 hgdatedist:
 	make VERSION=`date +"%Y-%m-%d"`.`hg id | tr ' ' _` dist
+
