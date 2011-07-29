@@ -5,7 +5,6 @@
 
 AT_SETUP([ticket 143])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/mouse4])
-AT_XFAIL_IF([true])
 AT_CHECK([(cd $TEST_AND_DEV/mouse4 && \
           gmtkViterbi -strF mouse4.str -inputM mouse4.mtr -of1 \
           inMicePa.lst -fmt1 ascii -nf1 6 -pVitValsFile -)],[],[ignore])
