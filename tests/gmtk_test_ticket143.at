@@ -1,4 +1,8 @@
 
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/143 is fixed
+
+# gmtkViterbi will exit with a non-zero status if the zero clique bug occurs
+
 AT_SETUP([ticket 143])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/mouse4])
 AT_XFAIL_IF([true])
