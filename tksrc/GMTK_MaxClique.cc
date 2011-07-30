@@ -6800,6 +6800,14 @@ deScatterToOutgoingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStruct
 	separatorTableArray[origin.ceReceiveSeparators[sepNumber]];
       ConditionalSeparatorTable::AISeparatorValue& sv
 	= sep.separatorValues->ptr[0];
+      SeparatorClique& sepOrigin = 
+	*(sepSharedStructureArray[origin.ceReceiveSeparators[sepNumber]].origin);
+
+      // don't distribute to VE separators or to one that is being skipped.
+      if (sep.veSeparator() || sepOrigin.skipMe)
+	continue;
+
+
       // can use assignment rather than += here since there is only one value.
       sv.remValues.ptr[0].bp() = cliqueValues.ptr[0].p;      
       sv.numRemValuesUsed = 1;
@@ -7052,109 +7060,137 @@ deScatterToOutgoingSeparatorsViterbi(MaxCliqueTable::SharedLocalStructure& share
 
   MaxClique& origin = *(sharedStructure.origin);
 
-  // restore parent clique to the cvn stored in the clique table.
+  if (origin.ceReceiveSeparators.size() == 0)
+    return;
 
-  // unpack clique value 'back_max_cvn' into corresponding random variables and expand
-  // any deterministic values.
-  const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH); 
-  if (imc_nwwoh_p) {
-    origin.packer.unpack((unsigned*)&(cliqueValues.ptr[back_max_cvn].val[0]),
-			 (unsigned**)sharedStructure.discreteValuePtrs.ptr);
-  } else {
-    origin.packer.unpack((unsigned*)cliqueValues.ptr[back_max_cvn].ptr,
-			 (unsigned**)sharedStructure.discreteValuePtrs.ptr);
-  }
-  for (unsigned j=0;j<sharedStructure.fDeterminableNodes.size();j++) {
-    RV* rv = sharedStructure.fDeterminableNodes.ptr[j];
-    RV2DRV(rv)->assignDeterministicChild();
-  }
+  if (origin.hashableNodes.size() == 0) {
+    // Do the observed clique case up front right here so we don't
+    // need to keep checking below. Here, the clique is observed which
+    // means that all connecting separators are also observed. We just
+    // sweep through all separators updating the values.
+    for (unsigned sepNumber=0;sepNumber<origin.ceReceiveSeparators.size();sepNumber++) {
+      ConditionalSeparatorTable& sep = 
+	separatorTableArray[origin.ceReceiveSeparators[sepNumber]];
+      SeparatorClique& sepOrigin = 
+	*(sepSharedStructureArray[origin.ceReceiveSeparators[sepNumber]].origin);
 
-  // now we iterate through all the separators.
-  for (unsigned sepNumber=0;sepNumber<origin.ceReceiveSeparators.size();sepNumber++) {
-    // get a handy reference to the current separator
-    ConditionalSeparatorTable& sep = 
-      separatorTableArray[origin.ceReceiveSeparators[sepNumber]];
-    ConditionalSeparatorTable::SharedLocalStructure& sepSharedStructure = 
-      sepSharedStructureArray[origin.ceReceiveSeparators[sepNumber]];
-    SeparatorClique& sepOrigin = 
-      *(sepSharedStructure.origin);
+      // don't distribute to VE separators or to one that is being skipped.
+      if (sep.veSeparator() || sepOrigin.skipMe)
+	continue;
 
-    // don't distribute to VE separators or to one that is being skipped.
-    if (sepOrigin.veSeparator || sepOrigin.skipMe)
-      continue;
-
-    // keep a local variable copy of this around to avoid potential dereferencing.
-    ConditionalSeparatorTable::AISeparatorValue * const
-      sepSeparatorValuesPtr = sep.separatorValues->ptr; 
-    
-    /*
-     * There are 3 cases.
-     * 1) AI exists and REM exist
-     * 2) AI exists and REM doesnt exist
-     * 3) AI does not exist, but REM exists
-     * AI not exist and REM not exist can't occur.
-     */
-
-    unsigned accIndex;
-    // TODO: optimize this check away out of loop.
-    if (sepOrigin.hAccumulatedIntersection.size() > 0) {
-      // an accumulated intersection exists.
-
-      sepOrigin.accPacker.pack((unsigned**)sepSharedStructure.accDiscreteValuePtrs.ptr,
-			       &CliqueBuffer::packedVal[0]);
-      unsigned* accIndexp =
-	sep.iAccHashMap->find(&CliqueBuffer::packedVal[0]);
-
-      // we should always find something or else something is wrong.
-      assert ( accIndexp != NULL ); 
-      accIndex = *accIndexp;
-
-    } else {
-      // no accumulated intersection exists, everything
-      // is in the remainder.
-      accIndex = 0;
+      // in this case, since the cliquueis observed, the separators
+      // are also observed and so the zero entries correspond to the
+      // max (and the only) entries.
+      sep.forwPointer.viterbiAccIndex = 0;
+      sep.forwPointer.viterbiRemIndex = 0;
     }
 
-    if (sepSharedStructure.remDiscreteValuePtrs.size() == 0) {
-      // 2) AI exists and REM doesnt exist
-      // Then this separator is entirely covered by one or 
-      // more other separators earlier in the order.
-      sep.forwPointer.viterbiAccIndex = accIndex;
-      sep.forwPointer.viterbiRemIndex = 0;
+  } else {
+
+    // restore parent clique to the cvn stored in the clique table.
+
+    // unpack clique value 'back_max_cvn' into corresponding random variables and expand
+    // any deterministic values.
+    const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH); 
+    if (imc_nwwoh_p) {
+      origin.packer.unpack((unsigned*)&(cliqueValues.ptr[back_max_cvn].val[0]),
+			   (unsigned**)sharedStructure.discreteValuePtrs.ptr);
     } else {
-      // if we're here, then we must have some remainder
-      // pointers.
+      origin.packer.unpack((unsigned*)cliqueValues.ptr[back_max_cvn].ptr,
+			   (unsigned**)sharedStructure.discreteValuePtrs.ptr);
+    }
+    for (unsigned j=0;j<sharedStructure.fDeterminableNodes.size();j++) {
+      RV* rv = sharedStructure.fDeterminableNodes.ptr[j];
+      RV2DRV(rv)->assignDeterministicChild();
+    }
 
-      // Do the remainder exists in this separator.
-      // 
-      // either:
-      //   1) AI exists and REM exist
-      //     or
-      //   3) AI does not exist (accIndex == 0), but REM exists
-      // 
-	
-      // keep handy reference for readability.
-      ConditionalSeparatorTable::AISeparatorValue& sv
-	= sepSeparatorValuesPtr[accIndex];
-	
-      sepOrigin.remPacker.pack((unsigned**)sepSharedStructure.remDiscreteValuePtrs.ptr,
-			       &CliqueBuffer::packedVal[0]);
+    // now we iterate through all the separators.
+    for (unsigned sepNumber=0;sepNumber<origin.ceReceiveSeparators.size();sepNumber++) {
+      // get a handy reference to the current separator
+      ConditionalSeparatorTable& sep = 
+	separatorTableArray[origin.ceReceiveSeparators[sepNumber]];
+      ConditionalSeparatorTable::SharedLocalStructure& sepSharedStructure = 
+	sepSharedStructureArray[origin.ceReceiveSeparators[sepNumber]];
+      SeparatorClique& sepOrigin = 
+	*(sepSharedStructure.origin);
 
-      unsigned* remIndexp =
-	sv.iRemHashMap.find(&CliqueBuffer::packedVal[0]);
+      // don't distribute to VE separators or to one that is being skipped.
+      if (sepOrigin.veSeparator || sepOrigin.skipMe)
+	continue;
 
-      if (remIndexp == NULL ) {
-	// print out the rvs.
-	fprintf(stderr,"ERROR: can't find separator rvs values from parent clique in fwrd hash table. Separator rv values follow.\n");
-	printRVSetAndValues(stderr,sepSharedStructure.fNodes,true);
-	fprintf(stderr,"Clique random variables follow:\n");
-	printRVSetAndValues(stderr,sharedStructure.fNodes,true);
-	assert ( remIndexp != NULL );
+      // keep a local variable copy of this around to avoid potential dereferencing.
+      ConditionalSeparatorTable::AISeparatorValue * const
+	sepSeparatorValuesPtr = sep.separatorValues->ptr; 
+    
+      /*
+       * There are 3 cases.
+       * 1) AI exists and REM exist
+       * 2) AI exists and REM doesnt exist
+       * 3) AI does not exist, but REM exists
+       * AI not exist and REM not exist can't occur.
+       */
+
+      unsigned accIndex;
+      // TODO: optimize this check away out of loop.
+      if (sepOrigin.hAccumulatedIntersection.size() > 0) {
+	// an accumulated intersection exists.
+
+	sepOrigin.accPacker.pack((unsigned**)sepSharedStructure.accDiscreteValuePtrs.ptr,
+				 &CliqueBuffer::packedVal[0]);
+	unsigned* accIndexp =
+	  sep.iAccHashMap->find(&CliqueBuffer::packedVal[0]);
+
+	// we should always find something or else something is wrong.
+	assert ( accIndexp != NULL ); 
+	accIndex = *accIndexp;
+
+      } else {
+	// no accumulated intersection exists, everything
+	// is in the remainder.
+	accIndex = 0;
       }
+
+      if (sepSharedStructure.remDiscreteValuePtrs.size() == 0) {
+	// 2) AI exists and REM doesnt exist
+	// Then this separator is entirely covered by one or 
+	// more other separators earlier in the order.
+	sep.forwPointer.viterbiAccIndex = accIndex;
+	sep.forwPointer.viterbiRemIndex = 0;
+      } else {
+	// if we're here, then we must have some remainder
+	// pointers.
+
+	// Do the remainder exists in this separator.
+	// 
+	// either:
+	//   1) AI exists and REM exist
+	//     or
+	//   3) AI does not exist (accIndex == 0), but REM exists
+	// 
 	
-      // We've finally got the sep entry.  Store the sep entry's id.
-      sep.forwPointer.viterbiAccIndex = accIndex;
-      sep.forwPointer.viterbiRemIndex = *remIndexp;
+	// keep handy reference for readability.
+	ConditionalSeparatorTable::AISeparatorValue& sv
+	  = sepSeparatorValuesPtr[accIndex];
+	
+	sepOrigin.remPacker.pack((unsigned**)sepSharedStructure.remDiscreteValuePtrs.ptr,
+				 &CliqueBuffer::packedVal[0]);
+
+	unsigned* remIndexp =
+	  sv.iRemHashMap.find(&CliqueBuffer::packedVal[0]);
+
+	if (remIndexp == NULL ) {
+	  // print out the rvs.
+	  fprintf(stderr,"ERROR: can't find separator rvs values from parent clique in fwrd hash table. Separator rv values follow.\n");
+	  printRVSetAndValues(stderr,sepSharedStructure.fNodes,true);
+	  fprintf(stderr,"Clique random variables follow:\n");
+	  printRVSetAndValues(stderr,sharedStructure.fNodes,true);
+	  assert ( remIndexp != NULL );
+	}
+	
+	// We've finally got the sep entry.  Store the sep entry's id.
+	sep.forwPointer.viterbiAccIndex = accIndex;
+	sep.forwPointer.viterbiRemIndex = *remIndexp;
+      }
     }
   }
 }
