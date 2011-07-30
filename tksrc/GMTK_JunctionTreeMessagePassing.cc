@@ -321,58 +321,61 @@ JunctionTree::printSavedPartitionViterbiValues(FILE* f,
 
     PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
 
-    if (ps.packer.packedLen() > 0) {
-      if (inference_it.at_p()) {
-	// print P partition
-	fprintf(f,"Ptn-%d P': ",part);
+    if (inference_it.at_p()) {
+      // print P partition
+      if (ps.packer.packedLen() > 0) 
 	ps.packer.unpack(P_partition_values.ptr,ps.hrvValuePtrs.ptr);
-	if (printObserved) 
-	  printRVSetAndValues(f,ps.allrvs,true,preg);
-	else
-	  printRVSetAndValues(f,ps.hidRVVector,true,preg);
-      } else if (inference_it.at_e()) {
-	// print E partition
-	PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+      if (printObserved && ps.allrvs.size() > 0) {
+	fprintf(f,"Ptn-%d P': ",part);
+	printRVSetAndValues(f,ps.allrvs,true,preg);
+      } else if (ps.packer.packedLen() > 0) {
+	fprintf(f,"Ptn-%d P': ",part);
+	printRVSetAndValues(f,ps.hidRVVector,true,preg);
+      }
+    } else if (inference_it.at_e()) {
+      // print E partition
+      if (ps.packer.packedLen() > 0) 
 	ps.packer.unpack(E_partition_values.ptr,ps.hrvValuePtrs.ptr);
+      if (printObserved && ps.allrvs.size() > 0) {
 	fprintf(f,"Ptn-%d E': ",part);
-	if (printObserved) 
-	  printRVSetAndValues(f,ps.allrvs,true,preg);
-	else
-	  printRVSetAndValues(f,ps.hidRVVector,true,preg);
-      } else {
-	assert ( inference_it.at_c() );      
-	// print C partition
+	printRVSetAndValues(f,ps.allrvs,true,preg);
+      } else if (ps.packer.packedLen() > 0) {
+	fprintf(f,"Ptn-%d E': ",part);
+	printRVSetAndValues(f,ps.hidRVVector,true,preg);
+      }
+    } else {
+      assert ( inference_it.at_c() );      
+      // print C partition
 #if 0
-	if ((previous_C == -1)
-	    ||
-	    ps.packer.compare(C_partition_values.ptr
-			      + 
-			      (inference_it.pt_i()-1)*ps.packer.packedLen(),
-			      C_partition_values.ptr
-			      + 
-			      (previous_C-1)*ps.packer.packedLen())) 
+      if ((previous_C == -1)
+	  ||
+	  ps.packer.compare(C_partition_values.ptr
+			    + 
+			    (inference_it.pt_i()-1)*ps.packer.packedLen(),
+			    C_partition_values.ptr
+			    + 
+			    (previous_C-1)*ps.packer.packedLen())) 
 #endif
-	  {
+	{
+	  if (ps.packer.packedLen() > 0)
 	    ps.packer.unpack(C_partition_values.ptr
 			     + 
 			     (inference_it.pt_i()-1)*ps.packer.packedLen(),
 			     ps.hrvValuePtrs.ptr);
-	    
+	  
+	  if (printObserved && ps.allrvs.size() > 0) {
 	    fprintf(f,"Ptn-%d C': ",part);
-	    if (printObserved) 
-	      printRVSetAndValues(f,ps.allrvs,true,preg);
-	    else
-	      printRVSetAndValues(f,ps.hidRVVector,true,preg);
+	    printRVSetAndValues(f,ps.allrvs,true,preg);
+	  } else if (ps.packer.packedLen() > 0) {
+	    fprintf(f,"Ptn-%d C': ",part);
+	    printRVSetAndValues(f,ps.hidRVVector,true,preg);
 	  }
-	previous_C = inference_it.pt_i();
-      }
+	}
+      previous_C = inference_it.pt_i();
     }
-
     (*partRange_it)++;
   }
-
   delete partRange;
-
 }
 
 
