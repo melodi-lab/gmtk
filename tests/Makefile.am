@@ -19,7 +19,8 @@ $(srcdir)/package.m4: $(top_srcdir)/configure.ac
              } >'$(srcdir)/package.m4'
 
 LOCAL_GMTK_AT = $(wildcard gmtk_test_*.at)
-EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE) atlocal.in $(LOCAL_GMTK_AT)
+EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE) atlocal.in \
+	     $(LOCAL_GMTK_AT) obs1.pfile obs2.pfile
 TESTSUITE = testsuite
 
 .PHONY: test_and_dev.at
