@@ -26,6 +26,7 @@ stamp-h1
 ylwrap
 IEEEFloatingpoint/ieeeFPsetup.h
 IEEEFloatingpoint/ieeeTest
+featureFileIO/obs-create
 featureFileIO/obs-concat
 featureFileIO/obs-diff
 featureFileIO/obs-info
@@ -74,6 +75,7 @@ tksrc/gmtkViterbi
 tksrc/gmtkViz
 tksrc/gmtkViz.app
 tksrc/gmtkViz.app/*
+tksrc/neghead
 tksrc/testPackCliqueValue
 tksrc/testViterbi
 

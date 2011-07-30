@@ -797,81 +797,72 @@ JunctionTree::printSavedViterbiValues(FILE* f,
     }
     infoMsg(IM::Printing,IM::Info, "\n");
 #endif
-    if (ps.packer.packedLen() > 0) {
-      if (inference_it.at_p()) {
-	// print P partition
-#if 0
-	fprintf(f,"P'[%3d]   P     : ",part);
-#else	
-	fprintf(f,"Ptn-0 P: ");
-#endif
+    if (inference_it.at_p()) {
+      // print P partition
+      if (ps.packer.packedLen() > 0) 
 	ps.packer.unpack(P_partition_values.ptr,PprimeValuePtrs.ptr);
-	if (printObserved) 
+      if (hidP_rvs.size() > 0  ||  (printObserved && P_rvs.size() > 0) ) { 
+	fprintf(f,"Ptn-0 P: ");
+	if (printObserved)
 	  printRVSetAndValues(f,P_rvs,true,preg);
 	else
 	  printRVSetAndValues(f,hidP_rvs,true,preg);
-      } else if (inference_it.at_e()) {
-	primeIndex = (primeIndex + Eprime_rvs.size() - 1) % Eprime_rvs.size(); // primeIndex -= 1 mod nCprimes
-	PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];	  
+      }
+    } else if (inference_it.at_e()) {
+      primeIndex = (primeIndex + Eprime_rvs.size() - 1) % Eprime_rvs.size(); // primeIndex -= 1 mod nCprimes
+      if (ps.packer.packedLen() > 0) 
 	ps.packer.unpack(E_partition_values.ptr,EprimeValuePtrs[primeIndex].ptr);
-	// print completed C partitions
-	int targetFrame = fp.numFramesInP() + (int)(part-1) * gm_template.S * fp.numFramesInC();
-	for (unsigned i=0; i < gm_template.M; i+=1) { // unpacking E' completes the last M Cs
-	  shiftOriginalVarstoPosition(C_rvs[originalIndex], targetFrame, Cpos[originalIndex]);
-#if 0
-	  fprintf(f,"E'[%3d] %1d C[%3d]:",part,primeIndex,(targetFrame - fp.numFramesInP()) / fp.numFramesInC());
-	  fprintf(f,"C[%3d]: ",(targetFrame - fp.numFramesInP()) / fp.numFramesInC());
-#else
-	  fprintf(f,"Ptn-%u C: ", Ccount++);
-#endif
-	  if (printObserved)
+      // print completed C partitions
+      int targetFrame = fp.numFramesInP() + (int)(part-1) * gm_template.S * fp.numFramesInC();
+      for (unsigned i=0; i < gm_template.M; i+=1) { // unpacking E' completes the last M Cs
+	shiftOriginalVarstoPosition(C_rvs[originalIndex], targetFrame, Cpos[originalIndex]);
+	if (hidC_rvs[originalIndex].size() > 0 || (printObserved && C_rvs[originalIndex].size() > 0) ) {
+	  fprintf(f,"Ptn-%u C: ", Ccount);
+	  if (printObserved) 
 	    printRVSetAndValues(f,C_rvs[originalIndex],true,preg);
 	  else
 	    printRVSetAndValues(f,hidC_rvs[originalIndex],true,preg);
-	  originalIndex = (originalIndex + 1) % C_rvs.size();
-	  targetFrame += fp.numFramesInC();
-	} 
-	// print E partition
+	}
+	Ccount += 1;
+	originalIndex = (originalIndex + 1) % C_rvs.size();
+	targetFrame += fp.numFramesInC();
+      } 
+      // print E partition
+      if ( (hidE_rvs.size() > 0)  || (printObserved && E_rvs.size() > 0) ) {
 	shiftOriginalVarstoPosition(E_rvs, targetFrame, Epos);
-#if 0
-	fprintf(f,"E'[%3d] %1d E     : ",part, primeIndex);
-#else
 	fprintf(f,"Ptn-%u E: ", Ccount);
-#endif
 	if (printObserved) 
 	  printRVSetAndValues(f,E_rvs,true,preg);
 	else
 	  printRVSetAndValues(f,hidE_rvs,true,preg);
-      } else {
-	assert ( inference_it.at_c() );
-	// print C partition
-	  {
-	    ps.packer.unpack(C_partition_values.ptr
-			     + 
-			     (inference_it.pt_i()-1)*ps.packer.packedLen(),
-			     CprimeValuePtrs[primeIndex].ptr);
-	    int targetFrame = fp.numFramesInP() + (int)(part-1) * gm_template.S * fp.numFramesInC();
-	    for (unsigned i=0; i < gm_template.S; i+=1) { // unpacking a C' completes S Cs
-	      shiftOriginalVarstoPosition(C_rvs[originalIndex], targetFrame, Cpos[originalIndex]);
-#if 0
-	      fprintf(f,"C'[%3d] %1d C[%3d]: ",part,primeIndex, (targetFrame - fp.numFramesInP()) / fp.numFramesInC());
-	      fprintf(f,"C[%3d]: ",(targetFrame - fp.numFramesInP()) / fp.numFramesInC());
-#else
-	      fprintf(f,"Ptn-%u C: ", Ccount++);
-#endif
-	      if (printObserved) 
-		printRVSetAndValues(f,C_rvs[originalIndex],true,preg);
-	      else
-		printRVSetAndValues(f,hidC_rvs[originalIndex],true,preg);
-	      originalIndex = (originalIndex + 1) % C_rvs.size();
-	      targetFrame += fp.numFramesInC();
-	    }
-	    primeIndex = (primeIndex + 1) % Cprime_rvs.size();
-	  }
-	previous_C = inference_it.pt_i();
       }
+    } else {
+      assert ( inference_it.at_c() );
+      // print C partition
+      {
+        if (ps.packer.packedLen() > 0) 
+	  ps.packer.unpack(C_partition_values.ptr
+			   + 
+			   (inference_it.pt_i()-1)*ps.packer.packedLen(),
+			   CprimeValuePtrs[primeIndex].ptr);
+	int targetFrame = fp.numFramesInP() + (int)(part-1) * gm_template.S * fp.numFramesInC();
+	for (unsigned i=0; i < gm_template.S; i+=1) { // unpacking a C' completes S Cs
+	  shiftOriginalVarstoPosition(C_rvs[originalIndex], targetFrame, Cpos[originalIndex]);
+	  if ( (hidC_rvs[originalIndex].size() > 0)  || (printObserved && C_rvs[originalIndex].size() > 0) ) {
+	    fprintf(f,"Ptn-%u C: ", Ccount);
+	    if (printObserved) 
+	      printRVSetAndValues(f,C_rvs[originalIndex],true,preg);
+	    else
+	      printRVSetAndValues(f,hidC_rvs[originalIndex],true,preg);
+	  }
+	  Ccount += 1;
+	  originalIndex = (originalIndex + 1) % C_rvs.size();
+	  targetFrame += fp.numFramesInC();
+	}
+	primeIndex = (primeIndex + 1) % Cprime_rvs.size();
+      }
+      previous_C = inference_it.pt_i();
     }
-
     (*partRange_it)++;
   }
 
