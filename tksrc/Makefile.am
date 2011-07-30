@@ -232,7 +232,8 @@ endif
 
 check_PROGRAMS =  \
 testPackCliqueValue \
-testViterbi
+testViterbi \
+neghead
 
 # testMDCPT testMTCPT
 #testRngDecisionTree testGMParms testFileParser lex.yy
@@ -241,7 +242,7 @@ testViterbi
 
 testViterbi_SOURCES = testViterbi.ll
 
-
+neghead_SOURCES = neghead.cc
 
 #testMDCPT_SOURCES = GMTK_MDCPT.cc GMTK_MDCPT.h
 #testMDCPT_CXXFLAGS = -DMAIN \

@@ -6,18 +6,19 @@
 # The test runs gmtkViterbi with verbosities from 0 to 100
 # in increments of 5, and compares the results against a
 # version of gmtkViterbi prior to the introduction of the
-# modular debugging framework.
+# modular debugging framework. The grep and neghead filter
+# out some extraneous output.
 
-# Note that this test requires the head command to accept
-# negative arguments. GNU head does, but the default OSX
-# head does not. 
-
-# TODO: write a test program that does the negative head
-# so that the test will be more platform independent.
+# The neghead program implements the GNU head negative
+# argument functionality, i.e., "neghead X" is equivalent
+# to "head -n -X" where X is the number of lines to skip
+# at the end of the file. Some non-GNU head implementations
+# (the Mac OSX one in particular) don't support negative
+# arguments, so this program allows the test to run on
+# platforms without GNU head.
 
 AT_SETUP([modular debugging output2])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
-AT_XFAIL_IF([ ! head -n -2 /dev/null >& /dev/null ])
 AT_CHECK([
 for (( verb=0 ; $verb < 101 ; verb+=5 )); do
   (cd $TEST_AND_DEV/auroraTutorial && \
@@ -28,7 +29,7 @@ for (( verb=0 ; $verb < 101 ; verb+=5 )); do
 	  	 -inputTrainable PARAMS/highly_trained.gmp \
 	  	 -str PARAMS/aurora_decode.str \
 	  	 -pVitValsFile /dev/null \
-        -verb $verb | grep -v "^Reading " | head -n -2) > out.$verb
+        -verb $verb | grep -v "^Reading " | neghead 2) > out.$verb
 done],[],[ignore])
 for (( verb=0 ; $verb < 101 ; verb+=5 )); do
 AT_CHECK([
