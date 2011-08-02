@@ -159,10 +159,9 @@ GMTK_PartitionTables.h GMTK_PartitionTables.cc \
 GMTK_PartitionStructures.h GMTK_PartitionStructures.cc \
 GMTK_JunctionTreeMessagePassing.cc \
 GMTK_JunctionTreeIslandMessagePassing.cc \
-version.h
-
-# GMTK_MissingFeatureScaledDiagGaussian.cc 
-# GMTK_MissingFeatureScaledDiagGaussian.h 
+version.h \
+GMTK_MissingFeatureScaledDiagGaussian.cc \
+GMTK_MissingFeatureScaledDiagGaussian.h 
 
 libXOPT_a_SOURCES = \
 GMTK_DiagGaussianOpt.cc \
