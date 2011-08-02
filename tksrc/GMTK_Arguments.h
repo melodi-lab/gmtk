@@ -1555,7 +1555,7 @@ static bool localCliqueNormalization = false;
 
 
 #if defined(GMTK_ARG_EM_TRAINING_PARAMS)
-    if (MaxClique::normalizeScoreEachClique != 0.0 && localCliqueNormalization == false) {
+    if (MaxClique::normalizeScoreEachClique != 1.0 && localCliqueNormalization == false) {
       // EM training won't work in this case unless it does local clique normalization as well.
       localCliqueNormalization = true;
       infoMsg(IM::SoftWarning,"Turning on EM local clique normalization since clique table score normalization is on.\n");
