@@ -16,6 +16,13 @@
  *
  */
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
+
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -33,12 +40,6 @@
 //#include "spi.h"
 #include "version.h"
 
-#if HAVE_CONFIG_H
-#include <config.h>
-#endif
-#if HAVE_HG_H
-#include "hgstamp.h"
-#endif
 VCID(HGID)
 
 
@@ -59,6 +60,7 @@ VCID(HGID)
 #include "GMTK_JunctionTree.h"
 
 #define GMTK_ARG_STR_FILE
+#define GMTK_ARG_SKIP_STARTUP_CHECKS
 #define GMTK_ARG_CPP_CMD_OPTS
 #define GMTK_ARG_LOAD_PARAMETERS
 #define GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG

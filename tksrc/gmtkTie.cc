@@ -48,8 +48,13 @@
  *
  */
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
  
-
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -84,6 +89,8 @@
 #include "GMTK_Tie.h"
 #include "tieSupport.h"
 
+VCID(HGID)
+
 #define GMTK_ARG_HELP
 #define GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG
 #define GMTK_ARG_OUTPUT_MASTER_FILE
@@ -95,6 +102,7 @@
 #define GMTK_ARG_SEED
 #define GMTK_ARG_VAR_FLOOR
 #define GMTK_ARG_STR_FILE_OPT_ARG
+#define GMTK_ARG_SKIP_STARTUP_CHECKS
 #define GMTK_ARG_VAR_FLOOR
 #define GMTK_ARG_VERSION
 #define GMTK_ARG_VAR_FLOOR_ON_READ

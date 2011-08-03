@@ -120,6 +120,7 @@ JunctionTree::printAllCliques(FILE* f,
 
   char buff[2048];
   if (pPartCliquePrintRange != NULL) {
+    setCurrentInferenceShiftTo(ptps_it.pt_i());
     BP_Range::iterator it = pPartCliquePrintRange->begin();
     while (!it.at_end()) {
       const unsigned cliqueNum = (unsigned)(*it);
@@ -138,11 +139,13 @@ JunctionTree::printAllCliques(FILE* f,
 
   if (cPartCliquePrintRange != NULL) {
     for (; !ptps_it.at_last_entry(); ptps_it++) {
+      int currentPartition = ptps_it.pt_i();
       BP_Range::iterator it = cPartCliquePrintRange->begin();
+      setCurrentInferenceShiftTo(currentPartition);
       while (!it.at_end()) {
 	const unsigned cliqueNum = (unsigned)(*it);
 	if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
-	  sprintf(buff,"Partition %d (C), Clique %d:",ptps_it.pt_i(),cliqueNum); 
+	  sprintf(buff,"Partition %d (C), Clique %d:",currentPartition,cliqueNum); 
 	  partitionTableArray[ptps_it.pt_i()].
 	    maxCliques[cliqueNum].
 	    printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
@@ -158,6 +161,7 @@ JunctionTree::printAllCliques(FILE* f,
   }
 
   if (ePartCliquePrintRange != NULL) {
+    setCurrentInferenceShiftTo(ptps_it.pt_i());
     BP_Range::iterator it = ePartCliquePrintRange->begin();
     while (!it.at_end()) {
       const unsigned cliqueNum = (unsigned)(*it);

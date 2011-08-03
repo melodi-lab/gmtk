@@ -26,14 +26,15 @@
 // or otherwise, undefine to use log(1+exp(x)) directly.
 //#define _TABLE_
 
-// What we call ~log(0). 
+// What we call ~log(0).
+#ifndef LZERO 
 #define LZERO  (-1.0E10)
+#endif
 
 // Things that result in log values < LSMALL are set to LZERO.
 // I.e., this is the smallest log value that we represent
 // after the result of an addition, etc. 
-// TODO: make this a function of LZERO, i.e., (0.5*(LZERO))
-#define LSMALL (-0.5E10)
+#define LSMALL (0.5*(LZERO))
 
 // Lowest exp() arg  = log(MINLARG)
 // I.e., exp(z) where z < MINEARG results in 0
