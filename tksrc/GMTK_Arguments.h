@@ -1084,6 +1084,25 @@ extern bool ObservationsAllowNan;
 /*************************************************************************************************************/
 /*************************************************************************************************************/
 
+#if defined(GMTK_ARG_SKIP_STARTUP_CHECKS)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+  static bool skipStartupChecks = false;
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("skipStartupChecks",Arg::Opt,skipStartupChecks, "Skip expensive model validity checks performed at GMTK startup"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+#else
+#endif
+#endif // defined(GMTK_ARG_SKIP_STARTUP_CHECKS)
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
 
 #if defined(GMTK_ARG_VERB)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
