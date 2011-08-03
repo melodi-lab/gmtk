@@ -17,6 +17,13 @@
  *
  */
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
+
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -35,12 +42,6 @@
 
 #include "GMTK_WordOrganization.h"
 
-#if HAVE_CONFIG_H
-#include <config.h>
-#endif
-#if HAVE_HG_H
-#include "hgstamp.h"
-#endif
 VCID(HGID)
 
 
@@ -110,6 +111,7 @@ VCID(HGID)
 
 /****************************         GENERAL OPTIONS             ***********************************************/
 #define GMTK_ARG_SEED
+#define GMTK_ARG_SKIP_STARTUP_CHECKS
 #define GMTK_ARG_VERB
 #define GMTK_ARG_HELP
 #define GMTK_ARG_VERSION

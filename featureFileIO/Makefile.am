@@ -45,10 +45,12 @@ GMTK_ObsStats.h GMTK_ObsStats.cc \
 pfile.h pfile.cc \
 vbyteswapping.h vbyteswapping.cc
 
-bin_PROGRAMS = obs-print obs-info obs-skmeans obs-concat obs-diff
+bin_PROGRAMS = obs-create obs-print obs-info obs-skmeans obs-concat obs-diff
 #check_PROGRAMS = gmtest
 
 #gmtest_SOURCES = gmtest.cc
+
+obs_create_SOURCES = obs-create.cc
 
 obs_print_SOURCES = \
 GMTK_ObsPrint.h GMTK_ObsPrint.cc \

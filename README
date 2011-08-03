@@ -25,6 +25,11 @@ gcc/g++. Other compilers have also been tested (such as the Intel C++
 compiler) but not nearly as extensively as gcc/g++. In the below, we
 will assume gcc/g++.
 
+GMTK should compile with almost no warnings with the development
+compilers. On some platforms it may complain that %lld or %llu are
+not ISO C++. There's also a warning in GMTK_FNGramCPT.cc that we
+are looking into.
+
 There are a few variables that control the flags passed to the C++
 compiler. You may want to specify them to the make command, though
 they all have reasonable defaults. For example, you might try
