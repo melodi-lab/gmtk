@@ -3505,6 +3505,12 @@ JunctionTree::prepareForUnrolling(JT_Partition& part)
   for (unsigned i=0;i<part.cliques.size();i++) {
     part.cliques[i].prepareForUnrolling();
   }
+  for (unsigned i=0; i < part.cliques.size(); i+=1) {
+    MaxClique origin = part.cliques[i];
+    for (unsigned j=0; j < part.cliques[i].ceReceiveSeparators.size(); j+=1) {
+      SeparatorClique curSep = part.separators[j];
+    }
+  }
   for (unsigned i=0;i<part.separators.size();i++) {
     part.separators[i].prepareForUnrolling();
   }
