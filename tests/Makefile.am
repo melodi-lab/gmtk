@@ -51,7 +51,9 @@ clean-local:
 	test ! -f test_and_dev.at || rm test_and_dev.at
 	test ! -f gmtk_tests.at || rm gmtk_tests.at
 	test ! -f $(TESTSUITE) || rm $(TESTSUITE)
-#	test ! -f atconfig || rm atconfig
+
+distclean-local:
+	test ! -f atconfig || rm atconfig
 
 AUTOM4TE = $(SHELL) $(top_srcdir)/missing --run autom4te
 AUTOTEST = $(AUTOM4TE) --language=autotest
