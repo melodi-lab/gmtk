@@ -1001,6 +1001,10 @@ public:
   set<RV*> accumulatedIntersection;
   // hidden variables of the above
   vector<RV*> hAccumulatedIntersection;
+  // number of non-determinable (neither observed nor a deterministic
+  // function of variables already known to the source clique 
+  // under the iteration order) variables in hAccumulatedIntersection
+  unsigned hNondeterminableAccumulatedIntersectionSize;
   // structure used to pack and unpack clique values
   PackCliqueValue accPacker;
   // structure to allocate clique values from.  These things are
@@ -1019,6 +1023,10 @@ public:
   set<RV*> remainder;
   // hidden variables of the above
   vector<RV*> hRemainder;
+  // number of non-determinable (neither observed nor a deterministic
+  // function of variables already known to the source clique 
+  // under the iteration order) variables in hRemainder
+  unsigned hNondeterminableRemainderSize;
   // structure used to pack and unpack clique values
   PackCliqueValue remPacker;
   // structure to allocate clique values from.  These things are
