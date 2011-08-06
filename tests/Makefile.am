@@ -23,12 +23,6 @@ EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE) atlocal.in \
 	     $(LOCAL_GMTK_AT)
 TESTSUITE = testsuite
 
-.PHONY: test_and_dev.at
-test_and_dev.at:
-	touch $@
-	find $(TEST_AND_DEV) -type f -name gmtk_test_\*.at | \
-	  $(AWK) '{print "m4_include(["$$1"])"}' > $@
-
 .PHONY: gmtk_tests.at
 gmtk_tests.at:
 	touch $@
