@@ -11,7 +11,7 @@ AT_CHECK([(cd $TEST_AND_DEV/trivial && \
 AT_CLEANUP
 
 AT_SETUP([ticket 136 (2-stream)])
-AT_SKIP_IF([test ! -d $TEST_AND_DEV/2-stream/misc/stream1.0:3731])
+AT_SKIP_IF([test ! -f $TEST_AND_DEV/2-stream/misc/stream1.0:3731])
 AT_CHECK([(cd $TEST_AND_DEV/2-stream && \
          gmtkViterbi -of1 misc/stream1.0:3731 -nf1 60 -fmt1 htk -iswp1 true \
          -of2 misc/stream2.0:3731 -ni2 2 -fmt2 ascii -dcdrng 0:19 \
