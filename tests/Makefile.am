@@ -18,10 +18,10 @@ $(srcdir)/package.m4: $(top_srcdir)/configure.ac
 	echo '  [$(PACKAGE_URL)])'; \
              } >'$(srcdir)/package.m4'
 
+TESTSUITE = testsuite
 LOCAL_GMTK_AT = $(wildcard gmtk_test_*.at)
 EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE) atlocal.in \
 	     $(LOCAL_GMTK_AT)
-TESTSUITE = testsuite
 
 .PHONY: gmtk_tests.at
 gmtk_tests.at:
@@ -30,14 +30,12 @@ gmtk_tests.at:
 	  $(AWK) '{print "m4_include(["$$1"])"}' > $@
 
 check-local: atconfig atlocal $(TESTSUITE) gmtk_tests.at
-	$(SHELL) '$(TESTSUITE)' $(TESTSUITEFLAGS)
+	$(SHELL) '$(srcdir)/$(TESTSUITE)' $(TESTSUITEFLAGS)
 
 installcheck-local: atconfig atlocal $(TESTSUITE) gmtk_tests.at
-	$(SHELL) '$(TESTSUITE)' \
+	$(SHELL) '$(srcdir)/$(TESTSUITE)' \
 	AUTOTEST_PATH='$(bindir):$(abs_top_builddir)/tksrc' \
 	$(TESTSUITEFLAGS)
-#	$(SHELL) '$(TESTSUITE)' AUTOTEST_PATH='$(bindir)' \
-#	$(TESTSUITEFLAGS)
 
 clean-local:
 	test ! -f '$(TESTSUITE)' || \
@@ -48,6 +46,7 @@ clean-local:
 
 distclean-local:
 	test ! -f atconfig || rm atconfig
+	test ! -f $(TESTSUITE).log || rm $(TESTSUITE).log 
 
 AUTOM4TE = $(SHELL) $(top_srcdir)/missing --run autom4te
 AUTOTEST = $(AUTOM4TE) --language=autotest
