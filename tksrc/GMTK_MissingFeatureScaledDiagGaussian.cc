@@ -422,6 +422,49 @@ MissingFeatureScaledDiagGaussian::log_p(const float *const x,
 		    const Data32* const base,
 		    const int stride)
 {
+
+#if 0
+  // check for normal Gaussian evaluation, 
+  // TODO ultimately remove the code for this case.
+
+  assert ( basicAllocatedBitIsSet() );
+  //////////////////////////////////////////////////////////////////
+  // The local accumulator type in this routine.
+  // This can be changed from 'float' to 'double' to
+  // provide extra range for temporary accumulators. Alternatively,
+  // decreasing the program's mixCoeffVanishRatio at the beginning
+  // of training should eliminate any component that produces
+  // such low scores.
+#define DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE double
+
+  ////////////////////
+  // note: 
+  // covariances must have been precomputed for this
+  // to work.
+  const float *xp = x;
+  const float *mean_p = mean->basePtr();
+  const float *var_inv_p = covar->baseVarInvPtr();
+
+  // do the non-unrolled version only.
+  const float *const x_endp = x + _dim;
+  DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE d=0.0;
+  do {
+    const DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE tmp
+      = (*xp - *mean_p);
+    d += (tmp*(*var_inv_p))*tmp;
+
+    xp++;
+    mean_p++;
+    var_inv_p++;
+  } while (xp != x_endp);
+
+
+  d *= -0.5;
+  return logpr(0,(covar->log_inv_normConst() + d));
+
+
+#else 
+
   assert ( basicAllocatedBitIsSet() );
 
   //////////////////////////////////////////////////////////////////
@@ -447,6 +490,8 @@ MissingFeatureScaledDiagGaussian::log_p(const float *const x,
   const float *xp = x;
   const float *mean_p = mean->basePtr();
   const float *var_inv_p = covar->baseVarInvPtr();
+  const float* scale_p = scale->values.ptr;
+
 
   // do the non-unrolled version only.
   const float *const x_endp = x + _dim;
@@ -456,7 +501,7 @@ MissingFeatureScaledDiagGaussian::log_p(const float *const x,
 
       const DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE tmp
 	= (*xp - *mean_p);
-      d += (tmp*(*var_inv_p))*tmp;
+      d += (tmp*(*var_inv_p))*tmp*(*scale_p);
 
       // now we need to udpate the normalization constant specific for this
       // instance of not missing data. 
@@ -473,6 +518,7 @@ MissingFeatureScaledDiagGaussian::log_p(const float *const x,
     xp++;
     mean_p++;
     var_inv_p++;
+    scale_p++;
   } while (xp != x_endp);
 
 
@@ -486,9 +532,19 @@ MissingFeatureScaledDiagGaussian::log_p(const float *const x,
   if (tmp <= DBL_MIN)
     coredump("ERROR: norm const has hit maximum of diagonal covariance matrix '%s'",name().c_str());
 
+  // some debugging printing.
+  // if ((float)(-0.5*(numPresentFeatures*::log(2*M_PI) + ::log(det))) != covar->log_inv_normConst() ) {
+  //   printf("not equal, log(2*M_PI) = %1.10e\n",::log(2*M_PI));
+  //   printf("covar->log_inv_normConst() = %f\n",covar->log_inv_normConst());
+  //   printf("-0.5*(numPresentFeatures*::log(2*M_PI) + ::log(det)) = %f\n",-0.5*(numPresentFeatures*::log(2*M_PI) + ::log(det)));
+  //   assert( -0.5*(numPresentFeatures*::log(2*M_PI) + ::log(det)) == covar->log_inv_normConst() );
+  // }
+
+
   d *= -0.5;
   return logpr(0, -0.5*(numPresentFeatures*::log(2*M_PI) + ::log(det)) + d);
 
+#endif
 }
 
 
@@ -498,6 +554,9 @@ MissingFeatureScaledDiagGaussian::emIncrement(logpr prob,
 			  const Data32* const base,
 			  const int stride)
 {
+  // this code is not implemented yet, so it should not be called.
+  assert ( 0 );
+
   assert ( basicAllocatedBitIsSet() );
   if (!emAmTrainingBitIsSet())
     return;
