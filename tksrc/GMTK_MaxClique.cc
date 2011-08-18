@@ -4042,8 +4042,14 @@ ceSendToOutgoingSeparator(MaxCliqueTable::SharedLocalStructure& sharedStructure,
     // printf("=====>>>> Observed clique in forward pass\n");
 
     // first do some sanity checks.
+#if 0
     assert (sepOrigin.hAccumulatedIntersection.size() == 0);
     assert (sepOrigin.hRemainder.size() == 0);
+#else
+    // ticket 68
+    assert(sepOrigin.hNondeterminableAccumulatedIntersectionSize == 0);
+    assert(sepOrigin.hNondeterminableRemainderSize == 0);
+#endif
     assert (sepSharedStructure.remDiscreteValuePtrs.size() == 0);
 
     const unsigned accIndex = 0;

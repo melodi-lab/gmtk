@@ -3505,12 +3505,36 @@ JunctionTree::prepareForUnrolling(JT_Partition& part)
   for (unsigned i=0;i<part.cliques.size();i++) {
     part.cliques[i].prepareForUnrolling();
   }
+
   for (unsigned i=0; i < part.cliques.size(); i+=1) {
-    MaxClique origin = part.cliques[i];
     for (unsigned j=0; j < part.cliques[i].ceReceiveSeparators.size(); j+=1) {
-      SeparatorClique curSep = part.separators[j];
+      part.separators[part.cliques[i].ceReceiveSeparators[j]].hNondeterminableAccumulatedIntersectionSize = 0;
+      part.separators[part.cliques[i].ceReceiveSeparators[j]].hNondeterminableRemainderSize = 0;
+      for (unsigned k=0;
+	   k < part.separators[part.cliques[i].ceReceiveSeparators[j]].hAccumulatedIntersection.size();
+	   k += 1)
+      {
+	if (find(part.cliques[i].determinableNodes.begin(),
+		 part.cliques[i].determinableNodes.end(),
+		 part.separators[part.cliques[i].ceReceiveSeparators[j]].hAccumulatedIntersection[k]) 
+	    != part.cliques[i].determinableNodes.end())
+	  part.separators[part.cliques[i].ceReceiveSeparators[j]].hNondeterminableAccumulatedIntersectionSize += 1;
+      }
+      //      fprintf(stderr, "Acc %u  %u:  %u\n", i,j, part.separators[part.cliques[i].ceReceiveSeparators[j]].hNondeterminableAccumulatedIntersectionSize);
+      for (unsigned k=0; 
+	   k < part.separators[part.cliques[i].ceReceiveSeparators[j]].hRemainder.size();
+	   k += 1)
+      {
+	if (find(part.cliques[i].determinableNodes.begin(),
+		 part.cliques[i].determinableNodes.end(),
+		 part.separators[part.cliques[i].ceReceiveSeparators[j]].hRemainder[k]) 
+	    != part.cliques[i].determinableNodes.end())
+	  part.separators[part.cliques[i].ceReceiveSeparators[j]].hNondeterminableRemainderSize += 1;
+      }
+      //      fprintf(stderr, "Rem %u  %u:  %u\n", i,j, part.separators[part.cliques[i].ceReceiveSeparators[j]].hNondeterminableRemainderSize);
     }
   }
+
   for (unsigned i=0;i<part.separators.size();i++) {
     part.separators[i].prepareForUnrolling();
   }
