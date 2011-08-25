@@ -66,7 +66,7 @@ public:
 
   IM() {
     for (int m = DefaultModule; m < ModuleCount; m+=1) {
-      moduleLevel[m] = IM::Default;
+      moduleLevel[m] = globalMessageLevel;
     }
     flush = true;
   }
@@ -234,10 +234,54 @@ public:
   unsigned msgLevel(ModuleName module) { return moduleLevel[module]; }
   unsigned setMsgLevel(const unsigned ml) { moduleLevel[DefaultModule] = ml; return ml; }
   unsigned setMsgLevel(ModuleName module, const unsigned ml) { moduleLevel[module] = ml; return ml; }
+
+  unsigned setMsgLevel(const char*name, const unsigned ml) {
+    if (strcmp(name,"all") == 0) {
+      for (unsigned m=DefaultModule; m < ModuleCount; m+=1) {
+	setMsgLevel((ModuleName)m, ml);
+      }
+      return ml;
+    } 
+    for (unsigned m=DefaultModule; m < ModuleCount; m=m+1) {
+      if (strcmp(name, moduleString[m]) == 0) {
+	setMsgLevel((ModuleName)m, ml);
+	return ml;
+      }
+    }
+    error("ERROR: unknown module name '%s'", name);
+    return 0; // to shutup the warning about reaching end of non-void function
+  }
+
+  // handle either moduleName=level or level
+  unsigned setMsgLevel(const char*levelAssignment) {
+    char *s = strdup(levelAssignment);
+    char *endp;
+    char *equals = strchr(s, '=');
+    unsigned ml;
+    errno = 0;
+    if (!equals) {
+      ml = strtoul(s, &endp, 0);
+      if (errno || (*endp != 0) || (endp == s)) {
+	error("ERROR: invalid module error level specifier '%s'", levelAssignment);
+      }
+      setMsgLevel(ml);
+    } else {
+      *equals = 0;
+      ml = strtoul(equals+1, &endp, 0);
+      if (errno || (*endp != 0) || (endp == equals+1)) {
+	error("ERROR: invalid module error level specifier '%s'", levelAssignment);
+      }
+      setMsgLevel((const char *)s, ml);
+    }
+    free(s);
+    return ml;
+  }
+
   static unsigned glbMsgLevel() { return globalModuleLevel[DefaultModule]; }
   static unsigned glbMsgLevel(ModuleName module) { return globalModuleLevel[module]; }
   static unsigned setGlbMsgLevel(const unsigned ml) { 
     globalModuleLevel[DefaultModule] = ml; 
+    globalMessageLevel = ml;
     return ml; 
   }
   static unsigned setGlbMsgLevel(ModuleName module, const unsigned ml) { 
@@ -250,6 +294,7 @@ public:
       for (unsigned m=DefaultModule; m < ModuleCount; m+=1) {
 	setGlbMsgLevel((ModuleName)m, ml);
       }
+      globalMessageLevel = ml;
       return ml;
     } 
     for (unsigned m=DefaultModule; m < ModuleCount; m=m+1) {

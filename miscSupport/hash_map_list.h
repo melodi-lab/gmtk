@@ -133,7 +133,7 @@ public:
   ////////////////////
   // constructor
   hash_map_list(unsigned approximateStartingSize = 
-		hash_abstract::HashTableDefaultApproxStartingSize) {
+		hash_abstract::HashTableDefaultApproxStartingSize) : first(NULL) {
 
     // make sure we hash at least one element, otherwise do {} while()'s won't work.
     numberUniqueEntriesInserted=0;

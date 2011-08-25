@@ -161,7 +161,7 @@ public:
 
   ~StreamInfo();
 
-  size_t   readFof(FILE *);       // read file of file names
+  size_t   readFof(FILE *&);       // read file of file names
 
   size_t   getFofSize()            { return fofSize; } 
   void     setFofSize(size_t size) { fofSize = size; } 

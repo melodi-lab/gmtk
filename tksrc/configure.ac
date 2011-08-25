@@ -26,6 +26,14 @@ AC_ARG_ENABLE([model-checks],
 AM_CONDITIONAL([NO_ASSERTIONS],[test x$assertions != xyes])
 AM_CONDITIONAL([NO_MODEL_CHECKS],[test x$model_checks != xyes])
 
+AC_ARG_WITH([LZERO],
+            [AS_HELP_STRING([--with-LZERO],
+              [the smallest log value that we represent @<:@default: -1.0E10@:>@])],
+            [],
+            [with_LZERO=(-1.0E10)])
+
+AC_DEFINE_UNQUOTED([LZERO], [(${with_LZERO})], [smallest log value that we represent])
+
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
@@ -95,6 +103,26 @@ AM_CONDITIONAL([CYGWIN_FLAGS],[test x"$XOPEN" = x"-D__USE_XOPEN2K"])
 AM_CONDITIONAL([MAKE_BUNDLE],[test  x$OSXBUNDLE = xgmtkViz.app])
 AC_CHECK_LIB([m], [log])
 
+AC_ARG_WITH([detBrush],
+            [AS_HELP_STRING([--with-detBrush],
+              [select gmtkViz brush for deterministic nodes (none, cross, grey) @<:@default=none@:>@])],
+            [],
+            [with_detBrush=none])
+case "${with_detBrush}" in
+none)
+  AC_DEFINE([NO_DET_BRUSH],[1],[no special brush for deterministic variables])
+  ;;
+cross)
+  AC_DEFINE([CROSS_DET_BRUSH],[1],[cross-hatch brush for deterministic variables])
+  ;;
+grey)
+  AC_DEFINE([GREY_DET_BRUSH],[1],[solid grey brush for deterministic variables])
+  ;;
+*)
+  AC_MSG_ERROR([Must specify --with-detBrush= one of none, cross, grey]) 
+  ;;
+esac
+
 # Checks for header files.
 AC_PATH_XTRA
 AC_CHECK_HEADERS([float.h stdlib.h string.h sys/time.h unistd.h])
@@ -120,7 +148,7 @@ AC_FUNC_FORK
 AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 AC_FUNC_STRTOD
-AC_CHECK_FUNCS([alarm floor memset pow regcomp sqrt strchr strerror strstr strtol])
+AC_CHECK_FUNCS([alarm floor memset pow regcomp sqrt strchr strerror strstr strtol log1p])
 AC_FUNC_FSEEKO
 
 AC_CONFIG_FILES([Makefile])

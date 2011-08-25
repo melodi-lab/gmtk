@@ -133,7 +133,7 @@ extern bool ObservationsAllowNan;
   Arg("sr",  Arg::Opt,sr,"Sentence range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("prepr", Arg::Opt, prepr,"Pre Per-segment frame Range for obs file X before any transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("postpr",Arg::Opt, postpr,"Post Per-segment frame Range for obs file X after per-stream transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("gpr",   Arg::Opt, gpr_str," Global Per-segment final frame Range"),
+  Arg("gpr",   Arg::Opt, gpr_str,"Global Per-segment final frame Range"),
   Arg("obsNAN",   Arg::Opt, ObservationsAllowNan," True if observation files allow FP NAN values"),
 
 
@@ -1124,6 +1124,25 @@ extern bool ObservationsAllowNan;
 /*************************************************************************************************************/
 /*************************************************************************************************************/
 
+#if defined(GMTK_ARG_SKIP_STARTUP_CHECKS)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+  static bool skipStartupChecks = false;
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("skipStartupChecks",Arg::Opt,skipStartupChecks, "Skip expensive model validity checks performed at GMTK startup"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+#else
+#endif
+#endif // defined(GMTK_ARG_SKIP_STARTUP_CHECKS)
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
 
 #if defined(GMTK_ARG_VERB)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
@@ -1156,7 +1175,7 @@ extern bool ObservationsAllowNan;
     copy = strdup(modularVerbosity);
     for (token=strtok(copy, delimiters); token; token=strtok(NULL, delimiters)) {
       (void) IM::setGlbMsgLevel(token);
-      // GM_Parms.setMsgLevel(token);
+      GM_Parms.setMsgLevel(token);
     }
   }
 
@@ -1591,15 +1610,15 @@ static bool localCliqueNormalization = false;
 
   Arg("cliqueTableNormalize",Arg::Opt,MaxClique::normalizeScoreEachClique,"Normalize scores of each clique right after its creation (increases dynamic range)."),
 
+
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
     if (MaxClique::normalizeScoreEachClique < 0.0) {
       error("ERROR: -cliqueTableNormalize option must be non-negative\n");
     }
 
-
 #if defined(GMTK_ARG_EM_TRAINING_PARAMS)
-    if (MaxClique::normalizeScoreEachClique != 0.0 && localCliqueNormalization == false) {
+    if (MaxClique::normalizeScoreEachClique != 1.0 && localCliqueNormalization == false) {
       // EM training won't work in this case unless it does local clique normalization as well.
       localCliqueNormalization = true;
       infoMsg(IM::SoftWarning,"Turning on EM local clique normalization since clique table score normalization is on.\n");
