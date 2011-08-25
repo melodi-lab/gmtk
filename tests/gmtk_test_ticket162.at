@@ -1,0 +1,12 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/162 is fixed
+
+# the last partition (51) should be labeled as a C, since E is empty
+
+AT_SETUP([ticket 162])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/mouse4])
+AT_CHECK([(cd $TEST_AND_DEV/mouse4 && \
+          gmtkViterbi -strF mouse4.str -inputM mouse4.mtr -of1 \
+          inMicePa.lst -fmt1 ascii -nf1 6 -vitValsFile - \
+         | grep Ptn-51 | awk '{printf $2}')],[],[C:])
+AT_CLEANUP

@@ -265,7 +265,7 @@ size_t StreamInfo::calcNumFileNames(FILE* &f) {
       numFileNames++;
     }
     // since it's a pipe we need to close it and reopen it
-    fclose(f);
+    pclose(f);
     string cppCommand = CPP_Command();
     if (cppCommandOptions != NULL) {
       cppCommand = cppCommand + string(" ") + string(cppCommandOptions);
@@ -296,7 +296,7 @@ size_t StreamInfo::calcNumFileNames(FILE* &f) {
 
 }	
 
-size_t StreamInfo::readFof(FILE *f) {
+size_t StreamInfo::readFof(FILE * &f) {
 
   size_t n_lines = 0;
 

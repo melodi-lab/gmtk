@@ -1,0 +1,16 @@
+
+AT_INIT([GMTK Regression Test Suite])
+AT_COLOR_TESTS
+
+# include basic testing distributed with GMTK release here
+AT_SETUP([smoke test])
+AT_CHECK([gmtkJT -version],[],[ignore])
+AT_CHECK([gmtkViterbi -version],[],[ignore])
+AT_CLEANUP
+
+# local Autotest scripts included here
+m4_include([gmtk_tests.at])
+
+## Include gmtk_test_*.at found under $TEST_AND_DEV
+## These are assembled automatically
+## m4 _ include([test_and_dev.at])

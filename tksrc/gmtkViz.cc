@@ -11,6 +11,14 @@
 // pens. Instead of simply changing to the appropriate pen, create a
 // new pen with the properties of that pen and switch to the new pen.
 
+
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
+
 // the only parts of gmtk that gmtkViz needs to concern itself with
 #include "GMTK_FileParser.h"
 #include "GMTK_RVInfo.h"
@@ -8766,22 +8774,45 @@ VizNode::draw( wxDC *dc )
 	if (!visible)
 		return;
 	wxBrush oldBrush = dc->GetBrush();
+#if defined(GREY_DET_BRUSH) || defined(CROSS_DET_BRUSH)
 	wxBrush detBrush = wxBrush(*wxMEDIUM_GREY_BRUSH);
-        detBrush.SetStyle(wxBRUSHSTYLE_CROSSDIAG_HATCH);
+	int oldStyle = detBrush.GetStyle();
+#if defined(CROSS_DET_BRUSH)
+	if (rvi->deterministic()) {
+	  detBrush.SetStyle(wxBRUSHSTYLE_CROSSDIAG_HATCH);
+	}
+#endif
+#endif
 	if (rvi->rvDisp == RVInfo::d_observed) {
 		dc->SetBrush(*wxLIGHT_GREY_BRUSH);
+#if defined(GREY_DET_BRUSH)
 	} else if (rvi->deterministic()) {
 	  dc->SetBrush(detBrush);
+#endif
 	}
 
 	if (highlight_state != off){
 		wxPen oldPen = dc->GetPen();
 		dc->SetPen(page->highlightPen);
 		dc->DrawCircle(center, NODE_RADIUS);
+#if defined(CROSS_DET_BRUSH)
+		if (rvi->deterministic()) {
+		  dc->SetBrush(detBrush);
+		  dc->DrawCircle(center, NODE_RADIUS);
+		  detBrush.SetStyle(oldStyle);
+		}
+#endif
 		dc->SetPen(oldPen);
-	} else
+	} else {
 		dc->DrawCircle(center, NODE_RADIUS);
-
+#if defined(CROSS_DET_BRUSH)
+		if (rvi->deterministic()) {
+		  dc->SetBrush(detBrush);
+		  dc->DrawCircle(center, NODE_RADIUS);
+		  detBrush.SetStyle(oldStyle);
+		}
+#endif
+	}
 	dc->SetBrush(oldBrush);
 	if (getSelected()) {
 		dc->DrawRectangle( center.x-NODE_RADIUS, center.y-NODE_RADIUS,

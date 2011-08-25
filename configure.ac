@@ -12,9 +12,20 @@ AC_ARG_ENABLE([gmtkViz],
               [gmtkViz=${enableval}], [gmtkViz=yes])
 AC_ARG_WITH([logp], 
             [AS_HELP_STRING([--with-logp],
-              [select logp implementation (log, table, smart, renorm) @<:@default=log@:>@])],
+              [select logp implementation (log, table, smart, renorm) @<:@default: log@:>@])],
             [],
             [with_logp=log])
+AC_ARG_WITH([detBrush],
+            [AS_HELP_STRING([--with-detBrush],
+              [select gmtkViz brush for deterministic nodes (none, cross, grey) @<:@default: none@:>@])],
+            [],
+            [with_detBrush=none])
+
+AC_ARG_WITH([LZERO],
+            [AS_HELP_STRING([--with-LZERO],
+              [the smallest log value that we represent @<:@default: -1.0E10@:>@])],
+	    [],
+            [with_LZERO=(-1.0E10)])
 
 AC_ARG_ENABLE([assertions],
               [AS_HELP_STRING([--disable-assertions],
@@ -28,6 +39,8 @@ AC_ARG_ENABLE([model-checks],
 
 # Checks for programs.
 
+AC_PROG_AWK
+
 # Checks for libraries.
 
 # Checks for header files.
@@ -35,6 +48,11 @@ AC_ARG_ENABLE([model-checks],
 # Checks for typedefs, structures, and compiler characteristics.
 
 # Checks for library functions.
+
+
+# Autotest suite
+AC_CONFIG_TESTDIR([tests],[tksrc:featureFileIO])
+AC_CONFIG_FILES([tests/Makefile tests/atlocal])
 
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_SUBDIRS([IEEEFloatingpoint
