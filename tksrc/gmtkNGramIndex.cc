@@ -125,12 +125,20 @@ int main(int argc, char *argv[]) {
 		error("cannot open file %s", lmFile);
 
 	do {
-		if ( getline(&word, &len, fp) < 0 )
+#if defined(HAVE_GETLINE)
+                if ( getline(&word, &len, fp) < 0 )
+#else
+		if ( fgets(word, len, fp) == NULL )
+#endif
 			error("wrong ARPA format in %s", lmFile);
 	} while ( strstr(word, "\\data\\") != word );
 
 	do {
-		if ( getline(&word, &len, fp) < 0 )
+#if defined(HAVE_GETLINE)
+                if ( getline(&word, &len, fp) < 0 )
+#else
+		if ( fgets(word, len, fp) == NULL )
+#endif
 			error("wrong ARPA format in %s", lmFile);
 		if ( strstr(word, "ngram") != NULL && strchr(word, '=') != NULL )
 			++order;
