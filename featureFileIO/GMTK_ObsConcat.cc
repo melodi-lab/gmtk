@@ -562,7 +562,7 @@ int main(int argc, const char *argv[]) {
    if(input_fname[i]!=NULL) {
      if(ifmt[i]==PFILE) {
        FILE *in_fp = fopen(input_fname[i], "r");
-       if (in_fp==NULL) error("Couldn't open input pfile for reading.");
+       if (in_fp==NULL) error("Couldn't open input pfile %s for reading.", input_fname[i]);
        InFtrLabStream_PFile* in_streamp = new InFtrLabStream_PFile(debug_level,"",in_fp,1,iswap[i]);
        nis[i]=in_streamp->num_labs();
        nfs[i]=in_streamp->num_ftrs();
