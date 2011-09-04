@@ -23,10 +23,14 @@ endif
 OPTFLAGS = -O3
 HASH = 
 
-#ANSI = 
-#PEDANTIC =
+if CYGWIN_FLAGS
+ANSI = 
+PEDANTIC =
+else
 ANSI = -ansi
 PEDANTIC = -pedantic
+endif
+
 WALL = -Wall
 
 # used by clients of miscSupport
