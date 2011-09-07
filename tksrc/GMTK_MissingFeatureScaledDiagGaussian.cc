@@ -554,9 +554,6 @@ MissingFeatureScaledDiagGaussian::emIncrement(logpr prob,
 			  const Data32* const base,
 			  const int stride)
 {
-  // this code is not implemented yet, so it should not be called.
-  assert ( 0 );
-
   assert ( basicAllocatedBitIsSet() );
   if (!emAmTrainingBitIsSet())
     return;
