@@ -6,6 +6,8 @@ AC_INIT([GMTK], m4_esyscmd(printf %s `head -n 1 ../RELEASE`),
         [https://lungs.ee.washington.edu/trac/gmtk/newticket])
 : ${CXXFLAGS=""}
 : ${CFLAGS=""}
+AC_CANONICAL_HOST
+
 AC_CONFIG_SRCDIR([data-points.cc])
 AC_CONFIG_HEADERS([config.h])
 
@@ -30,6 +32,11 @@ AC_PROG_CC
 
 # Checks for libraries.
 AC_CHECK_LIB([m], [log])
+
+case "${host}" in
+*cygwin*) AC_SUBST([XOPEN],[-D__USE_XOPEN2K]) ;;
+esac
+AM_CONDITIONAL([CYGWIN_FLAGS],[test x"$XOPEN" = x"-D__USE_XOPEN2K"])
 
 # Checks for header files.
 AC_CHECK_HEADERS([float.h math.h limits.h stdlib.h string.h sys/time.h values.h])

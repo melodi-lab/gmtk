@@ -5,6 +5,8 @@ AC_PREREQ(2.59)
 AC_INIT([GMTK], m4_esyscmd(printf %s `head -n 1 ../RELEASE`),
         [https://lungs.ee.washington.edu/trac/gmtk/newticket])
 : ${CXXFLAGS=""}
+AC_CANONICAL_HOST
+
 AC_CONFIG_SRCDIR([pfile.h])
 AC_CONFIG_HEADER([config.h])
 
@@ -32,6 +34,11 @@ AC_PROG_RANLIB
 
 # Checks for libraries.
 AC_CHECK_LIB([m], [sqrt])
+
+case "${host}" in
+*cygwin*) AC_SUBST([XOPEN],[-D__USE_XOPEN2K]) ;;
+esac
+AM_CONDITIONAL([CYGWIN_FLAGS],[test x"$XOPEN" = x"-D__USE_XOPEN2K"])
 
 # Checks for header files.
 AC_HEADER_STDC
