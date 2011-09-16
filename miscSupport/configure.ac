@@ -12,6 +12,9 @@ AC_CONFIG_HEADER([config.h])
 
 AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
 
+config_args=`head config.log | fgrep /configure | sed 's/"/\\"/g'`
+AC_DEFINE_UNQUOTED([GMTK_CONFIG_ARGS],["$config_args"],[configure script command line])
+
 AC_ARG_ENABLE([assertions],
               [AS_HELP_STRING([--disable-assertions],
                               [disable assertion checking @<:@default: no@:>@])],

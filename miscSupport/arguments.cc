@@ -1366,6 +1366,7 @@ bool Arg::parse(int argc,char** argv)
   if (cnt > 0) {
 #ifdef HAVE_CONFIG_H
     printf("%s (Mercurial id: %s checkin date: %s)\n",PACKAGE_STRING,HGID,HGDATE);
+    printf("configure command line:\n%s\n",GMTK_CONFIG_ARGS);
 #else
     printf("Use the Autotools build to get a working -version argument\n");
 #endif

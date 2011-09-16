@@ -1230,6 +1230,7 @@ extern bool ObservationsAllowNan;
   if (print_version_and_exit) {
 #ifdef HAVE_CONFIG_H
     printf("%s (Mercurial id: %s)\n",gmtk_version_id,HGID);
+    printf("configure command line:\n%s\n",GMTK_CONFIG_ARGS);
 #else
     printf("%s\n", gmtk_version_id);
 #endif
