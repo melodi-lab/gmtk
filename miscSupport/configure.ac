@@ -25,6 +25,50 @@ AC_ARG_ENABLE([model-checks],
 AM_CONDITIONAL([NO_ASSERTIONS],[test x$assertions != xyes])
 AM_CONDITIONAL([NO_MODEL_CHECKS],[test x$model_checks != xyes])
 
+
+# The following is for ticket 192. It's somewhat of a kludge.
+# If the build cpp supports "-x assembler-with-cpp" (it's 
+# likely only GCC's cpp does), we make GMTK's default cpp 
+# command "$CPP -x assembler-with-cpp" in order to eliminate
+# warnings about GMTK ASCII input files that aren't compatible 
+# with the C lexical rules normally enforced by cpp - this 
+# assumes the build cpp will be available and on the $PATH of 
+# the end-user's machine. Otherwise, the default is just "cpp". 
+
+# The user can override this at build-time with the 
+# "--with-cppCmd" configure argument, or at GMTK run-time
+# with the $GMTK_CPP_CMD environment variable.
+
+# We're going to fiddle with CPP and its arguments, so
+# remember what to reset them to when we're done
+AC_REQUIRE_CPP
+AC_LANG_PUSH([C])
+gmtk_save_CPPFLAGS=${CPPFLAGS}
+CPPFLAGS="-x assembler-with-cpp $CPPFLAGS"
+#CPPFLAGS="-std=c89 $CPPFLAGS"
+
+# see if the new flags handle the ticket 192 problems
+AC_PREPROC_IFELSE([
+  AC_LANG_SOURCE([[
+#define CONCAT(a,b) a##b
+#define CONCAT2(a,b) CONCAT(a,b)
+CONCAT2(dt/,foo)
+% GMTK's comments are not compatible with cpp]])],
+  [gmtkCPP="$CPP -x assembler-with-cpp"
+   AC_SUBST([gmtkCPPCMD],[$gmtkCPP])],
+  [gmtkCPP="cpp"])
+
+# restore original environment
+CPPFLAGS=$gmtk_save_CPPFLAGS
+AC_LANG_POP([C])
+
+AC_ARG_WITH([cppCmd],
+            [AS_HELP_STRING([--with-cppCmd],
+               [specify C pre-processor command GMTK uses to process ASCII input files @<:@default: "gcc -E -x assembler-with-cpp" if the build cpp is "gcc -E", otherwise just "cpp"@:>@])],
+            [AC_SUBST([GMTKCPPCMD],[$with_cppCmd])],
+            [AC_SUBST([GMTKCPPCMD],[$gmtkCPP])])
+
+
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
