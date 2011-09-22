@@ -66,6 +66,14 @@
 #include<X11/Xutil.h>
 #endif
 
+
+// fix for ticket 64 is only needed prior to 2.9.2
+#if wxCHECK_VERSION(2,9,2)
+#undef ENABLE_TOP_OFFSET
+#else
+#define ENABLE_TOP_OFFSET 1
+#endif
+
 // Apprently these are needed in order to do anything with gmtk (even
 // if you don't actually use them).
 #include "GMTK_GMParms.h"

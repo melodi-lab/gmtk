@@ -94,7 +94,11 @@ case "${host}" in
 *apple*) 
   if test x"$HAVE_WXWIDGETS" = x"yes"; then
     AC_SUBST([OSXBUNDLE],[gmtkViz.app])
-    AC_DEFINE([ENABLE_TOP_OFFSET],[1],[wxFame::EnableTop doesn't seem to work on the Mac])
+
+#   The EnableTop() bug (ticketis fixed in wxWidgets 2.9.2
+#   and gmtkViz souce checks if ENABLE_TOP_OFFSET is
+#   needed using wxCHECK_VERSION(2,9,2)
+#   AC_DEFINE([ENABLE_TOP_OFFSET],[1],[wxFame::EnableTop doesn't seem to work on the Mac])
   fi ;;
 *-sun-solaris*) AC_CHECK_LIB([sunmath],[annuity]) ;;
 *cygwin*) AC_SUBST([XOPEN],[-D__USE_XOPEN2K]) ;;
