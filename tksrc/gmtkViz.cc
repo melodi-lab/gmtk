@@ -67,11 +67,13 @@
 #endif
 
 
-// fix for ticket 64 is only needed prior to 2.9.2
+#if GMTK_WX_OSX
+   // fix for ticket 64 is only needed prior to 2.9.2
 #if wxCHECK_VERSION(2,9,2)
 #undef ENABLE_TOP_OFFSET
 #else
 #define ENABLE_TOP_OFFSET 1
+#endif
 #endif
 
 // Apprently these are needed in order to do anything with gmtk (even
