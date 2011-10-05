@@ -36,6 +36,8 @@
 #include <wx/numdlg.h>
 #include <wx/print.h>
 #include <wx/printdlg.h>
+#include <wx/dcps.h>
+#include <wx/dcps.h>
 #include <wx/statline.h>
 #include <wx/textdlg.h>
 #include <wx/textfile.h>
@@ -2388,6 +2390,22 @@ void GFrame::OnMenuFilePrint(wxCommandEvent &event)
  * \return void
  *******************************************************************/
 
+
+/*
+ * wxWidgets normally relies on the platform's native rendering
+ * system to do screen drawing, printing to paper, and printing
+ * to files. However, GTK+/GNOME only recently added the capability
+ * to do printing, so wxWidgets used the wxPostScriptDC to translate
+ * the wxWidgets' drawing API into PostScript files for printing
+ * on Unix/Linux platforms. The PostScriptDC code hasn't been 
+ * maintained much since GTK+/GNOME learned how to print and it's
+ * buggy. Unfortunately, the GTK+/GNOME native print-to-file seems 
+ * to produce a high resolution bitmap rather than vector output. 
+ * So, this uses the old wxPostScriptDC class to produce PostScript
+ * output with the hope that its bugs will be fixed enough to make
+ * it usable in wxWidgets 2.9.3, which is due out in autumn 2011.
+ */
+
 void GFrame::OnMenuFilePrintEPS(wxCommandEvent &event)
 {
 	// figure out which page this is for and pass the buck
@@ -2411,45 +2429,85 @@ void GFrame::OnMenuFilePrintEPS(wxCommandEvent &event)
 		// get a title for the printout
 		wxString name;
 		curPage->getName(name);
-      GmtkPrintout printout(curPage,name);
-// This function is obsolete, please use wxFileName::CreateTempFileName() instead.
-//		wxString temp_file_name = wxGetTempFileName( wxT("gmtkviz") );
-                wxString temp_file_name = wxFileName::CreateTempFileName( wxT("gmtkviz") );
 
-		//give the temp file name to the printData
-		printData.SetFilename(temp_file_name);
-		printData.SetPrintMode(wxPRINT_MODE_FILE);
-		wxPrintDialogData printDialogData(printData);
-		//set up the printer make it print to file
-		printDialogData.SetPrintToFile(true);
-		printDialogData.SetPrintData(printData);
 
-      wxPrinter printer(&printDialogData);
+		wxPrintData pd;
+		pd.SetPrintMode(wxPRINT_MODE_FILE);
+		wxString temp_file_name = wxFileName::CreateTempFileName( wxT("gmtkviz") );
+		pd.SetFilename(temp_file_name);
+		wxPostScriptDC psdc(pd);
 
-//XXX Print direct to file doesn't work in 2.6.1 so we need to pop up the
-//print dialog
-#if wxCHECK_VERSION(2,6,1)
-		wxMessageBox(_T("In order to print to EPS you simply have to press OK, Save, Yes when the print dialog"
-					" shows up, don't change any settings"),
-				wxT("Printing to EPS"), wxOK);
-		if(!printer.Print(this, &printout, true)){
-			wxMessageBox(_T("There was a problem printing to an EPS file.\n"
-						"gmtkViz having trouble printing to file."),
-					wxT("Error Printing to EPS"), wxOK);
-			return;
-		}
-#else
-		if(!printer.Print(this, &printout, false)){
-			wxMessageBox(_T("There was a problem printing to an EPS file.\n"
-						"gmtkViz having trouble printing to file."),
-					wxT("Error Printing to EPS"), wxOK);
-			return;
-		}
-#endif
-		
+//  The following is cribbed from GmtkPrintout::DrawPageOne()
+//  to manage the scaling & origin. We don't need a wxPrintout
+//  since we're drawing directly to a DC.
+
+/* You might use THIS code if you were scaling
+* graphics of known size to fit on the page.
+	*/
+	int w, h;
+	
+	float maxX = curPage->getWidth();
+	float maxY = curPage->getHeight();
+	
+	// Let's have at least 10 device units margin
+	float marginX = 10;
+	float marginY = 10;
+	
+	// Add the margin to the graphic size
+	maxX += (2*marginX);
+	maxY += (2*marginY);
+	
+	// Get the size of the DC in pixels
+	psdc.GetSize(&w, &h);
+	
+	// Calculate a suitable scaling factor
+	float scaleX=(float)(w/maxX);
+	float scaleY=(float)(h/maxY);
+	
+	// Use x or y scaling factor, whichever fits on the DC
+	float actualScale = wxMin(scaleX,scaleY);
+	
+	// Calculate the position on the DC for centring the graphic
+	float posX = (float)((w - (curPage->getWidth()*actualScale))/2.0);
+	float posY = (float)((h - (curPage->getHeight()*actualScale))/2.0);
+	
+	// Set the scale and origin
+	psdc.SetUserScale(actualScale, actualScale);
+	psdc.SetDeviceOrigin( (long)posX, (long)posY );
+	//dc->SetUserScale(1.0, 1.0);
+
+	//wxFont oldFont = dc->GetFont();
+	//wxFont scaledFont(oldFont);
+	//scaledFont.SetPointSize((int)(actualScale*oldFont.GetPointSize()));
+	//dc->SetFont(scaledFont);
+
+	//turn off controlpts and selectBox if they're viewable
+	bool had_view_cps = curPage->getViewCPs();
+	if(had_view_cps)
+		curPage->toggleViewCPs();
+	bool had_view_select_box = curPage->getViewSelectBox();
+	if(had_view_select_box)
+		curPage->toggleViewSelectBox();
+
+	//deselect everything
+	curPage->setAllSelected(false);
+
+
+                psdc.StartDoc(wxT("printing..."));  // create the file
+		curPage->draw(psdc);                // draw the graph
+		psdc.EndDoc();                      // close the file
+
+	//dc->SetFont(oldFont);
+	
+	//revert to the previous settings with the controlpts and selectBox
+	if(had_view_cps)
+		curPage->toggleViewCPs();
+	if(had_view_select_box)
+		curPage->toggleViewSelectBox();
+
 		//this is the command being sent to the shell (single quote the file name)
 		string ps2eps_cmd = "cat ";
-		ps2eps_cmd.append(printer.GetPrintDialogData().GetPrintData().GetFilename());
+		ps2eps_cmd.append(temp_file_name);
 		ps2eps_cmd.append(" | ps2eps > '");
 
 		//quote single quotes to be safe
@@ -2461,7 +2519,7 @@ void GFrame::OnMenuFilePrintEPS(wxCommandEvent &event)
 		}
 		ps2eps_cmd.append(temp_path);
 		ps2eps_cmd.append("'");
-		
+fprintf(stderr, "executing: %s", ps2eps_cmd.c_str());		
 		//execute the command
 		if(system(ps2eps_cmd.c_str()) != 0){
 			//print error if needed
@@ -2473,10 +2531,10 @@ void GFrame::OnMenuFilePrintEPS(wxCommandEvent &event)
 
 		//get rid of temp file
 		wxRemoveFile(temp_file_name);
-		
+
 		//revert to previous settings
 		if(!had_bounding_box)
-			curPage->toggleViewBoundingBox();
+		  curPage->toggleViewBoundingBox();
 	}
 }
 
