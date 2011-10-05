@@ -28,6 +28,7 @@ IEEEFloatingpoint/ieeeFPsetup.h
 IEEEFloatingpoint/ieeeTest
 featureFileIO/obs-create
 featureFileIO/obs-concat
+featureFileIO/obs-create
 featureFileIO/obs-diff
 featureFileIO/obs-info
 featureFileIO/obs-print
@@ -65,6 +66,7 @@ tksrc/gmtkDTindex
 tksrc/gmtkEMtrain
 tksrc/gmtkJT
 tksrc/gmtkKernel
+tksrc/gmtkModelInfo
 tksrc/gmtkNGramIndex
 tksrc/gmtkParmConvert
 tksrc/gmtkTFmerge
@@ -78,5 +80,3 @@ tksrc/gmtkViz.app/*
 tksrc/neghead
 tksrc/testPackCliqueValue
 tksrc/testViterbi
-
-

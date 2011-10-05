@@ -181,7 +181,7 @@ user_internal_cfunc_dts.cc
 
 bin_PROGRAMS = \
 gmtkTime gmtkJT gmtkEMtrain gmtkKernel gmtkViterbi gmtkTriangulate \
-gmtkParmConvert gmtkTFmerge gmtkDTindex gmtkNGramIndex gmtkTie \
+gmtkParmConvert gmtkTFmerge gmtkDTindex gmtkNGramIndex gmtkTie gmtkModelInfo \
 $(GMTKVIZ) $(OSXBUNDLE)
 EXTRA_PROGRAMS = gmtkViz gmtkViz.app
 
@@ -193,6 +193,7 @@ gmtkKernel_SOURCES = gmtkKernel.cc
 gmtkViterbi_SOURCES = gmtkViterbi.cc
 gmtkTriangulate_SOURCES = gmtkTriangulate.cc
 gmtkParmConvert_SOURCES = gmtkParmConvert.cc
+gmtkModelInfo_SOURCES = gmtkModelInfo.cc
 gmtkTFmerge_SOURCES = gmtkTFmerge.cc
 gmtkDTindex_SOURCES = gmtkDTindex.cc
 gmtkNGramIndex_SOURCES = gmtkNGramIndex.cc
