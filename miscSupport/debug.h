@@ -53,6 +53,7 @@ public:
     Boundary,
     Unrolling,
     Printing,
+    ModelInfo,
     ModuleCount  // must always be the last enum element
   };
 

@@ -163,7 +163,7 @@ extern bool ObservationsAllowNan;
     if(ofs[i] != NULL && ifmts[i]==PFILE) {
       FILE *in_fp = fopen(ofs[i], "r");
       if (in_fp==NULL) 
-	error("Couldn't open input pfile for reading.");
+	error("Couldn't open input pfile %s for reading.", ofs[i]);
       bool debug_level=0;
       InFtrLabStream_PFile* in_streamp = new InFtrLabStream_PFile(debug_level,"",in_fp,1,iswp[i]);
       unsigned num_labs=in_streamp->num_labs();
@@ -193,7 +193,7 @@ extern bool ObservationsAllowNan;
       nfs[i]=num_ftrs;
 
       if (fclose(in_fp)) 
-	error("Couldn't close input pfile.");
+	error("Couldn't close input pfile %s.", ofs[i]);
       delete in_streamp;
     }
     
@@ -1060,6 +1060,46 @@ extern bool ObservationsAllowNan;
 /*************************************************************************************************************/
 /*************************************************************************************************************/
 
+#if defined(GMTK_ARG_INFOSEPARATOR)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+  static const char *fieldSeparator = "\n";
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("fieldSeparator", Arg::Opt,fieldSeparator,"String that separates fields"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+#else
+#endif
+#endif // defined(GMTK_ARG_INFOSEPARATOR)
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+#if defined(GMTK_ARG_INFOFIELDFILE)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+  static char *fieldFile = NULL;
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("fieldFile", Arg::Opt,fieldFile,"File listing model info field order"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+#else
+#endif
+#endif // defined(GMTK_ARG_INFOSEPARATOR)
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
 
 #if defined(GMTK_ARG_SEED)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
@@ -1078,6 +1118,25 @@ extern bool ObservationsAllowNan;
 #else
 #endif
 #endif // defined(GMTK_ARG_SEED)
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+#if defined(GMTK_ARG_SKIP_STARTUP_CHECKS)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+  static bool skipStartupChecks = false;
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("skipStartupChecks",Arg::Opt,skipStartupChecks, "Skip expensive model validity checks performed at GMTK startup"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+#else
+#endif
+#endif // defined(GMTK_ARG_SKIP_STARTUP_CHECKS)
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
@@ -1105,6 +1164,10 @@ extern bool ObservationsAllowNan;
 
   (void) IM::setGlbMsgLevel(verbosity);
   GM_Parms.setMsgLevel(verbosity);
+  for (unsigned i= 0; i < IM::ModuleCount; i+=1) {
+    IM::setGlbMsgLevel((IM::ModuleName)i, verbosity);
+    GM_Parms.setMsgLevel((IM::ModuleName)i, verbosity);
+  }
   
   if (modularVerbosity) {
     char *token, *copy;
@@ -1547,15 +1610,15 @@ static bool localCliqueNormalization = false;
 
   Arg("cliqueTableNormalize",Arg::Opt,MaxClique::normalizeScoreEachClique,"Normalize scores of each clique right after its creation (increases dynamic range)."),
 
+
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
     if (MaxClique::normalizeScoreEachClique < 0.0) {
       error("ERROR: -cliqueTableNormalize option must be non-negative\n");
     }
 
-
 #if defined(GMTK_ARG_EM_TRAINING_PARAMS)
-    if (MaxClique::normalizeScoreEachClique != 0.0 && localCliqueNormalization == false) {
+    if (MaxClique::normalizeScoreEachClique != 1.0 && localCliqueNormalization == false) {
       // EM training won't work in this case unless it does local clique normalization as well.
       localCliqueNormalization = true;
       infoMsg(IM::SoftWarning,"Turning on EM local clique normalization since clique table score normalization is on.\n");

@@ -117,7 +117,9 @@ public:
 				       dLinkMat->totalNumberParameters(); }
 
 
-
+  ///////////////////////////////////
+  // return true iff regularization is turned on
+  bool regularized() {return adaptToMean != NULL || adaptToDLinkMat != NULL; }
 
   // these routines are used to not save gaussian
   // components (and their means, variances, etc.) 
