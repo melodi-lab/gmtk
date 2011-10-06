@@ -26,7 +26,6 @@ stamp-h1
 ylwrap
 IEEEFloatingpoint/ieeeFPsetup.h
 IEEEFloatingpoint/ieeeTest
-featureFileIO/obs-create
 featureFileIO/obs-concat
 featureFileIO/obs-create
 featureFileIO/obs-diff
