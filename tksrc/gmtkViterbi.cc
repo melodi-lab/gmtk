@@ -495,7 +495,7 @@ main(int argc,char*argv[])
       }
 
 #if 1     
-      if (pVitValsFile)
+      if (pVitValsFile || pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange)
 	myjt.resetViterbiPrinting();
       if (vitValsFile) {
 	fprintf(vitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
