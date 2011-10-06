@@ -1,0 +1,15 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/166 is fixed
+
+# If it's fixed, gmtkViterbi will exit with 0 status, otherwise it
+# will fail with an internal error
+
+AT_SETUP([ticket 166])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
+AT_CHECK([cd $TEST_AND_DEV/auroraTutorial && \
+          gmtkViterbi -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
+             -inputMasterFile PARAMS/nonTrainable.master \
+             -inputTrainable PARAMS/highly_trained.gmp   \
+             -str PARAMS/aurora_decode.str -vitVals /dev/null \
+             -cCliquePrint all],[],[ignore])
+AT_CLEANUP
