@@ -49,6 +49,9 @@ miscSupport/testVSHashMap
 miscSupport/testcArray
 miscSupport/testsArray
 mitk/bivariate-mi
+mitk/mvnrnd
+mitk/test-matrix-ops
+mitk/testReadRange
 mitk/multivariate-mi
 mitk/mvnrnd
 mitk/test-matrix-ops
@@ -79,3 +82,4 @@ tksrc/gmtkViz.app/*
 tksrc/neghead
 tksrc/testPackCliqueValue
 tksrc/testViterbi
+tksrc/testPackCliqueValue

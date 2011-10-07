@@ -49,6 +49,8 @@ public:
   enum ModuleName {
     DefaultModule,
     Inference,
+    InferenceMemory,
+    Training,
     Triangulation,
     Boundary,
     Unrolling,
@@ -58,16 +60,13 @@ public:
   };
 
 protected:
-  static unsigned globalModuleLevel[(unsigned)ModuleCount];
-  unsigned moduleLevel[(unsigned)ModuleCount];
+  static unsigned globalModuleLevel[(unsigned)IM::ModuleCount];
+  //  unsigned moduleLevel[(unsigned)ModuleCount];
   static const char*moduleString[(unsigned)ModuleCount];
 
 public:
 
   IM() {
-    for (int m = DefaultModule; m < ModuleCount; m+=1) {
-      moduleLevel[m] = globalMessageLevel;
-    }
     flush = true;
   }
 
@@ -113,7 +112,7 @@ public:
 
   inline bool message(unsigned v) {
 #if INFO_MESSAGES_ON
-    return (v <= moduleLevel[DefaultModule]);
+    return (v <= globalModuleLevel[DefaultModule]);
 #else 
     return false;
 #endif
@@ -121,7 +120,7 @@ public:
 
   inline bool message(ModuleName module, unsigned v) {
 #if INFO_MESSAGES_ON
-    return (v <= moduleLevel[module]);
+    return (v <= globalModuleLevel[module]);
 #else 
     return false;
 #endif
@@ -230,10 +229,10 @@ public:
 #endif
   }
 
-  unsigned msgLevel() { return moduleLevel[DefaultModule]; }
-  unsigned msgLevel(ModuleName module) { return moduleLevel[module]; }
-  unsigned setMsgLevel(const unsigned ml) { moduleLevel[DefaultModule] = ml; return ml; }
-  unsigned setMsgLevel(ModuleName module, const unsigned ml) { moduleLevel[module] = ml; return ml; }
+  unsigned msgLevel() { return globalModuleLevel[DefaultModule]; }
+  unsigned msgLevel(ModuleName module) { return globalModuleLevel[module]; }
+  unsigned setMsgLevel(const unsigned ml) { globalModuleLevel[DefaultModule] = ml; return ml; }
+  unsigned setMsgLevel(ModuleName module, const unsigned ml) { globalModuleLevel[module] = ml; return ml; }
 
   unsigned setMsgLevel(const char*name, const unsigned ml) {
     if (strcmp(name,"all") == 0) {
@@ -264,7 +263,7 @@ public:
       if (errno || (*endp != 0) || (endp == s)) {
 	error("ERROR: invalid module error level specifier '%s'", levelAssignment);
       }
-      setMsgLevel(ml);
+      setMsgLevel("all", ml);
     } else {
       *equals = 0;
       ml = strtoul(equals+1, &endp, 0);
@@ -319,7 +318,7 @@ public:
       if (errno || (*endp != 0) || (endp == s)) {
 	error("ERROR: invalid module error level specifier '%s'", levelAssignment);
       }
-      setGlbMsgLevel(ml);
+      setGlbMsgLevel("all", ml);
     } else {
       *equals = 0;
       ml = strtoul(equals+1, &endp, 0);

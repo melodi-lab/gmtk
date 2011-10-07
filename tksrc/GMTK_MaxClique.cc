@@ -1988,7 +1988,7 @@ MaxClique::computeVESeparators()
 	  if (logProdCard > SeparatorClique::veSeparatorLogProdCardLimit)
 	    continue;
 
-	  infoMsg(Max,"Found VE sep of type PCG (currently not using it).\n");
+	  infoMsg(Inference, Max,"Found VE sep of type PCG (currently not using it).\n");
 	  // uncomment when rest of code below is finished.
 
 	  // since p is assigned prob, all it parents live in the
@@ -2022,7 +2022,7 @@ MaxClique::computeVESeparators()
 	if (logProdCard > SeparatorClique::veSeparatorLogProdCardLimit)
 	  continue;
 
-	infoMsg(Max,"Found VE sep of type PC. iterable = %d\n",rv->iterable());
+	infoMsg(Inference, Max,"Found VE sep of type PC. iterable = %d\n",rv->iterable());
 
 	// since c is an assigned prob node, we know its parents live
 	// in current clique as well. We build a table of all parent
@@ -2417,7 +2417,7 @@ ceGatherFromIncommingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStru
       double denom = origin.prevMaxCEValue.valref();
       // report absolute error if we can't compute relative error.
       if (denom == 0.0) denom = 1.0;
-      infoMsg(IM::Med,"Partial clique beam pruning, ppmax= %f, pmax= %f, ppred= %f, pfpred= %f, p_rel_%%err = %f, p_frel_%%err= %f, pred= %f, pthres= %f.\n",
+      infoMsg(IM::Inference,IM::Med,"Partial clique beam pruning, ppmax= %f, pmax= %f, ppred= %f, pfpred= %f, p_rel_%%err = %f, p_frel_%%err= %f, pred= %f, pthres= %f.\n",
 	      origin.prevPrevMaxCEValue.valref(),
 	      origin.prevMaxCEValue.valref(),
 	      origin.prevMaxCEValPrediction,
@@ -2478,7 +2478,7 @@ ceGatherFromIncommingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStru
     if (numCliqueValuesUsed == 0) {
       // if we have a zero clique, print message and possibly continue
       // with expanded clique.
-      if (message(IM::Med)) {
+      if (message(IM::Inference, IM::Med)) {
 	printf("WARNING: ZERO CLIQUE: clique with no entries, try %d out of %d.\n",
 	       cliqueExpansionTry+1,origin.cliqueBeamBuildMaxExpansions);
       }
@@ -2590,11 +2590,11 @@ ceGatherFromIncommingSeparatorsCliqueObserved(MaxCliqueTable::SharedLocalStructu
       // apply the probabiltiy
       logpr cur_p = rv->probGivenParents();
 
-      if (message(Huge)) {
+      if (message(Inference,Huge)) {
 	psp2(stdout,spi*(traceIndent+1+nodeNumber));
 	printf("%d:assigned obs/prob app, Pr[",nodeNumber);
 	rv->printNameFrameValue(stdout,false);
-	if (message(Mega)) {
+	if (message(Inference, Mega)) {
 	  if (rv->allParents.size() > 0) {
 	    printf("|");
 	    printRVSetAndValues(stdout,rv->allParents,false);
@@ -2620,11 +2620,11 @@ ceGatherFromIncommingSeparatorsCliqueObserved(MaxCliqueTable::SharedLocalStructu
       // still check for zeros though.
       logpr cur_p = rv->probGivenParents();
 
-      if (message(Huge)) {
+      if (message(Inference,Huge)) {
 	psp2(stdout,spi*(traceIndent+1+nodeNumber));
 	printf("%d:assigned obs/zero rmv, Pr[",nodeNumber);
 	rv->printNameFrameValue(stdout,false);
-	if (message(Mega)) {
+	if (message(Inference, Mega)) {
 	  if (rv->allParents.size() > 0) {
 	    printf("|");
 	    printRVSetAndValues(stdout,rv->allParents,false);
@@ -2710,9 +2710,9 @@ ceGatherFromIncommingSeparatorsCliqueObserved(MaxCliqueTable::SharedLocalStructu
     cliqueValues.ptr[0].p = p;
   }
 
-  if (message(High)) {
+  if (message(Inference,High)) {
     psp2(stdout,spi*(traceIndent+1+sharedStructure.fSortedAssignedNodes.size()));
-    infoMsg(High,"CI:Inserting Observed %d-clique ent #0,pr=%f,sm=%f:",
+    infoMsg(IM::Inference, IM::High,"CI:Inserting Observed %d-clique ent #0,pr=%f,sm=%f:",
 	    sharedStructure.fNodes.size(),
 	    cliqueValues.ptr[0].p.val(),sumProbabilities().val());
     printRVSetAndValues(stdout,sharedStructure.fNodes);
@@ -2823,10 +2823,10 @@ MaxCliqueTable::ceIterateSeparatorsRecurse(MaxCliqueTable::SharedLocalStructure&
     sepSeparatorValuesPtr = sep.separatorValues->ptr; 
 
 
-  if (message(High+5)) {
+  if (message(Inference,High+5)) {
     traceIndent++;
     psp2(stdout,spi*traceIndent);    
-    infoMsg(High+5,"S%d:Starting separator iter,partSepNo=%d,p=%f,nodes:",
+    infoMsg(Inference,High+5,"S%d:Starting separator iter,partSepNo=%d,p=%f,nodes:",
 	    sepNumber,origin.ceReceiveSeparators[sepNumber],p.val());
     printRVSet(stdout,sepSharedStructure.fNodes);
   }
@@ -2858,9 +2858,9 @@ MaxCliqueTable::ceIterateSeparatorsRecurse(MaxCliqueTable::SharedLocalStructure&
       // Then not found in this separator, so it must have (pruned) zero
       // probability. We continue with the next value of the previous
       // separator.
-      if (message(Huge)) {
+      if (message(Inference,Huge)) {
 	psp2(stdout,spi*traceIndent);
-	infoMsg(Huge,"S%d:Separator iter accumulated intersection prune\n",
+	infoMsg(Inference,Huge,"S%d:Separator iter accumulated intersection prune\n",
 		sepNumber);
 	// TODO: @@@ figure out why we can't do: 
 	// printRVSet(stdout,sep.fAccumulatedIntersection);
@@ -2895,9 +2895,9 @@ MaxCliqueTable::ceIterateSeparatorsRecurse(MaxCliqueTable::SharedLocalStructure&
     // of 0 and a hreminder size of 0 -- nothing to unpack here either
     // (no hash tables even exist), so we just continue along.
 
-    if (message(Huge)) {
+    if (message(Inference, Huge)) {
       psp2(stdout,spi*traceIndent);
-      infoMsg(Huge,"S%d:Separator iter no-unpack %d,%d,partSepNo=%d,p=%f,sp=%f,nodes:",
+      infoMsg(Inference, Huge,"S%d:Separator iter no-unpack %d,%d,partSepNo=%d,p=%f,sp=%f,nodes:",
 	      sepNumber,
 	      sepSeparatorValuesPtr[sepValueNumber].remValues.size(),
 	      sepSeparatorValuesPtr[sepValueNumber].numRemValuesUsed,
@@ -2943,9 +2943,9 @@ MaxCliqueTable::ceIterateSeparatorsRecurse(MaxCliqueTable::SharedLocalStructure&
 				   (unsigned**)remDiscreteValuePtrs);
 
 
-	if (message(Huge)) {
+	if (message(Inference, Huge)) {
 	  psp2(stdout,spi*traceIndent);
-	  infoMsg(Huge,"S%d:Separator iter %d of %d,partSepNo=%d,p=%f,sp=%f,nodes:",
+	  infoMsg(Inference, Huge,"S%d:Separator iter %d of %d,partSepNo=%d,p=%f,sp=%f,nodes:",
 		  sepNumber,
 		  i,sepSeparatorValuesPtr[sepValueNumber].numRemValuesUsed,
 		  origin.ceReceiveSeparators[sepNumber],
@@ -2971,9 +2971,9 @@ MaxCliqueTable::ceIterateSeparatorsRecurse(MaxCliqueTable::SharedLocalStructure&
 				   (unsigned*)sepSeparatorValuesPtr[sepValueNumber].remValues.ptr[i].ptr,
 				   (unsigned**)remDiscreteValuePtrs);
 
-	if (message(Huge)) {
+	if (message(Inference, Huge)) {
 	  psp2(stdout,spi*traceIndent);
-	  infoMsg(Huge,"S%d:Separator iter %d of %d,partSepNo=%d,p=%f,sp=%f,nodes:",
+	  infoMsg(Inference, Huge,"S%d:Separator iter %d of %d,partSepNo=%d,p=%f,sp=%f,nodes:",
 		  sepNumber,
 		  i,sepSeparatorValuesPtr[sepValueNumber].numRemValuesUsed,
 		  origin.ceReceiveSeparators[sepNumber],
@@ -2996,7 +2996,7 @@ MaxCliqueTable::ceIterateSeparatorsRecurse(MaxCliqueTable::SharedLocalStructure&
   }
 
  ceIterateSeparatorsFinished:
-  if (message(High+5))
+  if (message(Inference, High+5))
     traceIndent--;
 }
 
@@ -3051,10 +3051,10 @@ MaxCliqueTable::ceIterateUnassignedIteratedNodesRecurse(MaxCliqueTable::SharedLo
 
   RV* rv = sharedStructure.fUnassignedIteratedNodes[nodeNumber];
   // TODO: update comments here to match others.
-  if (message(High+5)) {
+  if (message(Inference, High+5)) {
     traceIndent++;
     psp2(stdout,spi*traceIndent);
-    infoMsg(High+5,"U%d:Starting Unassigned iteration of rv %s(%d),p=%f\n",
+    infoMsg(Inference, High+5,"U%d:Starting Unassigned iteration of rv %s(%d),p=%f\n",
 	    nodeNumber,
 	    rv->name().c_str(),rv->frame(),p.val());
   }
@@ -3064,9 +3064,9 @@ MaxCliqueTable::ceIterateUnassignedIteratedNodesRecurse(MaxCliqueTable::SharedLo
     // do the loop right here
     drv->val = 0;
     do {
-      if (message(Huge)) {
+      if (message(Inference, Huge)) {
 	psp2(stdout,spi*traceIndent);
-	infoMsg(Huge,"U%d:Unassigned iter of rv %s(%d)=%d,p=%f\n",
+	infoMsg(Inference, Huge,"U%d:Unassigned iter of rv %s(%d)=%d,p=%f\n",
 		nodeNumber,
 		rv->name().c_str(),rv->frame(),drv->val,p.val());
       }
@@ -3081,17 +3081,17 @@ MaxCliqueTable::ceIterateUnassignedIteratedNodesRecurse(MaxCliqueTable::SharedLo
     // no observed nodes at all since we are not updating 
     // probability here anyway.
 
-    if (message(Huge)) {
+    if (message(Inference, Huge)) {
       psp2(stdout,spi*traceIndent);
       // observed, either discrete or continuous
       if (rv->discrete()) {
-	infoMsg(Huge,"U%d:Unassigned pass through observed rv %s(%d)=%d,p=%f\n",
+	infoMsg(Inference, Huge,"U%d:Unassigned pass through observed rv %s(%d)=%d,p=%f\n",
 		nodeNumber,
 		rv->name().c_str(),rv->frame(),RV2DRV(rv)->val,p.val());
       } else {
 	// nothing to do since we get continuous observed value
 	// indirectly
-	infoMsg(Huge,"U%d:Unassigned pass through of observed rv %s(%d)=C,p=%f\n",
+	infoMsg(Inference, Huge,"U%d:Unassigned pass through of observed rv %s(%d)=C,p=%f\n",
 		nodeNumber,
 		rv->name().c_str(),rv->frame(),p.val());
       }
@@ -3102,7 +3102,7 @@ MaxCliqueTable::ceIterateUnassignedIteratedNodesRecurse(MaxCliqueTable::SharedLo
 				     maxCEValue,
 				     nodeNumber+1,p);
   }
-  if (message(High+5))
+  if (message(Inference, High+5))
     traceIndent--;
 }
 
@@ -3245,9 +3245,9 @@ MaxCliqueTable::ceIterateAssignedNodesRecurse(MaxCliqueTable::SharedLocalStructu
     cliqueValues.ptr[numCliqueValuesUsed].p = p;
     numCliqueValuesUsed++;
 
-    if (message(High)) {
+    if (message(Inference, High)) {
       psp2(stdout,spi*(traceIndent+1));
-      infoMsg(High,"CI:Inserting %d-clique ent #%d,pr=%f,sm=%f:",
+      infoMsg(Inference, High,"CI:Inserting %d-clique ent #%d,pr=%f,sm=%f:",
 	      sharedStructure.fNodes.size(),
 	      (numCliqueValuesUsed-1),
 	      cliqueValues.ptr[numCliqueValuesUsed-1].p.val(),sumProbabilities().val());
@@ -3258,10 +3258,10 @@ MaxCliqueTable::ceIterateAssignedNodesRecurse(MaxCliqueTable::SharedLocalStructu
   RV* rv = sharedStructure.fSortedAssignedNodes[nodeNumber];
   // do the loop right here
 
-  if (message(High+5)) {
+  if (message(Inference, High+5)) {
     traceIndent++;
     psp2(stdout,spi*traceIndent);
-    infoMsg(High+5,"A%d:Starting assigned iteration of rv %s(%d),crClqPr=%f\n",
+    infoMsg(Inference, High+5,"A%d:Starting assigned iteration of rv %s(%d),crClqPr=%f\n",
 	    nodeNumber,
 	    rv->name().c_str(),rv->frame(),p.val());
   }
@@ -3272,11 +3272,11 @@ MaxCliqueTable::ceIterateAssignedNodesRecurse(MaxCliqueTable::SharedLocalStructu
       logpr cur_p;
       rv->begin(cur_p);
       do {
-	if (message(Huge)) {
+	if (message(Inference, Huge)) {
 	  psp2(stdout,spi*traceIndent);
 	  printf("A%d:assigned iter/prob app, Pr[",nodeNumber);
 	  rv->printNameFrameValue(stdout,false);
-	  if (message(Mega)) {
+	  if (message(Inference, Mega)) {
 	    if (rv->allParents.size() > 0) {
 	      printf("|");
 	      printRVSetAndValues(stdout,rv->allParents,false);
@@ -3307,11 +3307,11 @@ MaxCliqueTable::ceIterateAssignedNodesRecurse(MaxCliqueTable::SharedLocalStructu
       rv->begin(cur_p);
       do {
 	// At each step, we compute probability
-	if (message(Huge)) {
+	if (message(Inference, Huge)) {
 	  psp2(stdout,spi*traceIndent);
 	  printf("A%d:assigned iter/zero rmv, Pr[",nodeNumber);
 	  rv->printNameFrameValue(stdout,false);
-	  if (message(Mega)) {
+	  if (message(Inference, Mega)) {
 	    if (rv->allParents.size() > 0) {
 	      printf("|");
 	      printRVSetAndValues(stdout,rv->allParents,false);
@@ -3341,11 +3341,11 @@ MaxCliqueTable::ceIterateAssignedNodesRecurse(MaxCliqueTable::SharedLocalStructu
       // do the loop right here
       drv->val = 0;
       do {
-	if (message(Huge)) {
+	if (message(Inference, Huge)) {
 	  psp2(stdout,spi*traceIndent);
 	  printf("A%d:assigned card iter, Pr[",nodeNumber);
 	  rv->printNameFrameValue(stdout,false);
-	  if (message(Mega)) {
+	  if (message(Inference, Mega)) {
 	    if (rv->allParents.size() > 0) {
 	      printf("|");
 	      printRVSetAndValues(stdout,rv->allParents,false);
@@ -3371,11 +3371,11 @@ MaxCliqueTable::ceIterateAssignedNodesRecurse(MaxCliqueTable::SharedLocalStructu
       // RV.
       logpr cur_p = rv->probGivenParents();
       // if at any step, we get zero, then back out.
-      if (message(Huge)) {
+      if (message(Inference, Huge)) {
 	psp2(stdout,spi*traceIndent);
 	printf("A%d:assigned compute appl prob, Pr[",nodeNumber);
 	rv->printNameFrameValue(stdout,false);
-	if (message(Mega)) {
+	if (message(Inference, Mega)) {
 	  if (rv->allParents.size() > 0) {
 	    printf("|");
 	    printRVSetAndValues(stdout,rv->allParents,false);
@@ -3397,11 +3397,11 @@ MaxCliqueTable::ceIterateAssignedNodesRecurse(MaxCliqueTable::SharedLocalStructu
     break;
 
   case MaxClique::AN_CONTINUE:
-    if (message(Huge)) {
+    if (message(Inference, Huge)) {
       psp2(stdout,spi*traceIndent);
       printf("A%d:sep cont, non prob, Pr[",nodeNumber);
       rv->printNameFrameValue(stdout,false);
-      if (message(Mega)) {
+      if (message(Inference, Mega)) {
 	if (rv->allParents.size() > 0) {
 	  printf("|");
 	  printRVSetAndValues(stdout,rv->allParents,false);
@@ -3423,11 +3423,11 @@ MaxCliqueTable::ceIterateAssignedNodesRecurse(MaxCliqueTable::SharedLocalStructu
       // TODO: Make more efficient version of this, based on the type of
       // RV.
       logpr cur_p = rv->probGivenParents();
-      if (message(Huge)) {
+      if (message(Inference, Huge)) {
 	psp2(stdout,spi*traceIndent);
 	printf("A%d:assigned compute continue, Pr[",nodeNumber);
 	rv->printNameFrameValue(stdout,false);
-	if (message(Mega)) {
+	if (message(Inference, Mega)) {
 	  if (rv->allParents.size() > 0) {
 	    printf("|");
 	    printRVSetAndValues(stdout,rv->allParents,false);
@@ -3453,7 +3453,7 @@ MaxCliqueTable::ceIterateAssignedNodesRecurse(MaxCliqueTable::SharedLocalStructu
     assert(0);
     break;
   }
-  if (message(High+5))
+  if (message(Inference, High+5))
     traceIndent--;
 
 }
@@ -3708,9 +3708,9 @@ MaxCliqueTable::ceIterateAssignedNodesNoRecurse(MaxCliqueTable::SharedLocalStruc
        * routine will print this information.
        */
       /*
-	if (message(Mega)) {
+	if (message(Inference, Mega)) {
 	// psp2(stdout,spi*traceIndent);
-	infoMsg(Mega,"Inserting New Clique Val,pr=%f,sm=%f: ",
+	infoMsg(Inference, Mega,"Inserting New Clique Val,pr=%f,sm=%f: ",
 	cliqueValues.ptr[numCliqueValuesUsed-1].p.val(),sumProbabilities().val());
 	printRVSetAndValues(stdout,fNodes);
 	}
@@ -4017,10 +4017,10 @@ ceSendToOutgoingSeparator(MaxCliqueTable::SharedLocalStructure& sharedStructure,
     sepSeparatorValuesPtr = sep.separatorValues->ptr; 
 
 #ifdef TRACK_NUM_CLIQUE_VALS_SHARED  
-  infoMsg(IM::High-2,"ceSendToOutgoingSep: from clique w state space = %d. NumShared = %d, %2.2f percent\n",
+  infoMsg(IM::Inference, IM::High-2,"ceSendToOutgoingSep: from clique w state space = %d. NumShared = %d, %2.2f percent\n",
 	  numCliqueValuesUsed,numCliqueValuesShared, 100*(float)numCliqueValuesShared/(float)numCliqueValuesUsed);
 #else
-  infoMsg(IM::High-2,"ceSendToOutgoingSep: from clique w state space = %d.\n",numCliqueValuesUsed);
+  infoMsg(IM::Inference, IM::High-2,"ceSendToOutgoingSep: from clique w state space = %d.\n",numCliqueValuesUsed);
 #endif
 
   // syntactic convenience variables.
@@ -4480,7 +4480,7 @@ MaxCliqueTable::ceCliqueBeamPrune(MaxClique& origin,
     }
   }
 
-  infoMsg(IM::Med,"Clique beam pruning: Max cv = %f, thres = %f. Original clique state space = %d, new clique state space = %d, %2.2f%% reduction\n",
+  infoMsg(IM::Inference, IM::Med,"Clique beam pruning: Max cv = %f, thres = %f. Original clique state space = %d, new clique state space = %d, %2.2f%% reduction\n",
 	  maxCEValue.valref(),
 	  beamThreshold.valref(),
 	  origNumCliqueValuesUsed,
@@ -4489,7 +4489,7 @@ MaxCliqueTable::ceCliqueBeamPrune(MaxClique& origin,
 
 #if 0
   // A version with a bit more information printed.
-  infoMsg(IM::Med,"Clique beam pruning, Max cv = %f, thres = %f. Original clique state space = %d, orig sum = %f, new clique state space = %d, new sum = %f\n",
+  infoMsg(IM::Inference, IM::Med,"Clique beam pruning, Max cv = %f, thres = %f. Original clique state space = %d, orig sum = %f, new clique state space = %d, new sum = %f\n",
 	  maxCEValue.valref(),
 	  beamThreshold.valref(),
 	  origNumCliqueValuesUsed,
@@ -4561,7 +4561,7 @@ MaxCliqueTable::ceDoAllPruning(MaxClique& origin,
   // printf("starting k pruning with state space %d\n",numCliqueValuesUsed); fflush(stdout);
 
   if (k < numCliqueValuesUsed) {
-    infoMsg(IM::Med,"Clique k-beam pruning with k=%d: Original clique state space = %d\n",k,
+    infoMsg(IM::Inference, IM::Med,"Clique k-beam pruning with k=%d: Original clique state space = %d\n",k,
 	    numCliqueValuesUsed);
     numCliqueValuesUsed = ceCliqueStatePrune(k,cliqueValues.ptr,numCliqueValuesUsed);
   }
@@ -4992,7 +4992,7 @@ MaxCliqueTable::ceCliqueDiversityPrune(MaxClique& origin,const unsigned numClust
     // code below (i.e., it need not be a special case).
   }
 
-  infoMsg(IM::Med+9,"Diversity/cluster pruning with state space = %d\n",numCliqueValuesUsed);
+  infoMsg(IM::Inference, IM::Med+9,"Diversity/cluster pruning with state space = %d\n",numCliqueValuesUsed);
 
   /*
     - ideas to speed up: 
@@ -5212,7 +5212,7 @@ MaxCliqueTable::ceCliqueDiversityPrune(MaxClique& origin,const unsigned numClust
       }
     }
     // optionally print information done after beam pruning.
-    infoMsg(IM::Med,"Clique cluster beam pruning: Original clique state space = %d, new clique state space = %d, %2.2f%% reduction\n",
+    infoMsg(IM::Inference, IM::Med,"Clique cluster beam pruning: Original clique state space = %d, new clique state space = %d, %2.2f%% reduction\n",
 	    origNumCliqueValuesUsed,
 	    numCliqueValuesUsed,
 	    100*(1.0 - (double)numCliqueValuesUsed/(double)(origNumCliqueValuesUsed>0?origNumCliqueValuesUsed:1)) );
@@ -5450,7 +5450,7 @@ MaxCliqueTable::ceCliqueDiversityPrune(MaxClique& origin,const unsigned numClust
       numCliqueValuesUsed = newNumCliqueValuesUsed;
     }
 
-    infoMsg(IM::Med,"Clique cluster state pruning: Original clique state space = %d, new clique state space = %d, %2.2f%% reduction\n",
+    infoMsg(IM::Inference, IM::Med,"Clique cluster state pruning: Original clique state space = %d, new clique state space = %d, %2.2f%% reduction\n",
 	    origNumCliqueValuesUsed,
 	    numCliqueValuesUsed,
 	    100*(1.0 - (double)numCliqueValuesUsed/(double)(origNumCliqueValuesUsed>0?origNumCliqueValuesUsed:1)) );
@@ -5597,7 +5597,7 @@ MaxCliqueTable::ceCliqueMassPrune(const double removeFraction,
     k=min(minSize,curNumCliqueValuesUsed);
 
   const unsigned newStateSpace = min(k,curNumCliqueValuesUsed);
-  infoMsg(IM::Med,"Clique mass-beam pruning: Original state space = %d (exp-mass=%e), new state space = %d, reduction %2.2f%%, desired exp-mass = %e, actual exp-mass = %e\n",
+  infoMsg(IM::Inference, IM::Med,"Clique mass-beam pruning: Original state space = %d (exp-mass=%e), new state space = %d, reduction %2.2f%%, desired exp-mass = %e, actual exp-mass = %e\n",
 	  curNumCliqueValuesUsed,
 	  origSum.val(),
 	  newStateSpace,
@@ -5698,7 +5698,7 @@ MaxCliqueTable::ceCliqueUniformSamplePrunedCliquePortion(MaxClique& origin,
     }
   }
 
-  infoMsg(IM::Med,"Clique uniform sampling: Upped state space from %d to %d, before pruning state space was %d\n",
+  infoMsg(IM::Inference, IM::Med,"Clique uniform sampling: Upped state space from %d to %d, before pruning state space was %d\n",
 	  numCliqueValuesUsedBeforeSampling,numCliqueValuesUsed,origNumCliqueValuesUsed);
 
 }
@@ -6567,7 +6567,7 @@ deReceiveFromIncommingSeparator(MaxCliqueTable::SharedLocalStructure& sharedStru
 	cvn++;
       }
     }
-    infoMsg(IM::High-1,"DE Clique Receive: (old,new) clique state space = (%d,%d).\n",
+    infoMsg(IM::Inference, IM::High-1,"DE Clique Receive: (old,new) clique state space = (%d,%d).\n",
 	    origNumCliqueValuesUsed,numCliqueValuesUsed);
     // TODO: resize only if size difference is large.
     if (numCliqueValuesUsed < origNumCliqueValuesUsed)
@@ -6819,7 +6819,7 @@ deScatterToOutgoingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStruct
     // will take on, but it is easy/fast to allocate on the stack right now.
     // unsigned packedVal[128];
 
-    infoMsg(IM::High-1,"DE Clique state space = %d.\n",numCliqueValuesUsed);
+    infoMsg(IM::Inference, IM::High-1,"DE Clique state space = %d.\n",numCliqueValuesUsed);
 
     // cache check here.
     const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH); 
@@ -7536,7 +7536,7 @@ SeparatorClique::prepareForUnrolling()
 
       if (generatingVESeparatorTables == true) {
 
-	if (message(Low)) {
+	if (message(Inference, Low)) {
 	  float logProdCard = 
 	    log10((double)RV2DRV(odc->allParents[0])->cardinality);
 	  for (unsigned i=1;i<odc->allParents.size();i++) {
@@ -7660,7 +7660,7 @@ SeparatorClique::prepareForUnrolling()
 	  error("ERROR: corrupt/wrong PC VE separator file (%s) with respect to current structure/triangulation/command options. Reason %d.\n",veSeparatorFileName,corrupt);
       }
 
-      infoMsg(Low,"VE separator PC generation: %d parent vals satisfying this case.\n",num);
+      infoMsg(IM::Inference, Low,"VE separator PC generation: %d parent vals satisfying this case.\n",num);
 
       // Now create an ConditionalSeparatorTable and insert all
       // of the packed parent values we generated or got above.
@@ -7687,7 +7687,7 @@ SeparatorClique::prepareForUnrolling()
 	    tmpset.insert(foo);
 	}
 #endif
-	if (message(Max+5)) {
+	if (message(Inference, Max+5)) {
 	  printf("Inserting into PC VE separator:"); printRVSetAndValues(stdout,hiddenParents);
 	}
 	// insert current RV values into the separator. 
@@ -7766,7 +7766,7 @@ SeparatorClique::prepareForUnrolling()
       unsigned num = 0;
 
       if (generatingVESeparatorTables == true) {
-	if (message(Low)) {
+	if (message(Inference, Low)) {
 	  float logProdCard = 
 	    log10((double)RV2DRV(dc->allParents[0])->cardinality);
 	  for (unsigned i=1;i<dc->allParents.size();i++) {
@@ -7905,7 +7905,7 @@ SeparatorClique::prepareForUnrolling()
 
       }
 
-      infoMsg(Low,"VE separator PCG generation: %d (parent,child) combinations satisfying this case.\n",num);
+      infoMsg(IM::Inference, Low,"VE separator PCG generation: %d (parent,child) combinations satisfying this case.\n",num);
 
       // now create an ConditionalSeparatorTable and insert all
       // of the packed parent values we generated or got above.
@@ -7914,7 +7914,7 @@ SeparatorClique::prepareForUnrolling()
       for (unsigned i=0;i<num;i++) {
 	parentPacker.unpack(&(packedParentVals.ptr[i*parentPacker.packedLen()]),
 			    hiddenNodeValPtrs.ptr);
-	if (message(Max+5)) {
+	if (message(Inference, Max+5)) {
 	  printf("Inserting into PCG VE separator:"); printRVSetAndValues(stdout,hiddenParents);
 	}
 	// insert current RV values into the separator. 
@@ -8471,7 +8471,7 @@ void ConditionalSeparatorTable::insert(SeparatorClique& origin,
     assert ( numSeparatorValuesUsed <= separatorValues->size());
     if (numSeparatorValuesUsed >= separatorValues->size()) {
       
-      infoMsg(Max+5,"ac-rsz,");
+      infoMsg(Inference, Max+5,"ac-rsz,");
 
       const unsigned old_size = separatorValues->size();
       // TODO: optimize this size re-allocation.
@@ -8546,7 +8546,7 @@ void ConditionalSeparatorTable::insert(SeparatorClique& origin,
     }
     accIndex = *accIndexp;
 
-    infoMsg(Max+5,"inst:ai=%d,ky=%X,",accIndex,*accKey);
+    infoMsg(IM::Inference, Max+5,"inst:ai=%d,ky=%X,",accIndex,*accKey);
 
     // TODO: optimize this check out of loop.
     // if (remDiscreteValuePtrs.size() == 0) {
@@ -8583,7 +8583,7 @@ void ConditionalSeparatorTable::insert(SeparatorClique& origin,
 
   } else {
     accIndex = 0;
-    infoMsg(Max+5,"inst:ai=%d,",accIndex);
+    infoMsg(IM::Inference, Max+5,"inst:ai=%d,",accIndex);
   }
 
 
@@ -8607,7 +8607,7 @@ void ConditionalSeparatorTable::insert(SeparatorClique& origin,
   assert (sv.numRemValuesUsed <= sv.remValues.size());
   if (sv.numRemValuesUsed >= sv.remValues.size()) {
 
-    infoMsg(Max+5,"rm-rsz,u=%d,f=%d,",sv.numRemValuesUsed,sv.remValues.size());
+    infoMsg(IM::Inference, Max+5,"rm-rsz,u=%d,f=%d,",sv.numRemValuesUsed,sv.remValues.size());
 
     // TODO: optimize this growth rate.
     // start small but grow fast.
@@ -8615,7 +8615,7 @@ void ConditionalSeparatorTable::insert(SeparatorClique& origin,
     sv.remValues.resizeAndCopy(origin.remainderValueSpaceManager.nextSizeFrom(sv.remValues.size()));
     origin.remainderValueSpaceManager.setCurrentAllocationSizeIfLarger(sv.remValues.size());
 
-    infoMsg(Max+5,"=%d,",sv.remValues.size());
+    infoMsg(IM::Inference, Max+5,"=%d,",sv.remValues.size());
 
     if (isc_nwwoh_rm_p) {
       // Then the above resize just invalided all sv.iRemHashMap's pointers to keys,
@@ -8663,14 +8663,14 @@ void ConditionalSeparatorTable::insert(SeparatorClique& origin,
 			  sv.numRemValuesUsed,
 			  foundp);
 
-  infoMsg(Max+5,"inst:ky=%X,rii=%d\n",*remKey,*remIndexp);
+  infoMsg(IM::Inference, Max+5,"inst:ky=%X,rii=%d\n",*remKey,*remIndexp);
 
   if (!foundp) {
     // add the values we just used. 
     sv.numRemValuesUsed++;
   } else {
     // already found
-    infoMsg(Max+5,"already found\n");
+    infoMsg(IM::Inference, Max+5,"already found\n");
     fflush(stdout);
     fflush(stderr);
     assert ( 0 );
@@ -8758,7 +8758,7 @@ ConditionalSeparatorTable::ceSeparatorPrune(SeparatorClique& origin)
     // check if we have a zero separator, and if we do, print message.
     // Do this before separator pruning.
     if (originalTotalStateSpace == 0) {
-      infoMsg(IM::Mod,"WARNING: ZERO SEPARATOR: separator with no entries. Final probability will be zero.\n");
+      infoMsg(IM::Inference, IM::Mod,"WARNING: ZERO SEPARATOR: separator with no entries. Final probability will be zero.\n");
       // nothing to prune, so we return.
       return;
     }
@@ -8899,7 +8899,7 @@ ConditionalSeparatorTable::ceSeparatorPrune(SeparatorClique& origin)
       }
     }
 
-    infoMsg(IM::Med,"Separator beam pruning, Max cv = %f, thres = %f. Original sep state space = %d, new sep state space = %d\n",
+    infoMsg(IM::Inference, IM::Med,"Separator beam pruning, Max cv = %f, thres = %f. Original sep state space = %d, new sep state space = %d\n",
 	    maxCEsepValue.valref(),
 	    beamThreshold.valref(),
 	    originalTotalStateSpace,newTotalStateSpace);

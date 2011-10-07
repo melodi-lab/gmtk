@@ -118,6 +118,7 @@ VCID(HGID)
 #define GMTK_ARG_DO_DIST_EVIDENCE
 #define GMTK_ARG_PROB_EVIDENCE
 #define GMTK_ARG_ISLAND
+#define GMTK_ARG_DEBUG_PART_RNG
 #define GMTK_ARG_CLIQUE_TABLE_NORMALIZE
 #define GMTK_ARG_CE_SEP_DRIVEN
 #define GMTK_ARG_MIXTURE_CACHE
@@ -142,8 +143,10 @@ Arg Arg::Args[] = {
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_DOCUMENTATION
 
+#if 0
   Arg("boostVerbosity",Arg::Opt,boostVerbosity,"Verbosity (0 <= v <= 100) during boost verb partitions"),
   Arg("boostRng",Arg::Opt,boostVerbosityRng,"Range to boost verbosity"),
+#endif
 
   // final one to signal the end of the list
   Arg()
@@ -358,6 +361,11 @@ main(int argc,char*argv[])
 	  dcdrng_str);
     exit_program_with_status(0);
   }
+
+  
+  Range* pdbrng = new Range(pdbrng_str,0,0x7FFFFFFF);
+  myjt.setPartitionDebugRange(*pdbrng);
+
 
   struct rusage rus; /* starting time */
   struct rusage rue; /* ending time */
