@@ -1157,7 +1157,7 @@ extern bool ObservationsAllowNan;
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("verbosity",Arg::Opt,modularVerbosity,"Verbosity (0 <= v <= 100) of informational/debugging msgs"),
+  Arg("verbosity",Arg::Opt,modularVerbosity,"Verbosity - coma separated list of m=v, where m is all, default, inference, inference-memory, training, triangulation, boundary, unrolling, or printing; 0 <= v <= 100"),
   Arg("printIntValues",Arg::Opt,RV::alwaysPrintIntegerRVValues,"always print rv values as integer rather than symbols"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
@@ -1175,7 +1175,7 @@ extern bool ObservationsAllowNan;
     copy = strdup(modularVerbosity);
     for (token=strtok(copy, delimiters); token; token=strtok(NULL, delimiters)) {
       (void) IM::setGlbMsgLevel(token);
-      GM_Parms.setMsgLevel(token);
+//      GM_Parms.setMsgLevel(token);
     }
   }
 
@@ -1319,6 +1319,28 @@ static bool  cliquePrintOnlyEntropy = false;
 #else
 #endif
 #endif // defined(GMTK_ARG_ISLAND)
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
+#if defined(GMTK_ARG_DEBUG_PART_RNG)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+  const static char *pdbrng_str="all";
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("debugPartitions",Arg::Opt,pdbrng_str,"Partition range to generate debug output"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#else
+#endif
+#endif // defined(GMTK_ARG_DEBUG_PART_RNG)
+
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/

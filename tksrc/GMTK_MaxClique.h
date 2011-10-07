@@ -1723,7 +1723,7 @@ public:
     // apply factors so far from separators or unassigned nodes.
 
     // if (true || sharedStructure.fSortedAssignedNodes.size() == 0 || message(High)) {
-    if (sharedStructure.fSortedAssignedNodes.size() == 0 || message(High)) {
+    if (sharedStructure.fSortedAssignedNodes.size() == 0 || message(Inference,High)) {
       // let recursive version handle degenerate or message full case
       ceIterateAssignedNodesRecurse(sharedStructure,
 				    cliqueBeamThresholdEstimate,

@@ -143,6 +143,7 @@ VCID(HGID)
 
 /****************************         INFERENCE OPTIONS           ***********************************************/
 #define GMTK_ARG_ISLAND
+#define GMTK_ARG_DEBUG_PART_RNG
 #define GMTK_ARG_CLIQUE_TABLE_NORMALIZE
 #define GMTK_ARG_CE_SEP_DRIVEN
 #define GMTK_ARG_MIXTURE_CACHE
@@ -389,6 +390,10 @@ main(int argc,char*argv[])
   }
 #endif
 
+  
+  Range* pdbrng = new Range(pdbrng_str,0,0x7FFFFFFF);
+  myjt.setPartitionDebugRange(*pdbrng);
+
   // We always do viterbi scoring/option in this program.
   JunctionTree::viterbiScore = true;
 
@@ -457,9 +462,9 @@ main(int argc,char*argv[])
     } else {
       // linear space inference
       unsigned numUsableFrames = myjt.unroll(numFrames);
-      infoMsg(IM::Med,"Collecting Evidence\n");
+      infoMsg(IM::Inference, IM::Med,"Collecting Evidence\n");
       myjt.collectEvidence();
-      infoMsg(IM::Med,"Done Collecting Evidence\n");
+      infoMsg(IM::Inference, IM::Med,"Done Collecting Evidence\n");
       probe = myjt.probEvidence();
       infoMsg(IM::Default,"Segment %d, after CE, viterbi log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
 	     segment,
@@ -472,9 +477,9 @@ main(int argc,char*argv[])
       } else {
 	myjt.setRootToMaxCliqueValue();
 	total_data_prob *= probe;
-	infoMsg(IM::Low,"Distributing Evidence\n");
+	infoMsg(IM::Inference, IM::Low,"Distributing Evidence\n");
 	myjt.distributeEvidence();
-	infoMsg(IM::Low,"Done Distributing Evidence\n");
+	infoMsg(IM::Inference, IM::Low,"Done Distributing Evidence\n");
       }
     }
     

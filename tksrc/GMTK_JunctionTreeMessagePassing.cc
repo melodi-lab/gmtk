@@ -1,3 +1,4 @@
+
 /*-
  * GMTK_JunctionTree.cc
  *     Junction Tree, message passing routines.
@@ -975,18 +976,33 @@ JunctionTree::ceGatherIntoRoot(PartitionStructures& ps,
   if (ps.maxCliquesSharedStructure.size() == 0)
     return;
 
+  unsigned inferenceDebugLevel = IM::glbMsgLevel(IM::Inference);
+  unsigned inferenceMemoryDebugLevel = IM::glbMsgLevel(IM::InferenceMemory);
+
+  if (! partitionDebugRange.contains((int)part_num)) {
+#if 0
+    printf("ceGather [part %u]: lowering inference level to %d\n", 
+	   part_num, IM::glbMsgLevel(IM::DefaultModule));
+#endif
+    IM::setGlbMsgLevel(IM::Inference, IM::glbMsgLevel(IM::DefaultModule));
+    IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
+  }
+
+
   // Now, do partition messages.
   for (unsigned msgNo=0;msgNo < message_order.size(); msgNo ++) {
     const unsigned from = message_order[msgNo].first;
     const unsigned to = message_order[msgNo].second;
-    infoMsg(IM::Med+5,
+    infoMsg(IM::Inference, IM::Med+5,
 	    "CE: gathering into %s,part[%d]: clique %d\n",
 	    part_type_name,part_num,from);
+
     pt.maxCliques[from].
       ceGatherFromIncommingSeparators(ps.maxCliquesSharedStructure[from],
 				      pt.separatorCliques,
 				      ps.separatorCliquesSharedStructure.ptr);
-    infoMsg(IM::Mod,
+  
+    infoMsg(IM::Inference, IM::Mod,
 	    "CE: message %s,part[%d]: clique %d --> clique %d\n",
 	    part_type_name,part_num,from,to);
     pt.maxCliques[from].
@@ -1011,7 +1027,7 @@ JunctionTree::ceGatherIntoRoot(PartitionStructures& ps,
     }
   }
   // collect to partition's root clique
-  infoMsg(IM::Med+5,
+  infoMsg(IM::Inference, IM::Med+5,
 	  "CE: gathering into partition root %s,part[%d]: clique %d\n",
 	  part_type_name,part_num,root);
   pt.maxCliques[root].
@@ -1019,8 +1035,18 @@ JunctionTree::ceGatherIntoRoot(PartitionStructures& ps,
 				    pt.separatorCliques,
 				    ps.separatorCliquesSharedStructure.ptr);
 
-  if (IM::messageGlb(IM::Med+9)) {
+
+  if (IM::messageGlb(IM::InferenceMemory, IM::Med+9)) {
     pt.reportMemoryUsageTo(ps,stdout);
+  }
+
+  if (! partitionDebugRange.contains((int)part_num)) {
+#if 0
+    printf("ceGather [part %u]: raising inference level to %d\n", 
+	   part_num, inferenceDebugLevel);
+#endif
+    IM::setGlbMsgLevel(IM::InferenceMemory, inferenceMemoryDebugLevel);
+    IM::setGlbMsgLevel(IM::Inference, inferenceDebugLevel);
   }
 }
 
@@ -1084,19 +1110,42 @@ JunctionTree::ceSendForwardsCrossPartitions(// previous partition
   if (previous_ps.maxCliquesSharedStructure.size() == 0 || next_ps.maxCliquesSharedStructure.size() == 0)
     return;
 
-  infoMsg(IM::Mod,"CE: message %s,part[%d],clique(%d) --> %s,part[%d],clique(%d)\n",
-	   previous_part_type_name,
-	   previous_part_num,
-	   previous_part_root,
-	   next_part_type_name,
-	   next_part_num,
-	   next_part_leaf);
+  unsigned inferenceDebugLevel = IM::glbMsgLevel(IM::Inference);
+  unsigned inferenceMemoryDebugLevel = IM::glbMsgLevel(IM::InferenceMemory);
+
+  if (! partitionDebugRange.contains((int)next_part_num)) {
+#if 0
+    printf("ceGather [part %u]: lowering inference level to %d\n", 
+	   next_part_num, IM::glbMsgLevel(IM::DefaultModule));
+#endif
+    IM::setGlbMsgLevel(IM::Inference, IM::glbMsgLevel(IM::DefaultModule));
+    IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
+  }
+
+
+  infoMsg(IM::Inference, IM::Mod,"CE: message %s,part[%d],clique(%d) --> %s,part[%d],clique(%d)\n",
+	  previous_part_type_name,
+	  previous_part_num,
+	  previous_part_root,
+	  next_part_type_name,
+	  next_part_num,
+	  next_part_leaf);
   previous_pt.maxCliques[previous_part_root].
     ceSendToOutgoingSeparator(previous_ps.maxCliquesSharedStructure[previous_part_root],
 			      next_pt.separatorCliques[next_ps.separatorCliquesSharedStructure.size()-1],
 			      next_ps.separatorCliquesSharedStructure[next_ps.separatorCliquesSharedStructure.size()-1]);
-  if (IM::messageGlb(IM::Med+9)) {
+
+  if (IM::messageGlb(IM::InferenceMemory, IM::Med+9)) {
     previous_pt.reportMemoryUsageTo(previous_ps,stdout);
+  }
+
+  if (! partitionDebugRange.contains((int)next_part_num)) {
+#if 0
+    printf("ceGather [part %u]: raising inference level to %d\n", 
+	   next_part_num, inferenceDebugLevel);
+#endif
+    IM::setGlbMsgLevel(IM::InferenceMemory, inferenceMemoryDebugLevel);
+    IM::setGlbMsgLevel(IM::Inference, inferenceDebugLevel);
   }
 }
 
@@ -1176,6 +1225,7 @@ JunctionTree::collectEvidence()
     Co.useLISeparator();
 
   for (unsigned part=1;part < inference_it.pt_len(); part ++ ) {
+
     setCurrentInferenceShiftTo(part);
 
     // inference_it.printState(stdout);
@@ -1348,7 +1398,18 @@ JunctionTree::deScatterOutofRoot(// the partition
   if (ps.maxCliquesSharedStructure.size() == 0)
     return;
 
-  infoMsg(IM::Med+5,"DE: distributing out of partition root %s,part[%d]: clique %d\n",
+  unsigned inferenceDebugLevel = IM::glbMsgLevel(IM::Inference);
+  unsigned inferenceMemoryDebugLevel = IM::glbMsgLevel(IM::InferenceMemory);
+
+  if (! partitionDebugRange.contains((int)part_num)) {
+#if 0
+    printf("deScatter [part %u]: lowering inference level to %d\n", part, IM::glbMsgLevel(IM::DefaultModule));
+#endif
+    IM::setGlbMsgLevel(IM::Inference, IM::glbMsgLevel(IM::DefaultModule));
+    IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
+  }
+
+  infoMsg(IM::Inference, IM::Med+5,"DE: distributing out of partition root %s,part[%d]: clique %d\n",
 	  part_type_name,part_num,root);
   pt.maxCliques[root].
     deScatterToOutgoingSeparators(ps.maxCliquesSharedStructure[root],
@@ -1357,20 +1418,30 @@ JunctionTree::deScatterOutofRoot(// the partition
   for (unsigned msgNoP1=message_order.size();msgNoP1 > 0; msgNoP1 --) {
     const unsigned to = message_order[msgNoP1-1].first;
     const unsigned from = message_order[msgNoP1-1].second;
-    infoMsg(IM::Mod,"DE: message %s,part[%d]: clique %d <-- clique %d\n",
+    infoMsg(IM::Inference, IM::Mod,"DE: message %s,part[%d]: clique %d <-- clique %d\n",
 	    part_type_name,part_num,to,from);
     pt.maxCliques[to].
       deReceiveFromIncommingSeparator(ps.maxCliquesSharedStructure[to],
 				      pt.separatorCliques,
 				      ps.separatorCliquesSharedStructure.ptr);
 
-    infoMsg(IM::Med+5,"DE: distributing out of %s,part[%d]: clique %d\n",
+    infoMsg(IM::Inference, IM::Med+5,"DE: distributing out of %s,part[%d]: clique %d\n",
 	    part_type_name,part_num,to);
     pt.maxCliques[to].
       deScatterToOutgoingSeparators(ps.maxCliquesSharedStructure[to],
 				    pt.separatorCliques,
 				    ps.separatorCliquesSharedStructure.ptr);
   }
+
+  if (! partitionDebugRange.contains((int)part_num)) {
+#if 0
+    printf("deScatter [part %u]: raising inference level to %d\n", part, inferenceDebugLevel);
+#endif
+    IM::setGlbMsgLevel(IM::InferenceMemory, inferenceMemoryDebugLevel);
+    IM::setGlbMsgLevel(IM::Inference, inferenceDebugLevel);
+  }
+
+
 }
 
 
@@ -1431,13 +1502,34 @@ JunctionTree::deSendBackwardsCrossPartitions(// previous partition
   if (previous_ps.maxCliquesSharedStructure.size() == 0 || next_ps.maxCliquesSharedStructure.size() == 0)
     return;
 
-  infoMsg(IM::Mod,"DE: message %s,part[%d],clique(%d) <-- %s,part[%d],clique(%d)\n",
+  unsigned inferenceDebugLevel = IM::glbMsgLevel(IM::Inference);
+  unsigned inferenceMemoryDebugLevel = IM::glbMsgLevel(IM::InferenceMemory);
+
+  if (! partitionDebugRange.contains((int)previous_part_num)) {
+#if 0
+    printf("deScatter [part %u]: lowering inference level to %d\n", 
+	   previous_part_num, IM::glbMsgLevel(IM::DefaultModule));
+#endif
+    IM::setGlbMsgLevel(IM::Inference, IM::glbMsgLevel(IM::DefaultModule));
+    IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
+  }
+
+  infoMsg(IM::Inference, IM::Mod,"DE: message %s,part[%d],clique(%d) <-- %s,part[%d],clique(%d)\n",
 	  previous_part_type_name,previous_part_num,previous_part_root,
 	  next_part_type_name,next_part_num,next_part_leaf);
   previous_pt.maxCliques[previous_part_root].
     deReceiveFromIncommingSeparator(previous_ps.maxCliquesSharedStructure[previous_part_root],
 				    next_pt.separatorCliques[next_ps.separatorCliquesSharedStructure.size()-1],
 				    next_ps.separatorCliquesSharedStructure[next_ps.separatorCliquesSharedStructure.size()-1]);
+
+  if (! partitionDebugRange.contains((int)previous_part_num)) {
+#if 0
+    printf("deScatter [part %u]: raising inference level to %d\n", 
+	   previous_part_num, inferenceDebugLevel);
+#endif
+    IM::setGlbMsgLevel(IM::InferenceMemory, inferenceMemoryDebugLevel);
+    IM::setGlbMsgLevel(IM::Inference, inferenceDebugLevel);
+  }
 }
 
 
@@ -1494,8 +1586,8 @@ JunctionTree::deSendBackwardsCrossPartitions(// previous partition
 void
 JunctionTree::distributeEvidence()
 {
-
   for (unsigned part= (inference_it.pt_len()-1) ; part > 0 ; part -- ) {
+
     setCurrentInferenceShiftTo(part);
     
     if (inference_it.at_first_c() && P1.cliques.size() == 0)
@@ -1529,11 +1621,11 @@ JunctionTree::distributeEvidence()
 				   inference_it.cur_li(),
 				   inference_it.cur_nm(),
 				   inference_it.pt_i());
-
   }
 
   setCurrentInferenceShiftTo(0);
   // do the final scatter out of root of initial P partition.
+
   deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
 		     partitionTableArray[inference_it.pt_i()],
 		     inference_it.cur_ri(),
@@ -1701,7 +1793,7 @@ JunctionTree::emIncrement(const logpr probE,
   // than normal EM???") we use the reverse order here.
   for (unsigned part=inference_it.pt_len();part > 0 ; part --) {
     setCurrentInferenceShiftTo(part-1);
-    infoMsg(IM::High-1,
+    infoMsg(IM::Training, IM::High-1,
 	    "EM: accumulating stats for %s,part[%d]\n",
 	    inference_it.cur_nm(),inference_it.pt_i());
     partitionTableArray[inference_it.pt_i()].
@@ -1731,7 +1823,7 @@ JunctionTree::emIncrement(const logpr probE,
   }
 
   while (1) {
-    infoMsg(IM::High-1,
+    infoMsg(IM::Training, IM::High-1,
 	    "EM: accumulating stats for %s,part[%d]\n",
 	    ptps_it.cur_nm(),ptps_it.pt_i());
 
