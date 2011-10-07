@@ -117,6 +117,7 @@ VCID(HGID)
 
 /****************************         INFERENCE OPTIONS           ***********************************************/
 #define GMTK_ARG_ISLAND
+#define GMTK_ARG_DEBUG_PART_RNG
 #define GMTK_ARG_CLIQUE_TABLE_NORMALIZE
 #define GMTK_ARG_CE_SEP_DRIVEN
 #define GMTK_ARG_COMPONENT_CACHE
@@ -304,6 +305,9 @@ main(int argc,char*argv[])
     myjt.printAllJTInfo(jtFileName);
   infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
   ////////////////////////////////////////////////////////////////////
+
+  Range* pdbrng = new Range(pdbrng_str,0,0x7FFFFFFF);
+  myjt.setPartitionDebugRange(*pdbrng);
 
   if (randomizeParams) {
     infoMsg(IM::Default,"WARNING: GMTK is randomizing all trainable parameters and writing them to file 'random.gmp'\n");
