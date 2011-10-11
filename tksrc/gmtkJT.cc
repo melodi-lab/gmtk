@@ -134,8 +134,10 @@ VCID(HGID)
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_DEFINITION
 
+#if 0
 static unsigned boostVerbosity=0;
 const static char *boostVerbosityRng=NULL;
+#endif
 
 Arg Arg::Args[] = {
 
