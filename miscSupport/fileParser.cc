@@ -229,7 +229,8 @@ iDataStreamFile::~iDataStreamFile()
     // that closing a pipe when not at the end causes an error (e.g., mac osx)
     freadUntilEOF(fh);
     if (::pclose(fh) != 0) {
-      warning("WARNING: Can't close pipe '%s %s'.",CPP_Command(),fileName());
+      int err = errno;
+      warning("WARNING: Can't close pipe '%s %s':  %s.",CPP_Command(),fileName(),strerror(err));
     }
   } else {
     if (fclose(fh) != 0) {
