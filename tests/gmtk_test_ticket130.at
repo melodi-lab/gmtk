@@ -13,5 +13,5 @@ gmtkViterbi \
         -strFile params/rescore_sw_40436_B.str \
         -triFile params/rescore_sw_40436_B.str.trifile_fast \
         -deterministic F -veSepWhere 0x6 -veSepLog 10 \
-        -vitValsFile /dev/null -base 3 -lst 100)],[],[ignore])
+        -vitValsFile /dev/null -base 3 -lst 100)],[],[ignore],[ignore])
 AT_CLEANUP
