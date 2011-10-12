@@ -17,6 +17,27 @@ AC_ARG_ENABLE([assertions],
               [AS_HELP_STRING([--disable-assertions],
                               [disable assertion checking @<:@default: no@:>@])],
               [assertions=${enableval}], [assertions=yes])
+AC_ARG_ENABLE([gzip],
+              [AS_HELP_STRING([--disable-gzip],
+                              [disable piping .gz files through gzip @<:@default: no@:>@])],
+              [gzip=${enableval}], [gzip=yes])
+AC_ARG_ENABLE([bzip2],
+              [AS_HELP_STRING([--disable-bzip2],
+                              [disable piping .bz2 files through bzip2 @<:@default: no@:>@])],
+              [bzip2=${enableval}], [bzip2=yes])
+if test x"$gzip" = x"yes"; then
+  AC_DEFINE([ENABLE_GZIP],[1],[Pipe .gz files through gzip])
+fi
+if test x"$bzip2" = x"yes"; then
+  AC_DEFINE([ENABLE_BZIP2],[1],[Pipe .bz2 files through bzip2])
+fi
+AC_ARG_ENABLE([cppIfASCII],
+	      [AS_HELP_STRING([--disable-cppIfASCII],
+                              [disable piping ASCII parameter files through cpp @<:@default: no@:>@])],
+              [cppIfASCII=${enableval}], [cppIfASCII=yes])
+if test x"$cppIfASCII" = x"yes"; then
+  AC_DEFINE([PIPE_ASCII_FILES_THROUGH_CPP],[1],[Pipe ASCII files through cpp])
+fi
 
 AC_ARG_ENABLE([model-checks],
               [AS_HELP_STRING([--disable-model-checks],

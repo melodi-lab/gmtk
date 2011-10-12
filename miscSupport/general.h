@@ -141,6 +141,17 @@ unsigned int numBitsSet(unsigned u);
  */
 const char* CPP_Command();
 
+/*
+ * returns a char* to the gzip command to use.
+ * It returns a string that should not be freed.
+ */
+const char* gzip_Command();
+
+/*
+ * returns a char* to the bzip2 command to use.
+ * It returns a string that should not be freed.
+ */
+const char* bzip2_Command();
 bool freadUntilEOF(FILE *f);
 
 /*
