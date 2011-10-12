@@ -75,25 +75,68 @@ extern "C" {
 #endif
 #endif
 
-#ifdef PIPE_ASCII_FILES_THROUGH_CPP
-iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary, bool _cppIfAscii, const char *const _cppCommandOptions,const char _extraCommentChar)
-  : ioDataStreamFile(_name,_Binary), cppIfAscii(!_Binary && _cppIfAscii), extraCommentChar(_extraCommentChar)
-#else
-iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary,const char _extraCommentChar)
-  : ioDataStreamFile(_name,_Binary),extraCommentChar(_extraCommentChar)
-#endif
+#if defined(PIPE_ASCII_FILES_THROUGH_CPP) || defined(ENABLE_GZIP) || defined(ENABLE_BIZP2)
+
+void iDataStreamFile::initialize()
 {
-  if (_name == NULL)
-    error("Error: Can't open null file for reading.");
-#ifdef PIPE_ASCII_FILES_THROUGH_CPP
+  const char *_name = _fileName.c_str();
+
+#ifdef ENABLE_GZIP
   if (!Binary) {
+    string path = _name;
+    size_t dotPos = path.rfind(".");
+    if (dotPos != string::npos) {
+      size_t extLen = path.length() - dotPos + 1;
+      if (path.compare(dotPos, extLen, ".gz") == 0) {
+	// make sure the file  exists first.
+	if ((fh = ::fopen(_name,"r")) == NULL) {
+	  error("ERROR: unable to open file (%s) for reading",_name);
+	}
+	fclose(fh);
+	string unzipCommand = gzip_Command() + string(" ") + path;
+	piped = true;
+	fh = ::popen(unzipCommand.c_str(), "r");
+	buff = new char[MAXLINSIZEPLUS1];
+	buffp = buff;
+	state = GetNextLine;
+	return;
+      }
+    }
+  }
+#endif
+#ifdef ENABLE_BZIP2
+  if (!Binary) {
+    string path = _name;
+    size_t dotPos = path.rfind(".");
+    if (dotPos != string::npos) {
+      size_t extLen = path.length() - dotPos + 1;
+      if (path.compare(dotPos, extLen, ".bz2")==0) {
+	// make sure the file  exists first.
+	if ((fh = ::fopen(_name,"r")) == NULL) {
+	  error("ERROR: unable to open file (%s) for reading",_name);
+	}
+	fclose(fh);
+	string unzipCommand = bzip2_Command() + string(" ") + path;
+	piped = true;
+	fh = ::popen(unzipCommand.c_str(), "r");
+	buff = new char[MAXLINSIZEPLUS1];
+	buffp = buff;
+	state = GetNextLine;
+	return;
+      }
+    }
+  }
+#endif
+
+  if (!Binary) {
+#if defined(PIPE_ASCII_FILES_THROUGH_CPP)
     if (cppIfAscii) {
       if (extraCommentChar == CPP_DIRECTIVE_CHAR)
 	warning("WARNING: opening file '%s' via cpp but also using char '%c' as a comment, unexpected results may occur",fileName(),extraCommentChar);
 
       string cppCommand = CPP_Command();
-      if (_cppCommandOptions != NULL) {
-	cppCommand = cppCommand + string(" ") + string(_cppCommandOptions);
+      if (cppCommandOptions != NULL) {
+	cppCommand = cppCommand + string(" ") + string(cppCommandOptions);
       }
       if (!strcmp("-",_name)) {
 	fh = ::popen(cppCommand.c_str(),"r");
@@ -134,6 +177,13 @@ iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary,const cha
 	error("Error: Can't open file (%s) for reading.",_name);
       }
     }
+#else
+      if (!strcmp("-",_name)) {
+	fh = stdin;
+      } else if ((fh=fopen(_name,"r")) == NULL) {
+	error("Error: Can't open file (%s) for reading.",_name);
+      }
+#endif
   } else {
     // then this is a binary file. It is important that we 
     // use fopen here to open the file, since if this is a
@@ -144,24 +194,37 @@ iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary,const cha
       error("Error: Can't open file (%s) for reading.",_name);
     }
   }
-#else
-  if (!strcmp("-",_name)) {
-    fh = stdin;
-  } else if ((fh=fopen(_name,"r")) == NULL) {
-    error("Error: Can't open file (%s) for reading.",_name);
-  }
-#endif
   if (!Binary) {
     buff = new char[MAXLINSIZEPLUS1];
     buffp = buff;
     state = GetNextLine;
   }
 }
+#endif
+
+#if defined(PIPE_ASCII_FILES_THROUGH_CPP) || defined(ENABLE_GZIP) || defined(ENABLE_BIZP2)
+iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary, bool _cppIfAscii, const char *const _cppCommandOptions,const char _extraCommentChar)
+  : ioDataStreamFile(_name,_Binary), cppIfAscii(!_Binary && _cppIfAscii), extraCommentChar(_extraCommentChar)
+#else
+iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary,const char _extraCommentChar)
+  : ioDataStreamFile(_name,_Binary),extraCommentChar(_extraCommentChar)
+#endif
+{
+  if (_name == NULL)
+    error("Error: Can't open null file for reading.");
+
+
+#ifdef PIPE_ASCII_FILES_THROUGH_CPP
+  if (!Binary && cppIfAscii) {
+    cppCommandOptions = _cppCommandOptions;
+  }
+#endif
+  initialize();}
 
 iDataStreamFile::~iDataStreamFile()
 {
-#ifdef PIPE_ASCII_FILES_THROUGH_CPP
-  if (cppIfAscii) {
+#if defined(PIPE_ASCII_FILES_THROUGH_CPP) || defined(ENABLE_GZIP) || defined(ENABLE_BIZP2)
+  if (cppIfAscii || piped) {
     // first, scan until end of file since sometimes it appears
     // that closing a pipe when not at the end causes an error (e.g., mac osx)
     freadUntilEOF(fh);
@@ -295,9 +358,10 @@ iDataStreamFile::prepareNext()
 }
 
 
-void iDataStreamFile::rewind()
+void 
+iDataStreamFile::rewind()
 {
-  assert ( Binary || ! cppIfAscii );
+  assert ( Binary || ! (cppIfAscii || piped) );
   if (::fseek (fh, 0L, SEEK_SET) != 0)
     error("ERROR: trouble seeking to beginning of file '%s', %s\n",
 	  fileName(),strerror(errno));
@@ -305,6 +369,12 @@ void iDataStreamFile::rewind()
   state = GetNextLine;
 }
 
+
+int
+iDataStreamFile::fseek ( long offset , int origin ) { 
+  assert ( Binary || ! (cppIfAscii || piped) );
+  return(::fseek(fh,offset,origin)); 
+}
 
 bool 
 iDataStreamFile::readChar(char& c, const char *msg) 
