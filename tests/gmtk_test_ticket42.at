@@ -34,7 +34,7 @@ AT_DATA([obs2.asc],[0 0 0.558700 0.480687 0.564081
 2 3 0.935048 0.275441 0.322006
 2 4 0.013628 0.820099 0.743958
 ])
-AT_CHECK([obs-create 3 0 obs3.pfile obs1.asc obs2.asc],[],[])
+AT_CHECK([obs-create -nf 3 -ni 0 -o obs3.pfile -i1 obs1.asc -i2 obs2.asc],[],[])
 AT_CHECK([obs-concat -i1 obs3.pfile],[],
 [Processing sentence 0 of file obs3.pfile
 0 0 0.799279 0.199117 0.465240
