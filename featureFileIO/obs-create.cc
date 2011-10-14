@@ -133,6 +133,7 @@ Arg Arg::Args[] = {
   Arg()
 };
 
+int
 main(int argc, char *argv[]) {
 
   bool parse_was_ok = Arg::parse(argc,(char**)argv);
