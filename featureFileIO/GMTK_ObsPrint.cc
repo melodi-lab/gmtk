@@ -34,6 +34,19 @@
 
 */
 
+#ifdef HAVE_CONFIG_H
+
+#include <config.h>
+static const char * gmtk_version_id = PACKAGE_STRING;
+#ifdef HAVE_HG_H
+#include "hgstamp.h"
+#endif
+
+#else 
+// TODO: automate the process of updating this string.
+static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 2004";
+#endif
+
 #include <cstdlib>
 #include <cstdio>
 #include <cerrno>
@@ -465,6 +478,7 @@ unsigned actionIfDiffNumSents[MAX_OBJECTS]    = {SEGMATCH_TRUNCATE_FROM_END,SEGM
 char* perStreamTransforms[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};   // 
 char* postTransforms                   = NULL;
 
+bool printVersion = false;
 int  debug_level = 0;
 bool dontPrintFrameID = false;
 bool quiet = false;
@@ -623,6 +637,7 @@ Arg Arg::Args[] = {
   Arg("usage", Arg::Opt, Usage_Str, "Print usage information about one of the following topics: {norm, gauss, klt, addsil}"),
   //  Arg("help",  Arg::Tog, help,  "Print this message. Repeat this flag for more info."),
   Arg("help",  Arg::Help, help,  "Print this message. Add an argument from 1 to 5 for increasing help info."),
+  Arg("version", Arg::Tog, printVersion, "Print GMTK version and exit."),
   //  Arg("usageInfoLevel",  Arg::Opt, Usage_Info_Level,  "Amount of help information to print on a scale from 1 to 5 ranked by importance. (0 means this value is not used)"),
   // The argumentless argument marks the end of the above list.
   Arg()
@@ -679,6 +694,15 @@ int main(int argc, const char *argv[]) {
 
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
+  }
+
+  if (printVersion) {
+#ifdef HAVE_CONFIG_H
+    printf("%s (Mercurial id: %s)\n",gmtk_version_id,HGID);
+#else
+    printf("%s\n", gmtk_version_id);
+#endif
+    exit(0);
   }
 
 
