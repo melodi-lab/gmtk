@@ -158,7 +158,9 @@ NameCollection::write(oDataStreamFile& os)
 void
 NameCollection::fillMxTable()
 {
+#if 0
   infoMsg(IM::Huge,"NameCollection::fillMxTable\n");
+#endif
 
   if (mxTable.size() >= table.size())
     return;
