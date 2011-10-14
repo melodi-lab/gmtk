@@ -3,6 +3,7 @@ syntax: glob
 *~
 #*#
 *.deps
+*.exe
 {Makefile,config.h}.in
 *.a
 *.o
