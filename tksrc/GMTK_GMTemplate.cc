@@ -1313,7 +1313,7 @@ computeUnrollParameters(const unsigned numFrames,
   // Since M>=1 and S>=1, we can check both here by making sure that T is at
   // least p+e+M*c
   if ( T < p + e + M*c ) {
-    infoMsg(Info,"Unrolling Incompatibility: Trying to unroll segment with only %d frames using template of [P=%d,C=%d,E=%d] frames, but with M=%d,S=%d, minimum segment frame length is P+M*C+E=%d\n",T,p,c,e,M,S,p+e+(M+S)*c );
+    infoMsg(Info,"Unrolling Incompatibility: Trying to unroll segment with only %d frames using template of [P=%d,C=%d,E=%d] frames, but with M=%d,S=%d, minimum segment frame length is P+M*C+E=%d\n",T,p,c,e,M,S,p+e+M*c );
     return false;
   }
 
