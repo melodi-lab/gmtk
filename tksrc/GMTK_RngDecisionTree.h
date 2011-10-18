@@ -181,7 +181,8 @@ protected:
 		      string leafNodeVal 
 		      );
 
-    leafNodeValType evaluateFormula(const vector< RV* >& variables,
+    leafNodeValType evaluateFormula(string name,
+				    const vector< RV* >& variables,
 				    const RV* rv = NULL);
 
     void write(oDataStreamFile& os); 

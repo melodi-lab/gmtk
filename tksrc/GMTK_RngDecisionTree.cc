@@ -16,6 +16,14 @@
  *
  */
 
+
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
+
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
@@ -38,15 +46,7 @@
 #include "GMTK_PackCliqueValue.h"
 #include "GMTK_RngDecisionTree.h"
 
-
-#if HAVE_CONFIG_H
-#include <config.h>
-#endif
-#if HAVE_HG_H
-#include "hgstamp.h"
-#endif
 VCID(HGID)
-
 
 
 /////////////////////////////////////////////////////////////////////
@@ -1083,6 +1083,7 @@ RngDecisionTree::EquationClass::EquationClass()
  */
 leafNodeValType 
 RngDecisionTree::EquationClass::evaluateFormula(
+        string name,
 	const vector< RV* >& variables,
 	const RV* const rv
 )
@@ -1104,7 +1105,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
 
     command = GET_COMMAND(commands[crrnt_cmnd]); 
 
-    const char* const missingParentErrorString = "ERROR: Reference to non-existant parent variable in formula. Asking for parent %d but only %d parents are available.\n";
+    const char* const missingParentErrorString = "ERROR: Reference to non-existant parent variable in formula in DT %s. Asking for parent %d but only %d parents are available.\n";
 
     switch (command) {
 	
@@ -1115,7 +1116,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_PUSH_CARDINALITY_PARENT:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
         if (operand >= variables.size()) {	
-          error(missingParentErrorString,operand,variables.size());
+          error(missingParentErrorString,name.c_str(),operand,variables.size());
         }
         stack.push_back( (variables[operand]->discrete() ? 
           RV2DRV(variables[operand])->cardinality : 0) );
@@ -1124,7 +1125,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_PUSH_PARENT_VALUE:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
         if (operand >= variables.size()) {	
-          error(missingParentErrorString,operand,variables.size());
+          error(missingParentErrorString,name.c_str(),operand,variables.size());
         }
         stack.push_back( RV2DRV(variables[operand])->discrete() ? 
           RV2DRV(variables[operand])->val : 0 );	
@@ -1133,7 +1134,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_PUSH_PARENT_VALUE_MINUS_ONE:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
         if (operand >= variables.size()) {	
-          error(missingParentErrorString,operand,variables.size());
+          error(missingParentErrorString,name.c_str(),operand,variables.size());
         }
         stack.push_back( RV2DRV(variables[operand])->discrete() ? 
           (RV2DRV(variables[operand])->val-1) : 0 );	
@@ -1142,7 +1143,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_PUSH_PARENT_VALUE_PLUS_ONE:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
         if (operand >= variables.size()) {	
-          error(missingParentErrorString,operand,variables.size());
+          error(missingParentErrorString,name.c_str(),operand,variables.size());
         }
         stack.push_back( RV2DRV(variables[operand])->discrete() ? 
           (RV2DRV(variables[operand])->val+1) : 0 );	
@@ -1155,7 +1156,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_PUSH_MAX_VALUE_PARENT:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
         if (operand >= variables.size()) {	
-          error(missingParentErrorString,operand,variables.size());
+          error(missingParentErrorString,name.c_str(),operand,variables.size());
         }
         stack.push_back( (variables[operand]->discrete() ? 
           (RV2DRV(variables[operand])->cardinality - 1) : 0) );
@@ -2882,7 +2883,7 @@ leafNodeValType RngDecisionTree::queryRecurse(const vector < RV* >& arr,
     return (*(n->ln_c().function_ptr))(arr,rv);
   } else if  (n->nodeType == LeafNodeEquation) {
     leafNodeValType answer;
-    answer = n->ln_e().equation.evaluateFormula( arr, rv );
+    answer = n->ln_e().equation.evaluateFormula( name(), arr, rv );
     return(answer);
   } else if (n->nodeType == NonLeafNodeArray) {
     assert ( n->nln_a().ftr < int(arr.size()) );
@@ -3234,7 +3235,7 @@ bool RngDecisionTree::testFormula(
     error("   PARSE ERROR: %s", error_message );
   }
 
-  answer = node.ln_e().equation.evaluateFormula( variables, child );
+  answer = node.ln_e().equation.evaluateFormula( name(), variables, child );
   printf("   Answer: %d   0x%x\n", answer, answer);
 
   if (answer == desired_answer) {
