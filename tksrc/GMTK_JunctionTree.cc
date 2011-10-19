@@ -3565,11 +3565,13 @@ JunctionTree::unroll(const unsigned int numFrames,
 					   modifiedTemplateMinUnrollAmount,
 					   numUsableFrames,
 					   frameStart))
-    error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, different template, or decrease M,S if >1.\n",
+    error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use segments of at least P+M*C+E = %d frames, different template, or decrease M,S if >1. You can identify which segment(s) in the input file(s) are too short with the command \"obs-info -p -i1 file1 ... | awk '$2 < %d {print $1}'\"\n",
 	  numFrames,
 	  fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
 	  fp.numFrames(),
-	  gm_template.M,gm_template.S);
+	  gm_template.M,gm_template.S, 
+	  fp.numFramesInP() + gm_template.M * fp.numFramesInC() + fp.numFramesInE(),
+	  fp.numFramesInP() + gm_template.M * fp.numFramesInC() + fp.numFramesInE());
   const int numCoPartitionTables = modifiedTemplateMaxUnrollAmount+1;
   const int numCoPartitionStructures= modifiedTemplateMinUnrollAmount+1;
   const int numPartitionStructures= modifiedTemplateMinUnrollAmount+3;
