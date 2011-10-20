@@ -181,7 +181,7 @@ protected:
 		      string leafNodeVal 
 		      );
 
-    leafNodeValType evaluateFormula(string name,
+    leafNodeValType evaluateFormula(RngDecisionTree &dt,
 				    const vector< RV* >& variables,
 				    const RV* rv = NULL);
 
