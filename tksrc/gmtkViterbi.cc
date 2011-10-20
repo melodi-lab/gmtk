@@ -144,6 +144,7 @@ VCID(HGID)
 /****************************         INFERENCE OPTIONS           ***********************************************/
 #define GMTK_ARG_ISLAND
 #define GMTK_ARG_DEBUG_PART_RNG
+#define GMTK_ARG_DEBUG_INCREMENT
 #define GMTK_ARG_CLIQUE_TABLE_NORMALIZE
 #define GMTK_ARG_CE_SEP_DRIVEN
 #define GMTK_ARG_MIXTURE_CACHE
