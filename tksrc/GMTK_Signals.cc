@@ -19,6 +19,7 @@
 #include "GMTK_Signals.h" 
 #include "error.h"
 #include "general.h"
+#include "debug.h"
 
 #include <stdio.h>     /* standard I/O functions                         */
 #include <signal.h>    /* signal name macros, and the signal() prototype */
@@ -27,6 +28,7 @@
 // in the std namespace
 volatile bool sigterminate = false;
 
+int debugIncrement = 1;
 
 /*-
  *-----------------------------------------------------------------------
@@ -49,9 +51,22 @@ volatile bool sigterminate = false;
  */
 void catch_sigusr1(int sig_num)
 {
-  // Display warning 
-  fprintf(stderr, "GMTK received sigusr1, terminating...\n");
-  sigterminate = true;
+  unsigned debugLevel = IM::glbMsgLevel(IM::Inference) + debugIncrement; 
+  if (debugLevel > IM::Max) debugLevel = IM::Max;
+  IM::setGlbMsgLevel(IM::Inference, debugLevel);
+  //fprintf(stderr, " +++ %u\n", debugLevel);
+}
+
+
+void catch_sigusr2(int sig_num)
+{
+  unsigned debugLevel = IM::glbMsgLevel(IM::Inference);
+  if (debugLevel >= debugIncrement)
+    debugLevel -= debugIncrement;
+  else
+    debugLevel = 0;
+  IM::setGlbMsgLevel(IM::Inference, debugLevel);
+  //fprintf(stderr, " --- %u\n", debugLevel);
 }
 
 
@@ -112,6 +127,7 @@ void InstallSignalHandlers()
   sigterminate = false;
 
   signal(SIGUSR1, catch_sigusr1);
+  signal(SIGUSR2, catch_sigusr2);
   signal(SIGXCPU, catch_sigxcpu);
 }
 
