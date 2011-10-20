@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sstream>
 #include <vector>
 
 #include "error.h"
@@ -317,6 +318,14 @@ RngDecisionTree::read(iDataStreamFile& is)
   //////////////////////////////////////////////////////////////////////
   else {
 
+    // I think the comment above is wrong - I think the presence of an
+    // integer indicates that the DT is not iterable, but it could be
+    // inline in the master file or in an external file. I'm going to 
+    // set the DT's dtFileName here to make it available for error 
+    // reporting. I think the code uses dtFile == NULL to determine
+    // that a DT is non-iterable, so hopefully this will be safe.  - Richard
+    
+    dtFileName = is.fileName(); // for ticket #182
     if (_numFeatures < 0) {
       error("ERROR: in DT named '%s', file '%s' line %d, decision tree must have >= 0 features",
       name().c_str(), is.fileName(),is.lineNo());
@@ -1083,7 +1092,7 @@ RngDecisionTree::EquationClass::EquationClass()
  */
 leafNodeValType 
 RngDecisionTree::EquationClass::evaluateFormula(
-        string name,
+        RngDecisionTree &dt,
 	const vector< RV* >& variables,
 	const RV* const rv
 )
@@ -1096,6 +1105,16 @@ RngDecisionTree::EquationClass::evaluateFormula(
   unsigned val, number, position, bitwidth;
   unsigned mask_1, mask_2;
 
+#if 0
+  //  if (dt.iterable())
+  fprintf(stderr, "DT %s in file '%s' %d of %u. curName '%s' File is %s\n",
+	  dt.name().c_str(), 
+	  dt.dtFileName.c_str(),
+	  dt.dtNum, dt.numDTs,
+	  dt.curName.c_str(),
+	  dt.dtFile ? dt.dtFile->fileName() : "(none)");
+#endif
+
   stack.clear();
 
   for (crrnt_cmnd = 0, 
@@ -1105,8 +1124,20 @@ RngDecisionTree::EquationClass::evaluateFormula(
 
     command = GET_COMMAND(commands[crrnt_cmnd]); 
 
-    const char* const missingParentErrorString = "ERROR: Reference to non-existant parent variable in formula in DT %s. Asking for parent %d but only %d parents are available.\n";
+    string dtSourceString;
+    if (dt.iterable()) {
+      dtSourceString.append(dt.dtFile->fileName());
+      dtSourceString.append("(");
+      dtSourceString.append(dt.curName + ") #");
+      stringstream out;
+      out << dt.dtNum;
+      dtSourceString.append(out.str());
+    }
 
+    const char* const missingParentErrorString = "ERROR: Reference to non-existant parent variable in formula in DT %s in %s. Asking for parent %d but only parents 0 through %d are available.\n";
+    //    const char* const dtSourceFile = dt.dtFile ? dtSourceString.c_str() : "master file";
+    const char* const dtSourceFile = dt.iterable() ? dtSourceString.c_str() : 
+                                                     dt.dtFileName.c_str();
     switch (command) {
 	
       case COMMAND_PUSH_CARDINALITY_CHILD:
@@ -1116,7 +1147,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_PUSH_CARDINALITY_PARENT:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
         if (operand >= variables.size()) {	
-          error(missingParentErrorString,name.c_str(),operand,variables.size());
+          error(missingParentErrorString,dt.name().c_str(), dtSourceFile,operand,variables.size()-1);
         }
         stack.push_back( (variables[operand]->discrete() ? 
           RV2DRV(variables[operand])->cardinality : 0) );
@@ -1125,7 +1156,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_PUSH_PARENT_VALUE:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
         if (operand >= variables.size()) {	
-          error(missingParentErrorString,name.c_str(),operand,variables.size());
+          error(missingParentErrorString,dt.name().c_str(), dtSourceFile,operand,variables.size()-1);
         }
         stack.push_back( RV2DRV(variables[operand])->discrete() ? 
           RV2DRV(variables[operand])->val : 0 );	
@@ -1134,7 +1165,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_PUSH_PARENT_VALUE_MINUS_ONE:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
         if (operand >= variables.size()) {	
-          error(missingParentErrorString,name.c_str(),operand,variables.size());
+          error(missingParentErrorString,dt.name().c_str(), dtSourceFile,operand,variables.size()-1);
         }
         stack.push_back( RV2DRV(variables[operand])->discrete() ? 
           (RV2DRV(variables[operand])->val-1) : 0 );	
@@ -1143,7 +1174,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_PUSH_PARENT_VALUE_PLUS_ONE:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
         if (operand >= variables.size()) {	
-          error(missingParentErrorString,name.c_str(),operand,variables.size());
+          error(missingParentErrorString,dt.name().c_str(), dtSourceFile,operand,variables.size()-1);
         }
         stack.push_back( RV2DRV(variables[operand])->discrete() ? 
           (RV2DRV(variables[operand])->val+1) : 0 );	
@@ -1156,7 +1187,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_PUSH_MAX_VALUE_PARENT:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
         if (operand >= variables.size()) {	
-          error(missingParentErrorString,name.c_str(),operand,variables.size());
+          error(missingParentErrorString,dt.name().c_str(), dtSourceFile,operand,variables.size()-1);
         }
         stack.push_back( (variables[operand]->discrete() ? 
           (RV2DRV(variables[operand])->cardinality - 1) : 0) );
@@ -2883,7 +2914,7 @@ leafNodeValType RngDecisionTree::queryRecurse(const vector < RV* >& arr,
     return (*(n->ln_c().function_ptr))(arr,rv);
   } else if  (n->nodeType == LeafNodeEquation) {
     leafNodeValType answer;
-    answer = n->ln_e().equation.evaluateFormula( name(), arr, rv );
+    answer = n->ln_e().equation.evaluateFormula( *this, arr, rv );
     return(answer);
   } else if (n->nodeType == NonLeafNodeArray) {
     assert ( n->nln_a().ftr < int(arr.size()) );
