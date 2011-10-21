@@ -102,6 +102,86 @@ RAND rnd(false);
 GMParms GM_Parms;
 ObservationMatrix globalObservationMatrix;
 
+
+/*
+ *  To read the file containing the HMM names. Note that this file also contains 
+ *  the size of each HMM (i.e. number of states in the HMM) 
+ *
+ */
+void
+read_and_parse_hmm_list_file(char *hmmListFileName,vector<string> &hmm_names,
+			     vector<int> &numStates, vector<int> &enable, bool endis){
+  printf("Reading HMM Names from %s\n",hmmListFileName);
+  fflush(stdout);
+  iDataStreamFile iif(hmmListFileName,false,false);
+  int length;
+  iif.read(length,"Can't read hmm names list length");
+
+  hmm_names.resize(length);
+  numStates.resize(length);
+  enable.resize(length);
+  for (int i=0;i<length;i++) {
+    iif.read(hmm_names[i],"Can't read hmm names");
+    iif.read(numStates[i],"Can't read number of states");
+    if (endis) iif.read(enable[i],"Can't read enable/disable information");
+    else enable[i] = 1; // if there is no info, then simply enable. 
+    //    printf ("%d\n",enable[i]);
+  }
+}
+
+
+/*
+ *  To read the file containing the HTK Header information and write this out
+ *  as a header to the output parameter file. 
+ *
+ */
+void 
+read_header_and_writeout(oDataStreamFile& os,char *htkHeaderFile){
+
+  iDataStreamFile iif(htkHeaderFile,false,false);
+  vector<string> header;
+  header.resize(100); // max number of lines in header = 100.
+
+  string tmp;
+  unsigned int counter = 0;
+  do{
+    iif.readStringUntil(tmp,'\n',false,
+			"Read HTK Header: Unable to read string in file");
+    header[counter++] = tmp;
+  }while ((iif.prepareNext()));
+  
+  for (unsigned int ii = 0;ii < counter;ii++) {
+    os.write(header[ii]);
+    os.nl();
+  }
+}
+
+/*
+ *  To read the file containing the HTK Footer information and write this out
+ *  as a footer to the output parameter file. 
+ *
+ */
+void 
+read_footer_and_writeout(oDataStreamFile& os,char *htkFooterFile){
+
+  iDataStreamFile iif(htkFooterFile,false,false);
+  vector<string> header;
+  header.resize(100); // max number of lines in header = 100.
+
+  string tmp;
+  unsigned int counter = 0;
+  do{
+    iif.readStringUntil(tmp,'\n',false,
+			"Read HTK Footer: Unable to read string in file");
+    header[counter++] = tmp;
+  }while ((iif.prepareNext()));
+  
+  for (unsigned int ii = 0;ii < counter;ii++) {
+    os.write(header[ii]);
+    os.nl();
+  }
+}
+
 int
 main(int argc,char*argv[])
 {
@@ -181,9 +261,31 @@ main(int argc,char*argv[])
   if (outputMasterFile != NULL) {
     GM_Parms.write(outputMasterFile,cppCommandOptions);
   }
+
   if (outputTrainableParameters != NULL) {
+
     oDataStreamFile of(outputTrainableParameters,binOutputTrainableParameters);
-    GM_Parms.writeTrainable(of);
+
+    if (htkoutputTrainableParameters) {
+      printf("Writing Parameters in HTK format\n");
+      fflush(stdout);
+      vector<string> hmm_names;
+      vector<int> numStates;
+      vector<int> enable;
+      if (hmmListFileName != NULL)
+	read_and_parse_hmm_list_file(hmmListFileName,hmm_names,
+				     numStates,enable,clusterHMMs);
+      if (htkHeaderFile != NULL)
+	read_header_and_writeout(of,htkHeaderFile);
+            
+      GM_Parms.writeTrainableHTK(of,transitionMatrixName,triphoneCollectionName,
+				 hmm_names,numStates,enable,teeModelforsp);
+      if (htkFooterFile != NULL)
+	read_footer_and_writeout(of,htkFooterFile);
+
+    }
+    else  
+      GM_Parms.writeTrainable(of);
   }
 
   exit_program_with_status(0);

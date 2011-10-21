@@ -102,6 +102,7 @@ public:
   // write out the basic parameters, starting at the current
   // file position.
   void write(oDataStreamFile& os);
+  void writeHTK(oDataStreamFile& os);
 
 
   //////////////////////////////////

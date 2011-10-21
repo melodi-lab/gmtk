@@ -284,6 +284,47 @@ Dense1DPMF::write(oDataStreamFile& os)
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * Dense1DPMF::writeHTK(is)
+ *      write out distribution to file 'os'. 
+ *      the data probs are stored on disk as doubles,  NOT in log domain.
+ * 
+ * Results:
+ *      No results.
+ *
+ * Side Effects:
+ *      No effectcs other than  moving the file pointer of os.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+Dense1DPMF::writeHTK(oDataStreamFile& os)
+{
+  assert ( basicAllocatedBitIsSet() );
+  NamedObject::writeHTK(os); os.nl();
+  os.write("  <Mixture>");
+  os.write(pmf.len(),"Dense1DPMF::write, distribution length");
+
+  if (smoothingType == DirichletConstVal) {
+    os.write(DirichletConstStr);
+    os.write(dirichletAlpha);
+    os.nl();
+  } else if (smoothingType == DirichletTableVal) {
+    os.write(DirichletTableStr);
+    os.write(dirichletTable->name());
+    os.nl();
+  }
+
+  normalize();
+  for (int i=0;i<pmf.len();i++) {
+    // convert out of log domain and write out.
+    os.writeDouble(pmf[i].unlog(),"Dense1DPMF::write, writing prob");
+  }
+  os.nl();
+}
+
+
 
 
 

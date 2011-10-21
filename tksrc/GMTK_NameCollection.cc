@@ -134,6 +134,69 @@ NameCollection::write(oDataStreamFile& os)
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * NameCollection::writeHTK(os)
+ *      write out data to file 'os' in HTK format. 
+ * 
+ * Results:
+ *      No results.
+ *
+ * Side Effects:
+ *      No effects other than  moving the file pointer of os.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+NameCollection::writeHTK(oDataStreamFile& os,char *triphoneCollectionName,
+                         vector<string> hmm_names,vector<int> numStates,
+                         vector<int> enable)
+{
+
+  /*printf("Printing %s\n",_name.c_str());
+    fflush(stdout); */
+
+
+  //  int num_of_states = 3;
+  unsigned int counter = 0;
+  unsigned int ptr = 0;
+  char buf[256];
+
+  if (_name == triphoneCollectionName){
+
+    while (ptr < table.size()){
+      assert(counter < numStates.size());
+      assert(counter < hmm_names.size());
+      assert(counter < enable.size());
+
+      int activeStates = numStates[counter];
+      if (enable[counter] == 1) {
+        sprintf(buf,"~h \"%s\"",hmm_names[counter].c_str());
+        os.write(buf);os.nl();
+        os.write("<BeginHMM>");os.nl();
+        sprintf(buf,"\t<NumStates> %d",activeStates + 2);
+        os.write(buf);os.nl();
+        for (int ii = 0; ii < activeStates;ii++){
+          sprintf(buf,"\t<State> %d",ii + 2);
+          os.write(buf);os.nl();
+          os.write("\t\t~s");
+          sprintf(buf,"\"%s\"",table[ptr++].c_str());
+          os.write(buf);os.nl();
+        }
+        sprintf(buf,"\t~t \"trP_%d\"",counter);
+        os.write(buf);os.nl();
+        os.write("<EndHMM>");os.nl();
+        os.nl();
+      }
+      else 
+        ptr += activeStates;
+      counter++;
+    }
+
+  }
+}
+
+
 
 
 /*-

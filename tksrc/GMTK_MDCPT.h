@@ -149,6 +149,8 @@ public:
   // read/write basic parameters
   void read(iDataStreamFile& is);
   void write(oDataStreamFile& os);
+  void writeHTK(oDataStreamFile& os,char *transitionMatrixName,
+              vector<int> numStates, bool teeModelforsp);
 
   //////////////////////////////////
   // Public interface support for EM

@@ -315,12 +315,28 @@ extern bool ObservationsAllowNan;
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
   static char *outputTrainableParameters=NULL;
+  static char *transitionMatrixName=NULL;
+  static char *triphoneCollectionName=NULL;
+  static char *hmmListFileName=NULL;
+  static char *htkHeaderFile=NULL;
+  static char *htkFooterFile=NULL;
   static bool binOutputTrainableParameters=false;
+  static bool htkoutputTrainableParameters=false;
+  static bool teeModelforsp=false;
+  static bool clusterHMMs=false;
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   Arg("outputTrainableParameters",Arg::Opt,outputTrainableParameters,"File to place only and all trainable output parametes"),
+  Arg("htkOutputTrainableParameters",Arg::Opt,htkoutputTrainableParameters,"should the output trianable parameters be written in htk format"),
   Arg("binOutputTrainableParameters",Arg::Opt,binOutputTrainableParameters,"Binary condition of output trainable parameters?"),
+  Arg("transitionMatrixName",Arg::Opt,transitionMatrixName,"Name of the dense CPT that holds the transition matrix."),
+  Arg("hmmListFileName",Arg::Opt,hmmListFileName,"File that contains the list of HMM names"),
+  Arg("triphoneCollectionName",Arg::Opt,triphoneCollectionName,"Name of the triphone collection that contains all tieing information"),
+  Arg("htkHeaderFile",Arg::Opt,htkHeaderFile,"File Containing the HTK HMM Definition information"),
+  Arg("htkFooterFile",Arg::Opt,htkFooterFile,"File Containing all the footer information, e.g., the zero HMM definition"),
+  Arg("teeModelforsp",Arg::Opt,teeModelforsp,"Setting this to true will cause a tee model for short pause (sp)"),
+  Arg("clusterHMMs",Arg::Opt,clusterHMMs,"Setting this to true will cause the system to only write the HMM for which the enable field is true"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
  

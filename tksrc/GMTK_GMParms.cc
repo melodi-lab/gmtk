@@ -1640,6 +1640,18 @@ GMParms::writeDPmfs(oDataStreamFile& os)
   os.nl();
 }
 
+// same as writeDPmfs, but writes the dpmfs in HTK format. 
+void 
+GMParms::writeDPmfsHTK(oDataStreamFile& os)
+{
+  os.nl();
+  for (unsigned i=0;i<dPmfs.size();i++) {
+    // first write the count
+    os.write("~m");
+    dPmfs[i]->writeHTK(os);
+  }
+  os.nl();
+}
 
 
 void 
@@ -1701,6 +1713,47 @@ GMParms::writeMeans(oDataStreamFile& os)
 
 
   assert ( used == index );
+  os.nl();
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * writeMeansAndCovarsHTK
+ *      writes out the means and variances in HTK format. 
+ * 
+ * Preconditions:
+ *      markUsedMixtureComponents() should have been called immediately before.
+ *
+ * Postconditions:
+ *      one
+ *
+ * Side Effects:
+ *      all "used" parameters are written out.
+ *
+ * Results:
+ *      nil.
+ *
+ *-----------------------------------------------------------------------
+ */
+void 
+GMParms::writeMeansAndCovarsHTK(oDataStreamFile& os)
+{
+  // first write the means. 
+  for (unsigned i=0;i<means.size();i++) {
+    if (means[i]->emUsedBitIsSet()) {
+      os.write("~u");
+      means[i]->writeHTK(os);
+    }
+  }
+
+  // next write the covars. 
+  for (unsigned i=0;i<covars.size();i++) {
+    if (covars[i]->emUsedBitIsSet()) {
+      os.write("~v");
+      covars[i]->writeHTK(os);
+    }
+  }  
   os.nl();
 }
 
@@ -1968,6 +2021,58 @@ GMParms::writeMdCpts(oDataStreamFile& os)
   os.nl();
 }
 
+/*-
+ *-----------------------------------------------------------------------
+ * writeMdCptsHTK
+ *
+ *   Writes out all the MDCPTs in the global object in HTK format. If there are
+ *   any internal pre-defined CPTs in this set, then they are
+ *   assumed to be kept at the beginning of the array, and are 
+ *   not written out (since they are automatically created anew each
+ *   time the program loads). See routine loadGlobal() for more details.
+ * 
+ * Preconditions:
+ *      expects the name of the CPT to be specified by the user. 
+ *
+ * Postconditions:
+ *      one
+ *
+ * Side Effects:
+ *      only the Transition Matrix is written out. 
+ *
+ * Results:
+ *      nil.
+ *
+ *-----------------------------------------------------------------------
+ */
+void 
+GMParms::writeMdCptsHTK(oDataStreamFile& os,char *transitionMatrixName,
+			vector<int> numStates,bool teeModelforsp)
+{
+  //os.nl(); os.writeComment("Dense CPTs");os.nl();
+  // leave out the 1st one (ie., the -1) as it is an internal
+  // object. See routine loadGlobal()
+  //os.write(mdCpts.size()-1,"num Dense CPTs"); os.nl();
+
+  // Next, get a pointer to the unity score CPT that we should not
+  // write out.  Note that it potentially might not be at the end of
+  // the array since we might have done automatic allocation of MDCPTs
+  // when reading in the .str file.
+
+  const string usname = string(USMDCPT_NAME);
+  assert (mdCptsMap.find(usname) != mdCptsMap.end());
+  const unsigned idx = mdCptsMap[string(USMDCPT_NAME)];
+  assert ( idx < mdCpts.size() );
+  USCPT *uscpt = (USCPT*) mdCpts[idx];
+
+  for (unsigned i=0;i<mdCpts.size();i++) {
+    if (mdCpts[i] == uscpt)
+      continue;
+    mdCpts[i]->writeHTK(os,transitionMatrixName,numStates,teeModelforsp);
+  }
+  os.nl();
+}
+
 
 /*-
  *-----------------------------------------------------------------------
@@ -2193,6 +2298,22 @@ GMParms::writeMixtures(oDataStreamFile& os)
 }
 
 
+void 
+GMParms::writeMixturesHTK(oDataStreamFile& os)
+{
+
+  // Leave out the first two (ie., the -2) as they are internal
+  // objects. See routine finalizeParameters().
+  //os.write(mixtures.size()-2,"num MIXCOMPONENTS"); os.nl();
+
+  for (unsigned i=0;i<mixtures.size()-2;i++) {
+    mixtures[i]->writeHTK(os);
+  }
+
+  os.nl();
+}
+
+
 
 
 
@@ -2234,6 +2355,43 @@ GMParms::writeNameCollections(oDataStreamFile& os)
   os.nl();
 }
 
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * writeNameCollectionsHTK - this is the routine that creates the logical HMMs
+ * 
+ * Preconditions:
+ *      nil
+ *
+ * Postconditions:
+ *      one
+ *
+ * Side Effects:
+ *      all "used" parameters are written out.
+ *
+ * Results:
+ *      nil.
+ *
+ *-----------------------------------------------------------------------
+ */
+void 
+GMParms::writeNameCollectionsHTK(oDataStreamFile& os,char *triphoneCollectionName,
+				 vector<string> hmm_names,vector<int> numStates,
+				 vector<int> enable)
+{
+  unsigned numToWrite = ncls.size();
+  if (nclsMap.find(string(NAMED_COLLECTION_GLOBAL_NAME)) != nclsMap.end()) {
+    numToWrite --;
+  }
+
+  for (unsigned i=0;i<ncls.size();i++) {
+    if (ncls[i]->name() == NAMED_COLLECTION_GLOBAL_NAME)
+      continue;
+    ncls[i]->writeHTK(os,triphoneCollectionName,hmm_names,numStates,enable);
+    }
+  os.nl();
+}
 
 
 
@@ -2424,6 +2582,44 @@ GMParms::writeTrainable(oDataStreamFile& os, bool remove_unnamed)
   writeLogitSwitchMixtures(os);
   writeMlpSwitchMixtures(os);
 }
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * writeTrainableHTK
+ *   write out trainable parameters in HTK format. 
+ * 
+ * Preconditions:
+ *      the structure file needs to be an HMM. 
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      nil
+ *
+ *-----------------------------------------------------------------------
+ */
+void 
+GMParms::writeTrainableHTK(oDataStreamFile& os,char *transitionMatrixName,
+			   char *triphoneCollectionName,vector<string> hmm_names,
+			   vector<int> numStates,vector<int> enable, bool teeModelforsp)
+{
+
+  markUsedMixtureComponents();
+
+  writeMeansAndCovarsHTK(os);
+  writeMixturesHTK(os);
+  writeMdCptsHTK(os,transitionMatrixName,numStates,teeModelforsp);
+
+  // create the "logical" hmms
+  writeNameCollectionsHTK(os,triphoneCollectionName,hmm_names,numStates,enable);
+
+}
+
 
 
 /*-
