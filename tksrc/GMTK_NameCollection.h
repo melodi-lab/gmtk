@@ -92,6 +92,9 @@ public:
   // read/write basic parameters
   void read(iDataStreamFile& is);
   void write(oDataStreamFile& os);
+  void writeHTK(oDataStreamFile& os, char *triphoneCollectionName,
+                vector<string> hmm_names,vector<int> numStates,
+                vector<int> enable);
 
   //////////////////////////////////////////////
   // routines to fill in tables

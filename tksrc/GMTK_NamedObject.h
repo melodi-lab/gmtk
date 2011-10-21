@@ -57,6 +57,18 @@ public:
       os.write(_name,"NamedObject::wriite");
   }
 
+  ///////////////////////////////////////////////////////////    
+  void writeHTK(oDataStreamFile& os) {
+    if (_name.size() == 0)
+      os.write("\"-\"","NamedObject::write");
+    else{
+      char tmp[1024];
+      sprintf(tmp,"\"%s\"",_name.c_str()); 
+      string tmp1 = tmp;
+      os.write(tmp1,"NamedObject::write");
+    }
+  }
+
   ////////////////////////////////////////
   void setName(const string& nm) { _name = nm; }
   ////////////////////////////////////////

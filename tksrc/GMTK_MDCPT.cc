@@ -430,6 +430,95 @@ MDCPT::write(oDataStreamFile& os)
   }
 }
 
+/*-
+ *-----------------------------------------------------------------------
+ * MDCPT::write(os)
+ *      write out the Transition Matrix. Note that the function below is currently,
+ *      hard-coded for a right-to-left HMM with no skips. In fact, it will report
+ *      an error if it encounters a CPT that does have skips. 
+ *
+ * Results:
+ *      No results.
+ *
+ * Side Effects:
+ *      No effects other than  moving the file pointer of os.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+MDCPT::writeHTK(oDataStreamFile& os,char *transitionMatrixName,
+		vector<int> numStates, bool teeModelforsp)
+{
+  assert ( basicAllocatedBitIsSet() );
+
+  char nn[248];
+  double zero = 0.0;
+  double one = 1.0;
+  // string constants.
+  sprintf(nn,"%e",zero); string ZERO = nn;
+  sprintf(nn,"%e",one); string ONE = nn;
+  sprintf(nn,"%e",0.5); string POINTFIVE = nn;
+  
+  if (_name == transitionMatrixName) {
+    // printf("Printing %s\n",_name.c_str());
+    // fflush(stdout); 
+    if ( _numParents != 1 ) 
+      error("The transition Matrix cannot have more than one parent\n");
+  
+    normalize();
+    unsigned int ptr = 0;
+    unsigned int counter = 0;
+
+    // note that this while can be potentially dangerous. If the vector numStates
+    // does not have enough entries to cover all the elements in the mdcpt, the
+    // this can result in an infinite loop. thus, I am adding the assertion below. 
+    while ((int)ptr < mdcpt.len()){
+      assert(counter < numStates.size());
+      int activeStates = numStates[counter] + 2;
+
+      sprintf(nn,"~t \"trP_%d\"",counter);
+      os.write(nn);os.nl();
+      sprintf(nn,"<TRANSP> %d",activeStates);
+      os.write(nn);os.nl();
+
+      for (int ii = 0; ii < activeStates; ii++){
+	for (int jj = 0; jj < activeStates; jj++){
+	  if (ii == 0) {  // first row. 
+	    if (jj == 1)
+	      os.write(ONE);
+	    else 
+	      os.write(ZERO);
+	  }
+	  else if (ii == activeStates - 1)  // last row. 
+	    os.write(ZERO);
+	  else if (ii == activeStates - 2) { // penultimate row (last but one).
+	    if (jj == ii){
+	      sprintf(nn,"%e",mdcpt[ptr++].unlog());
+	      os.write(nn);
+	    }
+	    else if (jj == ii + 1) { // add the terms. **** 
+	      sprintf(nn,"%e",mdcpt[ptr++].unlog() + mdcpt[ptr++].unlog()) ;
+	      os.write(nn);
+	    }
+	    else 
+	      os.write(ZERO);
+	  }
+	  else { // all other rows	    
+	    if ( (jj == ii) || (jj == (ii + 1)) || (jj == (ii + 2)) ){
+	      sprintf(nn,"%e",mdcpt[ptr++].unlog());
+	      os.write(nn);
+	    }
+	    else 
+	      os.write(ZERO);
+	  }
+	}
+	os.nl();
+      }
+      counter++;
+
+    }
+  }
+}
 
 ////////////////////////////////////////////////////////////////////
 //        Probability Evaluation

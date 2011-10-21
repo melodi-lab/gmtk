@@ -366,14 +366,18 @@ public:
 
   //
   void writeDPmfs(oDataStreamFile& os);
+  void writeDPmfsHTK(oDataStreamFile& os);
   void writeSPmfs(oDataStreamFile& os);
   void writeMeans(oDataStreamFile& os);
   void writeCovars(oDataStreamFile& os);
+  void writeMeansAndCovarsHTK(oDataStreamFile& os);
   void writeDLinkMats(oDataStreamFile& os);
   void writeDLinks(oDataStreamFile& os);
   void writeRealMats(oDataStreamFile& os);
   void writeDirichletTabs(oDataStreamFile& os);
   void writeMdCpts(oDataStreamFile& os);
+  void writeMdCptsHTK(oDataStreamFile& os,char *transitionMatrixName,
+		      vector<int> numStates, bool teeModelforsp);
   void writeMsCpts(oDataStreamFile& os);
   void writeMtCpts(oDataStreamFile& os);
   //void writeVocabs(oDataStreamFile& os);
@@ -383,7 +387,11 @@ public:
   void writeDTs(oDataStreamFile& os);
   void writeComponents(oDataStreamFile& os);
   void writeMixtures(oDataStreamFile& os);
+  void writeMixturesHTK(oDataStreamFile& os);
   void writeNameCollections(oDataStreamFile& os);
+  void writeNameCollectionsHTK(oDataStreamFile& os,char *triphoneCollectionName,
+			       vector<string> hmm_names,vector<int> numStates,
+			       vector<int> enable);
   void writeGausSwitchMixtures(oDataStreamFile& os);
   void writeLogitSwitchMixtures(oDataStreamFile& os);
   void writeMlpSwitchMixtures(oDataStreamFile& os);
@@ -411,6 +419,10 @@ public:
   // might modify
   void readTrainable(iDataStreamFile& is);
   void writeTrainable(oDataStreamFile& os, bool remove_unnamed=false);
+  void writeTrainableHTK(oDataStreamFile& os,char *transitionMatrixNameGM,
+			 char *triphoneCollectionName,vector<string> hmm_names,
+			 vector<int> numStates,vector<int> enable,bool teeModelforsp);
+
 
   ///////////////////////////////////////////////////////////    
   // read/write the non-trainable parameters, i.e., the ones that this program
