@@ -1708,7 +1708,6 @@ DiagCovarVector::emEndIterationNoSharingElementProbabilities(
 
       bool floored_variance = false;
 
-
       if (locAccumulatedProb >=  minContAccumulatedProbability()) {
 	// TODO: should check for possible overflow here of 
 	// accumulatedProbability when we do the inverse and unlog.
