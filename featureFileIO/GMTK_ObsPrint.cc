@@ -528,6 +528,7 @@ bool     Info_Print_Sent_Frames = false;
 char* Usage_Str = NULL;
 //bool help=false;
 unsigned help=0;  // help=0...5 depending on the amount of info we want printed
+extern bool ObservationsAllowNan;
 
 //unsigned Usage_Info_Level=0;
 
@@ -542,6 +543,7 @@ Arg Arg::Args[] = {
   Arg("ni",   Arg::Opt, nis,"number of ints (labels) in input file X",Arg::ARRAY,MAX_OBJECTS),
   Arg("cppifascii",Arg::Opt, cppIfAscii,"Pre-process ASCII files using CPP",Arg::SINGLE,0,false,PRIORITY_2),
   Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Additional CPP command line",Arg::SINGLE,0,false,PRIORITY_2),
+  Arg("obsNAN",   Arg::Opt, ObservationsAllowNan,"True if observation files allow FP NAN values",Arg::SINGLE,0,false,PRIORITY_2),
 
   Arg("\n*** Output arguments ***\n"),
 
