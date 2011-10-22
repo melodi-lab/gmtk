@@ -254,7 +254,6 @@ StreamInfo::~StreamInfo() {
  * */
 size_t StreamInfo::calcNumFileNames(FILE* &f) {
   char line[MAXSTRLEN];
-
   numFileNames = 0;
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP     
   if(cppIfAscii) {
@@ -294,7 +293,7 @@ size_t StreamInfo::calcNumFileNames(FILE* &f) {
 
   return numFileNames;
 
-}	
+}
 
 size_t StreamInfo::readFof(FILE * &f) {
 
@@ -324,6 +323,9 @@ size_t StreamInfo::readFof(FILE * &f) {
     n_lines++;
   }
   assert(numFileNames==n_lines);
+  // if (numFileNames!=n_lines) {
+  // error("numFileNames (= %d) != n_lines (= %d)\n",numFileNames,n_lines);
+  // }  
   return n_lines;
 }
 
