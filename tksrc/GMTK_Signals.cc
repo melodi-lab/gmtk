@@ -55,6 +55,7 @@ void catch_terminate(int sig_num)
 }
 
 int debugIncrement = 1;
+volatile int debugDelta = 0;
 
 /*-
  *-----------------------------------------------------------------------
@@ -77,22 +78,15 @@ int debugIncrement = 1;
  */
 void catch_increment(int sig_num)
 {
-  unsigned debugLevel = IM::glbMsgLevel(IM::Inference) + debugIncrement; 
-  if (debugLevel > IM::Max) debugLevel = IM::Max;
-  IM::setGlbMsgLevel(IM::Inference, debugLevel);
-  //fprintf(stderr, " +++ %u\n", debugLevel);
+  if (debugDelta <= IM::Max)
+    debugDelta += debugIncrement; 
 }
 
 
 void catch_decrement(int sig_num)
 {
-  unsigned debugLevel = IM::glbMsgLevel(IM::Inference);
-  if (debugLevel >= debugIncrement)
-    debugLevel -= debugIncrement;
-  else
-    debugLevel = 0;
-  IM::setGlbMsgLevel(IM::Inference, debugLevel);
-  //fprintf(stderr, " --- %u\n", debugLevel);
+  if (debugDelta >= -IM::Max)
+    debugDelta -= debugIncrement;
 }
 
 

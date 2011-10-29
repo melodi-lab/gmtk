@@ -1359,7 +1359,13 @@ static bool  cliquePrintOnlyEntropy = false;
   Arg("debugIncrement",Arg::Opt,debugIncrement,"Increment to adjust inference verbosity on USR1/2 signals"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
-
+    
+    if (debugIncrement < 1) {
+      error("debug increment must be positive");
+    }
+    if (debugIncrement > IM::Max) {
+      error("debug increment must be less than %d\n", IM::Max);
+    }
 #else
 #endif
 #endif // defined(GMTK_ARG_DEBUG_INCREMENT)

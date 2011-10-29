@@ -33,7 +33,14 @@
 #include <algorithm>
 #include <new>
 
-#include "general.h"
+
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
+
 #include "error.h"
 #include "debug.h"
 #include "rand.h"
@@ -45,6 +52,7 @@
 #include "GMTK_JunctionTree.h"
 #include "GMTK_GMParms.h"
 
+VCID(HGID)
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -52,14 +60,7 @@
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 
-#if HAVE_CONFIG_H
-#include <config.h>
-#endif
-#if HAVE_HG_H
-#include "hgstamp.h"
-#endif
-VCID(HGID)
-
+volatile extern int debugDelta;  // to allow asynchronous verbosity change; ticket #214
 
 /*
  *  init_CC_CE_rvs(it)
@@ -988,6 +989,8 @@ JunctionTree::ceGatherIntoRoot(PartitionStructures& ps,
     IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
   }
 
+  IM::setGlbMsgLevel(IM::Inference, max(0,(int)IM::glbMsgLevel(IM::Inference) + debugDelta));
+  debugDelta = 0;
 
   // Now, do partition messages.
   for (unsigned msgNo=0;msgNo < message_order.size(); msgNo ++) {
@@ -1122,6 +1125,8 @@ JunctionTree::ceSendForwardsCrossPartitions(// previous partition
     IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
   }
 
+  IM::setGlbMsgLevel(IM::Inference, max(0,(int)IM::glbMsgLevel(IM::Inference) + debugDelta));
+  debugDelta = 0;
 
   infoMsg(IM::Inference, IM::Mod,"CE: message %s,part[%d],clique(%d) --> %s,part[%d],clique(%d)\n",
 	  previous_part_type_name,
@@ -1409,6 +1414,9 @@ JunctionTree::deScatterOutofRoot(// the partition
     IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
   }
 
+  IM::setGlbMsgLevel(IM::Inference, max(0,(int)IM::glbMsgLevel(IM::Inference) + debugDelta));
+  debugDelta = 0;
+
   infoMsg(IM::Inference, IM::Med+5,"DE: distributing out of partition root %s,part[%d]: clique %d\n",
 	  part_type_name,part_num,root);
   pt.maxCliques[root].
@@ -1513,6 +1521,9 @@ JunctionTree::deSendBackwardsCrossPartitions(// previous partition
     IM::setGlbMsgLevel(IM::Inference, IM::glbMsgLevel(IM::DefaultModule));
     IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
   }
+
+  IM::setGlbMsgLevel(IM::Inference, max(0,(int)IM::glbMsgLevel(IM::Inference) + debugDelta));
+  debugDelta = 0;
 
   infoMsg(IM::Inference, IM::Mod,"DE: message %s,part[%d],clique(%d) <-- %s,part[%d],clique(%d)\n",
 	  previous_part_type_name,previous_part_num,previous_part_root,

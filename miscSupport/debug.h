@@ -279,27 +279,33 @@ public:
   static unsigned glbMsgLevel() { return globalModuleLevel[DefaultModule]; }
   static unsigned glbMsgLevel(ModuleName module) { return globalModuleLevel[module]; }
   static unsigned setGlbMsgLevel(const unsigned ml) { 
-    globalModuleLevel[DefaultModule] = ml; 
-    globalMessageLevel = ml;
-    return ml; 
+    unsigned mml;
+    mml = (ml > Max) ? Max : ml;
+    globalModuleLevel[DefaultModule] = mml; 
+    globalMessageLevel = mml;
+    return mml; 
   }
   static unsigned setGlbMsgLevel(ModuleName module, const unsigned ml) { 
-    globalModuleLevel[module] = ml; 
-    return ml; 
+    unsigned mml;
+    mml = (ml > Max) ? Max : ml;    
+    globalModuleLevel[module] = mml; 
+    return mml; 
   }
 
   static unsigned setGlbMsgLevel(const char*name, const unsigned ml) {
+    unsigned mml;
+    mml = (ml > Max) ? Max : ml;    
     if (strcmp(name,"all") == 0) {
       for (unsigned m=DefaultModule; m < ModuleCount; m+=1) {
-	setGlbMsgLevel((ModuleName)m, ml);
+	setGlbMsgLevel((ModuleName)m, mml);
       }
-      globalMessageLevel = ml;
-      return ml;
+      globalMessageLevel = mml;
+      return mml;
     } 
     for (unsigned m=DefaultModule; m < ModuleCount; m=m+1) {
       if (strcmp(name, moduleString[m]) == 0) {
-	setGlbMsgLevel((ModuleName)m, ml);
-	return ml;
+	setGlbMsgLevel((ModuleName)m, mml);
+	return mml;
       }
     }
     error("ERROR: unknown module name '%s'", name);
@@ -318,6 +324,7 @@ public:
       if (errno || (*endp != 0) || (endp == s)) {
 	error("ERROR: invalid module error level specifier '%s'", levelAssignment);
       }
+      if (ml > Max) ml = Max;
       setGlbMsgLevel("all", ml);
     } else {
       *equals = 0;
@@ -325,6 +332,7 @@ public:
       if (errno || (*endp != 0) || (endp == equals+1)) {
 	error("ERROR: invalid module error level specifier '%s'", levelAssignment);
       }
+      if (ml > Max) ml = Max;
       setGlbMsgLevel((const char *)s, ml);
     }
     free(s);
