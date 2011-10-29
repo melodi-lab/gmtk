@@ -1361,10 +1361,10 @@ static bool  cliquePrintOnlyEntropy = false;
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
     
     if (debugIncrement < 1) {
-      error("debug increment must be positive");
+      error("%s: debug increment must be positive", argerr);
     }
     if (debugIncrement > IM::Max) {
-      error("debug increment must be less than %d\n", IM::Max);
+      error("%s: debug increment must be less than %d\n", argerr, IM::Max);
     }
 #else
 #endif

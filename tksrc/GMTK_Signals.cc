@@ -85,10 +85,13 @@ void catch_increment(int sig_num)
 
 void catch_decrement(int sig_num)
 {
-  if (debugDelta >= -IM::Max)
-    debugDelta -= debugIncrement;
+  unsigned debugLevel = IM::glbMsgLevel(IM::Inference); 
+  if (debugLevel >= debugIncrement) 
+    debugLevel -= debugIncrement; 
+  else 
+    debugLevel = 0; 
+  IM::setGlbMsgLevel(IM::Inference, debugLevel); 
 }
-
 
 /*-
  *-----------------------------------------------------------------------
