@@ -1,0 +1,9 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/310 is fixed
+
+# If LZERO <= approximate -1.0e16, floating point round-off should
+# ensure that 0+0==0.
+
+AT_SETUP([ticket 310])
+AT_CHECK([testLZERO])
+AT_CLEANUP

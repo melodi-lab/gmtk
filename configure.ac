@@ -35,9 +35,9 @@ AC_ARG_WITH([detBrush],
 
 AC_ARG_WITH([LZERO],
             [AS_HELP_STRING([--with-LZERO],
-              [the smallest log value that we represent @<:@default: -1.0E10@:>@])],
+              [the smallest log value that we represent (note that values > -1e16 may cause arithmetic problems (0+0 != 0) @<:@default: -1.0E17@:>@])],
 	    [],
-            [with_LZERO=(-1.0E10)])
+            [with_LZERO=(-1.0E17)])
 
 AC_ARG_ENABLE([assertions],
               [AS_HELP_STRING([--disable-assertions],
@@ -63,7 +63,7 @@ AC_PROG_AWK
 
 
 # Autotest suite
-AC_CONFIG_TESTDIR([tests],[tksrc:featureFileIO])
+AC_CONFIG_TESTDIR([tests],[tksrc:featureFileIO:miscSupport])
 AC_CONFIG_FILES([tests/Makefile tests/atlocal])
 
 AC_CONFIG_FILES([Makefile])

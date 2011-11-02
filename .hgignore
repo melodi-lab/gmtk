@@ -40,6 +40,7 @@ miscSupport/testError
 miscSupport/testHashMapList
 miscSupport/testHashTree
 miscSupport/testLMS
+miscSupport/testLZERO
 miscSupport/testLogp
 miscSupport/testRLS
 miscSupport/testRand
