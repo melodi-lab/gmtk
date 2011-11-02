@@ -2823,8 +2823,8 @@ MaxCliqueTable::ceIterateSeparatorsRecurse(MaxCliqueTable::SharedLocalStructure&
     sepSeparatorValuesPtr = sep.separatorValues->ptr; 
 
 
+  traceIndent++;
   if (message(Inference,High+5)) {
-    traceIndent++;
     psp2(stdout,spi*traceIndent);    
     infoMsg(Inference,High+5,"S%d:Starting separator iter,partSepNo=%d,p=%f,nodes:",
 	    sepNumber,origin.ceReceiveSeparators[sepNumber],p.val());
@@ -2996,8 +2996,8 @@ MaxCliqueTable::ceIterateSeparatorsRecurse(MaxCliqueTable::SharedLocalStructure&
   }
 
  ceIterateSeparatorsFinished:
-  if (message(Inference, High+5))
-    traceIndent--;
+  //  if (message(Inference, High+5))
+  traceIndent--;
 }
 
 
@@ -3051,8 +3051,8 @@ MaxCliqueTable::ceIterateUnassignedIteratedNodesRecurse(MaxCliqueTable::SharedLo
 
   RV* rv = sharedStructure.fUnassignedIteratedNodes[nodeNumber];
   // TODO: update comments here to match others.
+  traceIndent++;
   if (message(Inference, High+5)) {
-    traceIndent++;
     psp2(stdout,spi*traceIndent);
     infoMsg(Inference, High+5,"U%d:Starting Unassigned iteration of rv %s(%d),p=%f\n",
 	    nodeNumber,
@@ -3102,8 +3102,8 @@ MaxCliqueTable::ceIterateUnassignedIteratedNodesRecurse(MaxCliqueTable::SharedLo
 				     maxCEValue,
 				     nodeNumber+1,p);
   }
-  if (message(Inference, High+5))
-    traceIndent--;
+  //  if (message(Inference, High+5))
+  traceIndent--;
 }
 
 
@@ -3258,8 +3258,8 @@ MaxCliqueTable::ceIterateAssignedNodesRecurse(MaxCliqueTable::SharedLocalStructu
   RV* rv = sharedStructure.fSortedAssignedNodes[nodeNumber];
   // do the loop right here
 
+  traceIndent++;
   if (message(Inference, High+5)) {
-    traceIndent++;
     psp2(stdout,spi*traceIndent);
     infoMsg(Inference, High+5,"A%d:Starting assigned iteration of rv %s(%d),crClqPr=%f\n",
 	    nodeNumber,
@@ -3453,8 +3453,8 @@ MaxCliqueTable::ceIterateAssignedNodesRecurse(MaxCliqueTable::SharedLocalStructu
     assert(0);
     break;
   }
-  if (message(Inference, High+5))
-    traceIndent--;
+  //  if (message(Inference, High+5))
+  traceIndent--;
 
 }
 
