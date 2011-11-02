@@ -34,7 +34,7 @@ check-local: atconfig atlocal $(TESTSUITE) gmtk_tests.at
 
 installcheck-local: atconfig atlocal $(TESTSUITE) gmtk_tests.at
 	$(SHELL) '$(srcdir)/$(TESTSUITE)' \
-	AUTOTEST_PATH='$(bindir):$(abs_top_builddir)/tksrc' \
+	AUTOTEST_PATH='$(bindir):$(abs_top_builddir)/tksrc:$(abs_top_builddir)/miscSupport' \
 	$(TESTSUITEFLAGS)
 
 clean-local:

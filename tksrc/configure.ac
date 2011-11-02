@@ -49,10 +49,14 @@ AM_CONDITIONAL([NO_MODEL_CHECKS],[test x$model_checks != xyes])
 
 AC_ARG_WITH([LZERO],
             [AS_HELP_STRING([--with-LZERO],
-              [the smallest log value that we represent @<:@default: -1.0E10@:>@])],
-            [],
-            [with_LZERO=(-1.0E10)])
+              [the smallest log value that we represent (note that values > -1e16 may cause arithmetic problems (0+0 != 0) @<:@default: -1.0E17@:>@])],
+	    [],
+            [with_LZERO=(-1.0E17)])
 
+badLZERO=`echo ${with_LZERO} | awk '{if ($1 > -1.0e16) {print "bad"}}'`
+if test x"$badLZERO" = x"bad"; then
+  AC_WARN([Values for LZERO greater than -1.0e16 may cause an arithmetic issue so that 0+0 != 0])
+fi 
 AC_DEFINE_UNQUOTED([LZERO], [(${with_LZERO})], [smallest log value that we represent])
 
 # Checks for programs.

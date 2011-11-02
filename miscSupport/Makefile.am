@@ -94,7 +94,7 @@ testError \
 testBPRange \
 testArguments testLogp testRand testsArray testcArray fileParserTest \
 testHashMapList testHashTree testVHashMap testSHashSet \
-testSHashMap testVSHashMap testRLS testLMS
+testSHashMap testVSHashMap testRLS testLMS testLZERO
 # testVHashSet 
 
 # testDebug      doesn't compile?
@@ -109,6 +109,7 @@ testRand_SOURCES = rand.cc rand.h
 testsArray_SOURCES = sArray.cc sArray.h
 testcArray_SOURCES = cArray.cc cArray.h
 fileParserTest_SOURCES = fileParser.cc fileParser.h
+testLZERO_SOURCES = testLZERO.cc
 
 testHashMapList_SOURCES = hash_map_list.cc hash_map_list.h
 testHashTree_SOURCES = hash_tree.h hash_tree.cc
