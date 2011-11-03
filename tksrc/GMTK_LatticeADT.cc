@@ -1043,7 +1043,7 @@ void LatticeADT::normalizePosterior() {
 	  }
 	} while ( it.next() );
       }
-      if (! sum.zero()) {
+      if (! sum.essentially_zero()) {
 	// start iter again
 	_latticeNodes[i].edges.begin(it);
 	{
