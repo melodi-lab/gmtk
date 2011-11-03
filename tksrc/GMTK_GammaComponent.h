@@ -125,6 +125,8 @@ public:
   // read/write basic parameters
   void read(iDataStreamFile& is);
   void write(oDataStreamFile& os);
+  void writeHTK(oDataStreamFile&) {return;}
+
   //////////////////////////////////////////////
 
   /////////////////////////////////////////////////

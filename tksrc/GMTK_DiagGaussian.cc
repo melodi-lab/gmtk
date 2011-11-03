@@ -120,6 +120,28 @@ DiagGaussian::write(oDataStreamFile& os)
   os.nl();
 }
 
+void
+DiagGaussian::writeHTK(oDataStreamFile& os)
+{
+  assert ( basicAllocatedBitIsSet() );
+
+  // write the type of self and the name
+  //os.write((int)Component::DiagGaussian);
+  //  NamedObject::writeHTK(os);
+  //os.nl();
+
+  // write mean vector
+  char tmp[1024];
+  sprintf(tmp,"\"%s\"",mean->name().c_str());
+  string tmp1 = tmp;
+  os.write("      ~u"); os.write(tmp1); os.nl();
+
+  sprintf(tmp,"\"%s\"",covar->name().c_str());
+  tmp1 = tmp;
+  os.write("      ~v"); os.write(tmp1); os.nl();
+}
+
+
 
 /*-
  *-----------------------------------------------------------------------

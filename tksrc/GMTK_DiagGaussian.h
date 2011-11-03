@@ -71,6 +71,7 @@ public:
   // read/write basic parameters
   void read(iDataStreamFile& is);
   void write(oDataStreamFile& os);
+  void writeHTK(oDataStreamFile& os);
 
   // create a copy of self, but with slightly perturbed
   // means/variance values.

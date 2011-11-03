@@ -169,6 +169,32 @@ DiagCovarVector::write(oDataStreamFile& os)
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * DiagCovarVector::writeHTK()
+ *      write out
+ *
+ * Results:
+ *
+ * Side Effects:
+ *      None so far.
+ *
+ *-----------------------------------------------------------------------
+ */
+void 
+DiagCovarVector::writeHTK(oDataStreamFile& os)
+{
+  NamedObject::writeHTK(os);  os.nl(); 
+  os.write("  <Variance>");
+  os.write(covariances.len(),"diag cov vector write length");
+  for (int i=0;i<covariances.len();i++) {
+    os.write("   ");
+    os.write(covariances[i],"diag cov vector write, values");
+  }
+  os.nl();
+}
+
+
 ////////////////////////////////////////////////////////////////////
 //        Misc Support
 ////////////////////////////////////////////////////////////////////

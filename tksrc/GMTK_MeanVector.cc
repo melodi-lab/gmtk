@@ -133,6 +133,29 @@ void MeanVector::write(oDataStreamFile& os) {
   os.nl();
 }
 
+/*-
+ *-----------------------------------------------------------------------
+ * MeanVector::writeHTK(is)
+ *      read in the mean array from file 'is'. 
+ * 
+ * Results:
+ *      No results.
+ *
+ * Side Effects:
+ *
+ *-----------------------------------------------------------------------
+ */
+void MeanVector::writeHTK(oDataStreamFile& os) { 
+  NamedObject::writeHTK(os); os.nl(); 
+  os.write("  <Mean>");
+  os.write(means.len(),"mean vector write length"); os.nl();
+  for (int i=0;i<means.len();i++) {
+    os.write("   ");
+    os.write(means[i],"mean vector write, values");
+  }
+  os.nl();
+}
+
 
 ////////////////////////////////////////////////////////////////////
 //        Misc Support
