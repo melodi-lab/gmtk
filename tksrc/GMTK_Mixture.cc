@@ -130,6 +130,53 @@ Mixture::write(oDataStreamFile& os)
 }
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * writeHTK(os)
+ *      writes the state information in HTK MMF format. 
+ * 
+ * Preconditions:
+ *      the means and variances must already have been written. 
+ *
+ * Postconditions:
+ *      none
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      writes the state information to the output parameter file. 
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+Mixture::writeHTK(oDataStreamFile& os)
+{
+  assert ( basicAllocatedBitIsSet() );
+
+  os.write("~s");
+  NamedObject::writeHTK(os);
+  os.nl();
+
+  // read number of mixture components
+  os.write("  <NumMixes>");
+  os.write(numComponents,"Mixture::write numComponents");
+  os.nl();
+
+  for (unsigned ii = 0; ii < numComponents; ii++){
+    os.write("    <Mixture>");
+    os.write(ii + 1,"Mixture::mixture number");
+    os.writeDouble(dense1DPMF->ret_val(ii));
+    os.nl();
+    components[ii]->writeHTK(os);
+    //os.write(components[ii]->name());
+
+  }
+
+  os.nl();
+}
+
+
 
 
 

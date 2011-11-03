@@ -67,6 +67,8 @@ public:
   unsigned length() { return (unsigned)pmf.len(); }
   unsigned card() { return (unsigned)pmf.len(); }
 
+  double ret_val(int ii) { return (double)pmf[ii].unlog(); } 
+
   logpr p(unsigned i) { 
     assert ( i < (unsigned)pmf.len() );
     return pmf.ptr[i]; 

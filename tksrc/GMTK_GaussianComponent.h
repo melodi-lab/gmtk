@@ -62,6 +62,7 @@ public:
   // read/write basic parameters
   virtual void read(iDataStreamFile& is) = 0;
   virtual void write(oDataStreamFile& os) = 0;
+  virtual void writeHTK(oDataStreamFile& os) = 0;
   //////////////////////////////////////////////
 
   /////////////////////////////////////////////////
