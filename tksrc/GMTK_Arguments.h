@@ -339,7 +339,16 @@ extern bool ObservationsAllowNan;
   Arg("clusterHMMs",Arg::Opt,clusterHMMs,"Setting this to true will cause the system to only write the HMM for which the enable field is true"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
- 
+
+  if (htkoutputTrainableParameters) {
+    if (!transitionMatrixName)
+      error("Must specify -transitionMatrixName for htkoutputTrainableParameters");
+    if (!triphoneCollectionName) 
+      error("Must specify -triphoneCollectionName for htkoutputTrainableParameters");
+    if (!hmmListFileName)
+      error("Must specify -hmmListFileName for htkoutputTrainableParameters");
+  }
+
 #else
 #endif
 #endif // defined(GMTK_ARG_OUTPUT_TRAINABLE_PARAMS)
