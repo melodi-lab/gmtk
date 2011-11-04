@@ -67,6 +67,7 @@ VCID(HGID)
 #define GMTK_ARG_OBS_FILES
 
 /*************************   INPUT TRAINABLE PARAMETER FILE HANDLING  *******************************************/
+#define GMTK_ARG_INPUT_TRAINABLE_FILE_HANDLING
 #define GMTK_ARG_CPP_CMD_OPTS
 #define GMTK_ARG_INPUT_MASTER_FILE
 #define GMTK_ARG_OUTPUT_MASTER_FILE
@@ -77,6 +78,7 @@ VCID(HGID)
 #define GMTK_ARG_CPT_NORM_THRES
 
 /*************************   INPUT STRUCTURE PARAMETER FILE HANDLING  *******************************************/
+#define GMTK_ARG_INPUT_MODEL_FILE_HANDLING
 #define GMTK_ARG_STR_FILE
 #define GMTK_ARG_TRI_FILE
 #define GMTK_ARG_CHECK_TRI_FILE_CARD
@@ -85,11 +87,13 @@ VCID(HGID)
 #define GMTK_ARG_LATTICE_PARAMS
 
 /*************************   CONTINUOUS RANDOM VARIABLE OPTIONS       *******************************************/
+#define GMTK_ARG_CONTINUOUS_RANDOM_VAR_OPTIONS
 #define GMTK_ARG_VAR_FLOOR
 #define GMTK_ARG_VAR_FLOOR_ON_READ
 
 
 /*************************          BEAM PRUNING OPTIONS              *******************************************/
+#define GMTK_ARG_BEAM_PRUNING_OPTIONS
 #define GMTK_ARG_CBEAM
 #define GMTK_ARG_CPBEAM
 #define GMTK_ARG_CKBEAM
@@ -110,6 +114,7 @@ VCID(HGID)
 #define GMTK_ARG_START_END_SKIP
 
 /****************************         GENERAL OPTIONS             ***********************************************/
+#define GMTK_ARG_FILE_RANGE_OPTIONS
 #define GMTK_ARG_SEED
 #define GMTK_ARG_SKIP_STARTUP_CHECKS
 #define GMTK_ARG_VERB
@@ -117,6 +122,7 @@ VCID(HGID)
 #define GMTK_ARG_VERSION
 
 /****************************         INFERENCE OPTIONS           ***********************************************/
+#define GMTK_ARG_INFERENCE_OPTIONS
 #define GMTK_ARG_ISLAND
 #define GMTK_ARG_CLIQUE_TABLE_NORMALIZE
 #define GMTK_ARG_CE_SEP_DRIVEN
@@ -126,9 +132,11 @@ VCID(HGID)
 #define GMTK_ARG_VE_SEPS
 
 /****************************         EM TRAINING OPTIONS         ***********************************************/
+#define GMTK_ARG_KERNEL_OPTIONS
 #define GMTK_ARG_KERNEL_PARAMS
 
 /************************  OBSERVATION MATRIX TRANSFORMATION OPTIONS   ******************************************/
+#define GMTK_ARG_OBS_MATRIX_OPTIONS
 #define GMTK_ARG_OBS_MATRIX_XFORMATION
 
 

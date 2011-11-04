@@ -1081,7 +1081,7 @@ void Arg::usage(const char* filter,bool stdErrPrint) {
   }
   //}
   
-  fprintf(destStream," [-%s <str>]",ARGS_FILE_NAME);
+  fprintf(destStream,"\n*** Additional arguments ***\n\n [-%s <str>]",ARGS_FILE_NAME);
   int this_variation = 9 + strlen(ARGS_FILE_NAME);
   while (this_variation++ < longest_variation)
     fprintf(destStream," ");
