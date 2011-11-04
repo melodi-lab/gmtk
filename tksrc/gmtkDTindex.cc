@@ -62,9 +62,10 @@ VCID(HGID)
 #include "GMTK_DlinkMatrix.h"
 #include "GMTK_RngDecisionTree.h"
 
-
+#define GMTK_ARG_INPUT_TRAINABLE_FILE_HANDLING
 #define GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG
 #define GMTK_ARG_CPP_CMD_OPTS
+#define GMTK_ARG_GENERAL_OPTIONS
 #define GMTK_ARG_VERB
 #define GMTK_ARG_VERSION
 
@@ -82,6 +83,7 @@ Arg Arg::Args[] = {
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_DOCUMENTATION
 
+  Arg("\n*** Decision tree files ***\n"),
   Arg("decisionTreeFiles", Arg::Opt, DTFiles, "List of decision tree files"),
 
   // final one to signal the end of the list
