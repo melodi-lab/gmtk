@@ -237,7 +237,7 @@ main(int argc,char*argv[])
   // or divide by zero, we actually get a FPE
   ieeeFPsetup();
   set_new_handler(memory_error);
-  InstallSignalHandlers();
+  InstallSignalHandlersTime();
 
   ////////////////////////////////////////////
   // parse arguments
