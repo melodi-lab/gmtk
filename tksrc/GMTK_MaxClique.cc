@@ -2711,7 +2711,9 @@ ceGatherFromIncommingSeparatorsCliqueObserved(MaxCliqueTable::SharedLocalStructu
   }
 
   if (message(Inference,High)) {
-    psp2(stdout,spi*(traceIndent+1+sharedStructure.fSortedAssignedNodes.size()));
+    // see https://j.ee.washington.edu/trac/gmtk/ticket/214#comment:14
+    if (message(Inference,High+5))
+      psp2(stdout,spi*(traceIndent+1+sharedStructure.fSortedAssignedNodes.size()));
     infoMsg(IM::Inference, IM::High,"CI:Inserting Observed %d-clique ent #0,pr=%f,sm=%f:",
 	    sharedStructure.fNodes.size(),
 	    cliqueValues.ptr[0].p.val(),sumProbabilities().val());
@@ -3246,7 +3248,9 @@ MaxCliqueTable::ceIterateAssignedNodesRecurse(MaxCliqueTable::SharedLocalStructu
     numCliqueValuesUsed++;
 
     if (message(Inference, High)) {
-      psp2(stdout,spi*(traceIndent+1));
+      // see https://j.ee.washington.edu/trac/gmtk/ticket/214#comment:14
+      if (message(Inference, High+5))
+	psp2(stdout,spi*(traceIndent+1));
       infoMsg(Inference, High,"CI:Inserting %d-clique ent #%d,pr=%f,sm=%f:",
 	      sharedStructure.fNodes.size(),
 	      (numCliqueValuesUsed-1),
