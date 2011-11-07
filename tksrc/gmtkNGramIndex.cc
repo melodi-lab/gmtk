@@ -69,9 +69,13 @@ Arg Arg::Args[] = {
 	/////////////////////////////////////////////////////////////
 	// input parameter/structure file handling
 
+        Arg("\n*** Input files ***\n"),
+
 	Arg("lmFile", Arg::Req, lmFile, "Input ARPA language model file"),
 	
 	Arg("vocab", Arg::Req, vocabFile, "vocab file"),
+
+        Arg("\n*** Output format ***\n"),
 
 	Arg("outBin", Arg::Opt, outBin, "Use binary for output index file"),
 

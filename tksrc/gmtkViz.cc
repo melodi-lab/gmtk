@@ -1331,12 +1331,14 @@ char *cppCommandOptions = NULL;
 int verbosity;
 
 Arg Arg::Args[] = {
-	Arg( "cppCommandOptions", Arg::Opt, cppCommandOptions,
-	 "Additional CPP command line" ),
-	Arg( "gvpFile", Arg::Opt, gvpFileNames, "position file",
-		Arg::ARRAY, MAX_OBJECTS ),
+        Arg("\n*** Input model file handling ***\n"),
 	Arg( "strFile", Arg::Opt, strFileNames, "structure file",
 		Arg::ARRAY, MAX_OBJECTS ),
+	Arg( "gvpFile", Arg::Opt, gvpFileNames, "position file",
+		Arg::ARRAY, MAX_OBJECTS ),
+	Arg( "cppCommandOptions", Arg::Opt, cppCommandOptions,
+	 "Additional CPP command line" ),
+	Arg("\n*** General options ***\n"),
 	Arg("verbosity",Arg::Opt,verbosity,"Verbosity (0 <= v <= 100) of informational/debugging msgs"),
 	Arg( "help", Arg::Tog, help, "print this message" ),
 	Arg()
