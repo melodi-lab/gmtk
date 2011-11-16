@@ -22,6 +22,10 @@ AC_ARG_ENABLE([cppIfASCII],
 	      [AS_HELP_STRING([--disable-cppIfASCII],
                               [disable piping ASCII parameter files through cpp @<:@default: no@:>@])],
               [cppIfASCII=${enableval}], [cppIfASCII=yes])
+AC_ARG_ENABLE([tmpLocalPool],
+              [AS_HELP_STRING([--disable-tmpLocalPool],
+                              [disable use of temporary local clique value pool @<:@default: no@:>@])],
+              [tmpLocalPool=${enableval}], [tempLocalPool=yes])
 AC_ARG_WITH([logp], 
             [AS_HELP_STRING([--with-logp],
               [select logp implementation (log, table, smart, renorm) @<:@default: log@:>@])],
