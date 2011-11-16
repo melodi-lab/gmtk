@@ -39,6 +39,14 @@ if test x"$cppIfASCII" = x"yes"; then
   AC_DEFINE([PIPE_ASCII_FILES_THROUGH_CPP],[1],[Pipe ASCII files through cpp])
 fi
 
+AC_ARG_ENABLE([tmpLocalPool],
+              [AS_HELP_STRING([--disable-tmpLocalPool],
+                              [disable use of temporary local clique value pool @<:@default: no@:>@])],
+              [tmpLocalPool=${enableval}], [tmpLocalPool=yes])
+if test x"$tmpLocalPool" = x"yes"; then
+  AC_DEFINE([USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL],[1],[Hold clique values until after pruning])
+fi
+
 AC_ARG_ENABLE([model-checks],
               [AS_HELP_STRING([--disable-model-checks],
                               [disable run-time checks for models @<:@default: no@:>@])],
