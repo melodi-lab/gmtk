@@ -141,7 +141,7 @@ void sighandler(int signum, siginfo_t *info, void *ptr)
 
 struct sigaction act;
 
-#define TRAPPED_FES FE_ALL_EXCEPT
+#define TRAPPED_FES FE_INVALID | FE_DIVBYZERO | FE_OVERFLOW
 
 void ieeeFPsetup()
 {
