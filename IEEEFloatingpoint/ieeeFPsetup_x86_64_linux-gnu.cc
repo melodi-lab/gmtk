@@ -19,9 +19,11 @@
 #endif
 
 #include<stdio.h>
-#include<fpu_control.h>
+#include <fenv.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 #include "hgstamp.h"
 #include "general.h"
@@ -35,10 +37,58 @@ VCID(HGID)
 */
 #define _FPU_GETSTW(sw) __asm__ ("fnstsw %0" : "=m" (*&sw))
 
-void sighandler(int sigarg) 
+
+void sighandler(int signum, siginfo_t *info, void *ptr) 
 {
+#if 1
+  if (signum == SIGFPE) {
+    fprintf(stderr,"Received floating point (FP) exception: ");
+    int flags = info->si_code;
+    bool found = false;
+
+    if (flags == FPE_INTDIV) {
+      found = true;
+      fprintf(stderr, "integer division by 0\n");
+    }
+    if (flags == FPE_INTOVF) {
+      found = true;
+      fprintf(stderr, "integer overflow\n");
+    }
+    if (flags == FPE_FLTDIV) {
+      found = true;
+      fprintf(stderr, "division by 0\n");
+    }
+    if (flags == FPE_FLTOVF) {
+      found = true;
+      fprintf(stderr, "overflow\n");
+    }
+    if (flags == FPE_FLTUND) {
+      found = true;
+      fprintf(stderr, "underflow\n");
+    }
+    if (flags == FPE_FLTRES) {
+      found = true;
+      fprintf(stderr, "inexact result\n");
+    }
+    if (flags == FPE_FLTINV) {
+      found = true;
+      fprintf(stderr, "invalid operation\n");
+    }
+    if (flags == FPE_FLTSUB) {
+      found = true;
+      fprintf(stderr, "subscript out of range\n");
+    }
+    if (!found) {
+      fprintf(stderr, "Can't determine FP exception type %d\n", flags);
+    }
+    fprintf(stderr,"Process purposely exiting with a core dump due to FP Exception....\n");
+    abort(); 
+  } else {
+    fprintf(stderr,"Caught signal %d, returning\n",signum);    
+  }
+#else
   // unsigned int cw=0;
-  if (sigarg == SIGFPE) {
+  if (signum == SIGFPE) {
     unsigned int sw=0;
     int found=0;
     /* Ideally, this should work but it looks like for now
@@ -84,19 +134,37 @@ void sighandler(int sigarg)
     fprintf(stderr,"Process purposely exiting with a core dump due to FP Exception....\n");
     abort();
   } else {
-    fprintf(stderr,"Caught signal %d, returning\n",sigarg);    
+    fprintf(stderr,"Caught signal %d, returning\n",signum);    
   }
+#endif
 }
 
+struct sigaction act;
+
+#define TRAPPED_FES FE_ALL_EXCEPT
 
 void ieeeFPsetup()
 {
+#if 1
+  feclearexcept(TRAPPED_FES);
+  feenableexcept(TRAPPED_FES);
+
+  memset(&act, 0, sizeof(act));
+  act.sa_sigaction = sighandler;
+  act.sa_flags = SA_SIGINFO;
+  if (sigaction(SIGFPE, &act, NULL) != 0) {
+    fprintf(stderr,"Unable to install floating point signal handler\n");
+    abort();
+  }
+#else
   unsigned int cw=0;
   // unsigned int sw=0;
 
   /* set the signal handler */
-  signal(SIGFPE,(void(*)(int))sighandler);
-
+  if (signal(SIGFPE,(void(*)(int))sighandler) == SIG_ERR) {
+    fprintf(stderr,"Unable to install floating point signal handler\n");
+    abort();
+  }
 
   //  get the current FPU control word
   // _FPU_GETCW(cw);
@@ -126,7 +194,7 @@ void ieeeFPsetup()
   _FPU_GETCW(cw);
   _FPU_GETSTW(sw);
   */
-
+#endif
 }
 
 
