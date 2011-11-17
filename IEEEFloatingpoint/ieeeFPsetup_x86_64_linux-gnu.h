@@ -16,8 +16,16 @@
 #ifndef IEEESETUP_H
 #define IEEESETUP_H
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#if HAVE_FENV_H
+#include <fenv.h>
+
 // enable trapping on the following FPU exceptions
 #define TRAPPED_FES (FE_INVALID | FE_DIVBYZERO | FE_OVERFLOW)
+#endif
 
 extern void ieeeFPsetup();
 
