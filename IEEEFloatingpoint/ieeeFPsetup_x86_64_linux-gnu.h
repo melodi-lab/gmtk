@@ -16,6 +16,9 @@
 #ifndef IEEESETUP_H
 #define IEEESETUP_H
 
+// enable trapping on the following FPU exceptions
+#define TRAPPED_FES (FE_INVALID | FE_DIVBYZERO | FE_OVERFLOW)
+
 extern void ieeeFPsetup();
 
 #endif

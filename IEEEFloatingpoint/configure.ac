@@ -66,7 +66,7 @@ AM_CONDITIONAL([HAVE_HG],[test  x$HAVE_HG = xyes])
 
 # Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS([float.h stdlib.h string.h])
+AC_CHECK_HEADERS([float.h fenv.h stdlib.h string.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 
