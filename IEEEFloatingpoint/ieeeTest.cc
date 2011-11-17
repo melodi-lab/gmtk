@@ -26,8 +26,8 @@ main (int argc, char *argv[]) {
   switch (which) {
   case 1: x = one / three; break;        // FE_INEXACT
   case 2: x = one / zero;  break;        // FE_DIVZERO
-  case 3: for (x=0.5f; 1; x*=x) ; break; // FE_UNDERFLOW
-  case 4: for (x=2.0f; 1; x*=x) ; break; // FE_OVERFLOW
+  case 3: for (x=0.5f; x > 0.0; x*=x) ; break; // FE_UNDERFLOW
+  case 4: for (x=2.0f; x < 3.4e38f; x*=x) ; break; // FE_OVERFLOW
   case 5: x = zero / zero; break;        // FE_INVALID
   default: x=0.0f;
   }
