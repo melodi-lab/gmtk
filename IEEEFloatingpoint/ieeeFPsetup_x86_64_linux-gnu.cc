@@ -99,7 +99,3 @@ void ieeeFPsetup()
     abort();
   }
 }
-
-
-
-
