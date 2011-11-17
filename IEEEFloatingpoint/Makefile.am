@@ -59,6 +59,7 @@ libIEEEsupport_a_CFLAGS = $(VERSIONFLAG) \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCCFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 
 AM_CPPFLAGS = -I$(srcdir)/../miscSupport
+AM_LDFLAGS = -lm
 
 # Only files listed explicitly in a primary are included in the distribution.
 # That would leave out the IEEEsupport files for all the platforms except
@@ -74,6 +75,8 @@ ieeeFPsetup_osx.cc \
 ieeeFPsetup_osx.h \
 ieeeFPsetup_solaris.cc \
 ieeeFPsetup_solaris.h \
+ieeeFPsetup_x86_64_darwin10.8.0.cc \
+ieeeFPsetup_x86_64_darwin10.8.0.h \
 ieeeFPsetup_x86_64_linux-gnu.cc \
 ieeeFPsetup_x86_64_linux-gnu.h 
 
@@ -81,3 +84,5 @@ ieeeFPsetup_x86_64_linux-gnu.h
 check_PROGRAMS = ieeeTest
 ieeeTest_SOURCES = ieeeTest.cc
 ieeeTest_LDADD = libIEEEsupport.a
+ieeeTest_CXXFLAGS = $(VERSIONFLAG) \
+$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
