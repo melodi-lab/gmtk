@@ -1,0 +1,1 @@
+A dir for publically available libraries not written for this project.
