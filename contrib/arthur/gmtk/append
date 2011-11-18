@@ -1,0 +1,11 @@
+#!/bin/bash
+#add the first argument (a string) onto the end of the second (a file)
+# I could use tee -a here but since this'll be called concurrently I don't want the strings interleaved with each other
+
+file=`mktemp`
+
+#creates the output file if it doesn't yet exist
+touch $2
+
+echo $1 | cat $2 - > $file
+mv $file $2
