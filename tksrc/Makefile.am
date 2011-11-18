@@ -97,6 +97,7 @@ GMTK_RngDecisionTree.h GMTK_RngDecisionTree.cc \
 GMTK_NameCollection.h GMTK_NameCollection.cc \
 GMTK_GMTemplate.h GMTK_GMTemplate.cc \
 GMTK_JunctionTree.h GMTK_JunctionTree.cc \
+GMTK_CountIterator.h \
 GMTK_GraphicalModel.h GMTK_GraphicalModel.cc \
 GMTK_MaxClique.h GMTK_MaxClique.cc \
 GMTK_BoundaryTriangulate.h GMTK_BoundaryTriangulate.cc \

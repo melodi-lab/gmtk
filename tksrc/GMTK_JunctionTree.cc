@@ -45,6 +45,7 @@
 #include "GMTK_GMTemplate.h"
 #include "GMTK_JunctionTree.h"
 #include "GMTK_GMParms.h"
+#include "GMTK_CountIterator.h"
 
 
 ////////////////////////////////////////////////////////////////////
@@ -497,7 +498,6 @@ JunctionTree::createPartitionJunctionTree(Partition& part,const string junctionT
 		      part.cliques[j].nodes.end(),
 		      inserter(clique_union,clique_union.end()));
 	    e.weights.push_back(-(double)MaxClique::computeWeight(clique_union));
-
 	  } else if (curCase == 'V') {
 	    // compute frame number variance in separator, push back
 	    // negative to prefer smalller frame variance (i.e.,
@@ -1031,35 +1031,35 @@ void
 JunctionTree::insertFactorClique(FactorClique& factorClique,FactorInfo& factor)
 {
 
-  set <RV*> res;
+  count_iterator<set <RV*> > res;
   // first try P1
   set_intersection(factorClique.nodes.begin(),factorClique.nodes.end(),
 		   P1.nodes.begin(),P1.nodes.end(),
-		   inserter(res,res.end()));
-  if (res.size() == factorClique.nodes.size()) {
+		   res);
+  if (res.count() == factorClique.nodes.size()) {
     // then fully contained in P1
     infoMsg(IM::Giga,"insertFactorClique: inserting factor %s(%d) into partition %s\n",
 	    factor.name.c_str(),factor.frame,P1_n);
     P1.factorCliques.push_back(factorClique);
   } else {
     // try Co
-    res.clear();
     set_intersection(factorClique.nodes.begin(),factorClique.nodes.end(),
 		     Co.nodes.begin(),Co.nodes.end(),
-		     inserter(res,res.end()));
-    if (res.size() == factorClique.nodes.size()) {
+		     res);
+    if (res.count() == factorClique.nodes.size()) {
       // then fully contained in P1
+//Co ?
       infoMsg(IM::Giga,"insertFactorClique: inserting factor %s(%d) into partition %s\n",
 	      factor.name.c_str(),factor.frame,Co_n);
       Co.factorCliques.push_back(factorClique);
     } else {
       // try E1
-      res.clear();
       set_intersection(factorClique.nodes.begin(),factorClique.nodes.end(),
 		       E1.nodes.begin(),E1.nodes.end(),
-		       inserter(res,res.end()));
-      if (res.size() == factorClique.nodes.size()) {
+		       res);
+      if (res.count() == factorClique.nodes.size()) {
 	// then fully contained in P1
+//E1 ?
 	infoMsg(IM::Giga,"insertFactorClique: inserting factor %s(%d) into partition %s\n",
 		factor.name.c_str(),factor.frame,E1_n);
 	E1.factorCliques.push_back(factorClique);
@@ -1335,6 +1335,10 @@ JunctionTree::assignRVsToCliques(const char* varPartitionAssignmentPrior,
 	     allAssignedProbNodes);
 
   set <RV*> nodesThatGiveNoProb;
+// 153: OK nodesThatGiveNoProb printed in error message
+// 153:    though we could use count_iterator to be efficient in
+// 153:    the common case, and compute the intersection in the
+// 153:    if statement
   set_difference(allNodes.begin(),allNodes.end(),
 		 allAssignedProbNodes.begin(),allAssignedProbNodes.end(),
 		 inserter(nodesThatGiveNoProb,
@@ -1709,20 +1713,19 @@ JunctionTree::assignRVToClique(const char *const partName,
       // The heuristic here is, have this node contribute probabiltiy
       // to this clique if many of its parents are already doing so, which
       // might produce a clique with good pruning behavior.
-      set<RV*> res;
+      count_iterator<set <RV*> > res;
       set_intersection(curClique.assignedProbNodes.begin(),
 		       curClique.assignedProbNodes.end(),
 		       parSet.begin(),parSet.end(),
-		       inserter(res,res.end()));
-      int num_parents_with_probability = (int) res.size();
+		       res);
+      int num_parents_with_probability = (int) res.count();
       // Previous Parents (earlier in the junction tree) with their
       // probabilities in Junction Tree.  We add this to the above.
-      res.clear();
       set_intersection(curClique.cumulativeAssignedProbNodes.begin(),
 		       curClique.cumulativeAssignedProbNodes.end(),
 		       parSet.begin(),parSet.end(),
-		       inserter(res,res.end()));
-      num_parents_with_probability += (int) res.size();
+		       res);
+      num_parents_with_probability += (int) res.count();
       // negate so that lower is preferable.
       num_parents_with_probability *= -1;
 
@@ -2583,7 +2586,7 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
       // then we have at least 2 real separators.
 
       unsigned lastSeparator = lastRealSeparator;
-      set<RV*> sep_intr_set;
+      count_iterator<set <RV*> > sep_intr_set;
       set<RV*> sep_union_set;
       set<RV*> empty;
       vector < pair<unsigned,unsigned> > sepIntersections; 
@@ -2609,11 +2612,11 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
 		      sep_j.nodes.begin(),sep_j.nodes.end(),
 		      inserter(sep_union_set,sep_union_set.end()));
 	  }
-	  sep_intr_set.clear();
+	  sep_intr_set.reset();
 	  set_intersection(sep_i.nodes.begin(),sep_i.nodes.end(),
 			   sep_union_set.begin(),sep_union_set.end(),
-			   inserter(sep_intr_set,sep_intr_set.end()));
-	  sepIntersections[i].first = sep_intr_set.size();
+			   sep_intr_set);
+	  sepIntersections[i].first = sep_intr_set.count();
 	}
 
 	// sort in (default) ascending order
@@ -2654,7 +2657,7 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
       // so at least two VE separators.
 
       int lastSeparator = numSeparators-1;
-      set<RV*> sep_intr_set;
+      count_iterator<set <RV*> > sep_intr_set;
       set<RV*> sep_union_set;
       set<RV*> empty;
       vector < pair<unsigned,unsigned> > sepIntersections; 
@@ -2682,11 +2685,11 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
 		      inserter(sep_union_set,sep_union_set.end()));
 
 	  }
-	  sep_intr_set.clear();
+	  sep_intr_set.reset();
 	  set_intersection(sep_i.nodes.begin(),sep_i.nodes.end(),
 			   sep_union_set.begin(),sep_union_set.end(),
-			   inserter(sep_intr_set,sep_intr_set.end()));
-	  sepIntersections[i-firstVESeparator].first = sep_intr_set.size();
+			   sep_intr_set);
+	  sepIntersections[i-firstVESeparator].first = sep_intr_set.count();
 	}
 
 
@@ -2864,7 +2867,6 @@ JunctionTree::getCumulativeUnassignedIteratedNodes(JT_Partition& part,
 
     const unsigned child = curClique.children[childNo];
     getCumulativeUnassignedIteratedNodes(part,child);
-
     set_union(part.cliques[child].cumulativeUnassignedIteratedNodes.begin(),
 	      part.cliques[child].cumulativeUnassignedIteratedNodes.end(),
 	      part.cliques[child].unassignedIteratedNodes.begin(),
