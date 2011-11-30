@@ -636,6 +636,8 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,Node& node)
 	  previousUnsigned = tokenVal;
 	  splitIntVals[i] = tokenVal;
 	} else if (token == "...") {
+	  error("ERROR: DT '%s', file '%s' line %d: array range indicator syntax '...' is no longer supported",	name().c_str(),is.fileName(),is.lineNo());
+
 	  if (i != 1)
 	    error("ERROR: DT '%s', file '%s' line %d: array range indicateor '...' can only occur at 2nd position between two ints",
 		  name().c_str(),is.fileName(),is.lineNo());
