@@ -4735,15 +4735,15 @@ StructPage::initNodes( void )
 				sepType = VizSep::EPILOGUE;
 			frameEnds.push_back(new VizSep( curPos.x, this, sepType ));
 			// if a position was specified, move the frameEnd to it
-			key.sprintf("frameEnds[%d].x", i);
+			key.sprintf("frameEnds[%d].x", curFrame);
 			value = config[key];
 			if (value != wxEmptyString) {
 				long xPos;
 				if (value.ToLong(&xPos)) {
-					frameEnds[i]->x = xPos;
+					frameEnds[curFrame]->x = xPos;
 				} else {
 					wxString msg;
-					msg.sprintf("frameEnds[%d].x is not a number", i);
+					msg.sprintf("frameEnds[%d].x is not a number", curFrame);
 					wxLogMessage(msg);
 					gvpAborted = true;
 				}
