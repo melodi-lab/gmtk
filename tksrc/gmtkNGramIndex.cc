@@ -103,7 +103,8 @@ int main(int argc, char *argv[]) {
 
 	////////////////////////////////////////////
 	// parse arguments
-	bool parse_was_ok = Arg::parse(argc,argv);
+	bool parse_was_ok = Arg::parse(argc,argv,
+"\nThis program indexes ARPA language model files to make them more efficient\n");
 
 	if(!parse_was_ok) {
 	  Arg::usage(); exit(-1);
