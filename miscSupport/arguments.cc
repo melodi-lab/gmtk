@@ -987,7 +987,7 @@ const char *MultiType::printable(MultiType::ArgumentType at) {
  *
  *-----------------------------------------------------------------------
  */
-void Arg::usage(const char* filter,bool stdErrPrint) {
+void Arg::usage(const char* filter,bool stdErrPrint, const char *programDescription) {
 
   FILE* destStream;
 
@@ -996,6 +996,9 @@ void Arg::usage(const char* filter,bool stdErrPrint) {
   else
     destStream = stdout;
 
+  if (programDescription) {
+    fprintf(destStream,"%s\n", programDescription);
+  }
   fprintf(destStream,"Usage: %s  [[[-flag] [option]] ...]\n",Program_Name);
   fprintf(destStream,"Required: <>; Optional: []; Flagless arguments must be in order.\n");
 
@@ -1342,7 +1345,7 @@ Arg::parseArgsFromCommandLine(int argc,char**argv)
  *
  *-----------------------------------------------------------------------
  */
-bool Arg::parse(int argc,char** argv)
+bool Arg::parse(int argc,char** argv, const char *programDescription)
 {
   ArgsRetCode rc;
   rc = parseArgsFromCommandLine(argc,argv);
@@ -1355,7 +1358,7 @@ bool Arg::parse(int argc,char** argv)
   }
   if (cnt > 0) {
     // if help argument is given, print usage and exit cleanly.
-    usage(NULL,false);
+    usage(NULL,false,programDescription);
     exit(0);
   }
 

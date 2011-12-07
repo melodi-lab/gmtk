@@ -66,6 +66,7 @@ VCID(HGID)
 #define GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG
 #define GMTK_ARG_CPP_CMD_OPTS
 #define GMTK_ARG_GENERAL_OPTIONS
+#define GMTK_ARG_HELP
 #define GMTK_ARG_VERB
 #define GMTK_ARG_VERSION
 
@@ -109,7 +110,9 @@ main(int argc,char*argv[])
 
   ////////////////////////////////////////////
   // parse arguments
-  bool parse_was_ok = Arg::parse(argc,(char**)argv);
+  bool parse_was_ok = Arg::parse(argc,(char**)argv,
+"\nThis program creates index files for decision trees to make them "
+"more efficent\n");
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }

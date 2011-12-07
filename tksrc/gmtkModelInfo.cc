@@ -101,6 +101,7 @@ VCID(HGID)
 #define GMTK_ARG_SEED
 #define GMTK_ARG_VERB
 #define GMTK_ARG_VERSION
+#define GMTK_ARG_HELP
 
 #define GMTK_ARG_INFOSEPARATOR
 #define GMTK_ARG_INFOFIELDFILE
@@ -201,7 +202,9 @@ main(int argc,char*argv[])
 
   ////////////////////////////////////////////
   // parse arguments
-  bool parse_was_ok = Arg::parse(argc,(char**)argv);
+  bool parse_was_ok = Arg::parse(argc,(char**)argv,
+"\nThis program prints out some information about the number of variables\n"
+"in a model and which GMTK features the model uses\n");
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }
