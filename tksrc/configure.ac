@@ -47,6 +47,14 @@ if test x"$tmpLocalPool" = x"yes"; then
   AC_DEFINE([USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL],[1],[Hold clique values until after pruning])
 fi
 
+AC_ARG_ENABLE([continuous-cardinality-warning],
+              [AS_HELP_STRING([--disable-continous-cardinality-warning],
+                              [disable warning about continous variables with non-zero cardinality in trifiles written by older versions of GMTK @<:@default: no@:>@])],
+              [continuous_cardinaliy_warning=${enableval}], [continuous_cardinality_warning=yes])
+if test x"$continuous_cardinality_warning" = x"yes"; then
+  AC_DEFINE([CONTINUOUS_CARDINALITY_WARNING],[1],[Warn about non-zero continuous RV cardinality in trifile])
+fi
+
 AC_ARG_ENABLE([model-checks],
               [AS_HELP_STRING([--disable-model-checks],
                               [disable run-time checks for models @<:@default: no@:>@])],
