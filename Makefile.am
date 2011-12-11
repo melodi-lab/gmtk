@@ -1,6 +1,7 @@
-EXTRA_DIST = RELEASE contrib
+EXTRA_DIST = RELEASE contrib 
 
 dist_bin_SCRIPTS = \
+scripts/fixTri.sh \
 scripts/generate_random_graph.pl \
 scripts/triangulateGA \
 scripts/triangulateParallel \
