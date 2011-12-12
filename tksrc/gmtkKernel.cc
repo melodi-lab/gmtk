@@ -181,7 +181,11 @@ main(int argc,char*argv[])
 
   ////////////////////////////////////////////
   // parse arguments
-  bool parse_was_ok = Arg::parse(argc,(char**)argv);
+  bool parse_was_ok = Arg::parse(argc,(char**)argv,
+"\nThis program uses a DGM as a Kernel (e.g., Fisher Kernel\n"
+"or accumulator). In other words, for each observation file,\n"
+"it will write out a vector that is on the order of the number\n"
+"of current system parameters.\n");
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }

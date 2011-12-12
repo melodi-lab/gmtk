@@ -169,7 +169,9 @@ main(int argc,char*argv[])
 
   ////////////////////////////////////////////
   // parse arguments
-  bool parse_was_ok = Arg::parse(argc,(char**)argv);
+  bool parse_was_ok = Arg::parse(argc,(char**)argv,
+"\nThis program performs model parameter tying using one of a\n"
+"variety of methods\n");
   if(!parse_was_ok) {
     Arg::usage(); 
     exit(-1);

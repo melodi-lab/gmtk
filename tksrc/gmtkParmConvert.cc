@@ -1,6 +1,6 @@
 /*
- * gmtkJT.cc
- * produce a junction tree
+ * gmtkParmConvert.cc
+ * convert to/from ascii/binary parameters
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
@@ -80,6 +80,7 @@ VCID(HGID)
 #define GMTK_ARG_GENERAL_OPTIONS
 #define GMTK_ARG_SEED
 #define GMTK_ARG_VERB
+#define GMTK_ARG_HELP
 #define GMTK_ARG_VERSION
 #define GMTK_ARG_SKIP_STARTUP_CHECKS
 
@@ -120,7 +121,9 @@ main(int argc,char*argv[])
 
   ////////////////////////////////////////////
   // parse arguments
-  bool parse_was_ok = Arg::parse(argc,(char**)argv);
+  bool parse_was_ok = Arg::parse(argc,(char**)argv,
+"\nThis program converts to/from ASCII/binary/HTK parameters,\n"
+"with optional flooring\n");
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }
