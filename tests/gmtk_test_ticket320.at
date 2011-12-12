@@ -1,0 +1,12 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/320 is fixed
+
+AT_SETUP([ticket 320])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/beta_test_1])
+
+# gmtkJT will succeed if the bug is fixed
+
+AT_CHECK([(cd $TEST_AND_DEV/beta_test_1 && \
+  gmtkJT -strFile ex2.str -of1 data.lst -nf1 2 -fmt1 ascii -inputMasterFile ex.params)],
+         [],[ignore],[ignore])
+AT_CLEANUP

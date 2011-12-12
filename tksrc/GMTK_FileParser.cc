@@ -4445,7 +4445,8 @@ FileParser::readAndVerifyGMId(iDataStreamFile& is,const bool checkCardinality)
   int ival;
   unsigned uval;
   string nm;
-  
+  bool warned = false; 
+ 
   for (unsigned i=0;i<rvInfoVector.size();i++) {
 
     if (!is.read(uval)) return false;
@@ -4459,7 +4460,17 @@ FileParser::readAndVerifyGMId(iDataStreamFile& is,const bool checkCardinality)
 
     if (!is.read(uval)) return false;
     if (checkCardinality) {
-      if (uval != rvInfoVector[i].rvCard) return false;
+      if (rvInfoVector[i].rvType == RVInfo::t_discrete) {
+        if (uval != rvInfoVector[i].rvCard) return false;
+      } else if (rvInfoVector[i].rvType == RVInfo::t_continuous && uval != 0 && !warned) {
+#ifdef CONTINUOUS_CARDINALITY_WARNING
+        warning("WARNING: Triangulation file '%s' was created by a buggy version of GMTK.\n"
+                "It will work fine, but you can eliminate this warning by running the fixTri.sh\n"
+                "script distributed with GMTK:\n"
+                "  %s/fixTri.sh %s\n", is.fileName(), BINDIR, is.fileName());
+#endif
+        warned = true;
+      }
     }
 
     if (!is.read(nm)) return false;

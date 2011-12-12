@@ -53,6 +53,11 @@ AC_ARG_ENABLE([model-checks],
                               [disable run-time checks for models @<:@default: no@:>@])],
               [model_checks=${enableval}], [model_checks=yes])
 
+AC_ARG_ENABLE([continuous-cardinality-warning],
+              [AS_HELP_STRING([--disable-continous-cardinality-warning],
+                              [disable warning about continous variables with non-zero cardinality in trifiles written by older versions of GMTK @<:@default: no@:>@])],
+              [continuous_cardinaliy_warning=${enableval}], [continuous_cardinality_warning=yes])
+
 # Checks for programs.
 
 AC_PROG_AWK
