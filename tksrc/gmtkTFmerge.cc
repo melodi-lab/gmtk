@@ -64,6 +64,7 @@ VCID(HGID)
 
 #define GMTK_ARG_GENERAL_OPTIONS
 #define GMTK_ARG_VERB
+#define GMTK_ARG_HELP
 #define GMTK_ARG_SKIP_STARTUP_CHECKS
 
 #define GMTK_ARG_INPUT_TRAINABLE_FILE_HANDLING
@@ -174,7 +175,10 @@ main(int argc,char*argv[])
 
   ////////////////////////////////////////////
   // parse arguments
-  bool parse_was_ok = Arg::parse(argc,(char**)argv);
+  bool parse_was_ok = Arg::parse(argc,(char**)argv,
+"\nThis program merges optionally the P, C, and E triangulated\n"
+"partitions from up to three trifiles all of which must have the\n"
+"same boundary and same underlying .str file.\n");
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }

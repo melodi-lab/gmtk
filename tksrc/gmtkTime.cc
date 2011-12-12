@@ -208,7 +208,11 @@ main(int argc,char*argv[])
 
   ////////////////////////////////////////////
   // parse arguments
-  bool parse_was_ok = Arg::parse(argc,(char**)argv);
+  bool parse_was_ok = Arg::parse(argc,(char**)argv,
+"\nThis program runs inference for a given fixed amount of\n"
+"absolute time and reports back the amount of work that was\n"
+"done in that time. This is useful for upper limit timing of\n"
+"a particular triangulation\n");
   if(!parse_was_ok) {
     Arg::usage(); 
     exit(EXIT_FAILURE);
