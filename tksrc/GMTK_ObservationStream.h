@@ -30,7 +30,7 @@
 //   ASCIIStream  -   ASCII files
 //   PFileStream  -   non-indexed PFiles
 //   SocketStream -   Data streamed over IP (in what format?)
-//   FilterStream -   ObservationStream wrapper for FIR, ARMA, etc transforms
+//   FilterStream -   ObservationStream wrapper for IIR, ARMA, etc transforms
 //   FileStream   -   ObservationStream wrapper for seekable files (ObservationFile)
 
 class ObservationStream {

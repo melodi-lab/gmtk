@@ -33,7 +33,7 @@
 //   HDF5File     -   HDF5 files
 //   HTKFile
 //   BinaryFile
-//   FilterFile   -   ObservationFile wrapper for FIR, ARMA, etc transforms
+//   FilterFile   -   ObservationFile wrapper for IIR, ARMA, etc transforms
 
 class StreamSource : ObservationSource {
 
