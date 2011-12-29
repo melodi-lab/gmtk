@@ -27,10 +27,10 @@
 // new stream type is supported by GMTK.
 //
 // Planned subtypes:
-//   ASCIIStream  -   ASCII files
-//   PFileStream  -   non-indexed PFiles
+//   ASCIIStream  -   ASCII files (just use FileStream around an ASCIIFile)
+//   PFileStream  -   non-indexed PFiles (PFileFile should handle non-indexed too)
 //   SocketStream -   Data streamed over IP (in what format?)
-//   FilterStream -   ObservationStream wrapper for FIR, ARMA, etc transforms
+//   FilterStream -   ObservationStream wrapper for IIR, ARMA, etc transforms
 //   FileStream   -   ObservationStream wrapper for seekable files (ObservationFile)
 
 class ObservationStream {

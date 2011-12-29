@@ -41,7 +41,7 @@ class FileSource : ObservationSource {
   // transformed and "read to eat." So the FileSource
   // just manages assembling them to satisfy the loadFrames()
   // calls, prefetching/caching. For archipelagos, each thread
-  // gets its FileSource (all aimed at the same files, of course).
+  // gets its own FileSource (all aimed at the same files, of course).
   FileSource(ObservationFile file[]); 
 
 

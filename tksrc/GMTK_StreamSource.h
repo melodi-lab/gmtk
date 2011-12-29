@@ -45,6 +45,16 @@ class StreamSource : ObservationSource {
   // calls
   StreamSource(ObservationStream stream[]); 
 
+
+  // After discussing with Jeff, we decided online inference
+  // should support multiple segments, so we need a way to
+  // indicate the end of a segment - prehaps by returning 
+  // NULL or adding a bool& EOS parameter. Also, there may
+  // be (M,S) incompatibility between the model triangulation
+  // and the amount of data supplied by the stream  - should
+  // that be an error, and if so, how to indicate it? Perhaps
+  // make count an unsigned& returning the # of missing frames
+  // (should be 0 for success)
   Data32 *loadFrames(unsigned first, unsigned count) {
     // The current design loops over observation segments,
     // loading them into the ObservationMatrix, then inference
@@ -80,8 +90,8 @@ class StreamSource : ObservationSource {
     // if @ end of cookedBuffer
     //   copy any need frames to beginning of cookedBuffer
     //   adjust cookedBuffer destination
-    //   decrement count by amount of overlap
-    // until count frames read, EOF, or timeout:
+    //   adjust (first,count)to account for overlap -> (first',count')
+    // until count' frames read, EOF, or timeout:
     //   getNextFrame() from each stream into cookedBuffer
     // return &cookedBuffer + offset
 
