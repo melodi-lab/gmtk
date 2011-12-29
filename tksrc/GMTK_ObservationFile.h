@@ -29,13 +29,13 @@
 //
 // Planned subtypes:
 //   ASCIIFile    -   ASCII files (read entirely into memory)
-//   PFileFile    -   indexed PFiles
-//   HDF5File     -   HDF5 files
-//   HTKFile
-//   BinaryFile
-//   FilterFile   -   ObservationFile wrapper for FIR, ARMA, etc transforms
+//   PFileFile    -   indexed PFiles (non-indexed read entirely into memory)
+//   HDF5File     
+//   HTKFile      
+//   BinaryFile   
+//   FilterFile   -   ObservationFile wrapper for IIR, ARMA, etc transforms
 
-class StreamSource : ObservationSource {
+class ObservationFile {
 
  private:
   // -frX
