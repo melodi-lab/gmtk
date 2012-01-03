@@ -4450,23 +4450,38 @@ FileParser::readAndVerifyGMId(iDataStreamFile& is,const bool checkCardinality)
   for (unsigned i=0;i<rvInfoVector.size();i++) {
 
     if (!is.read(uval)) return false;
-    if (uval != i) return false;
+    if (uval != i) {
+      warning("WARNING: Triangulation file '%s' has out-of-order GM ID entries", is.fileName());
+      return false;
+    }
 
     if (!is.read(nm)) return false;
-    if (nm != rvInfoVector[i].name) return false;
+    if (nm != rvInfoVector[i].name) {
+      warning("WARNING: Triangulation file '%s' has variable %s at position %u, expected %s",
+	      is.fileName(), nm.c_str(), i, rvInfoVector[i].name.c_str());
+      return false;
+    }
 
     if (!is.read(uval)) return false;
-    if (uval != rvInfoVector[i].frame) return false;
+    if (uval != rvInfoVector[i].frame) {
+      warning("WARNING: Triangulation file '%s' has variable %s(%u), expected %s(%u)",
+	      is.fileName(), rvInfoVector[i].name.c_str(), uval, rvInfoVector[i].name.c_str(), rvInfoVector[i].frame);
+      return false;
+    }
 
     if (!is.read(uval)) return false;
     if (checkCardinality) {
       if (rvInfoVector[i].rvType == RVInfo::t_discrete) {
-        if (uval != rvInfoVector[i].rvCard) return false;
+        if (uval != rvInfoVector[i].rvCard) {
+	  warning("WARNING: Triangulation file '%s' has cardinality %u for variable %s, expected %u\n",
+		  is.fileName(), rvInfoVector[i].name.c_str(), uval, rvInfoVector[i].rvCard);
+	  return false;
+	}
       } else if (rvInfoVector[i].rvType == RVInfo::t_continuous && uval != 0 && !warned) {
 #ifdef CONTINUOUS_CARDINALITY_WARNING
         warning("WARNING: Triangulation file '%s' was created by a buggy version of GMTK.\n"
-                "It will work fine, but you can eliminate this warning by running the fixTri.sh\n"
-                "script distributed with GMTK:\n"
+                "It will work fine as-is, but you can repair the file and eliminate this\n"
+		"warning by running the fixTri.sh script distributed with GMTK:\n"
                 "  %s/fixTri.sh %s\n", is.fileName(), BINDIR, is.fileName());
 #endif
         warned = true;
@@ -4475,40 +4490,72 @@ FileParser::readAndVerifyGMId(iDataStreamFile& is,const bool checkCardinality)
 
     if (!is.read(nm)) return false;
     if (rvInfoVector[i].rvType == RVInfo::t_discrete) {
-      if (nm != "D") return false;
+      if (nm != "D") {
+	warning("WARNING: Triangulation file '%s' has %s as continuous, expected discrete", 
+		is.fileName(), rvInfoVector[i].name.c_str());
+	return false;
+      }
     } else {
-      if (nm != "C") return false;
+      if (nm != "C") {
+	warning("WARNING: Triangulation file '%s' has %s as discrete, expected continuous", 
+		is.fileName(), rvInfoVector[i].name.c_str());
+	return false;
+      }
     }
 
     if (!is.read(uval)) return false;    
-    if (uval != rvInfoVector[i].switchingParents.size()) return false;
+    if (uval != rvInfoVector[i].switchingParents.size()) {
+      warning("WARNING: Triangulation file '%s' has %u switching parents for variable %s, expected %u",
+	      is.fileName(), uval, rvInfoVector[i].name.c_str(), rvInfoVector[i].switchingParents.size());
+      return false;
+    }
 
     for (unsigned j=0;j<rvInfoVector[i].switchingParents.size();j++) {
       if (!is.read(nm)) return false;
-      if (nm != rvInfoVector[i].switchingParents[j].first) return false;
-
+      if (nm != rvInfoVector[i].switchingParents[j].first) {
+	warning("WARNING: Triangulation file '%s' has %s as the %uth switching parent of %s, expected %s",
+		is.fileName(), nm.c_str(), j, rvInfoVector[i].name.c_str(), rvInfoVector[i].switchingParents[j].first.c_str());
+	return false;
+      }
 
       if (!is.read(ival)) return false;
-      if (ival != rvInfoVector[i].switchingParents[j].second) return false;
-
+      if (ival != rvInfoVector[i].switchingParents[j].second) {
+	warning("WARNING: Triangulation file '%s' has %s(%d) as the %uth switching parent of %s, expected %s(%d)",
+		is.fileName(), nm.c_str(), ival, j, rvInfoVector[i].name.c_str(), rvInfoVector[i].switchingParents[j].first.c_str(),
+		rvInfoVector[i].switchingParents[j].second);
+	return false;
+      }
     }
 
     if (!is.read(uval)) return false;
-    if (uval != rvInfoVector[i].conditionalParents.size()) return false;
-
+    if (uval != rvInfoVector[i].conditionalParents.size()) {
+      warning("WARNING: Triangulation file '%s' has %u conditional parent sets for variable %s, expected %u",
+	      is.fileName(), uval, rvInfoVector[i].name.c_str(), rvInfoVector[i].conditionalParents.size());
+      return false;
+    }
     for (unsigned j=0;j<rvInfoVector[i].conditionalParents.size();j++) {
 
       if (!is.read(uval)) return false;      
-      if (uval != rvInfoVector[i].conditionalParents[j].size()) return false;
-
+      if (uval != rvInfoVector[i].conditionalParents[j].size()) {
+	warning("WARNING: Triangulation file '%s' has %u conditional parents of variable %s in the %uth set, expected %u", 
+		is.fileName(), uval, rvInfoVector[i].name.c_str(), j, rvInfoVector[i].conditionalParents[j].size());
+	return false;
+      }
       for (unsigned k=0;k<rvInfoVector[i].conditionalParents[j].size();k++) {
 
 	if (!is.read(nm)) return false;
-	if (nm != rvInfoVector[i].conditionalParents[j][k].first) return false;
-
+	if (nm != rvInfoVector[i].conditionalParents[j][k].first) {
+	  warning("WARNING: Triangulation file '%s' has %s as conditional parent of %s, expected %s", 
+		  is.fileName(), nm.c_str(), rvInfoVector[i].name.c_str(), rvInfoVector[i].conditionalParents[j][k].first.c_str());
+	  return false;
+	}
 	if (!is.read(ival)) return false;	
-	if (ival != rvInfoVector[i].conditionalParents[j][k].second) return false;
-
+	if (ival != rvInfoVector[i].conditionalParents[j][k].second) {
+	  warning("WARNING: Triangulation file '%s' has %s(%d) as conditional parent of %s, expected %s(%d)", 
+		  is.fileName(), nm.c_str(), ival,  rvInfoVector[i].name.c_str(), rvInfoVector[i].conditionalParents[j][k].first.c_str(), 
+		  rvInfoVector[i].conditionalParents[j][k].second);
+	  return false;
+	}
       }
     }
   }
@@ -4527,18 +4574,33 @@ FileParser::readAndVerifyGMId(iDataStreamFile& is,const bool checkCardinality)
     // if (nm != factorList[i].name) return false;
 
     if (!is.read(uval)) return false;
-    if (uval != factorList[i].frame) return false;
+    if (uval != factorList[i].frame) {
+      warning("WARNING: Triangulation file '%s' has factor %s defined at frame %u, expected %u",
+	      is.fileName(), factorList[i].name.c_str(), uval, factorList[i].frame);
+      return false;
+    }
 
     if (!is.read(uval)) return false;
-    if (uval != factorList[i].variables.size()) return false;
+    if (uval != factorList[i].variables.size()) {
+      warning("WARNING: Triangulation file '%s' has size %u for factor %s, expected %u",
+	      is.fileName(), uval, factorList[i].name.c_str(), factorList[i].variables.size());
+      return false;
+    }
 
     for (unsigned j=0;j<factorList[i].variables.size();j++) {
       if (!is.read(nm)) return false;
-      if (nm != factorList[i].variables[j].first) return false;
-
+      if (nm != factorList[i].variables[j].first) {
+	warning("WARNING: Triangulation file '%s' has variable %s in factor %s, expected %s",
+		is.fileName(), nm.c_str(), factorList[i].name.c_str(), factorList[i].variables[j].first.c_str());
+	return false;
+      }
 
       if (!is.read(ival)) return false;
-      if (ival != factorList[i].variables[j].second) return false;
+      if (ival != factorList[i].variables[j].second) {
+	warning("WARNING: Triangulation file '%s' has variable %s(%d) in factor %s, expected %s(%d)",
+		is.fileName(), nm.c_str(), ival, factorList[i].name.c_str(), factorList[i].variables[j].first.c_str(), factorList[i].variables[j].second);
+	return false;
+      }
 
     }
 
@@ -4551,13 +4613,25 @@ FileParser::readAndVerifyGMId(iDataStreamFile& is,const bool checkCardinality)
 
 
   if (!is.read(uval)) return false;
-  if (uval != _firstChunkframe) return false;
+  if (uval != _firstChunkframe) {
+    warning("WARNING: Triangulation file '%s' has first chunk frame %u, expected %u",
+	    is.fileName(), uval, _firstChunkframe);
+    return false;
+  }
 
   if (!is.read(uval)) return false;
-  if (uval != _lastChunkframe) return false;
+  if (uval != _lastChunkframe) {
+    warning("WARNING: Triangulation file '%s' has last chunk frame %u, expected %u",
+	    is.fileName(), uval, _lastChunkframe);
+    return false;
+  }
 
   if (!is.read(nm)) return false;
-  if (nm != TRIFILE_END_OF_ID_STRING) return false;
+  if (nm != TRIFILE_END_OF_ID_STRING) {
+    warning("WARNING: Triangulation file '%s' GM Id ends with '%s', expected '%s'",
+	    is.fileName(), nm.c_str(), TRIFILE_END_OF_ID_STRING);
+    return false;
+  }
 
   // all checked out ok
   return true;
