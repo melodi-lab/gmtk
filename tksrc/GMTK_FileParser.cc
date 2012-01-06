@@ -4474,7 +4474,7 @@ FileParser::readAndVerifyGMId(iDataStreamFile& is,const bool checkCardinality)
       if (rvInfoVector[i].rvType == RVInfo::t_discrete) {
         if (uval != rvInfoVector[i].rvCard) {
 	  warning("WARNING: Triangulation file '%s' has cardinality %u for variable %s, expected %u\n",
-		  is.fileName(), rvInfoVector[i].name.c_str(), uval, rvInfoVector[i].rvCard);
+		  is.fileName(), uval, rvInfoVector[i].name.c_str(), rvInfoVector[i].rvCard);
 	  return false;
 	}
       } else if (rvInfoVector[i].rvType == RVInfo::t_continuous && uval != 0 && !warned) {
