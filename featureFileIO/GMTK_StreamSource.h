@@ -25,7 +25,7 @@
 // non-random access data sources like pipes and sockets.
 // Online inference assumes a StreamSource.
 
-class StreamSource : ObservationSource {
+class StreamSource : public ObservationSource {
 
  private:
 
