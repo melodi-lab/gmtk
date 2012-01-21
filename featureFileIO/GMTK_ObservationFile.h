@@ -29,13 +29,13 @@
 //
 // Planned subtypes:
 //   ASCIIFile    -   ASCII files (read entirely into memory)
-//   PFileFile    -   indexed PFiles
-//   HDF5File     -   HDF5 files
-//   HTKFile
-//   BinaryFile
+//   PFileFile    -   indexed PFiles (non-indexed read entirely into memory)
+//   HDF5File     
+//   HTKFile      
+//   BinaryFile   
 //   FilterFile   -   ObservationFile wrapper for IIR, ARMA, etc transforms
 
-class StreamSource : ObservationSource {
+class ObservationFile {
 
  private:
   // -frX
@@ -44,19 +44,24 @@ class StreamSource : ObservationSource {
  public:
 
   // The number of available segments.
-  virtual unsigned numSegments();
+  virtual unsigned numSegments() = 0;
 
   // Begin sourcing data from the requested segment.
   // Must be called before any other operations are performed on a segment.
-  virtual void openSegment(unsigned seg);
+  virtual bool openSegment(unsigned seg) = 0;
 
   // The number of frames in the currently open segment.
-  virtual unsigned numFrames();
+  virtual unsigned numFrames() = 0;
 
   // Load count frames of observed data, starting from first,
   // in the current segment. count may be 0 to request loading
   // the entire data segment (frames [first, numFrames)).
-  virtual Data32 *getFrames(unsigned first, unsigned count);
-}
+  virtual Data32 *getFrames(unsigned first, unsigned count) = 0;
+
+  // The number of continuous, discrete, total features
+  virtual unsigned numContinuous() = 0;
+  virtual unsigned numDiscrete() = 0;
+  virtual unsigned numFeatures() = 0;
+};
 
 #endif

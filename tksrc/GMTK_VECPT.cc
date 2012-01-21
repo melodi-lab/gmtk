@@ -97,7 +97,12 @@ sentRange:all
 #include "GMTK_VECPT.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_DiscRV.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_FileSource.h"
+#  include "GMTK_ASCIIFile.h"
+#endif
 
 VCID("$Header$")
 
@@ -435,6 +440,7 @@ VECPT::read(iDataStreamFile& is)
 	throw(error_message);
       }
 
+#if 0
       obs = new ObservationMatrix;
       // Now try opening the file:
       obs->openFile(obsFileName.c_str(),
@@ -458,6 +464,12 @@ VECPT::read(iDataStreamFile& is)
 		    //	       (const char**)&sentRangeStr
 		    (const char**)&sentRange
 		    );
+#else
+      assert(fmt=="ascii");
+      ObservationFile *obsFile = 
+	new ASCIIFile(obsFileName.c_str(), nfs, nis, 0, false, NULL);
+      obs = new FileSource(1, &obsFile);
+#endif
 
       // still here? Do more error checking.
 
@@ -613,7 +625,7 @@ logpr VECPT::probGivenParents(vector <RV *>& parents,
   } else {
     // do a slow linear search since order can be anything.
     // TODO: make sorted assumption and do binary search.
-    unsigned *base = obs->unsignedAtFrame(drv->frame());
+    unsigned *base = obs->unsignedVecAtFrame(drv->frame());
     unsigned i;
     for (i=obs_file_ioffset;i<obs->numDiscrete();i++) {
       if (base[i] == curParentValue)
@@ -681,7 +693,7 @@ void VECPT::begin(iterator& it,DiscRV* drv, logpr& p)
     // Sparse case.
     // 
     // do a slow linear search since order can be anything.
-    unsigned *base = obs->unsignedAtFrame(drv->frame());
+    unsigned *base = obs->unsignedVecAtFrame(drv->frame());
     unsigned i;
     for (i=obs_file_ioffset;i<obs->numDiscrete();i++) {
       if (base[i] == curParentValue)
@@ -715,7 +727,7 @@ bool VECPT::next(iterator &it,logpr& p)
     // we don't invert the score since this is the Pr(child = 1 | parent) case.
   } else {
     // do a slow linear search since order can be anything.
-    unsigned *base = obs->unsignedAtFrame(it.drv->frame());
+    unsigned *base = obs->unsignedVecAtFrame(it.drv->frame());
     unsigned i;
     for (i=obs_file_ioffset;i<obs->numDiscrete();i++) {
       if (base[i] == it.uInternalState)
@@ -778,7 +790,7 @@ int VECPT::randomSample(DiscRV* drv)
     return i;
   } else {
     // this assumes that ints in sparse case are ordered
-    return *(obs->unsignedAtFrame(drv->frame()) + i); 
+    return *(obs->unsignedVecAtFrame(drv->frame()) + i); 
   }
 
 }
