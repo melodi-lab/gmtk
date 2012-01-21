@@ -58,7 +58,18 @@ GMTK_DataTransformations.cc \
 GMTK_WordOrganization.h GMTK_WordOrganization.cc \
 GMTK_ObsStats.h GMTK_ObsStats.cc \
 pfile.h pfile.cc \
-vbyteswapping.h vbyteswapping.cc
+vbyteswapping.h vbyteswapping.cc \
+GMTK_ObservationSource.h \
+GMTK_StreamSource.h \
+GMTK_ObservationStream.h \
+GMTK_FileSource.h GMTK_FileSource.cc \
+GMTK_ObservationFile.h \
+GMTK_ASCIIFile.h GMTK_ASCIIFile.cc
+
+check_PROGRAMS = testASCIIFile testFileSource
+
+testASCIIFile_SOURCES = testASCIIFile.cc 
+testFileSource_SOURCES = testFileSource.cc
 
 bin_PROGRAMS = obs-create obs-print obs-info obs-skmeans obs-concat obs-diff
 #check_PROGRAMS = gmtest

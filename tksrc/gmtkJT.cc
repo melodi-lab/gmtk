@@ -48,7 +48,14 @@
 #include "GMTK_ContRV.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_GMParms.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_ObservationSource.h"
+#  include "GMTK_FileSource.h"
+#  include "GMTK_ASCIIFile.h"
+#  include "GMTK_Stream.h"
+#endif
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_MeanVector.h"
@@ -172,7 +179,11 @@ Arg Arg::Args[] = {
  */
 RAND rnd(seedme);
 GMParms GM_Parms;
+#if 0
 ObservationMatrix globalObservationMatrix;
+#else
+FileSource globalObservationMatrix;
+#endif
 
 
 int
@@ -209,6 +220,7 @@ main(int argc,char*argv[])
 
   infoMsg(IM::Max,"Opening Files ...\n");
 
+#if 0
   globalObservationMatrix.openFiles(nfiles,
 				    (const char**)&ofs,
 				    (const char**)&frs,
@@ -230,6 +242,15 @@ main(int argc,char*argv[])
 				    (const char**)&sr,
 				    (const char**)&prepr,
 				    gpr_str);
+#else
+  ObservationFile *obsFile[MAX_NUM_OBS_FILES];
+  unsigned nFiles;
+  for (nFiles=0; nFiles < MAX_NUM_OBS_FILES && ofs[nFiles]; nFiles+=1) {
+    assert(ifmts[nFiles]==RAWASC);
+    obsFile[nFiles] = new ASCIIFile(ofs[nFiles],nfs[nFiles],nis[nFiles],nFiles,Cpp_If_Ascii,cppCommandOptions);
+  }
+  globalObservationMatrix.initialize(nFiles, obsFile);
+#endif
 
   infoMsg(IM::Max,"Finished opening files.\n");
 

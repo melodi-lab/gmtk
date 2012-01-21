@@ -33,6 +33,8 @@ featureFileIO/obs-diff
 featureFileIO/obs-info
 featureFileIO/obs-print
 featureFileIO/obs-skmeans
+featureFileIO/testASCIIFile
+featureFileIO/testFileSource
 miscSupport/fileParserTest
 miscSupport/testArguments
 miscSupport/testBPRange
