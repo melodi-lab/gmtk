@@ -27,6 +27,8 @@
 #endif
 #endif
 
+// FIXME: gmtk_temporary.h has some constants & enums that need to be moved to the new I/O
+#include "gmtk_temporary.h"
 #include "GMTK_ProgramDefaultParms.h"
 
 /*-----------------------------------------------------------------------------------------------------------*/

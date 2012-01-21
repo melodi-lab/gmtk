@@ -33,6 +33,7 @@
 // formats.
 class ObservationSource {
 
+ public:
   // Load count frames of observed data, starting from first.
   // For a StreamSource, it may take arbitrarily long to
   // fullfill the request since the data may be coming from
@@ -47,15 +48,26 @@ class ObservationSource {
   //   perhaps require no gaps ?
   // 
   // error if first+count >= numFrames(), or can it return short counts?
-  virtual Data32 *loadFrames(unsigned first, unsigned count);
+  virtual Data32 *loadFrames(unsigned first, unsigned count) = 0;
   
   // The number of continuous, discrete, total features
-  virtual unsigned numContinous();
-  virtual unsigned numDiscrete();
-  virtual unsigned numFeatures();
+  virtual unsigned numContinuous() = 0;
+  virtual unsigned numDiscrete() = 0;
+  virtual unsigned numFeatures() = 0;
 
   // The number of Data32's between each frame
-  virtual unsigned stride();
+  virtual unsigned stride() = 0;
+
+  // number of frames to skip at the beginning
+  virtual unsigned startSkip() = 0;
+  // can't use endSkip() in streams since length is unkown?
+  //virtual unsigned endSkip() = 0;
+
+  virtual float *const floatVecAtFrame(unsigned f) = 0;
+
+  virtual float *const floatVecAtFrame(unsigned f, const unsigned startFeature) = 0;
+
+  virtual bool elementIsDiscrete(unsigned el) = 0;
 };
 
 #endif

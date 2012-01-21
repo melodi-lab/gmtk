@@ -52,7 +52,11 @@
 #include "GMTK_RVInfo.h"
 #include "GMTK_NamedObject.h"
 #include "GMTK_RngDecisionTree.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_FileSource.h"
+#endif
 #include "GMTK_RV.h"
 
 class ScPnShRV {

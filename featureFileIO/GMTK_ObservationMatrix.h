@@ -640,8 +640,11 @@ unsigned ObservationMatrix::applyPreTransformFrameRange(sArray<T>* tmp_sen_buffe
 ////////////////////////////////////////////////
 // The global matrix object, must be
 // actually defined near where main() is defined.
-
+#if 0
 extern ObservationMatrix globalObservationMatrix;
+#else
+//extern ObservationMtarix oldGOM;
+#endif
 
 #endif
 
