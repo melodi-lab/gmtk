@@ -2843,11 +2843,11 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		      rvInfoVector[i].listIndices[j].nameIndex) ==
 		GM_Parms.mdCptsMap.end()) {
 	      if (allocate == noAllocate) {
-		error("Error: RV \"%s\" at frame %d (line %d), conditional parent DenseCPT \"%s\" doesn't exist\n",
+		error("Error: The DenseCPT \"%s\" associated with RV \"%s\" at frame %d (line %d) doesn't exist\n",
+                      rvInfoVector[i].listIndices[j].nameIndex.c_str(),
 		      rvInfoVector[i].name.c_str(),
 		      rvInfoVector[i].frame,
-		      rvInfoVector[i].fileLineNumber,
-		      rvInfoVector[i].listIndices[j].nameIndex.c_str());
+		      rvInfoVector[i].fileLineNumber);
 	      }
 	      else {
 		// allocate the MDCPT with name and install it.
