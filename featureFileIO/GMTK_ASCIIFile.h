@@ -49,10 +49,6 @@ using namespace std;
 
 class ASCIIFile: public ObservationFile {
 
- private:
-  // -frX
-  // -irX
-
   bool      cppIfAscii;
   char*     cppCommandOptions;
   unsigned  numFileNames;               // number of filenames
@@ -74,7 +70,12 @@ class ASCIIFile: public ObservationFile {
  public:
 
   ASCIIFile(const char *name, unsigned nfloats, unsigned nints, 
-	    unsigned num, bool cppIfAscii, char* cppCommandOptions=NULL);
+	    unsigned num, bool cppIfAscii, char* cppCommandOptions=NULL,
+	    char const *_contFeatureRangeStr=NULL, 
+	    char const *_discFeatureRangeStr=NULL, 
+	    char const *_preFrameRangeStr=NULL, 
+	    char const *_segRangeStr=NULL);
+
 
   ~ASCIIFile() {
     if (fofName) delete fofName;
@@ -103,7 +104,7 @@ class ASCIIFile: public ObservationFile {
   // Load count frames of observed data, starting from first,
   // in the current segment. count may be 0 to request loading
   // the entire data segment (frames [first, numFrames)).
-  Data32 *getFrames(unsigned first, unsigned count) {
+  Data32 const *getFrames(unsigned first, unsigned count) {
     assert(buffer);
     assert(first < nFrames);
     assert(first + count <= nFrames);

@@ -366,8 +366,12 @@ class ObservationMatrix {
       return RAWBIN;
     else if (strcmp(fmt,"ascii") == 0)
       return RAWASC;
+    else if (strcmp(fmt,"flatascii") == 0)
+      return FLATASC;
     else if (strcmp(fmt,"pfile") == 0)
       return  PFILE;
+    else if (strcmp(fmt,"hdf5") == 0)
+      return HDF5;
     else {
       error("ERROR: Unknown observation file format type: '%s'\n",fmt);
       return 0;
