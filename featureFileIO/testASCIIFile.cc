@@ -72,7 +72,7 @@ main(int argc, char *argv[]) {
       assert(f.openSegment(j));
       for (unsigned k=0; k < f.numFrames(); k+=1) {
 	printf("%03u %03u", j, k);
-	Data32 *buf = f.getFrames(k,1);
+	Data32 const *buf = f.getFrames(k,1);
 	for (unsigned f=0; f < numFloat; f+=1)
 	  printf(" %f", *((float *)(buf++)));
 	for (unsigned f=0; f < numInt; f+=1)

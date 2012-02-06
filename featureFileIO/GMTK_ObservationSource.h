@@ -48,7 +48,7 @@ class ObservationSource {
   //   perhaps require no gaps ?
   // 
   // error if first+count >= numFrames(), or can it return short counts?
-  virtual Data32 *loadFrames(unsigned first, unsigned count) = 0;
+  virtual Data32 const *loadFrames(unsigned first, unsigned count) = 0;
   
   // The number of continuous, discrete, total features
   virtual unsigned numContinuous() = 0;

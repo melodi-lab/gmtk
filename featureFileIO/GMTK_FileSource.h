@@ -40,11 +40,15 @@ class FileSource: public ObservationSource {
   unsigned nFiles;
   ObservationFile **file;
 
+  // Global Per-segment final frame Range
+  char const *globalFrameRangeStr; // -gpr
+  Range *globalFrameRange;
+
   // number of frames to skip at the beginning
   unsigned _startSkip;
   unsigned _endSkip;
 
-  int _segment;
+  int segment;
 
  public:
   
@@ -53,27 +57,31 @@ class FileSource: public ObservationSource {
   // just manages assembling them to satisfy the loadFrames()
   // calls, prefetching/caching. For archipelagos, each thread
   // gets its own FileSource (all aimed at the same files, of course).
-  FileSource(unsigned nFiles, ObservationFile *file[]); 
+  FileSource(unsigned _nFiles, ObservationFile *file[], 
+	     char const *_globalFrameRangeStr = NULL, unsigned startSkip=0, 
+	     unsigned endSkip=0); 
 
   FileSource() {
     cookedBuffer = NULL;
     floatStart = NULL;
     intStart = NULL;
     file = NULL;
+    globalFrameRangeStr = NULL;
+    globalFrameRange = NULL;
     _startSkip = 0;
     _endSkip = 0;
-    _segment = -1;
+    segment = -1;
   }
 
-  void initialize(unsigned nFiles, ObservationFile *file[], unsigned startSkip=0, unsigned endSkip=0);
+  void initialize(unsigned nFiles, ObservationFile *file[], char const *globalFrameRangeStr = NULL, unsigned startSkip=0, unsigned endSkip=0);
 
   // The number of available segments.
   unsigned numSegments();
 
   // The current segment 
   unsigned segmentNumber() {
-    assert(_segment >= 0);
-    return (unsigned) _segment;
+    assert(segment >= 0);
+    return (unsigned) segment;
   }
 
   // Begin sourcing data from the requested segment.
@@ -83,7 +91,7 @@ class FileSource: public ObservationSource {
   // The number of frames in the currently open segment.
   unsigned numFrames();
 
-  Data32 *loadFrames(unsigned first, unsigned count);
+  Data32 const *loadFrames(unsigned first, unsigned count);
     // if requested frames are already in cookedBuffer
     //   return &cookedBuffer[index of first requested frame]
     // adjust (first,count) for prefetching -> (first',count')
@@ -113,7 +121,7 @@ class FileSource: public ObservationSource {
 
   unsigned &unsignedAtFrame(const unsigned frame, const unsigned feature);
 
-  Data32 *const baseAtFrame(unsigned f);
+  Data32 const * const baseAtFrame(unsigned f);
 
   bool elementIsDiscrete(unsigned el);
 

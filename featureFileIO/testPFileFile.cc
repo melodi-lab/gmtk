@@ -16,13 +16,13 @@ static const char * gmtk_version_id = PACKAGE_STRING;
 static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 2004";
 #endif
 
-#include "GMTK_FileSource.h"
-#include "GMTK_ASCIIFile.h"
+#include "GMTK_PFileFile.h"
 #include "arguments.h"
 
 #define MAX_OBJECTS 10
 
 char *input_fname[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};  // Input file name.
+bool iswp[MAX_OBJECTS] = {false,false,false,false,false};
 unsigned int numInt;
 unsigned int numFloat;
 char *cppCommandOptions = NULL;
@@ -35,7 +35,7 @@ Arg Arg::Args[] = {
   Arg("i",    Arg::Req, input_fname,"input file. Replace X with the file number",Arg::ARRAY,MAX_OBJECTS),
   Arg("nf",   Arg::Req, numFloat,"number of floats in input file(s)"),
   Arg("ni",   Arg::Req, numInt,"number of ints (labels) in input file(s)"),
-  Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Command line options to give to 'cpp'"),
+  Arg("iswp",Arg::Opt,iswp,"Endian swap condition for observation file X",Arg::ARRAY,MAX_OBJECTS),
 
   Arg("\n*** Misc arguments ***\n"),
 
@@ -66,55 +66,21 @@ main(int argc, char *argv[]) {
 #endif
     exit(0);
   }
-  ObservationFile *file[MAX_OBJECTS];
-
-  unsigned nfiles =0;
-  unsigned i;
-  for (i=0; i < MAX_OBJECTS && input_fname[i] != NULL; i+=1) {
-    file[i] = new ASCIIFile(input_fname[i], numFloat, numInt, i, cppCommandOptions);
-    fprintf(stderr, "file %u: %s\n", i, input_fname[i]);
-  }
-  nfiles = i;
-  fprintf(stderr, "%u files\n", nfiles);
-  FileSource fs(nfiles, file);
-
-#define chunksize 5
-
-  for (unsigned j=0; j < fs.numSegments(); j+=1) {
-    assert(fs.openSegment(j));
-    unsigned numFrames = fs.numFrames();
-
-    unsigned k;
-    for (k=0; k + chunksize < numFrames; ) {
-      Data32 const *buf = fs.loadFrames(k,chunksize);
-      if (buf) {
-	for (i=0; i < chunksize; i+=1, k+=1) {
-	  printf("%03u %03u", j, k);
-	  for (unsigned f=0; f < fs.numContinuous(); f+=1)
-	    printf(" %f", *((float *)(buf++)));
-	  for (unsigned f=0; f < fs.numDiscrete(); f+=1)
-	    printf(" %d", *((int *)(buf++)));
-	  printf("\n");
-	}
-	//	printf("--------------------------------\n");
-      } else {
-	printf(" NULL");
-      }
-    }
-    for ( ; k < numFrames; k+=1) {
-      Data32 const *buf = fs.loadFrames(k,1);
-      printf("%03u %03u", j, k);
-      if (buf) {
-	for (unsigned f=0; f < fs.numContinuous(); f+=1)
+  for (unsigned i=0; i < MAX_OBJECTS && input_fname[i] != NULL; i+=1) {
+    PFileFile f(input_fname[i], numFloat, numInt, i, iswp[i]);
+    printf("reading %s - %u\n", input_fname[i], f.numSegments());
+    for (unsigned j=0; j < f.numSegments(); j+=1) {
+      assert(f.openSegment(j));
+      for (unsigned k=0; k < f.numFrames(); k+=1) {
+	printf("%03u %03u", j, k);
+	Data32 const *buf = f.getFrames(k,1);
+	for (unsigned f=0; f < numFloat; f+=1)
 	  printf(" %f", *((float *)(buf++)));
-	for (unsigned f=0; f < fs.numDiscrete(); f+=1)
+	for (unsigned f=0; f < numInt; f+=1)
 	  printf(" %d", *((int *)(buf++)));
-      } else {
-	printf(" NULL");
+	printf("\n");
       }
-      printf("\n");
     }
-
   }
   exit(0);
 }

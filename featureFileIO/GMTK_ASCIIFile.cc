@@ -112,8 +112,17 @@ ASCIIFile::readFof(FILE * &f) {
 }
 
 ASCIIFile::ASCIIFile(const char *name, unsigned nfloats, unsigned nints, 
-		     unsigned num, bool cppIfAscii, char* cppCommandOptions)
-  : cppIfAscii(cppIfAscii),cppCommandOptions(cppCommandOptions)
+		     unsigned num, bool cppIfAscii, char* cppCommandOptions,
+		     char const *_contFeatureRangeStr, 
+		     char const *_discFeatureRangeStr, 
+		     char const *_preFrameRangeStr, 
+		     char const *_segRangeStr)
+  : ObservationFile(_contFeatureRangeStr, 
+		    _discFeatureRangeStr, 
+		    _preFrameRangeStr,
+		    _segRangeStr),
+    cppIfAscii(cppIfAscii),
+    cppCommandOptions(cppCommandOptions)
 {
   buffer = NULL;
   if (name == NULL) 	
@@ -126,7 +135,7 @@ ASCIIFile::ASCIIFile(const char *name, unsigned nfloats, unsigned nints,
   strcpy(fofName,name);
   nFloats = nfloats;
   nInts = nints;
-  
+
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP     
   if(cppIfAscii) { 
     string cppCommand = CPP_Command();
