@@ -74,7 +74,7 @@ FileSource::initialize(unsigned nFiles, ObservationFile *file[], char const *glo
 unsigned 
 FileSource::numSegments() {
 // FIXME - FileSource should know about segment subranges unless the file format can do it better
-  return file[0]->numSegments();
+  return file[0]->numLogicalSegments();
 }
 
   // Begin sourcing data from the requested segment.
