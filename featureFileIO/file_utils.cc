@@ -1,4 +1,17 @@
 
+/*
+ * file_utils.cc
+ * 
+ * Written by Richard Rogers <rprogers@ee.washington.edu>
+ *
+ * Copyright (c) 2011, < fill in later >
+ * 
+ * < License reference >
+ * < Disclaimer >
+ *
+ */
+
+
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
