@@ -85,6 +85,7 @@ VCID(HGID)
 #  include "GMTK_FileSource.h"
 #  include "GMTK_ASCIIFile.h"
 #  include "GMTK_PFileFile.h"
+#  include "GMTK_HTKFile.h"
 #  include "GMTK_Stream.h"
 #endif
 #include "GMTK_MixtureCommon.h"
@@ -278,6 +279,10 @@ main(int argc,char*argv[])
 				      irs[nFiles], prepr[nFiles], sr[nFiles]);
       break;
     case HTK:
+      obsFile[nFiles] = new HTKFile(ofs[nFiles], nfs[nFiles], nis[nFiles], 
+				    nFiles, iswp[nFiles], Cpp_If_Ascii, cppCommandOptions,
+				    frs[nFiles], irs[nFiles], prepr[nFiles], sr[nFiles]);
+      break;      
     case RAWBIN:
     case HDF5:
     case FLATASC:

@@ -69,14 +69,15 @@ class ObservationFile {
 
  public:
 
-  ObservationFile(char const *_contFeatureRangeStr=NULL, 
-		  char const *_discFeatureRangeStr=NULL,
-		  char const *_preFrameRangeStr=NULL, 
-		  char const *_segRangeStr=NULL)
-    : contFeatureRangeStr(_contFeatureRangeStr), contFeatureRange(NULL),
-      discFeatureRangeStr(_discFeatureRangeStr), discFeatureRange(NULL),
-      preFrameRangeStr(_preFrameRangeStr), preFrameRange(NULL),
-      segRangeStr(_segRangeStr), segRange(NULL)
+  ObservationFile(char const *contFeatureRangeStr_=NULL, 
+		  char const *discFeatureRangeStr_=NULL,
+		  char const *preFrameRangeStr_=NULL, 
+		  char const *segRangeStr_=NULL)
+    : contFeatureRangeStr(contFeatureRangeStr_), contFeatureRange(NULL),
+      discFeatureRangeStr(discFeatureRangeStr_), discFeatureRange(NULL),
+      preFrameRangeStr(preFrameRangeStr_), preFrameRange(NULL),
+      segRangeStr(segRangeStr_), segRange(NULL), 
+      logicalObservationBuffer(NULL), logicalObsBufSize(0)
     {
     }
 

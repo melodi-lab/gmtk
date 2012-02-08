@@ -29,9 +29,6 @@ using namespace std;
 #include "GMTK_ObservationFile.h"
 
 
-#define MAXSTRLEN (16*1024) // max length of input file name
-#define CPP_DIRECTIVE_CHAR '#'
-
 // The ObservationFile provides a simple API to wrap around
 // random access data file formats.
 // Just subclass ObservationFile and implement getFrames
@@ -49,9 +46,9 @@ using namespace std;
 
 class ASCIIFile: public ObservationFile {
 
-  bool      cppIfAscii;
-  char*     cppCommandOptions;
-  unsigned  numFileNames;               // number of filenames
+  bool        cppIfAscii;
+  char const *cppCommandOptions;
+  unsigned    numFileNames;             // number of filenames
 
   char      *fofName;
   FILE      *fofFile;                   // this file (list of file names)
@@ -63,18 +60,14 @@ class ASCIIFile: public ObservationFile {
 
   Data32    *buffer;     // data for current segment
 
-  unsigned calcNumFileNames(FILE* &f);
-
-  unsigned readFof(FILE * &f);
-
  public:
 
   ASCIIFile(const char *name, unsigned nfloats, unsigned nints, 
-	    unsigned num, bool cppIfAscii, char* cppCommandOptions=NULL,
-	    char const *_contFeatureRangeStr=NULL, 
-	    char const *_discFeatureRangeStr=NULL, 
-	    char const *_preFrameRangeStr=NULL, 
-	    char const *_segRangeStr=NULL);
+	    unsigned num, bool cppIfAscii, char const* cppCommandOptions=NULL,
+	    char const *contFeatureRangeStr_=NULL, 
+	    char const *discFeatureRangeStr_=NULL, 
+	    char const *preFrameRangeStr_=NULL, 
+	    char const *segRangeStr_=NULL);
 
 
   ~ASCIIFile() {

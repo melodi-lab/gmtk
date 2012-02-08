@@ -1,4 +1,3 @@
-
 /*
  * GMTK_PFileFile.cc
  * 
@@ -29,14 +28,14 @@ using namespace std;
 
 PFileFile::PFileFile(const char *name, unsigned nfloats, unsigned nints,
 		     unsigned num, bool bswap, 
-		     char const *_contFeatureRangeStr, 
-		     char const *_discFeatureRangeStr, 
-		     char const *_preFrameRangeStr, 
-		     char const *_segRangeStr)
-  : ObservationFile(_contFeatureRangeStr, 
-		    _discFeatureRangeStr, 
-		    _preFrameRangeStr,
-		    _segRangeStr)
+		     char const *contFeatureRangeStr_, 
+		     char const *discFeatureRangeStr_, 
+		     char const *preFrameRangeStr_, 
+		     char const *segRangeStr_)
+  : ObservationFile(contFeatureRangeStr_, 
+		    discFeatureRangeStr_, 
+		    preFrameRangeStr_,
+		    segRangeStr_)
 {
   buffer = NULL;
   bufferSize = 0;
@@ -59,7 +58,6 @@ PFileFile::PFileFile(const char *name, unsigned nfloats, unsigned nints,
 	     name,
 	     pfile->num_labs(),
 	     nints);
-fprintf(stderr,"PFile ctor '%s'\n", name);
 }
 
 
@@ -72,7 +70,6 @@ PFileFile::openSegment(unsigned seg) {
   long segId = pfile->set_pos(seg, 0);
   assert(segId != SEGID_BAD);
   currentSegment = seg;
-fprintf(stderr,"PFile open seg %u\n", seg);
   return true;
 }
 
@@ -93,7 +90,6 @@ PFileFile::getFrames(unsigned first, unsigned count) {
   UInt32 *discBuf = new UInt32[numDiscrete() * needed];
   UInt32 *discSrc = discBuf;
   assert(contBuf && discBuf);
-fprintf(stderr,"PFile: reading [%u,%u) in seg %u\n", first, first+count, currentSegment);
   if (pfile->set_pos(currentSegment, first) == SEGID_BAD) {
     // FIXME - remember file name for error reporting
     error("ERROR: PFileFile: unable to seek in PFile");
