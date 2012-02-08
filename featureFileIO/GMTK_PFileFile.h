@@ -41,10 +41,10 @@ class PFileFile: public ObservationFile {
 
   PFileFile(const char *name, unsigned nfloats, unsigned nints,
 	    unsigned num, bool bswap, 
-	    char const *_contFeatureRangeStr=NULL, 
-	    char const *_discFeatureRangeStr=NULL, 
-	    char const *_preFrameRangeStr=NULL, 
-	    char const *_segRangeStr=NULL);
+	    char const *contFeatureRangeStr_=NULL, 
+	    char const *discFeatureRangeStr_=NULL, 
+	    char const *preFrameRangeStr_=NULL, 
+	    char const *segRangeStr_=NULL);
 
   ~PFileFile() {
     if (pfile) delete pfile;

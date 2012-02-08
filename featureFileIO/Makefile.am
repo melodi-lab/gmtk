@@ -59,15 +59,17 @@ GMTK_WordOrganization.h GMTK_WordOrganization.cc \
 GMTK_ObsStats.h GMTK_ObsStats.cc \
 pfile.h pfile.cc \
 vbyteswapping.h vbyteswapping.cc \
+file_utils.h file_utils.cc \
 GMTK_ObservationSource.h \
 GMTK_StreamSource.h \
 GMTK_ObservationStream.h \
 GMTK_FileSource.h GMTK_FileSource.cc \
 GMTK_ObservationFile.h GMTK_ObservationFile.cc \
 GMTK_PFileFile.h GMTK_PFileFile.cc \
+GMTK_HTKFile.h GMTK_HTKFile.cc \
 GMTK_ASCIIFile.h GMTK_ASCIIFile.cc
 
-check_PROGRAMS = testPFileFile testASCIIFile testFileSource
+check_PROGRAMS = testPFileFile testASCIIFile testFileSource 
 
 testPFileFile_SOURCES = testPFileFile.cc 
 testASCIIFile_SOURCES = testASCIIFile.cc 

@@ -93,11 +93,13 @@ ObservationFile::getLogicalFrames(unsigned first, unsigned count) {
     Data32 const *physicalFrame = getFrames(physFrameIdx, 1);
     assert(physicalFrame);
     for (unsigned i=0; i < numLogicalContinuous(); i+=1) {
-      *(dest++) = physicalFrame[ contFeatureRange->index(i) ];
+      unsigned srcIdx = contFeatureRange ? contFeatureRange->index(i) : i;
+      *(dest++) = physicalFrame[srcIdx];
     }
+    unsigned discOffset = numContinuous();
     for (unsigned i=0; i < numLogicalDiscrete(); i+=1) {
-      *(dest++) = physicalFrame[ numLogicalContinuous() +
-				 discFeatureRange->index(i) ];
+      unsigned srcIdx = discFeatureRange ? discFeatureRange->index(i) : i;
+      *(dest++) = physicalFrame[discOffset+srcIdx];
     }
   }
   return logicalObservationBuffer;

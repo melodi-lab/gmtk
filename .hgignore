@@ -34,6 +34,7 @@ featureFileIO/obs-info
 featureFileIO/obs-print
 featureFileIO/obs-skmeans
 featureFileIO/testASCIIFile
+featureFileIO/testPFileFile
 featureFileIO/testFileSource
 miscSupport/fileParserTest
 miscSupport/testArguments
@@ -86,3 +87,4 @@ tksrc/neghead
 tksrc/testPackCliqueValue
 tksrc/testViterbi
 tksrc/testPackCliqueValue
+tksrc/testObsFile
