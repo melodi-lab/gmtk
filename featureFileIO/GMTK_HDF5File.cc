@@ -28,6 +28,7 @@ using namespace std;
 
 #include "GMTK_HDF5File.h"
 
+// FIXME - configure should check for 1.8, won't build with 1.6
 #if HAVE_LIBHDF5_CPP
 
 // split up 
@@ -211,6 +212,7 @@ HDF5File::openSegment(unsigned seg) {
       error("HDF5File: dataset '%s:%s' must be of integer type\n",
 	    fileName[seg], groupName[seg]);
     if (nDiscrete != nFeatures) 
+      // FIXME - need to add :x,y;dx,dy;nx,ny for specificity
       error("HDF5File: dataset '%s:%s' has %u features, expected %u\n",
 	    fileName[seg], groupName[seg], nFeatures, nDiscrete);
     break;
@@ -219,6 +221,7 @@ HDF5File::openSegment(unsigned seg) {
       error("HDF5File: dataset '%s:%s' must be of float type\n",
 	    fileName[seg], groupName[seg]);
     if (nContinuous != nFeatures) 
+      // FIXME - need to add :x,y;dx,dy;nx,ny for specificity
       error("HDF5File: dataset '%s:%s' has %u features, expected %u\n",
 	    fileName[seg], groupName[seg], nFeatures, nContinuous);
     break;
