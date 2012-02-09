@@ -86,6 +86,7 @@ VCID(HGID)
 #  include "GMTK_ASCIIFile.h"
 #  include "GMTK_PFileFile.h"
 #  include "GMTK_HTKFile.h"
+#  include "GMTK_HDF5File.h"
 #  include "GMTK_Stream.h"
 #endif
 #include "GMTK_MixtureCommon.h"
@@ -283,8 +284,11 @@ main(int argc,char*argv[])
 				    nFiles, iswp[nFiles], Cpp_If_Ascii, cppCommandOptions,
 				    frs[nFiles], irs[nFiles], prepr[nFiles], sr[nFiles]);
       break;      
-    case RAWBIN:
     case HDF5:
+      obsFile[nFiles] = new HDF5File(ofs[nFiles], nFiles, Cpp_If_Ascii, cppCommandOptions,
+				     frs[nFiles], irs[nFiles], prepr[nFiles], sr[nFiles]);
+      break;
+    case RAWBIN:
     case FLATASC:
       error("ERROR: O(1) space observation input for file format '%s' not implemented yet\n", fmts[nFiles]);
       break;

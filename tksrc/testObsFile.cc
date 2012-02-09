@@ -27,6 +27,7 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "GMTK_ASCIIFile.h"
 #include "GMTK_PFileFile.h"
 #include "GMTK_HTKFile.h"
+#include "GMTK_HDF5File.h"
 #include "GMTK_Stream.h"
 
 #define GMTK_ARG_OBS_FILES
@@ -94,8 +95,11 @@ main(int argc, char *argv[]) {
       obsFile[i] = new HTKFile(ofs[i], nfs[i], nis[i], i, iswp[i], Cpp_If_Ascii, cppCommandOptions,
 			       frs[i], irs[i], prepr[i], sr[i]);
       break;
-    case RAWBIN:
     case HDF5:
+      obsFile[i] = new HDF5File(ofs[i], i, Cpp_If_Ascii, cppCommandOptions,
+				frs[i], irs[i], prepr[i], sr[i]);
+      break;
+    case RAWBIN:
     case FLATASC:
       error("ERROR: O(1) space observation input for file format '%s' not implemented yet\n", fmts[i]);
       break;
