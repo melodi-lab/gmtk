@@ -67,6 +67,7 @@ GMTK_FileSource.h GMTK_FileSource.cc \
 GMTK_ObservationFile.h GMTK_ObservationFile.cc \
 GMTK_PFileFile.h GMTK_PFileFile.cc \
 GMTK_HTKFile.h GMTK_HTKFile.cc \
+GMTK_HDF5File.h GMTK_HDF5File.cc \
 GMTK_ASCIIFile.h GMTK_ASCIIFile.cc
 
 check_PROGRAMS = testPFileFile testASCIIFile testFileSource 
