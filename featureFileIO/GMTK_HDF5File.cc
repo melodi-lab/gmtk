@@ -150,6 +150,10 @@ HDF5File::HDF5File(const char *name, unsigned num,
     error("HDF5File: dataset '%s:%s' is not of integer or float type\n",
 	  fileName[0],groupName[0]);
   }
+
+  if (segRangeStr) segRange = new Range(segRangeStr, 0, numSlabs);
+  if (contFeatureRangeStr) contFeatureRange = new Range(contFeatureRangeStr, 0, nContinuous);
+  if (discFeatureRangeStr) discFeatureRange = new Range(discFeatureRangeStr, 0, nDiscrete);
 }
 
 
@@ -230,6 +234,11 @@ HDF5File::openSegment(unsigned seg) {
 	  fileName[seg],groupName[seg]);
   }
   nFrames = end[0] - start[0] + 1;
+
+  if (preFrameRange) delete preFrameRange;
+  if (preFrameRangeStr) {
+    preFrameRange = new Range(preFrameRangeStr, 0, nFrames);
+  }
   return true;
 }
 

@@ -70,9 +70,8 @@ class HTKFile: public ObservationFile {
   }
   
   ~HTKFile() {
-    if (info) delete info;
-    if (buffer)
-      free(buffer);
+    if (info)   delete info;
+    if (buffer) free(buffer);
   }
  
   // The number of available physical segments.

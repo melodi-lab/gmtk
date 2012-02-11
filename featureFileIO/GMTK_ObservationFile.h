@@ -81,7 +81,7 @@ class ObservationFile {
     {
     }
 
-  ~ObservationFile() {
+  virtual ~ObservationFile() {
     if (contFeatureRange) delete contFeatureRange;
     if (discFeatureRange) delete discFeatureRange;
     if (preFrameRange) delete preFrameRange;
