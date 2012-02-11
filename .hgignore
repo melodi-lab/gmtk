@@ -37,6 +37,7 @@ featureFileIO/obs-skmeans
 featureFileIO/testASCIIFile
 featureFileIO/testPFileFile
 featureFileIO/testFileSource
+featureFileIO/testASCIIStream
 miscSupport/fileParserTest
 miscSupport/testArguments
 miscSupport/testBPRange
