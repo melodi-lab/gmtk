@@ -108,19 +108,16 @@ class HDF5File: public ObservationFile {
  public:
 
   HDF5File(const char *name, unsigned num,
-	    char const *contFeatureRangeStr_=NULL, 
-	    char const *discFeatureRangeStr_=NULL, 
-	    char const *preFrameRangeStr_=NULL, 
-	    char const *segRangeStr_=NULL)
-    : ObservationFile(contFeatureRangeStr_, 
-		      discFeatureRangeStr_, 
-		      preFrameRangeStr_,
-		      segRangeStr_)
+	   bool cppIfAscii, char const* cppCommandOptions=NULL,
+	   char const *contFeatureRangeStr_=NULL, 
+	   char const *discFeatureRangeStr_=NULL, 
+	   char const *preFrameRangeStr_=NULL, 
+	   char const *segRangeStr_=NULL)
   {
     error("This GMTK build does not support HDF5 files\n");
   }
 
-  ~HDF5File();
+  ~HDF5File() {}
  
   // The number of available segments.
   unsigned numSegments() { return 0; }
