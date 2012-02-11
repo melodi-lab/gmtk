@@ -128,7 +128,7 @@ ObservationFile::numLogicalDiscrete() {
   // needs to be instantiated here...
   if (!discFeatureRange && discFeatureRangeStr) {
     discFeatureRange = new Range(discFeatureRangeStr, 0, numDiscrete());
-    assert(contFeatureRange);
+    assert(discFeatureRange);
   }
   if (discFeatureRange) {
     return discFeatureRange->length();
