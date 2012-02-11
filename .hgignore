@@ -1,7 +1,8 @@
 syntax: glob
 
 *~
-#*#
+\#*\#
+*.chk
 *.deps
 *.exe
 {Makefile,config.h}.in
@@ -88,3 +89,5 @@ tksrc/testPackCliqueValue
 tksrc/testViterbi
 tksrc/testPackCliqueValue
 tksrc/testObsFile
+tksrc/testFileSrc
+tksrc/testFilter
