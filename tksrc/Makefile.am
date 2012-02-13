@@ -235,9 +235,15 @@ endif
 
 check_PROGRAMS =  \
 testObsFile \
+testFileSrc \
+testFilter \
 testPackCliqueValue \
 testViterbi \
 neghead
+
+testFileSrc_SOURCES = testFileSrc.cc
+
+testFilter_SOURCES = testFilter.cc
 
 testObsFile_SOURCES = testObsFile.cc
 
