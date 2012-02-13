@@ -35,6 +35,9 @@
 //   FilterStream -   ObservationStream wrapper for IIR, ARMA, etc transforms
 //   FileStream   -   ObservationStream wrapper for seekable files (ObservationFile)
 
+
+// FIXME - handle properly the case where a stream ends mig-segment
+
 class ObservationStream {
 
  protected:
