@@ -82,6 +82,12 @@ class FlatASCIIFile: public ObservationFile {
   bool openSegment(unsigned seg) {
     assert(seg < nSegments);
     currSegment = seg;
+    if (preFrameRange)
+      delete preFrameRange;
+    if (preFrameRangeStr) {
+      preFrameRange = new Range(preFrameRangeStr,0,nFrames[seg]);
+      assert(preFrameRange);
+    }
     return true;
   }
 

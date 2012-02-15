@@ -157,5 +157,12 @@ FlatASCIIFile::FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints,
     }
   }
   closeCPPableFile(f, cppIfAscii);
+
+  if (contFeatureRangeStr)
+    contFeatureRange = new Range(contFeatureRangeStr_,0,numContinuous());
+  if (discFeatureRangeStr)
+    discFeatureRange = new Range(discFeatureRangeStr_,0,numDiscrete());
+  if (segRangeStr_)
+    segRange = new Range(segRangeStr_,0,nSegments);
 }
 
