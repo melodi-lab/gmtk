@@ -74,7 +74,11 @@
 #include "GMTK_ZeroScoreMixture.h"
 #include "GMTK_UnityScoreMixture.h"
 
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_FileSource.h"
+#endif
 #include "GMTK_CFunctionDeterministicMappings.h"
 
 VCID(HGID)
@@ -2722,7 +2726,11 @@ GMParms::next()
 unsigned
 GMParms::setSegment(const unsigned segmentNo)
 {
+#if 0
   globalObservationMatrix.loadSegment(segmentNo);
+#else
+  globalObservationMatrix.openSegment(segmentNo);
+#endif
   const unsigned numFrames = globalObservationMatrix.numFrames();
 
   for(unsigned i = 0; i<iterableDts.size(); i++) {
@@ -3776,12 +3784,19 @@ GMParms::commit_nc_changes()
 #ifdef MAIN
 
 #include "rand.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_FileSource.h"
+#endif
 
 RAND rnd(false);
 GMParms GM_Parms;
+#if 0
 ObservationMatrix globalObservationMatrix;
-
+#else
+FileSource globalObservationMatrix;
+#endif
 
 
 int

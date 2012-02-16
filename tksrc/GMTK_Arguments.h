@@ -27,6 +27,8 @@
 #endif
 #endif
 
+// FIXME: gmtk_temporary.h has some constants & enums that need to be moved to the new I/O
+#include "gmtk_temporary.h"
 #include "GMTK_ProgramDefaultParms.h"
 
 /*-----------------------------------------------------------------------------------------------------------*/
@@ -152,6 +154,10 @@ extern bool ObservationsAllowNan;
       ifmts[i] = RAWBIN;
     else if (strcmp(fmts[i],"ascii") == 0)
       ifmts[i] = RAWASC;
+    else if (strcmp(fmts[i],"flatascii") == 0)
+      ifmts[i] = FLATASC;
+    else if (strcmp(fmts[i], "hdf5") == 0) 
+      ifmts[i] = HDF5;
     else if (strcmp(fmts[i],"pfile") == 0)
       ifmts[i] = PFILE;
     else

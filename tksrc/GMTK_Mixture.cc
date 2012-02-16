@@ -47,8 +47,11 @@ VCID(HGID)
 
 #include "GMTK_Mixture.h"
 #include "GMTK_GMParms.h"
-#include "GMTK_ObservationMatrix.h"
-
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_FileSource.h"
+#endif
 #include "tieSupport.h"
 
 

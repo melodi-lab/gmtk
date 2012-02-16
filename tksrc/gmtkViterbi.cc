@@ -78,7 +78,19 @@ VCID(HGID)
 #include "GMTK_ContRV.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_GMParms.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_ObservationSource.h"
+#  include "GMTK_FileSource.h"
+#  include "GMTK_ASCIIFile.h"
+#  include "GMTK_FlatASCIIFile.h"
+#  include "GMTK_PFileFile.h"
+#  include "GMTK_HTKFile.h"
+#  include "GMTK_HDF5File.h"
+#  include "GMTK_BinaryFile.h"
+#  include "GMTK_Stream.h"
+#endif
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_MeanVector.h"
@@ -194,8 +206,11 @@ Arg Arg::Args[] = {
  */
 RAND rnd(seedme);
 GMParms GM_Parms;
+#if 0
 ObservationMatrix globalObservationMatrix;
-
+#else
+FileSource globalObservationMatrix;
+#endif
 
 int
 main(int argc,char*argv[])
@@ -227,6 +242,7 @@ main(int argc,char*argv[])
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_CHECK_ARGS
 
+#if 0
   globalObservationMatrix.openFiles(nfiles,
 				    (const char**)&ofs,
 				    (const char**)&frs,
@@ -249,6 +265,46 @@ main(int argc,char*argv[])
 				    (const char**)&prepr,
 				    gpr_str
 				    );
+#else
+  ObservationFile *obsFile[MAX_NUM_OBS_FILES];
+  unsigned nFiles;
+  for (nFiles=0; nFiles < MAX_NUM_OBS_FILES && ofs[nFiles]; nFiles+=1) {
+    switch (ifmts[nFiles]) {
+    case RAWASC:
+      obsFile[nFiles] = new ASCIIFile(ofs[nFiles],nfs[nFiles],nis[nFiles],
+				      nFiles,Cpp_If_Ascii,cppCommandOptions,
+				      frs[nFiles], irs[nFiles], prepr[nFiles], 
+				      sr[nFiles]);
+      break;
+    case PFILE:
+      obsFile[nFiles] = new PFileFile(ofs[nFiles], nfs[nFiles], nis[nFiles], 
+				      nFiles, iswp[nFiles], frs[nFiles], 
+				      irs[nFiles], prepr[nFiles], sr[nFiles]);
+      break;
+    case HTK:
+      obsFile[nFiles] = new HTKFile(ofs[nFiles], nfs[nFiles], nis[nFiles], 
+				    nFiles, iswp[nFiles], Cpp_If_Ascii, cppCommandOptions,
+				    frs[nFiles], irs[nFiles], prepr[nFiles], sr[nFiles]);
+      break;      
+    case HDF5:
+      obsFile[nFiles] = new HDF5File(ofs[nFiles], nFiles, Cpp_If_Ascii, cppCommandOptions,
+				     frs[nFiles], irs[nFiles], prepr[nFiles], sr[nFiles]);
+      break;
+      obsFile[nFiles] = new BinaryFile(ofs[nFiles], nfs[nFiles], nis[nFiles], nFiles, 
+				       iswp[nFiles], Cpp_If_Ascii, cppCommandOptions,
+				       frs[nFiles], irs[nFiles], prepr[nFiles], sr[nFiles]);
+      break;
+    case FLATASC:
+      obsFile[nFiles] = new FlatASCIIFile(ofs[nFiles], nfs[nFiles], nis[nFiles], nFiles, 
+					  Cpp_If_Ascii, cppCommandOptions, frs[nFiles], 
+					  irs[nFiles], prepr[nFiles], sr[nFiles]);
+      break;
+    default:
+      error("ERROR: Unknown observation file format type: '%s'\n", fmts[nFiles]);
+    }
+  }
+  globalObservationMatrix.initialize(nFiles, obsFile, gpr_str, startSkip, endSkip);
+#endif
 
 
   /////////////////////////////////////////////
