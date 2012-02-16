@@ -116,16 +116,63 @@ main(int argc, char *argv[]) {
       error("ERROR: Unknown observation file format type: '%s'\n", fmts[i]);
     }
 
+    int magicInt;
+    double magicDouble;
+    char * filterFileName;
+    int xform;
 
-    float c[3]  = {0.0,0.0,0.0};
-
-    float B[12] = {1.0,1.0,1.0, 
-                   0.0,1.0,2.0, 
-                   0.0,1.0,0.0, 
-                   1.0,0.0,0.0 };
-    Filter *xformer = new FIRFilter(3, obsFile[i]->numContinuous(),B,c);
-    obsFile[i] = new FilterFile(xformer, obsFile[i], postpr[i]);
-
+    if (Per_Stream_Transforms[i]) {
+      Filter *prevFilter = NULL;
+      Filter *xformer = NULL;
+      while((xform=parseTransform(Per_Stream_Transforms[i], magicInt, magicDouble, filterFileName)) != END_STR) {
+	switch (xform) {
+	case NONE: printf("no xform for stream %u\n", i);
+	  break;
+	case UPSAMPLE_HOLD:
+	  printf("upsample hold stream %u\n", i);
+	  break;
+	case  UPSAMPLE_SMOOTH:
+	  printf("upsample smooth stream %u\n", i);
+	  break;
+#if 0
+	case DOWNSAMPLE:
+	  printf("downsample stream %u\n", i);
+	  break;
+	case DELTAS:
+	  printf("deltas stream %u\n", i);
+	  break;
+	case DOUBLE_DELTAS:
+	  printf("double deltas stream %u\n", i);
+	  break;
+#endif
+	case MULTIPLY:
+	  printf("multiply stream %u by %f\n", i, magicDouble);
+	  break;
+	case NORMALIZE:
+	  printf("normalize stream %u\n", i);
+	  break;
+	case MEAN_SUB:
+	  printf("mean sub stream %u\n", i);
+	  break;
+	case ARMA:
+	  printf("arma stream %u order %d\n", i, magicInt);
+	  break;
+	case FILTER:
+	  printf("filter stream %u with %s\n", i, filterFileName);
+	  xformer = new FIRFilter(filterFileName, NULL);
+	  assert(xformer);
+	  xformer->appendFilter(prevFilter);
+	  prevFilter = xformer;
+	  break;
+	case OFFSET:
+	  printf("offset stream %u by %f\n", i, magicDouble);
+	  break;
+	default:
+	  printf("WTF stream %u\n", i);
+	}
+      }
+      obsFile[i] = new FilterFile(xformer, obsFile[i], postpr[i]);
+    }
   }
   globalObservationMatrix.initialize(nFiles, obsFile, gpr_str, startSkip, endSkip);
   FileSource *f = &globalObservationMatrix;
