@@ -84,9 +84,11 @@ VCID(HGID)
 #  include "GMTK_ObservationSource.h"
 #  include "GMTK_FileSource.h"
 #  include "GMTK_ASCIIFile.h"
+#  include "GMTK_FlatASCIIFile.h"
 #  include "GMTK_PFileFile.h"
 #  include "GMTK_HTKFile.h"
 #  include "GMTK_HDF5File.h"
+#  include "GMTK_BinaryFile.h"
 #  include "GMTK_Stream.h"
 #endif
 #include "GMTK_MixtureCommon.h"
@@ -288,9 +290,14 @@ main(int argc,char*argv[])
       obsFile[nFiles] = new HDF5File(ofs[nFiles], nFiles, Cpp_If_Ascii, cppCommandOptions,
 				     frs[nFiles], irs[nFiles], prepr[nFiles], sr[nFiles]);
       break;
-    case RAWBIN:
+      obsFile[nFiles] = new BinaryFile(ofs[nFiles], nfs[nFiles], nis[nFiles], nFiles, 
+				       iswp[nFiles], Cpp_If_Ascii, cppCommandOptions,
+				       frs[nFiles], irs[nFiles], prepr[nFiles], sr[nFiles]);
+      break;
     case FLATASC:
-      error("ERROR: O(1) space observation input for file format '%s' not implemented yet\n", fmts[nFiles]);
+      obsFile[nFiles] = new FlatASCIIFile(ofs[nFiles], nfs[nFiles], nis[nFiles], nFiles, 
+					  Cpp_If_Ascii, cppCommandOptions, frs[nFiles], 
+					  irs[nFiles], prepr[nFiles], sr[nFiles]);
       break;
     default:
       error("ERROR: Unknown observation file format type: '%s'\n", fmts[nFiles]);

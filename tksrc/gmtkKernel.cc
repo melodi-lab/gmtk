@@ -57,6 +57,11 @@ VCID(HGID)
 #  include "GMTK_ObservationSource.h"
 #  include "GMTK_FileSource.h"
 #  include "GMTK_ASCIIFile.h"
+#  include "GMTK_FlatASCIIFile.h"
+#  include "GMTK_PFileFile.h"
+#  include "GMTK_HTKFile.h"
+#  include "GMTK_HDF5File.h"
+#  include "GMTK_BinaryFile.h"
 #  include "GMTK_Stream.h"
 #endif
 #include "GMTK_MixtureCommon.h"
@@ -236,8 +241,40 @@ main(int argc,char*argv[])
   ObservationFile *obsFile[MAX_NUM_OBS_FILES];
   unsigned nFiles;
   for (nFiles=0; nFiles < MAX_NUM_OBS_FILES && ofs[nFiles]; nFiles+=1) {
-    assert(ifmts[nFiles]==RAWASC);
-    obsFile[nFiles] = new ASCIIFile(ofs[nFiles],nfs[nFiles],nis[nFiles],nFiles,Cpp_If_Ascii,cppCommandOptions);
+    switch (ifmts[nFiles]) {
+    case RAWASC:
+      obsFile[nFiles] = new ASCIIFile(ofs[nFiles],nfs[nFiles],nis[nFiles],
+				      nFiles,Cpp_If_Ascii,cppCommandOptions,
+				      frs[nFiles], irs[nFiles], prepr[nFiles], 
+				      sr[nFiles]);
+      break;
+    case PFILE:
+      obsFile[nFiles] = new PFileFile(ofs[nFiles], nfs[nFiles], nis[nFiles], 
+				      nFiles, iswp[nFiles], frs[nFiles], 
+				      irs[nFiles], prepr[nFiles], sr[nFiles]);
+      break;
+    case HTK:
+      obsFile[nFiles] = new HTKFile(ofs[nFiles], nfs[nFiles], nis[nFiles], 
+				    nFiles, iswp[nFiles], Cpp_If_Ascii, cppCommandOptions,
+				    frs[nFiles], irs[nFiles], prepr[nFiles], sr[nFiles]);
+      break;      
+    case HDF5:
+      obsFile[nFiles] = new HDF5File(ofs[nFiles], nFiles, Cpp_If_Ascii, cppCommandOptions,
+				     frs[nFiles], irs[nFiles], prepr[nFiles], sr[nFiles]);
+      break;
+    case RAWBIN:
+      obsFile[nFiles] = new BinaryFile(ofs[nFiles], nfs[nFiles], nis[nFiles], nFiles, 
+				       iswp[nFiles], Cpp_If_Ascii, cppCommandOptions,
+				       frs[nFiles], irs[nFiles], prepr[nFiles], sr[nFiles]);
+      break;
+    case FLATASC:
+      obsFile[nFiles] = new FlatASCIIFile(ofs[nFiles], nfs[nFiles], nis[nFiles], nFiles, 
+					  Cpp_If_Ascii, cppCommandOptions, frs[nFiles], 
+					  irs[nFiles], prepr[nFiles], sr[nFiles]);
+      break;
+    default:
+      error("ERROR: Unknown observation file format type: '%s'\n", fmts[nFiles]);
+    }
   }
   globalObservationMatrix.initialize(nFiles, obsFile);
 #endif
