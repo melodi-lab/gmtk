@@ -32,6 +32,9 @@
 
 #include "bp_range.h"
 
+// FIXME: why is this needed with the new IO? It wasn't there before...
+#include "range.h"
+
 #include "GMTK_RV.h"
 #include "GMTK_FileParser.h"
 #include "GMTK_GMTemplate.h"

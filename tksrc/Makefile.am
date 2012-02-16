@@ -234,9 +234,18 @@ gmtkViz.app/Contents/PkgInfo: gmtkViz$(EXEEXT) $(srcdir)/Info.plist.in \
 endif
 
 check_PROGRAMS =  \
+testObsFile \
+testFileSrc \
+testFilter \
 testPackCliqueValue \
 testViterbi \
 neghead
+
+testFileSrc_SOURCES = testFileSrc.cc
+
+testFilter_SOURCES = testFilter.cc
+
+testObsFile_SOURCES = testObsFile.cc
 
 # testMDCPT testMTCPT
 #testRngDecisionTree testGMParms testFileParser lex.yy
