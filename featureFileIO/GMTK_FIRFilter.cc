@@ -18,12 +18,49 @@
 #include "hgstamp.h"
 #endif
 
+#include "error.h"
 #include "general.h"
 VCID(HGID)
 
 #include <string.h>
+#include <stdio.h>
 
 #include "GMTK_FIRFilter.h"
+
+FIRFilter::FIRFilter(char const *fileName, Filter *nextFilter) 
+  : Filter(nextFilter)
+{
+  FILE *f = fopen(fileName, "r");
+  if (!f) {
+    error("FIRFilter: cannot open '%s' for reading\n", fileName);
+  }
+  if (fscanf(f, "%u %u", &order, &numFeatures) != 2) {
+    error("FIRFilter: error reading FIR filter size from '%s'\n", fileName);
+  }
+
+  c = new float[numFeatures];
+  if (!c) {
+    error("FIRFilter: failed to allocate constant vector\n");
+  }
+  unsigned Bsize = (order+1) * numFeatures;
+  B = new float[Bsize];
+  if (!B) {
+    error("FIRFilter: failed to allocate coefficient matrix\n");
+  }
+  for (unsigned i=0; i < Bsize; i+=1) {
+    if (fscanf(f,"%e", B+i) != 1) {
+      error("FIRFilter: error reading coefficient matrix\n");
+    }
+  }
+  for (unsigned i=0; i < numFeatures; i+=1) {
+    if (fscanf(f,"%e", c+i) != 1) {
+      error("FIRFilter: error reading constant vector\n");
+    }
+  }
+  fclose(f);
+  buffer=NULL; buffSize=0;
+}
+
 
 subMatrixDescriptor *
 FIRFilter::getRequiredInput(unsigned first, unsigned count, 
@@ -78,7 +115,6 @@ FIRFilter::localTransform(Data32 const *inputSubMatrix,
   // FIXME - error checking that B and c are compatible with X
 
   unsigned stride = inputDescription.numContinuous + inputDescription.numDiscrete;
-  Data32 const *data = inputSubMatrix + stride * inputDescription.historyFrames;
 
   subMatrixDescriptor myOutput = describeLocalOutput(inputDescription);
   unsigned needed = stride * myOutput.numFrames;

@@ -60,6 +60,7 @@ VCID(HGID)
 #  include "GMTK_HTKFile.h"
 #  include "GMTK_HDF5File.h"
 #  include "GMTK_BinaryFile.h"
+#  include "GMTK_Filter.h"
 #  include "GMTK_Stream.h"
 #endif
 #include "GMTK_MixtureCommon.h"

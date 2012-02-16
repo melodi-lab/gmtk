@@ -72,7 +72,8 @@ GMTK_HDF5File.h GMTK_HDF5File.cc \
 GMTK_ASCIIFile.h GMTK_ASCIIFile.cc \
 GMTK_FlatASCIIFile.h GMTK_FlatASCIIFile.cc \
 GMTK_BinaryFile.h GMTK_BinaryFile.cc \
-GMTK_Filter.h GMTK_FilterFile.h \
+GMTK_Filter.h GMTK_Filter.cc \
+GMTK_FilterFile.h \
 GMTK_FIRFilter.h GMTK_FIRFilter.cc
 
 

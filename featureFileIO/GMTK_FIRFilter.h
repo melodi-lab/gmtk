@@ -37,7 +37,7 @@ class FIRFilter: public Filter {
   // and treats B and X as a matrices, and and y and c as vectors 
   // y[t] = B' X[t,t-N] + c
 
-  // B is numFeatures rows by N+1 columns stored linearly as <row 0> <row 1> ... <row N>
+  // B is N+1 rows by numFeatures columns stored linearly as <row 0> <row 1> ... <row N>
   //   where b_{ij} is the coefficient for x_j [t-i]  ie, the jth continuous feature at
   //   time lag i
 
@@ -48,6 +48,8 @@ class FIRFilter: public Filter {
   
   FIRFilter() {buffer=NULL; buffSize=0;}
 
+  // Read B and c from fileName
+  FIRFilter(char const *fileName, Filter *nextFilter);
 
   // B or c may optionally be NULL to do y[t] = B x[t,t-N]'  or  y[t] = t[t] + c
   FIRFilter(unsigned order, unsigned numFeatures, float *B, float *c, Filter *nextFilter=NULL) 
