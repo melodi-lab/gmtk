@@ -1780,7 +1780,7 @@ static bool writeLogVals = false;
 /****************************************************************************************************************/
 /****************************************************************************************************************/
 
-#if defined(GMTK_ARG_OBS_MATRIX_OPTIONS)
+#if defined(GMTK_ARG_OBS_MATRIX_XFORMATION)
 #if defined(GMTK_ARGUMENTS_DOCUMENTATION)
   Arg("\n*** Observation matrix transformation options ***\n"),
 #endif
