@@ -52,8 +52,10 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #define GMTK_ARG_OBS_FILES
 #define GMTK_ARG_CPP_CMD_OPTS
 #define GMTK_ARG_OBS_MATRIX_XFORMATION
+#define GMTK_ARG_DCDRNG
 #define GMTK_ARG_FILE_RANGE_OPTIONS
 #define GMTK_ARG_START_END_SKIP
+#define GMTK_ARG_GENERAL_OPTIONS
 #define GMTK_ARG_HELP
 #define GMTK_ARG_VERSION
 
