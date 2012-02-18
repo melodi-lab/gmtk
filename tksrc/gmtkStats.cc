@@ -63,7 +63,7 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_DEFINITION
 
-bool meanSubOnly=false, twoPass=false;
+bool meanSubOnly=false;
 
 Arg Arg::Args[] = {
 #define GMTK_ARGUMENTS_DOCUMENTATION
@@ -72,10 +72,12 @@ Arg Arg::Args[] = {
 
   Arg("\n*** Statistical options ***\n"),
   Arg("meanSubOnly", Arg::Opt,meanSubOnly,"Only normalize for 0 mean rather 0 mean and unit variance"),
-  Arg("twoPass", Arg::Opt,twoPass,"Use corrected two-pass algorith to compute variance"),
   // final one to signal the end of the list
   Arg()
 };
+
+
+#define TOO_SMALL (1e-10)
 
 
 int 
@@ -144,14 +146,14 @@ main(int argc, char *argv[]) {
 
   unsigned nCont = f->numContinuous();
 
-  float *mean     = new float[nCont]; assert(mean);
-  float *xSqrd    = new float[nCont]; assert(xSqrd);
-  float *std      = new float[nCont]; assert(std);
-  float *diff     = new float[nCont]; assert(diff);
-  float *diffSqrd = new float[nCont]; assert(diffSqrd);
+  double *mean     = new double[nCont]; assert(mean);
+  double *xSqrd    = new double[nCont]; assert(xSqrd);
+  double *std      = new double[nCont]; assert(std);
+  double *diff     = new double[nCont]; assert(diff);
+  double *diffSqrd = new double[nCont]; assert(diffSqrd);
 
   for (unsigned i=0; i < nCont; i+=1) {
-    mean[i] = 0.0f; xSqrd[i] = 0.0f; std[i] = 0.0f; diff[i] = 0.0f; diffSqrd[i] = 0.0f;
+    mean[i] = 0.0; xSqrd[i] = 0.0; std[i] = 0.0; diff[i] = 0.0; diffSqrd[i] = 0.0;
   }
   
   float N = 0.0f;
@@ -168,40 +170,34 @@ main(int argc, char *argv[]) {
     }
   }
 
-  for (unsigned i=0; i < nCont; i+=1) {
-    mean[i] /= N;
-    std[i] = sqrt( N / (N-1.0f) * fabs( xSqrd[i]/N - mean[i] * mean[i] ) );
-  }
-
-  if (twoPass) {
-    float NN = 0.0f;
-    for (unsigned j=0; j < f->numSegments(); j+=1) {
-      assert(f->openSegment(j));
-      for (unsigned k=0; k < f->numFrames(); k+=1) {
-	Data32 const *buf = f->loadFrames(k,1);
-	for (unsigned ff=0; ff < nCont; ff+=1) {
-	  float x = ((float *)buf)[ff];
-	  diff[ff] += x - mean[ff];
-	  diffSqrd[ff] += (x - mean[ff]) * (x - mean[ff]);
-	}
-	NN += 1.0f;
-      }
-    }
-    assert(N == NN);
+  if (meanSubOnly) {
     for (unsigned i=0; i < nCont; i+=1) {
-      std[i] = sqrt( 1.0f/(N-1.0f) * (diffSqrd[i] - 1.0f/N * diff[i] * diff[i]) );
+      mean[i] /= N;
+    }
+  } else {
+    for (unsigned i=0; i < nCont; i+=1) {
+      mean[i] /= N;
+      std[i] = sqrt( N / (N-1.0f) * fabs( xSqrd[i]/N - mean[i] * mean[i] ) );
     }
   }
-  
   printf("0 %u\n",  nCont);
-  for (unsigned i=0; i < nCont; i+=1) 
-    if (meanSubOnly)
+  for (unsigned i=0; i < nCont; i+=1) {
+    if (meanSubOnly || std[i] <= TOO_SMALL) {
+      if (!meanSubOnly) 
+	warning("WARNING: Value of variance in mean/variance normalization is too small (<=%f).  Will only perform mean substraction.\n", TOO_SMALL);
       printf(" 1.0");
-    else
+    } else {
       printf(" %f", 1.0f/std[i]);
+    }
+  }
   printf("\n");
-  for (unsigned i=0; i < nCont; i+=1) 
-    printf(" %f", -mean[i]);
+  for (unsigned i=0; i < nCont; i+=1) {
+    if (meanSubOnly || std[i] <= TOO_SMALL) {
+      printf(" %f", -mean[i]);
+    } else {
+      printf(" %f", -mean[i] / std[i]);
+    }
+  }
   printf("\n");
   exit(0);
 }

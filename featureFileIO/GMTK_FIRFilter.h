@@ -57,8 +57,8 @@ class FIRFilter: public Filter {
   {}
 
   ~FIRFilter() {
-    if (B) delete B;
-    if (c) delete c;
+    if (B) delete[] B;
+    if (c) delete[] c;
   }
 
   subMatrixDescriptor *
