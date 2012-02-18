@@ -113,10 +113,16 @@ FIRFilter::localTransform(Data32 const *inputSubMatrix,
 {
 
   // FIXME - error checking that B and c are compatible with X
-
+  if (numFeatures != inputDescription.numContinuous) {
+    error("FIRFilter: filter expects %u features, but input has %u\n", 
+	  numFeatures, inputDescription.numContinuous);
+  }
   unsigned stride = inputDescription.numContinuous + inputDescription.numDiscrete;
 
   subMatrixDescriptor myOutput = describeLocalOutput(inputDescription);
+  assert(myOutput.numContinuous == numFeatures);
+  assert(myOutput.numDiscrete == inputDescription.numDiscrete);
+
   unsigned needed = stride * myOutput.numFrames;
 
   //  printf("xfrm in  [%u, %u, %u, %u]  :  stride %u  :  out [%u, %u]\n", inputDescription.firstFrame, inputDescription.historyFrames, inputDescription.numFrames, inputDescription.futureFrames, stride, myOutput.firstFrame, myOutput.numFrames);
@@ -134,12 +140,24 @@ FIRFilter::localTransform(Data32 const *inputSubMatrix,
       memset(outputCont, 0, myOutput.numContinuous * sizeof(Data32));
     }
     Uint32 *outputDisc = (Uint32 *)(buffer + i * stride + myOutput.numContinuous);
+#if 0
     Uint32 *inputDisc  = (Uint32 *)(inputSubMatrix + 
 				    (i + inputDescription.historyFrames) * stride + 
 				    inputDescription.numDiscrete);
+#else
+    Uint32 *inputDisc  = (Uint32 *)(inputSubMatrix + 
+				    (i + inputDescription.historyFrames) * stride + 
+				    inputDescription.numContinuous);
+#endif
     memcpy(outputDisc, inputDisc, myOutput.numDiscrete * sizeof(Data32));
   }
 
+  if (B==NULL) {
+    B = new float[myOutput.numContinuous];
+    assert(B);
+    for (unsigned i=0; i < myOutput.numContinuous; i+=1)
+      B[i] = 1.0f;
+  }
   unsigned availableHistory = inputDescription.historyFrames;
   for (unsigned outr=0; outr < myOutput.numFrames; outr+=1) {
     float *outputRow = (float *)(buffer + outr * stride);
@@ -149,8 +167,8 @@ FIRFilter::localTransform(Data32 const *inputSubMatrix,
 	outputRow[j] += inputRow[j] * (B + h * myOutput.numContinuous)[j];
       }
     }
-    availableHistory = (availableHistory < order) ? availableHistory + 1  :  order;
   }
+  availableHistory = (availableHistory < order) ? availableHistory + 1  :  order;
 
   if (outputDescription) *outputDescription = myOutput;
   return buffer;

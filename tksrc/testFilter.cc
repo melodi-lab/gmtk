@@ -120,13 +120,15 @@ main(int argc, char *argv[]) {
     double magicDouble;
     char * filterFileName;
     int xform;
+    float *B, *c;
 
+    Filter *xformer = NULL;
     if (Per_Stream_Transforms[i]) {
       Filter *prevFilter = NULL;
-      Filter *xformer = NULL;
       while((xform=parseTransform(Per_Stream_Transforms[i], magicInt, magicDouble, filterFileName)) != END_STR) {
 	switch (xform) {
 	case NONE: printf("no xform for stream %u\n", i);
+	  xformer = new Filter(NULL); // identity filter
 	  break;
 	case UPSAMPLE_HOLD:
 	  printf("upsample hold stream %u\n", i);
@@ -146,13 +148,18 @@ main(int argc, char *argv[]) {
 	  break;
 #endif
 	case MULTIPLY:
-	  printf("multiply stream %u by %f\n", i, magicDouble);
+	  printf("multiply stream %u by %f (%u)\n", i, magicDouble, obsFile[i]->numContinuous());
+	  // FIXME - hmm... assume xforms won't change # floats
+	  B = new float[obsFile[i]->numContinuous()];
+	  for (unsigned j=0; j < obsFile[i]->numContinuous(); j+=1) 
+	    B[j] = (float)magicDouble;
+	  xformer = new FIRFilter(0, obsFile[i]->numContinuous(), B, NULL, NULL);
 	  break;
 	case NORMALIZE:
-	  printf("normalize stream %u\n", i);
+	  printf("normalize stream %u - now handled by FIR\n", i);
 	  break;
 	case MEAN_SUB:
-	  printf("mean sub stream %u\n", i);
+	  printf("mean sub stream %u - now handled by FIR\n", i);
 	  break;
 	case ARMA:
 	  printf("arma stream %u order %d\n", i, magicInt);
@@ -160,19 +167,24 @@ main(int argc, char *argv[]) {
 	case FILTER:
 	  printf("filter stream %u with %s\n", i, filterFileName);
 	  xformer = new FIRFilter(filterFileName, NULL);
-	  assert(xformer);
-	  xformer->appendFilter(prevFilter);
-	  prevFilter = xformer;
 	  break;
 	case OFFSET:
 	  printf("offset stream %u by %f\n", i, magicDouble);
+	  c = new float[obsFile[i]->numContinuous()];
+	  for (unsigned j=0; j < obsFile[i]->numContinuous(); j+=1) 
+	    c[j] = (float)magicDouble;
+	  xformer = new FIRFilter(0, obsFile[i]->numContinuous(), NULL, c, NULL);
 	  break;
 	default:
+	  // FIXME - more appropriate error message
 	  printf("WTF stream %u\n", i);
 	}
       }
-      obsFile[i] = new FilterFile(xformer, obsFile[i], postpr[i]);
+      assert(xformer);
+      xformer->appendFilter(prevFilter);
+      prevFilter = xformer;
     }
+    obsFile[i] = new FilterFile(xformer, obsFile[i], postpr[i]);
   }
   globalObservationMatrix.initialize(nFiles, obsFile, gpr_str, startSkip, endSkip);
   FileSource *f = &globalObservationMatrix;
