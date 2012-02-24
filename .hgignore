@@ -39,6 +39,9 @@ featureFileIO/testPFileFile
 featureFileIO/testFileSource
 featureFileIO/testASCIIStream
 featureFileIO/testFileStream
+featureFileIO/testObsFile
+featureFileIO/testFileSrc
+featureFileIO/testFilter
 miscSupport/fileParserTest
 miscSupport/testArguments
 miscSupport/testBPRange
@@ -92,6 +95,3 @@ tksrc/neghead
 tksrc/testPackCliqueValue
 tksrc/testViterbi
 tksrc/testPackCliqueValue
-tksrc/testObsFile
-tksrc/testFileSrc
-tksrc/testFilter

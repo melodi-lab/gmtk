@@ -6,7 +6,7 @@
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-//static const char * gmtk_version_id = PACKAGE_STRING;
+static const char * gmtk_version_id = PACKAGE_STRING;
 #  ifdef HAVE_HG_H
 #    include "hgstamp.h"
 #  endif
@@ -20,7 +20,6 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "error.h"
 #include "debug.h"
 #include "arguments.h"
-#include "version.h"
 
 #include "GMTK_ObservationSource.h"
 #include "GMTK_FileSource.h"
@@ -45,12 +44,12 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #define GMTK_ARG_VERSION
 
 #define GMTK_ARGUMENTS_DEFINITION
-#include "GMTK_Arguments.h"
+#include "ObsArguments.h"
 #undef GMTK_ARGUMENTS_DEFINITION
 
 Arg Arg::Args[] = {
 #define GMTK_ARGUMENTS_DOCUMENTATION
-#include "GMTK_Arguments.h"
+#include "ObsArguments.h"
 #undef GMTK_ARGUMENTS_DOCUMENTATION
   // final one to signal the end of the list
   Arg()
@@ -79,7 +78,7 @@ main(int argc, char *argv[]) {
   }
   infoMsg(IM::Max,"Finished parsing arguments\n");
 #define GMTK_ARGUMENTS_CHECK_ARGS
-#include "GMTK_Arguments.h"
+#include "ObsArguments.h"
 #undef GMTK_ARGUMENTS_CHECK_ARGS
 
   infoMsg(IM::Max,"Opening Files ...\n");
