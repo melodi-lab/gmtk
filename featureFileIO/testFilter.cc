@@ -120,7 +120,8 @@ main(int argc, char *argv[]) {
     double magicDouble;
     char * filterFileName;
     int xform;
-    float *B, *c;
+    float  *B,  *c;
+    double *BB, *cc;
 
     Filter *xformer = NULL;
     Filter *firstFilter = NULL;
@@ -157,10 +158,10 @@ main(int argc, char *argv[]) {
 	  xformer = new FIRFilter(0, obsFile[i]->numContinuous(), B, NULL, NULL);
 	  break;
 	case NORMALIZE:
-	  printf("normalize stream %u - now handled by FIR\n", i);
+	  printf("normalize stream %u - now handled by affine\n", i);
 	  break;
 	case MEAN_SUB:
-	  printf("mean sub stream %u - now handled by FIR\n", i);
+	  printf("mean sub stream %u - now handled by affine\n", i);
 	  break;
 	case ARMA:
 	  printf("arma stream %u order %d\n", i, magicInt);
@@ -172,10 +173,11 @@ main(int argc, char *argv[]) {
           break;
 	case OFFSET:
 	  printf("offset stream %u by %f\n", i, magicDouble);
-	  c = new float[obsFile[i]->numContinuous()];
+	  cc = new double[obsFile[i]->numContinuous()];
 	  for (unsigned j=0; j < obsFile[i]->numContinuous(); j+=1) 
-	    c[j] = (float)magicDouble;
-	  xformer = new FIRFilter(0, obsFile[i]->numContinuous(), NULL, c, NULL);
+	    cc[j] = magicDouble;
+	  xformer = new AffineFilter(obsFile[i]->numContinuous(), obsFile[i]->numContinuous(), 
+				     NULL, cc, NULL);
 	  break;
 	default:
 	  // FIXME - more appropriate error message

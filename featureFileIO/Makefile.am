@@ -99,11 +99,12 @@ testFilter_SOURCES = testFilter.cc
 testObsFile_SOURCES = testObsFile.cc
 
 
-bin_PROGRAMS = obs-create obs-print obs-info obs-skmeans obs-concat obs-diff
+bin_PROGRAMS = obs-create obs-print obs-info obs-skmeans obs-concat obs-diff obs-stats
 #check_PROGRAMS = gmtest
 
 #gmtest_SOURCES = gmtest.cc
 
+obs_stats_SOURCES = obs-stats.cc
 obs_create_SOURCES = obs-create.cc
 
 obs_print_SOURCES = \

@@ -182,7 +182,7 @@ user_internal_cfunc_dts.cc
 
 
 bin_PROGRAMS = \
-gmtkTime gmtkJT gmtkEMtrain gmtkKernel gmtkViterbi gmtkTriangulate gmtkStats \
+gmtkTime gmtkJT gmtkEMtrain gmtkKernel gmtkViterbi gmtkTriangulate \
 gmtkParmConvert gmtkTFmerge gmtkDTindex gmtkNGramIndex gmtkTie gmtkModelInfo \
 gmtkOnline \
 $(GMTKVIZ) $(OSXBUNDLE)
@@ -201,7 +201,6 @@ gmtkTFmerge_SOURCES = gmtkTFmerge.cc
 gmtkDTindex_SOURCES = gmtkDTindex.cc
 gmtkNGramIndex_SOURCES = gmtkNGramIndex.cc
 gmtkOnline_SOURCES = gmtkOnline.cc
-gmtkStats_SOURCES = gmtkStats.cc
 
 #gmtkUnroll_SOURCES = gmtkUnroll.o  libGMTK.a ../miscSupport/libmiscSupport.a .NOEXPORT
 #	-@rm -f $@
