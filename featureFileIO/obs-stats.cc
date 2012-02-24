@@ -23,7 +23,7 @@
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-//static const char * gmtk_version_id = PACKAGE_STRING;
+static const char * gmtk_version_id = PACKAGE_STRING;
 #  ifdef HAVE_HG_H
 #    include "hgstamp.h"
 #  endif
@@ -37,7 +37,6 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "error.h"
 #include "debug.h"
 #include "arguments.h"
-#include "version.h"
 
 #include "GMTK_ObservationSource.h"
 #include "GMTK_FileSource.h"
@@ -60,14 +59,14 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #define GMTK_ARG_VERSION
 
 #define GMTK_ARGUMENTS_DEFINITION
-#include "GMTK_Arguments.h"
+#include "ObsArguments.h"
 #undef GMTK_ARGUMENTS_DEFINITION
 
 bool meanSubOnly=false;
 
 Arg Arg::Args[] = {
 #define GMTK_ARGUMENTS_DOCUMENTATION
-#include "GMTK_Arguments.h"
+#include "ObsArguments.h"
 #undef GMTK_ARGUMENTS_DOCUMENTATION
 
   Arg("\n*** Statistical options ***\n"),
@@ -102,7 +101,7 @@ main(int argc, char *argv[]) {
   }
   infoMsg(IM::Max,"Finished parsing arguments\n");
 #define GMTK_ARGUMENTS_CHECK_ARGS
-#include "GMTK_Arguments.h"
+#include "ObsArguments.h"
 #undef GMTK_ARGUMENTS_CHECK_ARGS
 
   infoMsg(IM::Max,"Opening Files ...\n");
@@ -180,17 +179,22 @@ main(int argc, char *argv[]) {
       std[i] = sqrt( N / (N-1.0f) * fabs( xSqrd[i]/N - mean[i] * mean[i] ) );
     }
   }
-  printf("0 %u\n",  nCont);
+  printf("%u %u\n",  nCont, nCont);
   for (unsigned i=0; i < nCont; i+=1) {
+    unsigned j;
+    for (j=0; j < i; j+=1)
+      printf("0.0 ");
     if (meanSubOnly || std[i] <= TOO_SMALL) {
       if (!meanSubOnly) 
 	warning("WARNING: Value of variance in mean/variance normalization is too small (<=%f).  Will only perform mean substraction.\n", TOO_SMALL);
-      printf(" 1.0");
+      printf("1.0");
     } else {
-      printf(" %f", 1.0f/std[i]);
+      printf("%f", 1.0/std[i]);
     }
+    for (j=i+1; j < nCont; j+=1)
+      printf(" 0.0");
+    printf("\n");
   }
-  printf("\n");
   for (unsigned i=0; i < nCont; i+=1) {
     if (meanSubOnly || std[i] <= TOO_SMALL) {
       printf(" %f", -mean[i]);
