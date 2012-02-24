@@ -6,7 +6,7 @@
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-//static const char * gmtk_version_id = PACKAGE_STRING;
+static const char * gmtk_version_id = PACKAGE_STRING;
 #  ifdef HAVE_HG_H
 #    include "hgstamp.h"
 #  endif
@@ -20,14 +20,15 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "error.h"
 #include "debug.h"
 #include "arguments.h"
-#include "version.h"
 
 #include "GMTK_ObservationSource.h"
 #include "GMTK_FileSource.h"
 #include "GMTK_ASCIIFile.h"
+#include "GMTK_FlatASCIIFile.h"
 #include "GMTK_PFileFile.h"
 #include "GMTK_HTKFile.h"
 #include "GMTK_HDF5File.h"
+#include "GMTK_BinaryFile.h"
 #include "GMTK_Stream.h"
 
 #define GMTK_ARG_OBS_FILES
@@ -39,12 +40,12 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #define GMTK_ARG_VERSION
 
 #define GMTK_ARGUMENTS_DEFINITION
-#include "GMTK_Arguments.h"
+#include "ObsArguments.h"
 #undef GMTK_ARGUMENTS_DEFINITION
 
 Arg Arg::Args[] = {
 #define GMTK_ARGUMENTS_DOCUMENTATION
-#include "GMTK_Arguments.h"
+#include "ObsArguments.h"
 #undef GMTK_ARGUMENTS_DOCUMENTATION
   // final one to signal the end of the list
   Arg()
@@ -73,7 +74,7 @@ main(int argc, char *argv[]) {
   }
   infoMsg(IM::Max,"Finished parsing arguments\n");
 #define GMTK_ARGUMENTS_CHECK_ARGS
-#include "GMTK_Arguments.h"
+#include "ObsArguments.h"
 #undef GMTK_ARGUMENTS_CHECK_ARGS
 
   infoMsg(IM::Max,"Opening Files ...\n");
@@ -99,29 +100,32 @@ main(int argc, char *argv[]) {
       obsFile[i] = new HDF5File(ofs[i], i, Cpp_If_Ascii, cppCommandOptions,
 				frs[i], irs[i], prepr[i], sr[i]);
       break;
-    case RAWBIN:
     case FLATASC:
-      error("ERROR: O(1) space observation input for file format '%s' not implemented yet\n", fmts[i]);
+      obsFile[i] = new FlatASCIIFile(ofs[i], nfs[i], nis[i], i, Cpp_If_Ascii, cppCommandOptions,
+				     frs[i], irs[i], prepr[i], sr[i]);
+      break;
+    case RAWBIN:
+      obsFile[i] = new BinaryFile(ofs[i], nfs[i], nis[i], i, iswp[i], Cpp_If_Ascii, cppCommandOptions,
+				  frs[i], irs[i], prepr[i], sr[i]);
       break;
     default:
       error("ERROR: Unknown observation file format type: '%s'\n", fmts[i]);
     }
-    ObservationFile *f = obsFile[i];
-    printf("reading %s - %u\n", ofs[i], f->numSegments());
-    for (unsigned j=0; j < f->numSegments(); j+=1) {
-      assert(f->openSegment(j));
-      for (unsigned k=0; k < f->numFrames(); k+=1) {
-	printf("%03u %03u", j, k);
-	Data32 const *buf = f->getFrames(k,1);
-	for (unsigned f=0; f < nfs[i]; f+=1)
-	  printf(" %f", *((float *)(buf++)));
-	for (unsigned f=0; f < nis[i]; f+=1)
-	  printf(" %d", *((int *)(buf++)));
-	printf("\n");
-      }
-    }
   }
   globalObservationMatrix.initialize(nFiles, obsFile, gpr_str, startSkip, endSkip);
-
+  FileSource *f = &globalObservationMatrix;
+  for (unsigned j=0; j < f->numSegments(); j+=1) {
+    assert(f->openSegment(j));
+    for (unsigned k=0; k < f->numFrames(); k+=1) {
+      printf("%03u %03u", j, k);
+      Data32 const *buf = f->loadFrames(k,1);
+      for (unsigned ff=0; ff < f->numContinuous(); ff+=1)
+	printf(" %f", *((float *)(buf++)));
+      for (unsigned ff=0; ff < f->numDiscrete(); ff+=1)
+	printf(" %d", *((int *)(buf++)));
+      printf("\n");
+    }
+  }
+  
   exit(0);
 }

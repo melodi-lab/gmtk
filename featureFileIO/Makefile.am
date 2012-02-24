@@ -79,13 +79,25 @@ GMTK_FIRFilter.h GMTK_FIRFilter.cc \
 GMTK_AffineFilter.h GMTK_AffineFilter.cc
 
 
-check_PROGRAMS = testPFileFile testASCIIFile testFileSource testASCIIStream testFileStream
+check_PROGRAMS = \
+testPFileFile \
+testASCIIFile \
+testFileSource \
+testASCIIStream \
+testFileStream \
+testObsFile \
+testFileSrc \
+testFilter 
 
 testPFileFile_SOURCES = testPFileFile.cc 
 testASCIIFile_SOURCES = testASCIIFile.cc 
 testFileSource_SOURCES = testFileSource.cc
 testASCIIStream_SOURCES = testASCIIStream.cc
 testFileStream_SOURCES = testFileStream.cc
+testFileSrc_SOURCES = testFileSrc.cc
+testFilter_SOURCES = testFilter.cc
+testObsFile_SOURCES = testObsFile.cc
+
 
 bin_PROGRAMS = obs-create obs-print obs-info obs-skmeans obs-concat obs-diff
 #check_PROGRAMS = gmtest
