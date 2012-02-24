@@ -33,6 +33,7 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "GMTK_Filter.h"
 #include "GMTK_FilterFile.h"
 #include "GMTK_FIRFilter.h"
+#include "GMTK_AffineFilter.h"
 #include "GMTK_Stream.h"
 
 #define GMTK_ARG_OBS_FILES
@@ -123,11 +124,12 @@ main(int argc, char *argv[]) {
     float *B, *c;
 
     Filter *xformer = NULL;
+    Filter *firstFilter = NULL;
     if (Per_Stream_Transforms[i]) {
-      Filter *prevFilter = NULL;
       while((xform=parseTransform(Per_Stream_Transforms[i], magicInt, magicDouble, filterFileName)) != END_STR) {
 	switch (xform) {
-	case NONE: printf("no xform for stream %u\n", i);
+	case NONE: 
+	  printf("no xform for stream %u\n", i);
 	  xformer = new Filter(NULL); // identity filter
 	  break;
 	case UPSAMPLE_HOLD:
@@ -166,8 +168,9 @@ main(int argc, char *argv[]) {
 	  break;
 	case FILTER:
 	  printf("filter stream %u with %s\n", i, filterFileName);
-	  xformer = new FIRFilter(filterFileName, NULL);
-	  break;
+  //	  xformer = new FIRFilter(filterFileName, NULL);
+	  xformer = new AffineFilter(filterFileName, NULL);
+          break;
 	case OFFSET:
 	  printf("offset stream %u by %f\n", i, magicDouble);
 	  c = new float[obsFile[i]->numContinuous()];
@@ -179,12 +182,16 @@ main(int argc, char *argv[]) {
 	  // FIXME - more appropriate error message
 	  printf("WTF stream %u\n", i);
 	}
+	assert(xformer);
+	if (!firstFilter) {
+	  firstFilter = xformer;
+	} else {
+	  firstFilter->appendFilter(xformer);
+	}
       }
-      assert(xformer);
-      xformer->appendFilter(prevFilter);
-      prevFilter = xformer;
     }
-    obsFile[i] = new FilterFile(xformer, obsFile[i], postpr[i]);
+    if (firstFilter) 
+      obsFile[i] = new FilterFile(firstFilter, obsFile[i], postpr[i]);
   }
   globalObservationMatrix.initialize(nFiles, obsFile, gpr_str, startSkip, endSkip);
   FileSource *f = &globalObservationMatrix;

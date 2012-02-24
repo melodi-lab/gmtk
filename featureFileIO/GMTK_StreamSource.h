@@ -17,6 +17,8 @@
 #include <config.h>
 #endif
 
+#include <assert.h>
+
 #include "machine-dependent.h"
 #include "GMTK_ObservationSource.h"
 #include "GMTK_ObservationStream.h"
@@ -32,18 +34,20 @@ class StreamSource : public ObservationSource {
   // buffer to hold transfored frames - enough to do inference
   // for the current modified partition (possilby includes 
   // some "pseudo-future")
-  Data32 cookedBuffer[];
+  Data32 *cookedBuffer;
+  unsigned buffSize;
+  unsigned frameQueueLength;
 
   // the streams assembled to form the observations
-  ObservationStream stream[];
+  ObservationStream *stream;
+
+  unsigned curFrame;
+
+  unsigned _startSkip;
 
  public:
   
-  // each stream provides its data for the next frame,
-  // transformed and "read to eat." So the StreamSource
-  // just manages assembling them to satisfy the loadFrames()
-  // calls
-  StreamSource(ObservationStream stream[]); 
+  StreamSource(ObservationStream *stream, unsigned queueLength, unsigned startSkip=0); 
 
 
   // After discussing with Jeff, we decided online inference
@@ -55,7 +59,7 @@ class StreamSource : public ObservationSource {
   // that be an error, and if so, how to indicate it? Perhaps
   // make count an unsigned& returning the # of missing frames
   // (should be 0 for success)
-  Data32 *loadFrames(unsigned first, unsigned count) {
+  Data32 const *loadFrames(unsigned first, unsigned count);
     // The current design loops over observation segments,
     // loading them into the ObservationMatrix, then inference
     // iterates over the modified partitions of the current
@@ -85,8 +89,6 @@ class StreamSource : public ObservationSource {
     // frames to the beginning of the cookedBuffer and then load
     // in the new needed frames following them.
 
-    return NULL;
-    
     // if @ end of cookedBuffer
     //   copy any need frames to beginning of cookedBuffer
     //   adjust cookedBuffer destination
@@ -95,7 +97,64 @@ class StreamSource : public ObservationSource {
     //   getNextFrame() from each stream into cookedBuffer
     // return &cookedBuffer + offset
 
+
+  bool EOS() { 
+    assert(stream); 
+    return stream->EOS();
   }
-}
+
+  
+  // The number of continuous, discrete, total features
+
+  unsigned numContinuous() {
+    assert(stream);
+    return stream->numContinuous();
+  }
+
+
+  unsigned numDiscrete() {
+    assert(stream);
+    return stream->numDiscrete();
+  }
+  
+
+  unsigned numFeatures() {
+    assert(stream);
+    return stream->numFeatures();
+  }
+
+
+  unsigned stride() {
+    assert(stream);
+    return numFeatures();
+  }
+
+
+  // number of frames to skip at the beginning
+  unsigned startSkip() {return _startSkip;};
+
+  float *const floatVecAtFrame(unsigned f) {return NULL;}
+
+  float *const floatVecAtFrame(unsigned f, const unsigned startFeature) {
+    return NULL;
+  }
+
+  unsigned *const unsignedVecAtFrame(unsigned f) {
+    return NULL;
+  }
+
+  unsigned &unsignedAtFrame(const unsigned frame, const unsigned feature) {
+    return *(new unsigned);
+  }
+
+  Data32 const * const baseAtFrame(unsigned f) {
+    return NULL;
+  }
+
+  bool elementIsDiscrete(unsigned el) {
+    return numContinuous() <= el && el < numFeatures();
+  }
+
+};
 
 #endif
