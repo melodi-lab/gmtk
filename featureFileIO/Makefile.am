@@ -61,9 +61,10 @@ pfile.h pfile.cc \
 vbyteswapping.h vbyteswapping.cc \
 file_utils.h file_utils.cc \
 GMTK_ObservationSource.h \
-GMTK_StreamSource.h \
+GMTK_StreamSource.h GMTK_StreamSource.cc \
 GMTK_ObservationStream.h \
 GMTK_ASCIIStream.h GMTK_ASCIIStream.cc \
+GMTK_FileStream.h \
 GMTK_FileSource.h GMTK_FileSource.cc \
 GMTK_ObservationFile.h GMTK_ObservationFile.cc \
 GMTK_PFileFile.h GMTK_PFileFile.cc \
@@ -74,15 +75,17 @@ GMTK_FlatASCIIFile.h GMTK_FlatASCIIFile.cc \
 GMTK_BinaryFile.h GMTK_BinaryFile.cc \
 GMTK_Filter.h GMTK_Filter.cc \
 GMTK_FilterFile.h \
-GMTK_FIRFilter.h GMTK_FIRFilter.cc
+GMTK_FIRFilter.h GMTK_FIRFilter.cc \
+GMTK_AffineFilter.h GMTK_AffineFilter.cc
 
 
-check_PROGRAMS = testPFileFile testASCIIFile testFileSource testASCIIStream
+check_PROGRAMS = testPFileFile testASCIIFile testFileSource testASCIIStream testFileStream
 
 testPFileFile_SOURCES = testPFileFile.cc 
 testASCIIFile_SOURCES = testASCIIFile.cc 
 testFileSource_SOURCES = testFileSource.cc
 testASCIIStream_SOURCES = testASCIIStream.cc
+testFileStream_SOURCES = testFileStream.cc
 
 bin_PROGRAMS = obs-create obs-print obs-info obs-skmeans obs-concat obs-diff
 #check_PROGRAMS = gmtest

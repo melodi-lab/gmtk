@@ -38,6 +38,7 @@ featureFileIO/testASCIIFile
 featureFileIO/testPFileFile
 featureFileIO/testFileSource
 featureFileIO/testASCIIStream
+featureFileIO/testFileStream
 miscSupport/fileParserTest
 miscSupport/testArguments
 miscSupport/testBPRange
@@ -83,6 +84,7 @@ tksrc/gmtkTie
 tksrc/gmtkTime
 tksrc/gmtkTriangulate
 tksrc/gmtkViterbi
+tksrc/gmtkOnline
 tksrc/gmtkViz
 tksrc/gmtkViz.app
 tksrc/gmtkViz.app/*

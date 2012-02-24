@@ -70,6 +70,8 @@ class Filter {
   Filter *nextFilter;
   
  public:
+
+  // FIXME - ctor should take prevFilter ?
   
   Filter(Filter *nextFilter = NULL) : nextFilter(nextFilter) {}
 
