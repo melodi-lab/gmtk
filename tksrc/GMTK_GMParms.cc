@@ -1630,7 +1630,7 @@ void
 GMParms::writeDPmfs(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("dense PMFs");os.nl();
-  os.write(dPmfs.size(),"num dPMFs"); os.nl();
+  os.write((unsigned)dPmfs.size(),"num dPMFs"); os.nl();
   for (unsigned i=0;i<dPmfs.size();i++) {
     // first write the count
     os.write(i,"dDPMF cnt");
@@ -1646,7 +1646,7 @@ void
 GMParms::writeSPmfs(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("sparse PMFs");os.nl();
-  os.write(sPmfs.size(),"num sPMFs"); os.nl();
+  os.write((unsigned)sPmfs.size(),"num sPMFs"); os.nl();
   for (unsigned i=0;i<sPmfs.size();i++) {
     // first write the count
     os.write(i,"sPMFs cnt");
@@ -1822,7 +1822,7 @@ void
 GMParms::writeDLinks(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("dlink structures");os.nl();
-  os.write(dLinks.size(),"num dlinks"); os.nl();
+  os.write((unsigned)dLinks.size(),"num dlinks"); os.nl();
   for (unsigned i=0;i<dLinks.size();i++) {
     // first write the count
     os.write(i,"dlink cnt");
@@ -1903,7 +1903,7 @@ void
 GMParms::writeDirichletTabs(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("Dirichlet Tables");os.nl();
-  os.write(dirichletTabs.size(),"num dirichlet tabs"); os.nl();
+  os.write((unsigned)dirichletTabs.size(),"num dirichlet tabs"); os.nl();
   for (unsigned i=0;i<dirichletTabs.size();i++) {
     // first write the count
     os.write(i,"diriclet tab cnt");
@@ -1945,7 +1945,7 @@ GMParms::writeMdCpts(oDataStreamFile& os)
   os.nl(); os.writeComment("Dense CPTs");os.nl();
   // leave out the 1st one (ie., the -1) as it is an internal
   // object. See routine loadGlobal()
-  os.write(mdCpts.size()-1,"num Dense CPTs"); os.nl();
+  os.write((unsigned)mdCpts.size()-1,"num Dense CPTs"); os.nl();
 
   // Next, get a pointer to the unity score CPT that we should not
   // write out.  Note that it potentially might not be at the end of
@@ -1991,7 +1991,7 @@ void
 GMParms::writeMsCpts(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("Sparse CPTs");os.nl();
-  os.write(msCpts.size(),"num Sparse CPTs"); os.nl();
+  os.write((unsigned)msCpts.size(),"num Sparse CPTs"); os.nl();
   for (unsigned i=0;i<msCpts.size();i++) {
     // first write the count
     os.write(i,"Sparse CPT cnt");
@@ -2025,7 +2025,7 @@ void
 GMParms::writeMtCpts(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("Deterministic CPTs");os.nl();
-  os.write(mtCpts.size(),"num deterministic CPTs"); os.nl();
+  os.write((unsigned)mtCpts.size(),"num deterministic CPTs"); os.nl();
   for (unsigned i=0;i<mtCpts.size();i++) {
     // first write the count
     os.write(i,"deterministic CPT cnt");
@@ -2058,7 +2058,7 @@ void
 GMParms::writeDTs(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("Decision Trees");os.nl();
-  os.write(dts.size(),"num DTS"); os.nl();
+  os.write((unsigned)dts.size(),"num DTS"); os.nl();
   for (unsigned i=0;i<dts.size();i++) {
     // first write the count
     os.write(i,"DTS cnt");
