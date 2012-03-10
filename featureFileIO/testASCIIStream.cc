@@ -1,6 +1,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "GMTK_ASCIIStream.h"
 
@@ -11,7 +12,13 @@ main(int argc, char *argv[]) {
     fprintf(stderr, "testASCIIStream file nf ni\n");
     exit (1);
   }
-  FILE *f = fopen(argv[1], "r");
+  FILE *f;
+
+  if (strcmp("-", argv[1]))
+    f = fopen(argv[1], "r");
+  else
+    f = stdin;
+
   if (!f) {
     perror(argv[1]);
     exit(1);
@@ -23,7 +30,7 @@ main(int argc, char *argv[]) {
 
   Data32 const *frame;
   for (; !as.EOS(); ) {
-    frame = as.getNextFrame();
+    frame = as.getNextLogicalFrame();
     if (!frame) {
       printf("eos\n");
       continue;

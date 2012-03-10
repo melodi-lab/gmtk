@@ -1,0 +1,83 @@
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
+#include <assert.h>
+
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+static const char * gmtk_version_id = PACKAGE_STRING;
+#  ifdef HAVE_HG_H
+#    include "hgstamp.h"
+#  endif
+
+#else 
+// TODO: automate the process of updating this string.
+static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 2004";
+#endif
+
+#include "GMTK_StreamSource.h"
+#include "GMTK_ASCIIStream.h"
+#include "arguments.h"
+
+unsigned int numInt;
+unsigned int numFloat;
+
+bool printVersion = false;
+unsigned help=0;  // help=0...5 depending on the amount of info we want printed
+Arg Arg::Args[] = {
+
+  Arg("\n*** Input arguments ***\n"),
+
+  Arg("nf",   Arg::Req, numFloat,"number of floats in input file(s)"),
+  Arg("ni",   Arg::Req, numInt,"number of ints (labels) in input file(s)"),
+
+  Arg("\n*** Misc arguments ***\n"),
+
+  Arg("help",  Arg::Help, help,  "Print this message. Add an argument from 1 to 5 for increasing help info."),
+  Arg("version", Arg::Tog, printVersion, "Print GMTK version and exit."),
+  // The argumentless argument marks the end of the above list.
+  Arg()
+};
+
+
+int 
+main(int argc, char *argv[]) {
+
+  bool parse_was_ok = Arg::parse(argc,(char**)argv);
+
+  if(help) {
+    Arg::usage();
+    exit(0);
+  }
+  if(!parse_was_ok) {
+    Arg::usage(); exit(-1);
+  }
+  if (printVersion) {
+#ifdef HAVE_CONFIG_H
+    printf("%s (Mercurial id: %s)\n",gmtk_version_id,HGID);
+#else
+    printf("%s\n", gmtk_version_id);
+#endif
+    exit(0);
+  }
+
+
+  ASCIIStream as(stdin, numFloat, numInt);
+  StreamSource ss(&as, 100);
+
+  unsigned segNum, frameNum;
+  for (segNum=0; !ss.EOS(); segNum+=1) {
+    ss.preloadFrames(3);
+    Data32 const *frame = ss.loadFrames(0, 1);
+    for (frameNum=0; ss.segmentLength() == 0 || frameNum < ss.segmentLength() ; frameNum+=1, frame = ss.loadFrames(frameNum, 1)) { 
+      printf("%03u %03u", segNum, frameNum);
+      for (unsigned f=0; f < ss.numContinuous(); f+=1)
+	printf(" %f", *((float *)(frame++)));
+      for (unsigned f=0; f < ss.numDiscrete(); f+=1)
+	printf(" %d", *((int *)(frame++)));
+      printf("\n");
+    }
+  }
+  exit(0);
+}
