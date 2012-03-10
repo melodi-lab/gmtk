@@ -50,7 +50,8 @@ class ObservationStream {
   char const *discFeatureRangeStr;  // -irX
   Range      *discFeatureRange;
 
-  Data32 *frameData;
+  Data32 *frameData;                // data as read from source
+  Data32 *logicalFrameData;         // -frX and -irX applied
 
 #if 0
   // don't make sense for streams?
@@ -73,7 +74,10 @@ class ObservationStream {
     : nFloat(nFloat), nInt(nInt),
       contFeatureRangeStr(contFeatureRangeStr_), contFeatureRange(NULL),
       discFeatureRangeStr(discFeatureRangeStr_), discFeatureRange(NULL)
-  {frameData = new Data32[nFloat+nInt]; assert(frameData);}
+  {
+    frameData = new Data32[nFloat+nInt]; assert(frameData);
+    logicalFrameData = new Data32[numLogicalFeatures()]; assert(logicalFrameData);
+  }
 
   virtual ~ObservationStream() {
     if (contFeatureRange) delete contFeatureRange;
@@ -120,6 +124,25 @@ class ObservationStream {
   // There may be more segments, so call EOS() after getting a NULL from getNextFrame()
 
   virtual Data32 const *getNextFrame() {return NULL;}
+
+  virtual Data32 const *getNextLogicalFrame() { 
+    if (getNextFrame()) {
+      unsigned nlc = numLogicalContinuous();
+      unsigned nlf = numLogicalFeatures();
+      for (unsigned i=0; i < nlc; i+=1) {
+	unsigned srcIdx = contFeatureRange ? contFeatureRange->index(i) : i;
+	logicalFrameData[i] = frameData[srcIdx];
+      }
+      for (unsigned i = nlc; i < nlf; i+=1) {
+	unsigned srcIdx = discFeatureRange ? discFeatureRange->index(i-nlc) : i;
+//fprintf(stderr,"gNLF input %u -> output %u\n", srcIdx, i); 
+	logicalFrameData[i] = frameData[srcIdx];
+      }
+      return logicalFrameData;
+    }	
+    return NULL;
+  }
+
 };
 
 #endif

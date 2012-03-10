@@ -22,6 +22,7 @@
 #include "machine-dependent.h"
 #include "GMTK_ObservationSource.h"
 #include "GMTK_ObservationStream.h"
+#include "GMTK_Filter.h"
 
 // The StreamSource subclasses (see GMTK_StreamSource.h) handle
 // non-random access data sources like pipes and sockets.
@@ -35,20 +36,74 @@ class StreamSource : public ObservationSource {
   // for the current modified partition (possilby includes 
   // some "pseudo-future")
   Data32 *cookedBuffer;
-  unsigned buffSize;
-  unsigned frameQueueLength;
+  unsigned cookedBuffSize;
+  
+  unsigned maxCookedFrames;        // how many frames fit in the queue?
+  unsigned currentCookedFrames;    // how many frames are in it now?
+  unsigned firstCookedFrameNum;    // frame # of first frame in queue
 
-  // the streams assembled to form the observations
+  unsigned numFramesInSegment;     // # of frames in current segment
+                                   // 0 until we know what it is
+  Data32 *rawBuffer;
+  unsigned rawBuffSize;
+
+  unsigned maxRawFrames;
+  unsigned currentRawFrames;
+  unsigned firstRawFrameNum;
+
+  unsigned nFloat;
+  unsigned nInt;
+  unsigned nFeatures;
+
+  // low-level stream driver (ASCII, binary)
   ObservationStream *stream;
+
+  // transform stack to cook the raw frames with
+  Filter *filter;
 
   unsigned curFrame;
 
   unsigned _startSkip;
 
+  // Try to append count cooked frames starting from cooked frame
+  // # first to destination. 
+  // Returns # of frames actually appended. May be short if 
+  // the segment or stream ends.
+  unsigned cookFrames(Data32 *destination, unsigned first, unsigned count);
+
+  // Get count raw frames from the buffer, starting at first,
+  // calling stream->getNextFrame() as needed. 
+  // count will contain the actual # of frames retrieved, and
+  // eos is true iff the last frame returned is the last in the stream
+  Data32 const *loadRawFrames(unsigned first, unsigned &count, bool &eos);
+
+  unsigned enqueueRawFrames(unsigned nFrames, bool &eos);
+
  public:
   
-  StreamSource(ObservationStream *stream, unsigned queueLength, unsigned startSkip=0); 
+  StreamSource(ObservationStream *stream, unsigned queueLength, 
+	       Filter *filter = NULL, unsigned startSkip=0); 
 
+  ~StreamSource() {
+    if (cookedBuffer) delete[] cookedBuffer;
+    if (rawBuffer) delete[] rawBuffer;
+    if (stream) delete stream;
+  }
+
+  // Resets queue state for starting a new segment & preloads
+  // the requested # of frames
+
+  // side effect: may set numFramesInSegment
+
+  // FIXME - error conditions?
+  void preloadFrames(unsigned nFrames);
+
+  // Add the requested # of frames to the queue, possibly 
+  // triggering a flush of the older frames in the queue to
+  // make room. Returns number of frames actually added.
+  
+  // side effect: may set numFramesInSegment
+  unsigned enqueueFrames(unsigned nFrames);
 
   // After discussing with Jeff, we decided online inference
   // should support multiple segments, so we need a way to
@@ -59,43 +114,9 @@ class StreamSource : public ObservationSource {
   // that be an error, and if so, how to indicate it? Perhaps
   // make count an unsigned& returning the # of missing frames
   // (should be 0 for success)
+
+  // side effect: may set numFramesInSegment
   Data32 const *loadFrames(unsigned first, unsigned count);
-    // The current design loops over observation segments,
-    // loading them into the ObservationMatrix, then inference
-    // iterates over the modified partitions of the current
-    // segment. The plan is to instead have the inference code
-    // call loadFrames() with the frame range needed for the
-    // current modified partition (with prefetching, caching,
-    // data transformations, etc. happening behind the scenes
-    // in StreamSource). [ Note that for online inference, we
-    // can just save the inference output directly into the
-    // Viterbi unpacking buffers and printing the completed
-    // original frames without actually packing & unpacking ]
-
-    // But there may be some frame overlap between consecutive
-    // modified partitions. In the new Viterbi printing case, 
-    // a single RV instance was used to store the shared data
-    // for any modified partitions that contained it. That was
-    // possible because the Viterbi printing algorithm worked
-    // with sets of *RV, so the pointers in each partition's set 
-    // could point to the shared RV instance. For inference, 
-    // adding another layer of indirection around the observed
-    // Data32s in order to share the Data32 instances between
-    // modified partitions would not be good for performance.
-
-    // Fortunately, that only poses a problem when the cookedBuffer
-    // fills - the last several frames may still be needed for
-    // upcoming modified partitions. So we can copy the needed 
-    // frames to the beginning of the cookedBuffer and then load
-    // in the new needed frames following them.
-
-    // if @ end of cookedBuffer
-    //   copy any need frames to beginning of cookedBuffer
-    //   adjust cookedBuffer destination
-    //   adjust (first,count)to account for overlap -> (first',count')
-    // until count' frames read, EOF, or timeout:
-    //   getNextFrame() from each stream into cookedBuffer
-    // return &cookedBuffer + offset
 
 
   bool EOS() { 
@@ -104,6 +125,10 @@ class StreamSource : public ObservationSource {
   }
 
   
+  // returns 0 until the length of the current segment is known
+  unsigned segmentLength() { return numFramesInSegment; }
+
+
   // The number of continuous, discrete, total features
 
   unsigned numContinuous() {

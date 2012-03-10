@@ -87,7 +87,8 @@ testASCIIStream \
 testFileStream \
 testObsFile \
 testFileSrc \
-testFilter 
+testFilter \
+testStreamSource
 
 testPFileFile_SOURCES = testPFileFile.cc 
 testASCIIFile_SOURCES = testASCIIFile.cc 
@@ -97,13 +98,15 @@ testFileStream_SOURCES = testFileStream.cc
 testFileSrc_SOURCES = testFileSrc.cc
 testFilter_SOURCES = testFilter.cc
 testObsFile_SOURCES = testObsFile.cc
+testStreamSource_SOURCES = testStreamSource.cc
 
-
-bin_PROGRAMS = obs-create obs-print obs-info obs-skmeans obs-concat obs-diff obs-stats
+bin_PROGRAMS = obs-create obs-print obs-info obs-skmeans \
+               obs-concat obs-diff obs-stats obs-stream
 #check_PROGRAMS = gmtest
 
 #gmtest_SOURCES = gmtest.cc
 
+obs_stream_SOURCES = obs-stream.cc
 obs_stats_SOURCES = obs-stats.cc
 obs_create_SOURCES = obs-create.cc
 
