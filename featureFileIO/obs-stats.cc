@@ -139,7 +139,10 @@ main(int argc, char *argv[]) {
       error("ERROR: Unknown observation file format type: '%s'\n", fmts[i]);
     }
   }
-  globalObservationMatrix.initialize(nFiles, obsFile, gpr_str, startSkip, endSkip);\
+  globalObservationMatrix.initialize(nFiles, obsFile, 
+				     Action_If_Diff_Num_Sents,
+				     Action_If_Diff_Num_Frames,
+				     gpr_str, startSkip, endSkip);
 
   FileSource *f = &globalObservationMatrix;
 

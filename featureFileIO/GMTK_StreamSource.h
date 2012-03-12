@@ -133,25 +133,25 @@ class StreamSource : public ObservationSource {
 
   unsigned numContinuous() {
     assert(stream);
-    return stream->numContinuous();
+    return nFloat;
   }
 
 
   unsigned numDiscrete() {
     assert(stream);
-    return stream->numDiscrete();
+    return nInt;
   }
   
 
   unsigned numFeatures() {
     assert(stream);
-    return stream->numFeatures();
+    return nFeatures;
   }
 
 
   unsigned stride() {
     assert(stream);
-    return numFeatures();
+    return nFeatures;
   }
 
 

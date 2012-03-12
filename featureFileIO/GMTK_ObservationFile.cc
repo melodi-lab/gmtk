@@ -20,6 +20,13 @@
 
 #include "GMTK_ObservationFile.h"
 
+#include "GMTK_ASCIIFile.h"
+#include "GMTK_FlatASCIIFile.h"
+#include "GMTK_PFileFile.h"
+#include "GMTK_HTKFile.h"
+#include "GMTK_HDF5File.h"
+#include "GMTK_BinaryFile.h"
+
 unsigned 
 ObservationFile::numLogicalSegments() {
   // Trying to simplify life for subclass authors by hiding the
@@ -137,3 +144,41 @@ ObservationFile::numLogicalDiscrete() {
   }
 }
 
+
+ObservationFile *
+instantiateFile(unsigned ifmt, char *ofs, unsigned nfs, unsigned nis,
+		unsigned number, bool iswp, bool Cpp_If_Ascii, 
+		char *cppCommandOptions, char const *frs, char const *irs, 
+		char const *prepr, char const *sr)
+{
+  ObservationFile *obsFile = NULL;
+  switch (ifmt) {
+  case RAWASC:
+    obsFile = new ASCIIFile(ofs, nfs, nis, number,
+			       Cpp_If_Ascii, cppCommandOptions,
+			       frs, irs, prepr, sr);
+    break;
+  case PFILE:
+    obsFile = new PFileFile(ofs, nfs, nis, number, iswp, frs, irs, prepr, sr);
+    break;
+  case HTK:
+    obsFile = new HTKFile(ofs, nfs, nis, number, iswp, Cpp_If_Ascii, cppCommandOptions,
+			     frs, irs, prepr, sr);
+    break;
+  case HDF5:
+    obsFile = new HDF5File(ofs, number, Cpp_If_Ascii, cppCommandOptions,
+			      frs, irs, prepr, sr);
+    break;
+  case FLATASC:
+    obsFile = new FlatASCIIFile(ofs, nfs, nis, number, Cpp_If_Ascii, cppCommandOptions,
+				   frs, irs, prepr, sr);
+    break;
+  case RAWBIN:
+    obsFile = new BinaryFile(ofs, nfs, nis, number, iswp, Cpp_If_Ascii, cppCommandOptions,
+				frs, irs, prepr, sr);
+    break;
+  default:
+    error("ERROR: Unknown observation file format type: '%s'\n", ifmt);
+  }
+  return obsFile;
+}

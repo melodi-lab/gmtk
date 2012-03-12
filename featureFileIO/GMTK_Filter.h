@@ -212,7 +212,13 @@ class Filter {
 int 
 parseTransform(char*& trans_str, int& magic_int, double& magic_double, char *&filterFileName);
 
+
+// FIXME - add bool mayAlterFrameCount
+Filter *
+instantiateFilters(char *filterStr, unsigned numContinuous);
+
 #define NONE_LETTER 'X'
+#define TRANS_AFFINE_LETTER 'A'
 #define TRANS_NORMALIZATION_LETTER 'N'
 #define TRANS_MEAN_SUB_LETTER 'E'
 #define TRANS_UPSAMPLING_LETTER 'U'
@@ -245,6 +251,7 @@ enum {
   NORMALIZE,
   MEAN_SUB,
   ARMA,
+  AFFINE,
   FILTER,
   OFFSET
 };

@@ -25,6 +25,9 @@
 #include "file_utils.h"
 #include "GMTK_Filter.h"
 
+#include "GMTK_FilterFile.h"
+#include "GMTK_FIRFilter.h"
+#include "GMTK_AffineFilter.h"
 
 static long parse_long(const char*const s) {
     size_t len = strlen(s);
@@ -147,7 +150,8 @@ parseTransform(char*& trans_str, int& magic_int, double& magic_double, char *&fi
     trans_str+=len;
     if(*trans_str=='_') ++trans_str;
     return ARMA;
-  case FILTER_LETTER: // 'F'
+  case TRANS_AFFINE_LETTER: // 'A'
+  case FILTER_LETTER:       // 'F'
     ++trans_str;
     if(*(trans_str)=='@') {
       magic_int=-1;  //we'll read the filter from a file
@@ -169,7 +173,7 @@ parseTransform(char*& trans_str, int& magic_int, double& magic_double, char *&fi
     }
     else if(*trans_str=='_') ++trans_str;
 
-    return FILTER;
+    return c == TRANS_AFFINE_LETTER ? AFFINE : FILTER;
   case NONE_LETTER:
     ++trans_str;
     if(*trans_str=='_') ++trans_str;
@@ -183,3 +187,88 @@ parseTransform(char*& trans_str, int& magic_int, double& magic_double, char *&fi
   return UNRECOGNIZED_TRANSFORM;
 }
 
+
+Filter *
+instantiateFilters(char *filterStr, unsigned numContinuous) {
+  int magicInt;
+  double magicDouble;
+  char * filterFileName;
+  int xform;
+  float  *B,  *c;
+  double *BB, *cc;
+  
+  Filter *xformer = NULL;
+  Filter *firstFilter = NULL;
+  if (filterStr) {
+    while((xform=parseTransform(filterStr, magicInt, magicDouble, filterFileName)) != END_STR) {
+      switch (xform) {
+      case NONE: 
+#if 1
+	xformer = new Filter(NULL); // identity filter
+#else
+	xformer = NULL;
+#endif
+	break;
+      case UPSAMPLE_HOLD:
+	printf("upsample hold\n");
+	break;
+      case  UPSAMPLE_SMOOTH:
+	printf("upsample smooth stream\n");
+	break;
+#if 0
+      case DOWNSAMPLE:
+	printf("downsample stream %u\n", i);
+	break;
+      case DELTAS:
+	printf("deltas stream %u\n", i);
+	break;
+      case DOUBLE_DELTAS:
+	printf("double deltas stream %u\n", i);
+	break;
+#endif
+      case MULTIPLY:
+	//	printf("multiply by %f (%u)\n", magicDouble, numContinuous);
+	// FIXME - hmm... assume xforms won't change # floats
+	B = new float[numContinuous];
+	for (unsigned j=0; j < numContinuous; j+=1)
+	  B[j] = (float)magicDouble;
+	xformer = new FIRFilter(0, numContinuous, B, NULL, NULL);
+	break;
+      case NORMALIZE:
+	error("normalize stream - now handled by affine\n");
+	break;
+      case MEAN_SUB:
+	error("mean sub stream - now handled by affine\n");
+	break;
+      case ARMA:
+	error("arma stream order %d\n", magicInt);
+	break;
+      case AFFINE:
+	//printf("affine with %s\n", filterFileName);
+	xformer = new AffineFilter(filterFileName, NULL);
+	break;
+      case FILTER:
+	//printf("filter stream with %s\n", filterFileName);
+	xformer = new FIRFilter(filterFileName, NULL);
+	break;
+      case OFFSET:
+	//printf("offset stream by %f\n", magicDouble);
+	cc = new double[numContinuous];
+	for (unsigned j=0; j < numContinuous; j+=1)
+	  cc[j] = magicDouble;
+	xformer = new AffineFilter(numContinuous, numContinuous, NULL, cc, NULL);
+	break;
+      default:
+	error("ERROR: unknown transform '%s'\n", filterStr);
+      }
+      if (!firstFilter) {
+	firstFilter = xformer;
+      } else {
+	firstFilter->appendFilter(xformer);
+      }
+    }
+  }
+  if (firstFilter)
+    return firstFilter;
+  return new Filter(NULL);
+}

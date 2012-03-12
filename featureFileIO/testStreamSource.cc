@@ -18,10 +18,17 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 
 #include "GMTK_StreamSource.h"
 #include "GMTK_ASCIIStream.h"
+#include "GMTK_Filter.h"
+#include "GMTK_FilterFile.h"
+#include "GMTK_FIRFilter.h"
+#include "GMTK_AffineFilter.h"
 #include "arguments.h"
 
 unsigned int numInt;
 unsigned int numFloat;
+char *strans  = NULL;
+char *frs_str = NULL;
+char *irs_str = NULL;
 
 bool printVersion = false;
 unsigned help=0;  // help=0...5 depending on the amount of info we want printed
@@ -31,7 +38,9 @@ Arg Arg::Args[] = {
 
   Arg("nf",   Arg::Req, numFloat,"number of floats in input file(s)"),
   Arg("ni",   Arg::Req, numInt,"number of ints (labels) in input file(s)"),
-
+  Arg("strans", Arg::Opt, strans, "Stream transform"),
+  Arg("frs", Arg::Opt, frs_str, "Float feature range"),
+  Arg("irs", Arg::Opt, irs_str, "Int feature range"),
   Arg("\n*** Misc arguments ***\n"),
 
   Arg("help",  Arg::Help, help,  "Print this message. Add an argument from 1 to 5 for increasing help info."),
@@ -62,22 +71,29 @@ main(int argc, char *argv[]) {
     exit(0);
   }
 
-
-  ASCIIStream as(stdin, numFloat, numInt);
-  StreamSource ss(&as, 100);
+  Filter *filt = NULL;
+  ASCIIStream as(stdin, numFloat, numInt, frs_str, irs_str);
+  if (strans) filt = instantiateFilters(strans, as.numLogicalContinuous());
+  StreamSource ss(&as, 100, filt);
 
   unsigned segNum, frameNum;
   for (segNum=0; !ss.EOS(); segNum+=1) {
     ss.preloadFrames(3);
-    Data32 const *frame = ss.loadFrames(0, 1);
-    for (frameNum=0; ss.segmentLength() == 0 || frameNum < ss.segmentLength() ; frameNum+=1, frame = ss.loadFrames(frameNum, 1)) { 
+    frameNum = 0;
+    do {
+      Data32 const *frame = ss.loadFrames(frameNum, 1);
+      if (ss.segmentLength() > 0 && frameNum >= ss.segmentLength()) {
+	break;
+      }
+      
       printf("%03u %03u", segNum, frameNum);
       for (unsigned f=0; f < ss.numContinuous(); f+=1)
 	printf(" %f", *((float *)(frame++)));
       for (unsigned f=0; f < ss.numDiscrete(); f+=1)
 	printf(" %d", *((int *)(frame++)));
       printf("\n");
-    }
+      frameNum += 1;
+    } while (ss.segmentLength() == 0 || frameNum < ss.segmentLength());
   }
   exit(0);
 }

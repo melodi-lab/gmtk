@@ -86,6 +86,8 @@ main(int argc, char *argv[]) {
   FileSource globalObservationMatrix;
   ObservationFile *obsFile[MAX_NUM_OBS_FILES];
   unsigned nFiles=0;
+
+#if 0
   for (unsigned i=0; i < MAX_NUM_OBS_FILES && ofs[i] != NULL; i+=1, nFiles+=1) {
     switch (ifmts[i]) {
     case RAWASC:
@@ -195,6 +197,30 @@ main(int argc, char *argv[]) {
       obsFile[i] = new FilterFile(firstFilter, obsFile[i], postpr[i]);
   }
   globalObservationMatrix.initialize(nFiles, obsFile, gpr_str, startSkip, endSkip);
+#else
+  unsigned nCont = 0;
+  for (unsigned i=0; i < MAX_NUM_OBS_FILES && ofs[i] != NULL; i+=1, nFiles+=1) {
+
+    obsFile[i] = instantiateFile(ifmts[i], ofs[i], nfs[i], nis[i], i, iswp[i],
+                                 Cpp_If_Ascii, cppCommandOptions, prefrs[i], preirs[i],
+                                 prepr[i], sr[i]);
+    assert(obsFile[i]);
+    Filter *fileFilter = instantiateFilters(Per_Stream_Transforms[i],
+                                            obsFile[i]->numContinuous());
+    if (fileFilter) {
+      obsFile[i] = new FilterFile(fileFilter, obsFile[i], frs[i], irs[i], postpr[i]);
+      nCont += obsFile[i]->numContinuous();
+    } else
+      error("current implementation requires filter\n");
+  }
+  globalObservationMatrix.initialize(nFiles, obsFile, 
+                                     Action_If_Diff_Num_Sents,
+                                     Action_If_Diff_Num_Frames,
+                                     gpr_str, startSkip, endSkip,
+                                     instantiateFilters(Post_Transforms, nCont));
+#endif
+
+
   FileSource *f = &globalObservationMatrix;
   for (unsigned j=0; j < f->numSegments(); j+=1) {
     assert(f->openSegment(j));

@@ -104,7 +104,7 @@ class ObservationStream {
   virtual unsigned numLogicalDiscrete()  {
     if (!discFeatureRange && discFeatureRangeStr) {
       discFeatureRange = new Range(discFeatureRangeStr, 0, numDiscrete());
-      assert(contFeatureRange);
+      assert(discFeatureRange);
     }
     if (discFeatureRange) {
       return discFeatureRange->length();
@@ -128,15 +128,17 @@ class ObservationStream {
   virtual Data32 const *getNextLogicalFrame() { 
     if (getNextFrame()) {
       unsigned nlc = numLogicalContinuous();
-      unsigned nlf = numLogicalFeatures();
+      unsigned nld = numLogicalDiscrete();
+
+//fprintf(stderr, "nlc %u   nlf %u\n", nlc, nlf);
       for (unsigned i=0; i < nlc; i+=1) {
 	unsigned srcIdx = contFeatureRange ? contFeatureRange->index(i) : i;
 	logicalFrameData[i] = frameData[srcIdx];
       }
-      for (unsigned i = nlc; i < nlf; i+=1) {
-	unsigned srcIdx = discFeatureRange ? discFeatureRange->index(i-nlc) : i;
-//fprintf(stderr,"gNLF input %u -> output %u\n", srcIdx, i); 
-	logicalFrameData[i] = frameData[srcIdx];
+      for (unsigned i = 0; i < nld; i+=1) {
+	unsigned srcIdx = discFeatureRange ? discFeatureRange->index(i) : i;
+//fprintf(stderr,"gNLF input %u -> output %u\n", srcIdx, i);  
+        logicalFrameData[nlc+i] = frameData[numContinuous() + srcIdx];
       }
       return logicalFrameData;
     }	
