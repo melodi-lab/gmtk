@@ -34,11 +34,13 @@ class FilterFile: public ObservationFile {
   // result as an ObservationFile
 
   // FilterFile handles -postprX
-  FilterFile(Filter *filter, ObservationFile *file, char const *postpr)
-    :filter(filter), file(file)
-  {
-    preFrameRangeStr = postpr;
-  }
+  FilterFile(Filter *filter, ObservationFile *file, 
+	     char const *contFeatureRangeStr = NULL,
+	     char const *discFeatureRangeStr = NULL,
+	     char const *postpr = NULL)
+    : ObservationFile(contFeatureRangeStr, discFeatureRangeStr, postpr),
+      filter(filter), file(file)
+  { }
 
 
   ~FilterFile() {
@@ -75,6 +77,15 @@ class FilterFile: public ObservationFile {
     return output.numFrames;
   }
 
+
+#if 0
+  // needed for -fdiffactX -- it applies to the number of frames in a
+  // segment before -transX is performed 
+  // FIXME - this might be somewhat silly; it looks like the fdiffact
+  // actions are actually applied to the transform output although
+  // the checking & setup are done using the # of input frames...
+  unsigned preFilterFrameCount() { return file->numLogicalFrames(); }
+#endif
 
   // Get the transformed data
   Data32 const *getFrames(unsigned first, unsigned count) {

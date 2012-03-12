@@ -58,8 +58,10 @@
    unsigned nis[MAX_NUM_OBS_FILES] = { 0, 0, 0,0,0 };
    const char   *fmts[MAX_NUM_OBS_FILES] = { "pfile", "pfile", "pfile","pfile","pfile" };
    const char    *frs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
-   const char    *irs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
-   const char     *sr[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
+   const char    *irs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" }; 
+   const char    *prefrs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
+   const char    *preirs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
+   const char    *sr[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
    // per stream frame range string before any tranformations are applied
    char  *prepr[MAX_NUM_OBS_FILES] = {NULL,NULL,NULL,NULL,NULL};   
    // per stream frame range string after per-stream transformations are applied
@@ -77,7 +79,9 @@ extern bool ObservationsAllowNan;
   Arg("ni",  Arg::Opt,nis,"Number of ints in observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("fmt", Arg::Opt,fmts,"Format (htk,binary,ascii,pfile) for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("iswp",Arg::Opt,iswp,"Endian swap condition for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("fr",  Arg::Opt,frs,"Float range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("prefr",  Arg::Opt,prefrs,"Float range for observation file X (before transforms)",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("preir",  Arg::Opt,preirs,"Int range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("fr",  Arg::Opt,frs,"Float range for observation file X (after transforms)",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("ir",  Arg::Opt,irs,"Int range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("sr",  Arg::Opt,sr,"Sentence range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("prepr", Arg::Opt, prepr,"Pre Per-segment frame Range for obs file X before any transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),

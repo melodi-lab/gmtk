@@ -27,8 +27,9 @@ StreamSource::StreamSource(ObservationStream *stream,
     
 {
   assert(stream);
-  nFloat = stream->numContinuous();
-  nInt   = stream->numDiscrete();
+  // FIXME - should consider filter may change # floats
+  nFloat = stream->numLogicalContinuous();
+  nInt   = stream->numLogicalDiscrete();
   nFeatures = nFloat + nInt;
 
   cookedBuffer = new Data32[cookedBuffSize];
@@ -149,19 +150,25 @@ StreamSource::cookFrames(Data32 *destination, unsigned first, unsigned count) {
   bool eos = false;
   Data32 const *rawFrames = loadRawFrames(first, count, eos);
   Data32 const *cookedFrames;
-  if (filter) {
+  if (count > 0) {
+    if (filter) {
 //fprintf(stderr, "  filtering\n");
-    subMatrixDescriptor output;
-    cookedFrames = filter->transform(rawFrames, *requiredRaw, &output);
-    first = output.firstFrame;
-    count = output.numFrames;
-  } else {
+      requiredRaw->numFrames = count;
+      subMatrixDescriptor output;
+      cookedFrames = filter->transform(rawFrames, *requiredRaw, &output);
+      first = output.firstFrame;
+      count = output.numFrames;
+    } else {
 //fprintf(stderr,"  no filter\n");
-    cookedFrames = rawFrames;
+      cookedFrames = rawFrames;
+    }
+    memcpy(destination, cookedFrames, count * nFeatures * sizeof(Data32));
+    currentCookedFrames += count;
   }
-  if (eos) numFramesInSegment = first + count;
-  memcpy(destination, cookedFrames, count * nFeatures * sizeof(Data32));
-  currentCookedFrames += count;
+  if (eos) {
+    numFramesInSegment = first + count;
+//fprintf(stderr, "set segment length to %u\n", numFramesInSegment);
+  }
   return count;
 }
 
@@ -215,7 +222,8 @@ StreamSource::enqueueRawFrames(unsigned nFrames, bool &eos) {
 
     // FIXME - memcpy doesn't permit overlap. Could memcpy numFramesToDrop
     // frames at a time, but would the overhead be worse than a single
-    // memmove? Or, just code up an efficient move ...
+    // memmove? Or, just code up an efficient move ...  Or alternate between
+    // two queue buffers
     memmove(rawBuffer, newFirstFrame, bytesToMove);
     currentRawFrames -= numFramesToDrop;
     firstRawFrameNum += numFramesToDrop;
@@ -225,6 +233,7 @@ StreamSource::enqueueRawFrames(unsigned nFrames, bool &eos) {
   for (unsigned i=0; i < nFrames; i+=1, newFrameDest += stream->numLogicalFeatures()) {
     Data32 const *newFrame = stream->getNextLogicalFrame();
     if (!newFrame) {
+//fprintf(stderr, "detected end of segement\n");
       nFrames = i;
       eos = true;
       break;

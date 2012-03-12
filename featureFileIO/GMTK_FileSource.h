@@ -18,8 +18,9 @@
 #endif
 
 #include "machine-dependent.h"
-#include "GMTK_ObservationFile.h"
+#include "GMTK_FilterFile.h"
 #include "GMTK_ObservationSource.h"
+#include "GMTK_Filter.h"
 
 // FileSource handles
 // random access data sources like the various binary file
@@ -28,6 +29,8 @@
 class FileSource: public ObservationSource {
 
  private:
+
+  Filter *filter;      // -posttrans filters
 
   // buffer to hold transformed cahced/prefected observations
   Data32 *cookedBuffer;
@@ -48,7 +51,18 @@ class FileSource: public ObservationSource {
   unsigned _startSkip;
   unsigned _endSkip;
 
+  unsigned const *sdiffact;   // how to adjust for files w/ different # of segs
+  unsigned const *fdiffact;   //  ... frames
+  unsigned _numSegments;      // after considering -sdiffactX
   int segment;
+
+  unsigned _numInputFrames;   // after considering -fdiffactX only
+  unsigned _numFrames;        // after -fdiffactX and -gpr
+
+  int _numContinuous;         // # of continuous & discrete features after -posttrans
+  int _numDiscrete;           //   these are computed once if -1 then cached
+
+  unsigned adjustForSdiffact(unsigned fileNum, unsigned seg);
 
  public:
   
@@ -58,8 +72,11 @@ class FileSource: public ObservationSource {
   // calls, prefetching/caching. For archipelagos, each thread
   // gets its own FileSource (all aimed at the same files, of course).
   FileSource(unsigned _nFiles, ObservationFile *file[], 
-	     char const *_globalFrameRangeStr = NULL, unsigned startSkip=0, 
-	     unsigned endSkip=0); 
+	     char const *_globalFrameRangeStr = NULL, 
+	     unsigned const *sdiffact = NULL, 
+	     unsigned const *fdiffact = NULL,
+	     unsigned startSkip=0, unsigned endSkip=0,
+	     Filter *posttrans = NULL); 
 
   FileSource() {
     cookedBuffer = NULL;
@@ -71,12 +88,20 @@ class FileSource: public ObservationSource {
     _startSkip = 0;
     _endSkip = 0;
     segment = -1;
+    filter = NULL;
   }
 
-  void initialize(unsigned nFiles, ObservationFile *file[], char const *globalFrameRangeStr = NULL, unsigned startSkip=0, unsigned endSkip=0);
+  // FIXME - dtor
+
+  void initialize(unsigned nFiles, ObservationFile *file[], 
+		  unsigned const *sdiffact = NULL, 
+		  unsigned const *fdiffact = NULL,
+		  char const *globalFrameRangeStr = NULL, 
+		  unsigned startSkip=0, unsigned endSkip=0,
+		  Filter *posttrans = NULL);
 
   // The number of available segments.
-  unsigned numSegments();
+  unsigned numSegments() { return _numSegments; }
 
   // The current segment 
   unsigned segmentNumber() {
@@ -89,7 +114,10 @@ class FileSource: public ObservationSource {
   bool openSegment(unsigned seg);
 
   // The number of frames in the currently open segment.
-  unsigned numFrames();
+  unsigned numFrames() {
+    assert(segment >= 0);
+    return _numFrames;
+  }
 
   Data32 const *loadFrames(unsigned first, unsigned count);
     // if requested frames are already in cookedBuffer
