@@ -48,7 +48,11 @@ VCID(HGID)
 
 #include "GMTK_ObsContRV.h"
 #include "GMTK_GMParms.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_ObservationSource.h"
+#endif
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_Mixture.h"
 #include "GMTK_RngDecisionTree.h"
