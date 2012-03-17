@@ -50,7 +50,11 @@ VCID(HGID)
 #if 0
 #  include "GMTK_ObservationMatrix.h"
 #else
-#  include "GMTK_FileSource.h"
+#  ifdef GMTKONLINE
+#    include "GMTK_StreamSource.h"
+#  else
+#    include "GMTK_FileSource.h"
+#  endif
 #endif
 #include "tieSupport.h"
 

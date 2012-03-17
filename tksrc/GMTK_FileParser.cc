@@ -61,7 +61,11 @@
 #include "GMTK_LatticeNodeCPT.h"
 #include "GMTK_LatticeEdgeCPT.h"
 #include "GMTK_Mixture.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_ObservationSource.h"
+#endif
 #include "GMTK_GraphicalModel.h"
 #include "GMTK_RVInfo.h"
 

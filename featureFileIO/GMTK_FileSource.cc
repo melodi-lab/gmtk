@@ -248,6 +248,8 @@ FileSource::adjustForSdiffact(unsigned fileNum, unsigned seg) {
       return file[fileNum]->numLogicalSegments() - 1;
   } else if (sdiffact[fileNum] == SEGMATCH_WRAP_AROUND) {
     return seg % file[fileNum]->numLogicalSegments();
+  } else if (sdiffact[fileNum] == SEGMATCH_ERROR) {
+    return seg;
   } else 
     error("ERROR: FileSource::adjustForSdiffact: unknown -sdiffact%u %d\n",
 	  fileNum, sdiffact[fileNum]);

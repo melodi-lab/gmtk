@@ -77,7 +77,7 @@
 #if 0
 #  include "GMTK_ObservationMatrix.h"
 #else
-#  include "GMTK_FileSource.h"
+#  include "GMTK_ObservationSource.h"
 #endif
 #include "GMTK_CFunctionDeterministicMappings.h"
 

@@ -228,46 +228,29 @@ main(int argc,char*argv[])
 
   infoMsg(IM::Max,"Opening Files ...\n");
 
+  unsigned startSkip = 0, endSkip = 0; 
+
   ObservationFile *obsFile[MAX_NUM_OBS_FILES];
-  unsigned nFiles;
-  for (nFiles=0; nFiles < MAX_NUM_OBS_FILES && ofs[nFiles]; nFiles+=1) {
-    switch (ifmts[nFiles]) {
-    case RAWASC:
-      obsFile[nFiles] = new ASCIIFile(ofs[nFiles],nfs[nFiles],nis[nFiles],
-				      nFiles,Cpp_If_Ascii,cppCommandOptions,
-				      frs[nFiles], irs[nFiles], prepr[nFiles], 
-				      sr[nFiles]);
-      break;
-    case PFILE:
-      obsFile[nFiles] = new PFileFile(ofs[nFiles], nfs[nFiles], nis[nFiles], 
-				      nFiles, iswp[nFiles], frs[nFiles], 
-				      irs[nFiles], prepr[nFiles], sr[nFiles]);
-      break;
-    case HTK:
-      obsFile[nFiles] = new HTKFile(ofs[nFiles], nfs[nFiles], nis[nFiles], 
-				    nFiles, iswp[nFiles], Cpp_If_Ascii, cppCommandOptions,
-				    frs[nFiles], irs[nFiles], prepr[nFiles], sr[nFiles]);
-      break;      
-    case HDF5:
-      obsFile[nFiles] = new HDF5File(ofs[nFiles], nFiles, Cpp_If_Ascii, cppCommandOptions,
-				     frs[nFiles], irs[nFiles], prepr[nFiles], sr[nFiles]);
-      break;
-    case RAWBIN:
-      obsFile[nFiles] = new BinaryFile(ofs[nFiles], nfs[nFiles], nis[nFiles], nFiles, 
-				       iswp[nFiles], Cpp_If_Ascii, cppCommandOptions,
-				       frs[nFiles], irs[nFiles], prepr[nFiles], sr[nFiles]);
-      break;
-    case FLATASC:
-      obsFile[nFiles] = new FlatASCIIFile(ofs[nFiles], nfs[nFiles], nis[nFiles], nFiles, 
-					  Cpp_If_Ascii, cppCommandOptions, frs[nFiles], 
-					  irs[nFiles], prepr[nFiles], sr[nFiles]);
-      break;
-    default:
-      error("ERROR: Unknown observation file format type: '%s'\n", fmts[nFiles]);
-    }
+
+  unsigned nCont = 0;
+  unsigned nFiles= 0;
+  for (unsigned i=0; i < MAX_NUM_OBS_FILES && ofs[i] != NULL; i+=1, nFiles+=1) {
+
+    obsFile[i] = instantiateFile(ifmts[i], ofs[i], nfs[i], nis[i], i, iswp[i],
+                                 Cpp_If_Ascii, cppCommandOptions, prefrs[i], preirs[i],
+                                 prepr[i], sr[i]);
+    assert(obsFile[i]);
+    Filter *fileFilter = instantiateFilters(Per_Stream_Transforms[i],
+                                            obsFile[i]->numContinuous());
+    if (fileFilter) {
+      obsFile[i] = new FilterFile(fileFilter, obsFile[i], frs[i], irs[i], postpr[i]);
+      nCont += obsFile[i]->numContinuous();
+    } else
+      error("current implementation requires filter\n");
   }
-  unsigned startSkip = 0, endSkip = 0;
-  globalObservationMatrix.initialize(nFiles, obsFile, gpr_str, startSkip, endSkip);
+  globalObservationMatrix.initialize(nFiles, obsFile, Action_If_Diff_Num_Frames,
+				     Action_If_Diff_Num_Sents, gpr_str,  startSkip, endSkip, 
+				     instantiateFilters(Post_Transforms, nCont));
   streams[0] = new FileStream(&globalObservationMatrix);
   StreamSource globalObservationStream(streams[0], 25);
 
