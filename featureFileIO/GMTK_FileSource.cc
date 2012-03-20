@@ -315,7 +315,8 @@ repCount(unsigned frameNum, unsigned const *fdiffact, unsigned fileNum,
   if (fdiffact[fileNum] == FRAMEMATCH_REPEAT_FIRST && frameNum == 0) {
     return frameCount > deltaT + 1 - firstFrame  ?  deltaT + 1 - firstFrame  :  frameCount;
   } else if (fdiffact[fileNum] == FRAMEMATCH_REPEAT_LAST && frameNum == segLength-1) {
-    return firstFrame + frameCount - segLength + 1;
+    return firstFrame >= segLength  ?
+      frameCount  :  frameCount - (segLength - firstFrame) + 1;
   } else if (fdiffact[fileNum] == FRAMEMATCH_EXPAND_SEGMENTALLY) {
     unsigned frameReps = (segLength + deltaT) / segLength;
     unsigned remainder = (segLength + deltaT) % segLength;
@@ -370,9 +371,10 @@ FileSource::loadFrames(unsigned first, unsigned count) {
     } else if (fdiffact && fdiffact[i] == FRAMEMATCH_REPEAT_LAST) {
       deltaT = _numFrames - file[i]->numLogicalFrames();
       assert(_numFrames >= file[i]->numLogicalFrames());
-      adjFirst = first;
+      adjFirst = first < file[i]->numLogicalFrames() ?
+        first  :  file[i]->numLogicalFrames() - 1;
       adjCount =  first + count <= file[i]->numLogicalFrames()  ?
-	count  :  file[i]->numLogicalFrames() - first;
+	count  :  file[i]->numLogicalFrames() - adjFirst;
     } else if (fdiffact && fdiffact[i] == FRAMEMATCH_EXPAND_SEGMENTALLY) {
       deltaT = _numFrames - file[i]->numLogicalFrames();
       assert(_numFrames >= file[i]->numLogicalFrames());
