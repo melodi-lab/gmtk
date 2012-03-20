@@ -285,8 +285,8 @@ main(int argc,char*argv[])
     } else
       error("current implementation requires filter\n");
   }
-  globalObservationMatrix.initialize(nFiles, obsFile, Action_If_Diff_Num_Frames,
-				     Action_If_Diff_Num_Sents, gpr_str,  startSkip, endSkip, 
+  globalObservationMatrix.initialize(nFiles, obsFile, Action_If_Diff_Num_Sents,
+				     Action_If_Diff_Num_Frames, gpr_str,  startSkip, endSkip, 
 				     instantiateFilters(Post_Transforms, nCont));
 #endif
 
