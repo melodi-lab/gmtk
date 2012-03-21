@@ -2492,8 +2492,13 @@ ceGatherFromIncommingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStru
   // check if we have a zero clique, and if we do, print message and exit.
   // TODO: rather than exit, pop back to the top and allow continuation and/or
   // beam expansion.
-  if (numCliqueValuesUsed == 0)
+  if (numCliqueValuesUsed == 0) {
+    printf("WARNING: ZERO CLIQUE: clique with no entries. Final probability will be zero.\n");
+    return;
+  }
+#if 0
     error("ERROR: ZERO CLIQUE: clique with no entries. Final probability will be zero.\n");
+#endif
 
   // We have some clique entries, so we store new previous max CE
   // values, before any pruning.
