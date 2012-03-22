@@ -64,6 +64,7 @@ GMTK_ObservationSource.h \
 GMTK_StreamSource.h GMTK_StreamSource.cc \
 GMTK_ObservationStream.h \
 GMTK_ASCIIStream.h GMTK_ASCIIStream.cc \
+GMTK_BinStream.h GMTK_BinStream.cc \
 GMTK_FileStream.h \
 GMTK_FileSource.h GMTK_FileSource.cc \
 GMTK_ObservationFile.h GMTK_ObservationFile.cc \
@@ -84,6 +85,7 @@ testPFileFile \
 testASCIIFile \
 testFileSource \
 testASCIIStream \
+testBinStream \
 testFileStream \
 testObsFile \
 testFileSrc \
@@ -94,6 +96,7 @@ testPFileFile_SOURCES = testPFileFile.cc
 testASCIIFile_SOURCES = testASCIIFile.cc 
 testFileSource_SOURCES = testFileSource.cc
 testASCIIStream_SOURCES = testASCIIStream.cc
+testBinStream_SOURCES = testBinStream.cc
 testFileStream_SOURCES = testFileStream.cc
 testFileSrc_SOURCES = testFileSrc.cc
 testFilter_SOURCES = testFilter.cc
@@ -101,12 +104,12 @@ testObsFile_SOURCES = testObsFile.cc
 testStreamSource_SOURCES = testStreamSource.cc
 
 bin_PROGRAMS = obs-create obs-print obs-info obs-skmeans \
-               obs-concat obs-diff obs-stats obs-stream
+               obs-concat obs-diff obs-stats obs-cat
 #check_PROGRAMS = gmtest
 
 #gmtest_SOURCES = gmtest.cc
 
-obs_stream_SOURCES = obs-stream.cc
+obs_cat_SOURCES = obs-cat.cc
 obs_stats_SOURCES = obs-stats.cc
 obs_create_SOURCES = obs-create.cc
 

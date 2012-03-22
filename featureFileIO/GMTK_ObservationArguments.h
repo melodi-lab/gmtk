@@ -4,11 +4,102 @@
 /****************************************************************************************************************/
 /****************************************************************************************************************/
 /*****************************                                     **********************************************/
-/*****************************   OBSERVATION INPUT FILE HANDLING   **********************************************/
+/*****************************   OBSERVATION INPUT HANDLING   **********************************************/
 /*****************************                                     **********************************************/
 /****************************************************************************************************************/
 /****************************************************************************************************************/
 /****************************************************************************************************************/
+
+
+
+#if defined(GMTK_ARG_STREAMING_OUTPUT)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+   bool binaryOutputStream = true;
+   bool outputNetByteOrder = true;
+   bool prettyPrintStream  = false;
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("\n*** Output observation stream ***\n"),
+  Arg("binaryOutputStream", Arg::Opt, binaryOutputStream, "Output observation stream data is binary"),
+  Arg("outputNetByteOrder", Arg::Opt, outputNetByteOrder, "For binary output streams, data is big-endian"),
+  Arg("prettyPrint", Arg::Opt, prettyPrintStream, "For ASCII output streams, include segment and frame numbers (note that  pretty-printed streams cannot be sent to gmtkOnline)"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+  if (prettyPrintStream && binaryOutputStream) {
+    error("%s: cannot pretty-print binary observation streams", argerr);
+  }
+  if (binaryOutputStream && !outputNetByteOrder) {
+    warning("using non-standard byte order for output binary observation stream data");
+  }
+  // FIXME - error if stream & file(s) both specified
+  // warn? if options not relevant to stype specified
+
+#else
+#endif
+#endif // defined(GMTK_ARG_STREAMING_OUTPUT)
+
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
+
+#if defined(GMTK_ARG_STREAMING_INPUT)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+   bool binaryInputStream = true;
+   bool inputNetByteOrder  = true;
+
+   char const *os = "-";
+
+// FIXME - consider adding #float, #int to protocol header
+   unsigned snf = 0;
+   unsigned sni = 0;
+   char const *inputSource = "stream";
+   bool streamSource = true;
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("\n*** Input observation stream ***\n"),
+  Arg("inputSource", Arg::Opt,inputSource,"Observation input source (file, stream)"),
+  Arg("os",  Arg::Opt,os,"Input observation stream file name (- is stdin)"),
+  Arg("binaryInputStream", Arg::Opt, binaryInputStream, "Input observation stream data is binary"),
+  Arg("inputNetByteOrder", Arg::Opt, inputNetByteOrder, "For binary input observation streams, data is big-endian"),
+  Arg("snf",  Arg::Opt,snf,"Number of floats in observation stream"),
+  Arg("sni",  Arg::Opt,sni,"Number of ints in observation stream"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+  if (binaryInputStream && !inputNetByteOrder) {
+    warning("using non-standard byte order for binary input observation stream data");
+  }
+
+  // FIXME - should this be a warning?
+  if (!strcasecmp(inputSource,"stream")) {
+    streamSource = true;
+  } else if (!strcasecmp(inputSource, "file")) {
+    streamSource = false;
+  } else {
+    error("%s: unknown inputSource '%s', must be 'stream' or 'file'", argerr, inputSource);
+  }
+
+  if (streamSource && snf + sni == 0) {
+    error("%s: frames have zero features",argerr);
+  }
+  // FIXME - error if stream & file(s) both specified
+  // warn? if options not relevant to stype specified
+
+#else
+#endif
+#endif // defined(GMTK_ARG_STREAMING_INPUT)
+
+
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
@@ -74,7 +165,11 @@ extern bool ObservationsAllowNan;
 
   // observation input file handling
   Arg("\n*** Observation input file handling ***\n"),
+#ifdef OPTIONAL_OBSERVATION_FILES
+  Arg("of",  Arg::Opt,ofs,"Observation File.  Replace X with the file number",Arg::ARRAY,MAX_NUM_OBS_FILES),
+#else
   Arg("of",  Arg::Req,ofs,"Observation File.  Replace X with the file number",Arg::ARRAY,MAX_NUM_OBS_FILES),
+#endif
   Arg("nf",  Arg::Opt,nfs,"Number of floats in observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("ni",  Arg::Opt,nis,"Number of ints in observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("fmt", Arg::Opt,fmts,"Format (htk,binary,ascii,pfile) for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
@@ -418,7 +513,6 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 #else
 #endif
 #endif // defined(GMTK_ARG_CPP_CMD_OPTS)
-
 
 
 /*-----------------------------------------------------------------------------------------------------------*/
