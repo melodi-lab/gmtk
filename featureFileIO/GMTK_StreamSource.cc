@@ -26,6 +26,17 @@ StreamSource::StreamSource(ObservationStream *stream,
     _startSkip(startSkip)
     
 {
+  initialize(stream, queueLength, filter, startSkip);
+}
+
+void
+StreamSource::initialize(ObservationStream *stream, unsigned queueLength, 
+			 Filter *filter, unsigned startSkip)
+{
+  cookedBuffSize = queueLength;
+  this->stream = stream;
+  this->filter = filter;
+  _startSkip = startSkip;
   assert(stream);
   // FIXME - should consider filter may change # floats
   nFloat = stream->numLogicalContinuous();
