@@ -64,6 +64,7 @@ class StreamSource : public ObservationSource {
   unsigned curFrame;
 
   unsigned _startSkip;
+  // FIXME - add endSkip, probably to base class?
 
   // Try to append count cooked frames starting from cooked frame
   // # first to destination. 
@@ -80,7 +81,9 @@ class StreamSource : public ObservationSource {
   unsigned enqueueRawFrames(unsigned nFrames, bool &eos);
 
  public:
-  
+
+  StreamSource() { }
+
   StreamSource(ObservationStream *stream, unsigned queueLength, 
 	       Filter *filter = NULL, unsigned startSkip=0); 
 
@@ -89,6 +92,9 @@ class StreamSource : public ObservationSource {
     if (rawBuffer) delete[] rawBuffer;
     if (stream) delete stream;
   }
+
+  void initialize(ObservationStream *stream, unsigned queueLength, 
+		  Filter *filter = NULL, unsigned startSkip=0); 
 
   // Resets queue state for starting a new segment & preloads
   // the requested # of frames

@@ -40,20 +40,10 @@
 #include "GMTK_Filter.h"
 
 #include "GMTK_ObservationSource.h"
-#include "GMTK_FileSource.h"
-#include "GMTK_ASCIIFile.h"
-#include "GMTK_FlatASCIIFile.h"
-#include "GMTK_PFileFile.h"
-#include "GMTK_HTKFile.h"
-#include "GMTK_HDF5File.h"
-#include "GMTK_BinaryFile.h"
-#include "GMTK_FilterFile.h"
-
 #include "GMTK_StreamSource.h"
 #include "GMTK_ASCIIStream.h"
-#include "GMTK_FileStream.h"
+#include "GMTK_BinStream.h"
 #if 0
-#include "GMTK_BinaryStream.h"
 #include "GMTK_FilterStream.h"
 #endif
 
@@ -71,10 +61,8 @@
 
 VCID(HGID)
 
-
-
-/*****************************   OBSERVATION INPUT FILE HANDLING   **********************************************/
-#define GMTK_ARG_OBS_FILES
+/*************************   INPUT OBSERVATION STREAM HANDLING  *******************************************/
+#define GMTK_ARG_STREAMING_INPUT
 
 /*************************   INPUT TRAINABLE PARAMETER FILE HANDLING  *******************************************/
 #define GMTK_ARG_INPUT_TRAINABLE_FILE_HANDLING
@@ -115,11 +103,11 @@ VCID(HGID)
 #define GMTK_ARG_STORE_DETERMINISTIC_CHILDREN
 #define GMTK_ARG_CLEAR_CLIQUE_VAL_MEM
 
+#define GMTK_ARG_START_END_SKIP
 #if 0
 /****************************      FILE RANGE OPTIONS             ***********************************************/
 #define GMTK_ARG_FILE_RANGE_OPTIONS
 #define GMTK_ARG_DCDRNG
-#define GMTK_ARG_START_END_SKIP
 #endif
 
 
@@ -135,10 +123,8 @@ VCID(HGID)
 
 /****************************         INFERENCE OPTIONS           ***********************************************/
 #define GMTK_ARG_INFERENCE_OPTIONS
-#if 1
 #define GMTK_ARG_DO_DIST_EVIDENCE
 #define GMTK_ARG_PROB_EVIDENCE
-#define GMTK_ARG_ISLAND
 #define GMTK_ARG_DEBUG_PART_RNG
 #define GMTK_ARG_CLIQUE_TABLE_NORMALIZE
 #define GMTK_ARG_CE_SEP_DRIVEN
@@ -147,11 +133,15 @@ VCID(HGID)
 #define GMTK_ARG_CLIQUE_VAR_ITER_ORDERS
 #define GMTK_ARG_JT_OPTIONS
 #define GMTK_ARG_VE_SEPS
+#if 0
+#define GMTK_ARG_ISLAND
 #endif
 
+#if 0
 /************************  OBSERVATION MATRIX TRANSFORMATION OPTIONS   ******************************************/
 #define GMTK_ARG_OBS_MATRIX_OPTIONS
 #define GMTK_ARG_OBS_MATRIX_XFORMATION
+#endif
 
 #define GMTK_ARGUMENTS_DEFINITION
 #include "GMTK_Arguments.h"
@@ -187,11 +177,9 @@ Arg Arg::Args[] = {
 RAND rnd(seedme);
 GMParms GM_Parms;
 
-FileSource globalObservationMatrix;
-
 #if 1
-ObservationStream *streams[1];
-//StreamSource globalObservationStream(streams);
+ObservationStream *stream;
+StreamSource globalObservationMatrix;
 #endif
 
 int
@@ -205,7 +193,7 @@ main(int argc,char*argv[])
   ieeeFPsetup();
   set_new_handler(memory_error);
 
-  CODE_TO_COMPUTE_ENDIAN;
+  //  CODE_TO_COMPUTE_ENDIAN;
 
 
   ////////////////////////////////////////////
@@ -224,37 +212,31 @@ main(int argc,char*argv[])
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_CHECK_ARGS
 
+    FILE *inFile;
 
+    if (strcmp("-", os)) {
+      inFile = fopen(os, binaryInputStream ? "rb" : "r");
+    } else {
+      inFile = stdin;
+    }
 
-  infoMsg(IM::Max,"Opening Files ...\n");
+    if (!inFile) {
+      error("ERROR: '%s' %s", os, strerror(errno));
+    }
+    
+    // FIXME - use StreamSource & support posttrans ?
 
-  unsigned startSkip = 0, endSkip = 0; 
+    // FIXME - add -sfr and -sir for feature range selection ?
 
-  ObservationFile *obsFile[MAX_NUM_OBS_FILES];
+    if (binaryInputStream) {
+      stream = new BinaryStream(inFile, snf, sni, NULL /* sfr */ , NULL /* sir */, inputNetByteOrder);
+    } else {
+      stream = new  ASCIIStream(inFile, snf, sni, NULL /* sfr */ , NULL /* sir */);
+    }
+    assert(stream);
 
-  unsigned nCont = 0;
-  unsigned nFiles= 0;
-  for (unsigned i=0; i < MAX_NUM_OBS_FILES && ofs[i] != NULL; i+=1, nFiles+=1) {
+  globalObservationMatrix.initialize(stream, 25);
 
-    obsFile[i] = instantiateFile(ifmts[i], ofs[i], nfs[i], nis[i], i, iswp[i],
-                                 Cpp_If_Ascii, cppCommandOptions, prefrs[i], preirs[i],
-                                 prepr[i], sr[i]);
-    assert(obsFile[i]);
-    Filter *fileFilter = instantiateFilters(Per_Stream_Transforms[i],
-                                            obsFile[i]->numContinuous());
-    if (fileFilter) {
-      obsFile[i] = new FilterFile(fileFilter, obsFile[i], frs[i], irs[i], postpr[i]);
-      nCont += obsFile[i]->numContinuous();
-    } else
-      error("current implementation requires filter\n");
-  }
-  globalObservationMatrix.initialize(nFiles, obsFile, Action_If_Diff_Num_Frames,
-				     Action_If_Diff_Num_Sents, gpr_str,  startSkip, endSkip, 
-				     instantiateFilters(Post_Transforms, nCont));
-  streams[0] = new FileStream(&globalObservationMatrix);
-  StreamSource globalObservationStream(streams[0], 25);
-
-  infoMsg(IM::Max,"Finished opening files.\n");
 
 
   /////////////////////////////////////////////
@@ -385,9 +367,6 @@ main(int argc,char*argv[])
   infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
   ////////////////////////////////////////////////////////////////////
 
-  if (globalObservationMatrix.numSegments()==0)
-    error("ERROR: no segments are available in observation file");
-
   if (IM::messageGlb(IM::Giga)) { 
     gm_template.reportScoreStats();
   }
@@ -492,6 +471,20 @@ main(int argc,char*argv[])
     (*dcdrng_it)++;
   }
 #endif
+
+
+  unsigned segNum = 0;
+  unsigned frameNum;
+  globalObservationMatrix.preloadFrames(1);
+  for (; !globalObservationMatrix.EOS(); ) {
+    for (frameNum = 0; globalObservationMatrix.segmentLength() == 0 || 
+	               frameNum < globalObservationMatrix.segmentLength(); 
+	 frameNum += 1)
+    {
+      globalObservationMatrix.enqueueFrames(1);
+    }
+    printf("Seg %u  %u frames  %u\n", segNum++, frameNum, globalObservationMatrix.segmentLength());
+  }
 
   getrusage(RUSAGE_SELF,&rue);
   if (IM::messageGlb(IM::Default)) { 
