@@ -26,12 +26,17 @@ using namespace std;
 #include "error.h"
 
 #include "GMTK_ObservationStream.h"
-#include "GMTK_StreamCookie.h"
+
+#define GMTK_ASC_COOKIE_LENGTH    6
+#define GMTK_ASC_VERSION_LENGTH   6
+#define GMTK_ASC_PROTOCOL_COOKIE  "GMTa\n"
+#define GMTK_ASC_PROTOCOL_VERSION "0000\n"
+
 
 class ASCIIStream: public ObservationStream {
   FILE *f;   // file to read data from
 
-  char version[GMTK_VERSION_LENGTH]; // protocol version #
+  char version[GMTK_ASC_VERSION_LENGTH]; // protocol version #
   
  public:
 
@@ -41,16 +46,23 @@ class ASCIIStream: public ObservationStream {
 	     char const *contFeatureRangeStr=NULL, char const *discFeatureRangeStr=NULL) 
     : ObservationStream(nFloat, nInt, contFeatureRangeStr, discFeatureRangeStr), f(file)
   {
-    char cookie[GMTK_COOKIE_LENGTH];
-    if (fgets(cookie, GMTK_COOKIE_LENGTH, f) != cookie) {
-      error("ERROR: ASCIIStream did not begin with 'GMTK\\n'\n");
+    char cookie[GMTK_ASC_COOKIE_LENGTH];
+    if (fgets(cookie, GMTK_ASC_COOKIE_LENGTH, f) != cookie) {
+      error("ERROR: ASCIIStream did not begin with 'GMTa\\n'\n");
     }
-    if (strcmp(cookie, GMTK_PROTOCOL_COOKIE)) {
-      error("ERROR: ASCIIStream did not begin with 'GMTK\\n'\n");
+    if (strcmp(cookie, GMTK_ASC_PROTOCOL_COOKIE)) {
+      error("ERROR: ASCIIStream did not begin with 'GMTa\\n'\n");
     }
-    if (fgets(version, GMTK_VERSION_LENGTH, f) != version) {
+    if (fgets(version, GMTK_ASC_VERSION_LENGTH, f) != version) {
       error("ERROR: ASCIIStream couldn't read protocol version\n");
     }
+    if (strcmp(version, GMTK_ASC_PROTOCOL_VERSION) > 0) {
+      version[GMTK_ASC_VERSION_LENGTH-2] = 0;
+      // FIXME - should this error?
+      warning("WARNING: input ASCIIStream version %s is newer than this implementation's version %s",
+	      version, GMTK_ASC_PROTOCOL_VERSION);
+    }
+    // FIXME - read nFloat and nInt from stream?
   }
 
 

@@ -24,7 +24,6 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 
 #include "GMTK_WordOrganization.h"
 #include "GMTK_ObservationSource.h"
-#include "GMTK_StreamCookie.h"
 #include "GMTK_ASCIIStream.h"
 #include "GMTK_BinStream.h"
 #include "GMTK_FileSource.h"
@@ -132,7 +131,11 @@ main(int argc, char *argv[]) {
   bool machineBigEndian = getWordOrganization() == BYTE_BIG_ENDIAN;
   bool needOutputSwap   = machineBigEndian != outputNetByteOrder;
 
-  printf("%s%s", GMTK_PROTOCOL_COOKIE, GMTK_PROTOCOL_VERSION);
+  if (binaryOutputStream) {
+    printf("%s%s", GMTK_BIN_PROTOCOL_COOKIE, GMTK_BIN_PROTOCOL_VERSION);
+  } else {
+    printf("%s%s", GMTK_ASC_PROTOCOL_COOKIE, GMTK_ASC_PROTOCOL_VERSION);
+  }
   if (streamSource) {
 
     // get input from another stream
