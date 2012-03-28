@@ -46,6 +46,26 @@ FileSource::FileSource(unsigned _nFiles, ObservationFile *file[],
 
 
 static
+void
+dumpFrames(Data32 *buf, unsigned nFloat, unsigned nInt,
+	   unsigned nFrames)
+{
+  for (unsigned j=0; j < nFrames; j+=1) {
+    float *fp = (float *)buf;
+    printf("%3u: ", j);
+    for (unsigned i=0; i < nFloat; i+=1) {
+      printf(" %f", *(fp++));
+    }
+    unsigned *ip = (unsigned *)fp;
+    for (unsigned i=0; i < nInt; i+=1) {
+      printf(" %u", *(ip++));
+    }
+    printf("\n");
+  }
+}
+
+    
+static
 unsigned
 checkNumSegments(unsigned nFiles, ObservationFile *file[],
 		 unsigned const *sdiffact)
@@ -487,6 +507,15 @@ for (unsigned frm=0; frm < count; frm+=1) {
       memcpy(cookedBuffer + buffOffset, result, count * bufStride * sizeof(Data32));
     }
   }
+#if 0
+  warning("fetching [%u,%u) -> %u", first, first+count, buffOffset);
+for (unsigned x=0; x < count; x+=1) {
+  printf("%3u:", x+first);
+  for (unsigned c=0; c < numContinuous(); c+=1) printf(" %f", *((float    *)(cookedBuffer+buffOffset+c+x*bufStride)));
+  for (unsigned d=0; d < numDiscrete()  ; d+=1) printf(" %u", *((unsigned *)(cookedBuffer+buffOffset+d+x*bufStride+numContinuous())));
+  printf("  @ %u\n",buffOffset+x*bufStride );
+}
+#endif
   return cookedBuffer + buffOffset;
 }
 
@@ -504,6 +533,7 @@ FileSource::loadFrames(unsigned first, unsigned count) {
   if (numBufferedFrames == 0) {
     // cache empty
 
+    // FIXME - move this above if
     if (bufferFrames < count) {
       error("ERROR: FileSource::loadFrames: requested %u frames, but buffer can only hold %u", count, bufferFrames);
     }
@@ -523,8 +553,25 @@ FileSource::loadFrames(unsigned first, unsigned count) {
     firstBufferedFrameIndex = (bufferFrames - preCount) / 2;
     firstBufferedFrame = preFirst;
     numBufferedFrames = preCount;
-//warning("CACHE EMPTY [%u,%u)  cached [%u,%u)", first, first+count, firstBufferedFrame, firstBufferedFrame+numBufferedFrames);
+    if (firstBufferedFrameIndex + numBufferedFrames > bufferFrames) {
+      error("ERROR: FileSource:loadFrames:  attempted to load %u frames at index %u, which overflows the frame buffer", numBufferedFrames, firstBufferedFrameIndex*bufStride);
+    }
     Data32 const *frames = loadFrames(firstBufferedFrameIndex, preFirst, preCount);
+    assert(frames == cookedBuffer + firstBufferedFrameIndex * bufStride);
+#if 0
+warning("CACHE EMPTY [%u,%u)  cached [%u,%u) @ %u",
+	first, first+count, 
+	firstBufferedFrame, firstBufferedFrame+numBufferedFrames,
+	(firstBufferedFrameIndex + (first - firstBufferedFrame))*bufStride);
+
+for (unsigned x=preFirst; x < preFirst+preCount; x+=1) {
+  unsigned buffOffset = firstBufferedFrameIndex * bufStride;
+  printf("%3u:", x);
+  for (unsigned c=0; c < numContinuous(); c+=1) printf(" %f", *((float    *)(cookedBuffer+buffOffset+c+x*bufStride)));
+  for (unsigned d=0; d < numDiscrete()  ; d+=1) printf(" %u", *((unsigned *)(cookedBuffer+buffOffset+d+x*bufStride+numContinuous())));
+  printf("  @ %u\n",buffOffset+x*bufStride );
+}
+#endif
 #if 0
 for (unsigned frm=0; frm < preCount; frm+=1) {
   printf("   C %u @ %u :", preFirst+frm, firstBufferedFrameIndex+frm);
@@ -548,32 +595,44 @@ for (unsigned frm=0; frm < preCount; frm+=1) {
       if (numBufferedFrames + preCount < bufferFrames) { // do prefetch
 	firstBufferedFrame = preFirst;
 	firstBufferedFrameIndex -= preCount;
-	numBufferedFrames += preCount;
-//warning("CACHE HIT< [%u,%u)  cached [%u,%u)", first,first+count, firstBufferedFrame, firstBufferedFrame+numBufferedFrames);
+#if 0
+warning("CACHE HIT< [%u,%u)  cached [%u,%u)", first,first+count, firstBufferedFrame, firstBufferedFrame+numBufferedFrames);
+#endif
 	Data32 const *frames = loadFrames(firstBufferedFrameIndex, preFirst, preCount);
-	return frames + (first - preFirst) * bufStride;
+	numBufferedFrames += preCount;
       } 
-    } 
-    if (firstBufferedFrame + numBufferedFrames - (first+count) <= delta && 
+    } else if (firstBufferedFrame + numBufferedFrames - (first+count) <= delta && 
 	firstBufferedFrame + numBufferedFrames < _numFrames) 
     {  // prefetch forward?
       preFirst = firstBufferedFrame + numBufferedFrames;
       preCount = firstBufferedFrame + numBufferedFrames + window < _numFrames ? window : _numFrames - preFirst;
       if (numBufferedFrames + preCount < bufferFrames) { // do prefetch
-	numBufferedFrames += preCount;
-//warning("CACHE HIT> [%u,%u)  cached [%u,%u)", first,first+count, firstBufferedFrame, firstBufferedFrame+numBufferedFrames);
+#if 0
+warning("PREFETCH > [%u,%u)", preFirst, preFirst+preCount);
+#endif
 	Data32 const *frames = loadFrames(firstBufferedFrameIndex+numBufferedFrames, preFirst, preCount);
-	return frames - (preFirst - first) * bufStride;
+	numBufferedFrames += preCount;
+#if 0
+warning("CACHE HIT> [%u,%u)  cached [%u,%u)", first,first+count, firstBufferedFrame, firstBufferedFrame+numBufferedFrames);
+#endif
+	return cookedBuffer + (firstBufferedFrameIndex + (first - firstBufferedFrame)) * bufStride;
       } 
-    } 
+    } else {
     // no prefetch
-//warning("CACHE HIT [%u,%u)  cached [%u,%u)", first,first+count, firstBufferedFrame, firstBufferedFrame+numBufferedFrames);
-    return cookedBuffer + firstBufferedFrameIndex + (first - firstBufferedFrame);
+#if 0
+warning("CACHE HIT [%u,%u)  cached [%u,%u) @ %u", 
+	first,first+count, 
+	firstBufferedFrame, firstBufferedFrame+numBufferedFrames, 
+	(firstBufferedFrameIndex + first - firstBufferedFrame)*bufStride);
+#endif
+    }
+    return cookedBuffer + (firstBufferedFrameIndex + (first - firstBufferedFrame)) * bufStride;
   }
 
   // cache miss
-
+#if 0
 warning("CACHE MISS [%u,%u)  cached [%u,%u)", first,first+count, firstBufferedFrame, firstBufferedFrame+numBufferedFrames);
+#endif
   if (count + 2 * window < bufferFrames) {
     preFirst = first > window ? first - window : 0;
     preCount = preFirst + count  + 2 * window < _numFrames ?
@@ -585,7 +644,9 @@ warning("CACHE MISS [%u,%u)  cached [%u,%u)", first,first+count, firstBufferedFr
   firstBufferedFrameIndex = (bufferFrames - preCount) / 2;
   firstBufferedFrame = preFirst;
   numBufferedFrames = preCount;
-//warning("CACHE EMPTY [%u,%u)  cached [%u,%u)", first, first+count, firstBufferedFrame, firstBufferedFrame+numBufferedFrames);
+#if 0
+warning("CACHE FLUSH [%u,%u)  cached [%u,%u)", first, first+count, firstBufferedFrame, firstBufferedFrame+numBufferedFrames);
+#endif
   Data32 const *frames = loadFrames(firstBufferedFrameIndex, preFirst, preCount);
   return frames + (first - preFirst) * bufStride;
 
@@ -655,7 +716,8 @@ FileSource::stride() {
 float *const 
 FileSource::floatVecAtFrame(unsigned f) {
   assert(0 <= f && f < numFrames());
-  return (float *)loadFrames(f, 1);
+  Data32 const * buf = loadFrames(f, 1);
+  return(float *const) buf;
 }
 
 unsigned *const 
