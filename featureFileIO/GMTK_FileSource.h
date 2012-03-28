@@ -35,6 +35,12 @@ class FileSource: public ObservationSource {
   // buffer to hold transformed cahced/prefected observations
   Data32 *cookedBuffer;
 
+  unsigned firstBufferedFrame;        // frame # of first buffered frame
+  unsigned firstBufferedFrameIndex;   // index in cooked buffer of where the first buffered frame starts
+  unsigned numBufferedFrames;         // # of frames in cookedBuffer
+  unsigned bufferFrames;              // size of cookedBuffer in frames
+  unsigned bufferSize;                // size of cookedBuffer in Data32
+
   Data32 **floatStart; // the ith file's continuous features start here
   Data32 **intStart;   // the ith file's discrete features start here
   unsigned bufStride;  // increment between frames in cookedBuffer
@@ -62,9 +68,17 @@ class FileSource: public ObservationSource {
   int _numContinuous;         // # of continuous & discrete features after -posttrans
   int _numDiscrete;           //   these are computed once if -1 then cached
 
+  // map requested global segment # to logical segment # in specified file
   unsigned adjustForSdiffact(unsigned fileNum, unsigned seg);
 
+  // Load requested frames into cooked buffer, starting at the specified index.
+  // index is in frames, so the frames will start at 
+  // cookedBuffer[bufferIndex * buffStride]
+  Data32 const *loadFrames(unsigned bufferIndex, unsigned first, unsigned count);
+
  public:
+
+#define DEFAULT_BUFFER_SIZE (1024*1024)
   
   // each file provides its data for the requested submatrix,
   // transformed and "ready to eat." So the FileSource
@@ -72,6 +86,7 @@ class FileSource: public ObservationSource {
   // calls, prefetching/caching. For archipelagos, each thread
   // gets its own FileSource (all aimed at the same files, of course).
   FileSource(unsigned _nFiles, ObservationFile *file[], 
+	     unsigned bufferSize = DEFAULT_BUFFER_SIZE,
 	     char const *_globalFrameRangeStr = NULL, 
 	     unsigned const *sdiffact = NULL, 
 	     unsigned const *fdiffact = NULL,
@@ -80,6 +95,8 @@ class FileSource: public ObservationSource {
 
   FileSource() {
     cookedBuffer = NULL;
+    bufferSize = 0;
+    numBufferedFrames = 0;
     floatStart = NULL;
     intStart = NULL;
     file = NULL;
@@ -94,6 +111,7 @@ class FileSource: public ObservationSource {
   // FIXME - dtor
 
   void initialize(unsigned nFiles, ObservationFile *file[], 
+		  unsigned bufferSize = DEFAULT_BUFFER_SIZE,
 		  unsigned const *sdiffact = NULL, 
 		  unsigned const *fdiffact = NULL,
 		  char const *globalFrameRangeStr = NULL, 

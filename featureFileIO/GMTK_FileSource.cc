@@ -34,13 +34,14 @@
   // calls, prefetching/caching. For archipelagos, each thread
   // gets its own FileSource (all aimed at the same files, of course).
 FileSource::FileSource(unsigned _nFiles, ObservationFile *file[], 
+		       unsigned bufferSize,
 		       char const *_globalFrameRangeStr, 
 		       unsigned const *sdiffact, unsigned const *fdiffact,
 		       unsigned startSkip, unsigned endSkip,
 		       Filter *posttrans) 
 {
-  initialize(_nFiles, file, sdiffact, fdiffact, _globalFrameRangeStr,
-	     startSkip, endSkip, posttrans);
+  initialize(_nFiles, file, bufferSize, sdiffact, fdiffact, 
+	     _globalFrameRangeStr, startSkip, endSkip, posttrans);
 }
 
 
@@ -194,12 +195,14 @@ checkNumFrames(unsigned nFiles, ObservationFile *file[],
 
 void 
 FileSource::initialize(unsigned nFiles, ObservationFile *file[], 
+		       unsigned bufferSize,
 		       unsigned const *sdiffact, unsigned const *fdiffact,
 		       char const *globalFrameRangeStr, 
 		       unsigned startSkip, unsigned endSkip,
 		       Filter *posttrans) 
 {
   assert(file);
+  assert(nFiles);
   this->nFiles = nFiles;
   this->globalFrameRangeStr = globalFrameRangeStr;
   this->globalFrameRange = NULL;
@@ -210,9 +213,16 @@ FileSource::initialize(unsigned nFiles, ObservationFile *file[],
   this->filter = posttrans;
   this->file = new ObservationFile *[nFiles];
   for (unsigned i=0; i < nFiles; i+=1) {
+    assert(file[i]);
     this->file[i] = file[i];
   }
-  cookedBuffer = new Data32[BUFFER_SIZE];
+  cookedBuffer = new Data32[bufferSize];
+  if (!cookedBuffer) {
+    error("ERROR: FileSource::intialize: failed to allocate frame buffer");
+  }
+  this->bufferSize = bufferSize;
+  numBufferedFrames = 0;
+  
   floatStart   = new Data32 *[nFiles];
   intStart     = new Data32 *[nFiles];
   this->segment = -1;         // no openSegment() call yet
@@ -233,6 +243,8 @@ FileSource::initialize(unsigned nFiles, ObservationFile *file[],
   bufStride = offset;
 
   _numSegments = checkNumSegments(nFiles, file, sdiffact);
+
+  bufferFrames = bufferSize / bufStride;
 }
 
 
@@ -284,6 +296,7 @@ FileSource::openSegment(unsigned seg) {
   // note that -posttrans is not allowed to alter the # of frames
   globalFrameRange = new Range(globalFrameRangeStr, 0, _numInputFrames);
   _numFrames = globalFrameRange->length();
+  numBufferedFrames = 0;
   return success;
 }
 
@@ -332,7 +345,7 @@ repCount(unsigned frameNum, unsigned const *fdiffact, unsigned fileNum,
 
 
 Data32 const*
-FileSource::loadFrames(unsigned first, unsigned count) {
+FileSource::loadFrames(unsigned bufferIndex, unsigned first, unsigned count) {
   // FIXME - startSkip and endSkip
 
   // apply -gpr
@@ -340,8 +353,10 @@ FileSource::loadFrames(unsigned first, unsigned count) {
   first = globalFrameRange->index(first);
   count = globalFrameRange->index(oldFirst + count - 1) - first + 1;
 
-  assert(count > 0);
-  assert(count * numFeatures() < BUFFER_SIZE);
+  assert(0 <= bufferIndex && bufferIndex < bufferFrames);
+  assert(0 < count && count < bufferFrames-bufferIndex);
+  
+  unsigned buffOffset = bufferIndex * bufStride;
 
   if (first > _numFrames || first + count > _numFrames) {
     error("ERROR: FileSource::loadFrames: requested frames [%u,%u), but %u is the last available frame\n", first, first+count, _numFrames);
@@ -423,7 +438,7 @@ FileSource::loadFrames(unsigned first, unsigned count) {
     //   se  approx. numFrames() / file[i]->numLogicalFrames extra of each frame
     Data32 const *fileBuf = file[i]->getLogicalFrames(adjFirst,adjCount);
     assert(fileBuf);
-    Data32 *dst = floatStart[i];
+    Data32 *dst = floatStart[i] + buffOffset;
     Data32 const *src = fileBuf;
     unsigned srcStride = file[i]->numLogicalFeatures();
     for (unsigned f=0; f < adjCount; f += 1) {
@@ -437,7 +452,7 @@ FileSource::loadFrames(unsigned first, unsigned count) {
       }
     }
     src = fileBuf + file[i]->numLogicalContinuous();
-    dst=intStart[i];
+    dst = intStart[i] + buffOffset;
     for (unsigned f=0; f < adjCount; f += 1) {
       unsigned repeat = repCount(adjFirst + f,fdiffact, i, deltaT, first, count, file[i]->numLogicalFrames());
       assert(repeat > 0);
@@ -455,18 +470,138 @@ FileSource::loadFrames(unsigned first, unsigned count) {
   // adjust cookedBuffer destination
   // getFrames(first', count') from each file into cookedBuffer
   // return &cookedBuffer[destination of first]
-  if (filter) {
-    Data32 const *result = filter->transform(cookedBuffer, *inputDesc);
-    delete inputDesc;
-    return result;
-  } else {
-    return cookedBuffer;
+#if 0
+for (unsigned frm=0; frm < count; frm+=1) {
+  printf("   F %u @ %u :", first+frm, bufferIndex+frm);
+  float *ppp = (float *)(cookedBuffer+buffOffset);
+  for (unsigned j=0; j < 2; j+=1) {
+    printf(" %f", *(ppp++));
   }
+  printf("\n");
+}
+#endif
+  if (filter) {
+    Data32 const *result = filter->transform(cookedBuffer+buffOffset, *inputDesc);
+    delete inputDesc;
+    if (result != cookedBuffer + buffOffset) {
+      memcpy(cookedBuffer + buffOffset, result, count * bufStride * sizeof(Data32));
+    }
+  }
+  return cookedBuffer + buffOffset;
 }
 
 
+#define window 20
+#define delta 5
 
- // FIXME - FileSource should know about feature subranges unless the file format can do it better
+// FIXME - have to ensure startSkip frames before and endSkip frames after
+// every request ?
+Data32 const *
+FileSource::loadFrames(unsigned first, unsigned count) {
+  unsigned preFirst;  // first frame # to prefetch
+  unsigned preCount;  // # of frames in prefetch request
+
+  if (numBufferedFrames == 0) {
+    // cache empty
+
+    if (bufferFrames < count) {
+      error("ERROR: FileSource::loadFrames: requested %u frames, but buffer can only hold %u", count, bufferFrames);
+    }
+    if (first + count > _numFrames) {
+      error("ERROR: FileSource::loadFrames: requested frames %u to %u, but there are only %u frames available", first, first+count-1, _numFrames);
+    }
+
+    if (count + 2 * window < bufferFrames) {
+      preFirst = first > window ? first - window : 0;
+      preCount = preFirst + count  + 2 * window < _numFrames ?
+        count + 2 * window : _numFrames - preFirst;
+    } else {
+      preFirst = first;
+      preCount = count;
+    }
+    assert(preCount > 0);
+    firstBufferedFrameIndex = (bufferFrames - preCount) / 2;
+    firstBufferedFrame = preFirst;
+    numBufferedFrames = preCount;
+//warning("CACHE EMPTY [%u,%u)  cached [%u,%u)", first, first+count, firstBufferedFrame, firstBufferedFrame+numBufferedFrames);
+    Data32 const *frames = loadFrames(firstBufferedFrameIndex, preFirst, preCount);
+#if 0
+for (unsigned frm=0; frm < preCount; frm+=1) {
+  printf("   C %u @ %u :", preFirst+frm, firstBufferedFrameIndex+frm);
+  float *ppp = (float *)frames;
+  for (unsigned j=0; j < 2; j+=1) {
+    printf(" %f", *(ppp++));
+  }
+  printf("\n");
+}
+#endif
+    return frames + (first - preFirst) * bufStride;
+  }
+  if (firstBufferedFrame <= first && 
+      first+count <= firstBufferedFrame + numBufferedFrames)
+  { 
+    // cache hit
+    
+    if (first - firstBufferedFrame <= delta && firstBufferedFrame > 0) {  // prefetch backward?
+      preFirst = firstBufferedFrame > window ? firstBufferedFrame - window : 0;
+      preCount = firstBufferedFrame - preFirst;;
+      if (numBufferedFrames + preCount < bufferFrames) { // do prefetch
+	firstBufferedFrame = preFirst;
+	firstBufferedFrameIndex -= preCount;
+	numBufferedFrames += preCount;
+//warning("CACHE HIT< [%u,%u)  cached [%u,%u)", first,first+count, firstBufferedFrame, firstBufferedFrame+numBufferedFrames);
+	Data32 const *frames = loadFrames(firstBufferedFrameIndex, preFirst, preCount);
+	return frames + (first - preFirst) * bufStride;
+      } 
+    } 
+    if (firstBufferedFrame + numBufferedFrames - (first+count) <= delta && 
+	firstBufferedFrame + numBufferedFrames < _numFrames) 
+    {  // prefetch forward?
+      preFirst = firstBufferedFrame + numBufferedFrames;
+      preCount = firstBufferedFrame + numBufferedFrames + window < _numFrames ? window : _numFrames - preFirst;
+      if (numBufferedFrames + preCount < bufferFrames) { // do prefetch
+	numBufferedFrames += preCount;
+//warning("CACHE HIT> [%u,%u)  cached [%u,%u)", first,first+count, firstBufferedFrame, firstBufferedFrame+numBufferedFrames);
+	Data32 const *frames = loadFrames(firstBufferedFrameIndex+numBufferedFrames, preFirst, preCount);
+	return frames - (preFirst - first) * bufStride;
+      } 
+    } 
+    // no prefetch
+//warning("CACHE HIT [%u,%u)  cached [%u,%u)", first,first+count, firstBufferedFrame, firstBufferedFrame+numBufferedFrames);
+    return cookedBuffer + firstBufferedFrameIndex + (first - firstBufferedFrame);
+  }
+
+  // cache miss
+
+warning("CACHE MISS [%u,%u)  cached [%u,%u)", first,first+count, firstBufferedFrame, firstBufferedFrame+numBufferedFrames);
+  if (count + 2 * window < bufferFrames) {
+    preFirst = first > window ? first - window : 0;
+    preCount = preFirst + count  + 2 * window < _numFrames ?
+      count + 2 * window : _numFrames - preFirst;
+  } else {
+    preFirst = first;
+    preCount = count;
+  }
+  firstBufferedFrameIndex = (bufferFrames - preCount) / 2;
+  firstBufferedFrame = preFirst;
+  numBufferedFrames = preCount;
+//warning("CACHE EMPTY [%u,%u)  cached [%u,%u)", first, first+count, firstBufferedFrame, firstBufferedFrame+numBufferedFrames);
+  Data32 const *frames = loadFrames(firstBufferedFrameIndex, preFirst, preCount);
+  return frames + (first - preFirst) * bufStride;
+
+#if 0
+  if (bufferFrames < count) {
+    error("ERROR: FileSource::loadFrames: requested %u frames, but buffer can only hold %u", count, bufferFrames);
+  }
+  firstBufferedFrameIndex = (bufferFrames - count) / 2;
+  firstBufferedFrame = first;
+  numBufferedFrames = count;
+  return loadFrames(firstBufferedFrameIndex, first, count);
+#endif
+}
+
+
+// FIXME - FileSource should know about feature subranges unless the file format can do it better
 //  no it shouldn't - ObservationFile base class does naive feature subranges, subclasses
 //  can over-ride the *Logical* methods if they can do better
 

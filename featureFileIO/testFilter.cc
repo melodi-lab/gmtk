@@ -103,7 +103,7 @@ main(int argc, char *argv[]) {
     } else
       error("current implementation requires filter\n");
   }
-  globalObservationMatrix.initialize(nFiles, obsFile, 
+  globalObservationMatrix.initialize(nFiles, obsFile, 1024*1024 /* FIXME */,
 				     Action_If_Diff_Num_Sents,
 				     Action_If_Diff_Num_Frames,
 				     gpr_str, startSkip, endSkip,
