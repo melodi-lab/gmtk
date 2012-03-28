@@ -205,6 +205,7 @@ main(int argc, char *argv[]) {
 	error("current implementation requires filter");
     }
     globalObservationMatrix.initialize(nFiles, obsFile, 
+				       1024*1024 /* FIXME - argument */, 
 				       Action_If_Diff_Num_Sents,
 				       Action_If_Diff_Num_Frames,
 				       gpr_str, startSkip, endSkip,
