@@ -20,7 +20,7 @@ main(int argc, char *argv[]) {
   PFileFile *pf = new PFileFile(argv[1], nf, ni, 0, true);
   ObservationFile *ofs[1] = {pf};
   FileSource fsrc(1, ofs);
-  FileStream fs(&fsrc);
+  FileStream fs(pf);
 
   unsigned seg = 0;
   unsigned frm = 0;

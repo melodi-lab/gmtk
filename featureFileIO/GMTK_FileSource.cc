@@ -598,7 +598,11 @@ for (unsigned frm=0; frm < preCount; frm+=1) {
 #if 0
 warning("CACHE HIT< [%u,%u)  cached [%u,%u)", first,first+count, firstBufferedFrame, firstBufferedFrame+numBufferedFrames);
 #endif
+#if 1
+        (void)loadFrames(firstBufferedFrameIndex, preFirst, preCount);
+#else
 	Data32 const *frames = loadFrames(firstBufferedFrameIndex, preFirst, preCount);
+#endif
 	numBufferedFrames += preCount;
       } 
     } else if (firstBufferedFrame + numBufferedFrames - (first+count) <= delta && 
@@ -610,7 +614,11 @@ warning("CACHE HIT< [%u,%u)  cached [%u,%u)", first,first+count, firstBufferedFr
 #if 0
 warning("PREFETCH > [%u,%u)", preFirst, preFirst+preCount);
 #endif
+#if 1
+        (void) loadFrames(firstBufferedFrameIndex+numBufferedFrames, preFirst, preCount);
+#else
 	Data32 const *frames = loadFrames(firstBufferedFrameIndex+numBufferedFrames, preFirst, preCount);
+#endif
 	numBufferedFrames += preCount;
 #if 0
 warning("CACHE HIT> [%u,%u)  cached [%u,%u)", first,first+count, firstBufferedFrame, firstBufferedFrame+numBufferedFrames);

@@ -83,6 +83,7 @@ class ObservationStream {
     if (contFeatureRange) delete contFeatureRange;
     if (discFeatureRange) delete discFeatureRange;
     if (frameData) delete [] frameData;
+    if (logicalFrameData) delete [] logicalFrameData;
   }
 
   virtual unsigned numContinuous() {return nFloat;}
@@ -129,19 +130,32 @@ class ObservationStream {
     if (getNextFrame()) {
       unsigned nlc = numLogicalContinuous();
       unsigned nld = numLogicalDiscrete();
-
+#if 0
+printf("ObsStr GLF:");
+for (unsigned i=0; i<nlc; i+=1) printf(" %f", ((float *)frameData)[i]);
+for (unsigned i=0; i<nld; i+=1) printf(" %u", ((unsigned *)frameData)[nlc+i]);
+printf("\n");
 //fprintf(stderr, "nlc %u   nlf %u\n", nlc, nlf);
+#endif
       for (unsigned i=0; i < nlc; i+=1) {
 	unsigned srcIdx = contFeatureRange ? contFeatureRange->index(i) : i;
+//printf("%u -> %u %f\n", i, srcIdx,((float *)frameData)[srcIdx]);
 	logicalFrameData[i] = frameData[srcIdx];
       }
       for (unsigned i = 0; i < nld; i+=1) {
 	unsigned srcIdx = discFeatureRange ? discFeatureRange->index(i) : i;
+//printf("%u -> %u %u\n", nlc+i, srcIdx, ((unsigned *)frameData)[nlc+i]);
 //fprintf(stderr,"gNLF input %u -> output %u\n", srcIdx, i);  
         logicalFrameData[nlc+i] = frameData[numContinuous() + srcIdx];
       }
+#if 0
+printf("ObsStr GLF:");
+for (unsigned i=0; i<nlc; i+=1) printf(" %f", ((float *)logicalFrameData)[i]);
+for (unsigned i=0; i<nld; i+=1) printf(" %u", ((unsigned *)logicalFrameData)[nlc+i]);
+printf("\n");
+#endif
       return logicalFrameData;
-    }	
+    }
     return NULL;
   }
 

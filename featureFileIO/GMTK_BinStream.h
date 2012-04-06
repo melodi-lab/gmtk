@@ -23,6 +23,7 @@
 using namespace std;
 
 #include "machine-dependent.h"
+#include "vbyteswapping.h"
 #include "error.h"
 
 #include "GMTK_WordOrganization.h"
@@ -50,13 +51,13 @@ class BinaryStream: public ObservationStream {
   {
     char cookie[GMTK_BIN_COOKIE_LENGTH];
     if (fgets(cookie, GMTK_BIN_COOKIE_LENGTH, f) != cookie) {
-      error("ERROR: BinaryStream did not begin with 'GMTb\\n'\n");
+      error("ERROR: BinaryStream did not begin with 'GMTb\\n'");
     }
     if (strcmp(cookie, GMTK_BIN_PROTOCOL_COOKIE)) {
-      error("ERROR: BinaryStream did not begin with 'GMTb\\n'\n");
+      error("ERROR: BinaryStream did not begin with 'GMTb\\n'");
     }
     if (fgets(version, GMTK_BIN_VERSION_LENGTH, f) != version) {
-      error("ERROR: BinaryStream couldn't read protocol version\n");
+      error("ERROR: BinaryStream couldn't read protocol version");
     }
     if (strcmp(version, GMTK_BIN_PROTOCOL_VERSION) > 0) {
       version[GMTK_BIN_VERSION_LENGTH-2] = 0;
@@ -67,7 +68,23 @@ class BinaryStream: public ObservationStream {
     // FIXME - send BOM instead of risking being wrong?
     swap = ( netByteOrder && getWordOrganization() != BYTE_BIG_ENDIAN)    ||
            (!netByteOrder && getWordOrganization() != BYTE_LITTLE_ENDIAN);
-    // FIXME - read nFloat and nInt from stream?
+    unsigned nCont, nDisc;
+    if (fread(&nCont, sizeof(nCont), 1, f) != 1) {
+      error("ERROR: BinaryStream::couldn't read the number of continuous features");
+    }
+    if (swap) nCont = swapb_i32_i32(nCont);
+    if (nCont != nFloat) {
+      error("ERROR: BinaryStream contains %u continuous features, but expected %u",
+	    nCont, nFloat);
+    }
+    if (fread(&nDisc, sizeof(nDisc), 1, f) != 1) {
+      error("ERROR: BinaryStream::couldn't read the number of continuous features");
+    }
+    if (swap) nDisc = swapb_i32_i32(nDisc);
+    if (nDisc != nInt) {
+      error("ERROR: BinaryStream contains %u discrete features, but expected %u",
+	    nDisc, nInt);
+    }
   }
 
 

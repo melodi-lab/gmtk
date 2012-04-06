@@ -26,6 +26,8 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "GMTK_ObservationSource.h"
 #include "GMTK_ASCIIStream.h"
 #include "GMTK_BinStream.h"
+#include "GMTK_FileStream.h"
+#include "GMTK_StreamSource.h"
 #include "GMTK_FileSource.h"
 #include "GMTK_ASCIIFile.h"
 #include "GMTK_FlatASCIIFile.h"
@@ -40,15 +42,13 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "GMTK_Stream.h"
 
 
-#define OPTIONAL_OBSERVATION_FILES
-#define GMTK_ARG_OBS_FILES
 #define GMTK_ARG_CPP_CMD_OPTS
 #define GMTK_ARG_OBS_MATRIX_XFORMATION
 #define GMTK_ARG_FILE_RANGE_OPTIONS
 #define GMTK_ARG_START_END_SKIP
 #define GMTK_ARG_HELP
 #define GMTK_ARG_VERSION
-#define GMTK_ARG_STREAMING_INPUT
+#define GMTK_ARG_STREAM_AND_FILE_INPUT
 #define GMTK_ARG_STREAMING_OUTPUT
 #define GMTK_ARGUMENTS_DEFINITION
 #include "ObsArguments.h"
@@ -101,6 +101,77 @@ sendFrame(Data32 const *frame, unsigned segNum, unsigned frameNum,
 }
 
 
+void
+sendFeatureCounts(ObservationSource *src, bool binaryOutputStream, bool needOutputSwap) {
+  unsigned nCont = src->numContinuous();
+  unsigned nDisc = src->numDiscrete();
+  if (binaryOutputStream) {
+    if (needOutputSwap) {
+      nCont = swapb_i32_i32(nCont);
+      nDisc = swapb_i32_i32(nDisc);
+    }
+    if (fwrite(&nCont, sizeof(nCont), 1, stdout) != 1) {
+      error("ERROR: failed to write the number of continous features");
+    }
+    if (fwrite(&nDisc, sizeof(nDisc), 1, stdout) != 1) {
+      error("ERROR: failed to write the number of discrete features");
+    }
+  } else {
+    printf("%u %u\n", src->numContinuous(), src->numDiscrete());
+  }
+}
+
+
+ObservationStream * 
+makeFileStream(unsigned ifmts[], char *ofs[], 
+	       unsigned nfs[], unsigned nis[], 
+	       unsigned i, bool iswp[])
+{
+  ObservationFile *obsFile = 
+    instantiateFile(ifmts[i], ofs[i], nfs[i], nis[i], i, iswp[i],
+		    Cpp_If_Ascii, cppCommandOptions, prefrs[i], preirs[i],
+		    prepr[i], sr[i]);
+  assert(obsFile);
+  if (Per_Stream_Transforms[i]) {
+    Filter *fileFilter = instantiateFilters(Per_Stream_Transforms[i],
+					    obsFile->numContinuous());
+    if (fileFilter) {
+      obsFile = new FilterFile(fileFilter, obsFile, frs[i], irs[i], postpr[i]);
+    } else {
+      error("ERROR: failed to create filter for '%s'",Per_Stream_Transforms[i]);
+    }
+  }
+  return new FileStream(obsFile);
+}
+
+
+ObservationStream *
+makeStream(unsigned ifmts[], char const *fmts[], char *ofs[], 
+	   unsigned nfs[], unsigned nis[], unsigned i,  
+	   char const *frs[], char const *irs[], bool inputNetByteOrder[])
+{
+  FILE *inFile;
+  
+  if (strcmp("-", oss[i])) {
+    inFile = fopen(oss[i], ifmts[i] == RAWBIN ? "rb" : "r");
+  } else {
+    inFile = stdin;
+  }
+  
+  if (!inFile) {
+    error("ERROR: '%s' %s", oss[i], strerror(errno));
+  }
+  
+  if (ifmts[i] == RAWBIN) {
+    return new BinaryStream(inFile, nfs[i], nis[i], frs[i], irs[i], inputNetByteOrder[i]);
+  } else if (ifmts[i] == RAWASC) {
+    return new  ASCIIStream(inFile, nfs[i], nis[i], frs[i], irs[i]);
+  } else {
+    error("ERROR: -fmt%u must be 'binary' or 'ascii', got '%s'", i, fmts[i]);
+  }
+  return NULL; // should never reach here
+}
+
 
 int 
 main(int argc, char *argv[]) {
@@ -136,140 +207,46 @@ main(int argc, char *argv[]) {
   } else {
     printf("%s%s", GMTK_ASC_PROTOCOL_COOKIE, GMTK_ASC_PROTOCOL_VERSION);
   }
-  if (streamSource) {
-
-    // get input from another stream
-
-    FILE *inFile;
-
-    if (strcmp("-", os)) {
-      inFile = fopen(os, binaryInputStream ? "rb" : "r");
-    } else {
-      inFile = stdin;
-    }
-
-    if (!inFile) {
-      error("ERROR: '%s' %s", os, strerror(errno));
-    }
+  
+  ObservationStream *obsStream[MAX_NUM_OBS_STREAMS] = {NULL,NULL,NULL,NULL,NULL};
+  unsigned nStreams = 0;
+  for (unsigned i=0; i < MAX_NUM_OBS_STREAMS && (ofs[i] || oss[i]); i+=1) {
     
-    // FIXME - use StreamSource & support posttrans ?
-
-    // FIXME - add -sfr and -sir for feature range selection ?
-    ObservationStream *inStream;
-    if (binaryInputStream) {
-      inStream = new BinaryStream(inFile, snf, sni, NULL /* sfr */ , NULL /* sir */, inputNetByteOrder);
+    if (ofs[i]) {
+      obsStream[i] = makeFileStream(ifmts, ofs, nfs, nis, i, iswp);
+    } else if (oss[i]) {
+      obsStream[i] = makeStream(ifmts, fmts, ofs, nfs, nis, i, frs, irs, inputNetByteOrder);
     } else {
-      inStream = new  ASCIIStream(inFile, snf, sni, NULL /* sfr */ , NULL /* sir */);
+      error("ERROR: no input stream or file specified for -os%u or -of%u", i,i);
     }
-    assert(inStream);
+    assert(obsStream[i]);
+    nStreams += 1;
+  }
+  if (nStreams == 0) {
+    error("ERROR: no input sources specified (use -ofX or -osX)");
+  }
+  StreamSource *source = new StreamSource(nStreams, obsStream, streamBufferSize);
+  sendFeatureCounts(source, binaryOutputStream, needOutputSwap);
 
-    unsigned segNum = 0;
-    unsigned frmNum = 0;
-
-    Data32 const *frame;
-    for (; !inStream->EOS(); ) {
-      frame = inStream->getNextLogicalFrame();
-      if (!frame) {
-	segNum += 1;
-	frmNum = 0;
-	printf("%s", binaryOutputStream ? "E" : "E\n");
+  unsigned segNum = 0;
+  unsigned frmNum = 0;
+  
+  Data32 const *frame;
+  for (; !source->EOS(); segNum += 1) {
+    source->preloadFrames(1);
+    for (frmNum=0; source->segmentLength() == 0 || frmNum < source->segmentLength(); frmNum += 1) {
+      frame = source->loadFrames(frmNum, 1);
+      if (source->segmentLength() != 0 && frmNum >= source->segmentLength()) {
+	assert(frame == NULL);
 	continue;
       }
-      sendFrame(frame, segNum, frmNum, inStream->numContinuous(), inStream->numDiscrete(),
+      sendFrame(frame, segNum, frmNum, source->numContinuous(), source->numDiscrete(),
 		binaryOutputStream, needOutputSwap);
-      frmNum += 1;
+      source->enqueueFrames(1);
     }
-
-  } else {
-
-    // stream data out of random-access file(s)
-    
-    infoMsg(IM::Max,"Opening Files ...\n");
-
-    FileSource globalObservationMatrix;
-    ObservationFile *obsFile[MAX_NUM_OBS_FILES];
-    unsigned nFiles=0;
-    unsigned nCont = 0;
-    for (unsigned i=0; i < MAX_NUM_OBS_FILES && ofs[i] != NULL; i+=1, nFiles+=1) {
-
-      obsFile[i] = instantiateFile(ifmts[i], ofs[i], nfs[i], nis[i], i, iswp[i],
-				   Cpp_If_Ascii, cppCommandOptions, prefrs[i], preirs[i],
-				   prepr[i], sr[i]);
-      assert(obsFile[i]);
-      Filter *fileFilter = instantiateFilters(Per_Stream_Transforms[i],
-					      obsFile[i]->numContinuous());
-      if (fileFilter) {
-	obsFile[i] = new FilterFile(fileFilter, obsFile[i], frs[i], irs[i], postpr[i]);
-	nCont += obsFile[i]->numContinuous();
-      } else
-	error("current implementation requires filter");
-    }
-    globalObservationMatrix.initialize(nFiles, obsFile, 
-				       1024*1024 /* FIXME - argument */, 
-				       Action_If_Diff_Num_Sents,
-				       Action_If_Diff_Num_Frames,
-				       gpr_str, startSkip, endSkip,
-				       instantiateFilters(Post_Transforms, nCont));
-
-    FileSource *f = &globalObservationMatrix;
-    for (unsigned j=0; j < f->numSegments(); j+=1) {
-      assert(f->openSegment(j));
-      for (unsigned k=0; k < f->numFrames(); k+=1) {
-	Data32 const *buf = f->loadFrames(k,1);
-	sendFrame(buf, j, k, f->numContinuous(), f->numDiscrete(),
-		  binaryOutputStream, needOutputSwap);
-	
-      }
-      printf("%s", binaryOutputStream ? "E" : "E\n");
-    }
+    printf("%s", binaryOutputStream ? "E" : "E\n");
   }
+
   exit(0);
 }
 
-
-
-
-#if 0
-
-    FileSource *f = &globalObservationMatrix;
-    for (unsigned j=0; j < f->numSegments(); j+=1) {
-      assert(f->openSegment(j));
-      if (binaryOutputStream) {
-	for (unsigned k=0; k < f->numFrames(); k+=1) {
-	  // binary output
-	  printf("F");
-	  Data32 const *buf = f->loadFrames(k,1);
-	  for (unsigned ff=0; ff < f->numContinuous(); ff+=1) {
-	    float obs = *((float *)(buf++));
-	    if (needOutputSwap) obs = swapb_f32_f32(obs);
-	    if (fwrite(&obs, sizeof(obs), 1, stdout) != 1) {
-	      error("ERROR: failed to write the %uth float in segment %u frame %u",ff, j, k);
-	    }
-	  }
-	  for (unsigned ff=0; ff < f->numDiscrete(); ff+=1) {
-	    unsigned obs = *((unsigned *)(buf++));
-	    if (needOutputSwap) obs = swapb_i32_i32(obs);
-	    if (fwrite(&obs, sizeof(obs), 1, stdout) != 1) {
-	      error("ERROR: failed to write the %uth int in segment %u frame %u",ff, j, k);
-	    }
-	  }
-	}
-	printf("E");
-      } else {
-	for (unsigned k=0; k < f->numFrames(); k+=1) {
-	  // ASCII output
-	  if (prettyPrintStream) {
-	    printf("%u %u: ", j, k);
-	  }
-	  printf("F");
-	  Data32 const *buf = f->loadFrames(k,1);
-	  for (unsigned ff=0; ff < f->numContinuous(); ff+=1)
-	    printf(" %f", *((float *)(buf++)));
-	  for (unsigned ff=0; ff < f->numDiscrete(); ff+=1)
-	    printf(" %d", *((int *)(buf++)));
-	  printf("\n");
-	}
-	printf("E\n");
-      }
-    }
-#endif

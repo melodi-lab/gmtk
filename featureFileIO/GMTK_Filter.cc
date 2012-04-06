@@ -194,8 +194,8 @@ instantiateFilters(char *filterStr, unsigned numContinuous) {
   double magicDouble;
   char * filterFileName;
   int xform;
-  float  *B,  *c;
-  double *BB, *cc;
+  float  *B;
+  double *cc;
   
   Filter *xformer = NULL;
   Filter *firstFilter = NULL;
