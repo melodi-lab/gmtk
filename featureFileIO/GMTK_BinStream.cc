@@ -29,23 +29,23 @@ BinaryStream::getNextFrame() {
 #if 0
     if (feof(f)) return NULL;
 #endif
-    error("ERROR: BinaryStream::getNextFrame: couldn't read stream tag\n");
+    error("ERROR: BinaryStream::getNextFrame: couldn't read stream tag");
   }
   if (tag == 'E' || tag == 'e') return NULL;
   if (tag != 'F' && tag != 'f') {
-    error("ERROR: BinaryStream::getNextFrame: expected tag E or F, got '%c'\n", tag);
+    error("ERROR: BinaryStream::getNextFrame: expected tag E or F, got '%c'", tag);
   }
   float *fdest = (float *)frameData;
   if (nFloat > 0) {
     if (fread(fdest, sizeof(Data32), nFloat, f) != nFloat) {
-      error("ERROR: BinaryStream::getNextFrame: couldn't read the continuous features\n");
+      error("ERROR: BinaryStream::getNextFrame: couldn't read the continuous features");
     }
     if (swap) swapb_vf32_vf32(nFloat, fdest, fdest);
   }
   Int32 *idest = (Int32 *)(fdest + nFloat);
   if (nInt > 0) {
     if (fread(idest, sizeof(Data32), nInt, f) != nInt) {
-      error("ERROR: BinaryStream::getNextFrame: couldn't read the discrete features\n");
+      error("ERROR: BinaryStream::getNextFrame: couldn't read the discrete features");
     }
     if (swap) swapb_vi32_vi32(nInt, idest, idest);
   }

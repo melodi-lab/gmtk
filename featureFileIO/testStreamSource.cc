@@ -73,8 +73,9 @@ main(int argc, char *argv[]) {
 
   Filter *filt = NULL;
   ASCIIStream as(stdin, numFloat, numInt, frs_str, irs_str);
+  ObservationStream *os = &as;
   if (strans) filt = instantiateFilters(strans, as.numLogicalContinuous());
-  StreamSource ss(&as, 100, filt);
+  StreamSource ss(1, &os, 100, filt);
 
   unsigned segNum, frameNum;
   for (segNum=0; !ss.EOS(); segNum+=1) {

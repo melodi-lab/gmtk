@@ -20,6 +20,7 @@
 #include <assert.h>
 
 #include "machine-dependent.h"
+#include "error.h"
 #include "GMTK_ObservationSource.h"
 #include "GMTK_ObservationStream.h"
 #include "GMTK_Filter.h"
@@ -48,6 +49,9 @@ class StreamSource : public ObservationSource {
   unsigned rawBuffSize;
 
   unsigned maxRawFrames;
+  unsigned rawFloats;              // # of continuous features in raw frames
+  unsigned rawInts;                // # of discrete features in raw frames
+  unsigned numRawFeatures;         // sum of the above
   unsigned currentRawFrames;
   unsigned firstRawFrameNum;
 
@@ -56,7 +60,11 @@ class StreamSource : public ObservationSource {
   unsigned nFeatures;
 
   // low-level stream driver (ASCII, binary)
-  ObservationStream *stream;
+  unsigned nStreams; 
+  ObservationStream **stream;
+
+  Data32 **floatStart;
+  Data32 **intStart;
 
   // transform stack to cook the raw frames with
   Filter *filter;
@@ -82,9 +90,9 @@ class StreamSource : public ObservationSource {
 
  public:
 
-  StreamSource() { }
+  StreamSource();
 
-  StreamSource(ObservationStream *stream, unsigned queueLength, 
+  StreamSource(unsigned nStreams, ObservationStream *stream[], unsigned queueLength, 
 	       Filter *filter = NULL, unsigned startSkip=0); 
 
   ~StreamSource() {
@@ -93,7 +101,7 @@ class StreamSource : public ObservationSource {
     if (stream) delete stream;
   }
 
-  void initialize(ObservationStream *stream, unsigned queueLength, 
+  void initialize(unsigned nStreams, ObservationStream *stream[], unsigned queueLength, 
 		  Filter *filter = NULL, unsigned startSkip=0); 
 
   // Resets queue state for starting a new segment & preloads
@@ -126,8 +134,15 @@ class StreamSource : public ObservationSource {
 
 
   bool EOS() { 
-    assert(stream); 
-    return stream->EOS();
+    assert(stream);
+    bool eos = stream[0]->EOS();
+    for (unsigned i=1; i < nStreams; i+=1) {
+      if (eos != stream[i]->EOS()) {
+	// FIXME - maybe just warn and take min # segments?
+        error("ERROR: StreamSource: streams disagree on number of segments");
+      }
+    }
+    return eos;
   }
 
   

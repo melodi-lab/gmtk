@@ -62,7 +62,16 @@ class ASCIIStream: public ObservationStream {
       warning("WARNING: input ASCIIStream version %s is newer than this implementation's version %s",
 	      version, GMTK_ASC_PROTOCOL_VERSION);
     }
-    // FIXME - read nFloat and nInt from stream?
+    unsigned nCont, nDisc;
+    fscanf(f, "%u %u", &nCont, &nDisc);
+    if (nCont != nFloat) {
+      error("ERROR: ASCIIStream contains %u continuous features, but expected %u",
+	    nCont, nFloat);
+    }
+    if (nDisc != nInt) {
+      error("ERROR: ASCIIStream contains %u discrete features, but expected %u",
+	    nDisc, nInt);
+    }
   }
 
 

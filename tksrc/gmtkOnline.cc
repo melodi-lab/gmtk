@@ -62,8 +62,7 @@
 VCID(HGID)
 
 /*************************   INPUT OBSERVATION STREAM HANDLING  *******************************************/
-#define GMTK_ARG_STREAMING_INPUT
-
+#define GMTK_ARG_STREAM_INPUT
 /*************************   INPUT TRAINABLE PARAMETER FILE HANDLING  *******************************************/
 #define GMTK_ARG_INPUT_TRAINABLE_FILE_HANDLING
 #define GMTK_ARG_CPP_CMD_OPTS
@@ -214,28 +213,29 @@ main(int argc,char*argv[])
 
     FILE *inFile;
 
-    if (strcmp("-", os)) {
-      inFile = fopen(os, binaryInputStream ? "rb" : "r");
+    if (strcmp("-", oss[0])) {
+      inFile = fopen(oss[0], (ifmts[0] == RAWBIN) ? "rb" : "r");
     } else {
       inFile = stdin;
     }
 
     if (!inFile) {
-      error("ERROR: '%s' %s", os, strerror(errno));
+      error("ERROR: '%s' %s", oss[0], strerror(errno));
     }
     
     // FIXME - use StreamSource & support posttrans ?
 
     // FIXME - add -sfr and -sir for feature range selection ?
 
-    if (binaryInputStream) {
-      stream = new BinaryStream(inFile, snf, sni, NULL /* sfr */ , NULL /* sir */, inputNetByteOrder);
+    if (ifmts[0] == RAWBIN) {
+      stream = new BinaryStream(inFile, nfs[0], nis[0], NULL /* sfr */ , NULL /* sir */, inputNetByteOrder[0]);
+    } else if (ifmts[0] == RAWASC) {
+      stream = new  ASCIIStream(inFile, nfs[0], nis[0], NULL /* sfr */ , NULL /* sir */);
     } else {
-      stream = new  ASCIIStream(inFile, snf, sni, NULL /* sfr */ , NULL /* sir */);
+      error("ERROR: -fmt1 must be 'binary' or 'ascii', got '%s'", fmts[0]);
     }
     assert(stream);
-
-  globalObservationMatrix.initialize(stream, 25);
+    globalObservationMatrix.initialize(1, &stream, streamBufferSize);
 
 
 
@@ -475,14 +475,21 @@ main(int argc,char*argv[])
 
   unsigned segNum = 0;
   unsigned frameNum;
-  globalObservationMatrix.preloadFrames(1);
+  // compute min # of frames
+  // startSkip? + max(frames(P'),frames(C'),pastFrames(dlinks)) + 
+  //              \tau * frames(C') + 
+  // endSkip?   + max(frames(C'),frames(E'),future(dlinks))
+  // do P'
   for (; !globalObservationMatrix.EOS(); ) {
+    globalObservationMatrix.preloadFrames(1); // FIXME - min # frames
     for (frameNum = 0; globalObservationMatrix.segmentLength() == 0 || 
 	               frameNum < globalObservationMatrix.segmentLength(); 
+	 // FIXME - frameNum < seg length - frames(E')
 	 frameNum += 1)
     {
-      globalObservationMatrix.enqueueFrames(1);
+      globalObservationMatrix.enqueueFrames(1); // frames(C')
     }
+    // do E'
     printf("Seg %u  %u frames  %u\n", segNum++, frameNum, globalObservationMatrix.segmentLength());
   }
 

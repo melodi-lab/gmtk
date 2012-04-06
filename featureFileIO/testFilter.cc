@@ -85,7 +85,7 @@ main(int argc, char *argv[]) {
 
   FileSource globalObservationMatrix;
   ObservationFile *obsFile[MAX_NUM_OBS_FILES];
-  FilterFile *filteredFile[MAX_NUM_OBS_FILES];
+//  FilterFile *filteredFile[MAX_NUM_OBS_FILES];
 
   unsigned nFiles=0;
   unsigned nCont = 0;
