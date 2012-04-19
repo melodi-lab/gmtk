@@ -27,6 +27,7 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "GMTK_ASCIIStream.h"
 #include "GMTK_BinStream.h"
 #include "GMTK_FileStream.h"
+#include "GMTK_FileSrcStream.h"
 #include "GMTK_StreamSource.h"
 #include "GMTK_FileSource.h"
 #include "GMTK_ASCIIFile.h"
@@ -44,8 +45,8 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 
 #define GMTK_ARG_CPP_CMD_OPTS
 #define GMTK_ARG_OBS_MATRIX_XFORMATION
-#define GMTK_ARG_FILE_RANGE_OPTIONS
-#define GMTK_ARG_START_END_SKIP
+//#define GMTK_ARG_FILE_RANGE_OPTIONS
+//#define GMTK_ARG_START_END_SKIP
 #define GMTK_ARG_HELP
 #define GMTK_ARG_VERSION
 #define GMTK_ARG_STREAM_AND_FILE_INPUT
@@ -123,10 +124,7 @@ sendFeatureCounts(ObservationSource *src, bool binaryOutputStream, bool needOutp
 
 
 ObservationStream * 
-makeFileStream(unsigned ifmts[], char *ofs[], 
-	       unsigned nfs[], unsigned nis[], 
-	       unsigned i, bool iswp[])
-{
+makeFileStream(unsigned ifmts[], unsigned i) {
   ObservationFile *obsFile = 
     instantiateFile(ifmts[i], ofs[i], nfs[i], nis[i], i, iswp[i],
 		    Cpp_If_Ascii, cppCommandOptions, prefrs[i], preirs[i],
@@ -146,10 +144,7 @@ makeFileStream(unsigned ifmts[], char *ofs[],
 
 
 ObservationStream *
-makeStream(unsigned ifmts[], char const *fmts[], char *ofs[], 
-	   unsigned nfs[], unsigned nis[], unsigned i,  
-	   char const *frs[], char const *irs[], bool inputNetByteOrder[])
-{
+makeStream(unsigned ifmts[], unsigned i) {
   FILE *inFile;
   
   if (strcmp("-", oss[i])) {
@@ -170,6 +165,37 @@ makeStream(unsigned ifmts[], char const *fmts[], char *ofs[],
     error("ERROR: -fmt%u must be 'binary' or 'ascii', got '%s'", i, fmts[i]);
   }
   return NULL; // should never reach here
+}
+
+
+ObservationStream *
+makeFileSource(unsigned ifmts[]) {
+  ObservationFile   *obsFile[MAX_NUM_OBS_FILES] = {NULL,NULL,NULL,NULL,NULL};
+  unsigned nFiles = 0;
+  unsigned nCont  = 0;
+  for (unsigned i=0; i < MAX_NUM_OBS_FILES && ofs[i] != NULL; i+=1, nFiles+=1) {
+    obsFile[i] = instantiateFile(ifmts[i], ofs[i], nfs[i], nis[i], i, iswp[i],
+				 Cpp_If_Ascii, cppCommandOptions, prefrs[i], preirs[i],
+				 prepr[i], sr[i]);
+    assert(obsFile[i]);
+    Filter *fileFilter = instantiateFilters(Per_Stream_Transforms[i],
+					    obsFile[i]->numContinuous());
+    if (fileFilter) {
+      obsFile[i] = new FilterFile(fileFilter, obsFile[i], frs[i], irs[i], postpr[i]);
+      nCont += obsFile[i]->numContinuous();
+    } else
+      error("current implementation requires filter\n");
+  }
+  if (nFiles == 0) {
+    error("ERROR: no input files specified");
+  }
+  FileSource *fileSrc = new FileSource();
+  fileSrc->initialize(nFiles, obsFile, 1024*1024 /* FIXME */,
+		      Action_If_Diff_Num_Sents,
+		      Action_If_Diff_Num_Frames,
+		      gpr_str, 0 /*startSkip*/, 0 /*endSkip*/,
+		      instantiateFilters(Post_Transforms, nCont));
+  return new FileSrcStream(fileSrc);
 }
 
 
@@ -209,18 +235,32 @@ main(int argc, char *argv[]) {
   }
   
   ObservationStream *obsStream[MAX_NUM_OBS_STREAMS] = {NULL,NULL,NULL,NULL,NULL};
-  unsigned nStreams = 0;
-  for (unsigned i=0; i < MAX_NUM_OBS_STREAMS && (ofs[i] || oss[i]); i+=1) {
-    
-    if (ofs[i]) {
-      obsStream[i] = makeFileStream(ifmts, ofs, nfs, nis, i, iswp);
-    } else if (oss[i]) {
-      obsStream[i] = makeStream(ifmts, fmts, ofs, nfs, nis, i, frs, irs, inputNetByteOrder);
-    } else {
-      error("ERROR: no input stream or file specified for -os%u or -of%u", i,i);
+  unsigned           nStreams = 0;
+
+  // If there are only files, we'll use a FileSrcStream wrapper around
+  // a FileSource so that we can do -fdiffact etc. Otherwise, we wrap
+  // FileStreams around the individual ObservationFiles.
+ 
+  bool allFiles = true;
+  for (unsigned i=0; i < MAX_NUM_OBS_STREAMS; i+=1) {
+    allFiles = allFiles && (oss[i] == NULL);
+  }
+  if (allFiles) {
+    obsStream[0] = makeFileSource(ifmts);
+    assert(obsStream[0]);
+    nStreams = 1;
+  } else {
+    for (unsigned i=0; i < MAX_NUM_OBS_STREAMS && (ofs[i] || oss[i]); i+=1) {
+      if (ofs[i]) {
+	obsStream[i] = makeFileStream(ifmts, i);
+      } else if (oss[i]) {
+	obsStream[i] = makeStream(ifmts, i);
+      } else {
+	error("ERROR: no input stream or file specified for -os%u or -of%u", i,i);
+      }
+      assert(obsStream[i]);
+      nStreams += 1;
     }
-    assert(obsStream[i]);
-    nStreams += 1;
   }
   if (nStreams == 0) {
     error("ERROR: no input sources specified (use -ofX or -osX)");
@@ -236,6 +276,9 @@ main(int argc, char *argv[]) {
     source->preloadFrames(1);
     for (frmNum=0; source->segmentLength() == 0 || frmNum < source->segmentLength(); frmNum += 1) {
       frame = source->loadFrames(frmNum, 1);
+      if (!frame) {
+	error("ERROR: incomplete segment");
+      }
       if (source->segmentLength() != 0 && frmNum >= source->segmentLength()) {
 	assert(frame == NULL);
 	continue;

@@ -237,12 +237,15 @@ endif
 check_PROGRAMS =  \
 testPackCliqueValue \
 testViterbi \
-neghead
+neghead \
+dlinktest
 
 # testMDCPT testMTCPT
 #testRngDecisionTree testGMParms testFileParser lex.yy
 # testHash testHashTree?
 
+
+dlinktest_SOURCES = dlinktest.cc
 
 testViterbi_SOURCES = testViterbi.ll
 

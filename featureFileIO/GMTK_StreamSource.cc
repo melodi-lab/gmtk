@@ -208,7 +208,7 @@ StreamSource::enqueueFrames(unsigned nFrames) {
 
 unsigned
 StreamSource::cookFrames(Data32 *destination, unsigned first, unsigned count) {
-  subMatrixDescriptor *requiredRaw;
+  subMatrixDescriptor *requiredRaw = NULL;
   if (filter) {
     // which raw frames should we cook?
     requiredRaw = filter->getRequiredInput(first, count, nFloat, nInt, 0);

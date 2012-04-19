@@ -74,6 +74,9 @@ class StreamSource : public ObservationSource {
   unsigned _startSkip;
   // FIXME - add endSkip, probably to base class?
 
+  unsigned _minPastFrames;
+  unsigned _minFutureFrames;
+
   // Try to append count cooked frames starting from cooked frame
   // # first to destination. 
   // Returns # of frames actually appended. May be short if 
@@ -178,6 +181,11 @@ class StreamSource : public ObservationSource {
 
   // number of frames to skip at the beginning
   unsigned startSkip() {return _startSkip;};
+
+  unsigned minPastFrames() {return _minPastFrames;}
+  unsigned minFutureFrames() {return _minFutureFrames;}
+  void setMinPastFrames(unsigned n) {_minPastFrames = n;}
+  void setMinFutureFrames(unsigned n) {_minFutureFrames = n;}
 
   float *const floatVecAtFrame(unsigned f) {return NULL;}
 

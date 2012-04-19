@@ -63,7 +63,9 @@ class ASCIIStream: public ObservationStream {
 	      version, GMTK_ASC_PROTOCOL_VERSION);
     }
     unsigned nCont, nDisc;
-    fscanf(f, "%u %u", &nCont, &nDisc);
+    if (fscanf(f, "%u %u", &nCont, &nDisc) != 2) {
+      error("ERROR: ASCIIStream failed to read the number of continuous and discreate features");
+    }
     if (nCont != nFloat) {
       error("ERROR: ASCIIStream contains %u continuous features, but expected %u",
 	    nCont, nFloat);

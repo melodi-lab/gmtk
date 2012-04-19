@@ -56,6 +56,8 @@ public:
     Unrolling,
     Printing,
     ModelInfo,
+    ObsFile,
+    ObsStream,
     ModuleCount  // must always be the last enum element
   };
 

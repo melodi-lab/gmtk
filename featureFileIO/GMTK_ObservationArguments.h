@@ -201,6 +201,8 @@ extern bool ObservationsAllowNan;
    // per stream frame range string after per-stream transformations are applied
    char *postpr[MAX_NUM_OBS_STREAMS] = {NULL,NULL,NULL,NULL,NULL};   
    char *gpr_str                   = NULL;   // global final frame range string
+   const char *justification_str         = "left";
+   unsigned justification;
 
 #ifdef INTV_WORDS_BIGENDIAN
    bool iswp[MAX_NUM_OBS_STREAMS] = {true,true,true,true,true};
@@ -230,6 +232,8 @@ extern bool ObservationsAllowNan;
   Arg("sr",  Arg::Opt,sr,"Sentence range for observation file X",Arg::ARRAY,MAX_NUM_OBS_STREAMS),
   Arg("prepr", Arg::Opt, prepr,"Pre Per-segment frame Range for obs file X before any transforms are applied",Arg::ARRAY,MAX_NUM_OBS_STREAMS),
   Arg("postpr",Arg::Opt, postpr,"Post Per-segment frame Range for obs file X after per-stream transforms are applied",Arg::ARRAY,MAX_NUM_OBS_STREAMS),
+  Arg("gpr",   Arg::Opt, gpr_str,"Global Per-segment final frame Range"),
+  Arg("justification", Arg::Opt, justification_str, "Justification of usable frames (left, center, right)"),
   Arg("obsNAN",   Arg::Opt, ObservationsAllowNan," True if observation files allow FP NAN values"),
 
 
@@ -266,21 +270,12 @@ extern bool ObservationsAllowNan;
       // FIXME - check don't specify inputNetByteOrder[i]
       // FIXME - check don't specify binaryInputStream[i]
 
-      if (strcmp(fmts[i],"htk") == 0)
-	ifmts[i] = HTK;
-      else if (strcmp(fmts[i],"binary") == 0)
-	ifmts[i] = RAWBIN;
-      else if (strcmp(fmts[i],"ascii") == 0)
-	ifmts[i] = RAWASC;
-      else if (strcmp(fmts[i],"flatascii") == 0)
-	ifmts[i] = FLATASC;
-      else if (strcmp(fmts[i], "hdf5") == 0) 
-	ifmts[i] = HDF5;
-      else if (strcmp(fmts[i],"pfile") == 0)
-	ifmts[i] = PFILE;
-      else
+      int fmtNum = formatStrToNumber(fmts[i]);
+      if (fmtNum < 0) {
+	ifmts[i] = fmtNum;
+      } else {
 	error("%s: Unknown observation file format type '%s' for -of%u\n",argerr,fmts[i],i);
-
+      }
     } else {
       // FIXME - check don't specify iswp[i]
       
@@ -349,6 +344,16 @@ extern bool ObservationsAllowNan;
     nfiles += (ofs[i] != NULL || oss[i] != NULL);
   }
 
+  if (strcmp(justification_str, "left") == 0) {
+    justification = FRAMEJUSTIFICATION_LEFT;
+  } else if (strcmp(justification_str, "center") == 0) {
+    justification = FRAMEJUSTIFICATION_CENTER;
+  } else if (strcmp(justification_str, "right") == 0) {
+    justification = FRAMEJUSTIFICATION_RIGHT;
+  } else {
+    error("%s: must specify 'left', 'center', or 'right' for -justification",argerr);
+  }
+
 
 #else
 #endif
@@ -413,6 +418,8 @@ extern bool ObservationsAllowNan;
    // per stream frame range string after per-stream transformations are applied
    char *postpr[MAX_NUM_OBS_FILES] = {NULL,NULL,NULL,NULL,NULL};   
    char *gpr_str                   = NULL;   // global final frame range string
+   const char *justification_str         = "left";
+   unsigned justification;
 
 #ifdef INTV_WORDS_BIGENDIAN
    bool iswp[MAX_NUM_OBS_FILES] = {true,true,true,true,true};
@@ -440,6 +447,7 @@ extern bool ObservationsAllowNan;
   Arg("prepr", Arg::Opt, prepr,"Pre Per-segment frame Range for obs file X before any transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("postpr",Arg::Opt, postpr,"Post Per-segment frame Range for obs file X after per-stream transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("gpr",   Arg::Opt, gpr_str,"Global Per-segment final frame Range"),
+  Arg("justification", Arg::Opt, justification_str, "Justification of usable frames (left, center, right)"),
   Arg("obsNAN",   Arg::Opt, ObservationsAllowNan," True if observation files allow FP NAN values"),
 
 
@@ -510,6 +518,15 @@ extern bool ObservationsAllowNan;
     nfiles += (ofs[i] != NULL);
   }
 
+  if (strcmp(justification_str, "left") == 0) {
+    justification = FRAMEJUSTIFICATION_LEFT;
+  } else if (strcmp(justification_str, "center") == 0) {
+    justification = FRAMEJUSTIFICATION_CENTER;
+  } else if (strcmp(justification_str, "right") == 0) {
+    justification = FRAMEJUSTIFICATION_RIGHT;
+  } else {
+    error("%s: must specify 'left', 'center', or 'right' for -justification",argerr);
+  }
 
 #else
 #endif
@@ -619,6 +636,7 @@ extern bool ObservationsAllowNan;
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
+  Arg("\n*** Help options ***\n"),
   Arg("help",  Arg::Help, help,  "Print this message. Add an argument from 1 to 5 for increasing help info."),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)

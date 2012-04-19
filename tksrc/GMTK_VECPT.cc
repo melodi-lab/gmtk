@@ -100,8 +100,10 @@ sentRange:all
 #if 0
 #  include "GMTK_ObservationMatrix.h"
 #else
+#  include "GMTK_Filter.h"
+#  include "GMTK_FilterFile.h"
+#  include "GMTK_ObservationFile.h"
 #  include "GMTK_FileSource.h"
-#  include "GMTK_ASCIIFile.h"
 #endif
 
 VCID("$Header$")
@@ -466,9 +468,23 @@ VECPT::read(iDataStreamFile& is)
 		    );
 #else
       assert(fmt=="ascii");
+      int ifmt = formatStrToNumber(fmt.c_str());
+      if (ifmt < 0) {
+	string error_message;
+	stringprintf(error_message,"unknown file format '%s' for VE CPT", fmt.c_str());
+	throw(error_message);
+      }
       ObservationFile *obsFile = 
-	new ASCIIFile(obsFileName.c_str(), nfs, nis, 0, false, NULL);
-      obs = new FileSource(1, &obsFile);
+	instantiateFile((unsigned)ifmt, (char *)obsFileName.c_str(), nfs, nis,
+			0, iswp, false, NULL, NULL, NULL, NULL,	sentRange);
+
+      Filter *preFilt = instantiateFilters(preTransforms, obsFile->numContinuous());
+      obsFile = new FilterFile(preFilt, obsFile, frs.c_str(), irs.c_str(), pr_rs);
+      assert(obsFile);
+      Filter *postTrans = instantiateFilters(postTransforms, obsFile->numContinuous());
+      obs = new FileSource(1, &obsFile, DEFAULT_BUFFER_SIZE, NULL, NULL, NULL, 
+			   globalObservationMatrix.startSkip(), 
+			   globalObservationMatrix.endSkip(), postTrans, 0);
 #endif
 
       // still here? Do more error checking.

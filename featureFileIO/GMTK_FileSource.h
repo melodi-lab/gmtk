@@ -53,17 +53,33 @@ class FileSource: public ObservationSource {
   char const *globalFrameRangeStr; // -gpr
   Range *globalFrameRange;
 
+  // Justification
+  int justificationMode;
+  unsigned justificationOffset;
+
   // number of frames to skip at the beginning
   unsigned _startSkip;
   unsigned _endSkip;
+
+  unsigned _minPastFrames;
+  unsigned _minFutureFrames;
 
   unsigned const *sdiffact;   // how to adjust for files w/ different # of segs
   unsigned const *fdiffact;   //  ... frames
   unsigned _numSegments;      // after considering -sdiffactX
   int segment;
 
-  unsigned _numInputFrames;   // after considering -fdiffactX only
-  unsigned _numFrames;        // after -fdiffactX and -gpr
+  unsigned _numCacheableFrames;   // after considering -fdiffactX  & -gpr only
+                                  // This is the # of frames that can be cached
+  
+  unsigned _numFrames;        // after -fdiffactX, -gpr, -startSkip, -endSkip
+                              // This is the # of frames actually accessible to clients
+
+  // _numFrames <= _numCacheableFrames.  _numFrames will be less when -startSkip
+  // or -endSkip reserve some frames at the start or end of each segment. These 
+  // reserved frames (for dlinks, VECPTs) must be present in the cache when the first
+  // or last several frames are accessed, but are not directly accessable to
+  // clients via loadFrames(), floatVecAtFrame(), etc.
 
   int _numContinuous;         // # of continuous & discrete features after -posttrans
   int _numDiscrete;           //   these are computed once if -1 then cached
@@ -91,7 +107,7 @@ class FileSource: public ObservationSource {
 	     unsigned const *sdiffact = NULL, 
 	     unsigned const *fdiffact = NULL,
 	     unsigned startSkip=0, unsigned endSkip=0,
-	     Filter *posttrans = NULL); 
+	     Filter *posttrans = NULL, int justificationMode=0); 
 
   FileSource() {
     cookedBuffer = NULL;
@@ -106,6 +122,8 @@ class FileSource: public ObservationSource {
     _endSkip = 0;
     segment = -1;
     filter = NULL;
+    justificationMode = 0;
+    justificationOffset = 0;
   }
 
   // FIXME - dtor
@@ -116,7 +134,7 @@ class FileSource: public ObservationSource {
 		  unsigned const *fdiffact = NULL,
 		  char const *globalFrameRangeStr = NULL, 
 		  unsigned startSkip=0, unsigned endSkip=0,
-		  Filter *posttrans = NULL);
+		  Filter *posttrans = NULL, int justificationMode = 0);
 
   // The number of available segments.
   unsigned numSegments() { return _numSegments; }
@@ -131,7 +149,12 @@ class FileSource: public ObservationSource {
   // Must be called before any other operations are performed on a segment.
   bool openSegment(unsigned seg);
 
-  // The number of frames in the currently open segment.
+  // Apply left, center, or right justification to the usable frames
+  // in the current segment. numUsableFrames must be <= _numFrames
+  // prior to calling justifySegment. After the call, _numFrames = numUsableFrames
+  void justifySegment(unsigned numUsableFrames);
+
+  // The number of frames available in the currently open segment.
   unsigned numFrames() {
     assert(segment >= 0);
     return _numFrames;
@@ -158,6 +181,11 @@ class FileSource: public ObservationSource {
   unsigned startSkip() {return _startSkip;};
   // number of frames to skip at the end
   unsigned endSkip() {return _endSkip;} 
+
+  unsigned minPastFrames() {return _minPastFrames;}
+  unsigned minFutureFrames() {return _minFutureFrames;}
+  void setMinPastFrames(unsigned n) {_minPastFrames = n;}
+  void setMinFutureFrames(unsigned n) {_minFutureFrames = n;}
 
   float *const floatVecAtFrame(unsigned f);
 
