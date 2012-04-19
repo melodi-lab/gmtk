@@ -58,6 +58,14 @@ class ObservationSource {
   // The number of Data32's between each frame
   virtual unsigned stride() = 0;
 
+  // If frames [i,j] are loaded with loadFrames() or floatVecAtFrame() 
+  // (in the latter case, i=j), ensure that [i-minPastFrames, j+minFutureFrames]
+  // are present in the frame cache
+  virtual unsigned minPastFrames() = 0;
+  virtual unsigned minFutureFrames() = 0;
+  virtual void setMinPastFrames(unsigned n) = 0;
+  virtual void setMinFutureFrames(unsigned n) = 0;
+
   // number of frames to skip at the beginning
   virtual unsigned startSkip() = 0;
   // can't use endSkip() in streams since length is unkown?

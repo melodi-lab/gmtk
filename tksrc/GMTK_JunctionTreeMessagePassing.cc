@@ -45,6 +45,11 @@
 #include "GMTK_JunctionTree.h"
 #include "GMTK_GMParms.h"
 
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_FileSource.h"
+#endif
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -2073,6 +2078,7 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
   unsigned totalNumberPartitions;
   {
     unsigned tmp = unroll(numFrames,ZeroTable,&totalNumberPartitions);
+    globalObservationMatrix.justifySegment(tmp);
     if (numUsableFrames) 
       *numUsableFrames = tmp;
     // limit scope of tmp.

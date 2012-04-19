@@ -17,6 +17,7 @@
 
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
 
 #include "GMTK_ObservationFile.h"
 
@@ -182,3 +183,22 @@ instantiateFile(unsigned ifmt, char *ofs, unsigned nfs, unsigned nis,
   }
   return obsFile;
 }
+
+
+int
+formatStrToNumber(char const *fmt) {
+  if      (strcmp(fmt,"htk") == 0)
+    return HTK;
+  else if (strcmp(fmt,"binary") == 0)
+    return RAWBIN;
+  else if (strcmp(fmt,"ascii") == 0)
+    return RAWASC;
+  else if (strcmp(fmt,"flatascii") == 0)
+    return FLATASC;
+  else if (strcmp(fmt,"hdf5") == 0) 
+    return HDF5;
+  else if (strcmp(fmt,"pfile") == 0)
+    return PFILE;
+  return -1;
+}
+

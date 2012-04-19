@@ -15,7 +15,7 @@ unsigned IM::globalMessageLevel = IM::Nano;
 bool IM::globalFlush = true;
 unsigned IM::globalModuleLevel[(unsigned)ModuleCount] = {};
 const char*IM::moduleString[(unsigned)ModuleCount] = 
-  {"default","inference","inference-memory", "training", "triangulation","boundary","unrolling","printing","modelinfo"};
+  {"default","inference","inference-memory", "training", "triangulation","boundary","unrolling","printing","modelinfo","obsfile","obsstream"};
 
 #ifdef MAIN
 

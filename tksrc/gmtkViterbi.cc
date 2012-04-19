@@ -287,7 +287,7 @@ main(int argc,char*argv[])
   }
   globalObservationMatrix.initialize(nFiles, obsFile, 1024*1024 /* FIXME */,Action_If_Diff_Num_Sents,
 				     Action_If_Diff_Num_Frames, gpr_str,  startSkip, endSkip, 
-				     instantiateFilters(Post_Transforms, nCont));
+				     instantiateFilters(Post_Transforms, nCont), justification);
 #endif
 
 
