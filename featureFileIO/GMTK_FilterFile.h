@@ -102,7 +102,9 @@ class FilterFile: public ObservationFile {
 #if 1
     Data32 const *inputData =
       file->getLogicalFrames(inputDesc->firstFrame, inputDesc->numFrames);
-    return filter->transform(inputData, *inputDesc);
+    Data32 const *result = filter->transform(inputData, *inputDesc);
+    subMatrixDescriptor::freeSMD(inputDesc);
+    return result;
 #else
     Data32 const *inputData =
       file->getLogicalFrames(inputDesc->firstFrame, inputDesc->numFrames);

@@ -528,7 +528,7 @@ for (unsigned frm=0; frm < count; frm+=1) {
 #endif
   if (filter) {
     Data32 const *result = filter->transform(cookedBuffer+buffOffset, *inputDesc);
-    delete inputDesc;
+    subMatrixDescriptor::freeSMD(inputDesc);
     if (result != cookedBuffer + buffOffset) {
       memcpy(cookedBuffer + buffOffset, result, count * bufStride * sizeof(Data32));
     }
@@ -661,7 +661,7 @@ for (unsigned frm=0; frm < preCount; frm+=1) {
     if (first - _minPastFrames - firstBufferedFrame <= delta && firstBufferedFrame > 0) {  // prefetch backward?
       preFirst = firstBufferedFrame > window ? firstBufferedFrame - window : 0;
       preCount = firstBufferedFrame - preFirst;
-      if (numBufferedFrames + preCount < bufferFrames) { // do prefetch
+      if (firstBufferedFrameIndex + numBufferedFrames + preCount < bufferFrames) { // do prefetch
 	firstBufferedFrame = preFirst;
 	firstBufferedFrameIndex -= preCount;
 #if 0
@@ -678,8 +678,9 @@ warning("CACHE HIT< [%u,%u)  cached [%u,%u)", first,first+count, firstBufferedFr
 	firstBufferedFrame + numBufferedFrames < _numCacheableFrames) 
     {  // prefetch forward?
       preFirst = firstBufferedFrame + numBufferedFrames;
-      preCount = firstBufferedFrame + numBufferedFrames + window < _numFrames ? window : _numCacheableFrames - preFirst;
-      if (numBufferedFrames + preCount < bufferFrames) { // do prefetch
+      preCount = firstBufferedFrame + numBufferedFrames + window < _numCacheableFrames ? window : _numCacheableFrames - preFirst;
+      if (firstBufferedFrameIndex + numBufferedFrames + preCount < bufferFrames) { // do prefetch
+	// FIXME - does the above need a -1 ?
 #if 0
 warning("PREFETCH > [%u,%u)", preFirst, preFirst+preCount);
 #endif
