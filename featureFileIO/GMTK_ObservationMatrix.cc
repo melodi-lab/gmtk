@@ -1934,7 +1934,7 @@ size_t ObservationMatrix::openAsciiFile(StreamInfo *f,size_t sentno) {
 	 }
        }
        	 DBGFPRINTF((stderr,"\n"));
-       fclose(f->curDataFile);
+       pclose(f->curDataFile);
        f->curDataFile = ::popen(cppCommand.c_str(),"r");
      }
      else {
