@@ -29,6 +29,8 @@
 #include "GMTK_FIRFilter.h"
 #include "GMTK_AffineFilter.h"
 
+subMatrixDescriptor *subMatrixDescriptor::freeList = NULL;
+
 static long parse_long(const char*const s) {
     size_t len = strlen(s);
     char *ptr;

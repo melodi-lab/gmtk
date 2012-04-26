@@ -25,7 +25,9 @@
 
 // Packages up the "shape" of a section of an observation matrix.
 class subMatrixDescriptor {
+
  public:
+
   unsigned firstFrame;            // frame sub-matrix starts at
   unsigned numFrames;             // # frames in sub-matrix
   unsigned historyFrames;         // # frames just there for history
@@ -34,6 +36,49 @@ class subMatrixDescriptor {
   unsigned numDiscrete;
   unsigned fullMatrixFrameCount;  // # frames in full matrix
   subMatrixDescriptor *next;
+
+  static subMatrixDescriptor *freeList;
+
+  static subMatrixDescriptor *
+  getSMD() {
+    subMatrixDescriptor *result;
+    if (freeList) {
+      result = freeList;
+      freeList = freeList->next;
+      result->next = NULL;
+    } else {
+      result = new subMatrixDescriptor();
+    }
+    assert(result);
+    return result;
+  }
+
+  static subMatrixDescriptor *
+  getSMD(unsigned firstFrame, unsigned numFrames,
+	 unsigned historyFrames, unsigned futureFrames,
+	 unsigned numContinuous, unsigned numDiscrete,
+	 unsigned fullMatrixFrameCount, 
+	 subMatrixDescriptor *next = NULL)
+  {
+    subMatrixDescriptor *result  = getSMD();
+    result->firstFrame           = firstFrame;
+    result->numFrames            = numFrames;
+    result->historyFrames        = historyFrames;
+    result->futureFrames         = futureFrames;
+    result->numContinuous        = numContinuous;
+    result->numDiscrete          = numDiscrete;
+    result->fullMatrixFrameCount = fullMatrixFrameCount;
+    result->next                 = next;
+    return result;
+  }
+
+  static void freeSMD(subMatrixDescriptor *&p) {
+    if (p->next) freeSMD(p->next);
+    p->next  = freeList;
+    freeList = p;
+    p = NULL;
+  }
+
 
   subMatrixDescriptor() {next = NULL;}
 
@@ -55,6 +100,11 @@ class subMatrixDescriptor {
       delete next;
     }
   }
+
+  ~subMatrixDescriptor() {
+    deallocate();
+  }
+
 }; 
 
 
@@ -127,8 +177,8 @@ class Filter {
     required.numDiscrete   = inputDiscrete;
     required.fullMatrixFrameCount = inputTotalFrames;
 #endif
-    return new subMatrixDescriptor(first, count, 0, 0, inputContinuous, 
-				   inputDiscrete, inputTotalFrames, nextFilterInput);
+    return subMatrixDescriptor::getSMD(first, count, 0, 0, inputContinuous, 
+		  inputDiscrete, inputTotalFrames, nextFilterInput);
   }
  
 
