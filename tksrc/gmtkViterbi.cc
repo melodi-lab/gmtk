@@ -287,7 +287,7 @@ main(int argc,char*argv[])
   }
   globalObservationMatrix.initialize(nFiles, obsFile, 1024*1024 /* FIXME */,Action_If_Diff_Num_Sents,
 				     Action_If_Diff_Num_Frames, gpr_str,  startSkip, endSkip, 
-				     instantiateFilters(Post_Transforms, nCont), justification);
+				     instantiateFilters(Post_Transforms, nCont), justification, Ftr_Combo);
 #endif
 
 
@@ -379,6 +379,16 @@ main(int argc,char*argv[])
 				     gm_template.chunkSkip(),1.0);
     triangulator.ensurePartitionsAreChordal(gm_template);
   }
+
+  //  printf("Dlinks: min lag %d    max lag %d\n", Dlinks::globalMinLag(), Dlinks::globalMaxLag());
+  // FIXME - min past = min(dlinkPast, VECPTPast), likewise for future
+  int dlinkPast = Dlinks::globalMinLag();
+  dlinkPast = (dlinkPast < 0) ? -dlinkPast : 0;
+  globalObservationMatrix.setMinPastFrames( dlinkPast );
+  
+  int dlinkFuture = Dlinks::globalMaxLag();
+  dlinkFuture = (dlinkFuture > 0) ? dlinkFuture : 0;
+  globalObservationMatrix.setMinFutureFrames( dlinkFuture );
 
 
   ////////////////////////////////////////////////////////////////////

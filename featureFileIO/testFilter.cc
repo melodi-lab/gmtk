@@ -107,7 +107,8 @@ main(int argc, char *argv[]) {
 				     Action_If_Diff_Num_Sents,
 				     Action_If_Diff_Num_Frames,
 				     gpr_str, startSkip, endSkip,
-				     instantiateFilters(Post_Transforms, nCont));
+				     instantiateFilters(Post_Transforms, nCont),
+				     justification, Ftr_Combo);
   FileSource *f = &globalObservationMatrix;
   for (unsigned j=0; j < f->numSegments(); j+=1) {
     assert(f->openSegment(j));

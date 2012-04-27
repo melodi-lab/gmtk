@@ -60,6 +60,8 @@ class FileSource: public ObservationSource {
   // number of frames to skip at the beginning
   unsigned _startSkip;
   unsigned _endSkip;
+  
+  int ftrcombo;
 
   unsigned _minPastFrames;
   unsigned _minFutureFrames;
@@ -107,7 +109,7 @@ class FileSource: public ObservationSource {
 	     unsigned const *sdiffact = NULL, 
 	     unsigned const *fdiffact = NULL,
 	     unsigned startSkip=0, unsigned endSkip=0,
-	     Filter *posttrans = NULL, int justificationMode=0); 
+	     Filter *posttrans = NULL, int justificationMode=0, int ftrcombo=FTROP_NONE); 
 
   FileSource() {
     cookedBuffer = NULL;
@@ -124,6 +126,9 @@ class FileSource: public ObservationSource {
     filter = NULL;
     justificationMode = 0;
     justificationOffset = 0;
+    ftrcombo = FTROP_NONE;
+    _minPastFrames = 0;
+    _minFutureFrames = 0;
   }
 
   // FIXME - dtor
@@ -134,7 +139,7 @@ class FileSource: public ObservationSource {
 		  unsigned const *fdiffact = NULL,
 		  char const *globalFrameRangeStr = NULL, 
 		  unsigned startSkip=0, unsigned endSkip=0,
-		  Filter *posttrans = NULL, int justificationMode = 0);
+		  Filter *posttrans = NULL, int justificationMode = 0, int ftrcombo=FTROP_NONE);
 
   // The number of available segments.
   unsigned numSegments() { return _numSegments; }

@@ -39,13 +39,14 @@ FileSource::FileSource(unsigned _nFiles, ObservationFile *file[],
 		       char const *_globalFrameRangeStr, 
 		       unsigned const *sdiffact, unsigned const *fdiffact,
 		       unsigned startSkip, unsigned endSkip,
-		       Filter *posttrans, int justificationMode) 
+		       Filter *posttrans, int justificationMode, int ftrcombo) 
 {
   initialize(_nFiles, file, bufferSize, sdiffact, fdiffact, 
-	     _globalFrameRangeStr, startSkip, endSkip, posttrans, justificationMode);
+	     _globalFrameRangeStr, startSkip, endSkip, posttrans, justificationMode, ftrcombo);
 }
 
 
+#if 0
 static
 void
 dumpFrames(Data32 *buf, unsigned nFloat, unsigned nInt,
@@ -64,7 +65,7 @@ dumpFrames(Data32 *buf, unsigned nFloat, unsigned nInt,
     printf("\n");
   }
 }
-
+#endif
     
 static
 unsigned
@@ -183,16 +184,16 @@ checkNumFrames(unsigned nFiles, ObservationFile *file[],
     unsigned len=file[file_no]->numLogicalFrames();
     if( got_expand && len < max_len && !EXPANSIVE(fdiffact,file_no) ) {
       // FIXME - filenames... match error messages
-      error("ERROR: observation file %u needs an -fdiffact%u that expands\n", file_no, file_no);
+      error("ERROR: observation file %u needs an -fdiffact%u that expands\n", file_no+1, file_no+1);
     }
     if ( got_truncate && len > min_len && !CONTRACTIVE(fdiffact,file_no) ) {
-      error("ERROR: observation file %u needs an -fdiffact%u that truncates\n", file_no, file_no);
+      error("ERROR: observation file %u needs an -fdiffact%u that truncates\n", file_no+1, file_no+1);
     }
     if (!fdiffact || fdiffact[file_no] == FRAMEMATCH_ERROR) {
       if (got_truncate && len != min_len) {
-	error("ERROR: observation file %u needs an -fdiffact%u that truncates\n", file_no, file_no);
+	error("ERROR: observation file %u needs an -fdiffact%u that truncates\n", file_no+1, file_no+1);
       } else if (len != max_len) {
-	error("ERROR: observation file %u needs an -fdiffact%u that expands\n", file_no, file_no);
+	error("ERROR: observation file %u needs an -fdiffact%u that expands\n", file_no+1, file_no+1);
       }
     }
   }
@@ -218,7 +219,7 @@ FileSource::initialize(unsigned nFiles, ObservationFile *file[],
 		       unsigned const *sdiffact, unsigned const *fdiffact,
 		       char const *globalFrameRangeStr, 
 		       unsigned startSkip, unsigned endSkip,
-		       Filter *posttrans, int justificationMode) 
+		       Filter *posttrans, int justificationMode, int ftrcombo) 
 {
   assert(file);
   assert(nFiles);
@@ -228,11 +229,14 @@ FileSource::initialize(unsigned nFiles, ObservationFile *file[],
   this->globalFrameRange = NULL;
   this->_startSkip = startSkip;
   this->_endSkip = endSkip;
+  this->ftrcombo = ftrcombo;
   this->sdiffact = sdiffact;
   this->fdiffact = fdiffact;
   this->filter = posttrans;
   this->justificationMode = justificationMode;
   justificationOffset = 0;
+  _minPastFrames = 0;
+  _minFutureFrames = 0;
   this->file = new ObservationFile *[nFiles];
   for (unsigned i=0; i < nFiles; i+=1) {
     assert(file[i]);
@@ -254,10 +258,17 @@ FileSource::initialize(unsigned nFiles, ObservationFile *file[],
   //  no it shouldn't - ObservationFile base class does naive feature subranges, subclasses
   //  can over-ride the *Logical* methods if they can do better
   unsigned offset = 0;
+  unsigned maxFloats = 0;
   for (unsigned i=0; i < nFiles; i+=1) {
     floatStart[i] = cookedBuffer + offset;
-    offset += file[i]->numLogicalContinuous();
+    unsigned nlc = file[i]->numLogicalContinuous();
+    if (ftrcombo == FTROP_NONE) offset += nlc;
+    if (maxFloats < nlc) maxFloats = nlc;
   }
+  if (ftrcombo != FTROP_NONE) {
+    offset = maxFloats;
+  }
+
   for (unsigned i=0; i < nFiles; i+=1) {
     intStart[i] = cookedBuffer + offset;
     offset += file[i]->numLogicalDiscrete();
@@ -312,7 +323,9 @@ FileSource::openSegment(unsigned seg) {
   this->segment = seg;
 
   unsigned numInputFrames = checkNumFrames(nFiles, file, fdiffact);
+#ifndef JEFFS_STRICT_DEBUG_OUTPUT_TEST
   infoMsg(IM::ObsFile,IM::Low,"%u input frames in segment %d\n", numInputFrames, seg);
+#endif
   if (globalFrameRange) delete globalFrameRange;
   // FIXME - max should be fdiffact-aware
   // note that -posttrans is not allowed to alter the # of frames
@@ -377,14 +390,40 @@ repCount(unsigned frameNum, unsigned const *fdiffact, unsigned fileNum,
     return firstFrame >= segLength  ?
       frameCount  :  frameCount - (segLength - firstFrame) + 1;
   } else if (fdiffact[fileNum] == FRAMEMATCH_EXPAND_SEGMENTALLY) {
+
     unsigned frameReps = (segLength + deltaT) / segLength;
     unsigned remainder = (segLength + deltaT) % segLength;
-    if (frameNum < remainder) {
-      firstFrame -= frameNum * (frameReps + 1);
-      return frameCount > frameReps + 1  - firstFrame ?  frameReps + 1 - firstFrame  :  frameCount;
+
+    unsigned preExpFirst = (firstFrame < remainder * (frameReps+1)) ? 
+      (firstFrame / (frameReps+1)) : 
+      (remainder + (firstFrame - remainder * (frameReps + 1)) / frameReps);
+
+    unsigned postExpLast = firstFrame + frameCount - 1;
+    unsigned preExpLast = (postExpLast < remainder * (frameReps+1)) ? 
+      (postExpLast / (frameReps+1)) : 
+      (remainder + (postExpLast - remainder * (frameReps + 1)) / frameReps);
+
+    assert(preExpFirst <= frameNum && frameNum <= preExpLast);
+
+    if (preExpFirst == preExpLast) return frameCount;
+
+    unsigned runLength = (frameNum < remainder) ?  frameReps + 1  :  frameReps;
+
+    if (frameNum == preExpFirst) {
+      if (firstFrame < remainder * (frameReps + 1)) 
+	firstFrame -=  remainder * (frameReps + 1);
+      unsigned positionInRun = firstFrame % runLength;
+      return runLength - positionInRun;
     }
-    firstFrame -= remainder * (frameReps + 1) + (frameNum - remainder) * frameReps;
-    return frameCount > frameReps + 1  - firstFrame ?  frameReps + 1 - firstFrame  :  frameCount;
+
+    if (frameNum == preExpLast) {
+      if (postExpLast < remainder * (frameReps + 1)) 
+	postExpLast -=  remainder * (frameReps + 1);
+      unsigned positionInRun = postExpLast % runLength;
+      return 1 + positionInRun;
+    }
+
+    return runLength;
   }
   return 1;
 }
@@ -404,6 +443,8 @@ FileSource::loadFrames(unsigned bufferIndex, unsigned first, unsigned count) {
   
   unsigned buffOffset = bufferIndex * bufStride;
 
+  memset(cookedBuffer+buffOffset, 0, sizeof(Data32) * numFeatures() * count);
+
   if (first > _numCacheableFrames || first + count > _numCacheableFrames) {
     error("ERROR: FileSource::loadFrames: requested frames [%u,%u), but %u is the last available frame\n", first, first+count, _numCacheableFrames);
   }
@@ -420,6 +461,7 @@ FileSource::loadFrames(unsigned bufferIndex, unsigned first, unsigned count) {
     first = inputDesc->firstFrame;
     count = inputDesc->numFrames;
   }
+
   for (unsigned int i=0; i < nFiles; i+=1) {
     
     // in case we need to adjust for fdiffact
@@ -488,26 +530,68 @@ FileSource::loadFrames(unsigned bufferIndex, unsigned first, unsigned count) {
     Data32 const *src = fileBuf;
     unsigned srcStride = file[i]->numLogicalFeatures();
     for (unsigned f=0; f < adjCount; f += 1) {
-      unsigned repeat = repCount(adjFirst + f,fdiffact, i, deltaT, first, count, file[i]->numLogicalFrames());
-      assert(repeat > 0);
-      assert(repeat <= count);
-      for (unsigned j=0; j < repeat; j+=1) {
-        memcpy((void *)dst, (const void *)src, file[i]->numLogicalContinuous() * sizeof(Data32));
-	src += srcStride;
+      unsigned frameReps = repCount(adjFirst + f,fdiffact, i, deltaT, first, count, file[i]->numLogicalFrames());
+      assert(0 < frameReps && frameReps <= count);
+      for (unsigned j=0; j < frameReps; j+=1) {
+	float *fdst = (float *) dst;
+	float *fsrc = (float *) src;
+	switch(ftrcombo) {
+	case FTROP_NONE:
+	  memcpy((void *)dst, (const void *)src, file[i]->numLogicalContinuous() * sizeof(Data32));
+//        dst += bufStride;
+	  break;
+	case FTROP_ADD:
+	  for (unsigned k=0; k < file[i]->numLogicalContinuous(); k+=1) {
+	    fdst[k] += fsrc[k];
+	  }
+	  break;
+	case FTROP_SUB:
+	  if (i == 0) {
+	    memcpy((void *)dst, (const void *)src, file[i]->numLogicalContinuous() * sizeof(Data32));
+	  } else {
+	    for (unsigned k=0; k < file[i]->numLogicalContinuous(); k+=1) {
+	      fdst[k] -= fsrc[k];
+	    }
+	  }
+	  break;
+	case FTROP_MUL:
+	  if (i == 0) {
+	    memcpy((void *)dst, (const void *)src, file[i]->numLogicalContinuous() * sizeof(Data32));
+	  } else {
+	    for (unsigned k=0; k < file[i]->numLogicalContinuous(); k+=1) {
+	      fdst[k] *= fsrc[k];
+	    }
+	  }
+	  break;
+	case FTROP_DIV:
+	  if (i == 0) {
+	    memcpy((void *)dst, (const void *)src, file[i]->numLogicalContinuous() * sizeof(Data32));
+	  } else {
+	    for (unsigned k=0; k < file[i]->numLogicalContinuous(); k+=1) {
+	      if (fsrc[k] != 0) {
+		fdst[k] /= fsrc[k];
+	      }
+	    }
+	  }
+	  break;
+	default:
+	  error("ERROR: unknown -comb option value %d", ftrcombo);
+	}
 	dst += bufStride;
       }
+      src += srcStride;
     }
+
     src = fileBuf + file[i]->numLogicalContinuous();
     dst = intStart[i] + buffOffset;
     for (unsigned f=0; f < adjCount; f += 1) {
-      unsigned repeat = repCount(adjFirst + f,fdiffact, i, deltaT, first, count, file[i]->numLogicalFrames());
-      assert(repeat > 0);
-      assert(repeat <= count);
-      for (unsigned j=0; j < repeat; j+=1) {
+      unsigned frameReps = repCount(adjFirst + f,fdiffact, i, deltaT, first, count, file[i]->numLogicalFrames());
+      assert(0 < frameReps && frameReps <= count);
+      for (unsigned j=0; j < frameReps; j+=1) {
         memcpy((void *)dst, (const void *)src, file[i]->numLogicalDiscrete() * sizeof(Data32));
-	src += srcStride;
 	dst += bufStride;
       }
+      src += srcStride;
     }
   }
   // if requested frames are already in cookedBuffer
@@ -556,8 +640,10 @@ FileSource::loadFrames(unsigned first, unsigned count) {
   unsigned preFirst;  // first frame # to prefetch
   unsigned preCount;  // # of frames in prefetch request
 
+#if 0
 unsigned requestedFirst = first; 
 unsigned requestedCount = count;
+#endif
 
   // FIXME - adjust first+count checking for endSkip & justification
   if (first + count > _numFrames) {
@@ -755,7 +841,12 @@ FileSource::numContinuous() {
 
   unsigned numCont = 0, numDisc = 0;
   for (unsigned i=0; i < nFiles; i+=1) {
-    numCont += file[i]->numLogicalContinuous();
+    if (ftrcombo == FTROP_NONE) {
+      numCont += file[i]->numLogicalContinuous();
+    } else {
+      if (numCont < file[i]->numLogicalContinuous()) 
+	numCont = file[i]->numLogicalContinuous();
+    }
     numDisc += file[i]->numLogicalDiscrete();
   }
   subMatrixDescriptor wholeSegment(0U, 0U, 0U, 0U, numCont, numDisc, 0u);
@@ -768,16 +859,7 @@ FileSource::numContinuous() {
 unsigned 
 FileSource::numDiscrete() {
   if (_numDiscrete > -1) return (unsigned) _numDiscrete;
-
-  unsigned numCont = 0, numDisc = 0;
-  for (unsigned i=0; i < nFiles; i+=1) {
-    numCont += file[i]->numLogicalContinuous();
-    numDisc += file[i]->numLogicalDiscrete();
-  }
-  subMatrixDescriptor wholeSegment(0U, 0U, 0U, 0U, numCont, numDisc, 0u);
-  subMatrixDescriptor output = filter->describeOutput(wholeSegment);
-  _numContinuous = (unsigned) output.numContinuous;
-  _numDiscrete   = (unsigned) output.numDiscrete;
+  (void) numContinuous();
   return _numDiscrete;
 }
 
@@ -810,10 +892,10 @@ FileSource::floatVecAtFrame(unsigned f) {
 unsigned *const 
 FileSource::unsignedVecAtFrame(unsigned f) {
   assert(0 <=f && f < numFrames());
-#if 1
+#if 0
 unsigned *up = (unsigned *)(loadFrames(f,1)+_numContinuous);
 printf("uVec(%3u):", f);
-for (unsigned i=0; i < _numDiscrete; i+=1) printf(" %u", up[i]);
+ for (unsigned i=0; i < (unsigned)_numDiscrete; i+=1) printf(" %u", up[i]);
 printf("\n"); 
 #endif
   return (unsigned *)loadFrames(f,1);
@@ -825,10 +907,10 @@ FileSource::unsignedAtFrame(const unsigned frame, const unsigned feature) {
   assert (feature >= numContinuous()
 	  &&
 	  feature <  numFeatures());
-#if 1
+#if 0
 unsigned *up = (unsigned *)(loadFrames(frame,1)+_numContinuous);
 printf("uVec(%3u,%u):", frame, feature);
-for (unsigned i=0; i < _numDiscrete; i+=1) printf(" %u", up[i]);
+ for (unsigned i=0; i < (unsigned)_numDiscrete; i+=1) printf(" %u", up[i]);
 printf("\n"); 
 #endif
   return *(unsigned*)(loadFrames(frame,1)+feature);
