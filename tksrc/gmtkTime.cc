@@ -283,7 +283,7 @@ main(int argc,char*argv[])
   }
   globalObservationMatrix.initialize(nFiles, obsFile, 1024*1024 /* FIXME */, Action_If_Diff_Num_Sents, 
 				     Action_If_Diff_Num_Frames, gpr_str,  startSkip, endSkip, 
-				     instantiateFilters(Post_Transforms, nCont));
+				     instantiateFilters(Post_Transforms, nCont), justification, Ftr_Combo);
 
 #if 0
   ObservationFile *obsFile[MAX_NUM_OBS_FILES];
@@ -412,6 +412,17 @@ main(int argc,char*argv[])
       }
     }
 
+
+    //    printf("Dlinks: min lag %d    max lag %d\n", Dlinks::globalMinLag(), Dlinks::globalMaxLag());
+    // FIXME - min past = min(dlinkPast, VECPTPast), likewise for future
+    int dlinkPast = Dlinks::globalMinLag();
+    dlinkPast = (dlinkPast < 0) ? -dlinkPast : 0;
+    globalObservationMatrix.setMinPastFrames( dlinkPast );
+    
+    int dlinkFuture = Dlinks::globalMaxLag();
+    dlinkFuture = (dlinkFuture > 0) ? dlinkFuture : 0;
+    globalObservationMatrix.setMinFutureFrames( dlinkFuture );
+    
     
     ////////////////////////////////////////////////////////////////////
     // CREATE JUNCTION TREE DATA STRUCTURES

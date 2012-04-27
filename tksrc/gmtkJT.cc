@@ -271,7 +271,7 @@ main(int argc,char*argv[])
   // FIXME - add min(Past|Future)Frames to initialize()  - maybe not, else move init after GM_Parms.read
   globalObservationMatrix.initialize(nFiles, obsFile, 1024*1024 /* FIXME */,Action_If_Diff_Num_Sents, 
 				     Action_If_Diff_Num_Frames, gpr_str,  startSkip, endSkip, 
-				     instantiateFilters(Post_Transforms, nCont), justification);
+				     instantiateFilters(Post_Transforms, nCont), justification, Ftr_Combo);
 #endif
 
   infoMsg(IM::Max,"Finished opening files.\n");
@@ -388,7 +388,7 @@ main(int argc,char*argv[])
   }
 
 
-  printf("Dlinks: min lag %d    max lag %d\n", Dlinks::globalMinLag(), Dlinks::globalMaxLag());
+  //  printf("Dlinks: min lag %d    max lag %d\n", Dlinks::globalMinLag(), Dlinks::globalMaxLag());
   // FIXME - min past = min(dlinkPast, VECPTPast), likewise for future
   int dlinkPast = Dlinks::globalMinLag();
   dlinkPast = (dlinkPast < 0) ? -dlinkPast : 0;

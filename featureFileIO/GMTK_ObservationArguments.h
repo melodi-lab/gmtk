@@ -253,7 +253,7 @@ extern bool ObservationsAllowNan;
   for (int i=0;i<MAX_NUM_OBS_STREAMS;i++) {
 
     if (ofs[i] && oss[i]) {
-      error("%s: Can't specify both -of%u and -os%u", argerr,i,i);
+      error("%s: Can't specify both -of%u and -os%u", argerr,i+1,i+1);
     }
 
     // FIXME - can random access files read from stdin?  
@@ -271,32 +271,32 @@ extern bool ObservationsAllowNan;
       // FIXME - check don't specify binaryInputStream[i]
 
       int fmtNum = formatStrToNumber(fmts[i]);
-      if (fmtNum < 0) {
+      if (fmtNum >= 0) {
 	ifmts[i] = fmtNum;
       } else {
-	error("%s: Unknown observation file format type '%s' for -of%u\n",argerr,fmts[i],i);
+	error("%s: Unknown observation file format type '%s' for -of%u\n",argerr,fmts[i],i+1);
       }
     } else {
       // FIXME - check don't specify iswp[i]
       
       if (prefrs[i] || preirs[i]) {
-	error("%s: Can't specify -prefrs%u or -preirs%u because -os%u is a stream",argerr,i,i,i);
+	error("%s: Can't specify -prefrs%u or -preirs%u because -os%u is a stream",argerr,i+1,i+1,i+1);
       }
       if (sr[i]) {
-	error("%s: Can't specify -sr%u because -os%u is a stream", argerr,i,i);
+	error("%s: Can't specify -sr%u because -os%u is a stream", argerr,i+1,i+1);
       }
       if (prepr[i] || postpr[i]) {
-	error("%s: Can't specify -prepr%u or -postpr%u because -os%u is a stream", argerr,i,i,i);
+	error("%s: Can't specify -prepr%u or -postpr%u because -os%u is a stream", argerr,i+1,i+1,i+1);
       }
       if (strcmp(fmts[i],"binary") == 0)
 	ifmts[i] = RAWBIN;
       else if (strcmp(fmts[i],"ascii") == 0)
 	ifmts[i] = RAWASC;
       else
-	error("%s: observation stream format -fmt%u must be 'binary' or 'ascii', got '%s'\n",argerr,i, fmts[i]);
+	error("%s: observation stream format -fmt%u must be 'binary' or 'ascii', got '%s'\n",argerr,i+1, fmts[i]);
       
       if (ifmts[i] == RAWBIN && !inputNetByteOrder[i]) {
-	warning("using non-standard byte order for binary input observation stream %u data", i);
+	warning("using non-standard byte order for binary input observation stream %u data", i+1);
       }
     }
 
