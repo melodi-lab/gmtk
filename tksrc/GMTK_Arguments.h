@@ -942,6 +942,135 @@ extern bool ObservationsAllowNan;
 /*************************************************************************************************************/
 
 
+#if defined(GMTK_ARG_MEM_GROWTH)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+  static char const *memGrowthOption = "default";
+
+#define GMTK_MEM_GROWTH_CONSERVATIVE 0
+#define GMTK_MEM_GROWTH_DEFAULT      1
+#define GMTK_MEM_GROWTH_AGGRESSIVE   2
+
+  static unsigned memGrowthStrategy = 1;
+
+#define GMTK_MEM_CONSERVATIVE_START_SIZE  1
+#define GMTK_MEM_CONSERVATIVE_GROWTH_RATE 1.05
+#define GMTK_MEM_CONSERVATIVE_DECAY_RATE 0.0
+
+#define GMTK_MEM_DEFAULT_START_SIZE  23
+#define GMTK_MEM_DEFAULT_GROWTH_RATE 1.25
+#define GMTK_MEM_DEFAULT_DECAY_RATE 0.0
+
+#define GMTK_MEM_AGGRESSIVE_START_SIZE  23
+#define GMTK_MEM_AGGRESSIVE_GROWTH_RATE 2.0
+#define GMTK_MEM_AGGRESSIVE_DECAY_RATE 0.0
+
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("memoryGrowth",Arg::Opt,memGrowthOption,"Rate to grow data structures (conservative, default, aggressive)"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+  if (strncasecmp(memGrowthOption, "conservative", 13) == 0) {
+    memGrowthStrategy = GMTK_MEM_GROWTH_CONSERVATIVE;
+    
+    CliqueValueHolder::defaultAllocationUnitChunkSize = GMTK_MEM_CONSERVATIVE_START_SIZE;
+    CliqueValueHolder::defaultGrowthFactor            = GMTK_MEM_CONSERVATIVE_GROWTH_RATE;
+    
+    SeparatorClique::aiStartingSize                   = GMTK_MEM_CONSERVATIVE_START_SIZE;
+    SeparatorClique::aiGrowthFactor                   = GMTK_MEM_CONSERVATIVE_GROWTH_RATE;
+    
+    SeparatorClique::remStartingSize                  = GMTK_MEM_CONSERVATIVE_START_SIZE;
+    SeparatorClique::remGrowthFactor                  = GMTK_MEM_CONSERVATIVE_GROWTH_RATE;
+    
+    SeparatorClique::sepSpaceMgrStartingSize          = GMTK_MEM_CONSERVATIVE_START_SIZE;
+    SeparatorClique::sepSpaceMgrGrowthRate            = GMTK_MEM_CONSERVATIVE_GROWTH_RATE;
+    SeparatorClique::sepSpaceMgrDecayRate             = GMTK_MEM_CONSERVATIVE_DECAY_RATE;
+    
+    SeparatorClique::remSpaceMgrStartingSize          = GMTK_MEM_CONSERVATIVE_START_SIZE;
+    SeparatorClique::remSpaceMgrGrowthRate            = GMTK_MEM_CONSERVATIVE_GROWTH_RATE;
+    SeparatorClique::remSpaceMgrDecayRate             = GMTK_MEM_CONSERVATIVE_DECAY_RATE;
+    
+    ConditionalSeparatorTable::remHashMapStartingSize = GMTK_MEM_CONSERVATIVE_START_SIZE;
+    
+    MaxClique::spaceMgrStartingSize                   = GMTK_MEM_CONSERVATIVE_START_SIZE;
+    MaxClique::spaceMgrGrowthRate                     = GMTK_MEM_CONSERVATIVE_GROWTH_RATE;
+    MaxClique::spaceMgrDecayRate                      = GMTK_MEM_CONSERVATIVE_DECAY_RATE;
+  
+    MaxCliqueTable::valuePoolGrowthRate               = GMTK_MEM_CONSERVATIVE_GROWTH_RATE;
+
+  } else if (strncasecmp(memGrowthOption, "default", 8) == 0) {
+    memGrowthStrategy = GMTK_MEM_GROWTH_DEFAULT;
+
+    CliqueValueHolder::defaultAllocationUnitChunkSize = GMTK_MEM_DEFAULT_START_SIZE;
+    CliqueValueHolder::defaultGrowthFactor            = GMTK_MEM_DEFAULT_GROWTH_RATE;
+    
+    SeparatorClique::aiStartingSize                   = GMTK_MEM_DEFAULT_START_SIZE;
+    SeparatorClique::aiGrowthFactor                   = GMTK_MEM_DEFAULT_GROWTH_RATE;
+    
+    SeparatorClique::remStartingSize                  = GMTK_MEM_DEFAULT_START_SIZE;
+    SeparatorClique::remGrowthFactor                  = GMTK_MEM_DEFAULT_GROWTH_RATE;
+    
+    SeparatorClique::sepSpaceMgrStartingSize          = GMTK_MEM_DEFAULT_START_SIZE;
+    SeparatorClique::sepSpaceMgrGrowthRate            = GMTK_MEM_DEFAULT_GROWTH_RATE;
+    SeparatorClique::sepSpaceMgrDecayRate             = GMTK_MEM_DEFAULT_DECAY_RATE;
+    
+    SeparatorClique::remSpaceMgrStartingSize          = GMTK_MEM_DEFAULT_START_SIZE;
+    SeparatorClique::remSpaceMgrGrowthRate            = GMTK_MEM_DEFAULT_GROWTH_RATE;
+    SeparatorClique::remSpaceMgrDecayRate             = GMTK_MEM_DEFAULT_DECAY_RATE;
+    
+    ConditionalSeparatorTable::remHashMapStartingSize = GMTK_MEM_DEFAULT_START_SIZE;
+    
+    MaxClique::spaceMgrStartingSize                   = GMTK_MEM_DEFAULT_START_SIZE;
+    MaxClique::spaceMgrGrowthRate                     = GMTK_MEM_DEFAULT_GROWTH_RATE;
+    MaxClique::spaceMgrDecayRate                      = GMTK_MEM_DEFAULT_DECAY_RATE;
+  
+    MaxCliqueTable::valuePoolGrowthRate               = GMTK_MEM_DEFAULT_GROWTH_RATE;
+
+  } else if (strncasecmp(memGrowthOption, "aggressive", 11) == 0) {
+    memGrowthStrategy = GMTK_MEM_GROWTH_AGGRESSIVE;
+
+    CliqueValueHolder::defaultAllocationUnitChunkSize = GMTK_MEM_AGGRESSIVE_START_SIZE;
+    CliqueValueHolder::defaultGrowthFactor            = GMTK_MEM_AGGRESSIVE_GROWTH_RATE;
+    
+    SeparatorClique::aiStartingSize                   = GMTK_MEM_AGGRESSIVE_START_SIZE;
+    SeparatorClique::aiGrowthFactor                   = GMTK_MEM_AGGRESSIVE_GROWTH_RATE;
+    
+    SeparatorClique::remStartingSize                  = GMTK_MEM_AGGRESSIVE_START_SIZE;
+    SeparatorClique::remGrowthFactor                  = GMTK_MEM_AGGRESSIVE_GROWTH_RATE;
+    
+    SeparatorClique::sepSpaceMgrStartingSize          = GMTK_MEM_AGGRESSIVE_START_SIZE;
+    SeparatorClique::sepSpaceMgrGrowthRate            = GMTK_MEM_AGGRESSIVE_GROWTH_RATE;
+    SeparatorClique::sepSpaceMgrDecayRate             = GMTK_MEM_AGGRESSIVE_DECAY_RATE;
+    
+    SeparatorClique::remSpaceMgrStartingSize          = GMTK_MEM_AGGRESSIVE_START_SIZE;
+    SeparatorClique::remSpaceMgrGrowthRate            = GMTK_MEM_AGGRESSIVE_GROWTH_RATE;
+    SeparatorClique::remSpaceMgrDecayRate             = GMTK_MEM_AGGRESSIVE_DECAY_RATE;
+    
+    ConditionalSeparatorTable::remHashMapStartingSize = GMTK_MEM_AGGRESSIVE_START_SIZE;
+    
+    MaxClique::spaceMgrStartingSize                   = GMTK_MEM_AGGRESSIVE_START_SIZE;
+    MaxClique::spaceMgrGrowthRate                     = GMTK_MEM_AGGRESSIVE_GROWTH_RATE;
+    MaxClique::spaceMgrDecayRate                      = GMTK_MEM_AGGRESSIVE_DECAY_RATE;
+  
+    MaxCliqueTable::valuePoolGrowthRate               = GMTK_MEM_AGGRESSIVE_GROWTH_RATE;
+
+  } else {
+    error("%s: Unknown -memoryGrowth option '%s', must be 'conservative', 'default', or 'aggressive'", argerr, memGrowthOption);
+  }
+
+#else
+#endif
+#endif // defined(GMTK_ARG_MEM_GROWTH)
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
 #if defined(GMTK_ARG_HASH_LOAD_FACTOR)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
@@ -1020,7 +1149,7 @@ extern bool ObservationsAllowNan;
 #if defined(GMTK_ARG_DCDRNG)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
-  const static char *dcdrng_str="all";
+  static char const *dcdrng_str="all";
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
@@ -1366,7 +1495,7 @@ static bool  cliquePrintOnlyEntropy = false;
       hash_abstract::loadFactor = 0.98;
     MaxClique::storeDeterministicChildrenInClique = false;
 
-    if (strncasecmp(baseString, GMTK_SQRT_BASE_STRING, strlen(GMTK_SQRT_BASE_STRING) ) == 0) {
+    if (strncasecmp(baseString, GMTK_SQRT_BASE_STRING, strlen(GMTK_SQRT_BASE_STRING)+1 ) == 0) {
       sqrtBase = true;
     } else {
       int tmp = atoi(baseString);
