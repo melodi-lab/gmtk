@@ -107,7 +107,7 @@ VCID(HGID)
 #define GMTK_ARG_HASH_LOAD_FACTOR
 #define GMTK_ARG_STORE_DETERMINISTIC_CHILDREN
 #define GMTK_ARG_CLEAR_CLIQUE_VAL_MEM
-
+#define GMTK_ARG_MEM_GROWTH
 
 /****************************      FILE RANGE OPTIONS             ***********************************************/
 #define GMTK_ARG_FILE_RANGE_OPTIONS
