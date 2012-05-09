@@ -208,6 +208,4 @@ class FileSource: public ObservationSource {
 
 };
 
-extern FileSource globalObservationMatrix;
-
 #endif

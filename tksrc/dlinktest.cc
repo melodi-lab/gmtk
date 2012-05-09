@@ -179,7 +179,9 @@ GMParms GM_Parms;
 
 #if 1
 ObservationStream *stream;
-StreamSource globalObservationMatrix;
+StreamSource streamSource;
+StreamSource *gomSS = &streamSource;
+ObservationSource *globalObservationMatrix = &streamSource;
 #endif
 
 int
@@ -236,7 +238,7 @@ main(int argc,char*argv[])
       error("ERROR: -fmt1 must be 'binary' or 'ascii', got '%s'", fmts[0]);
     }
     assert(stream);
-    globalObservationMatrix.initialize(1, &stream, streamBufferSize);
+    gomSS->initialize(1, &stream, streamBufferSize);
 
 
 
@@ -301,7 +303,7 @@ main(int argc,char*argv[])
   fp.checkConsistentWithGlobalObservationStream();
   GM_Parms.checkConsistentWithGlobalObservationStream();
 
-  GM_Parms.setStride(globalObservationMatrix.stride());
+  GM_Parms.setStride(gomSS->stride());
 
 #endif
 
@@ -373,7 +375,7 @@ main(int argc,char*argv[])
   }
 
 #if 0
-  Range* dcdrng = new Range(dcdrng_str,0,globalObservationMatrix.numSegments());
+  Range* dcdrng = new Range(dcdrng_str,0,gomSS->numSegments());
   if (dcdrng->length() <= 0) {
     infoMsg(IM::Default,"Training range '%s' specifies empty set. Exiting...\n",
 	  dcdrng_str);
@@ -393,10 +395,10 @@ main(int argc,char*argv[])
   Range::iterator* dcdrng_it = new Range::iterator(dcdrng->begin());
   while (!dcdrng_it->at_end()) {
     const unsigned segment = (unsigned)(*(*dcdrng_it));
-    if (globalObservationMatrix.numSegments() < (segment+1)) 
+    if (gomSS->numSegments() < (segment+1)) 
       error("ERROR: only %d segments in file, segment must be in range [%d,%d]\n",
-	    globalObservationMatrix.numSegments(),
-	    0,globalObservationMatrix.numSegments()-1);
+	    gomSS->numSegments(),
+	    0,gomSS->numSegments()-1);
 
     infoMsg(IM::Max,"Loading segment %d ...\n",segment);
     const unsigned numFrames = GM_Parms.setSegment(segment);
@@ -408,7 +410,7 @@ main(int argc,char*argv[])
       
       // Range* bvrng = NULL;
       // if (boostVerbosityRng != NULL)
-      // bvrng = new Range(bvrng,0,globalObservationMatrix.numSegments());
+      // bvrng = new Range(bvrng,0,gomSS->numSegments());
 
       // logpr probe = myjt.probEvidence(numFrames,numUsableFrames,bvrng,boostVerbosity);
 
@@ -482,17 +484,17 @@ main(int argc,char*argv[])
   //              \tau * frames(C') + 
   // endSkip?   + max(frames(C'),frames(E'),future(dlinks))
   // do P'
-  for (; !globalObservationMatrix.EOS(); ) {
-    globalObservationMatrix.preloadFrames(1); // FIXME - min # frames
-    for (frameNum = 0; globalObservationMatrix.segmentLength() == 0 || 
-	               frameNum < globalObservationMatrix.segmentLength(); 
+  for (; !gomSS->EOS(); ) {
+    gomSS->preloadFrames(1); // FIXME - min # frames
+    for (frameNum = 0; gomSS->numFrames() == 0 || 
+	               frameNum < gomSS->numFrames(); 
 	 // FIXME - frameNum < seg length - frames(E')
 	 frameNum += 1)
     {
-      globalObservationMatrix.enqueueFrames(1); // frames(C')
+      gomSS->enqueueFrames(1); // frames(C')
     }
     // do E'
-    printf("Seg %u  %u frames  %u\n", segNum++, frameNum, globalObservationMatrix.segmentLength());
+    printf("Seg %u  %u frames  %u\n", segNum++, frameNum, gomSS->numFrames());
   }
 
   getrusage(RUSAGE_SELF,&rue);

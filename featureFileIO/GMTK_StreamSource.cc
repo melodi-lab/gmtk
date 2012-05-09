@@ -22,6 +22,7 @@ StreamSource::StreamSource() {
   maxCookedFrames = 0;
   currentCookedFrames = 0;
   numFramesInSegment = 0;
+  segmentNum = -1;
   rawBuffer = NULL;
   rawBuffSize = 0;
   maxRawFrames = 0;
@@ -41,6 +42,7 @@ StreamSource::StreamSource(unsigned nStreams,
 			   Filter *filter,
 			   unsigned startSkip)
   : cookedBuffSize(queueLength),
+    segmentNum(-1),
     nStreams(nStreams),
     stream(stream),
     filter(filter),
@@ -68,6 +70,7 @@ StreamSource::initialize(unsigned nStreams, ObservationStream *stream[],
   rawFloats = floatCount;
   rawInts   = intCount;
   numRawFeatures = floatCount + intCount;
+  segmentNum = -1;
   this->filter = filter;
   if (filter) {
     subMatrixDescriptor wholeSegment(0U, 0U, 0U, 0U, floatCount, intCount, 0u);
@@ -121,6 +124,7 @@ StreamSource::preloadFrames(unsigned nFrames) {
   currentCookedFrames = 0;
   firstCookedFrameNum = 0;
   numFramesInSegment = 0;
+  segmentNum += 1;
   assert(enqueueFrames(nFrames) == nFrames);
 }
 

@@ -89,6 +89,7 @@ sentRange:all
 #include <string.h>
 #include <float.h>
 #include <assert.h>
+#include <typeinfo>
 
 #include "general.h"
 #include "error.h"
@@ -207,7 +208,9 @@ VECPT::read(iDataStreamFile& is)
 
     if (obsFileName == FILE_NAME_WHEN_USING_GLOBAL_OBSERVATION_FILE) {
       // we take observations from the global observation matrix.
-      obs = &globalObservationMatrix;
+      obs = static_cast<FileSource *>(globalObservationMatrix);
+      // I think the above should be safe, as there's no chance of
+      // trying to read a VECPT from anything other than a FileSource
     
       is.read(str);
       while(! (is.isEOF() || str=="END")) {
@@ -286,10 +289,10 @@ VECPT::read(iDataStreamFile& is)
 
       if (nis == 0) {
 	// check that it works with the current global observation matrix.
-	if (nfs + obs_file_foffset > globalObservationMatrix.numContinuous()) {
+	if (nfs + obs_file_foffset > globalObservationMatrix->numContinuous()) {
 	  string error_message;
 	  stringprintf(error_message,"specifies %d floats and offset %d, but global observation matrix only has %d",
-		       nfs,obs_file_foffset,globalObservationMatrix.numContinuous());
+		       nfs,obs_file_foffset,globalObservationMatrix->numContinuous());
 	  throw(error_message);
 	}
 	if (cardinalities[0] != nfs) {
@@ -306,16 +309,16 @@ VECPT::read(iDataStreamFile& is)
 		is.fileName(),is.lineNo(),name().c_str(),nis,nfs);
 	}
 	// check that it works with the current global observation matrix.
-	if (nfs + obs_file_foffset > globalObservationMatrix.numContinuous()) {
+	if (nfs + obs_file_foffset > globalObservationMatrix->numContinuous()) {
 	  string error_message;
 	  stringprintf(error_message,"specifies %d floats and offset %d, but global observation matrix only has %d real entries per frame",
-		       nfs,obs_file_foffset,globalObservationMatrix.numContinuous());
+		       nfs,obs_file_foffset,globalObservationMatrix->numContinuous());
 	  throw(error_message);
 	}
-	if (nis + obs_file_ioffset > globalObservationMatrix.numDiscrete()) {
+	if (nis + obs_file_ioffset > globalObservationMatrix->numDiscrete()) {
 	  string error_message;
 	  stringprintf(error_message,"specifies %d ints and offset %d, but global observation matrix only has %d discrete entries per frame",
-		       nis,obs_file_ioffset,globalObservationMatrix.numDiscrete());
+		       nis,obs_file_ioffset,globalObservationMatrix->numDiscrete());
 	  throw(error_message);
 	}
 
@@ -483,8 +486,8 @@ VECPT::read(iDataStreamFile& is)
       assert(obsFile);
       Filter *postTrans = instantiateFilters(postTransforms, obsFile->numContinuous());
       obs = new FileSource(1, &obsFile, DEFAULT_BUFFER_SIZE, NULL, NULL, NULL, 
-			   globalObservationMatrix.startSkip(), 
-			   globalObservationMatrix.endSkip(), postTrans, 0);
+			   globalObservationMatrix->startSkip(), 
+			   globalObservationMatrix->endSkip(), postTrans, 0);
 #endif
 
       // still here? Do more error checking.
@@ -499,10 +502,17 @@ VECPT::read(iDataStreamFile& is)
 	      is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs,frs.c_str(),irs.c_str());
       }
 
-      // make sure we have same number of segments as global observation case.
-      if (globalObservationMatrix.numSegments() != obs->numSegments()) {
-	error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' and reading observation file '%s' with %d ints and %d floats. Number of segments %d must match that of the global observation file, which has %d segments",
-	      is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs,obs->numSegments(),globalObservationMatrix.numSegments());
+      FileSource *fs;
+      if ( typeid(globalObservationMatrix) == typeid(fs) &&
+	   typeid(obs) == typeid(fs) )
+      {
+	FileSource *gomFS = static_cast<FileSource *>(globalObservationMatrix);
+	FileSource *obsFS = static_cast<FileSource *>(obs);
+	// make sure we have same number of segments as global observation case.
+	if (gomFS->numSegments() != obsFS->numSegments()) {
+	  error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' and reading observation file '%s' with %d ints and %d floats. Number of segments %d must match that of the global observation file, which has %d segments",
+		is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs,obsFS->numSegments(),gomFS->numSegments());
+	}
       }
 
       // we check that the cardinality is compatible with the VECPT.

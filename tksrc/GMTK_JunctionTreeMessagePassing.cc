@@ -32,6 +32,20 @@
 #include <set>
 #include <algorithm>
 #include <new>
+#include <typeinfo>
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_INTTYPES_H
+   // The ISO C99 standard specifies that the macros in inttypes.h must
+   //  only be defined if explicitly requested. 
+#  define __STDC_FORMAT_MACROS 1
+#  include <inttypes.h>
+#endif
+#if HAVE_STDINT_H
+#  include <stdint.h>
+#endif
 
 #include "general.h"
 #include "error.h"
@@ -44,11 +58,13 @@
 #include "GMTK_GMTemplate.h"
 #include "GMTK_JunctionTree.h"
 #include "GMTK_GMParms.h"
+#include "GMTK_Dlinks.h"
 
 #if 0
 #  include "GMTK_ObservationMatrix.h"
 #else
 #  include "GMTK_FileSource.h"
+#  include "GMTK_StreamSource.h"
 #endif
 
 ////////////////////////////////////////////////////////////////////
@@ -2072,13 +2088,17 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 				      const bool noE)
 {
 
+  FileSource *gomFS;
+  assert(typeid(globalObservationMatrix) == typeid(gomFS));
+  gomFS= static_cast<FileSource *>(globalObservationMatrix);
+
   // Unroll, but do not use the long table array (2nd parameter is
   // false) for allocation, but get back the long table length
   // in a local variable for use in our iterator.
   unsigned totalNumberPartitions;
   {
     unsigned tmp = unroll(numFrames,ZeroTable,&totalNumberPartitions);
-    globalObservationMatrix.justifySegment(tmp);
+    gomFS->justifySegment(tmp);
     if (numUsableFrames) 
       *numUsableFrames = tmp;
     // limit scope of tmp.
@@ -2144,6 +2164,11 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 			  inference_it.pt_i());
 
 
+    // we skip the first Co's LI separator if there is no P1
+    // partition, since otherwise we'll get zero probability.
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.skipLISeparator();
+
     // it might be that E is the first partition as well, say if this is
     // a static graph, and in this case we need in this case to skip the
     // incomming separator, which doesn't exist.
@@ -2172,6 +2197,10 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
     }
     if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
       E1.useLISeparator();
+
+    // if the LI separator was turned off, we need to turn it back on.
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.useLISeparator();
 
 
     if (limitTime && probEvidenceTimeExpired)
@@ -2374,6 +2403,238 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
   return rc;
 
 #endif
+
+}
+
+
+
+
+// not-quite-right DBN online filtering
+logpr 
+JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
+				unsigned *numUsableFrames,
+				bool limitTime,
+				unsigned *numPartitionsDone,
+				const bool noE)
+{
+  // Unroll, but do not use the long table array (2nd parameter is
+  // false) for allocation, but get back the long table length
+  // in a local variable for use in our iterator.
+  unsigned totalNumberPartitions;
+
+
+  // read enough frames from the stream to get us started
+
+  // compute min # of frames
+  // startSkip? + max(frames(P'),frames(C'),pastFrames(dlinks)) + 
+  //              \tau * frames(C') + 
+  // endSkip?   + max(frames(C'),frames(E'),future(dlinks))
+
+  // FIXME - fp.numFramesInP() returns frame length of unmodified P,
+  //         but we want P'. Likewise C and E.  
+  // gm_template.computeUnrollParameters(...,modifiedTemplateMinUnrollAmount,...)
+  // might show the way
+  unsigned numPreloadFrames = Dlinks::globalMinLag() + 
+    fp.numFramesInP() + fp.numFramesInC() + fp.numFramesInE();
+
+  globalObservationMatrix->preloadFrames(numPreloadFrames);
+
+
+  unsigned numCPrimeFrames = fp.numFramesInC(); // FIXME
+
+  unsigned truePtLen = 0; // 0 until we know the true number of modified partitions
+
+  {
+    unsigned T = globalObservationMatrix->numFrames();
+    unsigned tmp;
+    if (T > 0) {
+      // We already know the length of this segment (it's probably
+      // very short, since we only try to pre-load enough frames to
+      // process P' C' C' E'), so we can pass the true number of
+      // frames to unroll...
+      
+      tmp = unroll(T,ZeroTable,&totalNumberPartitions);
+      truePtLen = totalNumberPartitions;
+    } else {
+      // We don't know how many frames are in the segment yet,
+      // so just assume it's very long. Should be OK, since the
+      // ZeroTable option just uses the minimum number of partitions.
+      // We'll reset the ptps_iterator's partition length later
+      // when we actually know it.
+      
+#ifndef UINT32_MAX
+      // FIXME - this should be in stdint.h as arranged by autoconf
+#  define UINT32_MAX		(4294967295U)
+#endif
+      
+      tmp = unroll(UINT32_MAX/8,ZeroTable,&totalNumberPartitions);
+      // UINT32_MAX seems to cause overflow, so UINT32_MAX/2 instead      
+    }
+    
+printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
+    
+    if (numUsableFrames) 
+      *numUsableFrames = tmp;
+    // limit scope of tmp.
+  }
+  if (numPartitionsDone)
+    *numPartitionsDone = 0;
+  
+  // set up our iterator
+  // Set up our iterator, write over the member island iterator since
+  // we assume the member does not have any dynamc sub-members.
+#if 0
+  new (&inference_it) online_ptps_iterator(*this,totalNumberPartitions);
+#else
+  new (&inference_it) ptps_iterator(*this,totalNumberPartitions);
+#endif
+  init_CC_CE_rvs(inference_it);
+
+  PartitionTables* prev_part_tab = NULL;
+  PartitionTables* cur_part_tab
+    = new PartitionTables(inference_it.cur_jt_partition());
+
+  // we skip the first Co's LI separator if there is no P1
+  // partition, since otherwise we'll get zero probability.
+  if (inference_it.at_first_c() && P1.cliques.size() == 0)
+    Co.skipLISeparator();
+  // gather into the root of the current  partition
+  ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
+		   *cur_part_tab,
+		   inference_it.cur_ri(),
+		   inference_it.cur_message_order(),
+		   inference_it.cur_nm(),
+		   inference_it.pt_i());
+  // possibly print the P or C partition information
+  if (inference_it.cur_part_clique_print_range() != NULL)
+    printAllCliques(partitionStructureArray[inference_it.ps_i()],
+		    *cur_part_tab,
+		    inference_it.pt_i(),
+		    inference_it.cur_nm(),
+		    inference_it.cur_part_clique_print_range(),
+		    stdout,
+		    false);
+  // if the LI separator was turned off, we need to turn it back on.
+  if (inference_it.at_first_c() && P1.cliques.size() == 0)
+    Co.useLISeparator();
+
+  for (unsigned part=1; part < inference_it.pt_len(); part ++ ) {
+    delete prev_part_tab;
+    prev_part_tab = cur_part_tab;
+
+    setCurrentInferenceShiftTo(part);
+    cur_part_tab
+      = new PartitionTables(inference_it.cur_jt_partition());
+
+    // send from previous to current
+    ceSendForwardsCrossPartitions(// previous partition
+			  partitionStructureArray[inference_it.ps_prev_i()],
+			  *prev_part_tab,
+			  inference_it.prev_ri(),
+			  inference_it.prev_nm(),
+			  inference_it.pt_prev_i(),
+			  // current partition
+			  partitionStructureArray[inference_it.ps_i()],
+			  *cur_part_tab,
+			  inference_it.cur_li(),
+			  inference_it.cur_nm(),
+			  inference_it.pt_i());
+
+
+    // we skip the first Co's LI separator if there is no P1
+    // partition, since otherwise we'll get zero probability.
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.skipLISeparator();
+
+    // it might be that E is the first partition as well, say if this is
+    // a static graph, and in this case we need in this case to skip the
+    // incomming separator, which doesn't exist.
+    if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      E1.skipLISeparator();
+    if (!(inference_it.at_e() && noE)) {  
+      // we only do this if we're either not at an E, or if we are at
+      // an E and noE is false.
+
+      // next, gather into the root of the final E partition
+      ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
+		       *cur_part_tab,
+		       inference_it.cur_ri(),
+		       inference_it.cur_message_order(),
+		       inference_it.cur_nm(),
+		       inference_it.pt_i());
+      // possibly print the P or C partition information
+      if (inference_it.cur_part_clique_print_range() != NULL)
+	printAllCliques(partitionStructureArray[inference_it.ps_i()],
+			*cur_part_tab,
+			inference_it.pt_i(),
+			inference_it.cur_nm(),
+			inference_it.cur_part_clique_print_range(),
+			stdout,
+			false);
+    }
+    if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      E1.useLISeparator();
+
+    // if the LI separator was turned off, we need to turn it back on.
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.useLISeparator();
+
+
+    // FIXME - is it silly to put a time limit on online inference?
+    if (limitTime && probEvidenceTimeExpired)
+      goto finished;
+
+
+    // read in the same # of frames that we're about to consume to maintain
+    // enough queued frames to be sure we don't overshoot the C'->E' transition
+    globalObservationMatrix->enqueueFrames(numCPrimeFrames); // FIXME - # of frames in C'
+
+    // update the ptps_iterator if we just found out the true length of the segment
+    if (truePtLen == 0 && globalObservationMatrix->numFrames() != 0) {
+      unsigned basicTempMaxUnrollAmnt;
+      unsigned basicTempMinUnrollAmnt;
+      int      modTempMaxUnrollAmnt;
+      int      modTempMinUnrollAmnt;
+      unsigned numUsableFrm;
+      unsigned frmStart;
+      if (!gm_template.computeUnrollParameters(globalObservationMatrix->numFrames(),
+					       basicTempMaxUnrollAmnt,
+					       basicTempMinUnrollAmnt,
+					       modTempMaxUnrollAmnt,
+					       modTempMinUnrollAmnt,
+					       numUsableFrm,
+					       frmStart))
+	error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, different template, or decrease M,S if >1.\n",
+	      globalObservationMatrix->numFrames(),
+	      fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
+	      fp.numFrames(),
+	      gm_template.M,gm_template.S);
+
+      truePtLen = modTempMaxUnrollAmnt + 3;
+printf("segment %3u: %3u frames   %3u partitions\n", 
+       globalObservationMatrix->segmentNumber(),
+       globalObservationMatrix->numFrames(),
+       truePtLen);
+      inference_it.set_pt_len(truePtLen);
+    }
+
+
+  }
+  assert ( inference_it.at_e() );
+
+ finished:
+
+  logpr rc;
+  if (inference_it.at_e()) {
+    // then we finished.
+    rc = cur_part_tab->maxCliques[E_root_clique].sumProbabilities();
+  }
+  if (numPartitionsDone)
+    *numPartitionsDone = inference_it.pt_i();
+
+  delete cur_part_tab;
+
+  return rc;
 
 }
 

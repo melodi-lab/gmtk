@@ -112,7 +112,7 @@ void Sw_ObsContRV::printSelfVerbose(FILE *f)
   for (unsigned i=firstFeatureElement();i<=lastFeatureElement();i++) {
     fprintf(f,"%d:%f,",
 	    i,
-	    (*globalObservationMatrix.floatVecAtFrame(frame(), i))
+	    (*(globalObservationMatrix->floatVecAtFrame(frame(), i)))
 	    );
   }
   fprintf(f,"\n");

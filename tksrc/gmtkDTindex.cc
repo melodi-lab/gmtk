@@ -110,11 +110,11 @@ Arg Arg::Args[] = {
  */
 RAND rnd(false);
 GMParms GM_Parms;
-#if 0
-ObservationMatrix globalObservationMatrix;
-#else
-FileSource globalObservationMatrix;
-#endif
+
+FileSource fileSource;
+FileSource *gomFS = &fileSource;
+ObservationSource *globalObservationMatrix = &fileSource;
+
 
 int
 main(int argc,char*argv[])

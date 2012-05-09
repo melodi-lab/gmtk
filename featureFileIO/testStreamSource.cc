@@ -83,7 +83,7 @@ main(int argc, char *argv[]) {
     frameNum = 0;
     do {
       Data32 const *frame = ss.loadFrames(frameNum, 1);
-      if (ss.segmentLength() > 0 && frameNum >= ss.segmentLength()) {
+      if (ss.numFrames() > 0 && frameNum >= ss.numFrames()) {
 	break;
       }
       
@@ -94,7 +94,7 @@ main(int argc, char *argv[]) {
 	printf(" %d", *((int *)(frame++)));
       printf("\n");
       frameNum += 1;
-    } while (ss.segmentLength() == 0 || frameNum < ss.segmentLength());
+    } while (ss.numFrames() == 0 || frameNum < ss.numFrames());
   }
   exit(0);
 }
