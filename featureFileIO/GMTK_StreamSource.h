@@ -45,7 +45,10 @@ class StreamSource : public ObservationSource {
 
   unsigned numFramesInSegment;     // # of frames in current segment
                                    // 0 until we know what it is
-  Data32 *rawBuffer;
+  
+  int      segmentNum;             // current segment
+  
+  Data32  *rawBuffer;
   unsigned rawBuffSize;
 
   unsigned maxRawFrames;
@@ -150,7 +153,7 @@ class StreamSource : public ObservationSource {
 
   
   // returns 0 until the length of the current segment is known
-  unsigned segmentLength() { return numFramesInSegment; }
+  unsigned numFrames() { return numFramesInSegment; }
 
 
   // The number of continuous, discrete, total features
@@ -182,33 +185,48 @@ class StreamSource : public ObservationSource {
   // number of frames to skip at the beginning
   unsigned startSkip() {return _startSkip;};
 
+  // streams don't suppot endSkip
+  unsigned endSkip() {return 0;}
+
   unsigned minPastFrames() {return _minPastFrames;}
   unsigned minFutureFrames() {return _minFutureFrames;}
   void setMinPastFrames(unsigned n) {_minPastFrames = n;}
   void setMinFutureFrames(unsigned n) {_minFutureFrames = n;}
 
-  float *const floatVecAtFrame(unsigned f) {return NULL;}
+  float *const floatVecAtFrame(unsigned f) {return (float *)loadFrames(f,1);}
 
   float *const floatVecAtFrame(unsigned f, const unsigned startFeature) {
-    return NULL;
+    assert(startFeature < numContinuous());
+    return floatVecAtFrame(f)+startFeature;
   }
 
   unsigned *const unsignedVecAtFrame(unsigned f) {
-    return NULL;
+    return (unsigned *)loadFrames(f,1) + numContinuous();
   }
 
   unsigned &unsignedAtFrame(const unsigned frame, const unsigned feature) {
-    return *(new unsigned);
+    assert(numContinuous() <= feature && feature < numFeatures()); 
+    return ((unsigned *)baseAtFrame(frame))[feature];
   }
 
   Data32 const * const baseAtFrame(unsigned f) {
-    return NULL;
+    return loadFrames(f,1);
   }
 
   bool elementIsDiscrete(unsigned el) {
     return numContinuous() <= el && el < numFeatures();
   }
 
+  bool active() { return true; }
+
+  unsigned segmentNumber() { return (unsigned)segmentNum; }
+
+  bool openSegment(unsigned seg) {
+    if (seg != (unsigned) segmentNum) {
+      error("ERROR: tried to open segment %u while segment %d is active", seg, segmentNum);
+    }
+    return true;
+  }
 };
 
 #endif

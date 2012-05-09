@@ -180,7 +180,9 @@ GMParms GM_Parms;
 #if 0
 ObservationMatrix globalObservationMatrix;
 #else
-FileSource globalObservationMatrix;
+FileSource fileSource;
+FileSource *gomFS = &fileSource;
+ObservationSource *globalObservationMatrix = &fileSource;
 #endif
 
 int
@@ -252,7 +254,7 @@ main(int argc,char*argv[])
     } else
       error("current implementation requires filter\n");
   }
-  globalObservationMatrix.initialize(nFiles, obsFile, 1024*1024, /* FIXME */ Action_If_Diff_Num_Sents, 
+  gomFS->initialize(nFiles, obsFile, 1024*1024, /* FIXME */ Action_If_Diff_Num_Sents, 
 				     Action_If_Diff_Num_Frames, gpr_str,  startSkip, endSkip, 
 				     instantiateFilters(Post_Transforms, nCont), justification, Ftr_Combo);
 
@@ -295,7 +297,7 @@ main(int argc,char*argv[])
       error("ERROR: Unknown observation file format type: '%s'\n", fmts[nFiles]);
     }
   }
-  globalObservationMatrix.initialize(nFiles, obsFile);
+  gomFS->initialize(nFiles, obsFile);
 #endif
 #endif
 
@@ -351,7 +353,7 @@ main(int argc,char*argv[])
   fp.checkConsistentWithGlobalObservationStream();
   GM_Parms.checkConsistentWithGlobalObservationStream();
 
-  GM_Parms.setStride(globalObservationMatrix.stride());
+  GM_Parms.setStride(gomFS->stride());
 
   // Utilize both the partition information and elimination order
   // information already computed and contained in the file. This
@@ -390,11 +392,11 @@ main(int argc,char*argv[])
   // FIXME - min past = min(dlinkPast, VECPTPast), likewise for future
   int dlinkPast = Dlinks::globalMinLag();
   dlinkPast = (dlinkPast < 0) ? -dlinkPast : 0;
-  globalObservationMatrix.setMinPastFrames( dlinkPast );
+  gomFS->setMinPastFrames( dlinkPast );
   
   int dlinkFuture = Dlinks::globalMaxLag();
   dlinkFuture = (dlinkFuture > 0) ? dlinkFuture : 0;
-  globalObservationMatrix.setMinFutureFrames( dlinkFuture );
+  gomFS->setMinFutureFrames( dlinkFuture );
 
 
   ////////////////////////////////////////////////////////////////////
@@ -418,12 +420,12 @@ main(int argc,char*argv[])
     GM_Parms.writeTrainable(of);
   }
 
-  if (globalObservationMatrix.numSegments()==0) {
+  if (gomFS->numSegments()==0) {
     infoMsg(IM::Default,"ERROR: no segments are available in observation file. Exiting...");
     exit_program_with_status(0);
   }
 
-  Range* trrng = new Range(trrng_str,0,globalObservationMatrix.numSegments());
+  Range* trrng = new Range(trrng_str,0,gomFS->numSegments());
 #if 0
   if (trrng->length() <= 0) {
     infoMsg(IM::Default,"Training range '%s' specifies empty set. Exiting...\n",
@@ -504,15 +506,15 @@ main(int argc,char*argv[])
       Range::iterator* trrng_it = new Range::iterator(trrng->begin());
       while (!trrng_it->at_end()) {
 	const unsigned segment = (unsigned)(*(*trrng_it));
-	if (globalObservationMatrix.numSegments() < (segment+1)) 
+	if (gomFS->numSegments() < (segment+1)) 
 	  error("ERROR: only %d segments in file, training range must be in range [%d,%d] inclusive\n",
-		globalObservationMatrix.numSegments(),
-		0,globalObservationMatrix.numSegments()-1);
+		gomFS->numSegments(),
+		0,gomFS->numSegments()-1);
 
 	const unsigned numFrames = GM_Parms.setSegment(segment);
 #if 0
-	if (globalObservationMatrix.active()) {
-	  globalObservationMatrix.printSegmentInfo();
+	if (gomFS->active()) {
+	  gomFS->printSegmentInfo();
 	  ::fflush(stdout);
 	}
 #endif

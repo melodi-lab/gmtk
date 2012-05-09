@@ -274,12 +274,12 @@ main(int argc, char *argv[]) {
   Data32 const *frame;
   for (; !source->EOS(); segNum += 1) {
     source->preloadFrames(1);
-    for (frmNum=0; source->segmentLength() == 0 || frmNum < source->segmentLength(); frmNum += 1) {
+    for (frmNum=0; source->numFrames() == 0 || frmNum < source->numFrames(); frmNum += 1) {
       frame = source->loadFrames(frmNum, 1);
       if (!frame) {
 	error("ERROR: incomplete segment");
       }
-      if (source->segmentLength() != 0 && frmNum >= source->segmentLength()) {
+      if (source->numFrames() != 0 && frmNum >= source->numFrames()) {
 	assert(frame == NULL);
 	continue;
       }

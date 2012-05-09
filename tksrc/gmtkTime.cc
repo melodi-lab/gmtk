@@ -198,7 +198,9 @@ GMParms GM_Parms;
 #if 0
 ObservationMatrix globalObservationMatrix;
 #else
-FileSource globalObservationMatrix;
+FileSource fileSource;
+FileSource *gomFS = &fileSource;
+ObservationSource *globalObservationMatrix = &fileSource;
 #endif
 
 /*
@@ -281,7 +283,7 @@ main(int argc,char*argv[])
     } else
       error("current implementation requires filter\n");
   }
-  globalObservationMatrix.initialize(nFiles, obsFile, 1024*1024 /* FIXME */, Action_If_Diff_Num_Sents, 
+  gomFS->initialize(nFiles, obsFile, 1024*1024 /* FIXME */, Action_If_Diff_Num_Sents, 
 				     Action_If_Diff_Num_Frames, gpr_str,  startSkip, endSkip, 
 				     instantiateFilters(Post_Transforms, nCont), justification, Ftr_Combo);
 
@@ -324,7 +326,7 @@ main(int argc,char*argv[])
       error("ERROR: Unknown observation file format type: '%s'\n", fmts[nFiles]);
     }
   }
-  globalObservationMatrix.initialize(nFiles, obsFile);
+  gomFS->initialize(nFiles, obsFile);
 #endif
 #endif
 
@@ -375,7 +377,7 @@ main(int argc,char*argv[])
   fp.checkConsistentWithGlobalObservationStream();
   GM_Parms.checkConsistentWithGlobalObservationStream();
 
-  GM_Parms.setStride(globalObservationMatrix.stride());
+  GM_Parms.setStride(gomFS->stride());
 
   /////
   // TODO: check that beam is a valid value.
@@ -417,11 +419,11 @@ main(int argc,char*argv[])
     // FIXME - min past = min(dlinkPast, VECPTPast), likewise for future
     int dlinkPast = Dlinks::globalMinLag();
     dlinkPast = (dlinkPast < 0) ? -dlinkPast : 0;
-    globalObservationMatrix.setMinPastFrames( dlinkPast );
+    gomFS->setMinPastFrames( dlinkPast );
     
     int dlinkFuture = Dlinks::globalMaxLag();
     dlinkFuture = (dlinkFuture > 0) ? dlinkFuture : 0;
-    globalObservationMatrix.setMinFutureFrames( dlinkFuture );
+    gomFS->setMinFutureFrames( dlinkFuture );
     
     
     ////////////////////////////////////////////////////////////////////
@@ -435,10 +437,10 @@ main(int argc,char*argv[])
     infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
     ////////////////////////////////////////////////////////////////////
     
-    if (globalObservationMatrix.numSegments()==0)
+    if (gomFS->numSegments()==0)
       error("ERROR: no segments are available in observation file");
     
-    Range* dcdrng = new Range(dcdrng_str,0,globalObservationMatrix.numSegments());
+    Range* dcdrng = new Range(dcdrng_str,0,gomFS->numSegments());
     if (dcdrng->length() <= 0) {
       infoMsg(IM::Default,"Training range '%s' specifies empty set. Exiting...\n",
 	      dcdrng_str);
@@ -468,10 +470,10 @@ main(int argc,char*argv[])
 	Range::iterator* dcdrng_it = new Range::iterator(dcdrng->begin());
 	while (!dcdrng_it->at_end()) {
 	  const unsigned segment = (unsigned)(*(*dcdrng_it));
-	  if (globalObservationMatrix.numSegments() < (segment+1)) 
+	  if (gomFS->numSegments() < (segment+1)) 
 	    error("ERROR: only %d segments in file, segment must be in range [%d,%d]\n",
-		  globalObservationMatrix.numSegments(),
-		  0,globalObservationMatrix.numSegments()-1);
+		  gomFS->numSegments(),
+		  0,gomFS->numSegments()-1);
 
 	  const unsigned numFrames = GM_Parms.setSegment(segment);
 
@@ -783,10 +785,10 @@ main(int argc,char*argv[])
       infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
       ////////////////////////////////////////////////////////////////////
 
-      if (globalObservationMatrix.numSegments()==0)
+      if (gomFS->numSegments()==0)
 	error("ERROR: no segments are available in observation file");
 
-      Range* dcdrng = new Range(dcdrng_str,0,globalObservationMatrix.numSegments());
+      Range* dcdrng = new Range(dcdrng_str,0,gomFS->numSegments());
       if (dcdrng->length() <= 0) {
 	infoMsg(IM::Default,"Training range '%s' specifies empty set. Exiting...\n",
 		dcdrng_str);
@@ -930,10 +932,10 @@ main(int argc,char*argv[])
 	  Range::iterator* dcdrng_it = new Range::iterator(dcdrng->begin());
 	  while (!dcdrng_it->at_end()) {
 	    const unsigned segment = (unsigned)(*(*dcdrng_it));
-	    if (globalObservationMatrix.numSegments() < (segment+1)) 
+	    if (gomFS->numSegments() < (segment+1)) 
 	      error("ERROR: only %d segments in file, segment must be in range [%d,%d]\n",
-		    globalObservationMatrix.numSegments(),
-		    0,globalObservationMatrix.numSegments()-1);
+		    gomFS->numSegments(),
+		    0,gomFS->numSegments()-1);
 
 	    const unsigned numFrames = GM_Parms.setSegment(segment);
 

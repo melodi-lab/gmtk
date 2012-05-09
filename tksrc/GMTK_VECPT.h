@@ -67,7 +67,7 @@
 #if 0
 extern ObservationMatrix globalObservationMatrix;
 #else
-extern FileSource globalObservationMatrix;
+extern ObservationSource *globalObservationMatrix;
 #endif
 class VECPT : public CPT {
 
@@ -85,7 +85,7 @@ class VECPT : public CPT {
 #if 0
   ObservationMatrix *obs;
 #else
-  FileSource *obs;
+  ObservationSource *obs;
 #endif
 
   // TODO: redo all this so that it works well

@@ -68,14 +68,31 @@ class ObservationSource {
 
   // number of frames to skip at the beginning
   virtual unsigned startSkip() = 0;
+
   // can't use endSkip() in streams since length is unkown?
-  //virtual unsigned endSkip() = 0;
+  virtual unsigned endSkip() = 0;
 
   virtual float *const floatVecAtFrame(unsigned f) = 0;
 
   virtual float *const floatVecAtFrame(unsigned f, const unsigned startFeature) = 0;
 
+  virtual unsigned *const unsignedVecAtFrame(unsigned f) = 0;
+
+  virtual unsigned &unsignedAtFrame(const unsigned frame, const unsigned feature) = 0;
+
+  virtual Data32 const * const baseAtFrame(unsigned f) = 0;
+
   virtual bool elementIsDiscrete(unsigned el) = 0;
+
+  virtual bool active() = 0;
+
+  virtual bool openSegment(unsigned seg) = 0;
+
+  virtual unsigned segmentNumber() = 0;
+
+  virtual unsigned numFrames() = 0;
 };
+
+extern ObservationSource *globalObservationMatrix;
 
 #endif

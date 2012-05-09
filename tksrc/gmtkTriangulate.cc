@@ -195,7 +195,9 @@ GMParms GM_Parms;
 #if 0
 ObservationMatrix globalObservationMatrix;
 #else
-FileSource globalObservationMatrix;
+FileSource fileSource;
+FileSource *gomFS = &fileSource;
+ObservationSource *globalObservationMatrix = &fileSource;
 #endif
 
 /*

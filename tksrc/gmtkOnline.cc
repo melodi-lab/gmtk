@@ -19,7 +19,6 @@
 #include "hgstamp.h"
 #endif
 
-
 #include "general.h"
 #include "error.h"
 #include "debug.h"
@@ -178,7 +177,9 @@ GMParms GM_Parms;
 
 #if 1
 ObservationStream *stream;
-StreamSource globalObservationMatrix;
+StreamSource streamSource;
+StreamSource *gomSS = &streamSource;
+ObservationSource *globalObservationMatrix = &streamSource;
 #endif
 
 int
@@ -235,7 +236,7 @@ main(int argc,char*argv[])
       error("ERROR: -fmt1 must be 'binary' or 'ascii', got '%s'", fmts[0]);
     }
     assert(stream);
-    globalObservationMatrix.initialize(1, &stream, streamBufferSize);
+    gomSS->initialize(1, &stream, streamBufferSize);
 
 
 
@@ -292,7 +293,7 @@ main(int argc,char*argv[])
       error("Error: command line argument '-allocateDenseCpts d', must have d = {0,1,2}\n");
   }
 
-#if 0
+#if 1
 
   // make sure that all observation variables work
   // with the global observation stream.
@@ -300,7 +301,7 @@ main(int argc,char*argv[])
   fp.checkConsistentWithGlobalObservationStream();
   GM_Parms.checkConsistentWithGlobalObservationStream();
 
-  GM_Parms.setStride(globalObservationMatrix.stride());
+  GM_Parms.setStride(gomSS->stride());
 
 #endif
 
@@ -351,6 +352,17 @@ main(int argc,char*argv[])
   }
 
 
+  //  printf("Dlinks: min lag %d    max lag %d\n", Dlinks::globalMinLag(), Dlinks::globalMaxLag());
+  // FIXME - min past = min(dlinkPast, VECPTPast), likewise for future
+  int dlinkPast = Dlinks::globalMinLag();
+  dlinkPast = (dlinkPast < 0) ? -dlinkPast : 0;
+  gomSS->setMinPastFrames( dlinkPast );
+  
+  int dlinkFuture = Dlinks::globalMaxLag();
+  dlinkFuture = (dlinkFuture > 0) ? dlinkFuture : 0;
+  gomSS->setMinFutureFrames( dlinkFuture );
+
+
   ////////////////////////////////////////////////////////////////////
   // CREATE JUNCTION TREE DATA STRUCTURES
   infoMsg(IM::Default,"Creating Junction Tree\n"); fflush(stdout);
@@ -370,15 +382,6 @@ main(int argc,char*argv[])
   if (IM::messageGlb(IM::Giga)) { 
     gm_template.reportScoreStats();
   }
-
-#if 0
-  Range* dcdrng = new Range(dcdrng_str,0,globalObservationMatrix.numSegments());
-  if (dcdrng->length() <= 0) {
-    infoMsg(IM::Default,"Training range '%s' specifies empty set. Exiting...\n",
-	  dcdrng_str);
-    exit_program_with_status(0);
-  }
-#endif
   
   Range* pdbrng = new Range(pdbrng_str,0,0x7FFFFFFF);
   myjt.setPartitionDebugRange(*pdbrng);
@@ -388,119 +391,51 @@ main(int argc,char*argv[])
   struct rusage rue; /* ending time */
   getrusage(RUSAGE_SELF,&rus);
 
-#if 0
-  Range::iterator* dcdrng_it = new Range::iterator(dcdrng->begin());
-  while (!dcdrng_it->at_end()) {
-    const unsigned segment = (unsigned)(*(*dcdrng_it));
-    if (globalObservationMatrix.numSegments() < (segment+1)) 
-      error("ERROR: only %d segments in file, segment must be in range [%d,%d]\n",
-	    globalObservationMatrix.numSegments(),
-	    0,globalObservationMatrix.numSegments()-1);
-
-    infoMsg(IM::Max,"Loading segment %d ...\n",segment);
-    const unsigned numFrames = GM_Parms.setSegment(segment);
-    infoMsg(IM::Max,"Finished loading segment %d with %d frames.\n",segment,numFrames);
-
-
-    if (probE) {
-      unsigned numUsableFrames;
-      
-      // Range* bvrng = NULL;
-      // if (boostVerbosityRng != NULL)
-      // bvrng = new Range(bvrng,0,globalObservationMatrix.numSegments());
-
-      // logpr probe = myjt.probEvidence(numFrames,numUsableFrames,bvrng,boostVerbosity);
-
-      infoMsg(IM::Max,"Beginning call to probability of evidence.\n");
-      logpr probe = myjt.probEvidenceFixedUnroll(numFrames,&numUsableFrames);
-      printf("Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	     segment,
-	     probe.val(),
-	     probe.val()/numFrames,
-	     probe.val()/numUsableFrames);
-    } else if (island) {
-      unsigned numUsableFrames;
-
-      infoMsg(IM::Max,"Beginning call to island collect/distribute evidence.\n");
-      logpr probe = myjt.collectDistributeIsland(numFrames,
-						 numUsableFrames,
-						 base,
-						 lst);
-
-      printf("Segment %d, after island Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	     segment,
-	     probe.val(),
-	     probe.val()/numFrames,
-	     probe.val()/numUsableFrames);
-
-    } else {
-
-      infoMsg(IM::Max,"Beginning call to unroll\n");
-      unsigned numUsableFrames = myjt.unroll(numFrames);
-      infoMsg(IM::Low,"Collecting Evidence\n");
-      myjt.collectEvidence();
-      infoMsg(IM::Low,"Done Collecting Evidence\n");
-      logpr probe = myjt.probEvidence();
-      printf("Segment %d, after CE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	     segment,
-	     probe.val(),
-	     probe.val()/numFrames,
-	     probe.val()/numUsableFrames);
-
-      if (doDistributeEvidence) {
-	infoMsg(IM::Low,"Distributing Evidence\n");
-	myjt.distributeEvidence();
-	infoMsg(IM::Low,"Done Distributing Evidence\n");
-
-	if (JunctionTree::viterbiScore)
-	  infoMsg(IM::SoftWarning,"NOTE: Clique sums will be different since viteri option is active\n");
-	if (IM::messageGlb(IM::Low)) {
-	  myjt.printProbEvidenceAccordingToAllCliques();
-	  probe = myjt.probEvidence();
-	  printf("Segment %d, after DE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-		 segment,
-		 probe.val(),
-		 probe.val()/numFrames,
-		 probe.val()/numUsableFrames);
-	}
-      }
-      if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange)
-	myjt.printAllCliques(stdout,true,cliquePrintOnlyEntropy);
-
-    }
-    (*dcdrng_it)++;
-  }
-#endif
-
 
   unsigned segNum = 0;
   unsigned frameNum;
-  // compute min # of frames
-  // startSkip? + max(frames(P'),frames(C'),pastFrames(dlinks)) + 
-  //              \tau * frames(C') + 
-  // endSkip?   + max(frames(C'),frames(E'),future(dlinks))
-  // do P'
-  for (; !globalObservationMatrix.EOS(); ) {
-    globalObservationMatrix.preloadFrames(1); // FIXME - min # frames
-    for (frameNum = 0; globalObservationMatrix.segmentLength() == 0 || 
-	               frameNum < globalObservationMatrix.segmentLength(); 
-	 // FIXME - frameNum < seg length - frames(E')
-	 frameNum += 1)
-    {
-      globalObservationMatrix.enqueueFrames(1); // frames(C')
-    }
-    // do E'
-    printf("Seg %u  %u frames  %u\n", segNum++, frameNum, globalObservationMatrix.segmentLength());
+  for (; !gomSS->EOS(); ) {
+    unsigned numUsableFrames;
+    logpr probe = myjt.onlineFixedUnroll(gomSS, &numUsableFrames);
+    printf("Segment %d, after Prob E: log(prob(evidence)) = %f\n",
+	   segNum,
+	   probe.val());
   }
-
   getrusage(RUSAGE_SELF,&rue);
   if (IM::messageGlb(IM::Default)) { 
     infoMsg(IM::Default,"### Final time (seconds) just for inference: ");
     double userTime,sysTime;
     reportTiming(rus,rue,userTime,sysTime,stdout);
   }
-
-} // close brace to cause a destruct on valid end of program.
- exit_program_with_status(0); 
+  
+  } // close brace to cause a destruct on valid end of program.
+  exit_program_with_status(0); 
 }
 
+
+#if 0
+
+  // compute min # of frames
+  // startSkip? + max(frames(P'),frames(C'),pastFrames(dlinks)) + 
+  //              \tau * frames(C') + 
+  // endSkip?   + max(frames(C'),frames(E'),future(dlinks))
+  // do P'
+
+
+//    gomSS->preloadFrames(1); // FIXME - min # frames
+    for (frameNum = 0; gomSS->segmentLength() == 0 || 
+	               frameNum < gomSS->segmentLength(); 
+	 // FIXME - frameNum < seg length - frames(E')
+	 frameNum += 1)
+    {
+//    gomSS->enqueueFrames(1); // frames(C')
+      unsigned numUsableFrames;
+      logpr probe = myjt.onlineFixedUnroll(gomSS, &numUsableFrames);
+      printf("Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+	     segNum,
+	     probe.val(),
+	     probe.val()/numFrames,
+	     probe.val()/numUsableFrames);    }
+    // do E'
+//    printf("Seg %u  %u frames  %u\n", segNum++, frameNum, gomSS->segmentLength());
+#endif

@@ -42,6 +42,7 @@
 #include "GMTK_JT_Partition.h"
 #include "GMTK_PartitionStructures.h"
 #include "GMTK_PartitionTables.h"
+#include "GMTK_StreamSource.h"
 
 #include "debug.h"
 
@@ -177,7 +178,7 @@ class JunctionTree {
   // it would be useful to look at the computeUnrollParameters()
   // function in class GMTemplate.
   class ptps_iterator {
-  private:
+  protected:
     // the current partition table (pt) index (there can be any number of tables).
     unsigned _pt_i;
     // the current partition structure (ps) index (there are at most 4 structures)
@@ -185,7 +186,7 @@ class JunctionTree {
     
     // associated jt information.
     JunctionTree& jt;
-    const unsigned _pt_len;
+    unsigned _pt_len;
     
   public:
 
@@ -222,6 +223,11 @@ class JunctionTree {
       return std::min(_pt_len,4u);
     }
 
+
+    void set_pt_len(unsigned pt_len) {
+      _pt_len = pt_len;
+    }
+
     // initialization routines.
     void set_to_first_entry() { 
       // set to be at E'
@@ -234,7 +240,7 @@ class JunctionTree {
     }
 
     void go_to_part_no (unsigned i) {
-      assert ( i < pt_len() );
+      assert (pt_len()==0 || i < pt_len() );
       if (pt_len() < 5 || i < 3) {
 	_pt_i = i; _ps_i = i;
       } else {
@@ -575,6 +581,9 @@ class JunctionTree {
 
   };
 
+#if 0
+#include "GMTK_OnlinePtPs.h"
+#endif
 
   // this is an iterator that is used by island (it obviously
   // is not always used in the typical sequential left/right fashion.
@@ -1091,6 +1100,14 @@ public:
 				bool limitTime=false,
 				unsigned *numPartitionsDone = NULL,
 				const bool noE=false);
+
+  // not-quite-right DBN online filtering
+  logpr onlineFixedUnroll(StreamSource *globalObservationMatrx,
+			  unsigned *numUsableFrames=NULL,
+			  bool limitTime=false,
+			  unsigned *numPartitionsDone=NULL,
+			  const bool noE=false);
+
   // simple call
   logpr probEvidence(const unsigned numFrames, unsigned& numUsableFrames) {
     return probEvidenceFixedUnroll(numFrames,&numUsableFrames,false,NULL,false);

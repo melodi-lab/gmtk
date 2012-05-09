@@ -90,7 +90,7 @@ ObsContRV::printNameFrameValue(FILE *f,bool nl)
     for (unsigned i=firstFeatureElement();i<=lastFeatureElement();i++) {
       // print only 1+3 significant digits for now.
       fprintf(f,"%.3e%s",
-	      (*globalObservationMatrix.floatVecAtFrame(frame(), i)),
+	      (*(globalObservationMatrix->floatVecAtFrame(frame(), i))),
 	      ((i<lastFeatureElement())?",":""));
     }
     if (nl)
@@ -154,8 +154,7 @@ void ObsContRV::printSelfVerbose(FILE *f)
   for (unsigned i=firstFeatureElement();i<=lastFeatureElement();i++) {
     fprintf(f,"%d:%f,",
 	    i,
-	    (*globalObservationMatrix.floatVecAtFrame(frame(), i))
-	    );
+	    (*(globalObservationMatrix->floatVecAtFrame(frame(), i))) );
   }
   fprintf(f,"\n");
 }
