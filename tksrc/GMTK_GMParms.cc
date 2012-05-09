@@ -35,8 +35,6 @@
 #include <float.h>
 #include <assert.h>
 
-#include <typeinfo>
-
 #include "general.h"
 #include "error.h"
 
@@ -2832,17 +2830,11 @@ GMParms::checkConsistentWithGlobalObservationStream()
 	  globalObservationMatrix->startSkip(),
 	  Dlinks::_globalMinLag);
 
-  // FIXME - this is a bit of a hack as I don't think it will work for
-  //         subclasses of FileSource. But StreamSource doesn't have
-  //         an endSkip() method
-  FileSource *fs;
-  if ( typeid(globalObservationMatrix) == typeid(fs) ) {
-    FileSource *fs = static_cast<FileSource *>(globalObservationMatrix);
-    if ((int)fs->endSkip() < (int)Dlinks::_globalMaxLag)
+    if ((int)globalObservationMatrix->endSkip() < (int)Dlinks::_globalMaxLag)
       error("ERROR: an end skip of %d is invalid for a maximum dlink lag of %d\n",
-	    fs->endSkip(),
+	    globalObservationMatrix->endSkip(),
 	    Dlinks::_globalMaxLag);
-  }
+  
   if ((int)globalObservationMatrix->numContinuous() <= (int)Dlinks::_globalMaxOffset)
     error("ERROR: there is a dlink ofset of value %d which is too large for the observation matrix with only %d continuous features.",
 	  Dlinks::_globalMaxOffset,
