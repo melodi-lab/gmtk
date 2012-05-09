@@ -392,14 +392,14 @@ main(int argc,char*argv[])
   getrusage(RUSAGE_SELF,&rus);
 
 
-  unsigned segNum = 0;
-  unsigned frameNum;
   for (; !gomSS->EOS(); ) {
     unsigned numUsableFrames;
     logpr probe = myjt.onlineFixedUnroll(gomSS, &numUsableFrames);
-    printf("Segment %d, after Prob E: log(prob(evidence)) = %f\n",
-	   segNum,
-	   probe.val());
+    printf("Segment %d, after Filtering: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+	   gomSS->segmentNumber(),
+	   probe.val(),
+	   probe.val()/gomSS->numFrames(),
+	   probe.val()/numUsableFrames);
   }
   getrusage(RUSAGE_SELF,&rue);
   if (IM::messageGlb(IM::Default)) { 
@@ -412,30 +412,3 @@ main(int argc,char*argv[])
   exit_program_with_status(0); 
 }
 
-
-#if 0
-
-  // compute min # of frames
-  // startSkip? + max(frames(P'),frames(C'),pastFrames(dlinks)) + 
-  //              \tau * frames(C') + 
-  // endSkip?   + max(frames(C'),frames(E'),future(dlinks))
-  // do P'
-
-
-//    gomSS->preloadFrames(1); // FIXME - min # frames
-    for (frameNum = 0; gomSS->segmentLength() == 0 || 
-	               frameNum < gomSS->segmentLength(); 
-	 // FIXME - frameNum < seg length - frames(E')
-	 frameNum += 1)
-    {
-//    gomSS->enqueueFrames(1); // frames(C')
-      unsigned numUsableFrames;
-      logpr probe = myjt.onlineFixedUnroll(gomSS, &numUsableFrames);
-      printf("Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	     segNum,
-	     probe.val(),
-	     probe.val()/numFrames,
-	     probe.val()/numUsableFrames);    }
-    // do E'
-//    printf("Seg %u  %u frames  %u\n", segNum++, frameNum, gomSS->segmentLength());
-#endif

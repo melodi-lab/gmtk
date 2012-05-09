@@ -2089,8 +2089,11 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 {
 
   FileSource *gomFS;
-  assert(typeid(globalObservationMatrix) == typeid(gomFS));
+  // This should be safe since gmtkOnline is the only program
+  // that does inference and doesn't use FileSource and gmtkOnline
+  // only uses onlineFixedUnroll
   gomFS= static_cast<FileSource *>(globalObservationMatrix);
+  assert(typeid(*globalObservationMatrix) == typeid(*gomFS));
 
   // Unroll, but do not use the long table array (2nd parameter is
   // false) for allocation, but get back the long table length
@@ -2609,16 +2612,14 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 	      fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
 	      fp.numFrames(),
 	      gm_template.M,gm_template.S);
-
+      
       truePtLen = modTempMaxUnrollAmnt + 3;
-printf("segment %3u: %3u frames   %3u partitions\n", 
-       globalObservationMatrix->segmentNumber(),
-       globalObservationMatrix->numFrames(),
-       truePtLen);
       inference_it.set_pt_len(truePtLen);
+      if (numUsableFrames) 
+	*numUsableFrames = numUsableFrm;
     }
-
-
+    
+    
   }
   assert ( inference_it.at_e() );
 

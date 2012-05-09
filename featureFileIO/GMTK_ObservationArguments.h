@@ -114,7 +114,7 @@ extern bool ObservationsAllowNan;
 #define MEBIBYTE (1048576)
   streamBufferSize *= MEBIBYTE;
   bool gotStdin = false;
-  unsigned ifmts[MAX_NUM_OBS_STREAMS];
+unsigned ifmts[MAX_NUM_OBS_STREAMS] = {RAWBIN};
   for (int i=0;i<MAX_NUM_OBS_STREAMS;i++) {
     if (strcmp(fmts[i],"binary") == 0)
       ifmts[i] = RAWBIN;

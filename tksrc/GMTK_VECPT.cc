@@ -502,9 +502,9 @@ VECPT::read(iDataStreamFile& is)
 	      is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs,frs.c_str(),irs.c_str());
       }
 
-      FileSource *fs;
-      if ( typeid(globalObservationMatrix) == typeid(fs) &&
-	   typeid(obs) == typeid(fs) )
+      FileSource fs;
+      if ( typeid(*globalObservationMatrix) == typeid(fs) &&
+	   typeid(*obs) == typeid(fs) )
       {
 	FileSource *gomFS = static_cast<FileSource *>(globalObservationMatrix);
 	FileSource *obsFS = static_cast<FileSource *>(obs);
@@ -513,6 +513,8 @@ VECPT::read(iDataStreamFile& is)
 	  error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' and reading observation file '%s' with %d ints and %d floats. Number of segments %d must match that of the global observation file, which has %d segments",
 		is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs,obsFS->numSegments(),gomFS->numSegments());
 	}
+      } else {
+	warning("WARNING: StreamSource cannot verify that VECPT and observations have the same number of segments");
       }
 
       // we check that the cardinality is compatible with the VECPT.
