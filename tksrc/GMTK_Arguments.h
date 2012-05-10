@@ -1034,12 +1034,16 @@ static bool  cliquePrintOnlyEntropy = false;
 
   static bool island=false;
   static unsigned base=3;
+  static bool sqrtBase=false; // true iff we should use \sqrt T as the logarithm base, otherwise it's constant
+  const static char* baseString = "3";
   static unsigned lst=100;
+
+#define GMTK_SQRT_BASE_STRING "sqrt"
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   Arg("island",Arg::Opt,island,"Run island algorithm"),
-  Arg("base",Arg::Opt,base,"Island algorithm logarithm base"),
+  Arg("base",Arg::Opt,baseString,"Island algorithm logarithm base (integer or 'sqrt')"),
   Arg("lst",Arg::Opt,lst,"Island algorithm linear segment threshold"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
@@ -1053,6 +1057,16 @@ static bool  cliquePrintOnlyEntropy = false;
     if (hash_abstract::loadFactor < 0.98)
       hash_abstract::loadFactor = 0.98;
     MaxClique::storeDeterministicChildrenInClique = false;
+
+    if (strncasecmp(baseString, GMTK_SQRT_BASE_STRING, strlen(GMTK_SQRT_BASE_STRING) ) == 0) {
+      sqrtBase = true;
+    } else {
+      int tmp = atoi(baseString);
+      if (tmp < 2) {
+	error("%s: -base %d is too small, it must be >= 2", argerr, tmp);
+      }
+      base = (unsigned) tmp;
+    }
   }
 
 

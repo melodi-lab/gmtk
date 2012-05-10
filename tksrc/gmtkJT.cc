@@ -477,7 +477,8 @@ main(int argc,char*argv[])
       logpr probe = myjt.collectDistributeIsland(numFrames,
 						 numUsableFrames,
 						 base,
-						 lst);
+						 lst,
+						 sqrtBase);
 
       printf("Segment %d, after island Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
 	     segment,

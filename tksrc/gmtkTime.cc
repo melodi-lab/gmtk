@@ -491,7 +491,8 @@ main(int argc,char*argv[])
 	    myjt.collectDistributeIsland(numFrames,
 					 numUsableFrames,
 					 base,
-					 lst);
+					 lst,
+					 sqrtBase);
 	    // TODO: note that frames not always equal to partitions but
 	    // do this for now. Ultimately fix this.
 	    totalNumberPartitionsDone += numUsableFrames;
@@ -953,7 +954,8 @@ main(int argc,char*argv[])
 	      myjt.collectDistributeIsland(numFrames,
 					   numUsableFrames,
 					   base,
-					   lst);
+					   lst,
+					   sqrtBase);
 	      // TODO: note that frames not always equal to partitions but
 	      // do this for now. Ultimately fix this.
 	      child_info.totalNumberPartitionsDone += numUsableFrames;
