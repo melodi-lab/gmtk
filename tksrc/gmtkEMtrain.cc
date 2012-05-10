@@ -526,6 +526,7 @@ main(int argc,char*argv[])
 				       numUsableFrames,
 				       base,
 				       lst,
+				       sqrtBase,
 				       true, // run EM algorithm
 				       false, // run Viterbi algorithm
 				       localCliqueNormalization);

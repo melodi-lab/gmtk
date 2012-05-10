@@ -1143,8 +1143,9 @@ public:
   logpr
   collectDistributeIsland(const unsigned numFrames,
 			  unsigned& numUsableFrames,
-			  const unsigned base,
+			  unsigned base,
 			  const unsigned linear_section_threshold,
+			  const bool sqrtBase = false,
 			  const bool runEMalgorithm = false,
 			  const bool runViterbiAlgorithm = false,
 			  const bool localCliqueNormalization = false);

@@ -2166,6 +2166,10 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 			  inference_it.cur_nm(),
 			  inference_it.pt_i());
 
+    // we skip the first Co's LI separator if there is no P1
+    // partition, since otherwise we'll get zero probability.
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.skipLISeparator();
 
     // we skip the first Co's LI separator if there is no P1
     // partition, since otherwise we'll get zero probability.
