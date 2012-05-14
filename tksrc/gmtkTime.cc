@@ -61,6 +61,7 @@ VCID(HGID)
 #  include "GMTK_ObservationMatrix.h"
 #else
 #  include "GMTK_FileSource.h"
+#  include "GMTK_CreateFileSource.h"
 #  include "GMTK_ASCIIFile.h"
 #  include "GMTK_FlatASCIIFile.h"
 #  include "GMTK_PFileFile.h"
@@ -241,94 +242,7 @@ main(int argc,char*argv[])
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_CHECK_ARGS
 
-#if 0
-  globalObservationMatrix.openFiles(nfiles,
-				    (const char**)&ofs,
-				    (const char**)&frs,
-				    (const char**)&irs,
-				    (unsigned*)&nfs,
-				    (unsigned*)&nis,
-				    (unsigned*)&ifmts,
-				    (bool*)&iswp,
-				    startSkip,
-				    endSkip,
-				    Cpp_If_Ascii,
-				    cppCommandOptions,
-				    (const char**)&postpr,  //Frame_Range_Str,
-				    Action_If_Diff_Num_Frames,
-				    Action_If_Diff_Num_Sents,
-				    Per_Stream_Transforms,
-				    Post_Transforms,
-				    Ftr_Combo,
-				    (const char**)&sr,
-				    (const char**)&prepr,
-				    gpr_str
-				    );
-#else
-  ObservationFile *obsFile[MAX_NUM_OBS_FILES];
-
-  unsigned nCont = 0;
-  unsigned nFiles= 0;
-  for (unsigned i=0; i < MAX_NUM_OBS_FILES && ofs[i] != NULL; i+=1, nFiles+=1) {
-
-    obsFile[i] = instantiateFile(ifmts[i], ofs[i], nfs[i], nis[i], i, iswp[i],
-                                 Cpp_If_Ascii, cppCommandOptions, prefrs[i], preirs[i],
-                                 prepr[i], sr[i]);
-    assert(obsFile[i]);
-    Filter *fileFilter = instantiateFilters(Per_Stream_Transforms[i],
-                                            obsFile[i]->numContinuous());
-    if (fileFilter) {
-      obsFile[i] = new FilterFile(fileFilter, obsFile[i], frs[i], irs[i], postpr[i]);
-      nCont += obsFile[i]->numContinuous();
-    } else
-      error("current implementation requires filter\n");
-  }
-  gomFS->initialize(nFiles, obsFile, 1024*1024 /* FIXME */, Action_If_Diff_Num_Sents, 
-				     Action_If_Diff_Num_Frames, gpr_str,  startSkip, endSkip, 
-				     instantiateFilters(Post_Transforms, nCont), justification, Ftr_Combo);
-
-#if 0
-  ObservationFile *obsFile[MAX_NUM_OBS_FILES];
-  unsigned nFiles;
-  for (nFiles=0; nFiles < MAX_NUM_OBS_FILES && ofs[nFiles]; nFiles+=1) {
-    switch (ifmts[nFiles]) {
-    case RAWASC:
-      obsFile[nFiles] = new ASCIIFile(ofs[nFiles],nfs[nFiles],nis[nFiles],
-				      nFiles,Cpp_If_Ascii,cppCommandOptions,
-				      frs[nFiles], irs[nFiles], prepr[nFiles], 
-				      sr[nFiles]);
-      break;
-    case PFILE:
-      obsFile[nFiles] = new PFileFile(ofs[nFiles], nfs[nFiles], nis[nFiles], 
-				      nFiles, iswp[nFiles], frs[nFiles], 
-				      irs[nFiles], prepr[nFiles], sr[nFiles]);
-      break;
-    case HTK:
-      obsFile[nFiles] = new HTKFile(ofs[nFiles], nfs[nFiles], nis[nFiles], 
-				    nFiles, iswp[nFiles], Cpp_If_Ascii, cppCommandOptions,
-				    frs[nFiles], irs[nFiles], prepr[nFiles], sr[nFiles]);
-      break;      
-    case HDF5:
-      obsFile[nFiles] = new HDF5File(ofs[nFiles], nFiles, Cpp_If_Ascii, cppCommandOptions,
-				     frs[nFiles], irs[nFiles], prepr[nFiles], sr[nFiles]);
-      break;
-    case RAWBIN:
-      obsFile[nFiles] = new BinaryFile(ofs[nFiles], nfs[nFiles], nis[nFiles], nFiles, 
-				       iswp[nFiles], Cpp_If_Ascii, cppCommandOptions,
-				       frs[nFiles], irs[nFiles], prepr[nFiles], sr[nFiles]);
-      break;
-    case FLATASC:
-      obsFile[nFiles] = new FlatASCIIFile(ofs[nFiles], nfs[nFiles], nis[nFiles], nFiles, 
-					  Cpp_If_Ascii, cppCommandOptions, frs[nFiles], 
-					  irs[nFiles], prepr[nFiles], sr[nFiles]);
-      break;
-    default:
-      error("ERROR: Unknown observation file format type: '%s'\n", fmts[nFiles]);
-    }
-  }
-  gomFS->initialize(nFiles, obsFile);
-#endif
-#endif
+  instantiateFileSource(gomFS);
 
   /////////////////////////////////////////////
   // read in all the parameters

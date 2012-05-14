@@ -30,6 +30,7 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "GMTK_FileSrcStream.h"
 #include "GMTK_StreamSource.h"
 #include "GMTK_FileSource.h"
+#include "GMTK_CreateFileSource.h"
 #include "GMTK_ASCIIFile.h"
 #include "GMTK_FlatASCIIFile.h"
 #include "GMTK_PFileFile.h"
@@ -45,8 +46,8 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 
 #define GMTK_ARG_CPP_CMD_OPTS
 #define GMTK_ARG_OBS_MATRIX_XFORMATION
-//#define GMTK_ARG_FILE_RANGE_OPTIONS
-//#define GMTK_ARG_START_END_SKIP
+#define GMTK_ARG_FILE_RANGE_OPTIONS
+#define GMTK_ARG_START_END_SKIP
 #define GMTK_ARG_HELP
 #define GMTK_ARG_VERSION
 #define GMTK_ARG_STREAM_AND_FILE_INPUT
@@ -169,7 +170,8 @@ makeStream(unsigned ifmts[], unsigned i) {
 
 
 ObservationStream *
-makeFileSource(unsigned ifmts[]) {
+makeFileSource() {
+#if 0
   ObservationFile   *obsFile[MAX_NUM_OBS_FILES] = {NULL,NULL,NULL,NULL,NULL};
   unsigned nFiles = 0;
   unsigned nCont  = 0;
@@ -196,6 +198,9 @@ makeFileSource(unsigned ifmts[]) {
 		      gpr_str, 0 /*startSkip*/, 0 /*endSkip*/,
 		      instantiateFilters(Post_Transforms, nCont));
   return new FileSrcStream(fileSrc);
+#else
+  return new FileSrcStream(instantiateFileSource());
+#endif
 }
 
 
@@ -246,7 +251,7 @@ main(int argc, char *argv[]) {
     allFiles = allFiles && (oss[i] == NULL);
   }
   if (allFiles) {
-    obsStream[0] = makeFileSource(ifmts);
+    obsStream[0] = makeFileSource();
     assert(obsStream[0]);
     nStreams = 1;
   } else {

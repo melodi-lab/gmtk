@@ -23,6 +23,7 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 
 #include "GMTK_ObservationSource.h"
 #include "GMTK_FileSource.h"
+#include "GMTK_CreateFileSource.h"
 #include "GMTK_ASCIIFile.h"
 #include "GMTK_FlatASCIIFile.h"
 #include "GMTK_PFileFile.h"
@@ -79,44 +80,7 @@ main(int argc, char *argv[]) {
 
   infoMsg(IM::Max,"Opening Files ...\n");
 
-  FileSource globalObservationMatrix;
-  ObservationFile *obsFile[MAX_NUM_OBS_FILES];
-  unsigned nFiles=0;
-  for (unsigned i=0; i < MAX_NUM_OBS_FILES && ofs[i] != NULL; i+=1, nFiles+=1) {
-    switch (ifmts[i]) {
-    case RAWASC:
-      obsFile[i] = new ASCIIFile(ofs[i], nfs[i], nis[i], i,
-				 Cpp_If_Ascii, cppCommandOptions,
-				 frs[i], irs[i], prepr[i], sr[i]);
-      break;
-    case PFILE:
-      obsFile[i] = new PFileFile(ofs[i], nfs[i], nis[i], i, iswp[i], frs[i], irs[i], prepr[i], sr[i]);
-      break;
-    case HTK:
-      obsFile[i] = new HTKFile(ofs[i], nfs[i], nis[i], i, iswp[i], Cpp_If_Ascii, cppCommandOptions,
-			       frs[i], irs[i], prepr[i], sr[i]);
-      break;
-    case HDF5:
-      obsFile[i] = new HDF5File(ofs[i], i, Cpp_If_Ascii, cppCommandOptions,
-				frs[i], irs[i], prepr[i], sr[i]);
-      break;
-    case FLATASC:
-      obsFile[i] = new FlatASCIIFile(ofs[i], nfs[i], nis[i], i, Cpp_If_Ascii, cppCommandOptions,
-				     frs[i], irs[i], prepr[i], sr[i]);
-      break;
-    case RAWBIN:
-      obsFile[i] = new BinaryFile(ofs[i], nfs[i], nis[i], i, iswp[i], Cpp_If_Ascii, cppCommandOptions,
-				  frs[i], irs[i], prepr[i], sr[i]);
-      break;
-    default:
-      error("ERROR: Unknown observation file format type: '%s'\n", fmts[i]);
-    }
-  }
-  globalObservationMatrix.initialize(nFiles, obsFile, 1024*1024 /* FIXME */,
-				     Action_If_Diff_Num_Sents,
-				     Action_If_Diff_Num_Frames,
-				     gpr_str, startSkip, endSkip);
-  FileSource *f = &globalObservationMatrix;
+  FileSource *f = instantiateFileSource();
   for (unsigned j=0; j < f->numSegments(); j+=1) {
     assert(f->openSegment(j));
     for (unsigned k=0; k < f->numFrames(); k+=1) {

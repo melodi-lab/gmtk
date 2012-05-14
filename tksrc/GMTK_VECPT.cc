@@ -485,9 +485,10 @@ VECPT::read(iDataStreamFile& is)
       obsFile = new FilterFile(preFilt, obsFile, frs.c_str(), irs.c_str(), pr_rs);
       assert(obsFile);
       Filter *postTrans = instantiateFilters(postTransforms, obsFile->numContinuous());
-      obs = new FileSource(1, &obsFile, DEFAULT_BUFFER_SIZE, NULL, NULL, NULL, 
+      obsFile = new FilterFile(postTrans, obsFile);
+      obs = new FileSource(obsFile, DEFAULT_BUFFER_SIZE,
 			   globalObservationMatrix->startSkip(), 
-			   globalObservationMatrix->endSkip(), postTrans, 0);
+			   globalObservationMatrix->endSkip());
 #endif
 
       // still here? Do more error checking.
