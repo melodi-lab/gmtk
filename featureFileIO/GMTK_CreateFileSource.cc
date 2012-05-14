@@ -55,6 +55,8 @@ extern int endSkip;
 extern unsigned    Action_If_Diff_Num_Frames[];
 extern unsigned    Action_If_Diff_Num_Sents[];
 extern unsigned Ftr_Combo;
+extern unsigned fileBufferSize;
+extern bool constantSpace;
 
 #define MAX_NUM_OBS_FILES 10
 
@@ -80,7 +82,7 @@ instantiateFileSource() {
 				  Ftr_Combo);
   FilterFile *ff = new FilterFile(instantiateFilters(Post_Transforms, nCont), 
 				  mf, NULL, NULL, gpr_str);
-  return new FileSource(ff, 1024*1024, /* FIXME - argument */ startSkip, endSkip, justification);
+  return new FileSource(ff, fileBufferSize, startSkip, endSkip, justification, constantSpace);
 }
 
 
@@ -106,6 +108,6 @@ instantiateFileSource(FileSource *source) {
 				  Ftr_Combo);
   FilterFile *ff = new FilterFile(instantiateFilters(Post_Transforms, nCont), 
 				  mf, NULL, NULL, gpr_str);
-  source->initialize(ff, 1024*1024, /* FIXME - argument */ startSkip, endSkip, justification);
+  source->initialize(ff, fileBufferSize, startSkip, endSkip, justification, constantSpace);
 }
 

@@ -147,7 +147,8 @@ extern bool ObservationsAllowNan;
 
 #define MAX_NUM_OBS_STREAMS (5)
 
-#define DEFAULT_STREAM_BUFFER_SIZE (sizeof(Data32))
+#define DEFAULT_STREAM_BUFFER_SIZE (16)
+#define DEFAULT_FILE_BUFFER_SIZE   (16)
 
   bool inputNetByteOrder[MAX_NUM_OBS_STREAMS] = {true,true,true,true,true};
   char *oss[MAX_NUM_OBS_STREAMS] = {NULL,NULL,NULL,NULL,NULL};
@@ -201,6 +202,8 @@ extern bool ObservationsAllowNan;
    char  *prepr[MAX_NUM_OBS_STREAMS] = {NULL,NULL,NULL,NULL,NULL};   
    // per stream frame range string after per-stream transformations are applied
    char *postpr[MAX_NUM_OBS_STREAMS] = {NULL,NULL,NULL,NULL,NULL};   
+   unsigned fileBufferSize = DEFAULT_FILE_BUFFER_SIZE;
+   bool constantSpace = false;
    char *gpr_str                   = NULL;   // global final frame range string
    const char *justification_str         = "left";
    unsigned justification;
@@ -216,13 +219,14 @@ extern bool ObservationsAllowNan;
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   Arg("\n*** Observation stream input handling ***\n"),
-  Arg("streamBufferSize", Arg::Opt,streamBufferSize,"Size in MB of observation frame queue"),
+  Arg("streamBufferSize", Arg::Opt,streamBufferSize,"Size in MB of the stream observation frame queue"),
   Arg("os",  Arg::Opt,oss,"Input observation stream file name (- is stdin). Replace X with the stream number",Arg::ARRAY,MAX_NUM_OBS_STREAMS),
   Arg("inputNetByteOrder", Arg::Opt, inputNetByteOrder, "For binary input observation stream X, data is big-endian",Arg::ARRAY,MAX_NUM_OBS_STREAMS),
   Arg("of",  Arg::Opt,ofs,"Read observation stream X from non-stream file.",Arg::ARRAY,MAX_NUM_OBS_STREAMS),
   Arg("fmt", Arg::Opt,fmts,"Format (for files: htk,binary,ascii,flatascii,hdf5,pfile; for streams: binary,ascii) for observation stream X",Arg::ARRAY,MAX_NUM_OBS_STREAMS),
 
-
+  Arg("fileBufferSize", Arg::Opt,fileBufferSize,"Size in MB of the file observation frame buffer"),
+  Arg("constantSpace", Arg::Opt,constantSpace,"Use only fileBufferSize memory to hold the observation data"),
   Arg("nf",  Arg::Opt,nfs,"Number of floats in observation stream X",Arg::ARRAY,MAX_NUM_OBS_STREAMS),
   Arg("ni",  Arg::Opt,nis,"Number of ints in observation stream X",Arg::ARRAY,MAX_NUM_OBS_STREAMS),
   Arg("iswp",Arg::Opt,iswp,"Endian swap condition for observation file X",Arg::ARRAY,MAX_NUM_OBS_STREAMS),
@@ -245,6 +249,7 @@ extern bool ObservationsAllowNan;
 
 #define MEBIBYTE (1048576)
     streamBufferSize *= MEBIBYTE;
+    fileBufferSize *= MEBIBYTE;
 
   /////////////////////////////////////////////////////////
   // check for valid argument values.  File only case 
@@ -370,6 +375,7 @@ extern bool ObservationsAllowNan;
 #if defined(GMTK_ARG_OBS_FILES)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
+#define DEFAULT_FILE_BUFFER_SIZE   (16)
 
 // This next code is used by a number of routines to compute and set
 // the default endian swapping condition associated with the
@@ -421,6 +427,8 @@ extern bool ObservationsAllowNan;
    char *gpr_str                   = NULL;   // global final frame range string
    const char *justification_str         = "left";
    unsigned justification;
+   unsigned fileBufferSize = DEFAULT_FILE_BUFFER_SIZE;
+   bool constantSpace = false;
 
 #ifdef INTV_WORDS_BIGENDIAN
    bool iswp[MAX_NUM_OBS_FILES] = {true,true,true,true,true};
@@ -439,6 +447,8 @@ extern bool ObservationsAllowNan;
   Arg("nf",  Arg::Opt,nfs,"Number of floats in observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("ni",  Arg::Opt,nis,"Number of ints in observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("fmt", Arg::Opt,fmts,"Format (htk,binary,ascii,flatascii,hdf5,pfile) for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("fileBufferSize", Arg::Opt,fileBufferSize,"Size in MB of the file observation frame buffer"),
+  Arg("constantSpace", Arg::Opt,constantSpace,"Use only fileBufferSize memory to hold the observation data"),
   Arg("iswp",Arg::Opt,iswp,"Endian swap condition for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("prefr",  Arg::Opt,prefrs,"Float range for observation file X (before transforms)",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("preir",  Arg::Opt,preirs,"Int range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
@@ -453,6 +463,10 @@ extern bool ObservationsAllowNan;
 
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#define MEBIBYTE (1048576)
+
+  fileBufferSize *= MEBIBYTE;
 
   /////////////////////////////////////////////////////////
   // check for valid argument values.  File only case 
