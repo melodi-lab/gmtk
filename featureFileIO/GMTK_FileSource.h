@@ -59,17 +59,20 @@ class FileSource: public ObservationSource {
   unsigned _numCacheableFrames;   // after considering -fdiffactX  & -gpr only
                                   // This is the # of frames that can be cached
 
-  unsigned _numFrames;            // after -fdiffactX, -gpr, -startSkip, -endSkip
+  unsigned _numFrames;            // after -fdiffactX, -gpr, -startSkip, -endSkip, -justification
                                   // This is the # of frames actually accessible to clients
-
-  int      segment;               // currently open segment; -1 if none yet
-
 
   // _numFrames <= _numCacheableFrames.  _numFrames will be less when -startSkip
   // or -endSkip reserve some frames at the start or end of each segment. These 
   // reserved frames (for dlinks, VECPTs) must be present in the cache when the first
   // or last several frames are accessed, but are not directly accessable to
   // clients via loadFrames(), floatVecAtFrame(), etc.
+
+  int      segment;               // currently open segment; -1 if none yet
+
+  bool     constantSpace;         // if true, load only O(1) frames at a time
+                                  // if false, load the entire segment, resizing the buffer 
+                                  //           if necessary
 
   // Load requested frames into cooked buffer, starting at the specified index.
   // index is in frames, so the frames will start at 
@@ -78,7 +81,7 @@ class FileSource: public ObservationSource {
 
  public:
 
-#define DEFAULT_BUFFER_SIZE (1024*1024)
+#define DEFAULT_BUFFER_SIZE (8 * 1024*1024)
   
   // each file provides its data for the requested submatrix,
   // transformed and "ready to eat." So the FileSource
@@ -88,7 +91,7 @@ class FileSource: public ObservationSource {
   FileSource(ObservationFile *file,
 	     unsigned bufferSize = DEFAULT_BUFFER_SIZE,
 	     unsigned startSkip=0, unsigned endSkip=0,
-	     int justificationMode=0); 
+	     int justificationMode=0, bool constantSpace = false); 
 
   FileSource() {
     cookedBuffer = NULL;
@@ -103,6 +106,7 @@ class FileSource: public ObservationSource {
     _minPastFrames = 0;
     _minFutureFrames = 0;
     segment = -1;
+    constantSpace = false;
   }
 
   virtual ~FileSource() {
@@ -112,7 +116,7 @@ class FileSource: public ObservationSource {
   void initialize(ObservationFile *file, 
 		  unsigned bufferSize = DEFAULT_BUFFER_SIZE,
 		  unsigned startSkip=0, unsigned endSkip=0,
-		  int justificationMode = 0);
+		  int justificationMode = 0, bool constantSpace = false);
 
   // The number of available segments.
   unsigned numSegments() { 

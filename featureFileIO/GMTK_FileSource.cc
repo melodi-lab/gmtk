@@ -38,9 +38,9 @@
 FileSource::FileSource(ObservationFile *file, 
 		       unsigned bufferSize,
 		       unsigned startSkip, unsigned endSkip,
-		       int justificationMode) 
+		       int justificationMode, bool constantSpace)
 {
-  initialize(file, bufferSize, startSkip, endSkip, justificationMode);
+  initialize(file, bufferSize, startSkip, endSkip, justificationMode, constantSpace);
 }
 
 
@@ -70,12 +70,13 @@ void
 FileSource::initialize(ObservationFile *file, 
 		       unsigned bufferSize,
 		       unsigned startSkip, unsigned endSkip,
-		       int justificationMode) 
+		       int justificationMode, bool constantSpace) 
 {
   assert(file);
   assert( 0 <= justificationMode && justificationMode <= FRAMEJUSTIFICATION_RIGHT );
   this->_startSkip = startSkip;
   this->_endSkip = endSkip;
+  this->constantSpace = constantSpace;
   this->justificationMode = justificationMode;
   justificationOffset = 0;
   _minPastFrames = 0;
@@ -86,10 +87,15 @@ FileSource::initialize(ObservationFile *file,
     error("ERROR: FileSource::intialize: failed to allocate frame buffer");
   }
   this->bufferSize = bufferSize;
-  numBufferedFrames = 0;
-  segment = -1;       // no openSegment() call yet
-  bufStride = file->numFeatures();
+  bufStride = file->numLogicalFeatures();
   bufferFrames = bufferSize / bufStride;
+  if (bufferFrames < 1) {
+    unsigned minSize = bufStride * sizeof(Data32) / 1024 / 1024;
+    minSize = (minSize < 1) ? 1 : minSize;
+    error("ERROR: file buffer size must be at least %u MB", minSize);
+  }
+  numBufferedFrames = 0;
+  segment = -1; // no openSegment() call yet
 }
 
 
@@ -102,7 +108,7 @@ FileSource::openSegment(unsigned seg) {
   }
 
   this->segment = seg;
-  bool success = file->openSegment(seg);
+  bool success = file->openLogicalSegment(seg);
   _numCacheableFrames = file->numLogicalFrames();
   if (_numCacheableFrames < _startSkip + _endSkip) {
     error("ERROR: segment %u has only %u frames, but -startSkip %u and -endSkip %u requires at least %u frames", seg, _numCacheableFrames, _startSkip, _endSkip, _startSkip + _endSkip + 1);
@@ -112,12 +118,37 @@ FileSource::openSegment(unsigned seg) {
   _numFrames -= _endSkip;   // reserve frames at end of segment
 
 #ifndef JEFFS_STRICT_DEBUG_OUTPUT_TEST
-  infoMsg(IM::ObsFile,IM::Low,"%u / %u input usable/cacheable frames in segment %d (unjustified)\n",
+  infoMsg(IM::ObsFile,IM::Low,"%u / %u input accessable/cacheable frames in segment %d (unjustified)\n",
 	  _numFrames, _numCacheableFrames, seg);
 #endif
   
   justificationOffset = 0;
   numBufferedFrames = 0;
+
+  if (!constantSpace) {
+    if (_numCacheableFrames > bufferFrames) { // need to enlarge the buffer
+      if (cookedBuffer) delete [] cookedBuffer;
+      bufferFrames = _numCacheableFrames;
+      bufferSize = numFeatures() * _numCacheableFrames;
+      cookedBuffer = new Data32[bufferSize];
+      unsigned bytesPerFrame = numFeatures() * sizeof(Data32);
+      unsigned framesPerGulp;
+      if (bytesPerFrame > DEFAULT_BUFFER_SIZE) {
+	framesPerGulp = _numCacheableFrames;
+      } else {
+	framesPerGulp = DEFAULT_BUFFER_SIZE / bytesPerFrame;
+      }
+      unsigned remainder = _numCacheableFrames % framesPerGulp;
+      (void) loadFrames(0, 0, remainder);
+      firstBufferedFrame = 0;
+      firstBufferedFrameIndex = 0;
+      numBufferedFrames = remainder;
+      for (unsigned frame=remainder; frame < _numCacheableFrames; frame+=framesPerGulp) {
+	(void) loadFrames(frame, frame, framesPerGulp);
+	numBufferedFrames += framesPerGulp;
+      }
+    }
+  }
   return success;
 }
 
@@ -150,7 +181,7 @@ FileSource::justifySegment(unsigned numUsableFrames) {
 Data32 const*
 FileSource::loadFrames(unsigned bufferIndex, unsigned first, unsigned count) {
   assert(0 <= bufferIndex && bufferIndex < bufferFrames);
-  assert(0 < count && count < bufferFrames-bufferIndex);
+  assert(0 < count && count <= bufferFrames-bufferIndex);
   
   unsigned buffOffset = bufferIndex * bufStride;
 
