@@ -23,7 +23,6 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 
 #include "GMTK_ObservationSource.h"
 #include "GMTK_FileSource.h"
-#include "GMTK_CreateFileSource.h"
 #include "GMTK_ASCIIFile.h"
 #include "GMTK_FlatASCIIFile.h"
 #include "GMTK_PFileFile.h"
@@ -32,6 +31,7 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "GMTK_BinaryFile.h"
 #include "GMTK_Filter.h"
 #include "GMTK_FilterFile.h"
+#include "GMTK_MergeFile.h"
 #include "GMTK_FIRFilter.h"
 #include "GMTK_AffineFilter.h"
 #include "GMTK_Stream.h"
@@ -84,17 +84,51 @@ main(int argc, char *argv[]) {
 
   infoMsg(IM::Max,"Opening Files ...\n");
 
-  FileSource *f = instantiateFileSource();
-  for (unsigned j=0; j < f->numSegments(); j+=1) {
-    assert(f->openSegment(j));
+  FileSource globalObservationMatrix;
+  ObservationFile *obsFile[MAX_NUM_OBS_FILES];
+//  FilterFile *filteredFile[MAX_NUM_OBS_FILES];
+
+  unsigned nFiles=0;
+  unsigned nCont = 0;
+  for (unsigned i=0; i < MAX_NUM_OBS_FILES && ofs[i] != NULL; i+=1, nFiles+=1) {
+
+    obsFile[i] = instantiateFile(ifmts[i], ofs[i], nfs[i], nis[i], i, iswp[i],
+				 Cpp_If_Ascii, cppCommandOptions, prefrs[i], preirs[i],
+				 prepr[i], sr[i]);
+    assert(obsFile[i]);
+    Filter *fileFilter = instantiateFilters(Per_Stream_Transforms[i],
+					    obsFile[i]->numContinuous());
+    if (fileFilter) {
+      obsFile[i] = new FilterFile(fileFilter, obsFile[i], frs[i], irs[i], postpr[i]);
+      nCont += obsFile[i]->numContinuous();
+    } else
+      error("current implementation requires filter\n");
+  }
+
+  MergeFile *mf = new MergeFile(nFiles, obsFile, 
+				Action_If_Diff_Num_Sents,
+				Action_If_Diff_Num_Frames,
+				Ftr_Combo);
+#if 0
+  globalObservationMatrix.initialize(nFiles, obsFile, 1024*1024 /* FIXME */,
+				     Action_If_Diff_Num_Sents,
+				     Action_If_Diff_Num_Frames,
+				     gpr_str, startSkip, endSkip,
+				     instantiateFilters(Post_Transforms, nCont),
+				     justification, Ftr_Combo);
+  FileSource *f = &globalObservationMatrix;
+#endif
+
+  for (unsigned j=0; j < mf->numSegments(); j+=1) {
+    assert(mf->openSegment(j));
 printf("Processing sentence %u\n", j);
-    for (unsigned k=0; k < f->numFrames(); k+=1) {
+    for (unsigned k=0; k < mf->numFrames(); k+=1) {
       //      printf("%03u %03u", j, k);
       printf("%u %u", j, k);
-      Data32 const *buf = f->loadFrames(k,1);
-      for (unsigned ff=0; ff < f->numContinuous(); ff+=1)
+      Data32 const *buf = mf->getFrames(k,1);
+      for (unsigned ff=0; ff < mf->numContinuous(); ff+=1)
 	printf(" %f", *((float *)(buf++)));
-      for (unsigned ff=0; ff < f->numDiscrete(); ff+=1)
+      for (unsigned ff=0; ff < mf->numDiscrete(); ff+=1)
 	printf(" %d", *((int *)(buf++)));
       printf("\n");
     }

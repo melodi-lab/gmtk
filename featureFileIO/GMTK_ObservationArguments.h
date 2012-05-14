@@ -95,6 +95,7 @@
    unsigned nfs[MAX_NUM_OBS_STREAMS] = {0};
    unsigned nis[MAX_NUM_OBS_STREAMS] = {0};
    const char   *fmts[MAX_NUM_OBS_STREAMS] = {"binary"};
+   unsigned ifmts[MAX_NUM_OBS_STREAMS] = {RAWBIN};
 
 extern bool ObservationsAllowNan;
 
@@ -114,7 +115,6 @@ extern bool ObservationsAllowNan;
 #define MEBIBYTE (1048576)
   streamBufferSize *= MEBIBYTE;
   bool gotStdin = false;
-unsigned ifmts[MAX_NUM_OBS_STREAMS] = {RAWBIN};
   for (int i=0;i<MAX_NUM_OBS_STREAMS;i++) {
     if (strcmp(fmts[i],"binary") == 0)
       ifmts[i] = RAWBIN;
@@ -191,6 +191,7 @@ unsigned ifmts[MAX_NUM_OBS_STREAMS] = {RAWBIN};
    unsigned nfs[MAX_NUM_OBS_STREAMS] = { 0, 0, 0,0,0 };
    unsigned nis[MAX_NUM_OBS_STREAMS] = { 0, 0, 0,0,0 };
    const char   *fmts[MAX_NUM_OBS_STREAMS] = {"binary","binary","binary","binary","binary"};
+   unsigned ifmts[MAX_NUM_OBS_STREAMS];
    const char    *frs[MAX_NUM_OBS_STREAMS] = { "all", "all", "all","all","all" };
    const char    *irs[MAX_NUM_OBS_STREAMS] = { "all", "all", "all","all","all" }; 
    const char    *prefrs[MAX_NUM_OBS_STREAMS] = { NULL, NULL, NULL, NULL,NULL }; 
@@ -249,7 +250,6 @@ extern bool ObservationsAllowNan;
   // check for valid argument values.  File only case 
   int nfiles = 0;
   bool gotStdin = false;
-  unsigned ifmts[MAX_NUM_OBS_STREAMS];
   for (int i=0;i<MAX_NUM_OBS_STREAMS;i++) {
 
     if (ofs[i] && oss[i]) {
@@ -408,6 +408,7 @@ extern bool ObservationsAllowNan;
    unsigned nfs[MAX_NUM_OBS_FILES] = { 0, 0, 0,0,0 };
    unsigned nis[MAX_NUM_OBS_FILES] = { 0, 0, 0,0,0 };
    const char   *fmts[MAX_NUM_OBS_FILES] = { "pfile", "pfile", "pfile","pfile","pfile" };
+   unsigned ifmts[MAX_NUM_OBS_FILES];
    const char    *frs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
    const char    *irs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" }; 
    const char    *prefrs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
@@ -456,7 +457,6 @@ extern bool ObservationsAllowNan;
   /////////////////////////////////////////////////////////
   // check for valid argument values.  File only case 
   int nfiles = 0;
-  unsigned ifmts[MAX_NUM_OBS_FILES];
   for (int i=0;i<MAX_NUM_OBS_FILES;i++) {
 
     if (strcmp(fmts[i],"htk") == 0)
@@ -602,8 +602,8 @@ extern bool ObservationsAllowNan;
 #if defined(GMTK_ARG_START_END_SKIP)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
-  static int startSkip = 0;
-  static int endSkip = 0;
+  int startSkip = 0;
+  int endSkip = 0;
 
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
@@ -780,7 +780,7 @@ unsigned Ftr_Combo=FTROP_NONE;
 #if defined(GMTK_ARG_CPP_CMD_OPTS)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
-  static char *cppCommandOptions = NULL;
+  char *cppCommandOptions = NULL;
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 

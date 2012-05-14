@@ -30,10 +30,10 @@ class FileSource: public ObservationSource {
 
  private:
 
-  Filter *filter;      // -posttrans filters
-
   // buffer to hold transformed cahced/prefected observations
   Data32 *cookedBuffer;
+  unsigned bufStride;  // increment between frames in cookedBuffer
+
 
   unsigned firstBufferedFrame;        // frame # of first buffered frame
   unsigned firstBufferedFrameIndex;   // index in cooked buffer of where the first buffered frame starts
@@ -41,17 +41,7 @@ class FileSource: public ObservationSource {
   unsigned bufferFrames;              // size of cookedBuffer in frames
   unsigned bufferSize;                // size of cookedBuffer in Data32
 
-  Data32 **floatStart; // the ith file's continuous features start here
-  Data32 **intStart;   // the ith file's discrete features start here
-  unsigned bufStride;  // increment between frames in cookedBuffer
-
-  // the files assembled to form the observations
-  unsigned nFiles;
-  ObservationFile **file;
-
-  // Global Per-segment final frame Range
-  char const *globalFrameRangeStr; // -gpr
-  Range *globalFrameRange;
+  ObservationFile *file;
 
   // Justification
   int justificationMode;
@@ -66,28 +56,20 @@ class FileSource: public ObservationSource {
   unsigned _minPastFrames;
   unsigned _minFutureFrames;
 
-  unsigned const *sdiffact;   // how to adjust for files w/ different # of segs
-  unsigned const *fdiffact;   //  ... frames
-  unsigned _numSegments;      // after considering -sdiffactX
-  int segment;
-
   unsigned _numCacheableFrames;   // after considering -fdiffactX  & -gpr only
                                   // This is the # of frames that can be cached
-  
-  unsigned _numFrames;        // after -fdiffactX, -gpr, -startSkip, -endSkip
-                              // This is the # of frames actually accessible to clients
+
+  unsigned _numFrames;            // after -fdiffactX, -gpr, -startSkip, -endSkip
+                                  // This is the # of frames actually accessible to clients
+
+  int      segment;               // currently open segment; -1 if none yet
+
 
   // _numFrames <= _numCacheableFrames.  _numFrames will be less when -startSkip
   // or -endSkip reserve some frames at the start or end of each segment. These 
   // reserved frames (for dlinks, VECPTs) must be present in the cache when the first
   // or last several frames are accessed, but are not directly accessable to
   // clients via loadFrames(), floatVecAtFrame(), etc.
-
-  int _numContinuous;         // # of continuous & discrete features after -posttrans
-  int _numDiscrete;           //   these are computed once if -1 then cached
-
-  // map requested global segment # to logical segment # in specified file
-  unsigned adjustForSdiffact(unsigned fileNum, unsigned seg);
 
   // Load requested frames into cooked buffer, starting at the specified index.
   // index is in frames, so the frames will start at 
@@ -103,46 +85,40 @@ class FileSource: public ObservationSource {
   // just manages assembling them to satisfy the loadFrames()
   // calls, prefetching/caching. For archipelagos, each thread
   // gets its own FileSource (all aimed at the same files, of course).
-  FileSource(unsigned _nFiles, ObservationFile *file[], 
+  FileSource(ObservationFile *file,
 	     unsigned bufferSize = DEFAULT_BUFFER_SIZE,
-	     char const *_globalFrameRangeStr = NULL, 
-	     unsigned const *sdiffact = NULL, 
-	     unsigned const *fdiffact = NULL,
 	     unsigned startSkip=0, unsigned endSkip=0,
-	     Filter *posttrans = NULL, int justificationMode=0, int ftrcombo=FTROP_NONE); 
+	     int justificationMode=0); 
 
   FileSource() {
     cookedBuffer = NULL;
     bufferSize = 0;
+    bufStride = 0;
     numBufferedFrames = 0;
-    floatStart = NULL;
-    intStart = NULL;
     file = NULL;
-    globalFrameRangeStr = NULL;
-    globalFrameRange = NULL;
     _startSkip = 0;
     _endSkip = 0;
-    segment = -1;
-    filter = NULL;
     justificationMode = 0;
     justificationOffset = 0;
-    ftrcombo = FTROP_NONE;
     _minPastFrames = 0;
     _minFutureFrames = 0;
+    segment = -1;
   }
 
-  // FIXME - dtor
+  virtual ~FileSource() {
+    if (cookedBuffer) delete [] cookedBuffer;
+  }
 
-  void initialize(unsigned nFiles, ObservationFile *file[], 
+  void initialize(ObservationFile *file, 
 		  unsigned bufferSize = DEFAULT_BUFFER_SIZE,
-		  unsigned const *sdiffact = NULL, 
-		  unsigned const *fdiffact = NULL,
-		  char const *globalFrameRangeStr = NULL, 
 		  unsigned startSkip=0, unsigned endSkip=0,
-		  Filter *posttrans = NULL, int justificationMode = 0, int ftrcombo=FTROP_NONE);
+		  int justificationMode = 0);
 
   // The number of available segments.
-  unsigned numSegments() { return _numSegments; }
+  unsigned numSegments() { 
+    assert(file);
+    return file->numSegments(); 
+  }
 
   // The current segment 
   unsigned segmentNumber() {

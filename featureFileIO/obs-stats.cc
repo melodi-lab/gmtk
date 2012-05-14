@@ -40,6 +40,9 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 
 #include "GMTK_ObservationSource.h"
 #include "GMTK_FileSource.h"
+#include "GMTK_CreateFileSource.h"
+#include "GMTK_FilterFile.h"
+#include "GMTK_MergeFile.h"
 #include "GMTK_ASCIIFile.h"
 #include "GMTK_FlatASCIIFile.h"
 #include "GMTK_PFileFile.h"
@@ -106,46 +109,38 @@ main(int argc, char *argv[]) {
 
   infoMsg(IM::Max,"Opening Files ...\n");
 
+#if 0
   FileSource globalObservationMatrix;
   ObservationFile *obsFile[MAX_NUM_OBS_FILES];
   unsigned nFiles=0;
+  unsigned nCont = 0;
   for (unsigned i=0; i < MAX_NUM_OBS_FILES && ofs[i] != NULL; i+=1, nFiles+=1) {
-    switch (ifmts[i]) {
-    case RAWASC:
-      obsFile[i] = new ASCIIFile(ofs[i], nfs[i], nis[i], i,
-				 Cpp_If_Ascii, cppCommandOptions,
-				 frs[i], irs[i], prepr[i], sr[i]);
-      break;
-    case PFILE:
-      obsFile[i] = new PFileFile(ofs[i], nfs[i], nis[i], i, iswp[i], frs[i], irs[i], prepr[i], sr[i]);
-      break;
-    case HTK:
-      obsFile[i] = new HTKFile(ofs[i], nfs[i], nis[i], i, iswp[i], Cpp_If_Ascii, cppCommandOptions,
-			       frs[i], irs[i], prepr[i], sr[i]);
-      break;
-    case HDF5:
-      obsFile[i] = new HDF5File(ofs[i], i, Cpp_If_Ascii, cppCommandOptions,
-				frs[i], irs[i], prepr[i], sr[i]);
-      break;
-    case FLATASC:
-      obsFile[i] = new FlatASCIIFile(ofs[i], nfs[i], nis[i], i, Cpp_If_Ascii, cppCommandOptions,
-				     frs[i], irs[i], prepr[i], sr[i]);
-      break;
-    case RAWBIN:
-      obsFile[i] = new BinaryFile(ofs[i], nfs[i], nis[i], i, iswp[i], Cpp_If_Ascii, cppCommandOptions,
-				  frs[i], irs[i], prepr[i], sr[i]);
-      break;
-    default:
-      error("ERROR: Unknown observation file format type: '%s'\n", fmts[i]);
-    }
+    
+    obsFile[i] = instantiateFile(ifmts[i], ofs[i], nfs[i], nis[i], i, iswp[i],
+                                 Cpp_If_Ascii, cppCommandOptions, prefrs[i], preirs[i],
+                                 prepr[i], sr[i]);
+    assert(obsFile[i]);
+    Filter *fileFilter = instantiateFilters(Per_Stream_Transforms[i],
+                                            obsFile[i]->numContinuous());
+    if (fileFilter) {
+      obsFile[i] = new FilterFile(fileFilter, obsFile[i], frs[i], irs[i], postpr[i]);
+      nCont += obsFile[i]->numContinuous();
+    } else
+      error("current implementation requires filter\n");
   }
-  globalObservationMatrix.initialize(nFiles, obsFile,
-				     1024*1024, /* FIXME - argument */
-				     Action_If_Diff_Num_Sents,
-				     Action_If_Diff_Num_Frames,
-				     gpr_str, startSkip, endSkip);
+  MergeFile *mf  = new  MergeFile(nFiles, obsFile,
+				  Action_If_Diff_Num_Sents,
+				  Action_If_Diff_Num_Frames,
+				  Ftr_Combo);
+  FilterFile *ff = new FilterFile(instantiateFilters(Post_Transforms, nCont), 
+				  mf, NULL, NULL, gpr_str);
+  globalObservationMatrix.initialize(ff, 1024*1024, /* FIXME - argument */
+				     startSkip, endSkip, justification);
 
   FileSource *f = &globalObservationMatrix;
+#else
+  FileSource *f = instantiateFileSource();
+#endif
 
   unsigned nCont = f->numContinuous();
 
