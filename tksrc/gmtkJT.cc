@@ -32,6 +32,9 @@
 #include <assert.h>
 #include <time.h>
 
+#include <unistd.h>
+#include <malloc.h>
+
 #include "general.h"
 #include "error.h"
 #include "debug.h"
@@ -479,6 +482,7 @@ main(int argc,char*argv[])
     }
     (*dcdrng_it)++;
   }
+  malloc_info(0, stdout);
 
   getrusage(RUSAGE_SELF,&rue);
   if (IM::messageGlb(IM::Default)) { 
