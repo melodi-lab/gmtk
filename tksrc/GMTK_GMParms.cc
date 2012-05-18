@@ -74,7 +74,8 @@
 #include "GMTK_ZeroScoreMixture.h"
 #include "GMTK_UnityScoreMixture.h"
 
-#include "GMTK_ObservationMatrix.h"
+#include "GMTK_ObservationSource.h"
+
 #include "GMTK_CFunctionDeterministicMappings.h"
 
 VCID(HGID)
@@ -2722,8 +2723,8 @@ GMParms::next()
 unsigned
 GMParms::setSegment(const unsigned segmentNo)
 {
-  globalObservationMatrix.loadSegment(segmentNo);
-  const unsigned numFrames = globalObservationMatrix.numFrames();
+  globalObservationMatrix->openSegment(segmentNo);
+  unsigned numFrames = globalObservationMatrix->numFrames();
 
   for(unsigned i = 0; i<iterableDts.size(); i++) {
     iterableDts[i]->seek(segmentNo);
@@ -2731,9 +2732,17 @@ GMParms::setSegment(const unsigned segmentNo)
   }
   for (unsigned i=0; i< veCpts.size(); i++) {
     veCpts[i]->setSegment(segmentNo);
-    if (veCpts[i]->numFrames() != numFrames) 
+
+    // FIXME - investigate if veCpts work with stream input (where
+    //         the number of frames isn't known)
+    if (numFrames != 0 && veCpts[i]->numFrames() != numFrames) 
       error("ERROR: number of frames in segment %d for main observation matrix is %d, but VirtualEvidenceCPT '%s' observation matrix has %d frames in that segment",segmentNo,numFrames,veCpts[i]->name().c_str(),veCpts[i]->numFrames());
   }
+
+  // FIXME - investigate if lattice CPTs work with stream input (where
+  //         the number of frames isn't known)
+  if (numFrames != 0) {
+
   // set the lattice CPT frame indices
   for (unsigned i=0; i < latticeAdts.size(); i++ ) {
 	  // I cannot call iterableLatticeAdts here because
@@ -2745,6 +2754,9 @@ GMParms::setSegment(const unsigned segmentNo)
 	  }
 	  latticeAdts[i]->resetFrameIndices(numFrames);
   }
+
+  }
+
   for (unsigned i=0;i<dLinks.size();i++) {
     dLinks[i]->clearArrayCache();
   }
@@ -2813,20 +2825,20 @@ GMParms::setStride(const unsigned stride)
 void
 GMParms::checkConsistentWithGlobalObservationStream()
 {
-  if ((int)globalObservationMatrix.startSkip() < -(int)Dlinks::_globalMinLag)
+  if ((int)globalObservationMatrix->startSkip() < -(int)Dlinks::_globalMinLag)
     error("ERROR: a start skip of %d is invalid for a minimum dlink lag of %d\n",
-	  globalObservationMatrix.startSkip(),
+	  globalObservationMatrix->startSkip(),
 	  Dlinks::_globalMinLag);
 
-  if ((int)globalObservationMatrix.endSkip() < (int)Dlinks::_globalMaxLag)
-    error("ERROR: an end skip of %d is invalid for a maximum dlink lag of %d\n",
-	  globalObservationMatrix.endSkip(),
-	  Dlinks::_globalMaxLag);
-
-  if ((int)globalObservationMatrix.numContinuous() <= (int)Dlinks::_globalMaxOffset)
+    if ((int)globalObservationMatrix->endSkip() < (int)Dlinks::_globalMaxLag)
+      error("ERROR: an end skip of %d is invalid for a maximum dlink lag of %d\n",
+	    globalObservationMatrix->endSkip(),
+	    Dlinks::_globalMaxLag);
+  
+  if ((int)globalObservationMatrix->numContinuous() <= (int)Dlinks::_globalMaxOffset)
     error("ERROR: there is a dlink ofset of value %d which is too large for the observation matrix with only %d continuous features.",
 	  Dlinks::_globalMaxOffset,
-	  globalObservationMatrix.numContinuous());
+	  globalObservationMatrix->numContinuous());
 }
 
 
@@ -3776,12 +3788,19 @@ GMParms::commit_nc_changes()
 #ifdef MAIN
 
 #include "rand.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_FileSource.h"
+#endif
 
 RAND rnd(false);
 GMParms GM_Parms;
+#if 0
 ObservationMatrix globalObservationMatrix;
-
+#else
+FileSource globalObservationMatrix;
+#endif
 
 
 int
