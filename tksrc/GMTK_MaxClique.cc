@@ -76,7 +76,11 @@
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
 #include "GMTK_Mixture.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_ObservationSource.h"
+#endif
 #include "GMTK_JunctionTree.h"
 
 #if HAVE_CONFIG_H

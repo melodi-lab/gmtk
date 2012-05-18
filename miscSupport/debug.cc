@@ -13,9 +13,13 @@
 
 unsigned IM::globalMessageLevel = IM::Nano;
 bool IM::globalFlush = true;
-unsigned IM::globalModuleLevel[(unsigned)ModuleCount] = {};
+#ifdef GMTK_ARG_VERB_DEF_VAL
+unsigned IM::globalModuleLevel[(unsigned)ModuleCount] = {GMTK_ARG_VERB_DEF_VAL,...};
+#else
+unsigned IM::globalModuleLevel[(unsigned)ModuleCount] = {IM::Default,};
+#endif
 const char*IM::moduleString[(unsigned)ModuleCount] = 
-  {"default","inference","inference-memory", "training", "triangulation","boundary","unrolling","printing","modelinfo"};
+  {"default","inference","inference-memory", "training", "triangulation","boundary","unrolling","printing","modelinfo","obsfile","obsstream"};
 
 #ifdef MAIN
 

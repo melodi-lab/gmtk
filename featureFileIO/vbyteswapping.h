@@ -15,6 +15,7 @@ extern short swapb_short_short(short sval);
 extern float swapb_f32_f32(float fval);
 
 // static intv_int32_t copy_i32_i32(intv_int32_t from) { return from; }
+extern intv_int32_t swapb_i32_i32(intv_int32_t val);
 extern void copy_i32_vi32(const size_t len, intv_int32_t from, intv_int32_t* to);
 extern void swapb_vi32_vi32(const size_t len, const intv_int32_t* from, intv_int32_t* to);
 extern void copy_vi32_vi32(const size_t len, const intv_int32_t* from, intv_int32_t* to);
