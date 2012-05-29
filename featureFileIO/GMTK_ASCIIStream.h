@@ -37,7 +37,10 @@ class ASCIIStream: public ObservationStream {
   FILE *f;   // file to read data from
 
   char version[GMTK_ASC_VERSION_LENGTH]; // protocol version #
-  
+
+  unsigned currentFrameNum; // current frame # tracked for error messages
+  unsigned currentSegNum;   // current segment # tracked for error messages
+
  public:
 
   ASCIIStream() {f=NULL;}
@@ -48,10 +51,10 @@ class ASCIIStream: public ObservationStream {
   {
     char cookie[GMTK_ASC_COOKIE_LENGTH];
     if (fgets(cookie, GMTK_ASC_COOKIE_LENGTH, f) != cookie) {
-      error("ERROR: ASCIIStream did not begin with 'GMTa\\n'\n");
+      error("ERROR: ASCIIStream could not read 'GMTa\\n'\n");
     }
     if (strcmp(cookie, GMTK_ASC_PROTOCOL_COOKIE)) {
-      error("ERROR: ASCIIStream did not begin with 'GMTa\\n'\n");
+      error("ERROR: ASCIIStream did not begin with 'GMTa\\n', got '%s' instead\n", cookie);
     }
     if (fgets(version, GMTK_ASC_VERSION_LENGTH, f) != version) {
       error("ERROR: ASCIIStream couldn't read protocol version\n");
@@ -74,6 +77,8 @@ class ASCIIStream: public ObservationStream {
       error("ERROR: ASCIIStream contains %u discrete features, but expected %u",
 	    nDisc, nInt);
     }
+    currentFrameNum = 0;
+    currentSegNum = 0;
   }
 
 
