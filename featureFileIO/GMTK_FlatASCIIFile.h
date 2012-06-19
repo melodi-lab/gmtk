@@ -30,26 +30,19 @@ using namespace std;
 #include "GMTK_ObservationFile.h"
 
 
-// The ObservationFile provides a simple API to wrap around
-// random access data file formats.
-// Just subclass ObservationFile and implement getFrames
-// for the new type of file (and add command line options 
-// to instantiate it - aspect-oriented programming?) and the
-// new file type is supported by GMTK.
+// Reads in flat ASCII files, which consist of a single file
+// with lines in the format:
 //
-// Planned subtypes:
-//   ASCIIFile    -   ASCII files (read entirely into memory)
-//   PFileFile    -   indexed PFiles (non-indexed read entirely into memory)
-//   HDF5File     
-//   HTKFile      
-//   BinaryFile   
-//   FilterFile   -   ObservationFile wrapper for IIR, ARMA, etc transforms
+// S F f_0 ... f_n i_0 ... i_m
+//
+// where S is the segment number, F is the frame number,
+// f_i are the continuous features and i_j are the 
+// discrete features. The entire file is read into
+// memory.
 
 class FlatASCIIFile: public ObservationFile {
 
-  unsigned          nFloats;
-  unsigned          nInts;
-  vector<unsigned>  nFrames;
+  vector<unsigned>  nFrames;       // nFrames[i] is the # of frames in the ith segment
   unsigned          nSegments;
   int               currSegment;
 
@@ -77,8 +70,8 @@ class FlatASCIIFile: public ObservationFile {
   // The number of available segments.
   unsigned numSegments() {return nSegments;}
 
-  // Begin sourcing data from the requested segment.
-  // Must be called before any other operations are performed on a segment.
+  
+  // Set the frame range for the segment
   bool openSegment(unsigned seg) {
     assert(seg < nSegments);
     currSegment = seg;
@@ -97,19 +90,21 @@ class FlatASCIIFile: public ObservationFile {
     return nFrames[currSegment];
   }
 
-  // Load count frames of observed data, starting from first,
-  // in the current segment. count may be 0 to request loading
-  // the entire data segment (frames [first, numFrames)).
+
+  // get the starting frame of the current segment and then
+  // add the offset for the first requested frame
   Data32 const *getFrames(unsigned first, unsigned count) {
     assert(currSegment > -1); 
     assert(first < nFrames[currSegment]);
     assert(first + count <= nFrames[currSegment]);
-    return segment[currSegment] + first * (nFloats + nInts);
+    return segment[currSegment] + first * _numFeatures;
   }
 
-  unsigned numContinuous() {return nFloats;}
-  unsigned numDiscrete() {return nInts;}
-  unsigned numFeatures() {return nFloats + nInts;}
+  // Number of continuous/discrete/total features in the file
+  // after applying -frX and -irX
+  unsigned numLogicalContinuous() { return _numLogicalContinuousFeatures; }
+  unsigned numLogicalDiscrete()   { return _numLogicalDiscreteFeatures; }
+  unsigned numLogicalFeatures()   { return _numLogicalFeatures; }
 
 };
 

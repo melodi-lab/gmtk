@@ -2512,6 +2512,23 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 		   inference_it.cur_message_order(),
 		   inference_it.cur_nm(),
 		   inference_it.pt_i());
+
+#if 1
+  // Send messages from the root clique to the rest of the cliques
+  // in this partition so that they are consistant with the observations
+  // in this partition. We originally wanted to send messages only to
+  // the cliques actually being printed, but deScatterToOutgoingSeparators()
+  // sends messages to all of a clique's outgoing separators (rather
+  // than just those on the path to a printing clique) and we decided
+  // not to implement a "subset" scatter. We think that in the common
+  // cases there won't be much extra work from the full scatter.
+  deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
+		     *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
+		     inference_it.cur_ri(),
+		     inference_it.cur_message_order(),
+		     inference_it.cur_nm(),
+		     inference_it.pt_i());
+#endif
   // possibly print the P or C partition information
   if (inference_it.cur_part_clique_print_range() != NULL)
     printAllCliques(partitionStructureArray[inference_it.ps_i()],
@@ -2569,6 +2586,22 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 		       inference_it.cur_message_order(),
 		       inference_it.cur_nm(),
 		       inference_it.pt_i());
+#if 1
+      // Send messages from the root clique to the rest of the cliques
+      // in this partition so that they are consistant with the observations
+      // in this partition. We originally wanted to send messages only to
+      // the cliques actually being printed, but deScatterToOutgoingSeparators()
+      // sends messages to all of a clique's outgoing separators (rather
+      // than just those on the path to a printing clique) and we decided
+      // not to implement a "subset" scatter. We think that in the common
+      // cases there won't be much extra work from the full scatter.
+      deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
+			 *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
+			 inference_it.cur_ri(),
+			 inference_it.cur_message_order(),
+			 inference_it.cur_nm(),
+			 inference_it.pt_i());
+#endif
       // possibly print the P or C partition information
       if (inference_it.cur_part_clique_print_range() != NULL)
 	printAllCliques(partitionStructureArray[inference_it.ps_i()],

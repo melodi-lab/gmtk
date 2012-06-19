@@ -20,6 +20,7 @@
 
 #include "error.h"
 #include "general.h"
+#include "debug.h"
 #include "pfile.h"
 
 #include "GMTK_PFileFile.h"
@@ -39,12 +40,14 @@ PFileFile::PFileFile(const char *name, unsigned nfloats, unsigned nints,
 {
   buffer = NULL;
   bufferSize = 0;
+  contBuf = NULL;
+  discBuf = NULL;
   currentSegment = 0;
 
   if (name == NULL) 	
-    error("PFileFile: File name is NULL for stream %i\n",num);	
+    error("PFileFile: File name is NULL for stream %i",num);	
   if ((dataFile = fopen(name,"rb")) == NULL)
-       error("PFileFile: Can't open '%s' for input\n", name);
+       error("PFileFile: Can't open '%s' for input", name);
   pfile = new InFtrLabStream_PFile(0,name,dataFile,1,bswap);
   assert(pfile);
   if (pfile->num_ftrs() != nfloats) 
@@ -58,11 +61,29 @@ PFileFile::PFileFile(const char *name, unsigned nfloats, unsigned nints,
 	     name,
 	     pfile->num_labs(),
 	     nints);
+
+  _numContinuousFeatures = pfile->num_ftrs();
+  _numDiscreteFeatures = pfile->num_labs();
+  _numFeatures = _numContinuousFeatures + _numDiscreteFeatures;
+
+  if (contFeatureRangeStr) {
+    contFeatureRange = new Range(contFeatureRangeStr, 0, _numContinuousFeatures);
+    assert(contFeatureRange);
+infoMsg(IM::ObsFile, IM::Low, "-prefr%u '%s'\n", num, contFeatureRange);
+    _numLogicalContinuousFeatures = contFeatureRange->length();
+  } else
+    _numLogicalContinuousFeatures = nfloats;
+  if (discFeatureRangeStr) {
+    discFeatureRange = new Range(discFeatureRangeStr, 0, _numDiscreteFeatures);
+infoMsg(IM::ObsFile, IM::Low, "-preir%u '%s'\n", num, discFeatureRange);
+    assert(discFeatureRange);
+    _numLogicalDiscreteFeatures = discFeatureRange->length();
+  } else
+    _numLogicalDiscreteFeatures = nints;
+  _numLogicalFeatures = _numLogicalContinuousFeatures + _numLogicalDiscreteFeatures;
 }
 
 
-// Begin sourcing data from the requested segment.
-// Must be called before any other operations are performed on a segment.
 bool
 PFileFile::openSegment(unsigned seg) {
   assert(pfile);
@@ -70,6 +91,7 @@ PFileFile::openSegment(unsigned seg) {
   long segId = pfile->set_pos(seg, 0);
   assert(segId != SEGID_BAD);
   currentSegment = seg;
+  _numFrames = pfile->num_frames(currentSegment);
   return true;
 }
 
@@ -77,19 +99,23 @@ PFileFile::openSegment(unsigned seg) {
 Data32 const *
 PFileFile::getFrames(unsigned first, unsigned count) {
   assert(pfile);
-  assert(first < numFrames()  &&  first + count <= numFrames());
-  unsigned needed = numFeatures() * count;
+  assert(first < _numFrames  &&  first + count <= _numFrames);
+  unsigned needed = _numFeatures * count;
   if (!buffer || needed > bufferSize) {
+    infoMsg(IM::ObsFile, IM::Low, "PFileFile buffer resize %u - > %u B for [%u,%u)\n",
+	    bufferSize * sizeof(Data32), needed * sizeof(Data32), first, first+count);
     buffer = (Data32 *) realloc(buffer, needed * sizeof(Data32));
+    assert(buffer);
     bufferSize = needed;
+
+    contBuf = (float *) realloc(contBuf, count * _numContinuousFeatures * sizeof(Data32));
+    discBuf = (UInt32*) realloc(discBuf, count * _numDiscreteFeatures   * sizeof(Data32));
+    assert(_numContinuousFeatures == 0 || contBuf != NULL);
+    assert(_numDiscreteFeatures == 0   || discBuf != NULL);
   }
   assert(buffer);
-  // FIXME - move the new -> ctor and realloc iff too small; free in dtor
-  float  *contBuf = new float[numContinuous() * needed];
   float  *contSrc = contBuf;
-  UInt32 *discBuf = new UInt32[numDiscrete() * needed];
   UInt32 *discSrc = discBuf;
-  assert(contBuf && discBuf);
   if (pfile->set_pos(currentSegment, first) == SEGID_BAD) {
     // FIXME - remember file name for error reporting
     error("ERROR: PFileFile: unable to seek in PFile");
@@ -97,17 +123,16 @@ PFileFile::getFrames(unsigned first, unsigned count) {
   unsigned framesRead = pfile->read_ftrslabs(count, contBuf, discBuf);
   assert(framesRead == count);
   Data32 *floatDest = buffer;
-  Data32 *intDest   = buffer + numContinuous();
+  Data32 *intDest   = buffer + _numContinuousFeatures;
+  // FIXME - this wants a strided memcpy
   for (unsigned i=0; i < count; i+=1) {
-    memcpy(floatDest, contSrc, numContinuous() * sizeof(Data32));
-    memcpy(intDest, discSrc, numDiscrete() * sizeof(Data32));
-    floatDest += numFeatures();
-    intDest += numFeatures();
-    contSrc += numContinuous();
-    discSrc += numDiscrete();
+    memcpy(floatDest, contSrc, _numContinuousFeatures * sizeof(Data32));
+    memcpy(intDest, discSrc, _numDiscreteFeatures * sizeof(Data32));
+    floatDest += _numFeatures;
+    intDest   += _numFeatures;
+    contSrc   += _numContinuousFeatures;
+    discSrc   += _numDiscreteFeatures;
   }
-  delete discBuf;
-  delete contBuf;
   return buffer;
 }
 

@@ -14,7 +14,9 @@
 #include "GMTK_MergeFile.h"
 #include "GMTK_Filter.h"
 
-// adjust seg according to -sdiffactX
+// Adjust segment number seg according to -sdiffactX.
+// Returns the physical segment number corresponding
+// to the logical segment number seg.
 unsigned 
 MergeFile::adjustForSdiffact(unsigned fileNum, unsigned seg) {
   if (!sdiffact || sdiffact[fileNum] == SEGMATCH_TRUNCATE_FROM_END)
@@ -29,12 +31,14 @@ MergeFile::adjustForSdiffact(unsigned fileNum, unsigned seg) {
   } else if (sdiffact[fileNum] == SEGMATCH_ERROR) {
     return seg;
   } else 
-    error("ERROR: MergeFile::adjustForSdiffact: unknown -sdiffact%u %d\n",
+    error("ERROR: MergeFile::adjustForSdiffact: unknown -sdiffact%u %d",
 	  fileNum, sdiffact[fileNum]);
   return 0; // impossilbe to get here, but compiler warns about no return
 }
 
 
+// Returns the number of frames in the current segment
+// after the -fdiffactX options are applied
 static
 unsigned
 checkNumFrames(unsigned nFiles, ObservationFile *file[],
@@ -43,11 +47,11 @@ checkNumFrames(unsigned nFiles, ObservationFile *file[],
   unsigned min_len=file[0]->numLogicalFrames();
   unsigned max_len=min_len;
   if(max_len == 0) 
-    warning("WARNING: FileSource::openSegment:checkNumFrames:  segment 0 is empty\n");
+    warning("WARNING: MergeFile::openSegment:checkNumFrames:  segment 0 is empty");
 
-  bool got_error    = false;
-  bool got_truncate = false;
-  bool got_expand   = false;
+  bool got_error    = false;  // an input file insists all files have the same segment length
+  bool got_truncate = false;  // an input file will shorten itself to match the others
+  bool got_expand   = false;  // an input file will lengthen itself to match the others
 
   for(unsigned file_no=0; file_no < nFiles; file_no += 1) {
     unsigned len=file[file_no]->numLogicalFrames();
@@ -59,30 +63,26 @@ checkNumFrames(unsigned nFiles, ObservationFile *file[],
       case FRAMEMATCH_TRUNCATE_FROM_START:
       case FRAMEMATCH_TRUNCATE_FROM_END:
 	got_truncate = true;
-//printf("file %u with %u frames to truncate -> %u\n", file_no, len, min_len);
 	break;
       case FRAMEMATCH_REPEAT_FIRST:
       case FRAMEMATCH_REPEAT_LAST:
       case FRAMEMATCH_EXPAND_SEGMENTALLY:
 	got_expand = true;
-//printf("file %u with %u frames to expand -> %u\n", file_no, len, max_len);
 	break;
       case FRAMEMATCH_ERROR:
 	got_error = true;
-//printf("file %u with %u frames to error if target length != %u\n", file_no, len, len);
 	break;
       }
     } else {
-      got_error = true;
-//printf("file %u with %u frames to error if target length != %u\n", file_no, len, len);
+      got_error = true; // FRAMEMATCH_ERROR is the default
     }
     if(got_truncate && got_expand)
       // FIXME - match ObservationMatrix error message?
-      error("ERROR: FileSource::openSegment:checkNumFrames: Cannot specify both truncate and expand actions when segments have different lengths");
-    
+      error("ERROR: MergeFile::openSegment:checkNumFrames: Cannot specify "
+	    "both truncate and expand actions when segments have different lengths");
   }
   if(max_len == 0)
-    error("ERROR: FileSource::openSegment:checkNumFrames:  all segments have zero length");
+    error("ERROR: MergeFile::openSegment:checkNumFrames:  all segments have zero length");
   
 #define EXPANSIVE(action,file_no) ( action && (action[file_no] == FRAMEMATCH_REPEAT_FIRST || \
                                                action[file_no] == FRAMEMATCH_REPEAT_LAST  || \
@@ -94,17 +94,16 @@ checkNumFrames(unsigned nFiles, ObservationFile *file[],
   for(unsigned file_no=0; file_no < nFiles; ++file_no) {
     unsigned len=file[file_no]->numLogicalFrames();
     if( got_expand && len < max_len && !EXPANSIVE(fdiffact,file_no) ) {
-      // FIXME - filenames... match error messages
-      error("ERROR: observation file %u needs an -fdiffact%u that expands\n", file_no+1, file_no+1);
+      error("ERROR: observation file %u needs an -fdiffact%u that expands", file_no+1, file_no+1);
     }
     if ( got_truncate && len > min_len && !CONTRACTIVE(fdiffact,file_no) ) {
-      error("ERROR: observation file %u needs an -fdiffact%u that truncates\n", file_no+1, file_no+1);
+      error("ERROR: observation file %u needs an -fdiffact%u that truncates", file_no+1, file_no+1);
     }
     if (!fdiffact || fdiffact[file_no] == FRAMEMATCH_ERROR) {
       if (got_truncate && len != min_len) {
-	error("ERROR: observation file %u needs an -fdiffact%u that truncates\n", file_no+1, file_no+1);
+	error("ERROR: observation file %u needs an -fdiffact%u that truncates", file_no+1, file_no+1);
       } else if (len != max_len) {
-	error("ERROR: observation file %u needs an -fdiffact%u that expands\n", file_no+1, file_no+1);
+	error("ERROR: observation file %u needs an -fdiffact%u that expands", file_no+1, file_no+1);
       }
     }
   }
@@ -113,17 +112,15 @@ checkNumFrames(unsigned nFiles, ObservationFile *file[],
     // Adjust length of segments in the truncate case
     // We don't need to do that in the expand case
     if(min_len == 0)
-      error("ERROR: FileSource:openSegment:checkNumFrames: minimum segment length is zero");
-
-//printf("truncating to %u\n", min_len);
+      error("ERROR: MergeFile:openSegment:checkNumFrames: minimum segment length is zero");
     return min_len;
   } else {
-//printf("expanding to %u\n", max_len);
     return max_len;  // if there is no expand, it means min_len == max_len
   }
 }
 
-    
+
+// Returns the number of segments after adjusting for -sdiffactX
 static
 unsigned
 checkNumSegments(unsigned nFiles, ObservationFile *file[],
@@ -132,7 +129,7 @@ checkNumSegments(unsigned nFiles, ObservationFile *file[],
   unsigned min_len=file[0]->numLogicalSegments();
   unsigned max_len=min_len;
   if(max_len == 0) 
-    warning("WARNING: MergeFile::checkNumSegments:  file 0 is empty\n");
+    warning("WARNING: MergeFile::checkNumSegments:  file 0 is empty");
 
   bool got_error    = false;
   bool got_truncate = false;
@@ -154,7 +151,6 @@ checkNumSegments(unsigned nFiles, ObservationFile *file[],
 	     )
     {
       got_expand = true;
-fprintf(stderr,"got expand %u for %u\n", sdiffact[file_no], file_no);
     }
   }
   if(max_len == 0)
@@ -201,6 +197,7 @@ MergeFile::MergeFile(unsigned nFiles, ObservationFile *file[],
   this->intStart       = new unsigned[nFiles];
   this->segment        = -1;  // no openSegment() call yet
 
+  // setup floatStart - append files for FTROP_NONE, otherwise 0 so they all overlap
   unsigned offset = 0;
   unsigned maxFloats = 0;
   for (unsigned i=0; i < nFiles; i+=1) {
@@ -209,19 +206,24 @@ MergeFile::MergeFile(unsigned nFiles, ObservationFile *file[],
     if (ftrcombo == FTROP_NONE) offset += nlc;
     if (maxFloats < nlc) maxFloats = nlc;
   }
+  // discrete features always append
   if (ftrcombo != FTROP_NONE) {
     offset = maxFloats;
   }
-  this->_numContinuous = offset;
-  this->_numDiscrete = 0;
+  this->_numContinuousFeatures = offset;
+  this->_numDiscreteFeatures = 0;
   for (unsigned i=0; i < nFiles; i+=1) {
     this->intStart[i] = offset;
     unsigned nld = file[i]->numLogicalDiscrete();
     offset += nld;
-    this->_numDiscrete += nld;
+    this->_numDiscreteFeatures += nld;
   }
-  this->bufStride = offset;
+  this->_numFeatures = _numContinuousFeatures + _numDiscreteFeatures;
+  this->_numLogicalContinuousFeatures = _numContinuousFeatures;
+  this->_numLogicalDiscreteFeatures   = _numDiscreteFeatures;
+  this->_numLogicalFeatures = _numFeatures;
 
+  this->bufStride = offset;
   this->_numSegments = checkNumSegments(nFiles, file, sdiffact);
 }
 
@@ -229,7 +231,8 @@ MergeFile::MergeFile(unsigned nFiles, ObservationFile *file[],
 bool
 MergeFile::openSegment(unsigned seg) {
   if (seg >= _numSegments) {
-    error("ERROR: FileSource::openSegment: requested segment %u, but only up to %u are available\n", seg, _numSegments-1);
+    error("ERROR: MergeFile::openSegment: requested segment %u, but only up to %u are available", 
+	  seg, _numSegments-1);
   }
   for (unsigned i=0; i < nFiles; i+=1) {
     if (!file[i]->openLogicalSegment(adjustForSdiffact(i,seg)))
@@ -239,6 +242,10 @@ MergeFile::openSegment(unsigned seg) {
 
   unsigned numInputFrames = checkNumFrames(nFiles, file, fdiffact);
   this->_numFrames = numInputFrames;
+  // The modular debugging tests require the output to match the output 
+  // from before the O(1) observation code, so infoMsg() calls in this
+  // code will cause the tests to fail. So defining JEFFS_STRICT_DEBUG_OUTPUT_TEST
+  // turns off the infoMsg() to allow the tests to pass.
 #ifndef JEFFS_STRICT_DEBUG_OUTPUT_TEST
   infoMsg(IM::ObsFile,IM::Low,"%u input frames in segment %d\n", numInputFrames, seg);
 #endif
@@ -246,28 +253,40 @@ MergeFile::openSegment(unsigned seg) {
 }
 
 
+// repCount() returns the number of times a merged frame should be repeated in the
+// merged getFrames() output to achieve any expansion requested by -fdiffactX.
+//
 // frameNum      pre-expansion frame # we need repetition count for
-// deltaT        difference in frames between target length and actual segment length
+// deltaT        difference in frames between target segment length and actual 
+//                 pre-expansion length
 // firstFrame    first frame # desired (post-expansion)
-// frameCount    # of desired frames (post-expansion)
+// frameCount    # of desired frames (post-expansion) - i.e., trying to get merged 
+//                 frames [firstFrame,firstFrame+frameCount)
 // segLength     total # of frames in pre-expansion segment
 
 static unsigned 
 repCount(unsigned frameNum, unsigned const *fdiffact, unsigned fileNum, 
 	 unsigned deltaT, unsigned firstFrame, unsigned frameCount, unsigned segLength)
 {
-  if (!fdiffact) return 1;
+  if (!fdiffact) return 1; // no expansion needed
 
   if (fdiffact[fileNum] == FRAMEMATCH_REPEAT_FIRST && frameNum == 0) {
-    return frameCount > deltaT + 1 - firstFrame  ?  deltaT + 1 - firstFrame  :  frameCount;
+    // repeat first frame to make the file match the target frameCount
+    return frameCount > deltaT + 1 - firstFrame  ?  
+      deltaT + 1 - firstFrame  :  frameCount;
   } else if (fdiffact[fileNum] == FRAMEMATCH_REPEAT_LAST && frameNum == segLength-1) {
+    // repeat last frame to make the file match the target frameCount
     return firstFrame >= segLength  ?
       frameCount  :  frameCount - (segLength - firstFrame) + 1;
   } else if (fdiffact[fileNum] == FRAMEMATCH_EXPAND_SEGMENTALLY) {
 
+    // most frames are repeated frameReps times, but the first remainder are
+    // repeated 1 extra time
     unsigned frameReps = (segLength + deltaT) / segLength;
     unsigned remainder = (segLength + deltaT) % segLength;
 
+    // map the post-expansion [firstFrame,firstFrame+frameCount) frame
+    // range to the corresponding pre-expansion [preExpFirst,preExpLast]
     unsigned preExpFirst = (firstFrame < remainder * (frameReps+1)) ? 
       (firstFrame / (frameReps+1)) : 
       (remainder + (firstFrame - remainder * (frameReps + 1)) / frameReps);
@@ -283,6 +302,9 @@ repCount(unsigned frameNum, unsigned const *fdiffact, unsigned fileNum,
 
     unsigned runLength = (frameNum < remainder) ?  frameReps + 1  :  frameReps;
 
+    // The requested frame is repeated runLength times in the merged
+    // segment, but we need to determin the overlap between that and
+    // the requested frame range.
     if (frameNum == preExpFirst) {
       if (firstFrame < remainder * (frameReps + 1)) 
 	firstFrame -=  remainder * (frameReps + 1);
@@ -302,6 +324,10 @@ repCount(unsigned frameNum, unsigned const *fdiffact, unsigned fileNum,
   return 1;
 }
 
+  // Map requested merged frame range [first,first+count) to individual file 
+  // fileNum's pre-fdiffactX frame range [adjFirst,adjFirst+adjCount). Also 
+  // returns deltaT, the difference in frames between the merged segment 
+  // length and the individual file's segment length.
 
 void 
 MergeFile::adjustForFdiffact(unsigned first, unsigned count, unsigned i,

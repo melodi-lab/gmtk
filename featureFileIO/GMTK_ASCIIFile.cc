@@ -49,8 +49,23 @@ ASCIIFile::ASCIIFile(const char *name, unsigned nfloats, unsigned nints,
   // local copy of file name
   fofName = new char[strlen(name)+1];
   strcpy(fofName,name);
-  nFloats = nfloats;
-  nInts = nints;
+  _numContinuousFeatures = nfloats;
+  _numDiscreteFeatures   = nints;
+  _numFeatures           = nfloats + nints;
+
+  if (contFeatureRangeStr) {
+    contFeatureRange = new Range(contFeatureRangeStr, 0, _numContinuousFeatures);
+    assert(contFeatureRange);
+    _numLogicalContinuousFeatures = contFeatureRange->length();
+  } else
+    _numLogicalContinuousFeatures = nfloats;
+  if (discFeatureRangeStr) {
+    discFeatureRange = new Range(discFeatureRangeStr, 0, _numDiscreteFeatures);
+    assert(discFeatureRange);
+    _numLogicalDiscreteFeatures = discFeatureRange->length();
+  } else
+    _numLogicalDiscreteFeatures = nints;
+  _numLogicalFeatures = _numLogicalContinuousFeatures + _numLogicalDiscreteFeatures;
 
   fofFile = openCPPableFile(fofName, cppIfAscii, cppCommandOptions);
   if (!fofFile)
@@ -69,6 +84,7 @@ ASCIIFile::ASCIIFile(const char *name, unsigned nfloats, unsigned nints,
 
 // Begin sourcing data from the requested segment.
 // Must be called before any other operations are performed on a segment.
+// Loads the segment's data into the buffer and set the # of frames.
 bool
 ASCIIFile::openSegment(unsigned seg) {
   assert(seg < numFileNames);
@@ -89,7 +105,11 @@ ASCIIFile::openSegment(unsigned seg) {
     return false;
   }
   
-  /* for ascii, newline is record delimiter - additional or missing nl's will cause error messages */
+  // Read through the segment once to determine its length, then again 
+  // to actually load the data.
+
+  // For ASCII, newline is record delimiter - additional or missing nl's
+  // will cause error messages.
   int tmp;
   while ((tmp = fgetc(curDataFile)) != EOF) {
     ch=tmp;
@@ -111,11 +131,10 @@ ASCIIFile::openSegment(unsigned seg) {
 
   // FIXME - track size and only realloc when it needs to grow
   if (buffer) delete [] buffer;
-  buffer = new Data32[n_samples * (nFloats + nInts)];
+  buffer = new Data32[n_samples * _numFeatures];
   Data32 *dest = buffer;
 
   int lineNum=0;
-
 
   // consume CPP special directives if any
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
@@ -128,18 +147,16 @@ ASCIIFile::openSegment(unsigned seg) {
   }
 #endif
 
-
-
   // could be made a bit more efficient since we check whether
   // num_floats and num_ints > 0 for each frame.
   for(unsigned s=0; s < n_samples; ++s) {
     lineNum++;
-    for (unsigned n = 0; n < nFloats; n+=1) {
+    for (unsigned n = 0; n < _numContinuousFeatures; n+=1) {
       if (fscanf(curDataFile,"%e", (float *)(dest++)) != 1) {
 	error("ERROR: ASCIIFile::openSegment: couldn't read %u'th item in frame %u\n",n,s);
       }
     }
-    for (unsigned n = 0; n < nInts; n+=1) {
+    for (unsigned n = 0; n < _numDiscreteFeatures; n+=1) {
       if (fscanf(curDataFile,"%d", (Int32 *)(dest++)) != 1) {
 	error("ERROR: ASCIIFile::openSegment: couldn't read %u'th item in frame %u\n",n,s);
       }

@@ -419,28 +419,3 @@ HTKFile::getFrames(unsigned first, unsigned count) {
   return NULL;
 }
 
-
-
-
-#if 0
-  if (numDiscrete() > 0) {
-    assert(numContinuous() == 0);
-    unsigned nDiscrete = numDiscrete(), totalFeatures = numDiscrete() * count;
-    Int16 *tmpBuf = new Int16[totalFeatures];
-    assert(tmpBuf);
-    size_t nread = fread(tmpBuf, sizeof(Int16), totalFeatures, info->curDataFile);
-    if (nread != totalFeatures) {
-      error("HTKFile: read %u items, expected %u", nread, totalFeatures);
-    }
-    bool swap = info->swap();
-    for (unsigned i=0; i<totalFeatures; i+=1) {
-      // should get this swap check out of the loop.  It's wasteful.
-      if(swap) {
-	tmpBuf[i]=swapb_short_short(tmpBuf[i]);
-      }
-      buffer[i]=(int)tmpBuf[i];
-    }
-    delete [] tmpBuf;
-    return buffer;
-  }
-#endif

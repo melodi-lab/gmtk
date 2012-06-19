@@ -29,12 +29,7 @@
 #include "GMTK_Filter.h"
 #include "GMTK_MergeFile.h"
 
-#define BUFFER_SIZE (1024*1024)
-  // each file provides its data for the requested submatrix,
-  // transformed and "ready to eat." So the FileSource
-  // just manages assembling them to satisfy the loadFrames()
-  // calls, prefetching/caching. For archipelagos, each thread
-  // gets its own FileSource (all aimed at the same files, of course).
+
 FileSource::FileSource(ObservationFile *file, 
 		       unsigned windowBytes, unsigned deltaFrames, unsigned bufferSize, 
 		       unsigned startSkip, unsigned endSkip,
@@ -45,6 +40,8 @@ FileSource::FileSource(ObservationFile *file,
 
 
 #if 0
+// helpful for debugging
+
 static
 void
 dumpFrames(Data32 *buf, unsigned nFloat, unsigned nInt,
@@ -75,15 +72,20 @@ FileSource::initialize(ObservationFile *file,
 {
   assert(file);
   assert( 0 <= justificationMode && justificationMode <= FRAMEJUSTIFICATION_RIGHT );
-  if (windowBytes > bufferSize) {
+  if (windowBytes > bufferSize * sizeof(Data32)) {
     error("ERROR: fileWindowSize (%u MB) must be less than fileBufferSize (%u MB)",
-	  windowBytes/MEBIBYTE, bufferSize/MEBIBYTE);
+	  windowBytes/MEBIBYTE, bufferSize * sizeof(Data32) / MEBIBYTE);
   }
+  // window size in frames
   this->window = windowBytes / (file->numLogicalFeatures() * sizeof(Data32));
   if (this->window < 1) {
     error("ERROR: fileWindowSize (%u MB) must be at least %u MB to hold 1 frame",
 	  windowBytes / MEBIBYTE, file->numLogicalFeatures() * sizeof(Data32) / MEBIBYTE);
   }
+
+  // FIXME - if the number of buffered frames less than 2 delta, it's ambiguous whether
+  //         we should prefetch forward or backward. That's a goofy case though, so 
+  //         should it be an error, or just don't prefetch?
   this->delta = deltaFrames;
   this->_startSkip = startSkip;
   this->_endSkip = endSkip;
@@ -109,8 +111,16 @@ FileSource::initialize(ObservationFile *file,
     minSize = (minSize < 1) ? 1 : minSize;
     error("ERROR: file buffer size must be at least %u MB", minSize);
   }
+
+  infoMsg(IM::ObsFile, IM::Low, "FileSource window = %u frames, %u MiB\n"
+	  "  cookedBuffer = %u frames, %u MiB\n", this->window, windowBytes/MEBIBYTE,
+	  bufferFrames, bufferSize * sizeof(Data32) / MEBIBYTE);
   numBufferedFrames = 0;
   segment = -1; // no openSegment() call yet
+
+  numContinuousFeatures = file->numLogicalContinuous();
+  numDiscreteFeatures = file->numLogicalDiscrete();
+  _numFeatures = numContinuousFeatures + numDiscreteFeatures;
 }
 
 
@@ -124,46 +134,57 @@ FileSource::openSegment(unsigned seg) {
 
   this->segment = seg;
   bool success = file->openLogicalSegment(seg);
-  _numCacheableFrames = file->numLogicalFrames();
+
+  _numCacheableFrames = file->numLogicalFrames();  // the file handles -gpr, so this is what's left after that
   if (_numCacheableFrames < _startSkip + _endSkip) {
     error("ERROR: segment %u has only %u frames, but -startSkip %u and -endSkip %u requires at least %u frames", seg, _numCacheableFrames, _startSkip, _endSkip, _startSkip + _endSkip + 1);
   }
-  _numFrames = _numCacheableFrames;
+  _numFrames  = _numCacheableFrames;
   _numFrames -= _startSkip; // reserve frames at start of segment
   _numFrames -= _endSkip;   // reserve frames at end of segment
 
+  // The modular debugging tests require the output to match the output 
+  // from before the O(1) observation code, so infoMsg() calls in this
+  // code will cause the tests to fail. So defining JEFFS_STRICT_DEBUG_OUTPUT_TEST
+  // turns off the infoMsg() to allow the tests to pass.
 #ifndef JEFFS_STRICT_DEBUG_OUTPUT_TEST
   infoMsg(IM::ObsFile,IM::Low,"%u / %u input accessable/cacheable frames in segment %d (unjustified)\n",
 	  _numFrames, _numCacheableFrames, seg);
 #endif
   
-  justificationOffset = 0;
-  numBufferedFrames = 0;
+  justificationOffset = 0;  // default to left justification until justifySegment() is called
+  numBufferedFrames = 0;    // empty the cache for the new segment
 
-  if (!constantSpace) {
+  if (!constantSpace) {     // load the entire segment
+infoMsg(IM::ObsFile,IM::Low,"O(T) mode\n");
     if (_numCacheableFrames > bufferFrames) { // need to enlarge the buffer
       if (cookedBuffer) delete [] cookedBuffer;
       bufferFrames = _numCacheableFrames;
       bufferSize = numFeatures() * _numCacheableFrames;
       cookedBuffer = new Data32[bufferSize];
-      unsigned bytesPerFrame = numFeatures() * sizeof(Data32);
-      unsigned framesPerGulp;
-      if (bytesPerFrame > DEFAULT_BUFFER_SIZE) {
-	framesPerGulp = _numCacheableFrames;
-      } else {
-	framesPerGulp = DEFAULT_BUFFER_SIZE / bytesPerFrame;
-      }
-      unsigned remainder = _numCacheableFrames % framesPerGulp;
+    }
+    unsigned bytesPerFrame = numFeatures() * sizeof(Data32);
+    unsigned framesPerGulp;
+    if (bytesPerFrame > DEFAULT_BUFFER_SIZE) {
+      // The frames are extremely large. Try to read them all in in one go
+      framesPerGulp = _numCacheableFrames;
+    } else {
+      // The frames are reasonably sized - read them incrementally
+      framesPerGulp = DEFAULT_BUFFER_SIZE / bytesPerFrame;
+    }
+    // load all the frames
+    unsigned remainder = _numCacheableFrames % framesPerGulp;
+    if (remainder > 0)
       (void) loadFrames(0, 0, remainder);
-      firstBufferedFrame = 0;
-      firstBufferedFrameIndex = 0;
-      numBufferedFrames = remainder;
-      for (unsigned frame=remainder; frame < _numCacheableFrames; frame+=framesPerGulp) {
-	(void) loadFrames(frame, frame, framesPerGulp);
-	numBufferedFrames += framesPerGulp;
-      }
+    firstBufferedFrame = 0;
+    firstBufferedFrameIndex = 0;
+    numBufferedFrames = remainder;
+    for (unsigned frame=remainder; frame < _numCacheableFrames; frame+=framesPerGulp) {
+      (void) loadFrames(frame, frame, framesPerGulp);
+      numBufferedFrames += framesPerGulp;
     }
   }
+else infoMsg(IM::ObsFile,IM::Low,"O(1) mode\n");
   return success;
 }
 
@@ -171,10 +192,13 @@ FileSource::openSegment(unsigned seg) {
 void 
 FileSource::justifySegment(unsigned numUsableFrames) {
   if (numUsableFrames > _numFrames) {
-    error("ERROR: FileSource::justifySegment: numUsableFrames (%u) must not be larger than the number of available frames (%u)",
+    error("ERROR: FileSource::justifySegment: numUsableFrames (%u) must not be "
+	  "larger than the number of available frames (%u)",
 	  numUsableFrames, _numFrames);
   }
   assert(segment >= 0);
+  // set justificationOffset to the # of frames required to achieve
+  // the specified justificaton
   switch (justificationMode) {
   case FRAMEJUSTIFICATION_LEFT:
     justificationOffset = 0;
@@ -186,13 +210,24 @@ FileSource::justifySegment(unsigned numUsableFrames) {
     justificationOffset = _numFrames - numUsableFrames;
     break;
   default:
-    error("ERROR: FileSource::justifySegment: unknown justification mode %d", justificationMode);
+    error("ERROR: FileSource::justifySegment: unknown justification mode %d", 
+	  justificationMode);
   }
-  infoMsg(IM::ObsFile,IM::Low,"justification mode %u offset = %u\n", justificationMode, justificationOffset);
-  _numFrames = numUsableFrames;
+  infoMsg(IM::ObsFile,IM::Low,"justification mode %u offset = %u\n", 
+	  justificationMode, justificationOffset);
+  _numFrames = numUsableFrames - _startSkip - _endSkip;
 }
 
 
+#if 0
+static unsigned cachemiss = 0;
+static unsigned cachehit  = 0;
+#endif
+
+
+// This loadFrames() method just loads the frames from the ObservationFile
+// into the indicated position within the cookedBuffer. The other loadFrames()
+// method below is the main workhorse. 
 Data32 const*
 FileSource::loadFrames(unsigned bufferIndex, unsigned first, unsigned count) {
   assert(0 <= bufferIndex && bufferIndex < bufferFrames);
@@ -200,8 +235,11 @@ FileSource::loadFrames(unsigned bufferIndex, unsigned first, unsigned count) {
   
   unsigned buffOffset = bufferIndex * bufStride;
 
+  // FIXME - this should probably be an assert, since it indicates a coding
+  //         error rather than a user error...
   if (first > _numCacheableFrames || first + count > _numCacheableFrames) {
-    error("ERROR: FileSource::loadFrames: requested frames [%u,%u), but %u is the last available frame\n", first, first+count, _numCacheableFrames);
+    error("ERROR: FileSource::loadFrames: requested frames [%u,%u), but %u is the last available frame\n", 
+	  first, first+count, _numCacheableFrames);
   }
     
   Data32 const *fileBuf = file->getLogicalFrames(first,count);
@@ -209,252 +247,179 @@ FileSource::loadFrames(unsigned bufferIndex, unsigned first, unsigned count) {
   Data32 *dst = cookedBuffer + buffOffset;
 
   memcpy((void *)dst, (const void *)fileBuf, file->numLogicalFeatures() * count * sizeof(Data32));
-#if 0
-  warning("fetching [%u,%u) -> %u", first, first+count, buffOffset);
-for (unsigned x=0; x < count; x+=1) {
-  printf("%3u:", x+first);
-  for (unsigned c=0; c < numContinuous(); c+=1) printf(" %f", *((float    *)(cookedBuffer+buffOffset+c+x*bufStride)));
-  for (unsigned d=0; d < numDiscrete()  ; d+=1) printf(" %u", *((unsigned *)(cookedBuffer+buffOffset+d+x*bufStride+numContinuous())));
-  printf("  @ %u\n",buffOffset+x*bufStride );
-}
-#endif
   return cookedBuffer + buffOffset;
 }
 
 
-// FIXME - have to ensure startSkip frames before and endSkip frames after
-// every request ?
+// This method loads the requested frames (along with any necessary
+// preceding or following frames) into the cookedBuffer if they are
+// not already present and returns a pointer to the first requested
+// frame. It tries to prefetch a full window of frames at once when
+// the inference code gets close to the end of the buffered frames.
 Data32 const *
 FileSource::loadFrames(unsigned first, unsigned count) {
   unsigned preFirst;  // first frame # to prefetch
   unsigned preCount;  // # of frames in prefetch request
 
-#if 0
-unsigned requestedFirst = first; 
-unsigned requestedCount = count;
-#endif
-
-  // FIXME - adjust first+count checking for endSkip & justification
   if (first + count > _numFrames) {
-    error("ERROR: FileSource::loadFrames: requested frames [%u,%u), but only %u frames are available", first, first+count, _numFrames);
+    error("ERROR: FileSource::loadFrames: requested frames [%u,%u), but "
+	  "only frames [0,%u) are available", 
+	  first, first+count, _numFrames);
   }
-
-
-  first += _startSkip + justificationOffset;
-
-  if (first >= _minPastFrames) {
-#if 0
-    // I think the _min{Past,Future}Frames adjustment needs to apply to pre{First,Count}
-    first -= _minPastFrames;
-    count += _minPastFrames;
-#endif
-  } else {
-    error("ERROR: FileSource::loadFrames: requested frames [%u,%u), but there must be %u frames before the first requested frame",
-	  first, first+count, _minPastFrames);
+  
+  if (bufferFrames < count + _minFutureFrames + _minPastFrames) {
+    error("ERROR: FileSource::loadFrames: requested %u frames, but buffer "
+	  "can only hold %u", count + _minFutureFrames + _minPastFrames, 
+	  bufferFrames);
   }
-  if (first + count - 1 + _minFutureFrames <= _numCacheableFrames) {
-#if 0
-    // I think the _min{Past,Future}Frames adjustment needs to apply to pre{First,Count}
-    count += _minFutureFrames;
-#endif
-  } else {
-    error("ERROR: FileSource::loadFrames: requested frames [%u,%u), but there must be %u frames after the last requested frame",
-	  first, first+count, _minFutureFrames);
-  }
+  first += _startSkip + justificationOffset; // adjust for -startSkip and -justification
 
-#if 0
-printf("loadFrames [%u,%u) -> [%u,%u)  requires [%u,%u)\n", 
-       requestedFirst, requestedFirst + requestedCount,
-       first, first+count,
-       first - _minPastFrames, first + count + _minPastFrames + _minFutureFrames);
-#endif
   if (numBufferedFrames == 0) {
-    // cache empty
+    // the cookedBuffer is empty - load the first window of frames into the middle of the buffer
+    if (count + _minPastFrames + _minFutureFrames + window < bufferFrames) {
+infoMsg(IM::ObsFile, IM::Giga, "%u+%u+%u frames + %u window fits in %u buffer capacity\n", 
+	_minPastFrames,count,_minFutureFrames, window, bufferFrames);
+      // if there's enough room, prefetch a window's worth of frames before 
+      // and after the requested range
 
-    // FIXME - move this above if
-    // also need to check against count + _minFutureFrames + _minPastFrames
-    if (bufferFrames < count) {
-      error("ERROR: FileSource::loadFrames: requested %u frames, but buffer can only hold %u", count, bufferFrames);
-    }
-    // FIXME - first + count + _minFutureFrames ?
-    if (first + count > _numCacheableFrames) {
-      error("ERROR: FileSource::loadFrames: requested frames %u to %u, but there are only %u frames available", first, first+count-1, _numFrames);
-    }
-
-    if (count + _minPastFrames + _minFutureFrames + 2 * window < bufferFrames) {
-      preFirst = ( first > window + _minPastFrames ) ? first - window - _minPastFrames : 0;
-      preCount = ( preFirst + count + _minPastFrames + _minFutureFrames + 2 * window < _numCacheableFrames ) ?
-        count + _minPastFrames + _minFutureFrames + 2 * window : _numCacheableFrames - preFirst;
+      preFirst = ( first > window/2 + _minPastFrames ) ? first - window/2 - _minPastFrames : 0;
+      preCount = ( preFirst + count + _minPastFrames + _minFutureFrames + window < _numCacheableFrames ) ?
+        count + _minPastFrames + _minFutureFrames + window : _numCacheableFrames - preFirst;
     } else {
+infoMsg(IM::ObsFile, IM::Giga, "%u+%u+%u frames + %u window > %u buffer capacity\n", 
+	_minPastFrames,count,_minFutureFrames, window, bufferFrames);
+      // otherwise, just prefetch the requested range and the minimum
+      // number of preceding and subsequent frames
       assert(first >= _minPastFrames);
       preFirst = first - _minPastFrames;
       preCount = count + _minPastFrames + _minFutureFrames;
       assert(preFirst + preCount <= _numCacheableFrames);
     }
     assert(preCount > 0);
-    firstBufferedFrameIndex = (bufferFrames - preCount) / 2;
+    // put the frames in the middle of the cookedBuffer so it can grow
+    // in either direction, since we don't know if inference is doing a
+    // forward or backward pass
+    firstBufferedFrameIndex = (bufferFrames - preCount) / 2;  
     firstBufferedFrame = preFirst;
     numBufferedFrames = preCount;
+infoMsg(IM::ObsFile, IM::Giga, "empty cache, fetching [%u,%u)@%u for [%u,%u)\n",
+	preFirst, preFirst+preCount, firstBufferedFrameIndex, first, first+count);
     if (firstBufferedFrameIndex + numBufferedFrames > bufferFrames) {
-      error("ERROR: FileSource:loadFrames:  attempted to load %u frames at index %u, which overflows the frame buffer", numBufferedFrames, firstBufferedFrameIndex*bufStride);
+      error("ERROR: FileSource:loadFrames:  attempted to load %u frames at index %u, "
+	    "which overflows the frame buffer", numBufferedFrames, firstBufferedFrameIndex*bufStride);
     }
     Data32 const *frames = loadFrames(firstBufferedFrameIndex, preFirst, preCount);
     assert(frames == cookedBuffer + firstBufferedFrameIndex * bufStride);
-#if 0
-warning("CACHE EMPTY [%u,%u) -> [%u,%u)  cached [%u,%u) @ %u",
-	requestedFirst, requestedFirst + count,
-	first, first+count, 
-	firstBufferedFrame, firstBufferedFrame+numBufferedFrames,
-	(firstBufferedFrameIndex + (first - firstBufferedFrame))*bufStride);
-
-for (unsigned x=preFirst; x < preFirst+preCount; x+=1) {
-  unsigned buffOffset = firstBufferedFrameIndex * bufStride;
-  printf("%3u:", x);
-  for (unsigned c=0; c < numContinuous(); c+=1) printf(" %f", *((float    *)(cookedBuffer+buffOffset+c+x*bufStride)));
-  for (unsigned d=0; d < numDiscrete()  ; d+=1) printf(" %u", *((unsigned *)(cookedBuffer+buffOffset+d+x*bufStride+numContinuous())));
-  printf("  @ %u\n",buffOffset+x*bufStride );
-}
-#endif
-#if 0
-for (unsigned frm=0; frm < preCount; frm+=1) {
-  printf("   C %u @ %u :", preFirst+frm, firstBufferedFrameIndex+frm);
-  float *ppp = (float *)frames;
-  for (unsigned j=0; j < 2; j+=1) {
-    printf(" %f", *(ppp++));
-  }
-  printf("\n");
-}
-#endif
+    // we may have loaded more than was asked for, so just return the 
+    // requested range
     return frames + (first - preFirst) * bufStride;
-  }
-  // FIXME - i think the -1 should be gone
+  } // END of empty cache case
+
+
   if (firstBufferedFrame + _minPastFrames <= first && 
-      first + count - 1 + _minFutureFrames <= firstBufferedFrame + numBufferedFrames)
+      first + count + _minFutureFrames <= firstBufferedFrame + numBufferedFrames)
   { 
     // cache hit
+
+    assert(firstBufferedFrame <= first); // A
+    //assert(first < firstBufferedFrame + numBufferedFrames); // redundant w/ B
+
+    //assert(firstBufferedFrame < first + count);  // redundant w/ A
+    assert(first + count <= firstBufferedFrame + numBufferedFrames); // B
     
-    if (first - _minPastFrames - firstBufferedFrame <= delta && firstBufferedFrame > 0) {  // prefetch backward?
+    assert(count > 0); // redundancies require count > 0
+
+#if 0
+cachehit+=1;
+if (cachehit % 80000 == 0) 
+infoMsg(IM::ObsFile, IM::Giga, "frames [%7u,%7u) cache hit %7u  cache miss %7u\n",
+	first, first+count, cachehit, cachemiss);
+#endif
+    if (first - _minPastFrames - firstBufferedFrame < delta && firstBufferedFrame > 0) { 
+      // prefetch backward if within delta frames of the first buffered frame
       preFirst = firstBufferedFrame > window ? firstBufferedFrame - window : 0;
       preCount = firstBufferedFrame - preFirst;
       if (firstBufferedFrameIndex + numBufferedFrames + preCount < bufferFrames) { // do prefetch
+infoMsg(IM::ObsFile, IM::Giga, "prefetch <  [%u,%u) + [%u,%u) for [%u,%u)\n",
+  firstBufferedFrame, firstBufferedFrame + numBufferedFrames,
+  preFirst, preFirst + preCount,
+  first, first + count);
 	firstBufferedFrame = preFirst;
 	firstBufferedFrameIndex -= preCount;
-#if 0
-warning("CACHE HIT< [%u,%u)  cached [%u,%u)", first,first+count, firstBufferedFrame, firstBufferedFrame+numBufferedFrames);
-#endif
-#if 1
         (void)loadFrames(firstBufferedFrameIndex, preFirst, preCount);
-#else
-	Data32 const *frames = loadFrames(firstBufferedFrameIndex, preFirst, preCount);
-#endif
 	numBufferedFrames += preCount;
       } 
-    } else if (firstBufferedFrame + numBufferedFrames - (first + count + _minFutureFrames) <= delta && 
+    } else if (firstBufferedFrame + numBufferedFrames - (first + count + _minFutureFrames) < delta && 
 	firstBufferedFrame + numBufferedFrames < _numCacheableFrames) 
-    {  // prefetch forward?
+    { 
+      // prefetch forward if within delta frames of the last buffered frame
       preFirst = firstBufferedFrame + numBufferedFrames;
-      preCount = firstBufferedFrame + numBufferedFrames + window < _numCacheableFrames ? window : _numCacheableFrames - preFirst;
+      preCount = firstBufferedFrame + numBufferedFrames + window < _numCacheableFrames ? 
+	window : _numCacheableFrames - preFirst;
       if (firstBufferedFrameIndex + numBufferedFrames + preCount < bufferFrames) { // do prefetch
 	// FIXME - does the above need a -1 ?
-#if 0
-warning("PREFETCH > [%u,%u)", preFirst, preFirst+preCount);
-#endif
-#if 1
+infoMsg(IM::ObsFile, IM::Giga, "prefetch >  [%u,%u) + [%u,%u)@%u for [%u,%u)\n",
+  firstBufferedFrame, firstBufferedFrame + numBufferedFrames,
+  preFirst, preFirst + preCount, firstBufferedFrameIndex+numBufferedFrames,
+  first, first + count);
         (void) loadFrames(firstBufferedFrameIndex+numBufferedFrames, preFirst, preCount);
-#else
-	Data32 const *frames = loadFrames(firstBufferedFrameIndex+numBufferedFrames, preFirst, preCount);
-#endif
 	numBufferedFrames += preCount;
-#if 0
-warning("CACHE HIT> [%u,%u)  cached [%u,%u)", first,first+count, firstBufferedFrame, firstBufferedFrame+numBufferedFrames);
-#endif
-	return cookedBuffer + (firstBufferedFrameIndex + (first - firstBufferedFrame)) * bufStride;
       } 
+else
+infoMsg(IM::ObsFile, IM::Giga, "no fetch >  [%u,%u) + [%u,%u)@%u for [%u,%u) would overflow %u\n",
+  firstBufferedFrame, firstBufferedFrame + numBufferedFrames,
+  preFirst, preFirst + preCount, firstBufferedFrameIndex+numBufferedFrames,
+  first, first + count, bufferFrames);
     } else {
-    // no prefetch
-#if 0
-warning("CACHE HIT [%u,%u)  cached [%u,%u) @ %u", 
-	first,first+count, 
-	firstBufferedFrame, firstBufferedFrame+numBufferedFrames, 
-	(firstBufferedFrameIndex + first - firstBufferedFrame)*bufStride);
-#endif
+      // no prefetch
     }
     assert(first - firstBufferedFrame >= _minPastFrames);
     return cookedBuffer + (firstBufferedFrameIndex + (first - firstBufferedFrame)) * bufStride;
-  }
+  } // END of cache hit case
 
-  // cache miss
+  // cache miss - drop the current frames and load in the new
 #if 0
-warning("CACHE MISS [%u,%u)  cached [%u,%u)", first,first+count, firstBufferedFrame, firstBufferedFrame+numBufferedFrames);
+infoMsg(IM::ObsFile, IM::Giga, "cache miss %u\n", ++cachemiss);
 #endif
-  if (count + _minPastFrames + _minFutureFrames + 2 * window < bufferFrames) {
-    preFirst = ( first > window + _minPastFrames ) ? first - window - _minPastFrames : 0;
-    preCount = ( preFirst + count + _minPastFrames + _minFutureFrames + 2 * window < _numCacheableFrames ) ?
-      count + _minPastFrames + _minFutureFrames + 2 * window : _numCacheableFrames - preFirst;
+  if (count + _minPastFrames + _minFutureFrames + window < bufferFrames) {
+    preFirst = ( first > window/2 + _minPastFrames ) ? first - window/2 - _minPastFrames : 0;
+    preCount = ( preFirst + count + _minPastFrames + _minFutureFrames + window < _numCacheableFrames ) ?
+      count + _minPastFrames + _minFutureFrames + window : _numCacheableFrames - preFirst;
+
+infoMsg(IM::ObsFile, IM::Giga, "cache flush: %u+%u+%u frames + %u window fits in %u buffer capacity\n", 
+  _minPastFrames,count,_minFutureFrames, window, bufferFrames);
   } else {
     assert(first >= _minPastFrames);
     preFirst = first - _minPastFrames;
     preCount = count + _minPastFrames + _minFutureFrames;
     assert(preFirst + preCount <= _numCacheableFrames);
+infoMsg(IM::ObsFile, IM::Giga, "cache flush: %u+%u+%u frames + %u window > %u buffer capacity\n", 
+  _minPastFrames,count,_minFutureFrames, window, bufferFrames);
   }
+infoMsg(IM::ObsFile, IM::Giga, "cache miss on [%u,%u)/%u for [%u,%u)   loading [%u,%u)@%u\n",
+	firstBufferedFrame, firstBufferedFrame+numBufferedFrames, delta,
+	first, first+count, preFirst, preFirst+preCount, (bufferFrames - preCount) / 2);
   firstBufferedFrameIndex = (bufferFrames - preCount) / 2;
   firstBufferedFrame = preFirst;
   numBufferedFrames = preCount;
-#if 0
-warning("CACHE FLUSH [%u,%u)  cached [%u,%u)", first, first+count, firstBufferedFrame, firstBufferedFrame+numBufferedFrames);
-#endif
   Data32 const *frames = loadFrames(firstBufferedFrameIndex, preFirst, preCount);
   return frames + (first - preFirst) * bufStride;
-
-#if 0
-  if (bufferFrames < count) {
-    error("ERROR: FileSource::loadFrames: requested %u frames, but buffer can only hold %u", count, bufferFrames);
-  }
-  firstBufferedFrameIndex = (bufferFrames - count) / 2;
-  firstBufferedFrame = first;
-  numBufferedFrames = count;
-  return loadFrames(firstBufferedFrameIndex, first, count);
-#endif
 }
 
 
-unsigned 
-FileSource::numContinuous() {
-  assert(file);
-  return file->numLogicalContinuous();
+bool
+FileSource::active() {
+  return this->segment > -1;
 }
 
 
-unsigned 
-FileSource::numDiscrete() {
-  assert(file);
-  return file->numLogicalDiscrete();
-}
-
-
-unsigned 
-FileSource::numFeatures() {
-  return numContinuous() + numDiscrete();
-}
-
-
-unsigned 
-FileSource::stride() {
-  return numFeatures();
-}
-
-
-// loadFrames() handles -justification and -startSkip
+// The following all just use loadFrames() to ensure the requested frame
+// is present in the cookedBuffer.
 
 float *const 
 FileSource::floatVecAtFrame(unsigned f) {
   assert(0 <= f && f < numFrames());
   Data32 const * buf = loadFrames(f, 1);
-#if 0
-  printf("%3u:", f);
-  for (unsigned i=0; i < numContinuous(); i+=1) printf(" %f", ((float *)buf)[i]);
-  for (unsigned i=numContinuous(); i < numFeatures(); i+=1) printf(" %u", ((unsigned *)buf)[i]);
-#endif
   return(float *const) buf;
 }
 
@@ -462,12 +427,6 @@ FileSource::floatVecAtFrame(unsigned f) {
 unsigned *const 
 FileSource::unsignedVecAtFrame(unsigned f) {
   assert(0 <=f && f < numFrames());
-#if 0
-unsigned *up = (unsigned *)(loadFrames(f,1)+_numContinuous);
-printf("uVec(%3u):", f);
- for (unsigned i=0; i < (unsigned)_numDiscrete; i+=1) printf(" %u", up[i]);
-printf("\n"); 
-#endif
   return (unsigned *)(loadFrames(f,1) + numContinuous());
 }
 
@@ -475,15 +434,7 @@ printf("\n");
 unsigned &
 FileSource::unsignedAtFrame(const unsigned frame, const unsigned feature) {
   assert (0 <= frame && frame < numFrames());
-  assert (feature >= numContinuous()
-	  &&
-	  feature <  numFeatures());
-#if 0
-unsigned *up = (unsigned *)(loadFrames(frame,1)+_numContinuous);
-printf("uVec(%3u,%u):", frame, feature);
- for (unsigned i=0; i < (unsigned)_numDiscrete; i+=1) printf(" %u", up[i]);
-printf("\n"); 
-#endif
+  assert (feature >= numContinuous() && feature <  numFeatures());
   return *(unsigned*)(loadFrames(frame,1)+feature);
 }
 
@@ -495,28 +446,11 @@ FileSource::floatVecAtFrame(unsigned f, const unsigned startFeature) {
   return result;
 }
 
+
 Data32 const * const
 FileSource::baseAtFrame(unsigned f) {
   assert(0 <= f && f < numFrames());
   Data32 const * featuresBase = loadFrames(f,1);
-#if 0
-printf("baseAtFrame(%3u / %3u):", f, f + _startSkip);
-float *fp = (float *)(featuresBase);
-for(unsigned i=0; i < (unsigned)_numContinuous; i+=1) printf(" %f", fp[i]);
-unsigned *up = (unsigned *)(featuresBase);
-for(unsigned i=_numContinuous; i < stride(); i+=1) printf(" %u", up[i]);
-printf("\n");
-#endif
   return featuresBase;
-}
-
-bool 
-FileSource::elementIsDiscrete(unsigned el) {
-  return numContinuous() <= el && el < numFeatures();
-}
-
-bool
-FileSource::active() {
-  return this->segment > -1;
 }
 

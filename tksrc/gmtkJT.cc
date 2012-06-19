@@ -427,6 +427,7 @@ main(int argc,char*argv[])
     } else if (island) {
       unsigned numUsableFrames;
 
+// FIXME - needs gomFS->justifySegment inside collectDistributeIsland()
       infoMsg(IM::Max,"Beginning call to island collect/distribute evidence.\n");
       logpr probe = myjt.collectDistributeIsland(numFrames,
 						 numUsableFrames,

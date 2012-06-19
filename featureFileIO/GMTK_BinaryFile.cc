@@ -54,17 +54,24 @@ BinaryFile::BinaryFile(const char *name, unsigned nfloats, unsigned nints,
   // local copy of file name
   fofName = new char[strlen(name)+1];
   strcpy(fofName,name);
-  nFloats = nfloats;
-  nInts = nints;
+  _numContinuousFeatures = nfloats;
+  _numDiscreteFeatures   = nints;
+  _numFeatures           = nfloats + nints;
 
   if (contFeatureRangeStr) {
-    contFeatureRange = new Range(contFeatureRangeStr, 0, nFloats);
+    contFeatureRange = new Range(contFeatureRangeStr, 0, _numContinuousFeatures);
     assert(contFeatureRange);
-  }
+    _numLogicalContinuousFeatures = contFeatureRange->length();
+  } else
+    _numLogicalContinuousFeatures = nfloats;
   if (discFeatureRangeStr) {
-    discFeatureRange = new Range(discFeatureRangeStr, 0, nInts);
+    discFeatureRange = new Range(discFeatureRangeStr, 0, _numDiscreteFeatures);
     assert(discFeatureRange);
-  }
+    _numLogicalDiscreteFeatures = discFeatureRange->length();
+  } else
+    _numLogicalDiscreteFeatures = nints;
+  _numLogicalFeatures = _numLogicalContinuousFeatures + _numLogicalDiscreteFeatures;
+
   fofFile = openCPPableFile(fofName, cppIfAscii, cppCommandOptions);
   if (!fofFile)
     error("BinaryFile: couldn't open '%s' for reading\n", fofName);
@@ -109,6 +116,7 @@ BinaryFile::openSegment(unsigned seg) {
     return false;
   }
 
+  // get the file length to determine the # of frames in the segment
   if (fseek(curDataFile,0L,SEEK_END) == -1) {
     warning("BinaryFile::openSegment:: Can't skip to end of file %s",
 	      dataNames[seg]);

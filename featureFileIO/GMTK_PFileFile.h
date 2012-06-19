@@ -33,9 +33,19 @@ class PFileFile: public ObservationFile {
 
   Data32    *buffer;     // data for current segment
   unsigned   bufferSize; // in Data32's
+
+  // These are the buffers that the low-level pfile code
+  // reads the data into. These buffers are then copied
+  // into buffer with the continuous and discrete features
+  // merged together as GMTK requires.
+  float     *contBuf;
+  UInt32    *discBuf;
+
   unsigned   currentSegment;
   FILE      *dataFile;
   InFtrLabStream_PFile *pfile;
+
+  unsigned  _numFrames; // # physical frames in current segment
 
  public:
 
@@ -47,9 +57,11 @@ class PFileFile: public ObservationFile {
 	    char const *segRangeStr_=NULL);
 
   ~PFileFile() {
-    if (pfile) delete pfile;
+    if (pfile)    delete pfile;
     if (dataFile) fclose(dataFile);
-    if (buffer) free(buffer);
+    if (buffer)   free(buffer);
+    if (contBuf)  free(contBuf);
+    if (discBuf)  free(discBuf);
   }
  
   // The number of available segments.
@@ -65,26 +77,18 @@ class PFileFile: public ObservationFile {
   // The number of frames in the currently open segment.
   unsigned numFrames()  {
     assert(pfile);
-    return pfile->num_frames(currentSegment);
+    return _numFrames;
   }
 
-  // Load count frames of observed data, starting from first,
-  // in the current segment. count may be 0 to request loading
-  // the entire data segment (frames [first, numFrames)).
+  // Load count frames of observed data, starting from first (physical),
+  // in the current segment. 
   Data32 const *getFrames(unsigned first, unsigned count);
 
-  unsigned numContinuous() {
-    assert(pfile);
-    return pfile->num_ftrs();
-  }
-
-  unsigned numDiscrete() {
-    assert(pfile);
-    return pfile->num_labs();
-  }
-
-  unsigned numFeatures() {return numContinuous() + numDiscrete();}
-
+  // Number of continuous/discrete/total features in the file
+  // after applying -frX and -irX
+  unsigned numLogicalContinuous() { return _numLogicalContinuousFeatures; }
+  unsigned numLogicalDiscrete()   { return _numLogicalDiscreteFeatures; }
+  unsigned numLogicalFeatures()   { return _numLogicalFeatures; }
 };
 
 #endif

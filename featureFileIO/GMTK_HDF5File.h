@@ -30,6 +30,19 @@ using namespace std;
 
 #if HAVE_LIBHDF5_CPP
 
+// If Autoconf couldn't find the library, disable the code 
+// that requires it.
+
+
+// The argument to -ofX is the name of a file that contains
+// a list of:
+//
+// filename:groupname:x_start,y_start;x_stride,y_stride;x_count,y_count
+//
+// Each entry in the file represents a segment. 
+// See https://j.ee.washington.edu/trac/gmtk/ticket/21 for 
+// additional details and discussion
+
 #include "H5Cpp.h"
 #ifndef H5_NO_NAMESPACE
 using namespace H5;
@@ -43,9 +56,7 @@ class HDF5File: public ObservationFile {
   unsigned     numSlabs;   // # hyperslabs specified in FoF
   unsigned     curSegment; // currently open segment
 
-  unsigned     nContinuous;
-  unsigned     nDiscrete;
-  unsigned     nFrames;    // in current segment
+  unsigned     nFrames;    // # of frames in current segment
 
   Data32      *buffer;     
   unsigned     bufSize;    // in Data32's
@@ -78,8 +89,6 @@ class HDF5File: public ObservationFile {
   // The number of available segments.
   unsigned numSegments() { return numSlabs; }
 
-  // Begin sourcing data from the requested segment.
-  // Must be called before any other operations are performed on a segment.
   bool openSegment(unsigned seg);
 
   // The number of frames in the currently open segment.
@@ -88,20 +97,19 @@ class HDF5File: public ObservationFile {
     return nFrames; 
   }
 
-  // Load count frames of observed data, starting from first,
-  // in the current segment. count may be 0 to request loading
-  // the entire data segment (frames [first, numFrames)).
   Data32 const *getFrames(unsigned first, unsigned count);
 
-  unsigned numContinuous() {return nContinuous;}
-
-  unsigned numDiscrete() {return nDiscrete;}
-
-  unsigned numFeatures() {return numContinuous() + numDiscrete(); }
-
+  // Number of continuous/discrete/total features in the file
+  // after applying -frX and -irX
+  unsigned numLogicalContinuous() { return _numLogicalContinuousFeatures; }
+  unsigned numLogicalDiscrete()   { return _numLogicalDiscreteFeatures; }
+  unsigned numLogicalFeatures()   { return _numLogicalFeatures; }
 };
 
 #else
+
+// Fake do-nothing implementation in case the
+// HDF5 library is unavailable
 
 class HDF5File: public ObservationFile {
 
@@ -114,7 +122,7 @@ class HDF5File: public ObservationFile {
 	   char const *preFrameRangeStr_=NULL, 
 	   char const *segRangeStr_=NULL)
   {
-    error("This GMTK build does not support HDF5 files\n");
+    error("This GMTK build does not support HDF5 files");
   }
 
   ~HDF5File() {}
