@@ -29,21 +29,6 @@ using namespace std;
 #include "GMTK_ObservationFile.h"
 
 
-// The ObservationFile provides a simple API to wrap around
-// random access data file formats.
-// Just subclass ObservationFile and implement getFrames
-// for the new type of file (and add command line options 
-// to instantiate it - aspect-oriented programming?) and the
-// new file type is supported by GMTK.
-//
-// Planned subtypes:
-//   ASCIIFile    -   ASCII files (read entirely into memory)
-//   PFileFile    -   indexed PFiles (non-indexed read entirely into memory)
-//   HDF5File     
-//   HTKFile      
-//   BinaryFile   
-//   FilterFile   -   ObservationFile wrapper for IIR, ARMA, etc transforms
-
 class BinaryFile: public ObservationFile {
 
   bool        swap;
@@ -54,11 +39,10 @@ class BinaryFile: public ObservationFile {
   char      *fofName;
   FILE      *fofFile;                   // this file (list of file names)
   FILE      *curDataFile;               // currently open segment
-  unsigned   nFloats;
-  unsigned   nInts;
-  unsigned   nFrames;                   // in current segment
 
-  char     **dataNames;  // pointers to individual filenames (into fofBuf)
+  unsigned   nFrames;                   // # frames in current segment before -preprX
+
+  char     **dataNames;  // pointers to individual filenames
 
   Data32    *buffer;     // data for current segment
   unsigned   buffSize;   // in Data32's
@@ -100,15 +84,13 @@ class BinaryFile: public ObservationFile {
     return nFrames;
   }
 
-  // Load count frames of observed data, starting from first,
-  // in the current segment. count may be 0 to request loading
-  // the entire data segment (frames [first, numFrames)).
   Data32 const *getFrames(unsigned first, unsigned count);
 
-  unsigned numContinuous() {return nFloats;}
-  unsigned numDiscrete() {return nInts;}
-  unsigned numFeatures() {return nFloats + nInts;}
-
+  // Number of continuous/discrete/total features in the file
+  // after applying -frX and -irX
+  unsigned numLogicalContinuous() { return _numLogicalContinuousFeatures; }
+  unsigned numLogicalDiscrete()   { return _numLogicalDiscreteFeatures; }
+  unsigned numLogicalFeatures()   { return _numLogicalFeatures; }
 };
 
 #endif

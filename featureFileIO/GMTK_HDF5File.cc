@@ -31,6 +31,8 @@ using namespace std;
 // FIXME - configure should check for 1.8, won't build with 1.6
 #if HAVE_LIBHDF5_CPP
 
+// Only use HDF5 library if Autoconf found it
+
 // split up 
 // filename:groupname:x_start,y_start;x_stride,y_stride;x_count,y_count
 // into filename, groupname, etc.
@@ -90,12 +92,13 @@ HDF5File::HDF5File(const char *name, unsigned num,
 {
   FILE *fofFile = openCPPableFile(name, cppIfAscii, cppCommandOptions);
   if (!fofFile) 
-    error("HDF5File: couldn't open '%s' fore reading\n", name);
+    error("HDF5File: couldn't open '%s' fore reading", name);
   char **hdf5Name;
   (void) readFof(fofFile, name, numSlabs, hdf5Name, 
 		 cppIfAscii, cppCommandOptions);
   closeCPPableFile(fofFile, cppIfAscii);
-  
+
+  // parse the segment descriptors into arrays  
   ALLOC_NUM_SEGS(char const*,fileName);
   ALLOC_NUM_SEGS(char const*,groupName);
   ALLOC_NUM_SEGS(unsigned, xStart);
@@ -113,14 +116,6 @@ HDF5File::HDF5File(const char *name, unsigned num,
     free(hdf5Name[i]);
   }
   delete [] hdf5Name;
-
-#if 0
-  for (unsigned i=0; i < numSlabs; i+=1) {
-    printf("%03u: %s : %s : %u , %u ; %u , %u ; %u , %u\n",
-	   i, fileName[i], groupName[i], xStart[i], yStart[i],
-	   xStride[i], yStride[i], xCount[i], yCount[i]);
-  }
-#endif
   assert(numSlabs);
 
   // determine # floats & # ints by looking into segment 0.
@@ -139,21 +134,36 @@ HDF5File::HDF5File(const char *name, unsigned num,
   dataspace.getSelectBounds(start,end);
   switch (dataType) {
   case H5T_INTEGER:
-    nContinuous = 0;
-    nDiscrete = end[1] - start[1] + 1;
+    _numContinuousFeatures = 0;
+    _numDiscreteFeatures = end[1] - start[1] + 1;
     break;
   case H5T_FLOAT:
-    nDiscrete = 0;
-    nContinuous = end[1] - start[1] + 1;
+    _numDiscreteFeatures = 0;
+    _numContinuousFeatures = end[1] - start[1] + 1;
     break;
   default:
-    error("HDF5File: dataset '%s:%s' is not of integer or float type\n",
+    error("HDF5File: dataset '%s:%s' is not of integer or float type",
 	  fileName[0],groupName[0]);
   }
+  _numFeatures = _numContinuousFeatures + _numDiscreteFeatures;
 
   if (segRangeStr) segRange = new Range(segRangeStr, 0, numSlabs);
-  if (contFeatureRangeStr) contFeatureRange = new Range(contFeatureRangeStr, 0, nContinuous);
-  if (discFeatureRangeStr) discFeatureRange = new Range(discFeatureRangeStr, 0, nDiscrete);
+
+  if (contFeatureRangeStr) {
+    contFeatureRange = new Range(contFeatureRangeStr, 0, _numContinuousFeatures);
+    assert(contFeatureRange);
+    _numLogicalContinuousFeatures = contFeatureRange->length();
+  } else
+    _numLogicalContinuousFeatures = _numContinuousFeatures;
+
+  if (discFeatureRangeStr) {
+    discFeatureRange = new Range(discFeatureRangeStr, 0, _numDiscreteFeatures);
+    assert(discFeatureRange);
+    _numLogicalDiscreteFeatures = discFeatureRange->length();
+  } else 
+    _numLogicalDiscreteFeatures = _numDiscreteFeatures;
+
+  _numLogicalFeatures = _numLogicalContinuousFeatures + _numLogicalDiscreteFeatures;
 }
 
 
@@ -212,25 +222,25 @@ HDF5File::openSegment(unsigned seg) {
 
   switch (dataType) {
   case H5T_INTEGER:
-    if (nContinuous != 0) 
-      error("HDF5File: dataset '%s:%s' must be of integer type\n",
+    if (_numContinuousFeatures != 0) 
+      error("HDF5File: dataset '%s:%s' must be of integer type",
 	    fileName[seg], groupName[seg]);
-    if (nDiscrete != nFeatures) 
+    if (_numDiscreteFeatures != nFeatures) 
       // FIXME - need to add :x,y;dx,dy;nx,ny for specificity
-      error("HDF5File: dataset '%s:%s' has %u features, expected %u\n",
-	    fileName[seg], groupName[seg], nFeatures, nDiscrete);
+      error("HDF5File: dataset '%s:%s' has %u features, expected %u",
+	    fileName[seg], groupName[seg], nFeatures, _numDiscreteFeatures);
     break;
   case H5T_FLOAT:
-    if (nDiscrete != 0) 
+    if (_numDiscreteFeatures != 0) 
       error("HDF5File: dataset '%s:%s' must be of float type\n",
 	    fileName[seg], groupName[seg]);
-    if (nContinuous != nFeatures) 
+    if (_numContinuousFeatures != nFeatures) 
       // FIXME - need to add :x,y;dx,dy;nx,ny for specificity
-      error("HDF5File: dataset '%s:%s' has %u features, expected %u\n",
-	    fileName[seg], groupName[seg], nFeatures, nContinuous);
+      error("HDF5File: dataset '%s:%s' has %u features, expected %u",
+	    fileName[seg], groupName[seg], nFeatures, _numContinuousFeatures);
     break;
   default:
-    error("HDF5File: dataset '%s:%s' is not of integer or float type\n",
+    error("HDF5File: dataset '%s:%s' is not of integer or float type",
 	  fileName[seg],groupName[seg]);
   }
   nFrames = end[0] - start[0] + 1;

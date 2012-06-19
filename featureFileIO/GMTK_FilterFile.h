@@ -23,24 +23,58 @@
 #include "GMTK_ObservationFile.h"
 #include "GMTK_Filter.h"
 
+
+// This is an adaptor class that applies a linked list of 
+// Filter objects (see GMTK_Filter.h) to an ObservationFile
+// instance.
+//
+// FilterFile handles -postprX -frX -irX -transX for the
+// individual ObservationFile instances. Another instance
+// of FilterFile on top of MergeFile (see GMTK_MergeFile.h)
+// handles -gpr and -posttrans. We could easily implement
+// a -gsr option to select the global segment range by 
+// passing in a segment range string. At present, the
+// segment range selection is handled by the GMTK application
+// programs themselves.
+
 class FilterFile: public ObservationFile {
 
   Filter          *filter;
   ObservationFile *file;
 
+  unsigned        _numFrames;
+
  public:
   
-  // Apply filter stack to the ObservationFile and present the
-  // result as an ObservationFile
-
-  // FilterFile handles -postprX
   FilterFile(Filter *filter, ObservationFile *file, 
 	     char const *contFeatureRangeStr = NULL,
 	     char const *discFeatureRangeStr = NULL,
 	     char const *postpr = NULL)
     : ObservationFile(contFeatureRangeStr, discFeatureRangeStr, postpr),
       filter(filter), file(file)
-  { }
+  {
+    subMatrixDescriptor wholeSegment(0U, 1U, 0U, 0U,
+				     file->numLogicalContinuous(),
+				     file->numLogicalDiscrete(), 1U);
+    subMatrixDescriptor output = filter->describeOutput(wholeSegment);
+    _numContinuousFeatures = output.numContinuous;
+    _numDiscreteFeatures   = output.numDiscrete;
+    _numFeatures           = _numContinuousFeatures + _numDiscreteFeatures;
+
+    if (contFeatureRangeStr) {
+      contFeatureRange = new Range(contFeatureRangeStr, 0, _numContinuousFeatures);
+      assert(contFeatureRange);
+      _numLogicalContinuousFeatures = contFeatureRange->length();
+    } else
+      _numLogicalContinuousFeatures = _numContinuousFeatures;
+    if (discFeatureRangeStr) {
+      discFeatureRange = new Range(discFeatureRangeStr, 0, _numDiscreteFeatures);
+      assert(discFeatureRange);
+      _numLogicalDiscreteFeatures = discFeatureRange->length();
+    } else
+      _numLogicalDiscreteFeatures = _numDiscreteFeatures;
+    _numLogicalFeatures = _numLogicalContinuousFeatures + _numLogicalDiscreteFeatures;
+  }
 
 
   ~FilterFile() {
@@ -53,95 +87,51 @@ class FilterFile: public ObservationFile {
   // so that it can handle -srX, -frX, -irX, -preprX
 
   // filtering shouldn't change the number of segments...
-  // -sdiffact might, but that should be handled by the
-  // FileSource
+  // -sdiffact might, but that is handled by MergeFile
   unsigned numSegments() {
     return file->numLogicalSegments();
   }
 
 
   bool openSegment(unsigned seg) {
-    return file->openLogicalSegment(seg);
-  }
-
-
-  // The number of frames in the filter's output - ask the
-  // filter how many frames it will produce for the whole
-  // input file
-  unsigned numFrames() {
+    bool result = file->openLogicalSegment(seg);
     subMatrixDescriptor wholeSegment(0U, file->numLogicalFrames(), 0U, 0U,
 				     file->numLogicalContinuous(),
 				     file->numLogicalDiscrete(),
 				     file->numLogicalFrames());
     subMatrixDescriptor output = filter->describeOutput(wholeSegment);
-    return output.numFrames;
+    _numFrames = output.numFrames;
+    return result;
   }
 
 
-#if 0
-  // needed for -fdiffactX -- it applies to the number of frames in a
-  // segment before -transX is performed 
-  // FIXME - this might be somewhat silly; it looks like the fdiffact
-  // actions are actually applied to the transform output although
-  // the checking & setup are done using the # of input frames...
-  unsigned preFilterFrameCount() { return file->numLogicalFrames(); }
-#endif
+  // The number of frames in the filter's output - ask the
+  // filter how many frames it will produce for the whole
+  // input segment
+  unsigned numFrames() { return _numFrames; }
+
 
   // Get the transformed data
   Data32 const *getFrames(unsigned first, unsigned count) {
-//printf(" requesting [%u,%u) : ", first, first+count);
+    // find out which frames we need to feed the Filter to compute
+    // the requested frames
     subMatrixDescriptor *inputDesc =
       filter->getRequiredInput(first, count, file->numLogicalContinuous(),
 			       file->numLogicalDiscrete(),
 			       file->numLogicalFrames());
-#if 0
-    printf("input [%u + %u, %u - %u) \n", inputDesc->firstFrame, inputDesc->historyFrames,
-                                          inputDesc->firstFrame + inputDesc->numFrames,
-                                          inputDesc->futureFrames);
-#endif
-#if 1
     Data32 const *inputData =
       file->getLogicalFrames(inputDesc->firstFrame, inputDesc->numFrames);
     Data32 const *result = filter->transform(inputData, *inputDesc);
     subMatrixDescriptor::freeSMD(inputDesc);
     return result;
-#else
-    Data32 const *inputData =
-      file->getLogicalFrames(inputDesc->firstFrame, inputDesc->numFrames);
-    subMatrixDescriptor outputDesc;
-    Data32 const *outputData = filter->transform(inputData, *inputDesc, &outputDesc);
-    printf("output [%u + %u, %u - %u) : ", outputDesc.firstFrame, outputDesc.historyFrames,
-                                          outputDesc.firstFrame + outputDesc.numFrames,
-                                          outputDesc.futureFrames);
-    return outputData;
-#endif
   }
 
 
   // Number of continuous, discrete, total features in filter's output
-
-  // Ask the filter how many continuous features it will produce 
-  unsigned numContinuous() {
-    subMatrixDescriptor wholeSegment(0U, 1U, 0U, 0U,
-				     file->numLogicalContinuous(),
-				     file->numLogicalDiscrete(), 1U);
-    subMatrixDescriptor output = filter->describeOutput(wholeSegment);
-    return output.numContinuous;
-  }
-
-
-  unsigned numDiscrete() {
-    subMatrixDescriptor wholeSegment(0U, 1U, 0U, 0U,
-				     file->numLogicalContinuous(),
-				     file->numLogicalDiscrete(), 1U);
-    subMatrixDescriptor output = filter->describeOutput(wholeSegment);
-    return output.numDiscrete;
-  }
-
-
-  unsigned numFeatures() {
-    return numContinuous() + numDiscrete();
-  }
+  // after applying -frX and -irX
+  unsigned numLogicalContinuous() { return _numLogicalContinuousFeatures; }
+  unsigned numLogicalDiscrete()   { return _numLogicalDiscreteFeatures; }
+  unsigned numLogicalFeatures()   { return _numLogicalFeatures; }
 
 };
 

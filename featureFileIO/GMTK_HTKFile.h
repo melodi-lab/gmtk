@@ -30,13 +30,17 @@ using namespace std;
 
 #include "GMTK_ObservationFile.h"
 
+
+// Most of the implementation is recycled from the
+// previous implementation
+
 class HTKFile: public ObservationFile {
 
   StreamInfo *info;
   unsigned    nLogicalFrames; // in current segment
 
   Data32     *buffer;
-  unsigned    bufferSize; // in Data32's
+  unsigned    bufferSize;     // in Data32's
 
  public:
 
@@ -61,10 +65,24 @@ class HTKFile: public ObservationFile {
 			  num, 
 			  cppIfAscii, (char *)cppCommandOptions,
 			  segRangeStr_);
-    if (contFeatureRangeStr)
+    _numContinuousFeatures = nfloats;
+    _numDiscreteFeatures   = nints;
+    _numFeatures           = nfloats + nints;
+
+    if (contFeatureRangeStr) {
       contFeatureRange = new Range(contFeatureRangeStr_,0,numContinuous());
-    if (discFeatureRangeStr)
+      assert(contFeatureRange);
+    }
+    _numLogicalContinuousFeatures = info->getNumFloatsUsed();
+
+    if (discFeatureRangeStr) {
       discFeatureRange = new Range(discFeatureRangeStr_,0,numDiscrete());
+      assert(discFeatureRange);
+    }
+    _numLogicalDiscreteFeatures = info->getNumIntsUsed();
+
+    _numLogicalFeatures = _numLogicalContinuousFeatures + _numLogicalDiscreteFeatures;
+
     buffer = NULL;
     bufferSize = 0;
   }
@@ -106,32 +124,13 @@ class HTKFile: public ObservationFile {
     return nLogicalFrames;
   }
 
-  // Load count frames of observed data, starting from first,
-  // in the current segment. count may be 0 to request loading
-  // the entire data segment (frames [first, numFrames)).
   Data32 const *getFrames(unsigned first, unsigned count);
 
-  unsigned numContinuous() {
-    assert(info);
-    return info->getNumFloats();
-  }
-  
-  unsigned numLogicalContinuous() {
-    assert(info);
-    return info->getNumFloatsUsed();
-  }
-
-  unsigned numDiscrete() {
-    assert(info);
-    return info->getNumInts();
-  }
-
-  unsigned numLogicalDiscrete() {
-    assert(info);
-    return info->getNumIntsUsed();
-  }
-
-  unsigned numFeatures() {return numContinuous() + numDiscrete();}
+  // Number of continuous/discrete/total features in the file
+  // after applying -frX and -irX
+  unsigned numLogicalContinuous() { return _numLogicalContinuousFeatures; }
+  unsigned numLogicalDiscrete()   { return _numLogicalDiscreteFeatures; }
+  unsigned numLogicalFeatures()   { return _numLogicalFeatures; }
 
 };
 

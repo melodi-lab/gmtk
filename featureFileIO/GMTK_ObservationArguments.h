@@ -10,7 +10,7 @@
 /****************************************************************************************************************/
 /****************************************************************************************************************/
 
-
+#define MAX_NUM_OBS_FILES (5)
 
 #if defined(GMTK_ARG_STREAMING_OUTPUT)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
@@ -112,6 +112,9 @@ extern bool ObservationsAllowNan;
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
+  if ( streamBufferSize < 1) {
+    error("%s: streamBufferSize must be at least 1 (got %u)", streamBufferSize);
+  }
 #define MEBIBYTE (1048576)
   streamBufferSize *= MEBIBYTE;
   bool gotStdin = false;
@@ -256,7 +259,7 @@ extern bool ObservationsAllowNan;
 
 #define MEBIBYTE (1048576)
     streamBufferSize *= MEBIBYTE; // FIXME - / sizeof(Data32)
-    fileBufferSize *= MEBIBYTE;
+    fileBufferSize *= MEBIBYTE / sizeof(Data32);
 
   /////////////////////////////////////////////////////////
   // check for valid argument values.  File only case 
@@ -420,7 +423,9 @@ extern bool ObservationsAllowNan;
 
 
    // observation input file handling
+#ifndef MAX_NUM_OBS_FILES
 #define MAX_NUM_OBS_FILES (5)
+#endif
    char    *ofs[MAX_NUM_OBS_FILES] = { NULL, NULL, NULL, NULL,NULL }; 
    unsigned nfs[MAX_NUM_OBS_FILES] = { 0, 0, 0,0,0 };
    unsigned nis[MAX_NUM_OBS_FILES] = { 0, 0, 0,0,0 };
@@ -481,7 +486,7 @@ extern bool ObservationsAllowNan;
 
 #define MEBIBYTE (1048576)
 
-  fileBufferSize *= MEBIBYTE; // FIXME - / sizeof(Data32)
+    fileBufferSize *= MEBIBYTE / sizeof(Data32);
 
   /////////////////////////////////////////////////////////
   // check for valid argument values.  File only case 

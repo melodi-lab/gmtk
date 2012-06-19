@@ -22,8 +22,8 @@
 #include "range.h"
 
 // The ObservationFile provides a simple API to wrap around
-// random access data file formats.
-// Just subclass ObservationFile and implement:
+// random access data file formats. To support a new file
+// format, just subclass ObservationFile and implement:
 //
 //   numSegments()
 //   openSegment()
@@ -33,23 +33,34 @@
 //   numDiscrete()
 //
 // for the new type of file (and add command line options 
-// to instantiate it - aspect-oriented programming?) and the
-// new file type is supported by GMTK.
+// to instantiate it) and the new file type is supported by 
+// GMTK. You should add support for the new file type to the
+// instantiateFile() and formatStrToNumber functions to 
+// facilitate command line argument parsing.
+//
+// The methods above all work with the file's true physical
+// layout. Client code should access the file through the
+// *Logical* methods, which apply the feature, frame, and segment
+// range selections.
 //
 // Subclasses should initialize the *RangeStr members to support
-// the -frX -irX -preprX -srX arguments. Initializing them is
-// sufficient to get them working; the *Logical*() methods can
-// be over-ridden if the file format supports a better implementation
-// than the simple-minded one ObservationFile provides.
+// the -frX -irX -preprX -srX arguments. The 
+// _num{Continuous,Discrete,}Features should be set in
+// the constructors. Initializing them is sufficient to get them 
+// working; the *Logical*() methods can be over-ridden if the file
+// format supports a better implementation than the simple-minded
+// one ObservationFile provides.
 // 
-// Planned subclasses:
-//   ASCIIFile     -   ASCII files (read entirely into memory)
-//   FlatAsciiFile -   seg_i frame_j f_0 ... f_n i_0 ... i_m
+// Subclasses:
+//   ASCIIFile     -   ASCII files (reads segment entirely into memory)
+//   FlatAsciiFile -   seg #   frame #   f_0 ... f_n i_0 ... i_m
 //   PFileFile     -   indexed PFiles (indexing specified at file open)
 //   HDF5File     
 //   HTKFile      
 //   BinaryFile   
 //   FilterFile    -   ObservationFile wrapper for IIR, FIR, etc transforms
+//   MergeFile     -   Combines multiple ObservationFiles into a single 
+//                     logical file
 
 class ObservationFile {
 
@@ -65,7 +76,17 @@ class ObservationFile {
   Range      *segRange;
 
   Data32 *logicalObservationBuffer;
-  unsigned logicalObsBufSize; // (in Data32's)
+  unsigned logicalObsBufSize;       // (in Data32's)
+
+  // # of physical features
+  unsigned _numContinuousFeatures;
+  unsigned _numDiscreteFeatures;
+  unsigned _numFeatures;
+
+  // # of logical features (after -frX and -irX)
+  unsigned _numLogicalContinuousFeatures;
+  unsigned _numLogicalDiscreteFeatures;
+  unsigned _numLogicalFeatures;
 
  public:
 
@@ -79,6 +100,8 @@ class ObservationFile {
       segRangeStr(segRangeStr_), segRange(NULL), 
       logicalObservationBuffer(NULL), logicalObsBufSize(0)
     {
+      // FIXME - _numContinuousFeatures & _numDiscreteFeatures must be set first
+      //      _numLogicalFeatures = numLogicalContinuous() + numLogicalDiscrete();
     }
 
   virtual ~ObservationFile() {
@@ -99,20 +122,19 @@ class ObservationFile {
   // Must be called before any other operations are performed on a segment.
   virtual bool openSegment(unsigned seg) = 0;
 
-  // The number of physical frames in the currently open segment.
+  // The number of physical frames (before -preprX) in the currently open segment.
   virtual unsigned numFrames() = 0;
 
   // Load count frames of observed data, starting from first (physical),
-  // in the current segment. count may be 0 to request loading
-  // the entire data segment (frames [first, numFrames)).
+  // in the current segment. 
   virtual Data32 const *getFrames(unsigned first, unsigned count) = 0;
 
   // The number of continuous, discrete, total features (all physical).
   // Note that they may be called before openSegment()
 
-  virtual unsigned numContinuous() = 0;
-  virtual unsigned numDiscrete() = 0;
-  virtual unsigned numFeatures() {return numContinuous() + numDiscrete();}
+  virtual unsigned numContinuous() { return _numContinuousFeatures; }
+  virtual unsigned numDiscrete()   { return _numDiscreteFeatures; }
+  virtual unsigned numFeatures()   { return _numFeatures; }
 
   // logical -> physical translation
   
@@ -120,30 +142,36 @@ class ObservationFile {
   // sophisticated file formats (e.g., HDF5) might benefit from
   // implementing them directly with their native API
 
-  virtual unsigned numLogicalSegments();
+  virtual unsigned numLogicalSegments();  // after -srX
+ 
+  virtual bool openLogicalSegment(unsigned seg); // after -srX
 
-  virtual bool openLogicalSegment(unsigned seg);
+  virtual unsigned numLogicalFrames();   // after -preprX
 
-  virtual unsigned numLogicalFrames();
+  virtual Data32 const *getLogicalFrames(unsigned first, unsigned count); // after -preprX
 
-  virtual Data32 const *getLogicalFrames(unsigned first, unsigned count);
+  virtual unsigned numLogicalContinuous();   // after -frX
 
-  virtual unsigned numLogicalContinuous();
-  virtual unsigned numLogicalDiscrete();
+  virtual unsigned numLogicalDiscrete();     // after -irX
+
   virtual unsigned numLogicalFeatures() {
     // be aware of -frX and -irX if you over-ride this
-    return numLogicalContinuous() + numLogicalDiscrete();
+    return _numLogicalFeatures;
   }
 
 };
 
 
+// Instantiate the appropriate ObservationFile subclass according 
+// to the command line arguments. number is the file number (the
+// X in the -argX arguments).
 ObservationFile *
 instantiateFile(unsigned ifmt, char *ofs, unsigned nfs, unsigned nis,
 		unsigned number, bool iswp, bool Cpp_If_Ascii, 
 		char *cppCommandOptions, char const *frs, char const *irs, 
 		char const *prepr, char const *sr);
 
+// Converts the command line -fmtX string to an integer (enum)
 int
 formatStrToNumber(char const *fmt);
 

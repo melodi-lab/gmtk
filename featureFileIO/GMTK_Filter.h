@@ -23,96 +23,29 @@
 
 #include "machine-dependent.h"
 
-// Packages up the "shape" of a section of an observation matrix.
-class subMatrixDescriptor {
-
- public:
-
-  unsigned firstFrame;            // frame sub-matrix starts at
-  unsigned numFrames;             // # frames in sub-matrix
-  unsigned historyFrames;         // # frames just there for history
-  unsigned futureFrames;          // # frames just there for future
-  unsigned numContinuous;
-  unsigned numDiscrete;
-  unsigned fullMatrixFrameCount;  // # frames in full matrix
-  subMatrixDescriptor *next;
-
-  static subMatrixDescriptor *freeList;
-
-  static subMatrixDescriptor *
-  getSMD() {
-    subMatrixDescriptor *result;
-    if (freeList) {
-      result = freeList;
-      freeList = freeList->next;
-      result->next = NULL;
-    } else {
-      result = new subMatrixDescriptor();
-    }
-    assert(result);
-    return result;
-  }
-
-  static subMatrixDescriptor *
-  getSMD(unsigned firstFrame, unsigned numFrames,
-	 unsigned historyFrames, unsigned futureFrames,
-	 unsigned numContinuous, unsigned numDiscrete,
-	 unsigned fullMatrixFrameCount, 
-	 subMatrixDescriptor *next = NULL)
-  {
-    subMatrixDescriptor *result  = getSMD();
-    result->firstFrame           = firstFrame;
-    result->numFrames            = numFrames;
-    result->historyFrames        = historyFrames;
-    result->futureFrames         = futureFrames;
-    result->numContinuous        = numContinuous;
-    result->numDiscrete          = numDiscrete;
-    result->fullMatrixFrameCount = fullMatrixFrameCount;
-    result->next                 = next;
-    return result;
-  }
-
-  static void freeSMD(subMatrixDescriptor *&p) {
-    if (p->next) freeSMD(p->next);
-    p->next  = freeList;
-    freeList = p;
-    p = NULL;
-  }
+#include "GMTK_SubmatirxDescriptor.h"
 
 
-  subMatrixDescriptor() {next = NULL;}
-
-  subMatrixDescriptor(unsigned firstFrame, unsigned numFrames,
-		      unsigned historyFrames, unsigned futureFrames,
-		      unsigned numContinuous, unsigned numDiscrete,
-		      unsigned fullMatrixFrameCount, 
-		      subMatrixDescriptor *next = NULL)
-    : firstFrame(firstFrame), numFrames(numFrames),
-      historyFrames(historyFrames), futureFrames(futureFrames),
-      numContinuous(numContinuous), numDiscrete(numDiscrete),
-      fullMatrixFrameCount(fullMatrixFrameCount),
-      next(next)
-  {}
-
-  void deallocate() {
-    if (next) {
-      next->deallocate();
-      delete next;
-    }
-  }
-
-  ~subMatrixDescriptor() {
-    deallocate();
-  }
-
-}; 
-
-
-// This is the base class for observation filtering.
-// It implements the identity filter as an example.
+// This is the base class for observation filtering/transformation.
+// It implements the identity filter as an example. Subclasses
+// implement FIR, IIR, ARMA filters, etc. The Filter instances
+// can be stacked in a linked list to apply multiple transformations
+// to the observations. The FilterFile (see GMTK_FilterFile.h) class
+// is responsible for applying the Filters to ObservationFile instances.
+//
+// Subclasses should implement 
+//   getReqiredInput()
+//   describeLocalOutput()
+//   localTransform()
+//
+// You should also update parseTransform() and instantiateFilters()
+// to facilitate command line argument parsing.
 
 class Filter {
 
+// Transformed frame data flows this way (note that the arrows run
+// in the opposite direction of the nextFilter links)
+//
 //   input submatrix -->  Filter ( --> nextFilter)*  --> output submatrix
 // (ObservationSource)                                     (Inference)
   
@@ -137,10 +70,10 @@ class Filter {
   }
 
   
-  // The filter's client (eg, inference) needs the 
+  // The filter's client (e.g. inference) needs the 
   // [first,first+count)frames of the filter's output.
   // getRequiredInput() returns the portion of the fitler's 
-  // input (eg, ObservationFile) necessary to produce the 
+  // input (e.g. ObservationFile) necessary to produce the 
   // requested output frames.
   //
   // Note that first and count describe the desired OUTPUT frames.
@@ -167,23 +100,14 @@ class Filter {
       assert(nextFilterInput);
       first = nextFilterInput->firstFrame;
       count = nextFilterInput->numFrames;
-    } 
-#if 0
-    required.firstFrame    = first; // the first frame I need as input
-    required.numFrames     = count; // the number of frames I need as input
-    required.historyFrames = 0;
-    required.futureFrames  = 0;     // # of frames that are just for context
-    required.numContinuous = inputContinuous;
-    required.numDiscrete   = inputDiscrete;
-    required.fullMatrixFrameCount = inputTotalFrames;
-#endif
+    }
     return subMatrixDescriptor::getSMD(first, count, 0, 0, inputContinuous, 
 		  inputDiscrete, inputTotalFrames, nextFilterInput);
   }
  
 
   // What will the output look like if the input described by
-  // inputDescription is feed into this filter?
+  // inputDescription is feed into this Filter?
   virtual subMatrixDescriptor
     describeLocalOutput(subMatrixDescriptor const &inputDescription)
   {
@@ -226,6 +150,7 @@ class Filter {
   }
 
 
+  // apply the local transform, then pass its output down the Filter stack
   Data32 const *
     transform(Data32 const *inputSubMatrix,
 	      subMatrixDescriptor const &inputDescription,
@@ -245,6 +170,7 @@ class Filter {
   }
 
 };
+
 
 
 /**

@@ -24,23 +24,29 @@
 #include "GMTK_ObservationFile.h"
 #include "GMTK_Filter.h"
 
+// Combine multiple ObservationFile instances into a single virtual file.
+
 class MergeFile: public ObservationFile {
 
   // the files assembled to form the observations
   unsigned nFiles;
   ObservationFile **file;
 
-  unsigned *floatStart; // the ith file's continuous features start here
-  unsigned *intStart;   // the ith file's discrete features start here
+  unsigned *floatStart; // The ith file's continuous features start here.
+                        //    This is the offset from the start of a complete 
+                        //    frame of the ith file's first continuous feature.
+  unsigned *intStart;   // Likewise for discrete features
   
-  int       ftrcombo;   // how should the continuous features from the multiple files be combined
+  int       ftrcombo;   // How should the continuous features from the multiple files be combined?
+                        //   FTROP_NONE   files are concatenated (floats first, then ints)
+                        //   FTROP_{ADD,SUB,MUL,DIV} continuous features are combined with the
+                        //     the indicated operator (ints still concatenated)
 
-  unsigned const *sdiffact;   // how to adjust for files w/ different # of segs
-  unsigned const *fdiffact;   //  ... frames
-  unsigned _numSegments;      // after considering -sdiffactX
-  unsigned _numFrames;        // after considering -fdiffactX
-  unsigned _numContinuous;
-  unsigned _numDiscrete;
+  unsigned const *sdiffact;   // how to adjust for files with different # of segmentss
+  unsigned const *fdiffact;   // how to adjust for segments with different # of frames
+
+  unsigned _numSegments;      // after considering -sdiffact
+  unsigned _numFrames;        // after considering -fdiffact
 
   int      segment;           // currently open segment, -1 if none yet
 
@@ -48,10 +54,15 @@ class MergeFile: public ObservationFile {
   unsigned buffSize;          // in Data32's
   unsigned bufStride;         // increment between frames in buffer
 
-  // map requested global segment # to logical segment # in specified file
+
+  // Map requested global segment # to logical segment # in specified file
   unsigned adjustForSdiffact(unsigned fileNum, unsigned seg);
 
-  // map requested merged frame range to individual files' frame range
+
+  // Map requested merged frame range [first,first+count) to individual file 
+  // fileNum's pre-fdiffactX frame range [adjFirst,adjFirst+adjCount). Also 
+  // returns deltaT, the difference in frames between the merged segment 
+  // length and the individual file's segment length.
   void adjustForFdiffact(unsigned first, unsigned count, unsigned fileNum,
 			 unsigned &adjFirst, unsigned &adjCount, unsigned &deltaT);
  public:
@@ -79,14 +90,13 @@ class MergeFile: public ObservationFile {
     return _numFrames;
   }
 
-  // Load count frames of observed data, starting from first (physical),
-  // in the current segment. count may be 0 to request loading
-  // the entire data segment (frames [first, numFrames)).
   Data32 const *getFrames(unsigned first, unsigned count);
 
-  unsigned numContinuous() { return _numContinuous; }
-
-  unsigned numDiscrete() { return _numDiscrete; }
+  // Number of continuous/discrete/total features in the file
+  // after applying -frX and -irX
+  unsigned numLogicalContinuous() { return _numLogicalContinuousFeatures; }
+  unsigned numLogicalDiscrete()   { return _numLogicalDiscreteFeatures; }
+  unsigned numLogicalFeatures()   { return _numLogicalFeatures; }
 
 };
 
