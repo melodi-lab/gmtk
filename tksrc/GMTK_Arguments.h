@@ -1171,16 +1171,18 @@ static bool  cliquePrintOnlyEntropy = false;
 
   static bool island=false;
   static unsigned base=3;
-  static bool sqrtBase=false; // true iff we should use \sqrt T as the logarithm base, otherwise it's constant
   const static char* baseString = "3";
+  static bool rootBase=false; // true iff we should use \sqrt T as the logarithm base, otherwise it's constant
+  static float islandRootPower=0.5; // allow arbitrary root of T as log base, default is square root
   static unsigned lst=100;
 
-#define GMTK_SQRT_BASE_STRING "sqrt"
+#define GMTK_SQRT_BASE_STRING "root"
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   Arg("island",Arg::Opt,island,"Run island algorithm"),
-  Arg("base",Arg::Opt,baseString,"Island algorithm logarithm base (integer or 'sqrt')"),
+  Arg("base",Arg::Opt,baseString,"Island algorithm logarithm base (integer or 'root')"),
+  Arg("root",Arg::Opt,islandRootPower,"use T^r as the island logarithm base, where T is the number of frames"),
   Arg("lst",Arg::Opt,lst,"Island algorithm linear segment threshold"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
@@ -1196,7 +1198,10 @@ static bool  cliquePrintOnlyEntropy = false;
     MaxClique::storeDeterministicChildrenInClique = false;
 
     if (strncasecmp(baseString, GMTK_SQRT_BASE_STRING, strlen(GMTK_SQRT_BASE_STRING)+1 ) == 0) {
-      sqrtBase = true;
+      rootBase = true;
+      if (islandRootPower < 0.0 || 1.0 < islandRootPower) {
+	error("%s: -root %f must be between 0 and 1", argerr, islandRootPower);
+      }
     } else {
       int tmp = atoi(baseString);
       if (tmp < 2) {

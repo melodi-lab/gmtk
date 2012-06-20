@@ -407,7 +407,7 @@ main(int argc,char*argv[])
 					 numUsableFrames,
 					 base,
 					 lst,
-					 sqrtBase);
+					 rootBase, islandRootPower);
 	    // TODO: note that frames not always equal to partitions but
 	    // do this for now. Ultimately fix this.
 	    totalNumberPartitionsDone += numUsableFrames;
@@ -870,7 +870,7 @@ main(int argc,char*argv[])
 					   numUsableFrames,
 					   base,
 					   lst,
-					   sqrtBase);
+					   rootBase, islandRootPower);
 	      // TODO: note that frames not always equal to partitions but
 	      // do this for now. Ultimately fix this.
 	      child_info.totalNumberPartitionsDone += numUsableFrames;

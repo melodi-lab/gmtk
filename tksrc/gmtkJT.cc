@@ -433,7 +433,7 @@ main(int argc,char*argv[])
 						 numUsableFrames,
 						 base,
 						 lst,
-						 sqrtBase);
+						 rootBase, islandRootPower);
 
       printf("Segment %d, after island Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
 	     segment,
