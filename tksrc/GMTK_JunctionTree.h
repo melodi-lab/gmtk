@@ -1145,7 +1145,8 @@ public:
 			  unsigned& numUsableFrames,
 			  unsigned base,
 			  const unsigned linear_section_threshold,
-			  const bool sqrtBase = false,
+			  const bool rootBase = false,
+			  const float islandRoot = 0.5,
 			  const bool runEMalgorithm = false,
 			  const bool runViterbiAlgorithm = false,
 			  const bool localCliqueNormalization = false);
