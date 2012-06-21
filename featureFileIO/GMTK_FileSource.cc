@@ -339,7 +339,7 @@ infoMsg(IM::ObsFile, IM::Giga, "frames [%7u,%7u) cache hit %7u  cache miss %7u\n
       // prefetch backward if within delta frames of the first buffered frame
       preFirst = firstBufferedFrame > window ? firstBufferedFrame - window : 0;
       preCount = firstBufferedFrame - preFirst;
-      if (firstBufferedFrameIndex + numBufferedFrames + preCount < bufferFrames) { // do prefetch
+      if (preCount <= firstBufferedFrameIndex) { // do prefetch
 infoMsg(IM::ObsFile, IM::Giga, "prefetch <  [%u,%u) + [%u,%u) for [%u,%u)\n",
   firstBufferedFrame, firstBufferedFrame + numBufferedFrames,
   preFirst, preFirst + preCount,
