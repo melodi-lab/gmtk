@@ -1,0 +1,31 @@
+<pre>
+
+doc:      The auto-generated documentation for python and perl.
+
+The scripts are grouped by function category.  So far we have
+
+parallel:     scripts having to do with the cluster, and data distribution
+              across compute nodes.
+gmtk:         scripts for the GMTK toolkit
+
+There are also 3 library directories to be included in the path of perl/python:
+
+perlLib:            Perl modules that we write.  Please try to name
+                    them in a way compatible with CPAN in case we try to 
+                    publish them to a wider audience
+perlLibThirdParty:  Perl modules written by others and under SVN for 
+                    convenience - should be updated here as newer versions 
+                    become available on CPAN or else where
+pythonLib:          Python modules that we write.
+
+
+unused:  a directory for orphaned code which is not self-contained and not 
+         used in any larger project, but may be useful later or as an example
+
+
+ifp-32.env.bash     you can source this script to add to your path all the scripts
+                    in the subdirs, the executables used by the scripts and add the
+		    perl and python modules to the library paths.
+
+
+</pre>

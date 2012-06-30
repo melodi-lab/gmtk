@@ -17,6 +17,43 @@ AC_ARG_ENABLE([assertions],
               [AS_HELP_STRING([--disable-assertions],
                               [disable assertion checking @<:@default: no@:>@])],
               [assertions=${enableval}], [assertions=yes])
+AC_ARG_ENABLE([gzip],
+              [AS_HELP_STRING([--disable-gzip],
+                              [disable piping .gz files through gzip @<:@default: no@:>@])],
+              [gzip=${enableval}], [gzip=yes])
+AC_ARG_ENABLE([bzip2],
+              [AS_HELP_STRING([--disable-bzip2],
+                              [disable piping .bz2 files through bzip2 @<:@default: no@:>@])],
+              [bzip2=${enableval}], [bzip2=yes])
+if test x"$gzip" = x"yes"; then
+  AC_DEFINE([ENABLE_GZIP],[1],[Pipe .gz files through gzip])
+fi
+if test x"$bzip2" = x"yes"; then
+  AC_DEFINE([ENABLE_BZIP2],[1],[Pipe .bz2 files through bzip2])
+fi
+AC_ARG_ENABLE([cppIfASCII],
+	      [AS_HELP_STRING([--disable-cppIfASCII],
+                              [disable piping ASCII parameter files through cpp @<:@default: no@:>@])],
+              [cppIfASCII=${enableval}], [cppIfASCII=yes])
+if test x"$cppIfASCII" = x"yes"; then
+  AC_DEFINE([PIPE_ASCII_FILES_THROUGH_CPP],[1],[Pipe ASCII files through cpp])
+fi
+
+AC_ARG_ENABLE([tmpLocalPool],
+              [AS_HELP_STRING([--disable-tmpLocalPool],
+                              [disable use of temporary local clique value pool @<:@default: no@:>@])],
+              [tmpLocalPool=${enableval}], [tmpLocalPool=yes])
+if test x"$tmpLocalPool" = x"yes"; then
+  AC_DEFINE([USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL],[1],[Hold clique values until after pruning])
+fi
+
+AC_ARG_ENABLE([continuous-cardinality-warning],
+              [AS_HELP_STRING([--disable-continous-cardinality-warning],
+                              [disable warning about continous variables with non-zero cardinality in trifiles written by older versions of GMTK @<:@default: no@:>@])],
+              [continuous_cardinaliy_warning=${enableval}], [continuous_cardinality_warning=yes])
+if test x"$continuous_cardinality_warning" = x"yes"; then
+  AC_DEFINE([CONTINUOUS_CARDINALITY_WARNING],[1],[Warn about non-zero continuous RV cardinality in trifile])
+fi
 
 AC_ARG_ENABLE([model-checks],
               [AS_HELP_STRING([--disable-model-checks],
@@ -94,7 +131,11 @@ case "${host}" in
 *apple*) 
   if test x"$HAVE_WXWIDGETS" = x"yes"; then
     AC_SUBST([OSXBUNDLE],[gmtkViz.app])
-    AC_DEFINE([ENABLE_TOP_OFFSET],[1],[wxFame::EnableTop doesn't seem to work on the Mac])
+
+#   The EnableTop() bug (ticket 64) is fixed in wxWidgets 2.9.2
+#   and gmtkViz souce checks if ENABLE_TOP_OFFSET is
+#   needed using wxCHECK_VERSION(2,9,2)
+    AC_DEFINE([GMTK_WX_OSX],[1],[Do we need to activate OSX fixes?])
   fi ;;
 *-sun-solaris*) AC_CHECK_LIB([sunmath],[annuity]) ;;
 *cygwin*) AC_SUBST([XOPEN],[-D__USE_XOPEN2K]) ;;

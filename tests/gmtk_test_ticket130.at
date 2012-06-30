@@ -1,0 +1,23 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/130 is fixed
+
+# gmtkViterbi will fail if it can't read the compressed language model
+
+AT_SETUP([ticket 130])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/switchboard/lattice_trigram])
+# This seems to use quite a bit of memory. Bluffon doesn't seem to be able
+# to run it, but my MacBook runs it successfully. My Windows box doesn't 
+# seem to have enough memory either (it may be that 32-bit Windows is 
+# insufficient).
+
+AT_SKIP_IF([test `hostname` = "bluffon.ee.washington.edu" -o `hostname` = "xpc"])
+AT_CHECK([(cd $TEST_AND_DEV/switchboard/lattice_trigram && \
+gmtkViterbi \
+        -of1 params/eval01_ftr.lst \
+        -nf1 0 -ni1 1 -fmt1 ascii \
+        -inputMasterFile params/rescore_sw_40436_B.master \
+        -strFile params/rescore_sw_40436_B.str \
+        -triFile params/rescore_sw_40436_B.str.trifile_fast \
+        -deterministic F -veSepWhere 0x6 -veSepLog 10 \
+        -vitValsFile /dev/null -base 3 -lst 100)],[],[ignore],[ignore])
+AT_CLEANUP

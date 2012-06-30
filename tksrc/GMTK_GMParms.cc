@@ -18,6 +18,13 @@
  */
 
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
+
 
 #include <math.h>
 #include <stdlib.h>
@@ -70,14 +77,7 @@
 #include "GMTK_ObservationMatrix.h"
 #include "GMTK_CFunctionDeterministicMappings.h"
 
-#if HAVE_CONFIG_H
-#include <config.h>
-#endif
-#if HAVE_HG_H
-#include "hgstamp.h"
-#endif
 VCID(HGID)
-
 
 /////////////////////////////////
 // an integer that specifies the maximum number of objects (such

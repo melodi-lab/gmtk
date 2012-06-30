@@ -37,6 +37,13 @@
 #ifndef GMTK_MAXCLIQUE_H
 #define GMTK_MAXCLIQUE_H
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#if 0
+
+// USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL is now set by configure
 
 ////////////////////////////////////////////////////////////////////////
 // Comment/Uncomment to optimize for speed/reducing memory usage using
@@ -45,7 +52,7 @@
 #define USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
 #endif
 ////////////////////////////////////////////////////////////////////////
-
+#endif
 
 #include "general.h"
 #include "vhash_set.h"
@@ -1723,7 +1730,7 @@ public:
     // apply factors so far from separators or unassigned nodes.
 
     // if (true || sharedStructure.fSortedAssignedNodes.size() == 0 || message(High)) {
-    if (sharedStructure.fSortedAssignedNodes.size() == 0 || message(High)) {
+    if (sharedStructure.fSortedAssignedNodes.size() == 0 || message(Inference,High)) {
       // let recursive version handle degenerate or message full case
       ceIterateAssignedNodesRecurse(sharedStructure,
 				    cliqueBeamThresholdEstimate,
