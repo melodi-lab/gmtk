@@ -94,6 +94,10 @@
  * for any purpose. It is provided "as is" without express or implied warranty.
  * */
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdio.h>
 #include <string>
 #include "GMTK_ObservationMatrix.h"
@@ -115,9 +119,9 @@ extern "C" {
 }
 #endif
 #endif
-#ifdef PIPE_ASCII_FILES_THROUGH_CPP
+
 #define CPP_DIRECTIVE_CHAR '#'
-#endif
+
 
 #define WARNING_ON_NAN 1
 bool ObservationsAllowNan = false;
@@ -1930,7 +1934,7 @@ size_t ObservationMatrix::openAsciiFile(StreamInfo *f,size_t sentno) {
 	 }
        }
        	 DBGFPRINTF((stderr,"\n"));
-       fclose(f->curDataFile);
+       pclose(f->curDataFile);
        f->curDataFile = ::popen(cppCommand.c_str(),"r");
      }
      else {
@@ -2442,13 +2446,14 @@ bool ObservationMatrix::readAsciiSentence(float* float_buffer, unsigned num_floa
 
   assert(num_floats > 0 || num_ints > 0);
 
-  int tmp,lineNum=0;
+  int lineNum=0;
   float* float_buffer_ptr = float_buffer;
   Int32* int_buffer_ptr   = int_buffer;
 
 
   // consume CPP special directives if any
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
+  int tmp;
   if(_cppIfAscii) {
     while((tmp=fgetc(f))==CPP_DIRECTIVE_CHAR) {
       while((tmp=fgetc(f))!='\n');

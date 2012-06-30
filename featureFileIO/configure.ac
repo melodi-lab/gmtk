@@ -16,7 +16,27 @@ AC_ARG_ENABLE([assertions],
               [AS_HELP_STRING([--disable-assertions],
                               [disable assertion checking @<:@default: no@:>@])],
               [assertions=${enableval}], [assertions=yes])
-
+AC_ARG_ENABLE([gzip],
+              [AS_HELP_STRING([--disable-gzip],
+                              [disable piping .gz files through gzip @<:@default: no@:>@])],
+              [gzip=${enableval}], [gzip=yes])
+AC_ARG_ENABLE([bzip2],
+              [AS_HELP_STRING([--disable-bzip2],
+                              [disable piping .bz2 files through bzip2 @<:@default: no@:>@])],
+              [bzip2=${enableval}], [bzip2=yes])
+if test x"$gzip" = x"yes"; then
+  AC_DEFINE([ENABLE_GZIP],[1],[Pipe .gz files through gzip])
+fi
+if test x"$bzip2" = x"yes"; then
+  AC_DEFINE([ENABLE_BZIP2],[1],[Pipe .bz2 files through bzip2])
+fi
+AC_ARG_ENABLE([cppIfASCII],
+	      [AS_HELP_STRING([--disable-cppIfASCII],
+                              [disable piping ASCII parameter files through cpp @<:@default: no@:>@])],
+              [cppIfASCII=${enableval}], [cppIfASCII=yes])
+if test x"$cppIfASCII" = x"yes"; then
+  AC_DEFINE([PIPE_ASCII_FILES_THROUGH_CPP],[1],[Pipe ASCII files through cpp])
+fi
 AC_ARG_ENABLE([model-checks],
               [AS_HELP_STRING([--disable-model-checks],
                               [disable run-time checks for models @<:@default: no@:>@])],
@@ -31,6 +51,25 @@ AC_PROG_CC
 AC_PROG_LEX
 AC_PROG_INSTALL
 AC_PROG_RANLIB
+
+AC_CHECK_FILE([../.hg/dirstate],[
+  AC_CHECK_PROG([HAVE_HG],[hg],[yes])
+  if test x$HAVE_HG = xyes; then
+    HGREVID=`hg id ..`  
+    HGDATE=`hg parents --template '{date|date}'`
+    printf "#ifndef HGID\n#define HGID \"$HGREVID\"\n#define HGDATE \"$HGDATE\"\n#endif\n" > hgstamp.h
+    AC_DEFINE([HAVE_HG_H],[1],[Live Mercurial revision id header available?])
+  fi
+],[
+  AC_CHECK_FILE([hgstamp.h],[
+    AC_DEFINE([HAVE_HG_H],[1],[Distributed Mercurial revision id header available?])
+  ],[
+    AC_DEFINE([HGID],"UNKNOWN",[Unknown Mercurial revision id - broken distribution?])
+    AC_DEFINE([HGDATE],"UNKOWN",[Unkown Mercurial checkin date - broken distribution?])
+  ])
+])
+AM_CONDITIONAL([HAVE_HG],[test  x$HAVE_HG = xyes])
+
 
 # Checks for libraries.
 AC_CHECK_LIB([m], [sqrt])

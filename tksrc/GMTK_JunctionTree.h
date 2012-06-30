@@ -54,6 +54,9 @@ class JunctionTree {
   friend class GMTemplate;
   friend class BoundaryTriangulate;
 
+  // partition range for debugging output
+  Range partitionDebugRange;
+
   // The set of base partitions from which real unrolled things are cloned from.
   // When unrolling zero time, we get:
   //   u0: P' E'
@@ -785,6 +788,10 @@ class JunctionTree {
 
 public:
 
+  void setPartitionDebugRange(Range rng) { partitionDebugRange.SetLimits(rng.first(), rng.last()); 
+                                       partitionDebugRange.SetDefStr(rng.GetDefStr()); }
+
+
 
   // Set to true if the JT should create extra separators for any
   // virtual evidence (VE) that might be usefully exploitable
@@ -855,7 +862,8 @@ public:
 
   // constructor
   JunctionTree(GMTemplate& arg_gm_template)
-    : curEMTrainingBeam(-LZERO),
+    : partitionDebugRange("all",0,0x7FFFFFFF),
+      curEMTrainingBeam(-LZERO),
       inference_it(*this),
       fp(arg_gm_template.fp),
       gm_template(arg_gm_template)
@@ -1115,8 +1123,9 @@ public:
   logpr
   collectDistributeIsland(const unsigned numFrames,
 			  unsigned& numUsableFrames,
-			  const unsigned base,
+			  unsigned base,
 			  const unsigned linear_section_threshold,
+			  const bool sqrtBase = false,
 			  const bool runEMalgorithm = false,
 			  const bool runViterbiAlgorithm = false,
 			  const bool localCliqueNormalization = false);

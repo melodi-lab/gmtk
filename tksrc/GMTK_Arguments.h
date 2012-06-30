@@ -123,6 +123,7 @@ extern bool ObservationsAllowNan;
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   // observation input file handling
+  Arg("\n*** Observation input file handling ***\n"),
   Arg("of",  Arg::Req,ofs,"Observation File.  Replace X with the file number",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("nf",  Arg::Opt,nfs,"Number of floats in observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("ni",  Arg::Opt,nis,"Number of ints in observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
@@ -219,6 +220,13 @@ extern bool ObservationsAllowNan;
 /*************************************************************************************************************/
 /*************************************************************************************************************/
 /*************************************************************************************************************/
+
+#if defined(GMTK_ARG_INPUT_TRAINABLE_FILE_HANDLING)
+#if defined(GMTK_ARGUMENTS_DOCUMENTATION)
+  Arg("\n*** Input trainable parameter file handling ***\n"),
+#endif
+#endif
+
 
 #if defined(GMTK_ARG_CPP_CMD_OPTS)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
@@ -398,6 +406,12 @@ extern bool ObservationsAllowNan;
 /****************************************************************************************************************/
 /****************************************************************************************************************/
 /****************************************************************************************************************/
+
+#if defined(GMTK_ARG_INPUT_MODEL_FILE_HANDLING)
+#if defined(GMTK_ARGUMENTS_DOCUMENTATION)
+  Arg("\n*** Input model file handling ***\n"),
+#endif
+#endif
 
 
 /*-----------------------------------------------------------------------------------------------------------*/
@@ -610,6 +624,12 @@ extern bool ObservationsAllowNan;
 /****************************************************************************************************************/
 /****************************************************************************************************************/
 
+#if defined(GMTK_ARG_CONTINUOUS_RANDOM_VAR_OPTIONS)
+#if defined(GMTK_ARGUMENTS_DOCUMENTATION)
+  Arg("\n*** Continuous random variable options ***\n"),
+#endif
+#endif
+
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
@@ -665,6 +685,12 @@ extern bool ObservationsAllowNan;
 /****************************************************************************************************************/
 /****************************************************************************************************************/
 /****************************************************************************************************************/
+
+#if defined(GMTK_ARG_BEAM_PRUNING_OPTIONS)
+#if defined(GMTK_ARGUMENTS_DOCUMENTATION)
+  Arg("\n*** Beam pruning options ***\n"),
+#endif
+#endif
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
@@ -904,6 +930,12 @@ extern bool ObservationsAllowNan;
 /****************************************************************************************************************/
 /****************************************************************************************************************/
 
+#if defined(GMTK_ARG_MEMORY_MANAGEMENT_OPTIONS)
+#if defined(GMTK_ARGUMENTS_DOCUMENTATION)
+  Arg("\n*** Memory management options ***\n"),
+#endif
+#endif
+
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
 /*************************************************************************************************************/
@@ -973,6 +1005,11 @@ extern bool ObservationsAllowNan;
 /****************************************************************************************************************/
 /****************************************************************************************************************/
 
+#if defined(GMTK_ARG_FILE_RANGE_OPTIONS)
+#if defined(GMTK_ARGUMENTS_DOCUMENTATION)
+  Arg("\n*** File range options ***\n"),
+#endif
+#endif
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
@@ -1054,6 +1091,11 @@ extern bool ObservationsAllowNan;
 /****************************************************************************************************************/
 /****************************************************************************************************************/
 
+#if defined(GMTK_ARG_GENERAL_OPTIONS)
+#if defined(GMTK_ARGUMENTS_DOCUMENTATION)
+  Arg("\n*** General options ***\n"),
+#endif
+#endif
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
@@ -1157,8 +1199,8 @@ extern bool ObservationsAllowNan;
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("verbosity",Arg::Opt,modularVerbosity,"Verbosity (0 <= v <= 100) of informational/debugging msgs"),
-  Arg("printIntValues",Arg::Opt,RV::alwaysPrintIntegerRVValues,"always print rv values as integer rather than symbols"),
+  Arg("verbosity",Arg::Opt,modularVerbosity,"Verbosity - coma separated list of m=v, where m is all, default, inference, inference-memory, training, triangulation, boundary, unrolling, or printing; 0 <= v <= 100"),
+  Arg("printIntValues",Arg::Opt,RV::alwaysPrintIntegerRVValues,"Always print rv values as integer rather than symbols"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
@@ -1175,7 +1217,7 @@ extern bool ObservationsAllowNan;
     copy = strdup(modularVerbosity);
     for (token=strtok(copy, delimiters); token; token=strtok(NULL, delimiters)) {
       (void) IM::setGlbMsgLevel(token);
-      GM_Parms.setMsgLevel(token);
+//      GM_Parms.setMsgLevel(token);
     }
   }
 
@@ -1283,6 +1325,12 @@ static bool  cliquePrintOnlyEntropy = false;
 /****************************************************************************************************************/
 /****************************************************************************************************************/
 
+#if defined(GMTK_ARG_INFERENCE_OPTIONS)
+#if defined(GMTK_ARGUMENTS_DOCUMENTATION)
+  Arg("\n*** Inference options ***\n"),
+#endif
+#endif
+
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
 /*************************************************************************************************************/
@@ -1294,12 +1342,16 @@ static bool  cliquePrintOnlyEntropy = false;
 
   static bool island=false;
   static unsigned base=3;
+  static bool sqrtBase=false; // true iff we should use \sqrt T as the logarithm base, otherwise it's constant
+  const static char* baseString = "3";
   static unsigned lst=100;
+
+#define GMTK_SQRT_BASE_STRING "sqrt"
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   Arg("island",Arg::Opt,island,"Run island algorithm"),
-  Arg("base",Arg::Opt,base,"Island algorithm logarithm base"),
+  Arg("base",Arg::Opt,baseString,"Island algorithm logarithm base (integer or 'sqrt')"),
   Arg("lst",Arg::Opt,lst,"Island algorithm linear segment threshold"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
@@ -1313,12 +1365,44 @@ static bool  cliquePrintOnlyEntropy = false;
     if (hash_abstract::loadFactor < 0.98)
       hash_abstract::loadFactor = 0.98;
     MaxClique::storeDeterministicChildrenInClique = false;
+
+    if (strncasecmp(baseString, GMTK_SQRT_BASE_STRING, strlen(GMTK_SQRT_BASE_STRING) ) == 0) {
+      sqrtBase = true;
+    } else {
+      int tmp = atoi(baseString);
+      if (tmp < 2) {
+	error("%s: -base %d is too small, it must be >= 2", argerr, tmp);
+      }
+      base = (unsigned) tmp;
+    }
   }
 
 
 #else
 #endif
 #endif // defined(GMTK_ARG_ISLAND)
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
+#if defined(GMTK_ARG_DEBUG_PART_RNG)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+  const static char *pdbrng_str="all";
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("debugPartitions",Arg::Opt,pdbrng_str,"Partition range to generate debug output"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#else
+#endif
+#endif // defined(GMTK_ARG_DEBUG_PART_RNG)
+
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
@@ -1524,6 +1608,12 @@ static const char* varCliqueAssignmentPrior = "COT";
 /****************************************************************************************************************/
 /****************************************************************************************************************/
 
+#if defined(GMTK_ARG_EM_TRAINING_OPTIONS)
+#if defined(GMTK_ARGUMENTS_DOCUMENTATION)
+  Arg("\n*** EM training options ***\n"),
+#endif
+#endif
+
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
 /*************************************************************************************************************/
@@ -1643,6 +1733,12 @@ static bool localCliqueNormalization = false;
 /****************************************************************************************************************/
 /****************************************************************************************************************/
 
+#if defined(GMTK_ARG_KERNEL_OPTIONS)
+#if defined(GMTK_ARGUMENTS_DOCUMENTATION)
+  Arg("\n*** Kernel options ***\n"),
+#endif
+#endif
+
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
 /*************************************************************************************************************/
@@ -1697,6 +1793,12 @@ static bool writeLogVals = false;
 /****************************************************************************************************************/
 /****************************************************************************************************************/
 /****************************************************************************************************************/
+
+#if defined(GMTK_ARG_OBS_MATRIX_XFORMATION)
+#if defined(GMTK_ARGUMENTS_DOCUMENTATION)
+  Arg("\n*** Observation matrix transformation options ***\n"),
+#endif
+#endif
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
@@ -1784,6 +1886,11 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 /****************************************************************************************************************/
 /****************************************************************************************************************/
 
+#if defined(GMTK_ARG_DECODING_OPTIONS)
+#if defined(GMTK_ARGUMENTS_DOCUMENTATION)
+  Arg("\n*** Decoding options ***\n"),
+#endif
+#endif
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
@@ -1853,6 +1960,7 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
+  Arg("\n*** Decoding options ***\n"),
   // partition based 
   Arg("pVitValsFile",Arg::Opt,pVitValsFileName,"Partition Vit: file to print viterbi values, '-' for stdout"),
   // TODO: not currently used, but should add.
@@ -1901,7 +2009,11 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 /****************************************************************************************************************/
 /****************************************************************************************************************/
 
-
+#if defined(GMTK_ARG_TIMING_OPTIONS)
+#if defined(GMTK_ARGUMENTS_DOCUMENTATION)
+  Arg("\n*** Timing options ***\n"),
+#endif
+#endif
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
@@ -1945,6 +2057,12 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 /****************************************************************************************************************/
 /****************************************************************************************************************/
 
+
+#if defined(GMTK_ARG_TRIANGULATION_OPTIONS)
+#if defined(GMTK_ARGUMENTS_DOCUMENTATION)
+  Arg("\n*** Triangulation options ***\n"),
+#endif
+#endif
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
@@ -2156,6 +2274,12 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 /****************************************************************************************************************/
 /****************************************************************************************************************/
 
+#if defined(GMTK_ARG_TYING_OPTIONS)
+#if defined(GMTK_ARGUMENTS_DOCUMENTATION)
+  Arg("\n*** Tying options ***\n"),
+#endif
+#endif
+
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
 /*************************************************************************************************************/
@@ -2222,6 +2346,7 @@ static char *loadCmdFile = NULL;
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
+  Arg("\n*** Lattice options ***\n"),
   Arg("latticeDefaultFrameRate",Arg::Opt,LatticeADT::_defaultFrameRate,"Lattice, default frame rate (if negative, compute from file)"),
   Arg("latticeUseMaxScore",Arg::Opt,LatticeADT::_latticeNodeUseMaxScore,"Lattice, use max edge score for node CPT"),
   Arg("latticeIgnoreNodeTimeMarks",Arg::Opt,LatticeADT::_ignoreLatticeNodeTimeMarks,"Lattice, ignore lattice node time marks in all lattices"),
@@ -2247,6 +2372,11 @@ static char *loadCmdFile = NULL;
 /****************************************************************************************************************/
 /****************************************************************************************************************/
 
+#if defined(GMTK_ARG_RESOURCE_OPTIONS)
+#if defined(GMTK_ARGUMENTS_DOCUMENTATION)
+  Arg("\n*** Resource limiting options ***\n"),
+#endif
+#endif
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/

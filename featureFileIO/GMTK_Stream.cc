@@ -20,6 +20,10 @@
  * for any purpose. It is provided "as is" without express or implied warranty.
  * */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdio.h>
 #include <string.h>
 
@@ -28,8 +32,11 @@
 #include "error.h"
 #include "general.h"
 
+#if 0
 // karim - 29aug2003
 #include "fileParser.h"
+#endif
+
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
 #ifndef DECLARE_POPEN_FUNCTIONS_EXTERN_C
 extern "C" {
@@ -40,9 +47,9 @@ extern "C" {
 }
 #endif
 #endif
-#ifdef PIPE_ASCII_FILES_THROUGH_CPP
+
 #define CPP_DIRECTIVE_CHAR '#'
-#endif
+
 
 #ifdef DEBUG
 #define DBGFPRINTF(_x_) fprintf _x_
@@ -286,7 +293,7 @@ size_t StreamInfo::calcNumFileNames(FILE* &f) {
 #else
    while (fgets(line,sizeof(line),f) != NULL) {
       int l = strlen(line);
-      if(l==0 || l==1 && line[0]=='\n') continue;
+      if(l==0 || (l==1 && line[0]=='\n') ) continue;
       numFileNames++;
     }
     rewind(f);

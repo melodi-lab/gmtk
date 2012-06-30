@@ -2942,11 +2942,11 @@ JunctionTree::sortCliqueAssignedNodesAndComputeDispositions(JT_Partition& part,
 							    const char *varCliqueAssignmentPrior)
 {
   if (varCliqueAssignmentPrior && strlen(varCliqueAssignmentPrior) > 0) {
-    infoMsg(IM::Giga,"Sorting cliques variables using priority order (%s)\n",varCliqueAssignmentPrior);
+    infoMsg(IM::Inference, IM::Giga,"Sorting cliques variables using priority order (%s)\n",varCliqueAssignmentPrior);
   }
   for (unsigned i=0;i<part.cliques.size();i++) {
     part.cliques[i].sortAndAssignDispositions(varCliqueAssignmentPrior);
-    if (IM::messageGlb(IM::Max)) {
+    if (IM::messageGlb(IM::Inference, IM::Max)) {
       printf("Clique %d variables after sort:",i);
       printRVSet(stdout,part.cliques[i].sortedAssignedNodes,true);
     }

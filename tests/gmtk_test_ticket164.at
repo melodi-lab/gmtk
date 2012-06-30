@@ -1,0 +1,34 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/164 is fixed
+
+AT_SETUP([ticket 164])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/trivial])
+
+# partitioned Viterbi printing
+
+# All the partitions should be included in the output
+AT_CHECK([(cd $TEST_AND_DEV/trivial && \
+           gmtkViterbi -strF test.str -inputM test.mtr -of1 filelist.txt \
+                       -fmt1 ascii -ni1 1 -pVitValsFile - -pVitPrintObs T) | \
+           grep Ptn-],[],[ignore],[ignore])
+
+# No partitions should be included in the output
+AT_CHECK([(cd $TEST_AND_DEV/trivial && \
+           gmtkViterbi -strF test.str -inputM test.mtr -of1 filelist.txt \
+                       -fmt1 ascii -ni1 1 -pVitValsFile - -pVitPrintObs F) | \
+           grep Ptn-],[1],[],[ignore])
+
+# new Viterbi printing implementation
+
+# All the partitions should be included in the output
+AT_CHECK([(cd $TEST_AND_DEV/trivial && \
+           gmtkViterbi -strF test.str -inputM test.mtr -of1 filelist.txt \
+                       -fmt1 ascii -ni1 1 -vitValsFile - -vitPrintObs T) | \
+           grep Ptn-],[],[ignore],[ignore])
+
+# No partitions should be included in the output
+AT_CHECK([(cd $TEST_AND_DEV/trivial && \
+           gmtkViterbi -strF test.str -inputM test.mtr -of1 filelist.txt \
+                       -fmt1 ascii -ni1 1 -vitValsFile - -vitPrintObs F) | \
+           grep Ptn-],[1],[],[ignore])
+AT_CLEANUP

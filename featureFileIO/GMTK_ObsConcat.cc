@@ -12,6 +12,20 @@
 */
 
 
+#ifdef HAVE_CONFIG_H
+
+#include <config.h>
+static const char * gmtk_version_id = PACKAGE_STRING;
+#ifdef HAVE_HG_H
+#include "hgstamp.h"
+#endif
+
+#else 
+// TODO: automate the process of updating this string.
+static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 2004";
+#endif
+
+
 
 #include <stdlib.h>
 #include <cstdio>
@@ -397,6 +411,7 @@ char* perStreamTransforms[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL};   //
 char* postTransforms                   = NULL;
 
 bool help=false;
+bool printVersion = false;
 
 Arg Arg::Args[] = {
   Arg("i",      Arg::Req, input_fname,"input file",Arg::ARRAY,MAX_OBJECTS),
@@ -423,6 +438,7 @@ Arg Arg::Args[] = {
   Arg("posttrans",  Arg::Opt,postTransforms ,"Final global transformations string"),
   Arg("debug",  Arg::Opt, debug_level,"number giving level of debugging output to produce 0=none"),
   Arg("help",   Arg::Tog, help,"print this message"),
+  Arg("version", Arg::Tog, printVersion, "Print GMTK version and exit."),
   // The argumentless argument marks the end of the above list.
   Arg()
 };
