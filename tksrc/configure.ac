@@ -127,6 +127,29 @@ if test x"$HAVE_WXWIDGETS" = x"yes"; then
    AC_SUBST([VIZLDFLAGS],[`wx-config --libs`])
 fi
 
+     AC_ARG_WITH(
+       [ps2eps],
+       [AS_HELP_STRING([--with-ps2eps],
+          [specify default ps2eps command ('no' or '--without-ps2eps' generates PostScript) @<:@default: ps2eps@:>@])],
+       [AS_IF([test "x$with_ps2eps" != "xno"],
+          [AC_DEFINE_UNQUOTED([PS2EPS_CMD], ["${with_ps2eps}"],[default ps2eps command])
+           AC_DEFINE([EPS_EXT], ["eps"], [extension for print to file])
+           AC_DEFINE([PRINT2FILE_ABBREV], ["EPS"], [abbreviation for print to file format])
+           AC_DEFINE([PRINT2FILE_FORMAT], ["Encapsulated PostScript"], [format for print to file])
+          ],
+          [AC_DEFINE([PS2EPS_CMD], ["cat"], [pass-thru raw PostScript])
+           AC_DEFINE([EPS_EXT], ["ps"], [extension for print to file])
+           AC_DEFINE([PRINT2FILE_ABBREV], ["PS"], [abbreviation for print to file format])
+           AC_DEFINE([PRINT2FILE_FORMAT], ["PostScript"], [format for print to file])
+          ])
+       ],
+       [AC_DEFINE([PS2EPS_CMD], ["ps2eps"], [default ps2eps command])
+        AC_DEFINE([EPS_EXT], ["eps"], [extension for print to file])
+        AC_DEFINE([PRINT2FILE_ABBREV], ["EPS"], [abbreviation for print to file format])
+        AC_DEFINE([PRINT2FILE_FORMAT], ["Encapsulated PostScript"], [format for print to file])
+       ]
+     )
+
 case "${host}" in
 *apple*) 
   if test x"$HAVE_WXWIDGETS" = x"yes"; then

@@ -1671,7 +1671,7 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	menu_file->AppendSeparator();
 	menu_file->Append(MENU_FILE_PAGESETUP, wxT("Page Setup..."), wxT("Set up page size/orientation"), wxITEM_NORMAL);
 	menu_file->Append(MENU_FILE_PRINT, wxT("&Print...\tCtrl+P"), wxT("Preview and print the current graph"), wxITEM_NORMAL);
-	menu_file->Append(MENU_FILE_PRINT_EPS, wxT("&Print to EPS file...\tCtrl+E"), wxT("Print an Encapsulated PostScript file of the current graph"), wxITEM_NORMAL);
+	menu_file->Append(MENU_FILE_PRINT_EPS, wxT("&Print to "PRINT2FILE_ABBREV" file...\tCtrl+E"), wxT("Print an "PRINT2FILE_FORMAT" file of the current graph"), wxITEM_NORMAL);
 	menu_file->AppendSeparator();
 	menu_file->Append(MENU_FILE_CLOSE, wxT("&Close\tCtrl+W"), wxT("Close current placement file"), wxITEM_NORMAL);
 	menu_file->Append(MENU_FILE_EXIT, wxT("E&xit\tCtrl+Q"), wxT("Close all files and exit"), wxITEM_NORMAL);
@@ -2374,6 +2374,18 @@ void GFrame::OnMenuFilePrint(wxCommandEvent &event)
 	}
 }
 
+
+const char * PS2EPS_Command() 
+{
+  const char * rc = getenv("GMTK_PS2EPS_CMD");
+  if (rc == NULL)
+    rc = PS2EPS_CMD;
+  // fprintf(stdout,"cpp command got is (%s)\n",rc);
+  return rc;
+}
+
+
+
 /**
  *******************************************************************
  * Get a file name from the User, print a temporary PostScript file
@@ -2418,7 +2430,7 @@ void GFrame::OnMenuFilePrintEPS(wxCommandEvent &event)
 	// If it couldn't be casted to a StructPage, then curPage will be NULL.
 	if (curPage) {
 
-		wxFileDialog eps_file_dialog(this, "Save to EPS", "", "", "*.eps", wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+		wxFileDialog eps_file_dialog(this, "Save to "PRINT2FILE_FORMAT, "", "", "*."EPS_EXT, wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
 		if(eps_file_dialog.ShowModal() == wxID_CANCEL)
 			return; //canceled
 
@@ -2510,7 +2522,9 @@ void GFrame::OnMenuFilePrintEPS(wxCommandEvent &event)
 		//this is the command being sent to the shell (single quote the file name)
 		string ps2eps_cmd = "cat ";
 		ps2eps_cmd.append(temp_file_name);
-		ps2eps_cmd.append(" | ps2eps > '");
+		ps2eps_cmd.append(" | ");
+		ps2eps_cmd.append(PS2EPS_Command());
+		ps2eps_cmd.append(" > '");
 
 		//quote single quotes to be safe
 		string temp_path = eps_file_dialog.GetPath().wx_str();
@@ -2521,7 +2535,6 @@ void GFrame::OnMenuFilePrintEPS(wxCommandEvent &event)
 		}
 		ps2eps_cmd.append(temp_path);
 		ps2eps_cmd.append("'");
-fprintf(stderr, "executing: %s", ps2eps_cmd.c_str());		
 		//execute the command
 		if(system(ps2eps_cmd.c_str()) != 0){
 			//print error if needed
