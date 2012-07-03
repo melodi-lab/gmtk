@@ -27,6 +27,7 @@
 #include "GMTK_ObservationFile.h"
 #include "GMTK_FilterFile.h"
 #include "GMTK_FileSource.h"
+#include "GMTK_FileSourceNoCache.h"
 #include "GMTK_Filter.h"
 #include "GMTK_MergeFile.h"
 #include "GMTK_ObservationArguments.h"
@@ -99,28 +100,47 @@ instantiateFileSource() {
                                  Cpp_If_Ascii, cppCommandOptions, prefrs[i], preirs[i],
                                  prepr[i], sr[i]);
     assert(obsFile[i]);
-    Filter *fileFilter = instantiateFilters(Per_Stream_Transforms[i],
-                                            obsFile[i]->numContinuous());
-    assert(fileFilter);
-    obsFile[i] = new FilterFile(fileFilter, obsFile[i], frs[i], irs[i], postpr[i]);
+    if (Per_Stream_Transforms[i] || frs[i] || irs[i] || postpr[i]) {
+      Filter *fileFilter = instantiateFilters(Per_Stream_Transforms[i],
+					      obsFile[i]->numContinuous());
+      assert(fileFilter);
+      obsFile[i] = new FilterFile(fileFilter, obsFile[i], frs[i], irs[i], postpr[i]);
+    }
     nCont += obsFile[i]->numContinuous();
   }
-  MergeFile *mf  = new  MergeFile(nFiles, obsFile,
-				  Action_If_Diff_Num_Sents,
-				  Action_If_Diff_Num_Frames,
-				  Ftr_Combo);
-  FilterFile *ff = new FilterFile(instantiateFilters(Post_Transforms, nCont), 
-				  mf, NULL, NULL, gpr_str);
+  ObservationFile *mf;
+  if (nFiles > 1) {
+    mf = new  MergeFile(nFiles, obsFile,
+			Action_If_Diff_Num_Sents,
+			Action_If_Diff_Num_Frames,
+			Ftr_Combo);
+  } else {
+    mf = obsFile[0];
+  }
+  ObservationFile *ff;
+  if (Post_Transforms || gpr_str) {
+    ff = new FilterFile(instantiateFilters(Post_Transforms, nCont), 
+			mf, NULL, NULL, gpr_str);
+  } else {
+    ff = mf;
+  }
   unsigned windowBytes = fileWindowSize * MEBIBYTE;
   infoMsg(IM::ObsFile, IM::Low, "windowBytes = %u MiB = %u B\n", fileWindowSize, windowBytes);
   infoMsg(IM::ObsFile, IM::Low, "fileBufferSize = %u\n", fileBufferSize);
-  return new FileSource(ff, windowBytes, fileWindowDelta, fileBufferSize, 
-			startSkip, endSkip, justification, constantSpace);
+  if (constantSpace) {
+    return new FileSource(ff, windowBytes, fileWindowDelta, fileBufferSize, 
+			  startSkip, endSkip, justification, constantSpace);
+  } else {
+    return new FileSourceNoCache(ff, windowBytes, fileWindowDelta, fileBufferSize, 
+				 startSkip, endSkip, justification);
+  }
 }
 
-
+// FIXME - drop this version
+#if 1
 void 
 instantiateFileSource(FileSource *source) {
+  error("ERROR: deprecated instantiateFileSource()");
   // range selection is much more efficient if "all" is replaced with NULL
   // since the logical <-> physical mapping step can be skipped
   for (unsigned i=0; i < MAX_NUM_OBS_FILES; i+=1) {
@@ -161,3 +181,4 @@ instantiateFileSource(FileSource *source) {
 		     startSkip, endSkip, justification, constantSpace);
 }
 
+#endif

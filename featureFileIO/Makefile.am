@@ -67,6 +67,7 @@ GMTK_ASCIIStream.h GMTK_ASCIIStream.cc \
 GMTK_BinStream.h GMTK_BinStream.cc \
 GMTK_FileStream.h GMTK_FileSrcStream.h \
 GMTK_FileSource.h GMTK_FileSource.cc \
+GMTK_FileSourceNoCache.h GMTK_FileSourceNoCache.cc \
 GMTK_CreateFileSource.h GMTK_CreateFileSource.cc \
 GMTK_ObservationFile.h GMTK_ObservationFile.cc \
 GMTK_PFileFile.h GMTK_PFileFile.cc \

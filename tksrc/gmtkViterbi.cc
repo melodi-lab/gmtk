@@ -211,11 +211,10 @@ RAND rnd(seedme);
 GMParms GM_Parms;
 #if 0
 ObservationMatrix globalObservationMatrix;
-#else
-FileSource fileSource;
-FileSource *gomFS = &fileSource;
-ObservationSource *globalObservationMatrix = &fileSource;
 #endif
+
+FileSource *gomFS;
+ObservationSource *globalObservationMatrix;
 
 int
 main(int argc,char*argv[])
@@ -247,7 +246,8 @@ main(int argc,char*argv[])
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_CHECK_ARGS
 
-  instantiateFileSource(gomFS);
+  gomFS = instantiateFileSource();
+  globalObservationMatrix = gomFS;
 
   /////////////////////////////////////////////
   // read in all the parameters

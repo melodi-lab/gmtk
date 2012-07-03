@@ -329,23 +329,26 @@ repCount(unsigned frameNum, unsigned const *fdiffact, unsigned fileNum,
   // returns deltaT, the difference in frames between the merged segment 
   // length and the individual file's segment length.
 
+  // precondition: already verified that fdiffact != NULL and 
+  //               fdiffact[i] != FRAMEMATCH_ERROR
+
 void 
 MergeFile::adjustForFdiffact(unsigned first, unsigned count, unsigned i,
 			     unsigned &adjFirst, unsigned &adjCount, unsigned &deltaT)
 {
-  if (fdiffact && fdiffact[i] == FRAMEMATCH_REPEAT_FIRST) {
+  if (fdiffact[i] == FRAMEMATCH_REPEAT_FIRST) {
     deltaT = _numFrames - file[i]->numLogicalFrames();
     assert(_numFrames >= file[i]->numLogicalFrames());
     adjFirst =  first >= deltaT  ?  first - deltaT  :  0;
     adjCount = count;
-  } else if (fdiffact && fdiffact[i] == FRAMEMATCH_REPEAT_LAST) {
+  } else if (fdiffact[i] == FRAMEMATCH_REPEAT_LAST) {
     deltaT = _numFrames - file[i]->numLogicalFrames();
     assert(_numFrames >= file[i]->numLogicalFrames());
     adjFirst = first < file[i]->numLogicalFrames() ?
       first  :  file[i]->numLogicalFrames() - 1;
     adjCount =  first + count <= file[i]->numLogicalFrames()  ?
       count  :  file[i]->numLogicalFrames() - adjFirst;
-  } else if (fdiffact && fdiffact[i] == FRAMEMATCH_EXPAND_SEGMENTALLY) {
+  } else if (fdiffact[i] == FRAMEMATCH_EXPAND_SEGMENTALLY) {
     deltaT = _numFrames - file[i]->numLogicalFrames();
     assert(_numFrames >= file[i]->numLogicalFrames());
     
@@ -369,21 +372,17 @@ MergeFile::adjustForFdiffact(unsigned first, unsigned count, unsigned i,
     adjCount = adjLast - adjFirst + 1;
     assert(adjCount >= 1);
     
-  } else if (fdiffact && fdiffact[i] == FRAMEMATCH_TRUNCATE_FROM_END) {
+  } else if (fdiffact[i] == FRAMEMATCH_TRUNCATE_FROM_END) {
     // don't have to do anything for this case - the error checking
     // prevents accessing any frames after numFrames()
     deltaT = file[i]->numLogicalFrames() - _numFrames;
     assert(file[i]->numLogicalFrames() >= _numFrames);
     adjFirst = first;
     adjCount = count;
-  } else if (fdiffact && fdiffact[i] == FRAMEMATCH_TRUNCATE_FROM_START) {
+  } else if (fdiffact[i] == FRAMEMATCH_TRUNCATE_FROM_START) {
     deltaT = file[i]->numLogicalFrames() - _numFrames;
     assert(file[i]->numLogicalFrames() >= _numFrames);
     adjFirst = first + deltaT;
-    adjCount = count;
-  } else {
-    deltaT   = 0;
-    adjFirst = first;
     adjCount = count;
   }
 }
@@ -405,7 +404,14 @@ MergeFile::getFrames(unsigned first, unsigned count) {
     
     // in case we need to adjust for fdiffact
     unsigned adjFirst, adjCount, deltaT; 
-    adjustForFdiffact(first, count, i, adjFirst, adjCount, deltaT);
+
+    if (!fdiffact || fdiffact[i] == FRAMEMATCH_ERROR) {
+      deltaT   = 0;
+      adjFirst = first;
+      adjCount = count;
+    } else {
+      adjustForFdiffact(first, count, i, adjFirst, adjCount, deltaT);
+    }
 
     // if -fdiffacti expands this segment, we may need to
     // fiddle with (first,count):
@@ -417,8 +423,17 @@ MergeFile::getFrames(unsigned first, unsigned count) {
     Data32 *dst = buffer + floatStart[i];
     Data32 const *src = fileBuf;
     unsigned srcStride = file[i]->numLogicalFeatures();
+
+#if 0
+    // This original version has a case statement in the inner loop, which
+    // requires less code but is expensive at run-time. 
+
     for (unsigned f=0; f < adjCount; f += 1) {
-      unsigned frameReps = repCount(adjFirst + f,fdiffact, i, deltaT, first, count, file[i]->numLogicalFrames());
+      unsigned frameReps;
+      if (fdiffact[i] == FRAMEMATCH_ERROR)
+	frameReps = 1;
+      else
+	frameReps = repCount(adjFirst + f,fdiffact, i, deltaT, first, count, file[i]->numLogicalFrames());
       assert(0 < frameReps && frameReps <= count);
       for (unsigned j=0; j < frameReps; j+=1) {
 	float *fdst = (float *) dst;
@@ -469,15 +484,146 @@ MergeFile::getFrames(unsigned first, unsigned count) {
       src += srcStride;
     }
 
+#else
+    
+    // This version exchanges the case statement with the loop over the frames
+    // (relative to the implementation above), which results in longer but more efficient code
+    
+    switch(ftrcombo) {
+    case FTROP_NONE:
+      
+      for (unsigned f=0; f < adjCount; f += 1) {
+	unsigned frameReps = 1;	
+	if (fdiffact && fdiffact[i] != FRAMEMATCH_ERROR)
+	  frameReps = repCount(adjFirst + f,fdiffact, i, deltaT, first, count, file[i]->numLogicalFrames());
+#if 0
+	assert(0 < frameReps && frameReps <= count);
+#endif
+	do {
+	  memcpy((void *)dst, (const void *)src, file[i]->numLogicalContinuous() * sizeof(Data32));
+	  dst += bufStride;
+	} while (--frameReps);
+	src += srcStride;
+      }
+      break;
+      
+
+    case FTROP_ADD:
+      
+      for (unsigned f=0; f < adjCount; f += 1) {
+	unsigned frameReps = 1;	
+	if (fdiffact && fdiffact[i] != FRAMEMATCH_ERROR)
+	  frameReps = repCount(adjFirst + f,fdiffact, i, deltaT, first, count, file[i]->numLogicalFrames());
+#if 0
+	assert(0 < frameReps && frameReps <= count);
+#endif
+	float *fdst = (float *) dst;
+	float *fsrc = (float *) src;
+	do {
+	  for (unsigned k=0; k < file[i]->numLogicalContinuous(); k+=1) {
+	    fdst[k] += fsrc[k];
+	  }
+	  dst += bufStride;
+	} while (--frameReps);
+	src += srcStride;
+      }
+      break;
+
+    case FTROP_SUB:
+
+      for (unsigned f=0; f < adjCount; f += 1) {
+	unsigned frameReps = 1;		
+	if (fdiffact && fdiffact[i] != FRAMEMATCH_ERROR)
+	  frameReps = repCount(adjFirst + f,fdiffact, i, deltaT, first, count, file[i]->numLogicalFrames());
+#if 0
+	assert(0 < frameReps && frameReps <= count);
+#endif
+	float *fdst = (float *) dst;
+	float *fsrc = (float *) src;
+	do {
+	  if (i == 0) {
+	    memcpy((void *)dst, (const void *)src, file[i]->numLogicalContinuous() * sizeof(Data32));
+	  } else {
+	    for (unsigned k=0; k < file[i]->numLogicalContinuous(); k+=1) {
+	      fdst[k] -= fsrc[k];
+	    }
+	  }
+	  dst += bufStride;
+	} while (--frameReps);
+	src += srcStride;
+      }
+      break;
+
+    case FTROP_MUL:
+
+      for (unsigned f=0; f < adjCount; f += 1) {
+	unsigned frameReps = 1;		
+	if (fdiffact && fdiffact[i] != FRAMEMATCH_ERROR)
+	  frameReps = repCount(adjFirst + f,fdiffact, i, deltaT, first, count, file[i]->numLogicalFrames());
+#if 0
+	assert(0 < frameReps && frameReps <= count);
+#endif
+	float *fdst = (float *) dst;
+	float *fsrc = (float *) src;
+	do {
+	  if (i == 0) {
+	    memcpy((void *)dst, (const void *)src, file[i]->numLogicalContinuous() * sizeof(Data32));
+	  } else {
+	    for (unsigned k=0; k < file[i]->numLogicalContinuous(); k+=1) {
+	      fdst[k] *= fsrc[k];
+	    }
+	  }
+	  dst += bufStride;
+	} while (--frameReps);
+	src += srcStride;
+      }
+      break;
+
+    case FTROP_DIV:
+
+      for (unsigned f=0; f < adjCount; f += 1) {
+	unsigned frameReps = 1;		
+	if (fdiffact && fdiffact[i] != FRAMEMATCH_ERROR)
+	  frameReps = repCount(adjFirst + f,fdiffact, i, deltaT, first, count, file[i]->numLogicalFrames());
+#if 0
+	assert(0 < frameReps && frameReps <= count);
+#endif
+	float *fdst = (float *) dst;
+	float *fsrc = (float *) src;
+	do {
+	  if (i == 0) {
+	    memcpy((void *)dst, (const void *)src, file[i]->numLogicalContinuous() * sizeof(Data32));
+	  } else {
+	    for (unsigned k=0; k < file[i]->numLogicalContinuous(); k+=1) {
+	      if (fsrc[k] != 0) {
+		fdst[k] /= fsrc[k];
+	      }
+	    }
+	  }
+	  dst += bufStride;
+	} while (--frameReps);
+	src += srcStride;
+      }
+      break;
+
+    default:
+      error("ERROR: unknown -comb option value %d", ftrcombo);
+    }
+#endif
+
     src = fileBuf + file[i]->numLogicalContinuous();
     dst = buffer + intStart[i];
     for (unsigned f=0; f < adjCount; f += 1) {
-      unsigned frameReps = repCount(adjFirst + f,fdiffact, i, deltaT, first, count, file[i]->numLogicalFrames());
+      unsigned frameReps = 1;
+      if (fdiffact && fdiffact[i] != FRAMEMATCH_ERROR)
+	frameReps = repCount(adjFirst + f,fdiffact, i, deltaT, first, count, file[i]->numLogicalFrames());
+#if 0
       assert(0 < frameReps && frameReps <= count);
-      for (unsigned j=0; j < frameReps; j+=1) {
+#endif
+      do {
         memcpy((void *)dst, (const void *)src, file[i]->numLogicalDiscrete() * sizeof(Data32));
 	dst += bufStride;
-      }
+      } while (--frameReps);
       src += srcStride;
     }
   }

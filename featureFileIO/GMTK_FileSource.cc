@@ -137,7 +137,8 @@ FileSource::openSegment(unsigned seg) {
 
   _numCacheableFrames = file->numLogicalFrames();  // the file handles -gpr, so this is what's left after that
   if (_numCacheableFrames < _startSkip + _endSkip) {
-    error("ERROR: segment %u has only %u frames, but -startSkip %u and -endSkip %u requires at least %u frames", seg, _numCacheableFrames, _startSkip, _endSkip, _startSkip + _endSkip + 1);
+    error("ERROR: segment %u has only %u frames, but -startSkip %u and -endSkip %u requires at least %u frames", 
+	  seg, _numCacheableFrames, _startSkip, _endSkip, _startSkip + _endSkip + 1);
   }
   _numFrames  = _numCacheableFrames;
   _numFrames -= _startSkip; // reserve frames at start of segment
@@ -156,12 +157,15 @@ FileSource::openSegment(unsigned seg) {
   numBufferedFrames = 0;    // empty the cache for the new segment
 
   if (!constantSpace) {     // load the entire segment
-infoMsg(IM::ObsFile,IM::Low,"O(T) mode\n");
     if (_numCacheableFrames > bufferFrames) { // need to enlarge the buffer
       if (cookedBuffer) delete [] cookedBuffer;
       bufferFrames = _numCacheableFrames;
       bufferSize = numFeatures() * _numCacheableFrames;
       cookedBuffer = new Data32[bufferSize];
+      if (!cookedBuffer) {
+	error("ERROR: FileSource::openSegment: failed to allocate %u frame buffer for segment %u",
+	      bufferSize, seg);
+      }
     }
     unsigned bytesPerFrame = numFeatures() * sizeof(Data32);
     unsigned framesPerGulp;
@@ -184,7 +188,6 @@ infoMsg(IM::ObsFile,IM::Low,"O(T) mode\n");
       numBufferedFrames += framesPerGulp;
     }
   }
-else infoMsg(IM::ObsFile,IM::Low,"O(1) mode\n");
   return success;
 }
 
@@ -277,8 +280,10 @@ FileSource::loadFrames(unsigned first, unsigned count) {
   if (numBufferedFrames == 0) {
     // the cookedBuffer is empty - load the first window of frames into the middle of the buffer
     if (count + _minPastFrames + _minFutureFrames + window < bufferFrames) {
-infoMsg(IM::ObsFile, IM::Giga, "%u+%u+%u frames + %u window fits in %u buffer capacity\n", 
-	_minPastFrames,count,_minFutureFrames, window, bufferFrames);
+#if 0
+      infoMsg(IM::ObsFile, IM::Giga, "%u+%u+%u frames + %u window fits in %u buffer capacity\n", 
+	      _minPastFrames,count,_minFutureFrames, window, bufferFrames);
+#endif
       // if there's enough room, prefetch a window's worth of frames before 
       // and after the requested range
 
@@ -286,8 +291,10 @@ infoMsg(IM::ObsFile, IM::Giga, "%u+%u+%u frames + %u window fits in %u buffer ca
       preCount = ( preFirst + count + _minPastFrames + _minFutureFrames + window < _numCacheableFrames ) ?
         count + _minPastFrames + _minFutureFrames + window : _numCacheableFrames - preFirst;
     } else {
-infoMsg(IM::ObsFile, IM::Giga, "%u+%u+%u frames + %u window > %u buffer capacity\n", 
-	_minPastFrames,count,_minFutureFrames, window, bufferFrames);
+#if 0
+      infoMsg(IM::ObsFile, IM::Giga, "%u+%u+%u frames + %u window > %u buffer capacity\n", 
+	      _minPastFrames,count,_minFutureFrames, window, bufferFrames);
+#endif
       // otherwise, just prefetch the requested range and the minimum
       // number of preceding and subsequent frames
       assert(first >= _minPastFrames);
@@ -302,8 +309,10 @@ infoMsg(IM::ObsFile, IM::Giga, "%u+%u+%u frames + %u window > %u buffer capacity
     firstBufferedFrameIndex = (bufferFrames - preCount) / 2;  
     firstBufferedFrame = preFirst;
     numBufferedFrames = preCount;
-infoMsg(IM::ObsFile, IM::Giga, "empty cache, fetching [%u,%u)@%u for [%u,%u)\n",
-	preFirst, preFirst+preCount, firstBufferedFrameIndex, first, first+count);
+#if 0
+    infoMsg(IM::ObsFile, IM::Giga, "empty cache, fetching [%u,%u)@%u for [%u,%u)\n",
+	    preFirst, preFirst+preCount, firstBufferedFrameIndex, first, first+count);
+#endif
     if (firstBufferedFrameIndex + numBufferedFrames > bufferFrames) {
       error("ERROR: FileSource:loadFrames:  attempted to load %u frames at index %u, "
 	    "which overflows the frame buffer", numBufferedFrames, firstBufferedFrameIndex*bufStride);
@@ -340,10 +349,12 @@ infoMsg(IM::ObsFile, IM::Giga, "frames [%7u,%7u) cache hit %7u  cache miss %7u\n
       preFirst = firstBufferedFrame > window ? firstBufferedFrame - window : 0;
       preCount = firstBufferedFrame - preFirst;
       if (preCount <= firstBufferedFrameIndex) { // do prefetch
-infoMsg(IM::ObsFile, IM::Giga, "prefetch <  [%u,%u) + [%u,%u) for [%u,%u)\n",
-  firstBufferedFrame, firstBufferedFrame + numBufferedFrames,
-  preFirst, preFirst + preCount,
-  first, first + count);
+#if 0
+	infoMsg(IM::ObsFile, IM::Giga, "prefetch <  [%u,%u) + [%u,%u) for [%u,%u)\n",
+		firstBufferedFrame, firstBufferedFrame + numBufferedFrames,
+		preFirst, preFirst + preCount,
+		first, first + count);
+#endif
 	firstBufferedFrame = preFirst;
 	firstBufferedFrameIndex -= preCount;
         (void)loadFrames(firstBufferedFrameIndex, preFirst, preCount);
@@ -358,18 +369,22 @@ infoMsg(IM::ObsFile, IM::Giga, "prefetch <  [%u,%u) + [%u,%u) for [%u,%u)\n",
 	window : _numCacheableFrames - preFirst;
       if (firstBufferedFrameIndex + numBufferedFrames + preCount < bufferFrames) { // do prefetch
 	// FIXME - does the above need a -1 ?
-infoMsg(IM::ObsFile, IM::Giga, "prefetch >  [%u,%u) + [%u,%u)@%u for [%u,%u)\n",
-  firstBufferedFrame, firstBufferedFrame + numBufferedFrames,
-  preFirst, preFirst + preCount, firstBufferedFrameIndex+numBufferedFrames,
-  first, first + count);
+#if 0
+	infoMsg(IM::ObsFile, IM::Giga, "prefetch >  [%u,%u) + [%u,%u)@%u for [%u,%u)\n",
+		firstBufferedFrame, firstBufferedFrame + numBufferedFrames,
+		preFirst, preFirst + preCount, firstBufferedFrameIndex+numBufferedFrames,
+		first, first + count);
+#endif
         (void) loadFrames(firstBufferedFrameIndex+numBufferedFrames, preFirst, preCount);
 	numBufferedFrames += preCount;
-      } 
-else
-infoMsg(IM::ObsFile, IM::Giga, "no fetch >  [%u,%u) + [%u,%u)@%u for [%u,%u) would overflow %u\n",
-  firstBufferedFrame, firstBufferedFrame + numBufferedFrames,
-  preFirst, preFirst + preCount, firstBufferedFrameIndex+numBufferedFrames,
-  first, first + count, bufferFrames);
+      }
+#if 0 
+      else
+	infoMsg(IM::ObsFile, IM::Giga, "no fetch >  [%u,%u) + [%u,%u)@%u for [%u,%u) would overflow %u\n",
+		firstBufferedFrame, firstBufferedFrame + numBufferedFrames,
+		preFirst, preFirst + preCount, firstBufferedFrameIndex+numBufferedFrames,
+		first, first + count, bufferFrames);
+#endif
     } else {
       // no prefetch
     }
@@ -385,20 +400,25 @@ infoMsg(IM::ObsFile, IM::Giga, "cache miss %u\n", ++cachemiss);
     preFirst = ( first > window/2 + _minPastFrames ) ? first - window/2 - _minPastFrames : 0;
     preCount = ( preFirst + count + _minPastFrames + _minFutureFrames + window < _numCacheableFrames ) ?
       count + _minPastFrames + _minFutureFrames + window : _numCacheableFrames - preFirst;
-
-infoMsg(IM::ObsFile, IM::Giga, "cache flush: %u+%u+%u frames + %u window fits in %u buffer capacity\n", 
-  _minPastFrames,count,_minFutureFrames, window, bufferFrames);
+#if 0
+    infoMsg(IM::ObsFile, IM::Giga, "cache flush: %u+%u+%u frames + %u window fits in %u buffer capacity\n", 
+	    _minPastFrames,count,_minFutureFrames, window, bufferFrames);
+#endif
   } else {
     assert(first >= _minPastFrames);
     preFirst = first - _minPastFrames;
     preCount = count + _minPastFrames + _minFutureFrames;
     assert(preFirst + preCount <= _numCacheableFrames);
-infoMsg(IM::ObsFile, IM::Giga, "cache flush: %u+%u+%u frames + %u window > %u buffer capacity\n", 
-  _minPastFrames,count,_minFutureFrames, window, bufferFrames);
+#if 0
+    infoMsg(IM::ObsFile, IM::Giga, "cache flush: %u+%u+%u frames + %u window > %u buffer capacity\n", 
+	    _minPastFrames,count,_minFutureFrames, window, bufferFrames);
+#endif
   }
-infoMsg(IM::ObsFile, IM::Giga, "cache miss on [%u,%u)/%u for [%u,%u)   loading [%u,%u)@%u\n",
-	firstBufferedFrame, firstBufferedFrame+numBufferedFrames, delta,
-	first, first+count, preFirst, preFirst+preCount, (bufferFrames - preCount) / 2);
+#if 0
+  infoMsg(IM::ObsFile, IM::Giga, "cache miss on [%u,%u)/%u for [%u,%u)   loading [%u,%u)@%u\n",
+	  firstBufferedFrame, firstBufferedFrame+numBufferedFrames, delta,
+	  first, first+count, preFirst, preFirst+preCount, (bufferFrames - preCount) / 2);
+#endif
   firstBufferedFrameIndex = (bufferFrames - preCount) / 2;
   firstBufferedFrame = preFirst;
   numBufferedFrames = preCount;
