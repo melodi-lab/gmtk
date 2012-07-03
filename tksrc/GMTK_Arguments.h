@@ -786,7 +786,7 @@ const char*const argerr = "ARG ERROR";
 #define GMTK_MEM_GROWTH_DEFAULT      1
 #define GMTK_MEM_GROWTH_AGGRESSIVE   2
 
-  static unsigned memGrowthStrategy = 1;
+  static unsigned memGrowthStrategy = GMTK_MEM_GROWTH_DEFAULT;
 
 #define GMTK_MEM_CONSERVATIVE_START_SIZE  1
 #define GMTK_MEM_CONSERVATIVE_GROWTH_RATE 1.05

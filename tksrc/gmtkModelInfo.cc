@@ -146,11 +146,10 @@ RAND rnd(false);
 GMParms GM_Parms;
 #if 0
 ObservationMatrix globalObservationMatrix;
-#else
-FileSource fileSource;
-FileSource *gomFS;
-ObservationSource *globalObservationMatrix = &fileSource;
 #endif
+
+FileSource *gomFS;
+ObservationSource *globalObservationMatrix;
 
   // these are the available fields
   enum fields {
@@ -250,7 +249,8 @@ main(int argc,char*argv[])
   }
 
   infoMsg(IM::Max,"Opening Files ...\n");
-  instantiateFileSource(gomFS);
+  gomFS = instantiateFileSource();
+  globalObservationMatrix = gomFS;
   infoMsg(IM::Max,"Finished opening files.\n");
 
 

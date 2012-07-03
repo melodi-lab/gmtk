@@ -68,7 +68,7 @@
 
 class FileSource: public ObservationSource {
 
- private:
+ protected:
 
   // FileSource prefetches and caches transformed frames into the "cooked buffer"
   // (as opposed to untransformed "raw frames" - though this distinction became
@@ -246,7 +246,7 @@ class FileSource: public ObservationSource {
   // Any required frames before/after (see _minPastFrames and
   // _minFutureFrames above) are guaranteed to be in the cookedBuffer
   // as well. 
-  Data32 const *loadFrames(unsigned first, unsigned count);
+  virtual Data32 const *loadFrames(unsigned first, unsigned count);
 
 
   // The number of continuous, discrete, total features
