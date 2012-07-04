@@ -39,6 +39,22 @@ if test x"$cppIfASCII" = x"yes"; then
   AC_DEFINE([PIPE_ASCII_FILES_THROUGH_CPP],[1],[Pipe ASCII files through cpp])
 fi
 
+AC_ARG_ENABLE([tmpLocalPool],
+              [AS_HELP_STRING([--disable-tmpLocalPool],
+                              [disable use of temporary local clique value pool @<:@default: no@:>@])],
+              [tmpLocalPool=${enableval}], [tmpLocalPool=yes])
+if test x"$tmpLocalPool" = x"yes"; then
+  AC_DEFINE([USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL],[1],[Hold clique values until after pruning])
+fi
+
+AC_ARG_ENABLE([continuous-cardinality-warning],
+              [AS_HELP_STRING([--disable-continous-cardinality-warning],
+                              [disable warning about continous variables with non-zero cardinality in trifiles written by older versions of GMTK @<:@default: no@:>@])],
+              [continuous_cardinaliy_warning=${enableval}], [continuous_cardinality_warning=yes])
+if test x"$continuous_cardinality_warning" = x"yes"; then
+  AC_DEFINE([CONTINUOUS_CARDINALITY_WARNING],[1],[Warn about non-zero continuous RV cardinality in trifile])
+fi
+
 AC_ARG_ENABLE([model-checks],
               [AS_HELP_STRING([--disable-model-checks],
                               [disable run-time checks for models @<:@default: no@:>@])],
@@ -110,6 +126,29 @@ if test x"$HAVE_WXWIDGETS" = x"yes"; then
    AC_SUBST([VIZCXXFLAGS],[`wx-config --cxxflags`])
    AC_SUBST([VIZLDFLAGS],[`wx-config --libs`])
 fi
+
+     AC_ARG_WITH(
+       [ps2eps],
+       [AS_HELP_STRING([--with-ps2eps],
+          [specify default ps2eps command ('no' or '--without-ps2eps' generates PostScript) @<:@default: ps2eps@:>@])],
+       [AS_IF([test "x$with_ps2eps" != "xno"],
+          [AC_DEFINE_UNQUOTED([PS2EPS_CMD], ["${with_ps2eps}"],[default ps2eps command])
+           AC_DEFINE([EPS_EXT], ["eps"], [extension for print to file])
+           AC_DEFINE([PRINT2FILE_ABBREV], ["EPS"], [abbreviation for print to file format])
+           AC_DEFINE([PRINT2FILE_FORMAT], ["Encapsulated PostScript"], [format for print to file])
+          ],
+          [AC_DEFINE([PS2EPS_CMD], ["cat"], [pass-thru raw PostScript])
+           AC_DEFINE([EPS_EXT], ["ps"], [extension for print to file])
+           AC_DEFINE([PRINT2FILE_ABBREV], ["PS"], [abbreviation for print to file format])
+           AC_DEFINE([PRINT2FILE_FORMAT], ["PostScript"], [format for print to file])
+          ])
+       ],
+       [AC_DEFINE([PS2EPS_CMD], ["ps2eps"], [default ps2eps command])
+        AC_DEFINE([EPS_EXT], ["eps"], [extension for print to file])
+        AC_DEFINE([PRINT2FILE_ABBREV], ["EPS"], [abbreviation for print to file format])
+        AC_DEFINE([PRINT2FILE_FORMAT], ["Encapsulated PostScript"], [format for print to file])
+       ]
+     )
 
 case "${host}" in
 *apple*) 

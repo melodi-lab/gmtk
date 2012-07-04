@@ -90,8 +90,19 @@ https://j.ee.washington.edu/trac/gmtk/wiki/GmtkVizBuildHowTo
 
 gmtkViz is only built if a suitable wxWidgets (http://www.wxwidgets.org/) 
 installation (version 2.9 or later) is detected at configure time. 
-Note that this is the only external dependence needed to compile any 
-of GMTK.
+The "Print to EPS file" option under the file menu does not work with
+wxWidgets 2.9.2 or earlier due to bugs in wxWidgets. You can use the
+native OS print-to-file driver to produce a PDF file, but on Linux it
+seems to generate bitmap rather than vector output. Note that wxWidgets
+is the only external dependence needed to compile any of GMTK.
+
+Also note that the default linker configuration on recent Ubuntu Linux
+distributions may cause problems building wxWidgets or gmtkViz. Doing
+the build with
+
+	make CXXFLAGS="-Wl,--no-as-needed"
+
+may fix the problem.
 
 enjoy!!
 

@@ -1,0 +1,12 @@
+#!/bin/bash
+
+learned_means_filename="learned_means.out"
+learned_covars_filename="learned_covars.out"
+learned_dlinks_filename="learned_dlink_mats.out"
+n_gc=1175
+n_dim=20
+feature_window_size=10
+dcw=0.01
+
+./run_add_diagonal_covariance_component_in_full_cov_form.sh $learned_means_filename $learned_covars_filename $learned_dlinks_filename $n_gc $n_dim $feature_window_size $dcw
+

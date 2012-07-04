@@ -1,0 +1,2 @@
+#!/bin/bash
+gmtkParmConvert -inputT $1 -binInputTrainableParameters t  -outputT - | less

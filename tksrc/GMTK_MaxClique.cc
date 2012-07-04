@@ -3681,7 +3681,7 @@ MaxCliqueTable::ceIterateAssignedNodesNoRecurse(MaxCliqueTable::SharedLocalStruc
 	// be stored if it ends up being used.
 	unsigned *pcv = origin.valueHolder.curCliqueValuePtr();
 	// Next, pack the clique values into this position.
-	origin.packer.pack((unsigned**)discreteValuePtrs.ptr,(unsigned*)pcv);
+	origin.packer.pack((unsigned**)sharedStructure.discreteValuePtrs.ptr,(unsigned*)pcv);
 	// Look it up in the hash table.
 	bool foundp;
 	unsigned *key;
