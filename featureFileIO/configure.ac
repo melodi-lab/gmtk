@@ -79,6 +79,8 @@ AC_CHECK_LIB([m], [sqrt])
 #AC_CHECK_LIB([hdf5_cpp], [H5File::isHdf5])  
 #AC_LANG_POP([C++])
 
+# It would be nice to check for HDF5 version >= 1.8, but I haven't found
+# a good way to do it for the C++ API 
 AC_LANG_PUSH([C++])
 hdf_check_save_LIBS=${LIBS}
 LIBS="${LIBS} -lhdf5_cpp"
