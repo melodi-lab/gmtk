@@ -30,8 +30,14 @@ using namespace std;
 
 // FIXME - configure should check for 1.8, won't build with 1.6
 #if HAVE_LIBHDF5_CPP
-
 // Only use HDF5 library if Autoconf found it
+
+
+void
+skipSpace(char *&s) {
+  while(s && isspace(*s)) s+=1;
+}
+
 
 // split up 
 // filename:groupname:x_start,y_start;x_stride,y_stride;x_count,y_count
@@ -42,34 +48,104 @@ parseHDF5slab(char *slabSpecifier,
 	      char const *&fileName, char const *&groupName,
 	      unsigned &xStart,  unsigned &yStart,
 	      unsigned &xStride, unsigned &yStride,
-	      unsigned &xCount,  unsigned &yCount)
+	      unsigned &xCount,  unsigned &yCount,
+	      const char *fofName)
 {
-  // FIXME - make parts optional, add error checking
+
+  // filename:groupname: WS* int WS* , WS* int WS* ; WS* int WS* , WS* int WS* ; WS* int WS* , WS* int WS* \0
+
+  char *slabDup = strdup(slabSpecifier); // for error messages
+  assert(slabDup);
+
   char *t = strchr(slabSpecifier, ':');
-  assert(t);
+  if (!t) {
+    error("Expected ':' after filename in slab specifier '%s' in %s", 
+	  slabSpecifier, fofName);
+  }
   *t = 0;
   fileName = strdup(slabSpecifier);
 
   char *s = t+1;
   t = strchr(s, ':');
-  assert(t);
+  if (!t) {
+    error("Expected ':' after groupname in slab specifier '%s' in %s", 
+	  slabDup, fofName);
+  }
   *t = 0;
   groupName = strdup(s);
 
-  xStart = (unsigned) strtoul(t+1, &t, 10);
-  assert(*t==',');
-  yStart = (unsigned) strtoul(t+1, &t, 10);
-  assert(*t==';');
+  const char *nptr = t+1;
+  xStart = (unsigned) strtoul(nptr, &t, 10);  // strtoul() will eat the WS* before the int
+  if (t == nptr) {
+    error("Expected integer for x start in slab specifier '%s' in %s", 
+	  slabDup, fofName);
+  }
+  skipSpace(t);
+  if (!t || *t != ',') {
+    error("Expected ',' after x start in slab specifier '%s' in %s", 
+	  slabDup, fofName);
+  }
 
-  xStride = (unsigned) strtoul(t+1, &t, 10);
-  assert(*t==',');
-  yStride = (unsigned) strtoul(t+1, &t, 10);
-  assert(*t==';');
+  nptr = t+1;
+  yStart = (unsigned) strtoul(nptr, &t, 10);
+  if (t == nptr) {
+    error("Expected integer for y start in slab specifier '%s' in %s", 
+	  slabDup, fofName);
+  }
+  skipSpace(t);
+  if (!t || *t != ';') {
+    error("Expected ';' after y start in slab specifier '%s' in %s", 
+	  slabDup, fofName);
+  }
 
-  xCount = (unsigned) strtoul(t+1, &t, 10);
-  assert(*t==',');
-  yCount = (unsigned) strtoul(t+1, &t, 10);
-  assert(*t==0);
+  nptr = t+1;
+  xStride = (unsigned) strtoul(nptr, &t, 10);
+  if (t == nptr) {
+    error("Expected integer for x stride in slab specifier '%s' in %s", 
+	  slabDup, fofName);
+  }
+  skipSpace(t);
+  if (!t || *t != ',') {
+    error("Expected ',' after x stride in slab specifier '%s' in %s", 
+	  slabDup, fofName);
+  }
+
+  nptr = t+1;
+  yStride = (unsigned) strtoul(nptr, &t, 10);
+  if (t == nptr) {
+    error("Expected integer for y stride in slab specifier '%s' in %s", 
+	  slabDup, fofName);
+  }
+  skipSpace(t);
+  if (!t || *t != ';') {
+    error("Expected ';' after y stride in slab specifier '%s' in %s", 
+	  slabDup, fofName);
+  }
+  
+  nptr = t+1;
+  xCount = (unsigned) strtoul(nptr, &t, 10);
+  if (t == nptr) {
+    error("Expected integer for x count in slab specifier '%s' in %s", 
+	  slabDup, fofName);
+  }
+  skipSpace(t);
+  if (!t || *t != ',') {
+    error("Expected ',' after x count in slab specifier '%s' in %s", 
+	  slabDup, fofName);
+  }
+
+  nptr = t+1;
+  yCount = (unsigned) strtoul(nptr, &t, 10);
+  if (t == nptr) {
+    error("Expected integer for y count in slab specifier '%s' in %s", 
+	  slabDup, fofName);
+  }
+  skipSpace(t);
+  if (!t || *t != 0) {
+    error("Expected ':' after groupname in slab specifier '%s' in %s", 
+	  slabDup, fofName);
+  }
+  free(slabDup);
 }
 
 #define ALLOC_NUM_SEGS(type,name) \
@@ -112,11 +188,13 @@ HDF5File::HDF5File(const char *name, unsigned num,
     parseHDF5slab(hdf5Name[i], fileName[i], groupName[i],
 		  xStart[i],  yStart[i],
 		  xStride[i], yStride[i],
-		  xCount[i],  yCount[i]);
+		  xCount[i],  yCount[i], name);
     free(hdf5Name[i]);
   }
   delete [] hdf5Name;
-  assert(numSlabs);
+  if (numSlabs == 0) {
+    error("HDF5 file '%s' contained no segments", name);
+  }
 
   // determine # floats & # ints by looking into segment 0.
   // require all subsequent segments to have the same shape.
@@ -223,25 +301,30 @@ HDF5File::openSegment(unsigned seg) {
   switch (dataType) {
   case H5T_INTEGER:
     if (_numContinuousFeatures != 0) 
-      error("HDF5File: dataset '%s:%s' must be of integer type",
-	    fileName[seg], groupName[seg]);
+      error("HDF5File: dataset '%s:%s:%u,%u;%u,%u;%u,%u' must be of integer type",
+	    fileName[seg], groupName[seg], 
+	    xStart[seg], yStart[seg], xStride[seg],yStride[seg],xCount[seg],yCount[seg]);
     if (_numDiscreteFeatures != nFeatures) 
-      // FIXME - need to add :x,y;dx,dy;nx,ny for specificity
-      error("HDF5File: dataset '%s:%s' has %u features, expected %u",
-	    fileName[seg], groupName[seg], nFeatures, _numDiscreteFeatures);
+      error("HDF5File: dataset '%s:%s:%u,%u;%u,%u;%u,%u' has %u features, expected %u",
+	    fileName[seg], groupName[seg],
+	    xStart[seg], yStart[seg], xStride[seg],yStride[seg],xCount[seg],yCount[seg],
+	    nFeatures, _numDiscreteFeatures);
     break;
   case H5T_FLOAT:
     if (_numDiscreteFeatures != 0) 
-      error("HDF5File: dataset '%s:%s' must be of float type\n",
-	    fileName[seg], groupName[seg]);
+      error("HDF5File: dataset '%s:%s:%u,%u;%u,%u;%u,%u' must be of float type\n",
+	    fileName[seg], groupName[seg],
+	    xStart[seg], yStart[seg], xStride[seg],yStride[seg],xCount[seg],yCount[seg]);
     if (_numContinuousFeatures != nFeatures) 
-      // FIXME - need to add :x,y;dx,dy;nx,ny for specificity
-      error("HDF5File: dataset '%s:%s' has %u features, expected %u",
-	    fileName[seg], groupName[seg], nFeatures, _numContinuousFeatures);
+      error("HDF5File: dataset '%s:%s:%u,%u;%u,%u;%u,%u' has %u features, expected %u",
+	    fileName[seg], groupName[seg], 
+	    xStart[seg], yStart[seg], xStride[seg],yStride[seg],xCount[seg],yCount[seg],
+	    nFeatures, _numContinuousFeatures);
     break;
   default:
-    error("HDF5File: dataset '%s:%s' is not of integer or float type",
-	  fileName[seg],groupName[seg]);
+    error("HDF5File: dataset '%s:%s:%u,%u;%u,%u;%u,%u' is not of integer or float type",
+	  fileName[seg],groupName[seg],
+	  xStart[seg], yStart[seg], xStride[seg],yStride[seg],xCount[seg],yCount[seg]);
   }
   nFrames = end[0] - start[0] + 1;
 
