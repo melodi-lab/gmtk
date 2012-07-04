@@ -1137,11 +1137,13 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
 				      // that are actually used.
 				      unsigned& numUsableFrames,
 				      // the base of the logarithm
-				      const unsigned base,
+				      unsigned base,
 				      // the threshold at which we drop
 				      // down to the linear collect/distribute
 				      // evidence stage.
 				      const unsigned linear_section_threshold,
+				      // use sqrt(numUsableFrames) for base
+				      const bool sqrtBase,
 				      const bool runEMalgorithm,
 				      const bool runViterbiAlgorithm,
 				      const bool localCliqueNormalization)
@@ -1160,6 +1162,11 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
 
   unsigned totalNumberPartitions;
   numUsableFrames = unroll(numFrames,ZeroTable,&totalNumberPartitions);
+
+  if (sqrtBase) {
+    base = (unsigned)(sqrt((double) numUsableFrames) + 0.5);
+    infoMsg(IM::Inference, IM::Moderate, "Island logarithm base is sqrt(%u) = %u\n", numUsableFrames, base);
+  }
 
   // In the island algorithm, we never hold more than the linear
   // section (stored in islandPartitionTableArray) and the island partitions

@@ -70,6 +70,8 @@ lms_filter.h lms_filter.cc \
 rls_filter.h rls_filter.cc \
 vhash_set.h
 
+libmiscSupport_a_CPPFLAGS = -DDEFAULT_CPP="\"$(GMTKCPPCMD)\""
+
 # Compilation flags for miscSupport library objects (user's CXXFLAGS will
 # be appended)
 libmiscSupport_a_CXXFLAGS = $(VERSIONFLAG) \

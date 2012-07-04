@@ -1,0 +1,36 @@
+-------------------------------------------------------------------------------------------------
+Adding a diagonal covariance component regularizer to the full covariance matrix learned by GMTK
+-------------------------------------------------------------------------------------------------
+
+1. How to run the test script:
+
+./runall
+
+2. Input parameters:
+
+1. learned_means_filename: File that contains learned conditional means of the Gaussians.
+2. learned_covars_filename: File that contains learned diagonal covariance components of the Gaussians.
+3. learned_dlinks_filename: File that contains learned dlink matrices of the Gaussians.
+4. n_gc: Number of Gaussians that were learned by GMTK.
+5. n_dim: The dimension of the input feature vectors at each time position or instance. 
+6. feature_window_size: The number of positions (frames) that we look backward in time in our auto-regressive model. This excludes the current position. 
+7. dcw: The weight of the diagonal covariance component that is going to be added to the full covariance matrices learned by GMTK.
+
+3. Outputs:
+
+After a diagonal covariance component is added, the parameters of the Gaussians are mapped back to the diagonal representation stored under learned_means_filename, learned_covars_filename, and learned_dlinks_filename. The original input files will be lost and new values will be overwritten. If one wants to keep the original parameters, then a simple modification of the matlab source will be sufficient.
+
+4. Dimensions of the parameters:
+
+- each mean vector has dimension = n_dim
+- each diagonal covariance vector has dimension = n_dim
+- each dlink matrix has dimension: n_dim*(n_dim*(feature_window_size+1)) such that the number of rows is equal to n_dim, which is the number of child nodes and the number of columns is equal to n_dim*(feature_window_size+1), which is the number of parent nodes.
+
+5. Diagonal covariance matrix regularization:
+
+First the matlab script convert the parameters of the Gaussian to the full covariance representation to get a mean vector and a covariance matrix (Sigma). Then it adds a regularizer like:
+
+Sigma_new = (1-dcw)*Sigma + dcw*I
+
+where I is the n_dim*n_dim identity matrix. Finally it converts the parameters to back to the dlink representation. Details of this conversion can be found in Aydin et al. BMC Bioinformatics, 2011 (http://www.biomedcentral.com/1471-2105/12/154).
+

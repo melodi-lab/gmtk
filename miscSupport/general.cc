@@ -9,6 +9,10 @@
 #include <config.h>
 #endif
 
+#ifndef DEFAULT_CPP
+#define DEFAULT_CPP="cpp"
+#endif
+
 #include <ctype.h>
 #include <sys/time.h>
 #include <time.h>
@@ -329,7 +333,7 @@ const char * CPP_Command()
 {
   const char * rc = getenv("GMTK_CPP_CMD");
   if (rc == NULL)
-    rc = "cpp";
+    rc = DEFAULT_CPP;
   // fprintf(stdout,"cpp command got is (%s)\n",rc);
   return rc;
 }
