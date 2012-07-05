@@ -90,7 +90,8 @@ Arg Arg::Args[] = {
  */
 RAND rnd;
 GMParms GM_Parms;
-ObservationMatrix globalObservationMatrix;
+ObservationMatrix obsMatrix;
+ObservationMatrix *globalObservationMatrix = &obsMatrix;
 
 
 int main(int argc, char *argv[]) {

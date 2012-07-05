@@ -61,7 +61,11 @@
 #include "GMTK_LatticeNodeCPT.h"
 #include "GMTK_LatticeEdgeCPT.h"
 #include "GMTK_Mixture.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_ObservationSource.h"
+#endif
 #include "GMTK_GraphicalModel.h"
 #include "GMTK_RVInfo.h"
 
@@ -3754,16 +3758,16 @@ FileParser::checkConsistentWithGlobalObservationStream()
 	if (rvInfoVector[i].rvFeatureRange.filled == RVInfo::FeatureRange::fr_Range) {
 	  // then observed, value from a feature range. Need to check to make sure
 	  // it corresponds to a true discrete value.
-	  if (!globalObservationMatrix.elementIsDiscrete(rvInfoVector[i].rvFeatureRange.firstFeatureElement)) {
-	    if (globalObservationMatrix.numDiscrete() > 0) 
+	  if (!globalObservationMatrix->elementIsDiscrete(rvInfoVector[i].rvFeatureRange.firstFeatureElement)) {
+	    if (globalObservationMatrix->numDiscrete() > 0) 
 	      error("ERROR: discrete observed random variable '%s', frame %d, line %d, specifies a feature element %d:%d that is out of discrete range ([%d:%d] inclusive) of observation matrix",
 		    rvInfoVector[i].name.c_str(),
 		    rvInfoVector[i].frame,
 		    rvInfoVector[i].fileLineNumber,
 		    rvInfoVector[i].rvFeatureRange.firstFeatureElement,
 		    rvInfoVector[i].rvFeatureRange.firstFeatureElement,
-		    globalObservationMatrix.numContinuous(),
-		    globalObservationMatrix.numFeatures()-1);
+		    globalObservationMatrix->numContinuous(),
+		    globalObservationMatrix->numFeatures()-1);
 	    else
 	      error("ERROR: discrete observed random variable '%s', frame %d, line %d, specifies a feature element %d:%d for an observation matrix with zero discrete features.",
 		    rvInfoVector[i].name.c_str(),
@@ -3771,14 +3775,14 @@ FileParser::checkConsistentWithGlobalObservationStream()
 		    rvInfoVector[i].fileLineNumber,
 		    rvInfoVector[i].rvFeatureRange.firstFeatureElement,
 		    rvInfoVector[i].rvFeatureRange.firstFeatureElement,
-		    globalObservationMatrix.numContinuous(),
-		    globalObservationMatrix.numFeatures()-1);
+		    globalObservationMatrix->numContinuous(),
+		    globalObservationMatrix->numFeatures()-1);
 	  }
 	}
       }
     } else { // (rvInfoVector[i].rvType == RVInfo::t_continuous) {
       if (rvInfoVector[i].rvDisp != RVInfo::d_hidden) {
-	if (rvInfoVector[i].rvFeatureRange.lastFeatureElement >=  globalObservationMatrix.numContinuous())
+	if (rvInfoVector[i].rvFeatureRange.lastFeatureElement >=  globalObservationMatrix->numContinuous())
 	      error("ERROR: continuous observed random variable '%s', frame %d, line %d, specifies feature elements %d:%d that are out of continuous range ([%d:%d] inclusive) of observation matrix",
 		    rvInfoVector[i].name.c_str(),
 		    rvInfoVector[i].frame,
@@ -3786,7 +3790,7 @@ FileParser::checkConsistentWithGlobalObservationStream()
 		    rvInfoVector[i].rvFeatureRange.firstFeatureElement,
 		    rvInfoVector[i].rvFeatureRange.lastFeatureElement,
 		    0,
-		    globalObservationMatrix.numContinuous()-1);
+		    globalObservationMatrix->numContinuous()-1);
       }
     }
 
@@ -3798,7 +3802,7 @@ FileParser::checkConsistentWithGlobalObservationStream()
 
       if (rvInfoVector[i].rvWeightInfo[wt].penalty.wt_Status 
 	  == RVInfo::WeightInfo::WeightItem::wt_Observation) {
-	if (rvInfoVector[i].rvWeightInfo[wt].penalty.lastFeatureElement >= globalObservationMatrix.numContinuous()) {
+	if (rvInfoVector[i].rvWeightInfo[wt].penalty.lastFeatureElement >= globalObservationMatrix->numContinuous()) {
 	  error("ERROR: random variable '%s', frame %d, line %d, weight attribute at position %d has penalty observation feature element %d:%d that is out of continuous range ([%d:%d] inclusive) of observation matrix",
 		rvInfoVector[i].name.c_str(),
 		rvInfoVector[i].frame,
@@ -3807,12 +3811,12 @@ FileParser::checkConsistentWithGlobalObservationStream()
 		rvInfoVector[i].rvWeightInfo[wt].penalty.firstFeatureElement,
 		rvInfoVector[i].rvWeightInfo[wt].penalty.lastFeatureElement,
 		0,
-		globalObservationMatrix.numContinuous()-1);
+		globalObservationMatrix->numContinuous()-1);
 	}
       }
       if (rvInfoVector[i].rvWeightInfo[wt].scale.wt_Status 
 	  == RVInfo::WeightInfo::WeightItem::wt_Observation) {
-	if (rvInfoVector[i].rvWeightInfo[wt].scale.lastFeatureElement >= globalObservationMatrix.numContinuous()) {
+	if (rvInfoVector[i].rvWeightInfo[wt].scale.lastFeatureElement >= globalObservationMatrix->numContinuous()) {
 	  error("ERROR: random variable '%s', frame %d, line %d, weight attribute at position %d has scale observation feature element %d:%d that is out of continuous range ([%d:%d] inclusive) of observation matrix",
 		rvInfoVector[i].name.c_str(),
 		rvInfoVector[i].frame,
@@ -3821,12 +3825,12 @@ FileParser::checkConsistentWithGlobalObservationStream()
 		rvInfoVector[i].rvWeightInfo[wt].scale.firstFeatureElement,
 		rvInfoVector[i].rvWeightInfo[wt].scale.lastFeatureElement,
 		0,
-		globalObservationMatrix.numContinuous()-1);
+		globalObservationMatrix->numContinuous()-1);
 	}
       }
       if (rvInfoVector[i].rvWeightInfo[wt].shift.wt_Status 
 	  == RVInfo::WeightInfo::WeightItem::wt_Observation) {
-	if (rvInfoVector[i].rvWeightInfo[wt].shift.lastFeatureElement >= globalObservationMatrix.numContinuous()) {
+	if (rvInfoVector[i].rvWeightInfo[wt].shift.lastFeatureElement >= globalObservationMatrix->numContinuous()) {
 	  error("ERROR: random variable '%s', frame %d, line %d, weight attribute at position %d has shift observation feature element %d:%d that is out of continuous range ([%d:%d] inclusive) of observation matrix",
 		rvInfoVector[i].name.c_str(),
 		rvInfoVector[i].frame,
@@ -3835,7 +3839,7 @@ FileParser::checkConsistentWithGlobalObservationStream()
 		rvInfoVector[i].rvWeightInfo[wt].shift.firstFeatureElement,
 		rvInfoVector[i].rvWeightInfo[wt].shift.lastFeatureElement,
 		0,
-		globalObservationMatrix.numContinuous()-1);
+		globalObservationMatrix->numContinuous()-1);
 	}
       }
 

@@ -27,7 +27,9 @@
 #endif
 #endif
 
+#include "GMTK_Filter.h"
 #include "GMTK_ProgramDefaultParms.h"
+
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
@@ -51,159 +53,8 @@ const char*const argerr = "ARG ERROR";
 #endif
 
 
+#include "GMTK_ObservationArguments.h"
 
-/*==============================================================================================================*/
-/****************************************************************************************************************/
-/****************************************************************************************************************/
-/*****************************                                     **********************************************/
-/*****************************   OBSERVATION INPUT FILE HANDLING   **********************************************/
-/*****************************                                     **********************************************/
-/****************************************************************************************************************/
-/****************************************************************************************************************/
-/****************************************************************************************************************/
-
-/*-----------------------------------------------------------------------------------------------------------*/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-
-
-#if defined(GMTK_ARG_OBS_FILES)
-#if defined(GMTK_ARGUMENTS_DEFINITION)
-
-
-// This next code is used by a number of routines to compute and set
-// the default endian swapping condition associated with the
-// arguments. We figure out the Endian of the machine this is running
-// on and set the swap defaults accordingly.
-
-#define DEF_CODE_TO_COMPUTE_ENDIAN(DEFAULT_SWAP_VALUE)   \
-  bool doWeSwap; \
-  ByteEndian byteEndian = getWordOrganization(); \
-  switch(byteEndian) { \
-  case BYTE_BIG_ENDIAN: \
-    doWeSwap=false; \
-    break; \
-  case BYTE_LITTLE_ENDIAN: \
-     doWeSwap=true; \
-     break; \
-  default: \
-    /* We weren't able to figure the Endian out.  Leave the swap defaults as they are. */ \
-    doWeSwap=DEFAULT_SWAP_VALUE; \
-  } \
-  \
-   for(int i=0; i<MAX_NUM_OBS_FILES; ++i) { \
-     iswp[i]=doWeSwap; \
-  }
-
-#ifdef INTV_WORDS_BIGENDIAN
-#define CODE_TO_COMPUTE_ENDIAN DEF_CODE_TO_COMPUTE_ENDIAN(true) 
-#else
-#define CODE_TO_COMPUTE_ENDIAN DEF_CODE_TO_COMPUTE_ENDIAN(false) 
-#endif
-
-
-   // observation input file handling
-#define MAX_NUM_OBS_FILES (5)
-   char    *ofs[MAX_NUM_OBS_FILES] = { NULL, NULL, NULL, NULL,NULL }; 
-   unsigned nfs[MAX_NUM_OBS_FILES] = { 0, 0, 0,0,0 };
-   unsigned nis[MAX_NUM_OBS_FILES] = { 0, 0, 0,0,0 };
-   const char   *fmts[MAX_NUM_OBS_FILES] = { "pfile", "pfile", "pfile","pfile","pfile" };
-   const char    *frs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
-   const char    *irs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
-   const char     *sr[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
-   // per stream frame range string before any tranformations are applied
-   char  *prepr[MAX_NUM_OBS_FILES] = {NULL,NULL,NULL,NULL,NULL};   
-   // per stream frame range string after per-stream transformations are applied
-   char *postpr[MAX_NUM_OBS_FILES] = {NULL,NULL,NULL,NULL,NULL};   
-   char *gpr_str                   = NULL;   // global final frame range string
-
-extern bool ObservationsAllowNan;
-
-#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
-
-  // observation input file handling
-  Arg("\n*** Observation input file handling ***\n"),
-  Arg("of",  Arg::Req,ofs,"Observation File.  Replace X with the file number",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("nf",  Arg::Opt,nfs,"Number of floats in observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("ni",  Arg::Opt,nis,"Number of ints in observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("fmt", Arg::Opt,fmts,"Format (htk,binary,ascii,pfile) for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("iswp",Arg::Opt,iswp,"Endian swap condition for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("fr",  Arg::Opt,frs,"Float range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("ir",  Arg::Opt,irs,"Int range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("sr",  Arg::Opt,sr,"Sentence range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("prepr", Arg::Opt, prepr,"Pre Per-segment frame Range for obs file X before any transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("postpr",Arg::Opt, postpr,"Post Per-segment frame Range for obs file X after per-stream transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("gpr",   Arg::Opt, gpr_str,"Global Per-segment final frame Range"),
-  Arg("obsNAN",   Arg::Opt, ObservationsAllowNan," True if observation files allow FP NAN values"),
-
-
-#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
-
-  ////////////////////////////////////////////
-  // check for valid argument values.
-  int nfiles = 0;
-  unsigned ifmts[MAX_NUM_OBS_FILES];
-  for (int i=0;i<MAX_NUM_OBS_FILES;i++) {
-
-    if (strcmp(fmts[i],"htk") == 0)
-      ifmts[i] = HTK;
-    else if (strcmp(fmts[i],"binary") == 0)
-      ifmts[i] = RAWBIN;
-    else if (strcmp(fmts[i],"ascii") == 0)
-      ifmts[i] = RAWASC;
-    else if (strcmp(fmts[i],"pfile") == 0)
-      ifmts[i] = PFILE;
-    else
-      error("%s: Unknown observation file format type: '%s'\n",argerr,fmts[i]);
-
-    if (ofs[i] != NULL && ifmts[i]!=PFILE && nfs[i] == 0 && nis[i] == 0)
-      error("%s: command line parameters must specify one of nf%d and ni%d as not zero",argerr,
-	    i+1,i+1);
-    
-    if(ofs[i] != NULL && ifmts[i]==PFILE) {
-      FILE *in_fp = fopen(ofs[i], "r");
-      if (in_fp==NULL) 
-	error("Couldn't open input pfile %s for reading.", ofs[i]);
-      bool debug_level=0;
-      InFtrLabStream_PFile* in_streamp = new InFtrLabStream_PFile(debug_level,"",in_fp,1,iswp[i]);
-      unsigned num_labs=in_streamp->num_labs();
-      unsigned num_ftrs=in_streamp->num_ftrs();
-
-      ////////////////////////////////////////////////////////////
-      // Check consistency between pfile and supplied arguments //
-      char search_str[]="nXXXXX";
-      sprintf(search_str,"-ni%d",i+1);
-      bool found=false;
-      for(int j=1; j < argc; ++j) {
-	if(strcmp(argv[j],search_str)==0) found=true;
-      }
-      if(found && nis[i] != num_labs) 
-	error("%s: command line parameter ni%d (%d) is different from the one found in the pfile (%d)",argerr,
-	      i+1,nis[i],num_labs); 
-      sprintf(search_str,"-nf%d",i+1);
-      found=false;
-      for(int j=1; j < argc; ++j) {
-	if(strcmp(argv[j],search_str)==0) found=true;
-      }
-      if(found && nfs[i] != num_ftrs) 
-	error("%s: command line parameter nf%d (%d) is different from the one found in the pfile (%d)",
-	      argerr,i+1,nfs[i],num_ftrs); 
-      ////////////////////////////////////////////////////////////
-      nis[i]=num_labs;
-      nfs[i]=num_ftrs;
-
-      if (fclose(in_fp)) 
-	error("Couldn't close input pfile %s.", ofs[i]);
-      delete in_streamp;
-    }
-    
-    nfiles += (ofs[i] != NULL);
-  }
-
-#else
-#endif
-#endif // defined(GMTK_ARG_OBS_FILES)
 
 
 /*==============================================================================================================*/
@@ -226,22 +77,6 @@ extern bool ObservationsAllowNan;
   Arg("\n*** Input trainable parameter file handling ***\n"),
 #endif
 #endif
-
-
-#if defined(GMTK_ARG_CPP_CMD_OPTS)
-#if defined(GMTK_ARGUMENTS_DEFINITION)
-
-  static char *cppCommandOptions = NULL;
-
-#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
-
-  Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Command line options to give to 'cpp'"),
-
-#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
-
-#else
-#endif
-#endif // defined(GMTK_ARG_CPP_CMD_OPTS)
 
 
 /*-----------------------------------------------------------------------------------------------------------*/
@@ -942,6 +777,143 @@ extern bool ObservationsAllowNan;
 /*************************************************************************************************************/
 
 
+#if defined(GMTK_ARG_MEM_GROWTH)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+  static char const *memGrowthOption = "default";
+
+#define GMTK_MEM_GROWTH_CONSERVATIVE 0
+#define GMTK_MEM_GROWTH_DEFAULT      1
+#define GMTK_MEM_GROWTH_AGGRESSIVE   2
+
+  static unsigned memGrowthStrategy = GMTK_MEM_GROWTH_DEFAULT;
+
+#define GMTK_MEM_CONSERVATIVE_START_SIZE  1
+#define GMTK_MEM_CONSERVATIVE_GROWTH_RATE 1.05
+#define GMTK_MEM_CONSERVATIVE_DECAY_RATE 0.0
+
+#define GMTK_MEM_DEFAULT_START_SIZE  23
+#define GMTK_MEM_DEFAULT_GROWTH_RATE 1.25
+#define GMTK_MEM_DEFAULT_DECAY_RATE 0.0
+
+#define GMTK_MEM_AGGRESSIVE_START_SIZE  23
+#define GMTK_MEM_AGGRESSIVE_GROWTH_RATE 2.0
+#define GMTK_MEM_AGGRESSIVE_DECAY_RATE 0.0
+
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("memoryGrowth",Arg::Opt,memGrowthOption,"Rate to grow data structures (conservative, default, aggressive)"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+  if (strncasecmp(memGrowthOption, "conservative", 13) == 0) {
+    infoMsg(IM::Default,"NOTE: using conservative memory strategy - turning off component caching '-componentCache F', setting hash load factor to at least 0.98 '-hashLoadFactor 0.98', and not storing deterministic children '-deterministicChildrenStore F'\n"); 
+    fflush(stdout);
+    MixtureCommon::cacheMixtureProbabilities = false;
+    // make sure to use other low memory options.
+    if (hash_abstract::loadFactor < 0.98)
+      hash_abstract::loadFactor = 0.98;
+    MaxClique::storeDeterministicChildrenInClique = false;
+
+    memGrowthStrategy = GMTK_MEM_GROWTH_CONSERVATIVE;
+    
+    CliqueValueHolder::defaultAllocationUnitChunkSize = GMTK_MEM_CONSERVATIVE_START_SIZE;
+    CliqueValueHolder::defaultGrowthFactor            = GMTK_MEM_CONSERVATIVE_GROWTH_RATE;
+    
+    SeparatorClique::aiStartingSize                   = GMTK_MEM_CONSERVATIVE_START_SIZE;
+    SeparatorClique::aiGrowthFactor                   = GMTK_MEM_CONSERVATIVE_GROWTH_RATE;
+    
+    SeparatorClique::remStartingSize                  = GMTK_MEM_CONSERVATIVE_START_SIZE;
+    SeparatorClique::remGrowthFactor                  = GMTK_MEM_CONSERVATIVE_GROWTH_RATE;
+    
+    SeparatorClique::sepSpaceMgrStartingSize          = GMTK_MEM_CONSERVATIVE_START_SIZE;
+    SeparatorClique::sepSpaceMgrGrowthRate            = GMTK_MEM_CONSERVATIVE_GROWTH_RATE;
+    SeparatorClique::sepSpaceMgrDecayRate             = GMTK_MEM_CONSERVATIVE_DECAY_RATE;
+    
+    SeparatorClique::remSpaceMgrStartingSize          = GMTK_MEM_CONSERVATIVE_START_SIZE;
+    SeparatorClique::remSpaceMgrGrowthRate            = GMTK_MEM_CONSERVATIVE_GROWTH_RATE;
+    SeparatorClique::remSpaceMgrDecayRate             = GMTK_MEM_CONSERVATIVE_DECAY_RATE;
+    
+    ConditionalSeparatorTable::remHashMapStartingSize = GMTK_MEM_CONSERVATIVE_START_SIZE;
+    
+    MaxClique::spaceMgrStartingSize                   = GMTK_MEM_CONSERVATIVE_START_SIZE;
+    MaxClique::spaceMgrGrowthRate                     = GMTK_MEM_CONSERVATIVE_GROWTH_RATE;
+    MaxClique::spaceMgrDecayRate                      = GMTK_MEM_CONSERVATIVE_DECAY_RATE;
+  
+    MaxCliqueTable::valuePoolGrowthRate               = GMTK_MEM_CONSERVATIVE_GROWTH_RATE;
+
+  } else if (strncasecmp(memGrowthOption, "default", 8) == 0) {
+    memGrowthStrategy = GMTK_MEM_GROWTH_DEFAULT;
+
+    CliqueValueHolder::defaultAllocationUnitChunkSize = GMTK_MEM_DEFAULT_START_SIZE;
+    CliqueValueHolder::defaultGrowthFactor            = GMTK_MEM_DEFAULT_GROWTH_RATE;
+    
+    SeparatorClique::aiStartingSize                   = GMTK_MEM_DEFAULT_START_SIZE;
+    SeparatorClique::aiGrowthFactor                   = GMTK_MEM_DEFAULT_GROWTH_RATE;
+    
+    SeparatorClique::remStartingSize                  = GMTK_MEM_DEFAULT_START_SIZE;
+    SeparatorClique::remGrowthFactor                  = GMTK_MEM_DEFAULT_GROWTH_RATE;
+    
+    SeparatorClique::sepSpaceMgrStartingSize          = GMTK_MEM_DEFAULT_START_SIZE;
+    SeparatorClique::sepSpaceMgrGrowthRate            = GMTK_MEM_DEFAULT_GROWTH_RATE;
+    SeparatorClique::sepSpaceMgrDecayRate             = GMTK_MEM_DEFAULT_DECAY_RATE;
+    
+    SeparatorClique::remSpaceMgrStartingSize          = GMTK_MEM_DEFAULT_START_SIZE;
+    SeparatorClique::remSpaceMgrGrowthRate            = GMTK_MEM_DEFAULT_GROWTH_RATE;
+    SeparatorClique::remSpaceMgrDecayRate             = GMTK_MEM_DEFAULT_DECAY_RATE;
+    
+    ConditionalSeparatorTable::remHashMapStartingSize = GMTK_MEM_DEFAULT_START_SIZE;
+    
+    MaxClique::spaceMgrStartingSize                   = GMTK_MEM_DEFAULT_START_SIZE;
+    MaxClique::spaceMgrGrowthRate                     = GMTK_MEM_DEFAULT_GROWTH_RATE;
+    MaxClique::spaceMgrDecayRate                      = GMTK_MEM_DEFAULT_DECAY_RATE;
+  
+    MaxCliqueTable::valuePoolGrowthRate               = GMTK_MEM_DEFAULT_GROWTH_RATE;
+
+  } else if (strncasecmp(memGrowthOption, "aggressive", 11) == 0) {
+    memGrowthStrategy = GMTK_MEM_GROWTH_AGGRESSIVE;
+
+    CliqueValueHolder::defaultAllocationUnitChunkSize = GMTK_MEM_AGGRESSIVE_START_SIZE;
+    CliqueValueHolder::defaultGrowthFactor            = GMTK_MEM_AGGRESSIVE_GROWTH_RATE;
+    
+    SeparatorClique::aiStartingSize                   = GMTK_MEM_AGGRESSIVE_START_SIZE;
+    SeparatorClique::aiGrowthFactor                   = GMTK_MEM_AGGRESSIVE_GROWTH_RATE;
+    
+    SeparatorClique::remStartingSize                  = GMTK_MEM_AGGRESSIVE_START_SIZE;
+    SeparatorClique::remGrowthFactor                  = GMTK_MEM_AGGRESSIVE_GROWTH_RATE;
+    
+    SeparatorClique::sepSpaceMgrStartingSize          = GMTK_MEM_AGGRESSIVE_START_SIZE;
+    SeparatorClique::sepSpaceMgrGrowthRate            = GMTK_MEM_AGGRESSIVE_GROWTH_RATE;
+    SeparatorClique::sepSpaceMgrDecayRate             = GMTK_MEM_AGGRESSIVE_DECAY_RATE;
+    
+    SeparatorClique::remSpaceMgrStartingSize          = GMTK_MEM_AGGRESSIVE_START_SIZE;
+    SeparatorClique::remSpaceMgrGrowthRate            = GMTK_MEM_AGGRESSIVE_GROWTH_RATE;
+    SeparatorClique::remSpaceMgrDecayRate             = GMTK_MEM_AGGRESSIVE_DECAY_RATE;
+    
+    ConditionalSeparatorTable::remHashMapStartingSize = GMTK_MEM_AGGRESSIVE_START_SIZE;
+    
+    MaxClique::spaceMgrStartingSize                   = GMTK_MEM_AGGRESSIVE_START_SIZE;
+    MaxClique::spaceMgrGrowthRate                     = GMTK_MEM_AGGRESSIVE_GROWTH_RATE;
+    MaxClique::spaceMgrDecayRate                      = GMTK_MEM_AGGRESSIVE_DECAY_RATE;
+  
+    MaxCliqueTable::valuePoolGrowthRate               = GMTK_MEM_AGGRESSIVE_GROWTH_RATE;
+
+  } else {
+    error("%s: Unknown -memoryGrowth option '%s', must be 'conservative', 'default', or 'aggressive'", argerr, memGrowthOption);
+  }
+
+#else
+#endif
+#endif // defined(GMTK_ARG_MEM_GROWTH)
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
 #if defined(GMTK_ARG_HASH_LOAD_FACTOR)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
@@ -995,91 +967,6 @@ extern bool ObservationsAllowNan;
 #endif
 #endif // defined(GMTK_ARG_CLEAR_CLIQUE_VAL_MEM)
 
-/*==============================================================================================================*/
-/****************************************************************************************************************/
-/****************************************************************************************************************/
-/****************************                                     ***********************************************/
-/****************************      FILE RANGE OPTIONS             ***********************************************/
-/****************************                                     ***********************************************/
-/****************************************************************************************************************/
-/****************************************************************************************************************/
-/****************************************************************************************************************/
-
-#if defined(GMTK_ARG_FILE_RANGE_OPTIONS)
-#if defined(GMTK_ARGUMENTS_DOCUMENTATION)
-  Arg("\n*** File range options ***\n"),
-#endif
-#endif
-
-/*-----------------------------------------------------------------------------------------------------------*/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-
-
-#if defined(GMTK_ARG_DCDRNG)
-#if defined(GMTK_ARGUMENTS_DEFINITION)
-
-  const static char *dcdrng_str="all";
-
-#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
-
-  Arg("dcdrng",Arg::Opt,dcdrng_str,"Range to decode over segment file"),
-
-#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
-
-#else
-#endif
-#endif // defined(GMTK_ARG_DCDRNG)
-
-
-/*-----------------------------------------------------------------------------------------------------------*/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-
-
-#if defined(GMTK_ARG_TRRNG)
-#if defined(GMTK_ARGUMENTS_DEFINITION)
-
-  static const char *trrng_str="all";
-
-#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
-
-  Arg("trrng",Arg::Opt,trrng_str,"Range to decode over segment file"),
-
-#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
-
-#else
-#endif
-#endif // defined(GMTK_ARG_TRRNG)
-
-/*-----------------------------------------------------------------------------------------------------------*/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-
-
-#if defined(GMTK_ARG_START_END_SKIP)
-#if defined(GMTK_ARGUMENTS_DEFINITION)
-
-  static int startSkip = 0;
-  static int endSkip = 0;
-
-
-#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
-
-  Arg("startSkip",Arg::Opt,startSkip,"Frames to skip at beginning (i.e., first frame is buff[startSkip])"),
-  Arg("endSkip",Arg::Opt,endSkip,"Frames to skip at end (i.e., last frame is buff[len-1-endSkip])"),
-
-#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
-
-  if (startSkip < 0 || endSkip < 0)
-    error("%s: arguments startSkip=%d/endSkip=%d must both be >= 0",argerr,startSkip,endSkip);
-
-#else
-#endif
-#endif // defined(GMTK_ARG_START_END_SKIP)
 
 /*==============================================================================================================*/
 /****************************************************************************************************************/
@@ -1199,7 +1086,7 @@ extern bool ObservationsAllowNan;
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("verbosity",Arg::Opt,modularVerbosity,"Verbosity - coma separated list of m=v, where m is all, default, inference, inference-memory, training, triangulation, boundary, unrolling, or printing; 0 <= v <= 100"),
+  Arg("verbosity",Arg::Opt,modularVerbosity,"Verbosity - coma separated list of m=v, where m is all, default, inference, inference-memory, training, triangulation, boundary, unrolling, printing, modelinfo, obsfile, obsstream; 0 <= v <= 100"),
   Arg("printIntValues",Arg::Opt,RV::alwaysPrintIntegerRVValues,"Always print rv values as integer rather than symbols"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
@@ -1224,64 +1111,6 @@ extern bool ObservationsAllowNan;
 #else
 #endif
 #endif // defined(GMTK_ARG_VERB)
-
-/*-----------------------------------------------------------------------------------------------------------*/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-
-
-#if defined(GMTK_ARG_HELP)
-#if defined(GMTK_ARGUMENTS_DEFINITION)
-
-   // 0: no help; HIGHEST_PRIORITY (1) ... LOWEST_PRIORITY (5) : increasing levels of help.  The priority levels are defined in arguments.h 
-   static unsigned help = 0;  
-
-#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
-
-  Arg("help",  Arg::Help, help,  "Print this message. Add an argument from 1 to 5 for increasing help info."),
-
-#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
-
-  if(help) {
-    Arg::usage();
-    exit(0);
-  }
-
-#else
-#endif
-#endif // defined(GMTK_ARG_HELP)
-
-/*-----------------------------------------------------------------------------------------------------------*/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-
-
-#if defined(GMTK_ARG_VERSION)
-#if defined(GMTK_ARGUMENTS_DEFINITION)
-
-  static bool print_version_and_exit = false;
-
-#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
-
-  Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
-
-#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
-
-  if (print_version_and_exit) {
-#ifdef HAVE_CONFIG_H
-    printf("%s (Mercurial id: %s)\n",gmtk_version_id,HGID);
-#else
-    printf("%s\n", gmtk_version_id);
-#endif
-    exit(0);
-  }
-
-
-#else
-#endif
-#endif // defined(GMTK_ARG_VERSION)
 
 
 
@@ -1342,16 +1171,18 @@ static bool  cliquePrintOnlyEntropy = false;
 
   static bool island=false;
   static unsigned base=3;
-  static bool sqrtBase=false; // true iff we should use \sqrt T as the logarithm base, otherwise it's constant
   const static char* baseString = "3";
+  static bool rootBase=false; // true iff we should use \sqrt T as the logarithm base, otherwise it's constant
+  static float islandRootPower=0.5; // allow arbitrary root of T as log base, default is square root
   static unsigned lst=100;
 
-#define GMTK_SQRT_BASE_STRING "sqrt"
+#define GMTK_SQRT_BASE_STRING "root"
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   Arg("island",Arg::Opt,island,"Run island algorithm"),
-  Arg("base",Arg::Opt,baseString,"Island algorithm logarithm base (integer or 'sqrt')"),
+  Arg("base",Arg::Opt,baseString,"Island algorithm logarithm base (integer or 'root')"),
+  Arg("root",Arg::Opt,islandRootPower,"use T^r as the island logarithm base, where T is the number of frames"),
   Arg("lst",Arg::Opt,lst,"Island algorithm linear segment threshold"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
@@ -1366,8 +1197,11 @@ static bool  cliquePrintOnlyEntropy = false;
       hash_abstract::loadFactor = 0.98;
     MaxClique::storeDeterministicChildrenInClique = false;
 
-    if (strncasecmp(baseString, GMTK_SQRT_BASE_STRING, strlen(GMTK_SQRT_BASE_STRING) ) == 0) {
-      sqrtBase = true;
+    if (strncasecmp(baseString, GMTK_SQRT_BASE_STRING, strlen(GMTK_SQRT_BASE_STRING)+1 ) == 0) {
+      rootBase = true;
+      if (islandRootPower < 0.0 || 1.0 < islandRootPower) {
+	error("%s: -root %f must be between 0 and 1", argerr, islandRootPower);
+      }
     } else {
       int tmp = atoi(baseString);
       if (tmp < 2) {
@@ -1804,99 +1638,6 @@ static bool writeLogVals = false;
 #endif
 #endif // defined(GMTK_ARG_KERNEL_PARAMS)
 
-
-
-
-/*==============================================================================================================*/
-/****************************************************************************************************************/
-/****************************************************************************************************************/
-/************************                                              ******************************************/
-/************************  OBSERVATION MATRIX TRANSFORMATION OPTIONS   ******************************************/
-/************************                                              ******************************************/
-/****************************************************************************************************************/
-/****************************************************************************************************************/
-/****************************************************************************************************************/
-
-#if defined(GMTK_ARG_OBS_MATRIX_XFORMATION)
-#if defined(GMTK_ARGUMENTS_DOCUMENTATION)
-  Arg("\n*** Observation matrix transformation options ***\n"),
-#endif
-#endif
-
-/*-----------------------------------------------------------------------------------------------------------*/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-
-
-#if defined(GMTK_ARG_OBS_MATRIX_XFORMATION)
-#if defined(GMTK_ARGUMENTS_DEFINITION)
-
-bool     Cpp_If_Ascii        = false;
-
-const char*    Action_If_Diff_Num_Frames_Str[MAX_NUM_OBS_FILES]={"er","er","er","er","er"};   // 
-unsigned Action_If_Diff_Num_Frames[MAX_NUM_OBS_FILES]={FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR};   // 
-const char*    Action_If_Diff_Num_Sents_Str[MAX_NUM_OBS_FILES]={"te","te","te","te","te"}; 
-unsigned Action_If_Diff_Num_Sents[MAX_NUM_OBS_FILES]={SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END};   // 
-
-char    *Per_Stream_Transforms[MAX_NUM_OBS_FILES]={NULL,NULL,NULL,NULL,NULL};   // 
-char    *Post_Transforms=NULL;
-
-const char    *Ftr_Combo_Str="none";
-unsigned Ftr_Combo=FTROP_NONE;
- 
-#ifdef INTV_WORDS_BIGENDIAN
-bool iswp[MAX_NUM_OBS_FILES] = {true,true,true,true,true};
-#else
-bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
-#endif 
-
-#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
-
-  Arg("fdiffact",  Arg::Opt, Action_If_Diff_Num_Frames_Str ,"Action if different number of frames in streams: error (er), repeat last frame (rl), first frame (rf), segmentally expand (se), truncate from start (ts), truncate from end (te)",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("sdiffact",  Arg::Opt, Action_If_Diff_Num_Sents_Str ,"Action if different number of sentences in streams: error (er), truncate from end (te), repeat last sent (rl), and wrap around (wa).",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("cppifascii",Arg::Tog, Cpp_If_Ascii,"Pre-process ASCII files using CPP"),
-  Arg("trans",     Arg::Opt,Per_Stream_Transforms ,"per stream transformations string",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("posttrans", Arg::Opt,Post_Transforms ,"Final global transformations string"),
-  Arg("comb",      Arg::Opt, Ftr_Combo_Str,"Combine float features (none: no combination, add, sub, mul,div"),
-
-
-#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
-
-  if (strcmp(Ftr_Combo_Str,"none") == 0)     Ftr_Combo = FTROP_NONE;
-  else if (strcmp(Ftr_Combo_Str,"add") == 0) Ftr_Combo = FTROP_ADD;
-  else if (strcmp(Ftr_Combo_Str,"sub") == 0) Ftr_Combo = FTROP_SUB;
-  else if (strcmp(Ftr_Combo_Str,"mul") == 0) Ftr_Combo = FTROP_MUL;
-  else if (strcmp(Ftr_Combo_Str,"div") == 0) Ftr_Combo = FTROP_DIV;
-  else error("%s: Unknown feature combination type: '%s'\n",argerr,Ftr_Combo_Str);
-  
-  for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
-    if(ofs[i]!=NULL) {
-      if (strcmp(Action_If_Diff_Num_Frames_Str[i],"er") == 0)      Action_If_Diff_Num_Frames[i] = FRAMEMATCH_ERROR;
-      else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"rl") == 0) Action_If_Diff_Num_Frames[i] = FRAMEMATCH_REPEAT_LAST;
-      else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"rf") == 0) Action_If_Diff_Num_Frames[i] = FRAMEMATCH_REPEAT_FIRST;
-      else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"se") == 0) Action_If_Diff_Num_Frames[i] = FRAMEMATCH_EXPAND_SEGMENTALLY;
-      else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"ts") == 0) Action_If_Diff_Num_Frames[i] = FRAMEMATCH_TRUNCATE_FROM_START;
-      else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"te") == 0) Action_If_Diff_Num_Frames[i] = FRAMEMATCH_TRUNCATE_FROM_END;
-      else error("%s: Unknown action when diff num of frames: '%s'\n",argerr,Action_If_Diff_Num_Frames_Str[i]);
-    }
-  }
-  
-  for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
-    if(ofs[i]!=NULL) {
-      if (strcmp(Action_If_Diff_Num_Sents_Str[i],"er") == 0)      Action_If_Diff_Num_Sents[i] = SEGMATCH_ERROR;
-      else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"rl") == 0) Action_If_Diff_Num_Sents[i] = SEGMATCH_REPEAT_LAST;
-      else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"wa") == 0) Action_If_Diff_Num_Sents[i] = SEGMATCH_WRAP_AROUND;
-      else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"te") == 0) Action_If_Diff_Num_Sents[i] = SEGMATCH_TRUNCATE_FROM_END;
-      else error("%s: Unknown action when diff num of sentences: '%s'\n",argerr,
-		 Action_If_Diff_Num_Sents_Str[i]);
-    }
-  }
-
-
-#else
-#endif
-#endif // defined(GMTK_ARG_OBS_MATRIX_XFORMATION)
 
 
 /*==============================================================================================================*/

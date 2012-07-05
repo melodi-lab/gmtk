@@ -47,8 +47,22 @@ VCID(HGID)
 
 #include "GMTK_Mixture.h"
 #include "GMTK_GMParms.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
 
+#  include "GMTK_ObservationSource.h"
+
+#if 0
+#  ifdef GMTKONLINE
+#    include "GMTK_StreamSource.h"
+#  else
+#    include "GMTK_FileSource.h"
+#  endif
+#endif
+
+
+#endif
 #include "tieSupport.h"
 
 
@@ -328,9 +342,9 @@ Mixture::log_p(const unsigned frameIndex,
 
   // we assume that frameIndex exists since we unroll the graph with respect to
   // the global observation matrix.
-  const float *const x = globalObservationMatrix.floatVecAtFrame(frameIndex,firstFeatureElement);
-  const Data32* const base = globalObservationMatrix.baseAtFrame(frameIndex);
-  const int stride =  globalObservationMatrix.stride();
+  const float *const x = globalObservationMatrix->floatVecAtFrame(frameIndex,firstFeatureElement);
+  const Data32* const base = globalObservationMatrix->baseAtFrame(frameIndex);
+  const int stride =  globalObservationMatrix->stride();
 
   if (cacheMixtureProbabilities) {
 
@@ -559,9 +573,9 @@ Mixture::emIncrement(logpr prob,
   } 
   accumulatedProbability+= prob;
 
-  const float *const x = globalObservationMatrix.floatVecAtFrame(frameIndex,firstFeatureElement);
-  const Data32* const base = globalObservationMatrix.baseAtFrame(frameIndex);
-  const int stride = globalObservationMatrix.stride();
+  const float *const x = globalObservationMatrix->floatVecAtFrame(frameIndex,firstFeatureElement);
+  const Data32* const base = globalObservationMatrix->baseAtFrame(frameIndex);
+  const int stride = globalObservationMatrix->stride();
 
   /*
   fprintf(stderr,"Calling emIncrement with this = 0x%X, frameindex = %d, and firstFeatureElement = %d, and prob=%f\n",
