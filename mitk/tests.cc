@@ -38,8 +38,6 @@ void dumpDistribSampleData(FILE* ofp,
   size_t totalNumFramesInSentence, numFramesToProcess;
   int readStatus;
   unsigned frameStart,firstFrameToProcess;
-  unsigned numFramesProcessed;
-
   
   for( Range::iterator sent = sentRange.begin(); !sent.at_end(); sent++ ){
     //if( ! quiet )
@@ -55,7 +53,7 @@ void dumpDistribSampleData(FILE* ofp,
       
       //BUFFER_DATA_TYPE* obsMatPtr = (BUFFER_DATA_TYPE*) obsMat->features.ptr;
       BUFFER_DATA_TYPE* obsMatPtr = (BUFFER_DATA_TYPE*) obsMat->baseAtFrame(0);
-      numFramesProcessed = pointerSet.initialize(obsMatPtr, totalNumFramesInSentence, numFramesToProcess, firstFrameToProcess, tuple);
+      (void) pointerSet.initialize(obsMatPtr, totalNumFramesInSentence, numFramesToProcess, firstFrameToProcess, tuple);
       //cout << "Processing sentence no " << *sent <<endl;
       pointerSet.print(ofp);
       //cout << "Processing sentence no " << *sent <<endl;

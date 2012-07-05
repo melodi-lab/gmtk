@@ -314,7 +314,10 @@ JunctionTree::printSavedPartitionViterbiValues(FILE* f,
 
   Range::iterator* partRange_it = new Range::iterator(partRange->begin());
 
+#if 0
+  // unused
   int previous_C = -1;
+#endif
   while (!partRange_it->at_end()) {
 
     unsigned part = (*partRange_it);
@@ -372,7 +375,7 @@ JunctionTree::printSavedPartitionViterbiValues(FILE* f,
 	    printRVSetAndValues(f,ps.hidRVVector,true,preg);
 	  }
 	}
-      previous_C = inference_it.pt_i();
+      // previous_C = inference_it.pt_i();
     }
     (*partRange_it)++;
   }
@@ -783,7 +786,10 @@ JunctionTree::printSavedViterbiValues(FILE* f,
   unsigned primeIndex = 0;
   unsigned originalIndex = 0;
   unsigned Ccount = 1;
+#if 0
+// unused
   int previous_C = -1;
+#endif
 
   while (!partRange_it->at_end()) {
 
@@ -862,7 +868,7 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 	}
 	primeIndex = (primeIndex + 1) % Cprime_rvs.size();
       }
-      previous_C = inference_it.pt_i();
+      // previous_C = inference_it.pt_i();
     }
     (*partRange_it)++;
   }

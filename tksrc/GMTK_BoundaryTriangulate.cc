@@ -2003,7 +2003,10 @@ BoundaryTriangulate
   vector<MaxClique>       cliques;
   vector<RV*>             order;
   TimerClass              type_timer;
+#if 0
+  // unused
   double                  prvs_best_weight;
+#endif
   double                  weight;
   string                  meth_str;
   char                    buff[64];
@@ -2022,7 +2025,7 @@ BoundaryTriangulate
   ////////////////////////////////////////////////////////////////////////
   // Initialize variables 
   ////////////////////////////////////////////////////////////////////////
-  prvs_best_weight = best_weight;
+  //  prvs_best_weight = best_weight;
   ea_tri_heur = tri_heur;
 
   ////////////////////////////////////////////////////////////////////////
@@ -3748,7 +3751,10 @@ triangulateRandom(
 
   double     best_graph_weight = DBL_MAX;   // Best overal graph weight
   double     best_this_weight;    // Best graph weight on most recent trial
+#if 0
+  // unused
   unsigned   moves_accepted;
+#endif
   double     weight_sum = 0;      // Sum of weights (for variance calculation)
   double     weight_sqr_sum = 0;  // Sum of weights^2 (for variance calculation)
 
@@ -3772,7 +3778,7 @@ triangulateRandom(
   ////////////////////////////////////////////////////////////////////////
   if ((fill_in.size() > 0) ||
       (missing.size() > 0)) {
-    moves_accepted = edgeAnnealChain(
+    (void) edgeAnnealChain(
       triangulate_nodes,
       fill_in,
       missing, 

@@ -424,10 +424,13 @@ PackCliqueValue::init(const unsigned *const cards, const bool useNaive)
   for (unsigned i=0;i<numUnsignedInPackedVector;i++) {
     bins[i] = sizeof(unsigned)*8;
   }
+#if 0
+  // unused
   unsigned splits;
-  
+#endif
+
   if (useNaive || numUnsignedInPackedVector == 1) {
-    splits = findNaive(bins,ints);
+    // splits = findNaive(bins,ints);
   } else {
     vector<binAssignment> ints1 = ints;
     for (unsigned i=0;i<numUnsignedInPackedVector;i++) {
@@ -436,7 +439,7 @@ PackCliqueValue::init(const unsigned *const cards, const bool useNaive)
     unsigned tr1 = findApproximateBestRetry(bins,ints1);
     if (tr1 == 0) {
       ints = ints1;
-      splits = tr1;
+      // splits = tr1;
     } else {
       vector<binAssignment> ints2 = ints;
       for (unsigned i=0;i<numUnsignedInPackedVector;i++) {
@@ -445,7 +448,7 @@ PackCliqueValue::init(const unsigned *const cards, const bool useNaive)
       unsigned tr2 = findApproximateBest2Retry(bins,ints2);
       if (tr2 == 0) {
 	ints = ints2;
-	splits = tr2;
+	// splits = tr2;
       } else {
 	// try naive case as well.
 	vector<binAssignment> ints_n = ints;	
@@ -461,19 +464,19 @@ PackCliqueValue::init(const unsigned *const cards, const bool useNaive)
 	  if (trn <= tr1) {
 	    // use naive
 	    ints = ints_n;
-	    splits = trn;
+	    // splits = trn;
 	  } else {
 	    ints = ints1;
-	    splits = tr1;
+	    // splits = tr1;
 	  }
 	} else { // tr2  < tr1
 	  if (trn <= tr2) {
 	    // use naive
 	    ints = ints_n;
-	    splits = trn;
+	    // splits = trn;
 	  } else {
 	    ints = ints2;
-	    splits = tr2;
+	    // splits = tr2;
 	  }
 	}
       }
