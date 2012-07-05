@@ -4,6 +4,7 @@
 
 #include "ieeeFPsetup.h"
 
+#pragma GCC diagnostic ignored "-Wdiv-by-zero"
 int
 main (int argc, char *argv[]) {
   ieeeFPsetup();
