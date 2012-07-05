@@ -34,6 +34,7 @@ static const char* pfile_version0_string =
 // which can then be used by any software that wishes to use pfiles.
 
 
+#pragma GCC diagnostic ignored "-Wformat"
 // This routine is used to get one pfile_ulonglong_t integer argument from a pfile
 // header stored in a buffer. It returns 0 on success, else -1.
 static int
