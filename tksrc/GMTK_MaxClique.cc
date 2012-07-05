@@ -2711,7 +2711,9 @@ ceGatherFromIncommingSeparatorsCliqueObserved(MaxCliqueTable::SharedLocalStructu
   }
 
   if (message(Inference,High)) {
-    psp2(stdout,spi*(traceIndent+1+sharedStructure.fSortedAssignedNodes.size()));
+    // see https://j.ee.washington.edu/trac/gmtk/ticket/214#comment:14
+    if (message(Inference,High+5))
+      psp2(stdout,spi*(traceIndent+1+sharedStructure.fSortedAssignedNodes.size()));
     infoMsg(IM::Inference, IM::High,"CI:Inserting Observed %d-clique ent #0,pr=%f,sm=%f:",
 	    sharedStructure.fNodes.size(),
 	    cliqueValues.ptr[0].p.val(),sumProbabilities().val());
@@ -2823,8 +2825,8 @@ MaxCliqueTable::ceIterateSeparatorsRecurse(MaxCliqueTable::SharedLocalStructure&
     sepSeparatorValuesPtr = sep.separatorValues->ptr; 
 
 
+  traceIndent++;
   if (message(Inference,High+5)) {
-    traceIndent++;
     psp2(stdout,spi*traceIndent);    
     infoMsg(Inference,High+5,"S%d:Starting separator iter,partSepNo=%d,p=%f,nodes:",
 	    sepNumber,origin.ceReceiveSeparators[sepNumber],p.val());
@@ -2996,8 +2998,8 @@ MaxCliqueTable::ceIterateSeparatorsRecurse(MaxCliqueTable::SharedLocalStructure&
   }
 
  ceIterateSeparatorsFinished:
-  if (message(Inference, High+5))
-    traceIndent--;
+  //  if (message(Inference, High+5))
+  traceIndent--;
 }
 
 
@@ -3051,8 +3053,8 @@ MaxCliqueTable::ceIterateUnassignedIteratedNodesRecurse(MaxCliqueTable::SharedLo
 
   RV* rv = sharedStructure.fUnassignedIteratedNodes[nodeNumber];
   // TODO: update comments here to match others.
+  traceIndent++;
   if (message(Inference, High+5)) {
-    traceIndent++;
     psp2(stdout,spi*traceIndent);
     infoMsg(Inference, High+5,"U%d:Starting Unassigned iteration of rv %s(%d),p=%f\n",
 	    nodeNumber,
@@ -3102,8 +3104,8 @@ MaxCliqueTable::ceIterateUnassignedIteratedNodesRecurse(MaxCliqueTable::SharedLo
 				     maxCEValue,
 				     nodeNumber+1,p);
   }
-  if (message(Inference, High+5))
-    traceIndent--;
+  //  if (message(Inference, High+5))
+  traceIndent--;
 }
 
 
@@ -3246,7 +3248,9 @@ MaxCliqueTable::ceIterateAssignedNodesRecurse(MaxCliqueTable::SharedLocalStructu
     numCliqueValuesUsed++;
 
     if (message(Inference, High)) {
-      psp2(stdout,spi*(traceIndent+1));
+      // see https://j.ee.washington.edu/trac/gmtk/ticket/214#comment:14
+      if (message(Inference, High+5))
+	psp2(stdout,spi*(traceIndent+1));
       infoMsg(Inference, High,"CI:Inserting %d-clique ent #%d,pr=%f,sm=%f:",
 	      sharedStructure.fNodes.size(),
 	      (numCliqueValuesUsed-1),
@@ -3258,8 +3262,8 @@ MaxCliqueTable::ceIterateAssignedNodesRecurse(MaxCliqueTable::SharedLocalStructu
   RV* rv = sharedStructure.fSortedAssignedNodes[nodeNumber];
   // do the loop right here
 
+  traceIndent++;
   if (message(Inference, High+5)) {
-    traceIndent++;
     psp2(stdout,spi*traceIndent);
     infoMsg(Inference, High+5,"A%d:Starting assigned iteration of rv %s(%d),crClqPr=%f\n",
 	    nodeNumber,
@@ -3453,8 +3457,8 @@ MaxCliqueTable::ceIterateAssignedNodesRecurse(MaxCliqueTable::SharedLocalStructu
     assert(0);
     break;
   }
-  if (message(Inference, High+5))
-    traceIndent--;
+  //  if (message(Inference, High+5))
+  traceIndent--;
 
 }
 
@@ -3677,7 +3681,7 @@ MaxCliqueTable::ceIterateAssignedNodesNoRecurse(MaxCliqueTable::SharedLocalStruc
 	// be stored if it ends up being used.
 	unsigned *pcv = origin.valueHolder.curCliqueValuePtr();
 	// Next, pack the clique values into this position.
-	origin.packer.pack((unsigned**)discreteValuePtrs.ptr,(unsigned*)pcv);
+	origin.packer.pack((unsigned**)sharedStructure.discreteValuePtrs.ptr,(unsigned*)pcv);
 	// Look it up in the hash table.
 	bool foundp;
 	unsigned *key;

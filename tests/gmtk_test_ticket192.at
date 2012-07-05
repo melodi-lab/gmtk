@@ -1,0 +1,12 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/192 is fixed
+
+# .str parser will give warnings if the bug is not fixed
+
+AT_SETUP([ticket 192])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/trivial])
+AT_CHECK([pushd . >/dev/null; cd $TEST_AND_DEV/trivial; 
+          gmtkJT -strF test.str -inputM test.mtr -of1 filelist.txt -fmt1 ascii -ni1 1 | \
+          grep warning;
+          popd >/dev/null],[],[ignore])
+AT_CLEANUP

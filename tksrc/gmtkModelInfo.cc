@@ -69,26 +69,39 @@ VCID(HGID)
 
 #define GMTK_ARG_OBS_FILES
 /****************************      FILE RANGE OPTIONS             ***********************************************/
+#define GMTK_ARG_FILE_RANGE_OPTIONS
 #define GMTK_ARG_DCDRNG
 #define GMTK_ARG_START_END_SKIP
 /************************  OBSERVATION MATRIX TRANSFORMATION OPTIONS   ******************************************/
+#define GMTK_ARG_OBS_MATRIX_OPTIONS
 #define GMTK_ARG_OBS_MATRIX_XFORMATION
 
 
+/*************************   INPUT TRAINABLE PARAMETER FILE HANDLING  *******************************************/
+#define GMTK_ARG_INPUT_TRAINABLE_FILE_HANDLING
 #define GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG
 #define GMTK_ARG_OUTPUT_MASTER_FILE
 #define GMTK_ARG_OUTPUT_TRAINABLE_PARAMS
 #define GMTK_ARG_INPUT_TRAINABLE_PARAMS
 #define GMTK_ARG_CPP_CMD_OPTS
-#define GMTK_ARG_VERB
 #define GMTK_ARG_ALLOC_DENSE_CPTS
-#define GMTK_ARG_SEED
-#define GMTK_ARG_VAR_FLOOR
-#define GMTK_ARG_STR_FILE_OPT_ARG
-#define GMTK_ARG_VAR_FLOOR
-#define GMTK_ARG_VERSION
-#define GMTK_ARG_VAR_FLOOR_ON_READ
 #define GMTK_ARG_CPT_NORM_THRES
+
+/*************************   INPUT STRUCTURE PARAMETER FILE HANDLING  *******************************************/
+#define GMTK_ARG_INPUT_MODEL_FILE_HANDLING
+#define GMTK_ARG_STR_FILE_OPT_ARG
+
+/*************************   CONTINUOUS RANDOM VARIABLE OPTIONS       *******************************************/
+#define GMTK_ARG_CONTINUOUS_RANDOM_VAR_OPTIONS
+#define GMTK_ARG_VAR_FLOOR
+#define GMTK_ARG_VAR_FLOOR_ON_READ
+
+
+#define GMTK_ARG_GENERAL_OPTIONS
+#define GMTK_ARG_SEED
+#define GMTK_ARG_VERB
+#define GMTK_ARG_VERSION
+#define GMTK_ARG_HELP
 
 #define GMTK_ARG_INFOSEPARATOR
 #define GMTK_ARG_INFOFIELDFILE
@@ -189,7 +202,9 @@ main(int argc,char*argv[])
 
   ////////////////////////////////////////////
   // parse arguments
-  bool parse_was_ok = Arg::parse(argc,(char**)argv);
+  bool parse_was_ok = Arg::parse(argc,(char**)argv,
+"\nThis program prints out some information about the number of variables\n"
+"in a model and which GMTK features the model uses\n");
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }

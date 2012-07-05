@@ -56,7 +56,9 @@ XOPTFLAGS = -funroll-loops -fargument-noalias-global
 AM_CPPFLAGS = \
 -I$(srcdir)/../miscSupport \
 -I$(builddir)/../IEEEFloatingpoint \
--I$(srcdir)/../featureFileIO
+-I$(srcdir)/../featureFileIO \
+-DBINDIR="\"$(bindir)\""
+# make BINDIR available for warning message in GMTK_FileParser.cc for ticket 320
 
 LDADD = libGMTK.a libXOPT.a \
 $(builddir)/../featureFileIO/libgmtkio.a \

@@ -2137,6 +2137,10 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 			  inference_it.cur_nm(),
 			  inference_it.pt_i());
 
+    // we skip the first Co's LI separator if there is no P1
+    // partition, since otherwise we'll get zero probability.
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.skipLISeparator();
 
     // it might be that E is the first partition as well, say if this is
     // a static graph, and in this case we need in this case to skip the
@@ -2166,6 +2170,10 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
     }
     if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
       E1.useLISeparator();
+
+    // if the LI separator was turned off, we need to turn it back on.
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.useLISeparator();
 
 
     if (limitTime && probEvidenceTimeExpired)

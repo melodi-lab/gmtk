@@ -237,11 +237,13 @@ main(int argc,char*argv[])
   // or divide by zero, we actually get a FPE
   ieeeFPsetup();
   set_new_handler(memory_error);
-  InstallSignalHandlers();
+  InstallSignalHandlersTime();
 
   ////////////////////////////////////////////
   // parse arguments
-  bool parse_was_ok = Arg::parse(argc,(char**)argv);
+  bool parse_was_ok = Arg::parse(argc,(char**)argv,
+"\nThis program analyzes the graphical structure of a model to determine\n"
+"a efficient way to perform inference on it.\n");
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }
