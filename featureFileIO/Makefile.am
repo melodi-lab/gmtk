@@ -58,13 +58,66 @@ GMTK_DataTransformations.cc \
 GMTK_WordOrganization.h GMTK_WordOrganization.cc \
 GMTK_ObsStats.h GMTK_ObsStats.cc \
 pfile.h pfile.cc \
-vbyteswapping.h vbyteswapping.cc
+vbyteswapping.h vbyteswapping.cc \
+file_utils.h file_utils.cc \
+GMTK_ObservationSource.h \
+GMTK_StreamSource.h GMTK_StreamSource.cc \
+GMTK_ObservationStream.h \
+GMTK_ASCIIStream.h GMTK_ASCIIStream.cc \
+GMTK_BinStream.h GMTK_BinStream.cc \
+GMTK_FileStream.h GMTK_FileSrcStream.h \
+GMTK_FileSource.h GMTK_FileSource.cc \
+GMTK_FileSourceNoCache.h GMTK_FileSourceNoCache.cc \
+GMTK_CreateFileSource.h GMTK_CreateFileSource.cc \
+GMTK_ObservationFile.h GMTK_ObservationFile.cc \
+GMTK_PFileFile.h GMTK_PFileFile.cc \
+GMTK_HTKFile.h GMTK_HTKFile.cc \
+GMTK_HDF5File.h GMTK_HDF5File.cc \
+GMTK_ASCIIFile.h GMTK_ASCIIFile.cc \
+GMTK_FlatASCIIFile.h GMTK_FlatASCIIFile.cc \
+GMTK_BinaryFile.h GMTK_BinaryFile.cc \
+GMTK_Filter.h GMTK_Filter.cc GMTK_SubmatrixDescriptor.h \
+GMTK_MergeFile.h GMTK_MergeFile.cc \
+GMTK_FilterFile.h \
+GMTK_FIRFilter.h GMTK_FIRFilter.cc \
+GMTK_AffineFilter.h GMTK_AffineFilter.cc
 
-bin_PROGRAMS = obs-create obs-print obs-info obs-skmeans obs-concat obs-diff
+
+check_PROGRAMS = \
+testPFileFile \
+testASCIIFile \
+testASCIIStream \
+testBinStream \
+testFileStream \
+testObsFile \
+testFileSrc \
+testFilter \
+testStreamSource \
+testMerge
+
+#testFileSource 
+
+
+testPFileFile_SOURCES = testPFileFile.cc 
+testASCIIFile_SOURCES = testASCIIFile.cc 
+#testFileSource_SOURCES = testFileSource.cc
+testASCIIStream_SOURCES = testASCIIStream.cc
+testBinStream_SOURCES = testBinStream.cc
+testFileStream_SOURCES = testFileStream.cc
+testFileSrc_SOURCES = testFileSrc.cc
+testFilter_SOURCES = testFilter.cc
+testObsFile_SOURCES = testObsFile.cc
+testStreamSource_SOURCES = testStreamSource.cc
+testMerge_SOURCES = testMerge.cc
+
+bin_PROGRAMS = obs-create obs-print obs-info obs-skmeans \
+               obs-concat obs-diff obs-stats obs-cat
 #check_PROGRAMS = gmtest
 
 #gmtest_SOURCES = gmtest.cc
 
+obs_cat_SOURCES = obs-cat.cc
+obs_stats_SOURCES = obs-stats.cc
 obs_create_SOURCES = obs-create.cc
 
 obs_print_SOURCES = \

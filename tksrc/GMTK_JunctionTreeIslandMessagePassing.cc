@@ -1142,8 +1142,9 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
 				      // down to the linear collect/distribute
 				      // evidence stage.
 				      const unsigned linear_section_threshold,
-				      // use sqrt(numUsableFrames) for base
-				      const bool sqrtBase,
+				      // use pow(numUsableFrames,islandRoot) for logarithm base
+				      const bool rootBase,
+				      const float islandRoot,
 				      const bool runEMalgorithm,
 				      const bool runViterbiAlgorithm,
 				      const bool localCliqueNormalization)
@@ -1154,7 +1155,8 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
 
   // must have a linear_section_threshold of at least two partitions.
   if (linear_section_threshold < 2)
-    error("ERROR: Island algorithm collect/distribute inference. linear section threshold value (%d) is too small.\n",linear_section_threshold);
+    error("ERROR: Island algorithm collect/distribute inference. linear section threshold value (%d) is too small.\n",
+	  linear_section_threshold);
 
   // the log base must be a number that actually causes a split.
   if (base <= 1)
@@ -1163,9 +1165,13 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
   unsigned totalNumberPartitions;
   numUsableFrames = unroll(numFrames,ZeroTable,&totalNumberPartitions);
 
-  if (sqrtBase) {
-    base = (unsigned)(sqrt((double) numUsableFrames) + 0.5);
-    infoMsg(IM::Inference, IM::Moderate, "Island logarithm base is sqrt(%u) = %u\n", numUsableFrames, base);
+  if (rootBase) {
+    if (islandRoot < 0.0 || 1.0 < islandRoot) {
+      error("ERROR: Island root (%f) must be between 0 and 1", islandRoot);
+    }
+    base = (unsigned)(pow((double) numUsableFrames, islandRoot) + 0.5);
+    infoMsg(IM::Inference, IM::Moderate, "Island logarithm base is pow(%u,%f) = %u\n", 
+	    numUsableFrames, islandRoot, base);
   }
 
   // In the island algorithm, we never hold more than the linear
