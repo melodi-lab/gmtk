@@ -143,7 +143,13 @@ void printSegment(unsigned sent_no, FILE* out_fp, float* cont_buf, unsigned num_
 	  copy_swap_func_ptr(1,(int*)&sent_no,(int*)&sent_no);
 	  copy_swap_func_ptr(1,(int*)&frame_no,(int*)&frame_no);
 	  fwrite_result = fwrite(&sent_no,sizeof(sent_no),1,out_fp);
+          if (fwrite_result != 1) {
+            error("Error writing to output file");
+          }
 	  fwrite_result = fwrite(&frame_no,sizeof(frame_no),1,out_fp);
+          if (fwrite_result != 1) {
+            error("Error writing to output file");
+          }
 	} else if(ofmt==FLATASC || ofmt==RAWASC ){
 	  fprintf(out_fp,"%d %u",sent_no,frame_no);
 	  ns = true;
@@ -156,6 +162,9 @@ void printSegment(unsigned sent_no, FILE* out_fp, float* cont_buf, unsigned num_
 	  DBGFPRINTF((stderr,"obsPrint: Printing HTK float %f.\n",cont_buf_p[frit]));
 	  copy_swap_func_ptr(1,(int*)&cont_buf_p[frit],(int*)&cont_buf_p[frit]);
 	  fwrite_result = fwrite(&cont_buf_p[frit], sizeof(cont_buf_p[frit]),  1,out_fp);
+          if (fwrite_result != 1) {
+            error("Error writing to output file");
+          }
 	} 
 	else if(ofmt==FLATASC || ofmt==RAWASC){
 	  if (ns) fprintf(out_fp," ");
@@ -170,6 +179,9 @@ void printSegment(unsigned sent_no, FILE* out_fp, float* cont_buf, unsigned num_
 	if (ofmt==FLATBIN || ofmt==RAWBIN || (ofmt==HTK && num_continuous>0) ) {
 	  copy_swap_func_ptr(1,(int*)&disc_buf_p[lrit],(int*)&disc_buf_p[lrit]);
 	  fwrite_result = fwrite(&disc_buf_p[lrit],  sizeof(disc_buf_p[lrit]), 1,out_fp);
+          if (fwrite_result != 1) {
+            error("Error writing to output file");
+          }
 	} 
 	else if(ofmt==HTK && num_continuous==0) { // in the HTK format we
   // cannot mix floats with discrete data; that's why if there is at
@@ -180,6 +192,9 @@ void printSegment(unsigned sent_no, FILE* out_fp, float* cont_buf, unsigned num_
 	     short_lab_buf_p = swapb_short_short(short_lab_buf_p);
 	   }
 	  fwrite_result = fwrite(&short_lab_buf_p,  sizeof(short_lab_buf_p), 1,out_fp);
+          if (fwrite_result != 1) {
+            error("Error writing to output file");
+          }
 	}
 	else if(ofmt==FLATASC || ofmt==RAWASC) {
 	  if (ns) fprintf(out_fp," ");	    

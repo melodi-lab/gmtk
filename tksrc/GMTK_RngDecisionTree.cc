@@ -406,7 +406,6 @@ RngDecisionTree::seek(
   string   indexFileName;
   unsigned numIndexDTs;
   unsigned position; 
-  unsigned result; 
 
   if (!iterable()) {
     error("ERROR: trying to seek in non-iterable DT, '%s'\n",  
@@ -446,7 +445,7 @@ RngDecisionTree::seek(
   indexFile->fseek( sizeof(unsigned)*(dt_nmbr), SEEK_CUR ); 
   indexFile->read(position, "DT offset");
 
-  result = dtFile->fseek(position, SEEK_SET); 
+  (void) dtFile->fseek(position, SEEK_SET); 
   dtNum = dt_nmbr - 1; 
 }
 
@@ -1741,7 +1740,6 @@ RngDecisionTree::EquationClass::parseExpression(
 {
   formulaCommand new_command;
   tokenStruct    next_token;
-  unsigned       next_precedence;
 
   //////////////////////////////////////////////////////////////////////////
   // Recursively call until a factor is found 
@@ -1774,7 +1772,7 @@ RngDecisionTree::EquationClass::parseExpression(
     else {
       next_token = token;
       getToken(formula, token);
-      next_precedence = tokenPriority[token.token];
+      (void) tokenPriority[token.token];
 
       parseExpression( token, formula, cmmnds, prvs_precedence-1, depth );
 
