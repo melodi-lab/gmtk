@@ -34,10 +34,11 @@ using namespace std;
 enum {
   RAWBIN, 
   RAWASC, 
+  FLATASC,
   PFILE,
   HTK,
   FLATBIN,
-  FLATASC
+  HDF5
 };
 
 

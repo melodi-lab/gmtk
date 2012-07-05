@@ -74,6 +74,29 @@ AM_CONDITIONAL([HAVE_HG],[test  x$HAVE_HG = xyes])
 # Checks for libraries.
 AC_CHECK_LIB([m], [sqrt])
 
+# this doesn't work - need to #include <H5Cpp.h>  and use namespace H5
+#AC_LANG_PUSH([C++])
+#AC_CHECK_LIB([hdf5_cpp], [H5File::isHdf5])  
+#AC_LANG_POP([C++])
+
+# It would be nice to check for HDF5 version >= 1.8, but I haven't found
+# a good way to do it for the C++ API 
+AC_LANG_PUSH([C++])
+hdf_check_save_LIBS=${LIBS}
+LIBS="${LIBS} -lhdf5_cpp"
+AC_LINK_IFELSE([AC_LANG_PROGRAM([#include <H5Cpp.h>
+#ifndef H5_NO_NAMESPACE
+using namespace H5;
+#endif],
+[H5File file("/dev/null", H5F_ACC_RDONLY )])],
+        AC_SUBST([HAVE_HDF5],[yes]),[])
+LIBS=${hdf_check_save_LIBS}
+AC_LANG_POP([C++])
+if test x"$HAVE_HDF5" = x"yes"; then 
+  LIBS="-lhdf5_cpp $LIBS"
+  AC_DEFINE([HAVE_LIBHDF5_CPP],[1],[Are the C++ bindings for HDF5 available?])
+fi
+
 case "${host}" in
 *cygwin*) AC_SUBST([XOPEN],[-D__USE_XOPEN2K]) ;;
 esac

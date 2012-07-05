@@ -135,6 +135,9 @@ public:
   int minLag() { return _minLag; }
   int maxLag() { return _maxLag; }
 
+  static int globalMinLag() { return _globalMinLag; }
+  static int globalMaxLag() { return _globalMaxLag; }
+
 };
 
 
