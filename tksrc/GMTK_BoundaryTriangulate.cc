@@ -44,7 +44,9 @@
 #include "GMTK_GMParms.h"
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
+#if 0
 #include "GMTK_ObservationMatrix.h"
+#endif
 #include "GMTK_JunctionTree.h"
 #include "GMTK_GraphicalModel.h"
 #include "GMTK_NetworkFlowTriangulate.h"

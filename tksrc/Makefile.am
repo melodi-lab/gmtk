@@ -184,6 +184,7 @@ user_internal_cfunc_dts.cc
 bin_PROGRAMS = \
 gmtkTime gmtkJT gmtkEMtrain gmtkKernel gmtkViterbi gmtkTriangulate \
 gmtkParmConvert gmtkTFmerge gmtkDTindex gmtkNGramIndex gmtkTie gmtkModelInfo \
+gmtkOnline \
 $(GMTKVIZ) $(OSXBUNDLE)
 EXTRA_PROGRAMS = gmtkViz gmtkViz.app
 
@@ -199,7 +200,7 @@ gmtkModelInfo_SOURCES = gmtkModelInfo.cc
 gmtkTFmerge_SOURCES = gmtkTFmerge.cc
 gmtkDTindex_SOURCES = gmtkDTindex.cc
 gmtkNGramIndex_SOURCES = gmtkNGramIndex.cc
-
+gmtkOnline_SOURCES = gmtkOnline.cc
 
 #gmtkUnroll_SOURCES = gmtkUnroll.o  libGMTK.a ../miscSupport/libmiscSupport.a .NOEXPORT
 #	-@rm -f $@
@@ -236,12 +237,15 @@ endif
 check_PROGRAMS =  \
 testPackCliqueValue \
 testViterbi \
-neghead
+neghead \
+dlinktest
 
 # testMDCPT testMTCPT
 #testRngDecisionTree testGMParms testFileParser lex.yy
 # testHash testHashTree?
 
+
+dlinktest_SOURCES = dlinktest.cc
 
 testViterbi_SOURCES = testViterbi.ll
 
