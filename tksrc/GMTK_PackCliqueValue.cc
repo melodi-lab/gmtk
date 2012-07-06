@@ -431,6 +431,7 @@ PackCliqueValue::init(const unsigned *const cards, const bool useNaive)
 
   if (useNaive || numUnsignedInPackedVector == 1) {
     // splits = findNaive(bins,ints);
+    (void) findNaive(bins,ints);
   } else {
     vector<binAssignment> ints1 = ints;
     for (unsigned i=0;i<numUnsignedInPackedVector;i++) {
