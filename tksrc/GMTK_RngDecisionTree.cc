@@ -50,6 +50,41 @@
 VCID(HGID)
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * RngDecisionTree::getSourceString()
+ *      For iterable DTs, returns "dtFileName(curName) #dtNum"
+ *      For non-iterable, returns just dtFileName
+ *
+ * Preconditions:
+ *      DT read in from file
+ *
+ * Postconditions:
+ *
+ * Side Effects:
+ *      none
+ *
+ * Results:
+ *      returns the origin of the DT 
+ *-----------------------------------------------------------------------
+ */
+string 
+RngDecisionTree::getSourceString() {
+  string dtSourceString; 
+  if (iterable()) { 
+    dtSourceString.append(dtFile->fileName()); 
+    dtSourceString.append("("); 
+    dtSourceString.append(curName + ") #"); 
+    stringstream out; 
+    out << dtNum; 
+    dtSourceString.append(out.str()); 
+  } else {
+    dtSourceString.append(dtFileName);
+  }
+  return dtSourceString;
+}
+
+
 /////////////////////////////////////////////////////////////////////
 // File extension for compiled DT files 
 /////////////////////////////////////////////////////////////////////
@@ -445,7 +480,7 @@ RngDecisionTree::seek(
   indexFile->read(numIndexDTs, "num index DTs");
 
   if (numIndexDTs != numDTs) {
-      error("ERROR: Index file '%s' lists '%d' decision trees does match '%s' which lists '%d'\n",
+      error("ERROR: Index file '%s' lists '%d' decision trees doesn't match '%s' which lists '%d'\n",
         indexFileName.c_str(), numIndexDTs, dtFileName.c_str(), numDTs );
   }
  
@@ -1134,7 +1169,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
       dtSourceString.append(out.str());
     }
 
-    const char* const missingParentErrorString = "ERROR: Reference to non-existant parent variable in formula in DT %s in %s. Asking for parent %d but only parents 0 through %d are available.\n";
+    const char* const missingParentErrorString = "ERROR: Reference to non-existant parent variable in formula in DT '%s' in '%s'. Asking for parent %d but only parents 0 through %d are available.\n";
     //    const char* const dtSourceFile = dt.dtFile ? dtSourceString.c_str() : "master file";
     const char* const dtSourceFile = dt.iterable() ? dtSourceString.c_str() : 
                                                      dt.dtFileName.c_str();
@@ -1270,7 +1305,8 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_DIVIDE_CEIL:
         last = stack.stackSize() - 1;
         if (stack[last] == 0) {
-          error("ERROR:  Divide by zero error\n"); 
+          error("ERROR:  Divide by zero error in DT '%s' in '%s'\n", 
+		dt.name().c_str(), dt.getSourceString().c_str()); 
         }
         stack[last-1] = (stack[last-1] + stack[last] - 1) / stack[last];
         stack.pop_back();
@@ -1279,7 +1315,8 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_DIVIDE_FLOOR:
         last = stack.stackSize() - 1;
         if (stack[last] == 0) {
-          error("ERROR:  Divide by zero error\n"); 
+          error("ERROR:  Divide by zero error in DT '%s' in '%s'\n", 
+		dt.name().c_str(), dt.getSourceString().c_str()); 
         }
         stack[last-1] = stack[last-1] / stack[last];
         stack.pop_back();
@@ -1288,7 +1325,8 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_DIVIDE_ROUND:
         last = stack.stackSize() - 1;
         if (stack[last] == 0) {
-          error("ERROR:  Divide by zero error\n"); 
+          error("ERROR:  Divide by zero error in DT '%s' in '%s'\n", 
+		dt.name().c_str(), dt.getSourceString().c_str()); 
         }
         stack[last-1] = (stack[last-1] + (stack[last]>>1)) / stack[last];
         stack.pop_back();
@@ -1551,7 +1589,8 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_MOD:
         last = stack.stackSize() - 1;
         if (stack[last] == 0) {
-          error("ERROR:  Mod by zero error\n"); 
+          error("ERROR:  Mod by zero error in DT '%s' in '%s'\n", 
+		dt.name().c_str(), dt.getSourceString().c_str()); 
         }
         stack[last-1] = stack[last-1] % stack[last];
         stack.pop_back();
@@ -2572,7 +2611,7 @@ RngDecisionTree::beginIterableDT()
   // first make sure this is a DT from file object
   //////////////////////////////////////////////////////////////////////
   if (!iterable()) {
-    error("ERROR: can't call beginIterableDT() for non-file DT");
+    error("ERROR: can't call beginIterableDT() for non-file DT '%s'", name().c_str());
   }
 
   //////////////////////////////////////////////////////////////////////
@@ -2626,7 +2665,7 @@ RngDecisionTree::nextIterableDT()
   // first make sure this is a DT from file object
   //////////////////////////////////////////////////////////////////////
   if (!iterable()) {
-    error("ERROR: can't call nextIterableDT() for non-file DT");
+    error("ERROR: can't call nextIterableDT() for non-file DT '%s'", name().c_str());
   }
 
   //////////////////////////////////////////////////////////////////////
@@ -3266,7 +3305,7 @@ bool RngDecisionTree::testFormula(
     error("   PARSE ERROR: %s", error_message );
   }
 
-  answer = node.ln_e().equation.evaluateFormula( name(), variables, child );
+  answer = node.ln_e().equation.evaluateFormula( *this, variables, child );
   printf("   Answer: %d   0x%x\n", answer, answer);
 
   if (answer == desired_answer) {

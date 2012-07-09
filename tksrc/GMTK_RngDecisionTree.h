@@ -127,6 +127,8 @@ protected:
   int              dtNum;      // the current DT number
   string           curName;    // the current DT name
   unsigned         firstDT;    // index of the first decision tree
+
+  string getSourceString();
  
   ///////////////////////////////////////////////////////////////////////////   
   // Equation Parsing 
