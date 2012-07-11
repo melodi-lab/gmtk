@@ -48,6 +48,7 @@
 #include "GMTK_JunctionTree.h"
 #include "GMTK_GraphicalModel.h"
 #include "GMTK_NetworkFlowTriangulate.h"
+#include "GMTK_CountIterator.h"
 
 #if HAVE_CONFIG_H
 #include <config.h>
@@ -585,10 +586,11 @@ computeFillIn(const set<RV*>& nodes)
     // TODO: figure out if there is a way to just to compute
     // the size of the set intersection rather than to
     // actually produce the set intersection and then use its size.
-    set<RV*> tmp;
+    // Done - RR 7/11/12
+    count_iterator<set <RV*> > tmp;
     set_intersection(nodes.begin(),nodes.end(),
 		     (*j)->neighbors.begin(),(*j)->neighbors.end(),
-		     inserter(tmp,tmp.end()));
+		     tmp);
 
     // Nodes i and j should share the same neighbors except for
     // node i has j as a neighbor and node j has i as a
@@ -599,7 +601,7 @@ computeFillIn(const set<RV*>& nodes)
     //  but not tmp).
     // In otherwords, we have:
 
-    fill_in += (nodes.size() - 1 - tmp.size());
+    fill_in += (nodes.size() - 1 - tmp.count());
   }
   // counted each edge twice, so fix that (although not 
   // strictly necessary since we could just compute with 2*fill_in,
@@ -8245,11 +8247,11 @@ findBestInterfaceRecurse(
       // We ensure this condition by making sure that C2_1 is not a
       // proper subset of (left_C_l U {v}) = next_left_C_l.
 
-      set<RV*> tmp;      
+      count_iterator<set <RV*> > tmp;      
       set_difference(C2_1.begin(),C2_1.end(),
 		     next_left_C_l.begin(),next_left_C_l.end(),
-		     inserter(tmp,tmp.end()));
-      if (tmp.size() == 0)
+		     tmp);
+      if (tmp.count() == 0)
 	continue;
     }
 
