@@ -95,6 +95,7 @@ VCID(HGID)
 
 #define GMTK_ARG_INPUT_TRAINABLE_FILE_HANDLING
 #define GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG
+#define GMTK_ARG_DLOPEN_MAPPERS
 #define GMTK_ARG_OUTPUT_MASTER_FILE
 #define GMTK_ARG_OUTPUT_TRAINABLE_PARAMS
 #define GMTK_ARG_INPUT_TRAINABLE_PARAMS
@@ -217,6 +218,7 @@ main(int argc,char*argv[])
     infoMsg(IM::Tiny,"Finished reading trainable params file\n");
   }
   GM_Parms.finalizeParameters();  
+  dlopenDeterministicMaps(dlopenFilenames, MAX_NUM_DLOPENED_FILES);
 
   if (strFileName != NULL) {
     // load up the structure file as we might want

@@ -61,6 +61,7 @@ VCID(HGID)
 #include "GMTK_DlinkMatrix.h"
 
 #define GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG
+#define GMTK_ARG_DLOPEN_MAPPERS
 #define GMTK_ARG_OUTPUT_MASTER_FILE
 #define GMTK_ARG_OUTPUT_TRAINABLE_PARAMS
 
@@ -159,6 +160,7 @@ main(int argc,char*argv[])
     GM_Parms.readTrainable(pf);
   }
   GM_Parms.finalizeParameters();  
+  dlopenDeterministicMaps(dlopenFilenames, MAX_NUM_DLOPENED_FILES);
 
   if (strFileName != NULL) {
     // load up the structure file as we might want

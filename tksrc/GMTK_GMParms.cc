@@ -24,7 +24,9 @@
 #if HAVE_HG_H
 #include "hgstamp.h"
 #endif
-
+#if HAVE_DLFCN_H
+#include <dlfcn.h>
+#endif
 
 #include <math.h>
 #include <stdlib.h>
@@ -3758,6 +3760,74 @@ GMParms::commit_nc_changes()
 }
 
 
+
+
+void 
+dlopenDeterministicMaps(char **dlopenFilenames, unsigned maxFilenames) {
+  for (unsigned i=0; i < maxFilenames; i+=1) {
+    if (dlopenFilenames[i]) {
+#if HAVE_DLFCN_H
+      void *handle = dlopen(dlopenFilenames[i], RTLD_NOW|RTLD_LOCAL);
+      if (!handle) {
+	error("Failed to load '%s': %s", dlopenFilenames[i], dlerror());
+      }
+      dlerror(); // clear errors
+
+      // POSIX defines dlsym to return a void*. ISO C & C++ do not
+      // require that a void* can be cast to a function pointer,
+      // and there are architectures (including x86 in certain
+      // modes) where it's not possible (sizeof(void*) != 
+      // sizeof(function pointer)). So, such architectures/modes
+      // cannot be POSIX compliant. The union below avoids the
+      // compiler warning about this situation, but it assumes
+      // that the void* returned by dlsym can safely be cast to
+      // a function pointer.
+
+      typedef void (*register_t)();
+      assert(sizeof(void*) == sizeof(register_t)); // necessary, but not sufficient?
+      typedef union {
+        void *obj_ptr;
+        register_t fn_ptr;
+      } registerUnion;
+      registerUnion registerMappers;
+      registerMappers.obj_ptr = dlsym(handle, "registerMappers");
+
+      const char *dlsym_error = dlerror();
+      if (dlsym_error) {
+	error("Failed to find registerMappers() function in '%s': %s", dlopenFilenames[i], dlsym_error);
+      }
+      registerMappers.fn_ptr();
+      
+      
+      dlerror(); // clear errors
+      vector<CFunctionMapperType> *mapperFunctions = (vector<CFunctionMapperType> *) dlsym(handle, "mapperFunctions");
+      dlsym_error = dlerror();
+      if (dlsym_error) {
+	error("Failed to find mapperFunctions in '%s': %s", dlopenFilenames[i], dlsym_error);
+      }
+      
+      dlerror(); // clear errors
+      vector<unsigned>    *mapperNumFeatures = (vector<unsigned> *) dlsym(handle, "mapperNumFeatures");
+      if (dlsym_error) {
+	error("Failed to find mapperNumFeatures in '%s': %s", dlopenFilenames[i], dlsym_error);
+      }
+      
+      dlerror(); // clear errors
+      vector<char const*> *mapperNames = (vector<char const*> *) dlsym(handle, "mapperNames");
+      if (dlsym_error) {
+	error("Failed to find mapperNames in '%s': %s", dlopenFilenames[i], dlsym_error);
+      }
+      
+      for (unsigned j=0; j < mapperFunctions->size(); j+=1) {
+	infoMsg(IM::Moderate,"registering %s[%u] from %s\n", (*mapperNames)[j], (*mapperNumFeatures)[j], dlopenFilenames[i]);
+	GM_Parms.registerDeterministicCMapper((*mapperNames)[j], (*mapperNumFeatures)[j], (*mapperFunctions)[j]);
+      }
+#else
+      error("dynamic loading of mapping functions not supported");
+#endif
+    }
+  }
+}
 
 
 
