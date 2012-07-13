@@ -263,7 +263,33 @@ extern bool ObservationsAllowNan;
    Arg("inputMasterFile",Arg::Req,inputMasterFile,"Input file of multi-level master CPP processed GM input parameters"),
 #endif
 
-#elif defined(GMTK_ARGUMENTS_CHECK_ARGSo)
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#else
+#endif
+#endif // defined(GMTK_ARG_INPUT_MASTER_FILE)
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
+#if defined(GMTK_ARG_DLOPEN_MAPPERS)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+#include <vector>
+#include <dlfcn.h>
+
+#define MAX_NUM_DLOPENED_FILES (5)
+   char *dlopenFilenames[MAX_NUM_DLOPENED_FILES] = {NULL,NULL,NULL,NULL,NULL};
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+Arg("map",Arg::Opt,dlopenFilenames,"Deterministic mapping dynamic library file. Replace X with the file number",Arg::ARRAY,MAX_NUM_DLOPENED_FILES),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
 #else
 #endif
