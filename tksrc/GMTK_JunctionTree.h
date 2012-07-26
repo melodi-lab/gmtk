@@ -866,6 +866,16 @@ public:
   // namely \sum_hidden P(evidence,hidden)
   static bool viterbiScore;
 
+  // online filtering/smoothing needs to take some Viterbi code
+  // paths but not others (particularly it should not allocate O(T)
+  // memory for the Viterbi values, but it should call the Viterbi
+  // versions of the MaxClique DE routines and setup the hidRVVector
+  // in the PartitionStructures). JunctionTree::onlineViterbi is only
+  // true in gmtkOnline so it can take the necessary code paths where
+  // viterbiScore needs to be false to avoid the unwanted code paths.
+  static bool onlineViterbi;
+
+
   // range of cliques within each partition to print out when doing
   // CE/DE inference. If these are NULL, then we print nothing.
   BP_Range* pPartCliquePrintRange;
@@ -1106,7 +1116,11 @@ public:
 			  unsigned *numUsableFrames=NULL,
 			  bool limitTime=false,
 			  unsigned *numPartitionsDone=NULL,
-			  const bool noE=false);
+			  const bool noE=false,
+			  FILE *f=stdout,
+			  const bool printObserved=false,
+			  regex_t *preg=NULL,
+			  char *partRangeFilter=NULL);
 
   // simple call
   logpr probEvidence(const unsigned numFrames, unsigned& numUsableFrames) {
