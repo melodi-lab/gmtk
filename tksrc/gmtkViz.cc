@@ -4188,8 +4188,17 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 		// valid below we may mark it invalid
 		bool strFile_valid = true;
 		//these are just char * versions of the filenames
+#if 1
+                // Fix for strange wxWidgets wxString::char_str() issue
+                // See https://j.ee.washington.edu/trac/gmtk/ticket/349
+                wxCharBuffer str_cb = strFile.char_str(wxConvUTF8);
+                const char *strFile_cstr = str_cb.data();
+                wxCharBuffer gvp_cb = gvpFile.char_str(wxConvUTF8);
+                const char *gvpFile_cstr = gvp_cb.data();
+#else
 		char * strFile_cstr = strFile.char_str(wxConvUTF8);
 		char * gvpFile_cstr = gvpFile.char_str(wxConvUTF8);
+#endif
 		/* store the strFile name so that we can use it to in the FileParser
 		 * this way we only need to have 1 call to the FileParser, even
 		 * if we modify the tempFileName
