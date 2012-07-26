@@ -80,6 +80,7 @@ const char* JunctionTree::interfaceCliquePriorityStr = "W";
 
 bool JunctionTree::probEvidenceTimeExpired = false;
 bool JunctionTree::viterbiScore = false;
+bool JunctionTree::onlineViterbi = false;
 
 // default names of the three partitions for printing/debugging messages.
 const char* JunctionTree::P1_n = "P'";

@@ -123,7 +123,7 @@ PartitionStructures::PartitionStructures(JT_Partition& from_part,
     allrvs = res;
   }
 
-  if (JunctionTree::viterbiScore == true) {
+  if (JunctionTree::viterbiScore || JunctionTree::onlineViterbi) {
 
     // set up a few members that are needed for computing and storing
     // values of this partition.

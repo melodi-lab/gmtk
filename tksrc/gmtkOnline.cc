@@ -122,13 +122,17 @@ VCID(HGID)
 
 /****************************         INFERENCE OPTIONS           ***********************************************/
 #define GMTK_ARG_INFERENCE_OPTIONS
+#if 0
 #define GMTK_ARG_DO_DIST_EVIDENCE
 #define GMTK_ARG_PROB_EVIDENCE
+#endif
 #define GMTK_ARG_DEBUG_PART_RNG
 #define GMTK_ARG_CLIQUE_TABLE_NORMALIZE
 #define GMTK_ARG_CE_SEP_DRIVEN
 #define GMTK_ARG_MIXTURE_CACHE
+#if 0
 #define GMTK_ARG_VITERBI_SCORE
+#endif
 #define GMTK_ARG_CLIQUE_VAR_ITER_ORDERS
 #define GMTK_ARG_JT_OPTIONS
 #define GMTK_ARG_VE_SEPS
@@ -141,6 +145,9 @@ VCID(HGID)
 #define GMTK_ARG_OBS_MATRIX_OPTIONS
 #define GMTK_ARG_OBS_MATRIX_XFORMATION
 #endif
+
+/************************            DECODING OPTIONS                  ******************************************/
+#define GMTK_ARG_NEW_DECODING_OPTIONS
 
 #define GMTK_ARGUMENTS_DEFINITION
 #include "GMTK_Arguments.h"
@@ -387,6 +394,63 @@ main(int argc,char*argv[])
   Range* pdbrng = new Range(pdbrng_str,0,0x7FFFFFFF);
   myjt.setPartitionDebugRange(*pdbrng);
 
+#if 0
+  // We always do "viterbi" scoring/option in this program.
+  // This won't be a true viterbi score, since we only collect
+  // evidence from partitions [0,t] and distribute it over
+  // partition t, (ie, filtering). 
+  JunctionTree::viterbiScore = true;
+#else
+  // Setting JunctionTree::viterbiScore=true causes O(T) space
+  // to be allocated in JunctionTree::unroll(). This is particularly
+  // bad for gmtkOnline, since when T is unknown it uses a HUGE
+  // estimate of T until the true value is discovered. However,
+  // the inference routines need JT::viterbiScore set to true
+  // in order to properly implement filtering. So, I'll juggle
+  // the value around the JT::unroll() call in JT::onlineFixedUnroll()
+#endif
+
+  // online filtering/smoothing needs to take some Viterbi code
+  // paths but not others (particularly it should not allocate O(T)
+  // memory for the Viterbi values, but it should call the Viterbi
+  // versions of the MaxClique DE routines and setup the hidRVVector
+  // in the PartitionStructures). JunctionTree::onlineViterbi is only
+  // true in gmtkOnline so it can take the necessary code paths where
+  // viterbiScore needs to be false to avoid the unwanted code paths.
+  JunctionTree::onlineViterbi = true;
+  
+
+  // What is the difference between the pVit* files and the vit*
+  // files?  The pVit* files are similar to the vit* files, but the
+  // pVit print via partitions, while the vit* does a bunch more
+  // processing to give the illusion that there are only frames/slices
+  // rather than GMTK partitions (which could span any number of
+  // frames, even partial frames). Also, the vit files are more meant
+  // for users, while the pVit files are more meant for algorithm
+  // writters/debugging which is the reason that we have both of them
+  // here.
+  FILE* pVitValsFile = NULL;
+  if (pVitValsFileName) {
+    if (strcmp("-",pVitValsFileName) == 0)
+      pVitValsFile = stdout;
+    else {
+      if ((pVitValsFile = fopen(pVitValsFileName, "w")) == NULL)
+	error("Can't open file '%s' for writing\n",pVitValsFileName);
+    }
+  }
+
+  FILE* vitValsFile = NULL;
+  if (vitValsFileName) {
+    if (vitValsFileName && strcmp("-",vitValsFileName) == 0)
+      vitValsFile = stdout;
+    else {
+      if ((vitValsFile = fopen(vitValsFileName, "w")) == NULL)
+	error("Can't open file '%s' for writing\n",vitValsFileName);
+    }
+  }
+  if (!pVitValsFile && !vitValsFile) {
+    error("Argument Error: Missing REQUIRED argument: -pVitValsFile <str>  OR  -vitValsFile <str>\n");
+  }
 
   struct rusage rus; /* starting time */
   struct rusage rue; /* ending time */
@@ -395,7 +459,8 @@ main(int argc,char*argv[])
 
   for (; !gomSS->EOS(); ) {
     unsigned numUsableFrames;
-    logpr probe = myjt.onlineFixedUnroll(gomSS, &numUsableFrames);
+    logpr probe = myjt.onlineFixedUnroll(gomSS, &numUsableFrames, false, NULL, false, 
+					 pVitValsFile,pVitAlsoPrintObservedVariables, NULL, NULL);
     printf("Segment %d, after Filtering: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
 	   gomSS->segmentNumber(),
 	   probe.val(),

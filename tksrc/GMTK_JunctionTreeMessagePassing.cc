@@ -2422,7 +2422,11 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 				unsigned *numUsableFrames,
 				bool limitTime,
 				unsigned *numPartitionsDone,
-				const bool noE)
+				const bool noE,
+				FILE *f,
+				const bool printObserved,
+				regex_t *preg,
+				char *partRangeFilter)
 {
   // Unroll, but do not use the long table array (2nd parameter is
   // false) for allocation, but get back the long table length
@@ -2441,19 +2445,30 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
   //         but we want P'. Likewise C and E.  
   // gm_template.computeUnrollParameters(...,modifiedTemplateMinUnrollAmount,...)
   // might show the way
+
+  unsigned M = gm_template.M;
+  unsigned S = gm_template.S;
+
+  unsigned numFramesInPprime = fp.numFramesInP() + fp.numFramesInC() * M;
+  unsigned numFramesInCprime = fp.numFramesInC() * S;
+  unsigned numFramesInEprime = fp.numFramesInE() + fp.numFramesInC() * M;
+
   unsigned numPreloadFrames = Dlinks::globalMinLag() + 
-    fp.numFramesInP() + fp.numFramesInC() + fp.numFramesInE();
+    numFramesInPprime + 2 * numFramesInCprime + numFramesInEprime;
 
+printf("preaload %u frames\n", numPreloadFrames);
   globalObservationMatrix->preloadFrames(numPreloadFrames);
-
-
-  unsigned numCPrimeFrames = fp.numFramesInC(); // FIXME
 
   unsigned truePtLen = 0; // 0 until we know the true number of modified partitions
 
   {
     unsigned T = globalObservationMatrix->numFrames();
     unsigned tmp;
+#if 0
+    viterbiScore = true;
+#else
+    viterbiScore = false; // avoid allocating space for O(T) viterbi values in unroll()
+#endif
     if (T > 0) {
       // We already know the length of this segment (it's probably
       // very short, since we only try to pre-load enough frames to
@@ -2473,11 +2488,16 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
       // FIXME - this should be in stdint.h as arranged by autoconf
 #  define UINT32_MAX		(4294967295U)
 #endif
-      
+
+
       tmp = unroll(UINT32_MAX/8,ZeroTable,&totalNumberPartitions);
       // UINT32_MAX seems to cause overflow, so UINT32_MAX/2 instead      
     }
-    
+
+#if 1
+    viterbiScore = true;  // do compute viterbi values in deScatterOutofRoot()
+#endif
+
 printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
     
     if (numUsableFrames) 
@@ -2487,19 +2507,18 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
   if (numPartitionsDone)
     *numPartitionsDone = 0;
   
-  // set up our iterator
   // Set up our iterator, write over the member island iterator since
   // we assume the member does not have any dynamc sub-members.
-#if 0
-  new (&inference_it) online_ptps_iterator(*this,totalNumberPartitions);
-#else
   new (&inference_it) ptps_iterator(*this,totalNumberPartitions);
-#endif
+
   init_CC_CE_rvs(inference_it);
 
   PartitionTables* prev_part_tab = NULL;
   PartitionTables* cur_part_tab
     = new PartitionTables(inference_it.cur_jt_partition());
+
+  PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+      
 
   // we skip the first Co's LI separator if there is no P1
   // partition, since otherwise we'll get zero probability.
@@ -2512,6 +2531,13 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 		   inference_it.cur_message_order(),
 		   inference_it.cur_nm(),
 		   inference_it.pt_i());
+
+#if 1
+  // Set clique to most probable values given observations up to
+  // the current partition
+  cur_part_tab->maxCliques[inference_it.cur_ri()].
+    maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
+#endif
 
 #if 1
   // Send messages from the root clique to the rest of the cliques
@@ -2529,6 +2555,12 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 		     inference_it.cur_nm(),
 		     inference_it.pt_i());
 #endif
+
+#if 0
+  if (viterbiScore)
+    recordPartitionViterbiValue(inference_it);
+#endif
+
   // possibly print the P or C partition information
   if (inference_it.cur_part_clique_print_range() != NULL)
     printAllCliques(partitionStructureArray[inference_it.ps_i()],
@@ -2538,17 +2570,43 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 		    inference_it.cur_part_clique_print_range(),
 		    stdout,
 		    false);
+
+
+  // print filter values
+#if 0
+  if (ps.packer.packedLen() > 0)
+    ps.packer.unpack(C_partition_values.ptr
+		     + 
+		     (inference_it.pt_i()-1)*ps.packer.packedLen(),
+		     ps.hrvValuePtrs.ptr);
+#endif
+  fprintf(f,"Ptn-%d P': ", inference_it.pt_i());
+  if (printObserved && ps.allrvs.size() > 0) {
+    printRVSetAndValues(f,ps.allrvs,true,preg);
+  } else if (ps.packer.packedLen() > 0) {
+    printRVSetAndValues(f,ps.hidRVVector,true,preg);
+  }
+
+
+
   // if the LI separator was turned off, we need to turn it back on.
   if (inference_it.at_first_c() && P1.cliques.size() == 0)
     Co.useLISeparator();
 
-  for (unsigned part=1; part < inference_it.pt_len(); part ++ ) {
+  // FIXME - I think if C' and E' are empty (can that happen?), we
+  //   might never pick up the end of stream - enqueue P' frames here?
+
+
+  for (unsigned part=1; part < inference_it.pt_len(); part += 1 ) {
     delete prev_part_tab;
     prev_part_tab = cur_part_tab;
 
     setCurrentInferenceShiftTo(part);
     cur_part_tab
       = new PartitionTables(inference_it.cur_jt_partition());
+
+    PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+      
 
     // send from previous to current
     ceSendForwardsCrossPartitions(// previous partition
@@ -2586,6 +2644,11 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 		       inference_it.cur_message_order(),
 		       inference_it.cur_nm(),
 		       inference_it.pt_i());
+
+#if 1
+      cur_part_tab->maxCliques[inference_it.cur_ri()].
+	maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
+#endif
 #if 1
       // Send messages from the root clique to the rest of the cliques
       // in this partition so that they are consistant with the observations
@@ -2602,6 +2665,12 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 			 inference_it.cur_nm(),
 			 inference_it.pt_i());
 #endif
+
+#if 0
+      if (viterbiScore)
+	recordPartitionViterbiValue(inference_it);
+#endif
+
       // possibly print the P or C partition information
       if (inference_it.cur_part_clique_print_range() != NULL)
 	printAllCliques(partitionStructureArray[inference_it.ps_i()],
@@ -2611,6 +2680,25 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 			inference_it.cur_part_clique_print_range(),
 			stdout,
 			false);
+
+
+      // print filter values
+#if 0
+      if (ps.packer.packedLen() > 0)
+	ps.packer.unpack(C_partition_values.ptr
+			 + 
+			 (inference_it.pt_i()-1)*ps.packer.packedLen(),
+			 ps.hrvValuePtrs.ptr);
+#endif
+      fprintf(f,"Ptn-%d %c': ",inference_it.pt_i(), inference_it.at_e() ? 'E' : 'C');
+      if (printObserved && ps.allrvs.size() > 0) {
+	printRVSetAndValues(f,ps.allrvs,true,preg);
+      } else if (ps.packer.packedLen() > 0) {
+	printRVSetAndValues(f,ps.hidRVVector,true,preg);
+      }
+
+
+
     }
     if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
       E1.useLISeparator();
@@ -2627,10 +2715,13 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 
     // read in the same # of frames that we're about to consume to maintain
     // enough queued frames to be sure we don't overshoot the C'->E' transition
-    globalObservationMatrix->enqueueFrames(numCPrimeFrames); // FIXME - # of frames in C'
+    unsigned nQueued = globalObservationMatrix->enqueueFrames(numFramesInCprime);
 
     // update the ptps_iterator if we just found out the true length of the segment
     if (truePtLen == 0 && globalObservationMatrix->numFrames() != 0) {
+#if 0
+printf("learned T=%u at %u %u\n", globalObservationMatrix->numFrames(), part, inference_it.pt_i());
+#endif
       unsigned basicTempMaxUnrollAmnt;
       unsigned basicTempMinUnrollAmnt;
       int      modTempMaxUnrollAmnt;
@@ -2654,6 +2745,14 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
       inference_it.set_pt_len(truePtLen);
       if (numUsableFrames) 
 	*numUsableFrames = numUsableFrm;
+
+#if 0
+    if (nQueued != numFramesInCprime && nQueued != 0) {
+      error("Stream segment %u length %u is incompatible with model unrolling",
+	    globalObservationMatrix->segmentNumber(), 
+	    globalObservationMatrix->numFrames());
+    }
+#endif
     }
     
     

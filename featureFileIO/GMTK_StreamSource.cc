@@ -315,7 +315,9 @@ StreamSource::enqueueRawFrames(unsigned nFrames, bool &eos) {
       Data32 const *newFrame = stream[j]->getNextLogicalFrame();
       if (!newFrame && !eos) {
 	nFrames = i;
-//fprintf(stdout, "enqueueRawFrames: detected end of segement @ %u\n", nFrames);
+#if 0
+fprintf(stdout, "enqueueRawFrames: detected end of segement @ %u\n", nFrames);
+#endif
 	eos = true;
 	if (j != 0) {
 	  error("ERROR: StreamSource::enqueueRawFrames: streams disagree on length of current segment");
