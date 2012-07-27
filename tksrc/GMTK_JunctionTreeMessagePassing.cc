@@ -994,58 +994,65 @@ JunctionTree::ceGatherIntoRoot(PartitionStructures& ps,
     IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
   }
 
+  bool zeroClique = false;
+  try {
+    // Now, do partition messages.
+    for (unsigned msgNo=0;msgNo < message_order.size(); msgNo ++) {
+      const unsigned from = message_order[msgNo].first;
+      const unsigned to = message_order[msgNo].second;
+      infoMsg(IM::Inference, IM::Med+5,
+	      "CE: gathering into %s,part[%d]: clique %d\n",
+	      part_type_name,part_num,from);
 
-  // Now, do partition messages.
-  for (unsigned msgNo=0;msgNo < message_order.size(); msgNo ++) {
-    const unsigned from = message_order[msgNo].first;
-    const unsigned to = message_order[msgNo].second;
-    infoMsg(IM::Inference, IM::Med+5,
-	    "CE: gathering into %s,part[%d]: clique %d\n",
-	    part_type_name,part_num,from);
-
-    pt.maxCliques[from].
-      ceGatherFromIncommingSeparators(ps.maxCliquesSharedStructure[from],
-				      pt.separatorCliques,
-				      ps.separatorCliquesSharedStructure.ptr);
-  
-    infoMsg(IM::Inference, IM::Mod,
-	    "CE: message %s,part[%d]: clique %d --> clique %d\n",
-	    part_type_name,part_num,from,to);
-    pt.maxCliques[from].
-      ceSendToOutgoingSeparator(ps.maxCliquesSharedStructure[from],
-				pt.separatorCliques,
-				ps.separatorCliquesSharedStructure.ptr);
-
-    // TODO: if we are just computing probE here, we should delete
-    // memory in pt.maxCliques[from]. Also, if we're only doing probE,
-    // we should not keep the cliques around at all, only the outgoing
-    // separator.
-    if (clearWhenDone) {
       pt.maxCliques[from].
-	clearCliqueAndIncommingSeparatorMemory(ps.maxCliquesSharedStructure[from],
-					       pt.separatorCliques,
-					       ps.separatorCliquesSharedStructure.ptr);
+	ceGatherFromIncommingSeparators(ps.maxCliquesSharedStructure[from],
+					pt.separatorCliques,
+					ps.separatorCliquesSharedStructure.ptr);
+  
+      infoMsg(IM::Inference, IM::Mod,
+	      "CE: message %s,part[%d]: clique %d --> clique %d\n",
+	      part_type_name,part_num,from,to);
+      pt.maxCliques[from].
+	ceSendToOutgoingSeparator(ps.maxCliquesSharedStructure[from],
+				  pt.separatorCliques,
+				  ps.separatorCliquesSharedStructure.ptr);
 
-      if (alsoClearOrigins) {
-	// then clear out the origin memory used for inference.
-	ps.origin.clearCliqueAndIncommingSeparatorMemoryForClique(from); 
+      // TODO: if we are just computing probE here, we should delete
+      // memory in pt.maxCliques[from]. Also, if we're only doing probE,
+      // we should not keep the cliques around at all, only the outgoing
+      // separator.
+      if (clearWhenDone) {
+	pt.maxCliques[from].
+	  clearCliqueAndIncommingSeparatorMemory(ps.maxCliquesSharedStructure[from],
+						 pt.separatorCliques,
+						 ps.separatorCliquesSharedStructure.ptr);
+
+	if (alsoClearOrigins) {
+	  // then clear out the origin memory used for inference.
+	  ps.origin.clearCliqueAndIncommingSeparatorMemoryForClique(from); 
+	}
       }
     }
+  } catch (ZeroCliqueException &e) {
+    // pt.maxCliques[from].clearCliqueAndIncommingSeparatorMemory
+    // ps.origin.clearCliqueAndIncommingSeparatorMemoryForClique(from); 
+    zeroClique = true; // abort this partition & segment
   }
-  // collect to partition's root clique
-  infoMsg(IM::Inference, IM::Med+5,
-	  "CE: gathering into partition root %s,part[%d]: clique %d\n",
-	  part_type_name,part_num,root);
-  pt.maxCliques[root].
-    ceGatherFromIncommingSeparators(ps.maxCliquesSharedStructure[root],
-				    pt.separatorCliques,
-				    ps.separatorCliquesSharedStructure.ptr);
-
-
-  if (IM::messageGlb(IM::InferenceMemory, IM::Med+9)) {
-    pt.reportMemoryUsageTo(ps,stdout);
+  if (!zeroClique) {
+    // collect to partition's root clique
+    infoMsg(IM::Inference, IM::Med+5,
+	    "CE: gathering into partition root %s,part[%d]: clique %d\n",
+	    part_type_name,part_num,root);
+    pt.maxCliques[root].
+      ceGatherFromIncommingSeparators(ps.maxCliquesSharedStructure[root],
+				      pt.separatorCliques,
+				      ps.separatorCliquesSharedStructure.ptr);
+    
+    
+    if (IM::messageGlb(IM::InferenceMemory, IM::Med+9)) {
+      pt.reportMemoryUsageTo(ps,stdout);
+    }
   }
-
   if (! partitionDebugRange.contains((int)part_num)) {
 #if 0
     printf("ceGather [part %u]: raising inference level to %d\n", 
@@ -1054,6 +1061,7 @@ JunctionTree::ceGatherIntoRoot(PartitionStructures& ps,
     IM::setGlbMsgLevel(IM::InferenceMemory, inferenceMemoryDebugLevel);
     IM::setGlbMsgLevel(IM::Inference, inferenceDebugLevel);
   }
+  if (zeroClique) throw ZeroCliqueException(); // continue to abort segment
 }
 
 
