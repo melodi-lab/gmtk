@@ -1202,5 +1202,8 @@ public:
 
 };
 
+class ZeroCliqueException : exception {
+};
+
 #endif
 
