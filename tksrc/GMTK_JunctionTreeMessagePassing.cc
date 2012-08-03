@@ -2569,7 +2569,7 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 		    inference_it.cur_nm(),
 		    inference_it.cur_part_clique_print_range(),
 		    stdout,
-		    false);
+		    true);
 
 
   // print filter values
@@ -2679,7 +2679,7 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 			inference_it.cur_nm(),
 			inference_it.cur_part_clique_print_range(),
 			stdout,
-			false);
+			true);
 
 
       // print filter values
