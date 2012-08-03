@@ -2464,11 +2464,9 @@ printf("preaload %u frames\n", numPreloadFrames);
   {
     unsigned T = globalObservationMatrix->numFrames();
     unsigned tmp;
-#if 0
-    viterbiScore = true;
-#else
+
     viterbiScore = false; // avoid allocating space for O(T) viterbi values in unroll()
-#endif
+
     if (T > 0) {
       // We already know the length of this segment (it's probably
       // very short, since we only try to pre-load enough frames to
@@ -2493,10 +2491,6 @@ printf("preaload %u frames\n", numPreloadFrames);
       tmp = unroll(UINT32_MAX/8,ZeroTable,&totalNumberPartitions);
       // UINT32_MAX seems to cause overflow, so UINT32_MAX/2 instead      
     }
-
-#if 1
-    viterbiScore = true;  // do compute viterbi values in deScatterOutofRoot()
-#endif
 
 printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
     
@@ -2532,14 +2526,13 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 		   inference_it.cur_nm(),
 		   inference_it.pt_i());
 
-#if 1
   // Set clique to most probable values given observations up to
   // the current partition
   cur_part_tab->maxCliques[inference_it.cur_ri()].
     maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
-#endif
 
-#if 1
+  viterbiScore = true;  // do compute viterbi values in deScatterOutofRoot() (max-product semiring)
+
   // Send messages from the root clique to the rest of the cliques
   // in this partition so that they are consistant with the observations
   // in this partition. We originally wanted to send messages only to
@@ -2554,32 +2547,9 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 		     inference_it.cur_message_order(),
 		     inference_it.cur_nm(),
 		     inference_it.pt_i());
-#endif
 
-#if 0
-  if (viterbiScore)
-    recordPartitionViterbiValue(inference_it);
-#endif
+  // print filter ("Viterbi") values
 
-  // possibly print the P or C partition information
-  if (inference_it.cur_part_clique_print_range() != NULL)
-    printAllCliques(partitionStructureArray[inference_it.ps_i()],
-		    *cur_part_tab,
-		    inference_it.pt_i(),
-		    inference_it.cur_nm(),
-		    inference_it.cur_part_clique_print_range(),
-		    stdout,
-		    true);
-
-
-  // print filter values
-#if 0
-  if (ps.packer.packedLen() > 0)
-    ps.packer.unpack(C_partition_values.ptr
-		     + 
-		     (inference_it.pt_i()-1)*ps.packer.packedLen(),
-		     ps.hrvValuePtrs.ptr);
-#endif
   fprintf(f,"Ptn-%d P': ", inference_it.pt_i());
   if (printObserved && ps.allrvs.size() > 0) {
     printRVSetAndValues(f,ps.allrvs,true,preg);
@@ -2587,6 +2557,25 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
     printRVSetAndValues(f,ps.hidRVVector,true,preg);
   }
 
+  if (inference_it.cur_part_clique_print_range() != NULL) {
+    viterbiScore = false; // sum-product semiring
+    
+    deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
+		       *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
+		       inference_it.cur_ri(),
+		       inference_it.cur_message_order(),
+		       inference_it.cur_nm(),
+		       inference_it.pt_i());
+    
+    // possibly print the P or C partition information
+    printAllCliques(partitionStructureArray[inference_it.ps_i()],
+		    *cur_part_tab,
+		    inference_it.pt_i(),
+		    inference_it.cur_nm(),
+		    inference_it.cur_part_clique_print_range(),
+		    stdout,
+		    true);
+  }
 
 
   // if the LI separator was turned off, we need to turn it back on.
@@ -2595,7 +2584,6 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 
   // FIXME - I think if C' and E' are empty (can that happen?), we
   //   might never pick up the end of stream - enqueue P' frames here?
-
 
   for (unsigned part=1; part < inference_it.pt_len(); part += 1 ) {
     delete prev_part_tab;
@@ -2645,11 +2633,11 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 		       inference_it.cur_nm(),
 		       inference_it.pt_i());
 
-#if 1
       cur_part_tab->maxCliques[inference_it.cur_ri()].
 	maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
-#endif
-#if 1
+
+      viterbiScore = true;  // do compute viterbi values in deScatterOutofRoot() (max-product semiring)
+
       // Send messages from the root clique to the rest of the cliques
       // in this partition so that they are consistant with the observations
       // in this partition. We originally wanted to send messages only to
@@ -2664,32 +2652,10 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 			 inference_it.cur_message_order(),
 			 inference_it.cur_nm(),
 			 inference_it.pt_i());
-#endif
-
-#if 0
-      if (viterbiScore)
-	recordPartitionViterbiValue(inference_it);
-#endif
-
-      // possibly print the P or C partition information
-      if (inference_it.cur_part_clique_print_range() != NULL)
-	printAllCliques(partitionStructureArray[inference_it.ps_i()],
-			*cur_part_tab,
-			inference_it.pt_i(),
-			inference_it.cur_nm(),
-			inference_it.cur_part_clique_print_range(),
-			stdout,
-			true);
 
 
       // print filter values
-#if 0
-      if (ps.packer.packedLen() > 0)
-	ps.packer.unpack(C_partition_values.ptr
-			 + 
-			 (inference_it.pt_i()-1)*ps.packer.packedLen(),
-			 ps.hrvValuePtrs.ptr);
-#endif
+
       fprintf(f,"Ptn-%d %c': ",inference_it.pt_i(), inference_it.at_e() ? 'E' : 'C');
       if (printObserved && ps.allrvs.size() > 0) {
 	printRVSetAndValues(f,ps.allrvs,true,preg);
@@ -2697,6 +2663,25 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 	printRVSetAndValues(f,ps.hidRVVector,true,preg);
       }
 
+      // possibly print the P or C partition information
+      if (inference_it.cur_part_clique_print_range() != NULL) {
+	viterbiScore = false; // sum-product semiring
+	
+	deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
+			   *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
+			   inference_it.cur_ri(),
+			   inference_it.cur_message_order(),
+			   inference_it.cur_nm(),
+			   inference_it.pt_i());
+
+	printAllCliques(partitionStructureArray[inference_it.ps_i()],
+			*cur_part_tab,
+			inference_it.pt_i(),
+			inference_it.cur_nm(),
+			inference_it.cur_part_clique_print_range(),
+			stdout,
+			true);
+      }
 
 
     }
