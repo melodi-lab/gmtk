@@ -1553,12 +1553,19 @@ static bool localCliqueNormalization = false;
 #if defined(GMTK_ARG_CLIQUE_TABLE_NORMALIZE)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
+#if defined(GMTK_ARGUMENTS_ONLINE_NORMALIZATION)
+static float normalizeScoreEachClique = 0.0;
+#else
+static float normalizeScoreEachClique = MaxClique::normalizeScoreEachClique;
+#endif
+
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("cliqueTableNormalize",Arg::Opt,MaxClique::normalizeScoreEachClique,"Normalize scores of each clique right after its creation (increases dynamic range)."),
+  Arg("cliqueTableNormalize",Arg::Opt,normalizeScoreEachClique,"Normalize scores of each clique right after its creation (increases dynamic range)."),
 
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+    MaxClique::normalizeScoreEachClique = normalizeScoreEachClique;
 
     if (MaxClique::normalizeScoreEachClique < 0.0) {
       error("ERROR: -cliqueTableNormalize option must be non-negative\n");

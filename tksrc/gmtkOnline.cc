@@ -60,6 +60,9 @@
 
 VCID(HGID)
 
+// make default clique table normalization set max score to 0 (log 1)
+#define GMTK_ARGUMENTS_ONLINE_NORMALIZATION
+
 /*************************   INPUT OBSERVATION STREAM HANDLING  *******************************************/
 #define GMTK_ARG_STREAM_INPUT
 /*************************   INPUT TRAINABLE PARAMETER FILE HANDLING  *******************************************/
