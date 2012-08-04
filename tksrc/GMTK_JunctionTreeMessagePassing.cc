@@ -2493,8 +2493,11 @@ printf("preaload %u frames\n", numPreloadFrames);
     }
 
 printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
-    
-    if (numUsableFrames) 
+
+
+  viterbiScore = true;  // do compute viterbi values in deScatterOutofRoot() (max-product semiring)
+  
+  if (numUsableFrames) 
       *numUsableFrames = tmp;
     // limit scope of tmp.
   }
@@ -2530,8 +2533,6 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
   // the current partition
   cur_part_tab->maxCliques[inference_it.cur_ri()].
     maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
-
-  viterbiScore = true;  // do compute viterbi values in deScatterOutofRoot() (max-product semiring)
 
   // Send messages from the root clique to the rest of the cliques
   // in this partition so that they are consistant with the observations
@@ -2575,6 +2576,7 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 		    inference_it.cur_part_clique_print_range(),
 		    stdout,
 		    true);
+    viterbiScore = true;  // do compute viterbi values in deScatterOutofRoot() (max-product semiring)
   }
 
 
@@ -2636,8 +2638,6 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
       cur_part_tab->maxCliques[inference_it.cur_ri()].
 	maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
 
-      viterbiScore = true;  // do compute viterbi values in deScatterOutofRoot() (max-product semiring)
-
       // Send messages from the root clique to the rest of the cliques
       // in this partition so that they are consistant with the observations
       // in this partition. We originally wanted to send messages only to
@@ -2681,6 +2681,7 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 			inference_it.cur_part_clique_print_range(),
 			stdout,
 			true);
+	viterbiScore = true;  // do compute viterbi values in deScatterOutofRoot() (max-product semiring)
       }
 
 
