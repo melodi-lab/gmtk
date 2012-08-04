@@ -875,6 +875,8 @@ public:
   // viterbiScore needs to be false to avoid the unwanted code paths.
   static bool onlineViterbi;
 
+  // should printAllCliques() print scores or probabilities?
+  static bool normalizePrintedCliques;
 
   // range of cliques within each partition to print out when doing
   // CE/DE inference. If these are NULL, then we print nothing.

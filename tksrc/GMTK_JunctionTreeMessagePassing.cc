@@ -2139,7 +2139,7 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 		    inference_it.cur_nm(),
 		    inference_it.cur_part_clique_print_range(),
 		    stdout,
-		    false);
+		    normalizePrintedCliques);
   // if the LI separator was turned off, we need to turn it back on.
   if (inference_it.at_first_c() && P1.cliques.size() == 0)
     Co.useLISeparator();
@@ -2200,7 +2200,7 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 			inference_it.cur_nm(),
 			inference_it.cur_part_clique_print_range(),
 			stdout,
-			false);
+			normalizePrintedCliques);
     }
     if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
       E1.useLISeparator();
@@ -2290,7 +2290,7 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 		      ptps_it.cur_nm(),
 		      ptps_it.cur_part_clique_print_range(),
 		      stdout,
-		      false);
+		      normalizePrintedCliques);
 
     if (limitTime && probEvidenceTimeExpired)
       goto finished;
@@ -2389,7 +2389,7 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 		      ptps_it.cur_nm(),
 		      ptps_it.cur_part_clique_print_range(),
 		      stdout,
-		      false);
+		      normalizePrintedCliques);
 
   // root clique of last partition did not do partition, since it
   // never sent to next separator (since there is none). We explicitly
@@ -2575,7 +2575,7 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 		    inference_it.cur_nm(),
 		    inference_it.cur_part_clique_print_range(),
 		    stdout,
-		    true);
+		    normalizePrintedCliques);
     viterbiScore = true;  // do compute viterbi values in deScatterOutofRoot() (max-product semiring)
   }
 
@@ -2680,7 +2680,7 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 			inference_it.cur_nm(),
 			inference_it.cur_part_clique_print_range(),
 			stdout,
-			true);
+			normalizePrintedCliques);
 	viterbiScore = true;  // do compute viterbi values in deScatterOutofRoot() (max-product semiring)
       }
 
