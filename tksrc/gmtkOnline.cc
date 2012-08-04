@@ -121,7 +121,7 @@ VCID(HGID)
 #define GMTK_ARG_HELP
 #define GMTK_ARG_VERSION
 #define GMTK_ARG_CLIQUE_PRINT
-
+#define GMTK_ARG_CLIQUE_PRINT_NORMALIZE
 
 /****************************         INFERENCE OPTIONS           ***********************************************/
 #define GMTK_ARG_INFERENCE_OPTIONS

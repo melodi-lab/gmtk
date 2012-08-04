@@ -82,6 +82,8 @@ bool JunctionTree::probEvidenceTimeExpired = false;
 bool JunctionTree::viterbiScore = false;
 bool JunctionTree::onlineViterbi = false;
 
+bool JunctionTree::normalizePrintedCliques = true;
+
 // default names of the three partitions for printing/debugging messages.
 const char* JunctionTree::P1_n = "P'";
 const char* JunctionTree::Co_n = "C'";

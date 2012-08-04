@@ -125,7 +125,8 @@ StreamSource::preloadFrames(unsigned nFrames) {
   firstCookedFrameNum = 0;
   numFramesInSegment = 0;
   segmentNum += 1;
-  assert(enqueueFrames(nFrames) == nFrames);
+  //assert(enqueueFrames(nFrames) == nFrames);
+  (void) enqueueFrames(nFrames);
 }
 
 
