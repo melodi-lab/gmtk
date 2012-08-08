@@ -1004,6 +1004,7 @@ JunctionTree::ceGatherIntoRoot(PartitionStructures& ps,
 	      "CE: gathering into %s,part[%d]: clique %d\n",
 	      part_type_name,part_num,from);
 
+      // this may now throw an exception on zero clique errors - RR
       pt.maxCliques[from].
 	ceGatherFromIncommingSeparators(ps.maxCliquesSharedStructure[from],
 					pt.separatorCliques,
@@ -1034,8 +1035,6 @@ JunctionTree::ceGatherIntoRoot(PartitionStructures& ps,
       }
     }
   } catch (ZeroCliqueException &e) {
-    // pt.maxCliques[from].clearCliqueAndIncommingSeparatorMemory
-    // ps.origin.clearCliqueAndIncommingSeparatorMemoryForClique(from); 
     zeroClique = true; // abort this partition & segment
   }
   if (!zeroClique) {
@@ -1043,14 +1042,18 @@ JunctionTree::ceGatherIntoRoot(PartitionStructures& ps,
     infoMsg(IM::Inference, IM::Med+5,
 	    "CE: gathering into partition root %s,part[%d]: clique %d\n",
 	    part_type_name,part_num,root);
-    pt.maxCliques[root].
-      ceGatherFromIncommingSeparators(ps.maxCliquesSharedStructure[root],
-				      pt.separatorCliques,
-				      ps.separatorCliquesSharedStructure.ptr);
-    
-    
-    if (IM::messageGlb(IM::InferenceMemory, IM::Med+9)) {
-      pt.reportMemoryUsageTo(ps,stdout);
+    try {
+      pt.maxCliques[root].
+	ceGatherFromIncommingSeparators(ps.maxCliquesSharedStructure[root],
+					pt.separatorCliques,
+					ps.separatorCliquesSharedStructure.ptr);
+    } catch (ZeroCliqueException &e) {
+      zeroClique = true; // abort this partition & segment
+    }
+    if (!zeroClique) {
+      if (IM::messageGlb(IM::InferenceMemory, IM::Med+9)) {
+	pt.reportMemoryUsageTo(ps,stdout);
+      }
     }
   }
   if (! partitionDebugRange.contains((int)part_num)) {
@@ -1061,7 +1064,9 @@ JunctionTree::ceGatherIntoRoot(PartitionStructures& ps,
     IM::setGlbMsgLevel(IM::InferenceMemory, inferenceMemoryDebugLevel);
     IM::setGlbMsgLevel(IM::Inference, inferenceDebugLevel);
   }
-  if (zeroClique) throw ZeroCliqueException(); // continue to abort segment
+  if (zeroClique) {
+    throw ZeroCliqueException(); // continue to abort segment
+  }
 }
 
 

@@ -135,6 +135,7 @@ VCID(HGID)
 #define GMTK_ARG_CLIQUE_VAR_ITER_ORDERS
 #define GMTK_ARG_JT_OPTIONS
 #define GMTK_ARG_VE_SEPS
+#define GMTK_ARG_FAIL_ON_ZERO_CLIQUE
 
 /************************  OBSERVATION MATRIX TRANSFORMATION OPTIONS   ******************************************/
 #define GMTK_ARG_OBS_MATRIX_OPTIONS
@@ -398,73 +399,76 @@ main(int argc,char*argv[])
     const unsigned numFrames = GM_Parms.setSegment(segment);
     infoMsg(IM::Max,"Finished loading segment %d with %d frames.\n",segment,numFrames);
 
-
-    if (probE) {
-      unsigned numUsableFrames;
+    try {
+      if (probE) {
+	unsigned numUsableFrames;
       
-      // Range* bvrng = NULL;
-      // if (boostVerbosityRng != NULL)
-      // bvrng = new Range(bvrng,0,globalObservationMatrix.numSegments());
+	// Range* bvrng = NULL;
+	// if (boostVerbosityRng != NULL)
+	// bvrng = new Range(bvrng,0,globalObservationMatrix.numSegments());
 
-      // logpr probe = myjt.probEvidence(numFrames,numUsableFrames,bvrng,boostVerbosity);
+	// logpr probe = myjt.probEvidence(numFrames,numUsableFrames,bvrng,boostVerbosity);
 
-      infoMsg(IM::Max,"Beginning call to probability of evidence.\n");
-      logpr probe = myjt.probEvidenceFixedUnroll(numFrames,&numUsableFrames);
-      printf("Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	     segment,
-	     probe.val(),
-	     probe.val()/numFrames,
-	     probe.val()/numUsableFrames);
-    } else if (island) {
-      unsigned numUsableFrames;
+	infoMsg(IM::Max,"Beginning call to probability of evidence.\n");
+	logpr probe = myjt.probEvidenceFixedUnroll(numFrames,&numUsableFrames);
+	printf("Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+	       segment,
+	       probe.val(),
+	       probe.val()/numFrames,
+	       probe.val()/numUsableFrames);
+      } else if (island) {
+	unsigned numUsableFrames;
 
-      infoMsg(IM::Max,"Beginning call to island collect/distribute evidence.\n");
-      logpr probe = myjt.collectDistributeIsland(numFrames,
-						 numUsableFrames,
-						 base,
-						 lst,
-						 sqrtBase);
+	infoMsg(IM::Max,"Beginning call to island collect/distribute evidence.\n");
+	logpr probe = myjt.collectDistributeIsland(numFrames,
+						   numUsableFrames,
+						   base,
+						   lst,
+						   sqrtBase);
 
-      printf("Segment %d, after island Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	     segment,
-	     probe.val(),
-	     probe.val()/numFrames,
-	     probe.val()/numUsableFrames);
+	printf("Segment %d, after island Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+	       segment,
+	       probe.val(),
+	       probe.val()/numFrames,
+	       probe.val()/numUsableFrames);
 
-    } else {
+      } else {
 
-      infoMsg(IM::Max,"Beginning call to unroll\n");
-      unsigned numUsableFrames = myjt.unroll(numFrames);
-      infoMsg(IM::Low,"Collecting Evidence\n");
-      myjt.collectEvidence();
-      infoMsg(IM::Low,"Done Collecting Evidence\n");
-      logpr probe = myjt.probEvidence();
-      printf("Segment %d, after CE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	     segment,
-	     probe.val(),
-	     probe.val()/numFrames,
-	     probe.val()/numUsableFrames);
+	infoMsg(IM::Max,"Beginning call to unroll\n");
+	unsigned numUsableFrames = myjt.unroll(numFrames);
+	infoMsg(IM::Low,"Collecting Evidence\n");
+	myjt.collectEvidence();
+	infoMsg(IM::Low,"Done Collecting Evidence\n");
+	logpr probe = myjt.probEvidence();
+	printf("Segment %d, after CE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+	       segment,
+	       probe.val(),
+	       probe.val()/numFrames,
+	       probe.val()/numUsableFrames);
 
-      if (doDistributeEvidence) {
-	infoMsg(IM::Low,"Distributing Evidence\n");
-	myjt.distributeEvidence();
-	infoMsg(IM::Low,"Done Distributing Evidence\n");
+	if (doDistributeEvidence) {
+	  infoMsg(IM::Low,"Distributing Evidence\n");
+	  myjt.distributeEvidence();
+	  infoMsg(IM::Low,"Done Distributing Evidence\n");
 
-	if (JunctionTree::viterbiScore)
-	  infoMsg(IM::SoftWarning,"NOTE: Clique sums will be different since viteri option is active\n");
-	if (IM::messageGlb(IM::Low)) {
-	  myjt.printProbEvidenceAccordingToAllCliques();
-	  probe = myjt.probEvidence();
-	  printf("Segment %d, after DE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-		 segment,
-		 probe.val(),
-		 probe.val()/numFrames,
-		 probe.val()/numUsableFrames);
+	  if (JunctionTree::viterbiScore)
+	    infoMsg(IM::SoftWarning,"NOTE: Clique sums will be different since viteri option is active\n");
+	  if (IM::messageGlb(IM::Low)) {
+	    myjt.printProbEvidenceAccordingToAllCliques();
+	    probe = myjt.probEvidence();
+	    printf("Segment %d, after DE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+		   segment,
+		   probe.val(),
+		   probe.val()/numFrames,
+		   probe.val()/numUsableFrames);
+	  }
 	}
-      }
-      if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange)
-	myjt.printAllCliques(stdout,true,cliquePrintOnlyEntropy);
+	if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange)
+	  myjt.printAllCliques(stdout,true,cliquePrintOnlyEntropy);
 
+      }
+    } catch (ZeroCliqueException &e) {
+      warning("Segment %d aborted due to zero clique\n", segment);
     }
     (*dcdrng_it)++;
   }

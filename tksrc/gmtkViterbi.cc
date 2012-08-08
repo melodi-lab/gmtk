@@ -159,6 +159,7 @@ VCID(HGID)
 #define GMTK_ARG_CLIQUE_VAR_ITER_ORDERS
 #define GMTK_ARG_JT_OPTIONS
 #define GMTK_ARG_VE_SEPS
+#define GMTK_ARG_FAIL_ON_ZERO_CLIQUE
 
 /************************  OBSERVATION MATRIX TRANSFORMATION OPTIONS   ******************************************/
 #define GMTK_ARG_OBS_MATRIX_OPTIONS
@@ -451,82 +452,85 @@ main(int argc,char*argv[])
 
     const unsigned numFrames = GM_Parms.setSegment(segment);
 
-    logpr probe;
-    if (island) {
-      unsigned numUsableFrames;
-      myjt.collectDistributeIsland(numFrames,
-				   numUsableFrames,
-				   base,
-				   lst,
-				   sqrtBase,
-				   false, // run EM algorithm
-				   true,  // run viterbi algorithm
-				   false  // localCliqueNormalization, unused here.
-				   );
-      probe = myjt.curProbEvidenceIsland();
-      printf("Segment %d, after Island, viterbi log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	     segment,
-	     probe.val(),
-	     probe.val()/numFrames,
-	     probe.val()/numUsableFrames);
-      if (probe.not_essentially_zero()) {
-	total_data_prob *= probe;
-      }
-    } else {
-      // linear space inference
-      unsigned numUsableFrames = myjt.unroll(numFrames);
-      infoMsg(IM::Inference, IM::Med,"Collecting Evidence\n");
-      myjt.collectEvidence();
-      infoMsg(IM::Inference, IM::Med,"Done Collecting Evidence\n");
-      probe = myjt.probEvidence();
-      infoMsg(IM::Default,"Segment %d, after CE, viterbi log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	     segment,
-	     probe.val(),
-	     probe.val()/numFrames,
-	     probe.val()/numUsableFrames);
-      if (probe.essentially_zero()) {
-	infoMsg(IM::Default,"Skipping segment %d since probability is essentially zero\n",
-		segment);
+    try {
+      logpr probe;
+      if (island) {
+	unsigned numUsableFrames;
+	myjt.collectDistributeIsland(numFrames,
+				     numUsableFrames,
+				     base,
+				     lst,
+				     sqrtBase,
+				     false, // run EM algorithm
+				     true,  // run viterbi algorithm
+				     false  // localCliqueNormalization, unused here.
+				     );
+	probe = myjt.curProbEvidenceIsland();
+	printf("Segment %d, after Island, viterbi log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+	       segment,
+	       probe.val(),
+	       probe.val()/numFrames,
+	       probe.val()/numUsableFrames);
+	if (probe.not_essentially_zero()) {
+	  total_data_prob *= probe;
+	}
       } else {
-	myjt.setRootToMaxCliqueValue();
-	total_data_prob *= probe;
-	infoMsg(IM::Inference, IM::Low,"Distributing Evidence\n");
-	myjt.distributeEvidence();
-	infoMsg(IM::Inference, IM::Low,"Done Distributing Evidence\n");
+	// linear space inference
+	unsigned numUsableFrames = myjt.unroll(numFrames);
+	infoMsg(IM::Inference, IM::Med,"Collecting Evidence\n");
+	myjt.collectEvidence();
+	infoMsg(IM::Inference, IM::Med,"Done Collecting Evidence\n");
+	probe = myjt.probEvidence();
+	infoMsg(IM::Default,"Segment %d, after CE, viterbi log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+		segment,
+		probe.val(),
+		probe.val()/numFrames,
+		probe.val()/numUsableFrames);
+	if (probe.essentially_zero()) {
+	  infoMsg(IM::Default,"Skipping segment %d since probability is essentially zero\n",
+		  segment);
+	} else {
+	  myjt.setRootToMaxCliqueValue();
+	  total_data_prob *= probe;
+	  infoMsg(IM::Inference, IM::Low,"Distributing Evidence\n");
+	  myjt.distributeEvidence();
+	  infoMsg(IM::Inference, IM::Low,"Done Distributing Evidence\n");
+	}
       }
-    }
     
-    if (probe.essentially_zero())
-      warning("Segment %d: Not printing Viterbi values since segment has zero probability\n",
-	      segment);
-    else {
-      if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange)
-	myjt.printAllCliques(stdout,true,cliquePrintOnlyEntropy);
+      if (probe.essentially_zero())
+	warning("Segment %d: Not printing Viterbi values since segment has zero probability\n",
+		segment);
+      else {
+	if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange)
+	  myjt.printAllCliques(stdout,true,cliquePrintOnlyEntropy);
 
-      if (pVitValsFile) {
-	fprintf(pVitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
-		segment,numFrames,probe.val());
-	myjt.printSavedPartitionViterbiValues(pVitValsFile,
-					      pVitAlsoPrintObservedVariables,
-					      pVitPreg,
-					      pVitPartRangeFilter);
-      }
+	if (pVitValsFile) {
+	  fprintf(pVitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
+		  segment,numFrames,probe.val());
+	  myjt.printSavedPartitionViterbiValues(pVitValsFile,
+						pVitAlsoPrintObservedVariables,
+						pVitPreg,
+						pVitPartRangeFilter);
+	}
 
 #if 1     
-      if (pVitValsFile || pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange)
-	myjt.resetViterbiPrinting();
-      if (vitValsFile) {
-	fprintf(vitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
-		segment,numFrames,probe.val());
-	myjt.printSavedViterbiValues(vitValsFile,
-				     vitAlsoPrintObservedVariables,
-				     vitPreg,
-				     pVitPartRangeFilter);
-      }
+	if (pVitValsFile || pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange)
+	  myjt.resetViterbiPrinting();
+	if (vitValsFile) {
+	  fprintf(vitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
+		  segment,numFrames,probe.val());
+	  myjt.printSavedViterbiValues(vitValsFile,
+				       vitAlsoPrintObservedVariables,
+				       vitPreg,
+				       pVitPartRangeFilter);
+	}
 #endif
 
+      }
+    } catch (ZeroCliqueException &e) {
+      warning("Segment %d aborted due to zero clique\n", segment);
     }
-
     (*dcdrng_it)++;
   }
 
