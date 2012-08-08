@@ -332,6 +332,11 @@ public:
   //                by a short-length run of the program.
   static double normalizeScoreEachClique;
 
+
+  // if true, zero cliques abort GMTK. if false, only the segment is
+  // aborted and inference continues for the next segment
+  static bool failOnZeroClique;
+
   // @@@ need to take out, here for now to satisify STL call of vector.clear().
 #if 0
   MaxClique& operator=(const MaxClique& f) {

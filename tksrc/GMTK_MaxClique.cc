@@ -257,6 +257,8 @@ bool MaxClique::storeDeterministicChildrenInClique = true;
 
 double MaxClique::normalizeScoreEachClique = 1.0;
 
+bool MaxClique::failOnZeroClique = true;
+
 
 /*
  *
@@ -2493,6 +2495,11 @@ ceGatherFromIncommingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStru
   // TODO: rather than exit, pop back to the top and allow continuation and/or
   // beam expansion.
   if (numCliqueValuesUsed == 0) {
+    if (MaxClique::failOnZeroClique) 
+        error("ERROR: ZERO CLIQUE: clique with no entries. Final probability will be zero.\n");
+
+    // It looks like there's no cleanup to do here - the loop above just breaks
+    // without doing anything to cleanup the previous clique expansion tries. - RR
     warning("ZERO CLIQUE: clique with no entries. Final probability will be zero.\n");
     throw ZeroCliqueException();
   }
