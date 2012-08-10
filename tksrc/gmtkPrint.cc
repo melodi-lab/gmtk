@@ -1,10 +1,11 @@
 /*
- * gmtkJT.cc
- * produce a junction tree
+ * gmtkPrint.cc
  *
- * Written by Jeff Bilmes <bilmes@ee.washington.edu>
+ * A GMTK program to print out Viterbi values from files written
+ * by gmtkViterbi with the -binaryViterbiFile option
  *
- * Copyright (c) 2001, < fill in later >
+ *
+ * Copyright (c) 2012, < fill in later >
  *
  * Permission to use, copy, modify, and distribute this
  * software and its documentation for any non-commercial purpose
@@ -15,14 +16,13 @@
  *
  */
 
-
 #if HAVE_CONFIG_H
 #include <config.h>
 #endif
 #if HAVE_HG_H
 #include "hgstamp.h"
 #endif
-
+  
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -30,7 +30,11 @@
 #include <string.h>
 #include <float.h>
 #include <assert.h>
-#include <time.h>
+#include <regex.h>
+
+// TODO: remove next 2 eventually 
+#include <iostream>
+#include <fstream>
 
 #include "general.h"
 #include "error.h"
@@ -40,7 +44,11 @@
 #include "ieeeFPsetup.h"
 #include "version.h"
 
+
 #include "GMTK_WordOrganization.h"
+
+VCID(HGID)
+
 
 #include "GMTK_FileParser.h"
 #include "GMTK_RV.h"
@@ -58,9 +66,7 @@
 #include "GMTK_BoundaryTriangulate.h"
 #include "GMTK_JunctionTree.h"
 #include "GMTK_MaxClique.h"
-
-VCID(HGID)
-
+#include "GMTK_Signals.h"
 
 
 /*****************************   OBSERVATION INPUT FILE HANDLING   **********************************************/
@@ -89,22 +95,16 @@ VCID(HGID)
 #define GMTK_ARG_VAR_FLOOR_ON_READ
 
 
-/*************************          BEAM PRUNING OPTIONS              *******************************************/
-#define GMTK_ARG_BEAM_PRUNING_OPTIONS
-#define GMTK_ARG_CBEAM
-#define GMTK_ARG_CPBEAM
-#define GMTK_ARG_CKBEAM
-#define GMTK_ARG_CCBEAM
-#define GMTK_ARG_CRBEAM
-#define GMTK_ARG_CMBEAM
-#define GMTK_ARG_SBEAM
-
 /*************************          MEMORY MANAGEMENT OPTIONS         *******************************************/
 #define GMTK_ARG_MEMORY_MANAGEMENT_OPTIONS
 #define GMTK_ARG_HASH_LOAD_FACTOR
 #define GMTK_ARG_STORE_DETERMINISTIC_CHILDREN
 #define GMTK_ARG_CLEAR_CLIQUE_VAL_MEM
 #define GMTK_ARG_USE_MMAP
+
+/*************************          INFERENCE OPTIONS                 *******************************************/
+#define GMTK_ARG_CLIQUE_VAR_ITER_ORDERS
+#define GMTK_ARG_DEBUG_PART_RNG
 
 /****************************      FILE RANGE OPTIONS             ***********************************************/
 #define GMTK_ARG_FILE_RANGE_OPTIONS
@@ -120,45 +120,27 @@ VCID(HGID)
 #define GMTK_ARG_VERSION
 #define GMTK_ARG_CLIQUE_PRINT
 
-
-/****************************         INFERENCE OPTIONS           ***********************************************/
-#define GMTK_ARG_INFERENCE_OPTIONS
-#define GMTK_ARG_DO_DIST_EVIDENCE
-#define GMTK_ARG_PROB_EVIDENCE
-#define GMTK_ARG_ISLAND
-#define GMTK_ARG_DEBUG_PART_RNG
-#define GMTK_ARG_DEBUG_INCREMENT
-#define GMTK_ARG_CLIQUE_TABLE_NORMALIZE
-#define GMTK_ARG_CE_SEP_DRIVEN
-#define GMTK_ARG_MIXTURE_CACHE
-#define GMTK_ARG_VITERBI_SCORE
-#define GMTK_ARG_CLIQUE_VAR_ITER_ORDERS
-#define GMTK_ARG_JT_OPTIONS
-#define GMTK_ARG_VE_SEPS
-
 /************************  OBSERVATION MATRIX TRANSFORMATION OPTIONS   ******************************************/
 #define GMTK_ARG_OBS_MATRIX_OPTIONS
 #define GMTK_ARG_OBS_MATRIX_XFORMATION
+
+/************************            DECODING OPTIONS                  ******************************************/
+#define GMTK_ARG_NEW_DECODING_OPTIONS
+
+// should be made conditional on having setrlimit available
+#define GMTK_ARG_RESOURCE_OPTIONS
+#define GMTK_ARG_RLIMIT_PARAMS
 
 #define GMTK_ARGUMENTS_DEFINITION
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_DEFINITION
 
-#if 0
-static unsigned boostVerbosity=0;
-const static char *boostVerbosityRng=NULL;
-#endif
 
 Arg Arg::Args[] = {
 
 #define GMTK_ARGUMENTS_DOCUMENTATION
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_DOCUMENTATION
-
-#if 0
-  Arg("boostVerbosity",Arg::Opt,boostVerbosity,"Verbosity (0 <= v <= 100) during boost verb partitions"),
-  Arg("boostRng",Arg::Opt,boostVerbosityRng,"Range to boost verbosity"),
-#endif
 
   // final one to signal the end of the list
   Arg()
@@ -178,7 +160,7 @@ ObservationMatrix globalObservationMatrix;
 
 int
 main(int argc,char*argv[])
-{{ // use double so that we can destruct objects at end.
+{
 
   ////////////////////////////////////////////
   // set things up so that if an FP exception
@@ -186,29 +168,21 @@ main(int argc,char*argv[])
   // or divide by zero, we actually get a FPE
   ieeeFPsetup();
   set_new_handler(memory_error);
+  InstallSignalHandlers();
 
   CODE_TO_COMPUTE_ENDIAN;
-
-
+   
   ////////////////////////////////////////////
   // parse arguments
   bool parse_was_ok = Arg::parse(argc,(char**)argv,
-"\nThis program computes the probability of evidence, and can also\n"
-"compute the posterior distributions of the hidden variables\n");
+"\nThis program determines the most likely values of the hidden variabls\n");
   if(!parse_was_ok) {
-    // Arg::usage(); 
-    exit(-1);
+    Arg::usage(); exit(-1);
   }
-
-  infoMsg(IM::Max,"Finished parsing arguments\n");
 
 #define GMTK_ARGUMENTS_CHECK_ARGS
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_CHECK_ARGS
-
-
-
-  infoMsg(IM::Max,"Opening Files ...\n");
 
   globalObservationMatrix.openFiles(nfiles,
 				    (const char**)&ofs,
@@ -230,9 +204,8 @@ main(int argc,char*argv[])
 				    Ftr_Combo,
 				    (const char**)&sr,
 				    (const char**)&prepr,
-				    gpr_str);
-
-  infoMsg(IM::Max,"Finished opening files.\n");
+				    gpr_str
+				    );
 
 
   /////////////////////////////////////////////
@@ -240,43 +213,34 @@ main(int argc,char*argv[])
 
   if (inputMasterFile) {
     // flat, where everything is contained in one file, always ASCII
-    infoMsg(IM::Max,"Reading master file...\n");
     iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
     GM_Parms.read(pf);
-    infoMsg(IM::Max,"Finished reading master file.\n");
   }
+
   if (inputTrainableParameters) {
     // flat, where everything is contained in one file
-    infoMsg(IM::Max,"Reading trainable file...\n");
     iDataStreamFile pf(inputTrainableParameters,binInputTrainableParameters,true,cppCommandOptions);
     GM_Parms.readTrainable(pf);
-    infoMsg(IM::Max,"Finished reading trainable file.\n");
   }
-  GM_Parms.finalizeParameters();
 
+  // comment for now Sun Jan 11 09:47:23 2004
+  GM_Parms.finalizeParameters();
 
   /////////////////////////////
   // read in the structure of the GM, this will
   // die if the file does not exist.
-  infoMsg(IM::Max,"Reading structure file...\n");
   FileParser fp(strFileName,cppCommandOptions);
   infoMsg(IM::Tiny,"Finished reading in all parameters and structures\n");
 
   // parse the file
-  infoMsg(IM::Max,"Parsing structure file...\n");
   fp.parseGraphicalModel();
-
   // create the rv variable objects
-  infoMsg(IM::Max,"Creating rv objects...\n");
   fp.createRandomVariableGraph();
-
-
   // Make sure that there are no directed loops in the graph.
-  infoMsg(IM::Max,"Checking template...\n");
   fp.ensureValidTemplate();
 
-  // link the RVs with the parameters.
-  infoMsg(IM::Max,"Allocating cpts...\n");
+  // link the RVs with the parameters that are contained in
+  // the bn1_gm.dt file.
   if (allocateDenseCpts >= 0) {
     if (allocateDenseCpts == 0)
       fp.associateWithDataParams(FileParser::noAllocate);
@@ -292,17 +256,10 @@ main(int argc,char*argv[])
 
   // make sure that all observation variables work
   // with the global observation stream.
-  infoMsg(IM::Max,"Checking consistency between cpts and observations...\n");
   fp.checkConsistentWithGlobalObservationStream();
   GM_Parms.checkConsistentWithGlobalObservationStream();
 
   GM_Parms.setStride(globalObservationMatrix.stride());
-
-
-  /////
-  // TODO: check that beam is a valid value.
-  // logpr pruneRatio;
-  // pruneRatio.valref() = -beam;
 
   // Utilize both the partition information and elimination order
   // information already computed and contained in the file. This
@@ -315,23 +272,18 @@ main(int argc,char*argv[])
     tri_file = string(strFileName) + GMTemplate::fileExtension;
   else 
     tri_file = string(triFileName);
-
-  infoMsg(IM::Max,"Creating template...\n");
   GMTemplate gm_template(fp);
-  {
-    infoMsg(IM::Max,"Reading triangulation file...\n");
 
+
+  {
     // do this in scope so that is gets deleted now rather than later.
     iDataStreamFile is(tri_file.c_str());
     if (!fp.readAndVerifyGMId(is,checkTriFileCards))
       error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",tri_file.c_str(),strFileName);
-
+    
     gm_template.readPartitions(is);
     gm_template.readMaxCliques(is);
-
   }
-
-  infoMsg(IM::Max,"Triangulating graph...\n");
   gm_template.triangulatePartitionsByCliqueCompletion();
   if (1) { 
     // check that graph is indeed triangulated.
@@ -350,11 +302,8 @@ main(int argc,char*argv[])
   // CREATE JUNCTION TREE DATA STRUCTURES
   infoMsg(IM::Default,"Creating Junction Tree\n"); fflush(stdout);
   JunctionTree myjt(gm_template);
-
   myjt.setUpDataStructures(varPartitionAssignmentPrior,varCliqueAssignmentPrior);
-
   myjt.prepareForUnrolling();
-
   if (jtFileName != NULL)
     myjt.printAllJTInfo(jtFileName);
 
@@ -362,121 +311,155 @@ main(int argc,char*argv[])
   infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
   ////////////////////////////////////////////////////////////////////
 
-  if (globalObservationMatrix.numSegments()==0)
-    error("ERROR: no segments are available in observation file");
 
-  if (IM::messageGlb(IM::Giga)) { 
-    gm_template.reportScoreStats();
+  if (globalObservationMatrix.numSegments()==0) {
+    infoMsg(IM::Default,"ERROR: no segments are available in observation file. Exiting...");
+    exit_program_with_status(0);
   }
 
   Range* dcdrng = new Range(dcdrng_str,0,globalObservationMatrix.numSegments());
-  if (dcdrng->length() <= 0) {
-    infoMsg(IM::Default,"Training range '%s' specifies empty set. Exiting...\n",
+  if (dcdrng->length() == 0) { 
+    error("Decoding range must specify a non-zero length range. Range given is %s\n",
 	  dcdrng_str);
-    exit_program_with_status(0);
   }
+
+  logpr total_data_prob = 1.0;
+
+  // FIXME - make this required for gmtkPrint
+  if (!JunctionTree::binaryViterbiFile) {
+    error("Argument Error: Missing REQUIRED argument: -binaryViterbiFile <str>\n");
+  }
+  // What is the difference between the pVit* files and the vit*
+  // files?  The pVit* files are similar to the vit* files, but the
+  // pVit print via partitions, while the vit* does a bunch more
+  // processing to give the illusion that there are only frames/slices
+  // rather than GMTK partitions (which could span any number of
+  // frames, even partial frames). Also, the vit files are more meant
+  // for users, while the pVit files are more meant for algorithm
+  // writters/debugging which is the reason that we have both of them
+  // here.
+  FILE* pVitValsFile = NULL;
+  if (pVitValsFileName) {
+    if (strcmp("-",pVitValsFileName) == 0)
+      pVitValsFile = stdout;
+    else {
+      if ((pVitValsFile = fopen(pVitValsFileName, "w")) == NULL)
+	error("Can't open file '%s' for writing\n",pVitValsFileName);
+    }
+  }
+#if 1
+  FILE* vitValsFile = NULL;
+  if (vitValsFileName) {
+    if (vitValsFileName && strcmp("-",vitValsFileName) == 0)
+      vitValsFile = stdout;
+    else {
+      if ((vitValsFile = fopen(vitValsFileName, "w")) == NULL)
+	error("Can't open file '%s' for writing\n",vitValsFileName);
+    }
+  }
+  if (!pVitValsFile && !vitValsFile) {
+    error("Argument Error: Missing REQUIRED argument: -pVitValsFile <str>  OR  -vitValsFile <str> OR -binaryViterbiFile <str>\n");
+  }
+#endif
 
   
   Range* pdbrng = new Range(pdbrng_str,0,0x7FFFFFFF);
   myjt.setPartitionDebugRange(*pdbrng);
 
+  // We always do viterbi scoring/option in this program.
+  JunctionTree::viterbiScore = true;
 
   struct rusage rus; /* starting time */
   struct rusage rue; /* ending time */
   getrusage(RUSAGE_SELF,&rus);
 
-
+  total_data_prob = 1.0;
   Range::iterator* dcdrng_it = new Range::iterator(dcdrng->begin());
+    
+  regex_t *pVitPreg = NULL;
+  if (pVitRegexFilter != NULL) {
+    pVitPreg = (regex_t*) malloc(sizeof(regex_t));
+    const unsigned case_ignore = (pVitCaseSensitiveRegexFilter? 0 : REG_ICASE);
+    if (regcomp(pVitPreg,pVitRegexFilter,
+		REG_EXTENDED
+		| case_ignore
+		| REG_NOSUB
+		)) {
+      error("ERROR: problem with regular expression filter string '%s'\n",pVitRegexFilter);
+    }
+  }
+
+  regex_t *vitPreg = NULL;
+  if (vitRegexFilter != NULL) {
+    vitPreg = (regex_t*) malloc(sizeof(regex_t));
+    const unsigned case_ignore = (vitCaseSensitiveRegexFilter? 0 : REG_ICASE);
+    if (regcomp(vitPreg,vitRegexFilter,
+		REG_EXTENDED
+		| case_ignore
+		| REG_NOSUB
+		)) {
+      error("ERROR: problem with regular expression filter string '%s'\n",vitRegexFilter);
+    }
+  }
+
   while (!dcdrng_it->at_end()) {
     const unsigned segment = (unsigned)(*(*dcdrng_it));
     if (globalObservationMatrix.numSegments() < (segment+1)) 
-      error("ERROR: only %d segments in file, segment must be in range [%d,%d]\n",
+      error("ERROR: only %d segments in file, decode range must be in range [%d,%d] inclusive\n",
 	    globalObservationMatrix.numSegments(),
 	    0,globalObservationMatrix.numSegments()-1);
 
-    infoMsg(IM::Max,"Loading segment %d ...\n",segment);
     const unsigned numFrames = GM_Parms.setSegment(segment);
-    infoMsg(IM::Max,"Finished loading segment %d with %d frames.\n",segment,numFrames);
 
+    //    unsigned numUsableFrames = myjt.unroll(numFrames);
 
-    if (probE) {
-      unsigned numUsableFrames;
-      
-      // Range* bvrng = NULL;
-      // if (boostVerbosityRng != NULL)
-      // bvrng = new Range(bvrng,0,globalObservationMatrix.numSegments());
+    if (pVitValsFile) {
+      fprintf(pVitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
+	      segment,numFrames,0.0/0.0);
+      myjt.printSavedPartitionViterbiValues(numFrames,
+					    JunctionTree::binaryViterbiFile,
+					    pVitValsFile,
+					    pVitAlsoPrintObservedVariables,
+					    pVitPreg,
+					    pVitPartRangeFilter);
+    }
 
-      // logpr probe = myjt.probEvidence(numFrames,numUsableFrames,bvrng,boostVerbosity);
-
-      infoMsg(IM::Max,"Beginning call to probability of evidence.\n");
-      logpr probe = myjt.probEvidenceFixedUnroll(numFrames,&numUsableFrames);
-      printf("Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	     segment,
-	     probe.val(),
-	     probe.val()/numFrames,
-	     probe.val()/numUsableFrames);
-    } else if (island) {
-      unsigned numUsableFrames;
-
-      infoMsg(IM::Max,"Beginning call to island collect/distribute evidence.\n");
-      logpr probe = myjt.collectDistributeIsland(numFrames,
-						 numUsableFrames,
-						 base,
-						 lst,
-						 sqrtBase);
-
-      printf("Segment %d, after island Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	     segment,
-	     probe.val(),
-	     probe.val()/numFrames,
-	     probe.val()/numUsableFrames);
-
-    } else {
-
-      infoMsg(IM::Max,"Beginning call to unroll\n");
-      unsigned numUsableFrames = myjt.unroll(numFrames);
-      infoMsg(IM::Low,"Collecting Evidence\n");
-      myjt.collectEvidence();
-      infoMsg(IM::Low,"Done Collecting Evidence\n");
-      logpr probe = myjt.probEvidence();
-      printf("Segment %d, after CE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	     segment,
-	     probe.val(),
-	     probe.val()/numFrames,
-	     probe.val()/numUsableFrames);
-
-      if (doDistributeEvidence) {
-	infoMsg(IM::Low,"Distributing Evidence\n");
-	myjt.distributeEvidence();
-	infoMsg(IM::Low,"Done Distributing Evidence\n");
-
-	if (JunctionTree::viterbiScore)
-	  infoMsg(IM::SoftWarning,"NOTE: Clique sums will be different since viteri option is active\n");
-	if (IM::messageGlb(IM::Low)) {
-	  myjt.printProbEvidenceAccordingToAllCliques();
-	  probe = myjt.probEvidence();
-	  printf("Segment %d, after DE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-		 segment,
-		 probe.val(),
-		 probe.val()/numFrames,
-		 probe.val()/numUsableFrames);
-	}
-      }
-      if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange)
-	myjt.printAllCliques(stdout,true,cliquePrintOnlyEntropy);
-
+    if (pVitValsFile || pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange)
+      myjt.resetViterbiPrinting();
+    if (vitValsFile) {
+      fprintf(vitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
+	      segment,numFrames,0.0/0.0);
+      myjt.printSavedViterbiValues(vitValsFile,
+				   vitAlsoPrintObservedVariables,
+				   vitPreg,
+				   pVitPartRangeFilter);
     }
     (*dcdrng_it)++;
   }
 
+  if (pVitPreg != NULL) {
+    regfree(pVitPreg);
+    free(pVitPreg);
+  }
+
+  infoMsg(IM::Default,"Total data log prob for all segments is: %1.9e\n",
+	  total_data_prob.val());
+
   getrusage(RUSAGE_SELF,&rue);
   if (IM::messageGlb(IM::Default)) { 
-    infoMsg(IM::Default,"### Final time (seconds) just for inference: ");
+    infoMsg(IM::Default,"### Final time (seconds) just for decoding stage: ");
     double userTime,sysTime;
     reportTiming(rus,rue,userTime,sysTime,stdout);
   }
 
-} // close brace to cause a destruct on valid end of program.
- exit_program_with_status(0); 
-}
+  if (pVitValsFile && pVitValsFile != stdout)
+    fclose(pVitValsFile);
+#if 1
+  if (vitValsFile && vitValsFile != stdout)
+    fclose(vitValsFile);
+#endif
+  if (JunctionTree::binaryViterbiFile)
+    fclose(JunctionTree::binaryViterbiFile);
 
+  exit_program_with_status(0);
+}

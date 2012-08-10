@@ -250,19 +250,93 @@ void
 JunctionTree::recordPartitionViterbiValue(ptps_iterator& it)
 {
   PartitionStructures& ps = partitionStructureArray[it.ps_i()];
-  if (ps.packer.packedLen() > 0)  {
+  unsigned partitionLength = ps.packer.packedLen();
+  if (partitionLength > 0)  {
     // if it is not greater than zero, then the partition has
     // no hidden discrete variables.
 
-    if (it.at_p()) {
-      ps.packer.pack(ps.hrvValuePtrs.ptr,P_partition_values.ptr);
-    } else if (it.at_e()) {
-      ps.packer.pack(ps.hrvValuePtrs.ptr,E_partition_values.ptr);
+    if (binaryViterbiFile) {
+      // Do a binary dump of the Viterbi values to a file
+      // in chronological order for later printing by a separate
+      // program. This is O(1) memory and O(T) disk space.
+
+      if (it.at_p()) {
+	if (fseeko(binaryViterbiFile, 0, SEEK_SET) == (off_t) -1) {
+	  char *err = strerror(errno);
+	  error("seek failed on '%s': %s\n", binaryViterbiFilename, err);
+	}	
+	ps.packer.pack(ps.hrvValuePtrs.ptr,P_partition_values.ptr);
+#if 0
+printf("P     %03u %08x", (unsigned) ftell(binaryViterbiFile), P_partition_values.ptr[0]);
+for (unsigned i=1; i < ps.packer.packedLen(); i+=1)
+  printf(" %08x", P_partition_values.ptr[i]);
+printf("\n");
+#endif
+	if (fwrite(P_partition_values.ptr, sizeof(unsigned), partitionLength, binaryViterbiFile) 
+	    != partitionLength) 
+	{
+	  char *err = strerror(errno);
+	  error("write failed on '%s': %s\n", binaryViterbiFilename, err);
+	}
+      } else if (it.at_e()) {
+	off_t offset = (off_t)  // P size + (T-2) * C size
+	  (   (   partitionStructureArray[0].packer.packedLen()       
+	        + partitionStructureArray[1].packer.packedLen() * it.num_c_partitions()  
+	      ) * sizeof(unsigned)   );                         
+	if (fseeko(binaryViterbiFile, offset, SEEK_SET) == (off_t) -1) {
+	  char *err = strerror(errno);
+	  error("seek failed on '%s': %s\n", binaryViterbiFilename, err);
+	}	
+	ps.packer.pack(ps.hrvValuePtrs.ptr,E_partition_values.ptr);
+#if 0
+printf("E %03llu %03u %08x", offset, (unsigned)ftell(binaryViterbiFile), E_partition_values.ptr[0]);
+for (unsigned i=1; i < ps.packer.packedLen(); i+=1)
+  printf(" %08x", E_partition_values.ptr[i]);
+printf("\n");
+#endif
+	if (fwrite(E_partition_values.ptr, sizeof(unsigned), partitionLength, binaryViterbiFile) 
+	    != partitionLength) 
+	{
+	  char *err = strerror(errno);
+	  error("write failed on '%s': %s\n", binaryViterbiFilename, err);
+	}
+      } else { // at a C partition
+	off_t offset = (off_t)  // P size + (t-1) * C size
+          (   (   partitionStructureArray[0].packer.packedLen()       
+		+ partitionLength * ( it.pt_i() - 1 )
+              ) * sizeof(unsigned)   );               
+	if (fseeko(binaryViterbiFile, offset, SEEK_SET) == (off_t) -1) {
+	  char *err = strerror(errno);
+	  error("seek failed on '%s': %s\n", binaryViterbiFilename, err);
+	}	
+	ps.packer.pack(ps.hrvValuePtrs.ptr, C_partition_values.ptr);  // stomp on old values to be O(1) memory
+#if 0
+printf("C %03llu %03u %08x", offset, (unsigned) ftell(binaryViterbiFile), C_partition_values.ptr[0]);
+for (unsigned i=1; i < ps.packer.packedLen(); i+=1)
+  printf(" %08x", C_partition_values.ptr[i]);
+printf("\n");
+#endif
+	if (fwrite(C_partition_values.ptr, sizeof(unsigned), partitionLength, binaryViterbiFile) 
+	    != partitionLength) 
+	{
+	  char *err = strerror(errno);
+	  error("write failed on '%s': %s\n", binaryViterbiFilename, err);
+	}
+      }      
     } else {
-      ps.packer.pack(ps.hrvValuePtrs.ptr,
-		     C_partition_values.ptr
-		     + 
-		     (it.pt_i()-1)*ps.packer.packedLen());
+      // Store the Viterbi values in ?_partition_values in O(T)
+      // memory for printing within this program.
+
+      if (it.at_p()) {
+	ps.packer.pack(ps.hrvValuePtrs.ptr,P_partition_values.ptr);
+      } else if (it.at_e()) {
+	ps.packer.pack(ps.hrvValuePtrs.ptr,E_partition_values.ptr);
+      } else {
+	ps.packer.pack(ps.hrvValuePtrs.ptr,
+		       C_partition_values.ptr
+		       + 
+		       (it.pt_i()-1)*partitionLength);
+      }
     }
   }
 }
@@ -304,7 +378,9 @@ JunctionTree::printSavedPartitionViterbiValues(FILE* f,
   if (partRangeFilter != NULL) {
     partRange = new Range(partRangeFilter,0,inference_it.pt_len());
     if (partRange->length() == 0) { 
-      warning("WARNING: Part range filter must specify a valid non-zero length range within [0:%d]. Range given is %s\n",inference_it.pt_len(),partRangeFilter);
+      warning("WARNING: Part range filter must specify a valid non-zero "
+	      "length range within [0:%d]. Range given is %s\n",
+	      inference_it.pt_len(),partRangeFilter);
       delete partRange;
       partRange = NULL;
     }
@@ -366,12 +442,99 @@ JunctionTree::printSavedPartitionViterbiValues(FILE* f,
 			     + 
 			     (inference_it.pt_i()-1)*ps.packer.packedLen(),
 			     ps.hrvValuePtrs.ptr);
-	  
 	  if (printObserved && ps.allrvs.size() > 0) {
 	    fprintf(f,"Ptn-%d C': ",part);
 	    printRVSetAndValues(f,ps.allrvs,true,preg);
 	  } else if (ps.packer.packedLen() > 0) {
 	    fprintf(f,"Ptn-%d C': ",part);
+	    printRVSetAndValues(f,ps.hidRVVector,true,preg);
+	  }
+	}
+      // previous_C = inference_it.pt_i();
+    }
+    (*partRange_it)++;
+  }
+  delete partRange;
+}
+
+
+
+/*
+ * This version of the above reads the Viterbi values from a file.
+ *
+ */
+void
+JunctionTree::printSavedPartitionViterbiValues(unsigned numFrames,
+					       FILE* vitFile,
+					       FILE* f,
+					       bool printObserved,
+					       regex_t* preg,
+					       char* partRangeFilter)
+{
+  unsigned totalNumberPartitions;
+  unsigned numFramesUsed = unroll(numFrames,ZeroTable,&totalNumberPartitions);
+
+  new (&inference_it) ptps_iterator(*this,totalNumberPartitions);
+  init_CC_CE_rvs(inference_it);
+
+  Range* partRange = NULL;
+  if (partRangeFilter != NULL) {
+    partRange = new Range(partRangeFilter,0,inference_it.pt_len());
+    if (partRange->length() == 0) { 
+      warning("WARNING: Part range filter must specify a valid non-zero length range "
+	      "within [0:%d]. Range given is %s\n",inference_it.pt_len(),partRangeFilter);
+      delete partRange;
+      partRange = NULL;
+    }
+  }
+  if (partRange == NULL)
+    partRange = new Range("all",0,inference_it.pt_len());
+
+  Range::iterator* partRange_it = new Range::iterator(partRange->begin());
+
+  while (!partRange_it->at_end()) {
+    unsigned part = (*partRange_it);
+    setCurrentInferenceShiftTo(part);
+    PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+
+    if (inference_it.at_p()) {
+      fread(P_partition_values.ptr, sizeof(unsigned), ps.packer.packedLen(), binaryViterbiFile);
+    } else if (inference_it.at_e()) {
+      fread(E_partition_values.ptr, sizeof(unsigned), ps.packer.packedLen(), binaryViterbiFile);
+    } else {
+      fread(C_partition_values.ptr, sizeof(unsigned), ps.packer.packedLen(), binaryViterbiFile);
+    }
+
+    if (inference_it.at_p()) {
+      // print P partition
+      if (ps.packer.packedLen() > 0) 
+	ps.packer.unpack(P_partition_values.ptr,ps.hrvValuePtrs.ptr);
+	fprintf(f,"Ptn-%d P': ",part);
+      if (printObserved && ps.allrvs.size() > 0) {
+	printRVSetAndValues(f,ps.allrvs,true,preg);
+      } else if (ps.packer.packedLen() > 0) {
+	printRVSetAndValues(f,ps.hidRVVector,true,preg);
+      }
+    } else if (inference_it.at_e()) {
+      // print E partition
+      if (ps.packer.packedLen() > 0) 
+	ps.packer.unpack(E_partition_values.ptr,ps.hrvValuePtrs.ptr);
+	fprintf(f,"Ptn-%d E': ",part);
+      if (printObserved && ps.allrvs.size() > 0) {
+	printRVSetAndValues(f,ps.allrvs,true,preg);
+      } else if (ps.packer.packedLen() > 0) {
+	printRVSetAndValues(f,ps.hidRVVector,true,preg);
+      }
+    } else {
+      assert ( inference_it.at_c() );      
+      // print C partition
+	{
+	  if (ps.packer.packedLen() > 0)
+	    ps.packer.unpack(C_partition_values.ptr, ps.hrvValuePtrs.ptr);
+	    fprintf(f,"Ptn-%d C': ",part);
+	  if (printObserved && ps.allrvs.size() > 0) {
+	    printRVSetAndValues(f,ps.allrvs,true,preg);
+	  } else if (ps.packer.packedLen() > 0) {
 	    printRVSetAndValues(f,ps.hidRVVector,true,preg);
 	  }
 	}

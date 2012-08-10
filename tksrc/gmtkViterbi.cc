@@ -132,7 +132,7 @@ VCID(HGID)
 #define GMTK_ARG_HASH_LOAD_FACTOR
 #define GMTK_ARG_STORE_DETERMINISTIC_CHILDREN
 #define GMTK_ARG_CLEAR_CLIQUE_VAL_MEM
-
+#define GMTK_ARG_USE_MMAP
 
 /****************************      FILE RANGE OPTIONS             ***********************************************/
 #define GMTK_ARG_FILE_RANGE_OPTIONS
@@ -165,6 +165,7 @@ VCID(HGID)
 #define GMTK_ARG_OBS_MATRIX_XFORMATION
 
 /************************            DECODING OPTIONS                  ******************************************/
+#define GMTK_VITERBI_FILE_WRITE
 #define GMTK_ARG_NEW_DECODING_OPTIONS
 
 // should be made conditional on having setrlimit available
@@ -369,6 +370,9 @@ main(int argc,char*argv[])
 
   logpr total_data_prob = 1.0;
 
+  if (JunctionTree::binaryViterbiFile && (pVitValsFileName || vitValsFileName)) {
+    error("Can't do both binary Viterbi output and -pVitValsFileName or -vitValsFileName");
+  }
   // What is the difference between the pVit* files and the vit*
   // files?  The pVit* files are similar to the vit* files, but the
   // pVit print via partitions, while the vit* does a bunch more
@@ -397,8 +401,8 @@ main(int argc,char*argv[])
 	error("Can't open file '%s' for writing\n",vitValsFileName);
     }
   }
-  if (!pVitValsFile && !vitValsFile) {
-    error("Argument Error: Missing REQUIRED argument: -pVitValsFile <str>  OR  -vitValsFile <str>\n");
+  if (!pVitValsFile && !vitValsFile && !JunctionTree::binaryViterbiFile) {
+    error("Argument Error: Missing REQUIRED argument: -pVitValsFile <str>  OR  -vitValsFile <str> OR -binaryViterbiFile <str>\n");
   }
 #endif
 
@@ -551,6 +555,8 @@ main(int argc,char*argv[])
   if (vitValsFile && vitValsFile != stdout)
     fclose(vitValsFile);
 #endif
+  if (JunctionTree::binaryViterbiFile)
+    fclose(JunctionTree::binaryViterbiFile);
 
   exit_program_with_status(0);
 }
