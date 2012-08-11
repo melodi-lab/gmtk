@@ -261,7 +261,7 @@ JunctionTree::recordPartitionViterbiValue(ptps_iterator& it)
       // program. This is O(1) memory and O(T) disk space.
 
       if (it.at_p()) {
-	if (fseeko(binaryViterbiFile, 0, SEEK_SET) == (off_t) -1) {
+	if (fseeko(binaryViterbiFile, binaryViterbiOffset, SEEK_SET) == (off_t) -1) {
 	  char *err = strerror(errno);
 	  error("seek failed on '%s': %s\n", binaryViterbiFilename, err);
 	}	
@@ -283,7 +283,7 @@ printf("\n");
 	  (   (   partitionStructureArray[0].packer.packedLen()       
 	        + partitionStructureArray[1].packer.packedLen() * it.num_c_partitions()  
 	      ) * sizeof(unsigned)   );                         
-	if (fseeko(binaryViterbiFile, offset, SEEK_SET) == (off_t) -1) {
+	if (fseeko(binaryViterbiFile, binaryViterbiOffset + offset, SEEK_SET) == (off_t) -1) {
 	  char *err = strerror(errno);
 	  error("seek failed on '%s': %s\n", binaryViterbiFilename, err);
 	}	
@@ -300,12 +300,17 @@ printf("\n");
 	  char *err = strerror(errno);
 	  error("write failed on '%s': %s\n", binaryViterbiFilename, err);
 	}
+	nextViterbiOffset = ftello(binaryViterbiFile); // remember where to start next segment
+	if (nextViterbiOffset == (off_t)-1) {
+	  char *err = strerror(errno);
+	  error("seek failed on '%s': %s\n", binaryViterbiFilename, err);
+	}
       } else { // at a C partition
 	off_t offset = (off_t)  // P size + (t-1) * C size
           (   (   partitionStructureArray[0].packer.packedLen()       
 		+ partitionLength * ( it.pt_i() - 1 )
               ) * sizeof(unsigned)   );               
-	if (fseeko(binaryViterbiFile, offset, SEEK_SET) == (off_t) -1) {
+	if (fseeko(binaryViterbiFile, binaryViterbiOffset + offset, SEEK_SET) == (off_t) -1) {
 	  char *err = strerror(errno);
 	  error("seek failed on '%s': %s\n", binaryViterbiFilename, err);
 	}	
@@ -380,7 +385,7 @@ JunctionTree::printSavedPartitionViterbiValues(FILE* f,
     if (partRange->length() == 0) { 
       warning("WARNING: Part range filter must specify a valid non-zero "
 	      "length range within [0:%d]. Range given is %s\n",
-	      inference_it.pt_len(),partRangeFilter);
+	      inference_it.pt_len(), partRangeFilter);
       delete partRange;
       partRange = NULL;
     }
@@ -472,7 +477,7 @@ JunctionTree::printSavedPartitionViterbiValues(unsigned numFrames,
 					       char* partRangeFilter)
 {
   unsigned totalNumberPartitions;
-  unsigned numFramesUsed = unroll(numFrames,ZeroTable,&totalNumberPartitions);
+  (void) unroll(numFrames,ZeroTable,&totalNumberPartitions);
 
   new (&inference_it) ptps_iterator(*this,totalNumberPartitions);
   init_CC_CE_rvs(inference_it);
@@ -543,6 +548,7 @@ JunctionTree::printSavedPartitionViterbiValues(unsigned numFrames,
     (*partRange_it)++;
   }
   delete partRange;
+  //clearAfterUnroll();
 }
 
 
@@ -1038,6 +1044,177 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 
   delete partRange;
 
+}
+
+
+/*
+ * This version of the above reads the Viterbi values from a file.
+ *
+ */
+void
+JunctionTree::printSavedViterbiValues(unsigned numFrames,
+				      FILE* vitFile,
+				      FILE* f,
+				      bool printObserved,
+				      regex_t* preg,
+				      char* partRangeFilter)
+{
+  unsigned totalNumberPartitions;
+  (void) unroll(numFrames,ZeroTable,&totalNumberPartitions);
+
+  new (&inference_it) ptps_iterator(*this,totalNumberPartitions);
+  init_CC_CE_rvs(inference_it);
+
+  vector<RV*> unrolled_rvs;
+  map<RVInfo::rvParent, unsigned> unrolled_map;
+
+  vector<RV*> P_rvs;      // original P for printing
+  vector<RV*> Pprime_rvs; // modified P' for unpacking
+  vector<RV*> hidP_rvs;      // hidden subset of original P for printing
+  vector<RV*> hidPprime_rvs; // hidden subset of modified P' for unpacking
+
+  vector<vector<RV*> > C_rvs; // original Cs for printing
+  vector<vector<RV*> > Cprime_rvs; // modified C's for unpacking
+  vector<vector<RV*> > hidC_rvs; // hidden subset of original Cs for printing
+  vector<vector<RV*> > hidCprime_rvs; // hidden subset of modified C's for unpacking
+
+  vector<RV*> E_rvs; // ... printing
+  vector<vector<RV*> > Eprime_rvs; // ... unpacking
+  vector<RV*> hidE_rvs; // ... printing
+  vector<vector<RV*> > hidEprime_rvs; // ... unpacking
+
+  sArray<DiscRVType *>PprimeValuePtrs;
+  vector<sArray<DiscRVType *> > CprimeValuePtrs;
+  vector<sArray<DiscRVType *> > EprimeValuePtrs;
+
+  createUnpackingMap(unrolled_rvs, unrolled_map, 
+		     P_rvs, hidP_rvs, Pprime_rvs, hidPprime_rvs, 
+		     C_rvs, hidC_rvs, Cprime_rvs, hidCprime_rvs,
+		     E_rvs, hidE_rvs, Eprime_rvs, hidEprime_rvs,
+		     PprimeValuePtrs, CprimeValuePtrs, EprimeValuePtrs);
+
+  Range* partRange = NULL;
+  if (partRangeFilter != NULL) {
+    partRange = new Range(partRangeFilter,0,inference_it.pt_len());
+    if (partRange->length() == 0) { 
+      warning("WARNING: Part range filter must specify a valid non-zero length range "
+	      "within [0:%d]. Range given is %s\n",inference_it.pt_len(),partRangeFilter);
+      delete partRange;
+      partRange = NULL;
+    }
+  }
+  if (partRange == NULL)
+    partRange = new Range("all",0,inference_it.pt_len());
+
+  Range::iterator* partRange_it = new Range::iterator(partRange->begin());
+
+  vector<int> Cpos(C_rvs.size());
+  for (unsigned int i=0; i < Cpos.size(); i+=1) 
+    Cpos[i] = fp.numFramesInP() + i * fp.numFramesInC();
+  int Epos = fp.numFramesInP() + C_rvs.size() * fp.numFramesInC();
+
+
+  unsigned primeIndex = 0;
+  unsigned originalIndex = 0;
+  unsigned Ccount = 1;
+
+  while (!partRange_it->at_end()) {
+
+    unsigned part = (*partRange_it);
+    setCurrentInferenceShiftTo(part);
+    PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+
+    if (inference_it.at_p()) {
+      if (fread(P_partition_values.ptr, sizeof(unsigned), ps.packer.packedLen(), binaryViterbiFile) 
+	  != ps.packer.packedLen()) 
+      {
+	char *err = strerror(errno);
+	error("Error reading '%s': %s\n", binaryViterbiFilename, err);
+      }
+    } else if (inference_it.at_e()) {
+      if (fread(E_partition_values.ptr, sizeof(unsigned), ps.packer.packedLen(), binaryViterbiFile)
+	  != ps.packer.packedLen())
+      {
+	char *err = strerror(errno);
+	error("Error reading '%s': %s\n", binaryViterbiFilename, err);
+      }
+    } else {
+      if (fread(C_partition_values.ptr, sizeof(unsigned), ps.packer.packedLen(), binaryViterbiFile)
+	  != ps.packer.packedLen())
+      {
+	char *err = strerror(errno);
+	error("Error reading '%s': %s\n", binaryViterbiFilename, err);
+      }
+    }
+
+    if (inference_it.at_p()) {
+      // print P partition
+      if (ps.packer.packedLen() > 0) 
+	ps.packer.unpack(P_partition_values.ptr,PprimeValuePtrs.ptr);
+      if (hidP_rvs.size() > 0  ||  (printObserved && P_rvs.size() > 0) ) { 
+	fprintf(f,"Ptn-0 P: ");
+	if (printObserved)
+	  printRVSetAndValues(f,P_rvs,true,preg);
+	else
+	  printRVSetAndValues(f,hidP_rvs,true,preg);
+      }
+    } else if (inference_it.at_e()) {
+      primeIndex = (primeIndex + Eprime_rvs.size() - 1) % Eprime_rvs.size(); // primeIndex -= 1 mod nCprimes
+      if (ps.packer.packedLen() > 0) 
+	ps.packer.unpack(E_partition_values.ptr,EprimeValuePtrs[primeIndex].ptr);
+      // print completed C partitions
+      int targetFrame = fp.numFramesInP() + (int)(part-1) * gm_template.S * fp.numFramesInC();
+      for (unsigned i=0; i < gm_template.M; i+=1) { // unpacking E' completes the last M Cs
+	shiftOriginalVarstoPosition(C_rvs[originalIndex], targetFrame, Cpos[originalIndex]);
+	if (hidC_rvs[originalIndex].size() > 0 || (printObserved && C_rvs[originalIndex].size() > 0) ) {
+	  fprintf(f,"Ptn-%u C: ", Ccount);
+	  if (printObserved) 
+	    printRVSetAndValues(f,C_rvs[originalIndex],true,preg);
+	  else
+	    printRVSetAndValues(f,hidC_rvs[originalIndex],true,preg);
+	}
+	Ccount += 1;
+	originalIndex = (originalIndex + 1) % C_rvs.size();
+	targetFrame += fp.numFramesInC();
+      } 
+      // print E partition
+      if ( (hidE_rvs.size() > 0)  || (printObserved && E_rvs.size() > 0) ) {
+	shiftOriginalVarstoPosition(E_rvs, targetFrame, Epos);
+	fprintf(f,"Ptn-%u E: ", Ccount);
+	if (printObserved) 
+	  printRVSetAndValues(f,E_rvs,true,preg);
+	else
+	  printRVSetAndValues(f,hidE_rvs,true,preg);
+      }
+    } else {
+      assert ( inference_it.at_c() );
+      // print C partition
+      {
+        if (ps.packer.packedLen() > 0) 
+	  ps.packer.unpack(C_partition_values.ptr, CprimeValuePtrs[primeIndex].ptr);
+	int targetFrame = fp.numFramesInP() + (int)(part-1) * gm_template.S * fp.numFramesInC();
+	for (unsigned i=0; i < gm_template.S; i+=1) { // unpacking a C' completes S Cs
+	  shiftOriginalVarstoPosition(C_rvs[originalIndex], targetFrame, Cpos[originalIndex]);
+	  if ( (hidC_rvs[originalIndex].size() > 0)  || (printObserved && C_rvs[originalIndex].size() > 0) ) {
+	    fprintf(f,"Ptn-%u C: ", Ccount);
+	    if (printObserved) 
+	      printRVSetAndValues(f,C_rvs[originalIndex],true,preg);
+	    else
+	      printRVSetAndValues(f,hidC_rvs[originalIndex],true,preg);
+	  }
+	  Ccount += 1;
+	  originalIndex = (originalIndex + 1) % C_rvs.size();
+	  targetFrame += fp.numFramesInC();
+	}
+	primeIndex = (primeIndex + 1) % Cprime_rvs.size();
+      }
+      // previous_C = inference_it.pt_i();
+    }
+    (*partRange_it)++;
+  }
+
+  delete partRange;
+  //clearAfterUnroll();
 }
 
 

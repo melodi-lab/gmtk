@@ -373,7 +373,6 @@ main(int argc,char*argv[])
   struct rusage rue; /* ending time */
   getrusage(RUSAGE_SELF,&rus);
 
-  total_data_prob = 1.0;
   Range::iterator* dcdrng_it = new Range::iterator(dcdrng->begin());
     
   regex_t *pVitPreg = NULL;
@@ -404,6 +403,30 @@ main(int argc,char*argv[])
 
   while (!dcdrng_it->at_end()) {
     const unsigned segment = (unsigned)(*(*dcdrng_it));
+
+    off_t indexOff;
+    off_t off;
+    float score;
+
+    indexOff = (off_t) ( sizeof(unsigned) + segment * (sizeof(off_t) + sizeof(float)) );
+    if (fseeko(JunctionTree::binaryViterbiFile, indexOff, SEEK_SET)) {
+      char *err = strerror(errno);
+      error("Error seeking in '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+    }
+    if (fread(&off, sizeof(off), 1, JunctionTree::binaryViterbiFile) != 1) {
+      char *err = strerror(errno);
+      error("Error reading from '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+    }
+    if (fread(&score, sizeof(score), 1, JunctionTree::binaryViterbiFile) != 1) {
+      char *err = strerror(errno);
+      error("Error reading from '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+    }
+    if (fseeko(JunctionTree::binaryViterbiFile, off, SEEK_SET)) {
+      char *err = strerror(errno);
+      error("Error seeking in '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+    }
+//printf("idx seg %03x -> %04llx @ %04llx    %llx\n", segment, off, indexOff, ftello(JunctionTree::binaryViterbiFile));
+
     if (globalObservationMatrix.numSegments() < (segment+1)) 
       error("ERROR: only %d segments in file, decode range must be in range [%d,%d] inclusive\n",
 	    globalObservationMatrix.numSegments(),
@@ -411,11 +434,13 @@ main(int argc,char*argv[])
 
     const unsigned numFrames = GM_Parms.setSegment(segment);
 
-    //    unsigned numUsableFrames = myjt.unroll(numFrames);
+    logpr probe(NULL, score);
+
+    total_data_prob *= probe;
 
     if (pVitValsFile) {
       fprintf(pVitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
-	      segment,numFrames,0.0/0.0);
+	      segment, numFrames, probe.val());
       myjt.printSavedPartitionViterbiValues(numFrames,
 					    JunctionTree::binaryViterbiFile,
 					    pVitValsFile,
@@ -428,8 +453,10 @@ main(int argc,char*argv[])
       myjt.resetViterbiPrinting();
     if (vitValsFile) {
       fprintf(vitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
-	      segment,numFrames,0.0/0.0);
-      myjt.printSavedViterbiValues(vitValsFile,
+	      segment, numFrames, score);
+      myjt.printSavedViterbiValues(numFrames, 
+				   JunctionTree::binaryViterbiFile,
+				   vitValsFile,
 				   vitAlsoPrintObservedVariables,
 				   vitPreg,
 				   pVitPartRangeFilter);

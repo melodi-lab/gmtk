@@ -446,8 +446,53 @@ main(int argc,char*argv[])
     }
   }
 
+  if (JunctionTree::binaryViterbiFile) {
+    unsigned numSegments = globalObservationMatrix.numSegments();
+//printf("Writing %x segments\n", numSegments);
+    if (fwrite(&numSegments, sizeof(numSegments), 1, JunctionTree::binaryViterbiFile) != 1) {
+      char *err = strerror(errno);
+      error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+    }
+    off_t off = (off_t) 0;
+    float score = 0.0/0.0; // initially nan so I can check that the index is written correctly (non-nan)
+    for (unsigned i=0; i < numSegments; i+=1) {
+      if (fwrite(&off, sizeof(off), 1, JunctionTree::binaryViterbiFile) != 1) {
+	char *err = strerror(errno);
+	error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+      }
+      if (fwrite(&score, sizeof(score), 1, JunctionTree::binaryViterbiFile) != 1) {
+	char *err = strerror(errno);
+	error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+      }
+    }
+    JunctionTree::nextViterbiOffset = ftello(JunctionTree::binaryViterbiFile);
+  }
+//printf("seg 0 starts @ %llx\n", ftello(JunctionTree::binaryViterbiFile));
   while (!dcdrng_it->at_end()) {
     const unsigned segment = (unsigned)(*(*dcdrng_it));
+
+    off_t indexOff;
+    off_t off;
+    float score;
+    if (JunctionTree::binaryViterbiFile) {
+      off = JunctionTree::nextViterbiOffset;
+      indexOff = (off_t) ( sizeof(unsigned) + segment * (sizeof(off_t) + sizeof(float)) );
+      if (fseeko(JunctionTree::binaryViterbiFile, indexOff, SEEK_SET)) {
+	char *err = strerror(errno);
+	error("Error seeking in '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+      }
+//printf("idx seg %03x -> %04llx @ %04llx = %llx\n", segment, off, indexOff, ftello(JunctionTree::binaryViterbiFile));
+      if (fwrite(&off, sizeof(off), 1, JunctionTree::binaryViterbiFile) != 1) {
+	char *err = strerror(errno);
+	error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+      }
+      if (fseeko(JunctionTree::binaryViterbiFile, off, SEEK_SET)) {
+	char *err = strerror(errno);
+	error("Error seeking in '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+      }
+      JunctionTree::binaryViterbiOffset = off;
+    }
+
     if (globalObservationMatrix.numSegments() < (segment+1)) 
       error("ERROR: only %d segments in file, decode range must be in range [%d,%d] inclusive\n",
 	    globalObservationMatrix.numSegments(),
@@ -497,6 +542,19 @@ main(int argc,char*argv[])
 	infoMsg(IM::Inference, IM::Low,"Distributing Evidence\n");
 	myjt.distributeEvidence();
 	infoMsg(IM::Inference, IM::Low,"Done Distributing Evidence\n");
+      }
+    }
+
+    if (JunctionTree::binaryViterbiFile) {
+      indexOff = (off_t) ( sizeof(unsigned) + sizeof(off_t) + segment * (sizeof(off_t) + sizeof(float)) );
+      if (fseeko(JunctionTree::binaryViterbiFile, indexOff, SEEK_SET)) {
+	char *err = strerror(errno);
+	error("Error seeking in '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+      }
+      score = probe.val();
+      if (fwrite(&score, sizeof(score), 1, JunctionTree::binaryViterbiFile) != 1) {
+	char *err = strerror(errno);
+	error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
       }
     }
     
