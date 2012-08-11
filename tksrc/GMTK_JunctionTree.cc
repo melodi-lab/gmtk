@@ -84,6 +84,8 @@ bool JunctionTree::viterbiScore = false;
 bool JunctionTree::mmapViterbi = true;
 FILE * JunctionTree::binaryViterbiFile = NULL;
 char * JunctionTree::binaryViterbiFilename = NULL;
+off_t  JunctionTree::binaryViterbiOffset;
+off_t  JunctionTree::nextViterbiOffset;
 
 // default names of the three partitions for printing/debugging messages.
 const char* JunctionTree::P1_n = "P'";

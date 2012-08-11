@@ -862,6 +862,8 @@ public:
   // later printing by a separate program
   static FILE *binaryViterbiFile;
   static char *binaryViterbiFilename;
+  static off_t binaryViterbiOffset;    // offset to start of current segment
+  static off_t nextViterbiOffset;      // offset to start of next segment
 
   // range of cliques within each partition to print out when doing
   // CE/DE inference. If these are NULL, then we print nothing.
@@ -1162,7 +1164,6 @@ public:
 			       const char **triggerVars = NULL,
 			       const char **triggerValSets = NULL);
 
-
   void resetViterbiPrinting() { setCurrentInferenceShiftTo(0); }
 
   void createUnpackingMap(vector<RV*> &unrolled_rvs, 
@@ -1178,6 +1179,12 @@ public:
 			  vector<sArray<DiscRVType *> > &EprimeValuePtrs);
 
   void printSavedViterbiValues(FILE*,
+			       bool printObserved,
+			       regex_t *preg,
+			       char* partRangeFilter);
+
+  void printSavedViterbiValues(unsigned,
+			       FILE *, FILE*,
 			       bool printObserved,
 			       regex_t *preg,
 			       char* partRangeFilter);
