@@ -50,7 +50,6 @@ miscSupport/testVHashMap
 miscSupport/testVSHashMap
 miscSupport/testcArray
 miscSupport/testsArray
-miscSupport/testmArray
 mitk/bivariate-mi
 mitk/mvnrnd
 mitk/test-matrix-ops
@@ -79,7 +78,6 @@ tksrc/gmtkTie
 tksrc/gmtkTime
 tksrc/gmtkTriangulate
 tksrc/gmtkViterbi
-tksrc/gmtkPrint
 tksrc/gmtkViz
 tksrc/gmtkViz.app
 tksrc/gmtkViz.app/*

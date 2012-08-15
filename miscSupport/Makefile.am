@@ -55,7 +55,6 @@ arguments.h arguments.cc \
 logp.h logp.cc \
 rand.h rand.cc \
 sArray.h sArray.cc \
-mArray.h mArray.cc \
 cArray.h cArray.cc \
 general.h general.cc \
 lineqsolve.h lineqsolve.cc \
@@ -95,8 +94,8 @@ LDADD = libmiscSupport.a
 check_PROGRAMS = \
 testError \
 testBPRange \
-testArguments testLogp testRand testsArray testcArray testmArray \
-fileParserTest testHashMapList testHashTree testVHashMap testSHashSet \
+testArguments testLogp testRand testsArray testcArray fileParserTest \
+testHashMapList testHashTree testVHashMap testSHashSet \
 testSHashMap testVSHashMap testRLS testLMS testLZERO
 # testVHashSet 
 
@@ -111,7 +110,6 @@ testLogp_SOURCES = logp.cc logp.h
 testRand_SOURCES = rand.cc rand.h
 testsArray_SOURCES = sArray.cc sArray.h
 testcArray_SOURCES = cArray.cc cArray.h
-testmArray_SOURCES = mArray.cc mArray.h
 fileParserTest_SOURCES = fileParser.cc fileParser.h
 testLZERO_SOURCES = testLZERO.cc
 

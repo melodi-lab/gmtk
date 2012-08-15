@@ -31,7 +31,6 @@
 #include <regex.h>
 
 #include "bp_range.h"
-#include "mArray.h"
 
 #include "GMTK_RV.h"
 #include "GMTK_FileParser.h"
@@ -605,9 +604,10 @@ class JunctionTree {
   // Support variables specific to Viterbi and N-best decoding
   // 
   sArray < unsigned > P_partition_values;
-  mArray < unsigned > C_partition_values;
+  sArray < unsigned > C_partition_values;
   sArray < unsigned > E_partition_values;
   void recordPartitionViterbiValue(ptps_iterator& it);
+
 
   ////////////////////////////////////////////////////////////////////////
 
@@ -853,17 +853,6 @@ public:
   // or P(evidence,best_hidden)), or the full inference score,
   // namely \sum_hidden P(evidence,hidden)
   static bool viterbiScore;
-
-  // if true, use mmap() to allocate memory for C_partition_values,
-  // otherwise use new
-  static bool mmapViterbi;
-
-  // For O(1) memory inference, write Viterbi values to this file for
-  // later printing by a separate program
-  static FILE *binaryViterbiFile;
-  static char *binaryViterbiFilename;
-  static off_t binaryViterbiOffset;    // offset to start of current segment
-  static off_t nextViterbiOffset;      // offset to start of next segment
 
   // range of cliques within each partition to print out when doing
   // CE/DE inference. If these are NULL, then we print nothing.
@@ -1150,12 +1139,6 @@ public:
 					regex_t *preg,
 					char* partRangeFilter);
 
-  void printSavedPartitionViterbiValues(unsigned,
-					FILE*, FILE*,
-					bool printObserved,
-					regex_t *preg,
-					char* partRangeFilter);
-
   void printSavedViterbiValues(FILE*,
 			       bool printObserved = false,
 			       regex_t *preg = NULL,
@@ -1163,6 +1146,7 @@ public:
 			       unsigned maxTriggerVars = 0,
 			       const char **triggerVars = NULL,
 			       const char **triggerValSets = NULL);
+
 
   void resetViterbiPrinting() { setCurrentInferenceShiftTo(0); }
 
@@ -1179,12 +1163,6 @@ public:
 			  vector<sArray<DiscRVType *> > &EprimeValuePtrs);
 
   void printSavedViterbiValues(FILE*,
-			       bool printObserved,
-			       regex_t *preg,
-			       char* partRangeFilter);
-
-  void printSavedViterbiValues(unsigned,
-			       FILE *, FILE*,
 			       bool printObserved,
 			       regex_t *preg,
 			       char* partRangeFilter);
