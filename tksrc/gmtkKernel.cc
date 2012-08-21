@@ -71,6 +71,7 @@ VCID(HGID)
 #define GMTK_ARG_CPP_CMD_OPTS
 #define GMTK_ARG_INPUT_MASTER_FILE
 #define GMTK_ARG_OUTPUT_MASTER_FILE
+#define GMTK_ARG_DLOPEN_MAPPERS
 #define GMTK_ARG_INPUT_TRAINABLE_PARAMS
 #define GMTK_ARG_OUTPUT_TRAINABLE_PARAMS
 #define GMTK_ARG_WPAEEI
@@ -237,6 +238,8 @@ main(int argc,char*argv[])
   }
   // comment for now Sun Jan 11 09:47:23 2004
   GM_Parms.finalizeParameters();
+  dlopenDeterministicMaps(dlopenFilenames, MAX_NUM_DLOPENED_FILES);
+
   GM_Parms.markObjectsToNotTrain(objsToNotUtilizeFile,cppCommandOptions);
 
   /////////////////////////////
