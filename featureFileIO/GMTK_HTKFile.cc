@@ -317,7 +317,9 @@ openHTKFile(StreamInfo *f, size_t sentno) {
   DBGFPRINTF((stderr,"In openHTKFile, curNumFrames %d\n",f->curNumFrames));
   
   //now we seek to the start frame 
-  fseek(f->curDataFile, htkInfo->startOfData+startFrame*htkInfo->samp_size, SEEK_SET);
+  if (fseek(f->curDataFile, htkInfo->startOfData+startFrame*htkInfo->samp_size, SEEK_SET)) {
+    error("ERROR: openHTKFile: fseek() failed for '%s'", f->dataNames[sentno]);
+  }
   return f->curNumFrames;
 }
 
@@ -352,7 +354,9 @@ HTKFile::getFrames(unsigned first, unsigned count) {
   }
   const HTKFileInfo *htkInfo = info->curHTKFileInfo;
   // FIXME - error checking
-  fseek(info->curDataFile, htkInfo->startOfData + first * htkInfo->samp_size, SEEK_SET);
+  if (fseek(info->curDataFile, htkInfo->startOfData + first * htkInfo->samp_size, SEEK_SET)) {
+    error("HTKFile: fseek() failed for '%s'", info->fofName);
+  }
 
   // HTK files are either all discrete or all continuous
   unsigned featuresPerFrame;

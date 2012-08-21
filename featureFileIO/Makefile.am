@@ -80,6 +80,9 @@ GMTK_Filter.h GMTK_Filter.cc GMTK_SubmatrixDescriptor.h \
 GMTK_MergeFile.h GMTK_MergeFile.cc \
 GMTK_FilterFile.h \
 GMTK_FIRFilter.h GMTK_FIRFilter.cc \
+GMTK_ARMAFilter.h GMTK_ARMAFilter.cc \
+GMTK_UpsampleFilter.h GMTK_UpsampleFilter.cc \
+GMTK_UpsampleSmoothFilter.h GMTK_UpsampleSmoothFilter.cc \
 GMTK_AffineFilter.h GMTK_AffineFilter.cc
 
 

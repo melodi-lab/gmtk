@@ -39,6 +39,9 @@ class subMatrixDescriptor {
   unsigned numDiscrete;
   unsigned fullMatrixFrameCount;  // # frames in full matrix
 
+  unsigned requestedFirst;        // requested filter output
+  unsigned requestedCount;
+
   // Maintain a list of pre-allocated instances to minimize new and ctor calls.
 
   subMatrixDescriptor *next;
@@ -62,6 +65,8 @@ class subMatrixDescriptor {
 	 unsigned historyFrames, unsigned futureFrames,
 	 unsigned numContinuous, unsigned numDiscrete,
 	 unsigned fullMatrixFrameCount, 
+	 unsigned requestedFirst,
+	 unsigned requestedCount,
 	 subMatrixDescriptor *next = NULL)
   {
     subMatrixDescriptor *result  = getSMD();
@@ -72,6 +77,8 @@ class subMatrixDescriptor {
     result->numContinuous        = numContinuous;
     result->numDiscrete          = numDiscrete;
     result->fullMatrixFrameCount = fullMatrixFrameCount;
+    result->requestedFirst       = requestedFirst;
+    result->requestedCount       = requestedCount;
     result->next                 = next;
     return result;
   }
@@ -90,11 +97,14 @@ class subMatrixDescriptor {
 		      unsigned historyFrames, unsigned futureFrames,
 		      unsigned numContinuous, unsigned numDiscrete,
 		      unsigned fullMatrixFrameCount, 
+		      unsigned requestedFirst,
+		      unsigned requestedCount,
 		      subMatrixDescriptor *next = NULL)
     : firstFrame(firstFrame), numFrames(numFrames),
       historyFrames(historyFrames), futureFrames(futureFrames),
       numContinuous(numContinuous), numDiscrete(numDiscrete),
       fullMatrixFrameCount(fullMatrixFrameCount),
+      requestedFirst(requestedFirst), requestedCount(requestedCount),
       next(next)
   {}
 

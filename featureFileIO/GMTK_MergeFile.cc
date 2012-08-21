@@ -77,9 +77,9 @@ checkNumFrames(unsigned nFiles, ObservationFile *file[],
       got_error = true; // FRAMEMATCH_ERROR is the default
     }
     if(got_truncate && got_expand)
-      // FIXME - match ObservationMatrix error message?
       error("ERROR: MergeFile::openSegment:checkNumFrames: Cannot specify "
-	    "both truncate and expand actions when segments have different lengths");
+	    "both truncate and expand actions when segments have different lengths."
+            "  Check the supplied and default -fdiff options.\n");
   }
   if(max_len == 0)
     error("ERROR: MergeFile::openSegment:checkNumFrames:  all segments have zero length");
@@ -154,12 +154,12 @@ checkNumSegments(unsigned nFiles, ObservationFile *file[],
     }
   }
   if(max_len == 0)
-    error("ERROR: MergeFile::checkNumSegments:  all streams have zero length");
+    error("ERROR: MergeFile::checkNumSegments:  All files have zero length");
 
   // error checking
   if(min_len != max_len) {
     if(got_error)
-      error("ERROR: MergeFile::checkNumSegments: Streams have different # of segments (min=%d, max=%d)",min_len,max_len);
+      error("ERROR: MergeFile::checkNumSegments: Files have different # of segments (min=%d, max=%d)",min_len,max_len);
 
     if(got_truncate && got_expand)
       error("ERROR: MergeFile::checkNumSegments: Cannot specify both truncate and expand actions when using observation files of different lengths");
@@ -169,7 +169,7 @@ checkNumSegments(unsigned nFiles, ObservationFile *file[],
     // Adjust length of streams in the truncate case
     // We don't need to do that in the expand case
     if(min_len == 0)
-      error("ERROR: MergeFile::checkNumSegments: minimum stream length is zero");
+      error("ERROR: MergeFile::checkNumSegments: minimum file length is zero");
     return min_len;
   } else {
     return max_len;  // if there is no expand, it means min_len=max_len
@@ -217,6 +217,14 @@ MergeFile::MergeFile(unsigned nFiles, ObservationFile *file[],
     unsigned nld = file[i]->numLogicalDiscrete();
     offset += nld;
     this->_numDiscreteFeatures += nld;
+
+#if !(ALLOW_VARIABLE_DIM_COMBINED_STREAMS)
+    if(ftrcombo!=FTROP_NONE && i > 0) {
+      if(file[i]->numLogicalContinuous() != file[i-1]->numLogicalContinuous()) {
+	error("ERROR: MergeFile: When doing feature combination, the number of floats across files has to be the same.\n");
+      }
+    }
+#endif
   }
   this->_numFeatures = _numContinuousFeatures + _numDiscreteFeatures;
   this->_numLogicalContinuousFeatures = _numContinuousFeatures;

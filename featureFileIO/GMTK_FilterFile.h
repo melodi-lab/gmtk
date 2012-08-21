@@ -55,7 +55,7 @@ class FilterFile: public ObservationFile {
   {
     subMatrixDescriptor wholeSegment(0U, 1U, 0U, 0U,
 				     file->numLogicalContinuous(),
-				     file->numLogicalDiscrete(), 1U);
+				     file->numLogicalDiscrete(), 1U, 0U, 0U);
     subMatrixDescriptor output = filter->describeOutput(wholeSegment);
     _numContinuousFeatures = output.numContinuous;
     _numDiscreteFeatures   = output.numDiscrete;
@@ -95,12 +95,7 @@ class FilterFile: public ObservationFile {
 
   bool openSegment(unsigned seg) {
     bool result = file->openLogicalSegment(seg);
-    subMatrixDescriptor wholeSegment(0U, file->numLogicalFrames(), 0U, 0U,
-				     file->numLogicalContinuous(),
-				     file->numLogicalDiscrete(),
-				     file->numLogicalFrames());
-    subMatrixDescriptor output = filter->describeOutput(wholeSegment);
-    _numFrames = output.numFrames;
+    _numFrames = filter->getTotalOutputFrames(file->numLogicalFrames());
     return result;
   }
 

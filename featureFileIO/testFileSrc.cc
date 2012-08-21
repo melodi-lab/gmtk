@@ -24,13 +24,17 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "GMTK_ObservationSource.h"
 #include "GMTK_FileSource.h"
 #include "GMTK_CreateFileSource.h"
+#if 0
 #include "GMTK_ASCIIFile.h"
 #include "GMTK_FlatASCIIFile.h"
 #include "GMTK_PFileFile.h"
 #include "GMTK_HTKFile.h"
 #include "GMTK_HDF5File.h"
 #include "GMTK_BinaryFile.h"
+#endif
 #include "GMTK_Stream.h"
+unsigned chunkSize = 1;
+
 
 #define GMTK_ARG_OBS_FILES
 #define GMTK_ARG_CPP_CMD_OPTS
@@ -49,6 +53,7 @@ Arg Arg::Args[] = {
 #include "ObsArguments.h"
 #undef GMTK_ARGUMENTS_DOCUMENTATION
   // final one to signal the end of the list
+  Arg("chunkSize", Arg::Opt,chunkSize, "# of frames to load/print at once"),
   Arg()
 };
 
@@ -83,14 +88,29 @@ main(int argc, char *argv[]) {
   FileSource *f = instantiateFileSource();
   for (unsigned j=0; j < f->numSegments(); j+=1) {
     assert(f->openSegment(j));
-    for (unsigned k=0; k < f->numFrames(); k+=1) {
-      printf("%03u %03u", j, k);
+    printf("Processing sentence %u\n", j);
+    unsigned k;
+    for (k=0; k < f->numFrames() % chunkSize; k+=1) {
+      //      printf("%03u %03u", j, k);
+      printf("%u %u", j, k);
       Data32 const *buf = f->loadFrames(k,1);
       for (unsigned ff=0; ff < f->numContinuous(); ff+=1)
 	printf(" %f", *((float *)(buf++)));
       for (unsigned ff=0; ff < f->numDiscrete(); ff+=1)
 	printf(" %d", *((int *)(buf++)));
       printf("\n");
+    }
+    for ( ; k < f->numFrames(); k+=chunkSize) {
+      Data32 const *buf = f->loadFrames(k,chunkSize);
+      for (unsigned kk=k; kk < k+chunkSize; kk+=1) {
+	//	printf("%03u %03u", j, kk);
+	printf("%u %u", j, kk);
+	for (unsigned ff=0; ff < f->numContinuous(); ff+=1)
+	  printf(" %f", *((float *)(buf++)));
+	for (unsigned ff=0; ff < f->numDiscrete(); ff+=1)
+	  printf(" %d", *((int *)(buf++)));
+	printf("\n");
+      }
     }
   }
   

@@ -79,6 +79,16 @@ extern bool constantSpace;
 
 FileSource *
 instantiateFileSource() {
+
+  if (ofs == NULL)
+    error("CreateFileSource: list of file names is NULL\n");
+  if (fmts == NULL)
+    error("CreateFileSource: list of file formats is NULL\n");
+  if (nfs == NULL)
+    error("CreateFileSource: list of number of floats is NULL\n");
+  if (nis == NULL)
+    error("CreateFileSource: list of number of ints is NULL\n");
+
   // range selection is much more efficient if "all" is replaced with NULL
   // since the logical <-> physical mapping step can be skipped
   for (unsigned i=0; i < MAX_NUM_OBS_FILES; i+=1) {
@@ -108,6 +118,11 @@ instantiateFileSource() {
     }
     nCont += obsFile[i]->numContinuous();
   }
+
+  for (unsigned i=nFiles+1; i < MAX_NUM_OBS_FILES; i+=1) {
+    if (ofs[i]) error("instantiateFileSource: Observation files [%u,%u] are missing\n", nFiles,i-1);
+  }
+
   ObservationFile *mf;
   if (nFiles > 1) {
     mf = new  MergeFile(nFiles, obsFile,

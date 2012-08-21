@@ -73,7 +73,7 @@ StreamSource::initialize(unsigned nStreams, ObservationStream *stream[],
   segmentNum = -1;
   this->filter = filter;
   if (filter) {
-    subMatrixDescriptor wholeSegment(0U, 0U, 0U, 0U, floatCount, intCount, 0u);
+    subMatrixDescriptor wholeSegment(0U, 0U, 0U, 0U, floatCount, intCount, 0u, 0u, 0u);
     subMatrixDescriptor output = filter->describeOutput(wholeSegment);
     nFloat = output.numContinuous;
     nInt   = output.numDiscrete;

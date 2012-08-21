@@ -121,6 +121,9 @@ FileSource::initialize(ObservationFile *file,
   numContinuousFeatures = file->numLogicalContinuous();
   numDiscreteFeatures = file->numLogicalDiscrete();
   _numFeatures = numContinuousFeatures + numDiscreteFeatures;
+  if (_numFeatures == 0) {
+    error("ERROR: No features (continuous or discrete) were selected.  Check the feature ranges.");
+  }
 }
 
 
@@ -227,6 +230,8 @@ static unsigned cachemiss = 0;
 static unsigned cachehit  = 0;
 #endif
 
+
+// FIXME - check for and handle NaNs
 
 // This loadFrames() method just loads the frames from the ObservationFile
 // into the indicated position within the cookedBuffer. The other loadFrames()
