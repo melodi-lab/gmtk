@@ -180,7 +180,8 @@ $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 EXTRA_DIST = \
 GMTK_dlopenDeterministicMappings.h \
 register_user_internal_cfunc_dts.cc \
-user_internal_cfunc_dts.cc
+user_internal_cfunc_dts.cc \
+dlopen_cfunc_dts.cc
 
 
 bin_PROGRAMS = \
