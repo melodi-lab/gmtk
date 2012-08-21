@@ -178,8 +178,10 @@ $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 # include register_user_internal_cfunc_dts.cc and 
 #   user_internal_cfunc_dts.cc in the tar ball
 EXTRA_DIST = \
+GMTK_dlopenDeterministicMappings.h \
 register_user_internal_cfunc_dts.cc \
-user_internal_cfunc_dts.cc
+user_internal_cfunc_dts.cc \
+dlopen_cfunc_dts.cc
 
 
 bin_PROGRAMS = \

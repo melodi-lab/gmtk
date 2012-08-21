@@ -78,6 +78,7 @@ VCID(HGID)
 #define GMTK_ARG_INPUT_TRAINABLE_FILE_HANDLING
 #define GMTK_ARG_CPP_CMD_OPTS
 #define GMTK_ARG_INPUT_MASTER_FILE
+#define GMTK_ARG_DLOPEN_MAPPERS
 #define GMTK_ARG_INPUT_TRAINABLE_PARAMS
 #define GMTK_ARG_ALLOC_DENSE_CPTS
 #define GMTK_ARG_CPT_NORM_THRES
@@ -258,6 +259,7 @@ main(int argc,char*argv[])
     GM_Parms.readTrainable(pf);
   }
   GM_Parms.finalizeParameters();
+  dlopenDeterministicMaps(dlopenFilenames, MAX_NUM_DLOPENED_FILES);
 
   /////////////////////////////
   // read in the structure of the GM, this will
