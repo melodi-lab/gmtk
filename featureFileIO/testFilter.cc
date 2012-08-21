@@ -87,7 +87,7 @@ main(int argc, char *argv[]) {
   FileSource *f = instantiateFileSource();
   for (unsigned j=0; j < f->numSegments(); j+=1) {
     assert(f->openSegment(j));
-printf("Processing sentence %u\n", j);
+printf("Processing sentence %u / %u    %u frames\n", j, f->numSegments(), f->numFrames());
     for (unsigned k=0; k < f->numFrames(); k+=1) {
       //      printf("%03u %03u", j, k);
       printf("%u %u", j, k);

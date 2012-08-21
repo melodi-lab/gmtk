@@ -61,11 +61,10 @@ class BinaryStream: public ObservationStream {
     }
     if (strcmp(version, GMTK_BIN_PROTOCOL_VERSION) > 0) {
       version[GMTK_BIN_VERSION_LENGTH-2] = 0;
-      // FIXME - should this error?
-      warning("WARNING: input BinaryStream version %s is newer than this implementation's version %s",
+      error("ERROR: input BinaryStream version %s is newer than this implementation's version %s",
               version, GMTK_BIN_PROTOCOL_VERSION);
     }
-    // FIXME - send BOM instead of risking being wrong?
+    // TODO - send BOM instead of risking being wrong?
     swap = ( netByteOrder && getWordOrganization() != BYTE_BIG_ENDIAN)    ||
            (!netByteOrder && getWordOrganization() != BYTE_LITTLE_ENDIAN);
     unsigned nCont, nDisc;

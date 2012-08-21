@@ -58,8 +58,7 @@ class ASCIIStream: public ObservationStream {
     }
     if (strcmp(version, GMTK_ASC_PROTOCOL_VERSION) > 0) {
       version[GMTK_ASC_VERSION_LENGTH-2] = 0;
-      // FIXME - should this error?
-      warning("WARNING: input ASCIIStream version %s is newer than this implementation's version %s",
+      error("ERROR: input ASCIIStream version %s is newer than this implementation's version %s",
 	      version, GMTK_ASC_PROTOCOL_VERSION);
     }
     unsigned nCont, nDisc;

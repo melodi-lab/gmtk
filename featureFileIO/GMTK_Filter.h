@@ -59,7 +59,9 @@ class Filter {
   Filter(Filter *nextFilter = NULL) : nextFilter(nextFilter) {}
 
   
-  virtual ~Filter() { if (nextFilter) delete nextFilter; }
+  virtual ~Filter() { 
+    if (nextFilter) delete nextFilter; 
+  }
 
   void appendFilter(Filter *filter) {
     if (nextFilter == NULL) {
@@ -98,13 +100,24 @@ class Filter {
 						     outputContinuous, outputDiscrete,
 						     outputFrames);
       assert(nextFilterInput);
-      first = nextFilterInput->firstFrame;
-      count = nextFilterInput->numFrames;
+      first = nextFilterInput->requestedFirst;
+      count = nextFilterInput->requestedCount;
     }
     return subMatrixDescriptor::getSMD(first, count, 0, 0, inputContinuous, 
-		  inputDiscrete, inputTotalFrames, nextFilterInput);
+	     inputDiscrete, inputTotalFrames, first, count, nextFilterInput);
   }
- 
+
+
+  // How many total frames will the Filter produce for a segment of
+  // length totalInputFrames?
+  virtual unsigned getTotalOutputFrames(unsigned totalInputFrames) {
+    if (nextFilter) {
+      return nextFilter->getTotalOutputFrames(totalInputFrames);
+    } else {
+      return totalInputFrames;
+    }
+  }
+
 
   // What will the output look like if the input described by
   // inputDescription is feed into this Filter?
@@ -151,6 +164,19 @@ class Filter {
 
 
   // apply the local transform, then pass its output down the Filter stack
+#if 0
+  Data32 const *
+    transform(Data32 const *inputSubMatrix,
+	      subMatrixDescriptor const &inputDescription,
+	      subMatrixDescriptor *outputDescription=NULL) 
+  {
+    error("Deprecated transform");
+    return transform(inputSubMatrix, inputDescription, 
+		     inputDescription.firstFrame, 
+		     inputDescription.numFrames,
+		     outputDescription);
+  }
+#endif
   Data32 const *
     transform(Data32 const *inputSubMatrix,
 	      subMatrixDescriptor const &inputDescription,
@@ -158,7 +184,8 @@ class Filter {
   {
     subMatrixDescriptor myOutput;
     Data32 const *outputData = localTransform(inputSubMatrix,
-					      inputDescription, &myOutput);
+					      inputDescription, 
+					      &myOutput);
     if (nextFilter) {
       // FIXME - check that myOutput == *(inputDescription->next)
       outputData = 

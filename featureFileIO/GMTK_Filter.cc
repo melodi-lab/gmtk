@@ -27,7 +27,10 @@
 
 #include "GMTK_FilterFile.h"
 #include "GMTK_FIRFilter.h"
+#include "GMTK_ARMAFilter.h"
 #include "GMTK_AffineFilter.h"
+#include "GMTK_UpsampleFilter.h"
+#include "GMTK_UpsampleSmoothFilter.h"
 
 subMatrixDescriptor *subMatrixDescriptor::freeList = NULL;
 
@@ -205,19 +208,16 @@ instantiateFilters(char *filterStr, unsigned numContinuous) {
     while((xform=parseTransform(filterStr, magicInt, magicDouble, filterFileName)) != END_STR) {
       switch (xform) {
       case NONE: 
-#if 1
 	xformer = new Filter(NULL); // identity filter
-#else
-	xformer = NULL;
-#endif
 	break;
       case UPSAMPLE_HOLD:
-	printf("upsample hold\n");
+	xformer = new UpsampleFilter((unsigned)magicDouble);
 	break;
       case  UPSAMPLE_SMOOTH:
-	printf("upsample smooth stream\n");
+	xformer = new UpsampleSmoothFilter((unsigned)magicDouble);
 	break;
 #if 0
+      // unsupported
       case DOWNSAMPLE:
 	printf("downsample stream %u\n", i);
 	break;
@@ -243,7 +243,7 @@ instantiateFilters(char *filterStr, unsigned numContinuous) {
 	error("mean sub stream - now handled by affine\n");
 	break;
       case ARMA:
-	error("arma stream order %d\n", magicInt);
+	xformer = new ARMAFilter(magicInt, numContinuous);
 	break;
       case AFFINE:
 	//printf("affine with %s\n", filterFileName);

@@ -54,15 +54,12 @@
  *         HDF5File        BinaryFile     -ofX -fmtX -niX -nfX -iswpX -srX 
  *                                        -prefrX -preirX -preprX
  *
- * TODO - where some of the arguments aren't used, the corresponding
- *        FilterFile or MergeFile instances could be omitted. This 
- *        should save a little memory and improve performance a bit.
  *
  */
 
 // At the lowest level are instances of subclasses of ObservationFile
 // that implement the file format specified by -fmtX. For convenience and
-// consistancy, the instantiateFileSoucre() function (see GMTK_CreateFileSource.h)
+// consistancy, the instantiateFileSource() function (see GMTK_CreateFileSource.h)
 // instantiates the above object hierarchy according to the command
 // line arguments given to a GMTK program.
 

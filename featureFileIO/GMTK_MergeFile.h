@@ -73,7 +73,12 @@ class MergeFile: public ObservationFile {
 	    int ftrcombo=FTROP_NONE);
 
   virtual ~MergeFile() {
-    if (file) delete [] file;
+    if (file) {
+      for (unsigned i=0; i < nFiles; i+=1) {
+	if (file[i]) delete file[i];
+      }
+      delete [] file;
+    }
     if (floatStart) delete [] floatStart;
     if (intStart) delete [] intStart;
     if (buffer) free(buffer);

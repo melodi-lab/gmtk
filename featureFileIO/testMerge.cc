@@ -133,6 +133,6 @@ printf("Processing sentence %u\n", j);
       printf("\n");
     }
   }
-  
+  delete mf;
   exit(0);
 }

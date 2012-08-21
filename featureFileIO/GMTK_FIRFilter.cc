@@ -76,21 +76,24 @@ FIRFilter::getRequiredInput(unsigned first, unsigned count,
 						   outputContinuous, outputDiscrete,
 						   outputFrames);
     assert(nextFilterInput);
-    first = nextFilterInput->firstFrame;
-    count = nextFilterInput->numFrames;
+    first = nextFilterInput->requestedFirst;
+    count = nextFilterInput->requestedCount;
   } 
   unsigned history;
-  if (first >= order) {
-    first -= order;
-    count += order;
+  unsigned requiredFirst = first;
+  unsigned requiredCount = count;
+  if (requiredFirst >= order) {
+    requiredFirst -= order;
+    requiredCount += order;
     history = order;
   } else {
-    count += first;
+    requiredCount += first;
     history = first;
-    first = 0;
+    requiredFirst = 0;
   }
-  return new subMatrixDescriptor(first, count, history, 0, inputContinuous, 
-				 inputDiscrete, inputTotalFrames, nextFilterInput);
+  return subMatrixDescriptor::getSMD(requiredFirst, requiredCount, history, 0, inputContinuous, 
+				     inputDiscrete, inputTotalFrames, first, count,
+				     nextFilterInput);
 }
 
 
@@ -101,6 +104,7 @@ FIRFilter::describeLocalOutput(subMatrixDescriptor const &inputDescription) {
   myOutput.numFrames  -= inputDescription.historyFrames;
   myOutput.historyFrames = 0;
   myOutput.futureFrames = 0;
+  myOutput.fullMatrixFrameCount -= inputDescription.historyFrames;
   myOutput.next = NULL;
   return myOutput;
 }
