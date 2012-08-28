@@ -248,6 +248,7 @@ main(int argc,char*argv[])
 
   /////////////////////////////////////////////
   // read in all the parameters
+  dlopenDeterministicMaps(dlopenFilenames, MAX_NUM_DLOPENED_FILES);
   if (inputMasterFile) {
     // flat, where everything is contained in one file, always ASCII
     iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
@@ -259,7 +260,6 @@ main(int argc,char*argv[])
     GM_Parms.readTrainable(pf);
   }
   GM_Parms.finalizeParameters();
-  dlopenDeterministicMaps(dlopenFilenames, MAX_NUM_DLOPENED_FILES);
 
   /////////////////////////////
   // read in the structure of the GM, this will
