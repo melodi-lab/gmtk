@@ -150,6 +150,7 @@ main(int argc,char*argv[])
   }
 
   ////////////////////////////////////////////
+  dlopenDeterministicMaps(dlopenFilenames, MAX_NUM_DLOPENED_FILES);
   if (inputMasterFile != NULL) {
     iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
     GM_Parms.read(pf);
@@ -160,7 +161,6 @@ main(int argc,char*argv[])
     GM_Parms.readTrainable(pf);
   }
   GM_Parms.finalizeParameters();  
-  dlopenDeterministicMaps(dlopenFilenames, MAX_NUM_DLOPENED_FILES);
 
   if (strFileName != NULL) {
     // load up the structure file as we might want

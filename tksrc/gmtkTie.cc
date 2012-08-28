@@ -205,6 +205,7 @@ main(int argc,char*argv[])
     error("No output traininable parameters file specified\n");
 
   ////////////////////////////////////////////
+  dlopenDeterministicMaps(dlopenFilenames, MAX_NUM_DLOPENED_FILES);
   if (inputMasterFile != NULL) {
     iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
     GM_Parms.read(pf);
@@ -218,7 +219,6 @@ main(int argc,char*argv[])
     infoMsg(IM::Tiny,"Finished reading trainable params file\n");
   }
   GM_Parms.finalizeParameters();  
-  dlopenDeterministicMaps(dlopenFilenames, MAX_NUM_DLOPENED_FILES);
 
   if (strFileName != NULL) {
     // load up the structure file as we might want
