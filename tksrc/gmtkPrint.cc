@@ -329,6 +329,33 @@ main(int argc,char*argv[])
   if (!JunctionTree::binaryViterbiFile) {
     error("Argument Error: Missing REQUIRED argument: -binaryViterbiFile <str>\n");
   }
+
+  char cookie[GMTK_VITERBI_COOKIE_LENGTH+1];
+
+  if (fgets(cookie, GMTK_VITERBI_COOKIE_LENGTH+1, JunctionTree::binaryViterbiFile) != cookie) {
+    error("ERROR: Binary viterbi file '%s' did not begin with %s", 
+	  JunctionTree::binaryViterbiFilename, GMTK_VITERBI_COOKIE);
+  }
+  if (strcmp(cookie, GMTK_VITERBI_COOKIE)) {
+    error("ERROR: Binary viterbi file '%s' did not begin with %s", 
+	  JunctionTree::binaryViterbiFilename, GMTK_VITERBI_COOKIE);
+  }
+  
+  unsigned num_segments_in_file;
+  if (fread(&num_segments_in_file, sizeof(num_segments_in_file), 1, JunctionTree::binaryViterbiFile) != 1) {
+    error("ERROR: failed to read # of segments from '%s'\n", JunctionTree::binaryViterbiFilename);
+  }
+  if (num_segments_in_file != globalObservationMatrix.numSegments()) {
+    error("ERROR: '%s' contains %u segments, but the current observation files contain %u\n",
+	  JunctionTree::binaryViterbiFilename, num_segments_in_file, globalObservationMatrix.numSegments());
+  }
+
+  unsigned N_best;
+  if (fread(&N_best, sizeof(N_best), 1, JunctionTree::binaryViterbiFile) != 1) {
+    error("ERROR: failed to read N (for N-best) from '%s'\n", JunctionTree::binaryViterbiFilename);
+  }
+
+
   // What is the difference between the pVit* files and the vit*
   // files?  The pVit* files are similar to the vit* files, but the
   // pVit print via partitions, while the vit* does a bunch more
@@ -358,7 +385,7 @@ main(int argc,char*argv[])
     }
   }
   if (!pVitValsFile && !vitValsFile) {
-    error("Argument Error: Missing REQUIRED argument: -pVitValsFile <str>  OR  -vitValsFile <str> OR -binaryViterbiFile <str>\n");
+    error("Argument Error: Missing REQUIRED argument: -pVitValsFile <str>  OR  -vitValsFile <str>\n");
   }
 #endif
 
@@ -408,7 +435,7 @@ main(int argc,char*argv[])
     off_t off;
     float score;
 
-    indexOff = (off_t) ( sizeof(unsigned) + segment * (sizeof(off_t) + sizeof(float)) );
+    indexOff = (off_t) ( GMTK_VITERBI_HEADER_SIZE + segment * (sizeof(off_t) + sizeof(float)) );
     if (fseeko(JunctionTree::binaryViterbiFile, indexOff, SEEK_SET)) {
       char *err = strerror(errno);
       error("Error seeking in '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
