@@ -865,6 +865,14 @@ public:
   static off_t binaryViterbiOffset;    // offset to start of current segment
   static off_t nextViterbiOffset;      // offset to start of next segment
 
+  // binary viterbi files should start with the cookie
+#define GMTK_VITERBI_COOKIE        "GMTKVIT\n"
+#define GMTK_VITERBI_COOKIE_LENGTH 8
+  // cookie + k (for k-best) + # segements
+#define GMTK_VITERBI_HEADER_SIZE (sizeof(unsigned) + \
+                                  sizeof(unsigned) + \
+                                  GMTK_VITERBI_COOKIE_LENGTH)
+
   // range of cliques within each partition to print out when doing
   // CE/DE inference. If these are NULL, then we print nothing.
   BP_Range* pPartCliquePrintRange;
