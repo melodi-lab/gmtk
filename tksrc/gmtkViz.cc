@@ -5155,7 +5155,9 @@ StructPage::OnChar( wxKeyEvent &event )
 	mouse_pos.x = (int)round(mouse_pos.x / gZoomMap[displayScale]);
 	mouse_pos.y = (int)round(mouse_pos.y / gZoomMap[displayScale]);
 
-	if (event.m_keyCode == WXK_DELETE || event.m_keyCode == 'r') {
+	if (event.m_keyCode == WXK_DELETE || event.m_keyCode == WXK_BACK ||
+            event.m_keyCode == 'r') 
+  	{
 		save_undo();
 		//if we actually deleted any cps then redraw, otherwise pop
 		//one state from the undo stack
