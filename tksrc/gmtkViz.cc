@@ -5155,7 +5155,13 @@ StructPage::OnChar( wxKeyEvent &event )
 	mouse_pos.x = (int)round(mouse_pos.x / gZoomMap[displayScale]);
 	mouse_pos.y = (int)round(mouse_pos.y / gZoomMap[displayScale]);
 
-	if (event.m_keyCode == WXK_DELETE || event.m_keyCode == WXK_BACK ||
+// See https://j.ee.washington.edu/trac/gmtk/71 - Some Apple keyboards
+// have keys labeled "delete" tht actually generate backspace events.
+// Uncomment WXK_BACK below to allow backspace to also delete control
+// points in addition to the delete key. Note that, at least on my MacBook,
+// I can generate WXK_DELETE by holding down the fn key and hitting delete
+
+	if (event.m_keyCode == WXK_DELETE || /* event.m_keyCode == WXK_BACK || */
             event.m_keyCode == 'r') 
   	{
 		save_undo();
