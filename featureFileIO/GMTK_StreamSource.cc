@@ -124,7 +124,10 @@ StreamSource::loadFrames(unsigned first, unsigned count) {
 
   if (first > firstCookedFrameNum + currentCookedFrames) {
 //fprintf(stdout, "  first %u  num %u\n", firstCookedFrameNum, currentCookedFrames);
-    error("ERROR: StreamSource::loadFrames: requested frame %u would require skipping %u frames\n", first - firstCookedFrameNum - currentCookedFrames);
+    error("ERROR: StreamSource::loadFrames: requested frames [%u,%u] would require skipping %u frames past [%u,%u]\n", 
+	  first, first + count -1, 
+	  first - firstCookedFrameNum - currentCookedFrames,
+	  firstCookedFrameNum, firstCookedFrameNum+currentCookedFrames-1);
   }
   
   if (first + count <= firstCookedFrameNum + currentCookedFrames) {

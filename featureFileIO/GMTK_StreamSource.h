@@ -108,6 +108,13 @@ class StreamSource : public ObservationSource {
   Data32 const *loadFrames(unsigned first, unsigned count);
 
 
+  void resetFrameNumbers(unsigned firstFrameNumber) {
+    infoMsg(IM::ObsStream, IM::Default, "StreamSource::reset [%u,%u] -> [%u,%u]\n",
+	    firstCookedFrameNum, firstCookedFrameNum + currentCookedFrames - 1,
+	    firstFrameNumber, firstFrameNumber + currentCookedFrames - 1);
+    firstCookedFrameNum = firstFrameNumber;
+  }
+
   bool EOS() { 
     assert(stream);
     return stream->EOS();
