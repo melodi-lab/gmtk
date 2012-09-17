@@ -67,7 +67,7 @@ class ObservationStream {
     contFeatureRangeStr = NULL; contFeatureRange = NULL;
     discFeatureRangeStr = NULL; discFeatureRange = NULL;
     nFloat = 0; nInt = 0;
-    frameData = NULL;
+    frameData = NULL; logicalFrameData = NULL;
   }
 
   ObservationStream(unsigned nFloat, unsigned nInt, char const *contFeatureRangeStr_=NULL, char const *discFeatureRangeStr_=NULL)
@@ -75,8 +75,8 @@ class ObservationStream {
       contFeatureRangeStr(contFeatureRangeStr_), contFeatureRange(NULL),
       discFeatureRangeStr(discFeatureRangeStr_), discFeatureRange(NULL)
   {
-    frameData = new Data32[nFloat+nInt]; assert(frameData);
-    logicalFrameData = new Data32[numLogicalFeatures()]; assert(logicalFrameData);
+    frameData = new Data32[nFloat+nInt];
+    logicalFrameData = new Data32[numLogicalFeatures()];
   }
 
   virtual ~ObservationStream() {
@@ -128,6 +128,7 @@ class ObservationStream {
 
   virtual Data32 const *getNextLogicalFrame() { 
     if (getNextFrame()) {
+      assert(frameData && logicalFrameData);
       unsigned nlc = numLogicalContinuous();
       unsigned nld = numLogicalDiscrete();
 #if 0

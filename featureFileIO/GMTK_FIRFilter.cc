@@ -97,6 +97,21 @@ FIRFilter::getRequiredInput(unsigned first, unsigned count,
 }
 
 
+void
+FIRFilter::getNextFrameInfo(unsigned &numNewIn, unsigned &dropOldIn, unsigned &numNewOut,
+			    unsigned inputContinuous, unsigned inputDiscrete,
+			    subMatrixDescriptor &input)
+{
+  numNewIn = 1;
+  dropOldIn = frameNum == 0 ? 0 : 1; 
+  numNewOut= 1;
+  subMatrixDescriptor *d = getRequiredInput(frameNum, 1, inputContinuous, inputDiscrete, order+1);
+  input = *d;
+  subMatrixDescriptor::freeSMD(d);
+  frameNum += (frameNum > order) ? 0 : 1; // only keep track up to order		     
+}
+
+
 subMatrixDescriptor
 FIRFilter::describeLocalOutput(subMatrixDescriptor const &inputDescription) {
   subMatrixDescriptor myOutput = inputDescription;

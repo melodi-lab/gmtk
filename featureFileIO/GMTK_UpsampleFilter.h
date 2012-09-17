@@ -55,6 +55,26 @@ class UpsampleFilter: public Filter {
     }
   }
 
+  void getNextFrameInfo(unsigned &numNewIn, unsigned &dropOldIn, unsigned &numNewOut,
+			unsigned inputContinuous, unsigned inputDiscrete,
+			subMatrixDescriptor &input)
+  {
+    numNewIn = 1;
+    dropOldIn = frameNum == 0 ? 0 : 1; frameNum = 1; // only need to know first frame or not
+    numNewOut = upsample;
+    input.firstFrame = 0;
+    input.numFrames = 1;
+    input.historyFrames = 0;
+    input.futureFrames = 0;
+    input.numContinuous = inputContinuous;
+    input.numDiscrete = inputDiscrete;
+    input.fullMatrixFrameCount = 1;
+    input.requestedFirst = 0;
+    input.requestedCount = upsample;
+    input.next = NULL;
+  }
+
+
   // The filter's client (e.g. inference) needs the 
   // [first,first+count)frames of the filter's output.
   // getRequiredInput() returns the portion of the fitler's 

@@ -2450,11 +2450,19 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
   unsigned S = gm_template.S;
 
   unsigned numFramesInPprime = fp.numFramesInP() + fp.numFramesInC() * M;
-  unsigned numFramesInCprime = fp.numFramesInC() * S;
+  unsigned numFramesInCprime = fp.numFramesInC() * (S+M);
   unsigned numFramesInEprime = fp.numFramesInE() + fp.numFramesInC() * M;
 
+#if 0
   unsigned numPreloadFrames = Dlinks::globalMinLag() + 
     numFramesInPprime + 2 * numFramesInCprime + numFramesInEprime;
+#else
+  unsigned numPreloadFrames = Dlinks::globalMinLag() + 
+    fp.numFramesInP() + (3 * S + M) * fp.numFramesInC() + fp.numFramesInE() +
+    Dlinks::globalMaxLag();
+#endif
+
+  unsigned numNewFrames = fp.numFramesInC() * S;
 
 printf("preaload %u frames\n", numPreloadFrames);
   globalObservationMatrix->preloadFrames(numPreloadFrames);
@@ -2701,7 +2709,7 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 
     // read in the same # of frames that we're about to consume to maintain
     // enough queued frames to be sure we don't overshoot the C'->E' transition
-    unsigned nQueued = globalObservationMatrix->enqueueFrames(numFramesInCprime);
+    unsigned nQueued = globalObservationMatrix->enqueueFrames(numNewFrames);
 
     // update the ptps_iterator if we just found out the true length of the segment
     if (truePtLen == 0 && globalObservationMatrix->numFrames() != 0) {

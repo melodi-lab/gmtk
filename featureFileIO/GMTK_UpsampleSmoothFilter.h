@@ -57,6 +57,42 @@ class UpsampleSmoothFilter: public Filter {
     }
   }
 
+  void getNextFrameInfo(unsigned &numNewIn, unsigned &dropOldIn, unsigned &numNewOut,
+			unsigned inputContinuous, unsigned inputDiscrete,
+			subMatrixDescriptor &input)
+  {
+    if (frameNum == 0) {
+      numNewIn = 2;
+      dropOldIn = 0;
+      frameNum = 1;
+    } else {
+      numNewIn = 1;
+      dropOldIn = 1;
+    }
+    numNewOut = upsample;
+    input.firstFrame = 0;
+    input.numFrames = 2;
+    input.historyFrames = 0;
+    input.futureFrames = 1;
+    input.numContinuous = inputContinuous;
+    input.numDiscrete = inputDiscrete;
+    input.fullMatrixFrameCount = 2;
+    input.requestedFirst = 0;
+    input.requestedCount = upsample;
+    input.next = NULL;
+  }
+
+
+  void getEOSFrameInfo(int numFramesShort, unsigned &numNewOut, subMatrixDescriptor &input) {
+    if (numFramesShort == 1) {
+      numNewOut = 1;
+      input.numFrames = 1;
+      input.fullMatrixFrameCount = 1;
+      input.requestedCount = 1;
+    } else {
+      numNewOut = 0;
+    }
+  }
 
   // The filter's client (e.g. inference) needs the 
   // [first,first+count)frames of the filter's output.
