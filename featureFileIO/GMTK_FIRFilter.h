@@ -19,6 +19,7 @@
 #endif
 
 #include "machine-dependent.h"
+#include "GMTK_SubmatirxDescriptor.h"
 #include "GMTK_Filter.h"
 
 // Apply a Finite Impulse Response filter to the continuous features
@@ -70,6 +71,9 @@ class FIRFilter: public Filter {
 
   subMatrixDescriptor describeLocalOutput(subMatrixDescriptor const &inputDescription);
   
+  virtual void getNextFrameInfo(unsigned &numNewIn, unsigned &dropOldIn, unsigned &numNewOut,
+				unsigned inputContinuous, unsigned inputDiscrete,
+				subMatrixDescriptor &input);
 
   Data32 const *localTransform(Data32 const *inputSubMatrix,
 			       subMatrixDescriptor const &inputDescription,

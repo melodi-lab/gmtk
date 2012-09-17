@@ -187,10 +187,9 @@ RAND rnd(seedme);
 GMParms GM_Parms;
 
 #if 1
-ObservationStream *stream;
-StreamSource streamSource;
-StreamSource *gomSS = &streamSource;
-ObservationSource *globalObservationMatrix = &streamSource;
+ObservationStream *stream = NULL;
+StreamSource *gomSS = NULL;
+ObservationSource *globalObservationMatrix = NULL;
 #endif
 
 int
@@ -247,8 +246,8 @@ main(int argc,char*argv[])
       error("ERROR: -fmt1 must be 'binary' or 'ascii', got '%s'", fmts[0]);
     }
     assert(stream);
-    gomSS->initialize(1, &stream, streamBufferSize);
-
+    gomSS = new StreamSource(1, &stream, streamBufferSize);
+    globalObservationMatrix = gomSS;
 
 
   /////////////////////////////////////////////

@@ -51,12 +51,14 @@ class Filter {
   
  protected:
   Filter *nextFilter;
-  
+
+  unsigned frameNum; // state for streaming mode
+
  public:
 
   // FIXME - ctor should take prevFilter ?
   
-  Filter(Filter *nextFilter = NULL) : nextFilter(nextFilter) {}
+  Filter(Filter *nextFilter = NULL) : nextFilter(nextFilter), frameNum(0) {}
 
   
   virtual ~Filter() { 
@@ -69,6 +71,31 @@ class Filter {
       return;
     }
     nextFilter->appendFilter(filter);
+  }
+
+
+  virtual void nextStreamSegment() { frameNum = 0; }
+
+  virtual void getNextFrameInfo(unsigned &numNewIn, unsigned &dropOldIn, unsigned &numNewOut,
+				unsigned inputContinuous, unsigned inputDiscrete,
+				subMatrixDescriptor &input)
+  {
+    numNewIn = 1;
+    dropOldIn = frameNum == 0 ? 0 : 1; frameNum = 1; // only need to know first frame or not
+    numNewOut= 1;
+    input.firstFrame = 0; 
+    input.numFrames = 1;
+    input.historyFrames = 0; 
+    input.futureFrames = 0;
+    input.numContinuous = inputContinuous; 
+    input.numDiscrete = inputDiscrete;
+    input.fullMatrixFrameCount = 1;
+    input.requestedFirst = 0; 
+    input.requestedCount = 1;
+  }
+
+  virtual void getEOSFrameInfo(int numFramesShort, unsigned &numNewOut, subMatrixDescriptor &input) {
+    numNewOut = 0;
   }
 
   
