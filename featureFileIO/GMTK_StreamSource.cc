@@ -47,7 +47,14 @@ StreamSource::StreamSource(unsigned nStreams,
   // FIXME - make a separate FilterStream for each filter!
 
   if (filterStr) {
-    this->stream = new FilterStream(this->stream, instantiateFilters(filterStr, this->stream->numLogicalContinuous()));
+    Filter *filters = instantiateFilters(filterStr, this->stream->numLogicalContinuous());
+    while (filters) {
+      // unlike the FilterFile, each filter needs its own independent FilterStream
+      Filter *next = filters->nextFilter;
+      filters->nextFilter = NULL;
+      this->stream = new FilterStream(this->stream, filters);
+      filters = next;
+    }
   }
   initialize(queueLength, startSkip);
 }

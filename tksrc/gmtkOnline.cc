@@ -463,10 +463,11 @@ main(int argc,char*argv[])
     unsigned numUsableFrames;
     logpr probe = myjt.onlineFixedUnroll(gomSS, &numUsableFrames, false, NULL, false, 
 					 pVitValsFile,pVitAlsoPrintObservedVariables, NULL, NULL);
-    printf("Segment %d, after Filtering: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+    printf("Segment %d, after Filtering: %u frames, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
 	   gomSS->segmentNumber(),
+	   numUsableFrames,
 	   probe.val(),
-	   probe.val()/gomSS->numFrames(),
+	   probe.val()/numUsableFrames,
 	   probe.val()/numUsableFrames);
   }
   getrusage(RUSAGE_SELF,&rue);

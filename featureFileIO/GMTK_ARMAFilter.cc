@@ -111,6 +111,12 @@ ARMAFilter::localTransform(Data32 const *inputSubMatrix,
   float *floatIn  = (float *)inputSubMatrix;
 
   if (initialized && 
+    // FIXME - [[ inputDescription.requestedFirst != 0 && ]]  below is a hack to support FilterStream,
+    // which lies to the filter repeated asking for frame 0. The input frames are managed
+    // such that the filter will produce the desired output. This error should still be triggered
+    // by a backward pass or island algorithm, which are not supported unless non-constant 
+    // memory observation input is used
+      inputDescription.requestedFirst != 0 &&
       inputDescription.requestedFirst < numFrames - order &&
       inputDescription.requestedFirst != firstRememberedFrame + order)
   {
@@ -130,7 +136,13 @@ ARMAFilter::localTransform(Data32 const *inputSubMatrix,
     printf("\n");
     printf("=====================================================\n");
 #endif
-    if (inputDescription.firstFrame != numRemembered) {
+
+    // FIXME - [[ && inputDescription.firstFrame != 0 ]] below is a hack to support FilterStream,
+    // which lies to the filter repeated asking for frame 0. The input frames are managed
+    // such that the filter will produce the desired output. This error should still be triggered
+    // by a backward pass or island algorithm, which are not supported unless non-constant 
+    // memory observation input is used
+    if (inputDescription.firstFrame != numRemembered && inputDescription.firstFrame != 0) {
       error("ERROR: initializing ARMA filter requires frame %u, but got frame %u\n", 
 	    numRemembered, inputDescription.firstFrame);
     }

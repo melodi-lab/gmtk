@@ -41,7 +41,10 @@
 // You should also update parseTransform() and instantiateFilters()
 // to facilitate command line argument parsing.
 
+class StreamSource;
+
 class Filter {
+  friend class StreamSource;
 
 // Transformed frame data flows this way (note that the arrows run
 // in the opposite direction of the nextFilter links)

@@ -2479,7 +2479,7 @@ printf("preaload %u frames\n", numPreloadFrames);
     if (T > 0) {
       // We already know the length of this segment (it's probably
       // very short, since we only try to pre-load enough frames to
-      // process P' C' C' E'), so we can pass the true number of
+      // process P' C' C' C' E'), so we can pass the true number of
       // frames to unroll...
       
       tmp = unroll(T,ZeroTable,&totalNumberPartitions);
@@ -2497,9 +2497,9 @@ printf("preaload %u frames\n", numPreloadFrames);
 #  define UINT32_MAX		(4294967295U)
 #endif
 
+#define MAX_FRAME_NUMBER (1073741824U)
 
-      tmp = unroll(UINT32_MAX/8,ZeroTable,&totalNumberPartitions);
-      // UINT32_MAX seems to cause overflow, so UINT32_MAX/2 instead      
+      tmp = unroll(MAX_FRAME_NUMBER,ZeroTable,&totalNumberPartitions);
 
       currentMaxFrameNum = numPreloadFrames;
     }
@@ -2710,9 +2710,6 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
     // FIXME - is it silly to put a time limit on online inference?
     if (limitTime && probEvidenceTimeExpired)
       goto finished;
-
-
-#define MAX_FRAME_NUMBER 20
 
     if (currentMaxFrameNum > MAX_FRAME_NUMBER - numNewFrames) {
       // frame number is about to overflow
