@@ -108,6 +108,43 @@ class ARMAFilter: public Filter {
   virtual subMatrixDescriptor
     describeLocalOutput(subMatrixDescriptor const &inputDescription);
 
+
+
+
+  void getNextFrameInfo(unsigned &numNewIn, unsigned &dropOldIn, unsigned &numNewOut,
+			unsigned inputContinuous, unsigned inputDiscrete,
+			subMatrixDescriptor &input)
+  {
+    if (frameNum == 0) {
+      numNewIn = order + 1;
+      dropOldIn = 0;
+      frameNum = 1;
+    } else {
+      numNewIn = 1;
+      dropOldIn = 1;
+    }
+    numNewOut = 1;
+    input.firstFrame = 0;
+    input.numFrames = order + 1;
+    input.historyFrames = 0;
+    input.futureFrames = order;
+    input.numContinuous = inputContinuous;
+    input.numDiscrete = inputDiscrete;
+    input.fullMatrixFrameCount = order+1;
+    input.requestedFirst = 0;
+    input.requestedCount = 1;
+    input.next = NULL;
+  }
+
+
+  void getEOSFrameInfo(int numFramesShort, unsigned &numNewOut, subMatrixDescriptor &input) {
+    assert(0 < numFramesShort && numFramesShort <= (int)(order+1));
+    assert(numFramesShort == 1);
+    numNewOut = 0;
+  }
+
+
+
   // Returns the filter's output given the inputSubMatrix
   // described by inputDescription (presumably created by 
   // getRequiredInput()).  
