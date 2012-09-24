@@ -1164,6 +1164,7 @@ public:
 					regex_t *preg,
 					char* partRangeFilter);
 
+#if 0
   void printSavedViterbiValues(FILE*,
 			       bool printObserved = false,
 			       regex_t *preg = NULL,
@@ -1171,6 +1172,7 @@ public:
 			       unsigned maxTriggerVars = 0,
 			       const char **triggerVars = NULL,
 			       const char **triggerValSets = NULL);
+#endif
 
   void resetViterbiPrinting() { setCurrentInferenceShiftTo(0); }
 
@@ -1186,16 +1188,29 @@ public:
 			  vector<sArray<DiscRVType *> > &CprimeValuePtrs, 
 			  vector<sArray<DiscRVType *> > &EprimeValuePtrs);
 
-  void printSavedViterbiValues(FILE*,
+#if 0
+  void printSavedViterbiValues(FILE* f,
+			       bool printObserved,
+			       regex_t *preg,
+			       char* partRangeFilter);
+#endif
+
+  void printSavedViterbiValues(FILE *f,
+			       bool printObserved,
+			       regex_t *preg);
+
+  void printSavedViterbiValues(unsigned numFrames,
+			       FILE *f, FILE *binVitFile,
 			       bool printObserved,
 			       regex_t *preg,
 			       char* partRangeFilter);
 
-  void printSavedViterbiValues(unsigned,
-			       FILE *, FILE*,
+#if 1
+  void printSavedViterbiValues(unsigned numFrames,
+			       FILE *f, FILE* binVitFile,
 			       bool printObserved,
-			       regex_t *preg,
-			       char* partRangeFilter);
+			       regex_t *preg);
+#endif
 
   // actuall message routines.
   // void collectMessage(MaxClique& from,MaxClique& to);

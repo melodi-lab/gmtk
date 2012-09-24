@@ -482,11 +482,11 @@ main(int argc,char*argv[])
       fprintf(vitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
 	      segment, numFrames, score);
       myjt.printSavedViterbiValues(numFrames, 
-				   JunctionTree::binaryViterbiFile,
 				   vitValsFile,
+				   JunctionTree::binaryViterbiFile,
 				   vitAlsoPrintObservedVariables,
 				   vitPreg,
-				   pVitPartRangeFilter);
+				   vitPartRangeFilter);
     }
     (*dcdrng_it)++;
   }
