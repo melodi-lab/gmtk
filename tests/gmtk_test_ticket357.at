@@ -1,0 +1,55 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/357 is fixed
+
+# parserTest will exit successfully iff the bug is fixed
+
+AT_SETUP([softConstraint factor parser (ticket 357)])
+AT_DATA([357.str],[
+GRAPHICAL_MODEL test357
+	
+frame: 0 {
+  variable: response {
+    type: discrete hidden cardinality 2;
+    switchingparents: nil;
+    conditionalparents: nil using DenseCPT("responseCPT");
+  }
+
+  variable: paLevels {
+    type: continuous observed 0:5;
+    switchingparents: nil;
+    conditionalparents: response(0) using mixture
+       collection("col0") mapping ("response2paLevels");
+  }
+	
+  factor: f1 {
+    variables: response(0);
+    softConstraint: using table("foo");
+  }
+	
+  factor: f2 {
+    variables: response(0);
+    softConstraint: using logLinear("foo");
+  }
+	 
+}
+	
+frame: 1 {
+  variable: response {
+    type: discrete hidden cardinality 2;
+    switchingparents: nil;
+    conditionalparents: nil using DenseCPT("responseCPT");
+  }
+	
+  variable: paLevels {
+    type: continuous observed 0:5;
+    switchingparents: nil;
+    conditionalparents: response(0) using mixture
+       collection("col0") mapping ("response2paLevels");
+  }
+}
+	
+chunk 1:1
+])
+AT_CHECK([parserTest -strF 357.str],,[ignore],[ignore])
+AT_CLEANUP	 
+

@@ -238,6 +238,7 @@ gmtkViz.app/Contents/PkgInfo: gmtkViz$(EXEEXT) $(srcdir)/Info.plist.in \
 endif
 
 check_PROGRAMS =  \
+parserTest \
 testPackCliqueValue \
 testViterbi \
 neghead
@@ -246,6 +247,7 @@ neghead
 #testRngDecisionTree testGMParms testFileParser lex.yy
 # testHash testHashTree?
 
+parserTest_SOURCES = parserTest.cc
 
 testViterbi_SOURCES = testViterbi.ll
 
