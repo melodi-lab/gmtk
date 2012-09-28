@@ -1195,6 +1195,8 @@ public:
 			       char* partRangeFilter);
 #endif
 
+  void readBinaryVitPartition(PartitionStructures& ps, unsigned part);
+
   void printSavedViterbiValues(FILE *f,
 			       bool printObserved,
 			       regex_t *preg);
@@ -1211,6 +1213,12 @@ public:
 			       bool printObserved,
 			       regex_t *preg);
 #endif
+
+  void printSavedViterbiFrames(unsigned numFrames,
+			       FILE *f, FILE *binVitFile,
+			       bool printObserved,
+			       regex_t *preg,
+			       char* frameRangeFilter);
 
   // actuall message routines.
   // void collectMessage(MaxClique& from,MaxClique& to);

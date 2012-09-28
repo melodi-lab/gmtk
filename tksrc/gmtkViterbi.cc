@@ -590,10 +590,17 @@ main(int argc,char*argv[])
       if (vitValsFile) {
 	fprintf(vitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
 		segment,numFrames,probe.val());
-	myjt.printSavedViterbiValues(numFrames, vitValsFile, NULL,
-				     vitAlsoPrintObservedVariables,
-				     vitPreg,
-				     vitPartRangeFilter);
+	if (!vitFrameRangeFilter) {
+          myjt.printSavedViterbiValues(numFrames, vitValsFile, NULL,
+	                               vitAlsoPrintObservedVariables,
+				       vitPreg,
+				       vitPartRangeFilter);
+	} else {
+          myjt.printSavedViterbiFrames(numFrames, vitValsFile, NULL,
+	                               vitAlsoPrintObservedVariables,
+				       vitPreg,
+				       vitFrameRangeFilter);
+	}
       }
 #endif
 
