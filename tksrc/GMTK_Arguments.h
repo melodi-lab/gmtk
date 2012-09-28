@@ -2053,14 +2053,17 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 #endif
     if (!JunctionTree::binaryViterbiFile) {
       char *err = strerror(errno);
-      error("Failed to open '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+      error("ERROR: Failed to open '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
     }
   }
 
   if (vitPartRangeFilter && vitFrameRangeFilter) {
-    error("Can't use both -vitPartRangeFilter and -vitFrameRangeFilter\n");
+    error("%s: Can't use both -vitPrintRange and -vitFrameRange\n", argerr);
   }
 
+  if ( (vitPartRangeFilter || vitFrameRangeFilter) && ! vitValsFileName ) {
+    error("%s: -vitPrintRange and -vitFrameRange require -vitValsFile to be specified\n", argerr);
+  }
 #else
 #endif
 #endif // defined(GMTK_ARG_NEW_DECODING_OPTIONS)

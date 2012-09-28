@@ -444,6 +444,7 @@ main(int argc,char*argv[])
       char *err = strerror(errno);
       error("Error reading from '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
     }
+    JunctionTree::binaryViterbiOffset = off;
     if (fread(&score, sizeof(score), 1, JunctionTree::binaryViterbiFile) != 1) {
       char *err = strerror(errno);
       error("Error reading from '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
@@ -481,12 +482,19 @@ main(int argc,char*argv[])
     if (vitValsFile) {
       fprintf(vitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
 	      segment, numFrames, score);
-      myjt.printSavedViterbiValues(numFrames, 
-				   vitValsFile,
-				   JunctionTree::binaryViterbiFile,
-				   vitAlsoPrintObservedVariables,
-				   vitPreg,
-				   vitPartRangeFilter);
+      if (!vitFrameRangeFilter) {
+	myjt.printSavedViterbiValues(numFrames, 
+				     vitValsFile,
+				     JunctionTree::binaryViterbiFile,
+				     vitAlsoPrintObservedVariables,
+				     vitPreg,
+				     vitPartRangeFilter);
+      } else {
+	myjt.printSavedViterbiFrames(numFrames, vitValsFile, NULL,
+				     vitAlsoPrintObservedVariables,
+				     vitPreg,
+				     vitFrameRangeFilter);
+      }
     }
     (*dcdrng_it)++;
   }
