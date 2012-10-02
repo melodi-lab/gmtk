@@ -9655,11 +9655,13 @@ GmtkHelp::doLayout()
 	help_msg->SetDefaultStyle(italic);
 	help_msg->AppendText("\t'delete'");
 	help_msg->SetDefaultStyle(normal);
-	help_msg->AppendText(" : deletes selected contropoint(s). NOTE: this will not delete anything except control points\n");
+	help_msg->AppendText(" : deletes selected contropoint(s). NOTE: this will not delete anything except control points.\n"
+			     "\t\tAlso note that some Apple keyboards label the BACKSPACE key as DELETE. You might try fn-DELETE\n"
+			     "\t\tif DELETE by itself doesn't work.\n");
 	help_msg->SetDefaultStyle(italic);
 	help_msg->AppendText("\t'r'");
 	help_msg->SetDefaultStyle(normal);
-	help_msg->AppendText(" : deletes selected contropoint(s). NOTE: this will not delete anything except control points\n");
+	help_msg->AppendText(" : deletes selected contropoint(s). NOTE: this will not delete anything except control points.\n");
 	help_msg->SetDefaultStyle(italic);
 	help_msg->AppendText("\t'g'");
 	help_msg->SetDefaultStyle(normal);
