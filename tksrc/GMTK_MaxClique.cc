@@ -4050,7 +4050,12 @@ ceSendToOutgoingSeparator(MaxCliqueTable::SharedLocalStructure& sharedStructure,
     assert(sepOrigin.hNondeterminableAccumulatedIntersectionSize == 0);
     assert(sepOrigin.hNondeterminableRemainderSize == 0);
 #endif
+
+#if 0
+    // ticket 68 - the packer should not include the determinable
+    // variables
     assert (sepSharedStructure.remDiscreteValuePtrs.size() == 0);
+#endif
 
     const unsigned accIndex = 0;
 
