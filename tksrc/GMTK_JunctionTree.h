@@ -865,6 +865,14 @@ public:
   static off_t binaryViterbiOffset;    // offset to start of current segment
   static off_t nextViterbiOffset;      // offset to start of next segment
 
+  // binary viterbi files should start with the cookie
+#define GMTK_VITERBI_COOKIE        "GMTKVIT\n"
+#define GMTK_VITERBI_COOKIE_LENGTH 8
+  // cookie + k (for k-best) + # segements
+#define GMTK_VITERBI_HEADER_SIZE (sizeof(unsigned) + \
+                                  sizeof(unsigned) + \
+                                  GMTK_VITERBI_COOKIE_LENGTH)
+
   // range of cliques within each partition to print out when doing
   // CE/DE inference. If these are NULL, then we print nothing.
   BP_Range* pPartCliquePrintRange;
@@ -1156,6 +1164,7 @@ public:
 					regex_t *preg,
 					char* partRangeFilter);
 
+#if 0
   void printSavedViterbiValues(FILE*,
 			       bool printObserved = false,
 			       regex_t *preg = NULL,
@@ -1163,6 +1172,7 @@ public:
 			       unsigned maxTriggerVars = 0,
 			       const char **triggerVars = NULL,
 			       const char **triggerValSets = NULL);
+#endif
 
   void resetViterbiPrinting() { setCurrentInferenceShiftTo(0); }
 
@@ -1178,16 +1188,37 @@ public:
 			  vector<sArray<DiscRVType *> > &CprimeValuePtrs, 
 			  vector<sArray<DiscRVType *> > &EprimeValuePtrs);
 
-  void printSavedViterbiValues(FILE*,
+#if 0
+  void printSavedViterbiValues(FILE* f,
+			       bool printObserved,
+			       regex_t *preg,
+			       char* partRangeFilter);
+#endif
+
+  void readBinaryVitPartition(PartitionStructures& ps, unsigned part);
+
+  void printSavedViterbiValues(FILE *f,
+			       bool printObserved,
+			       regex_t *preg);
+
+  void printSavedViterbiValues(unsigned numFrames,
+			       FILE *f, FILE *binVitFile,
 			       bool printObserved,
 			       regex_t *preg,
 			       char* partRangeFilter);
 
-  void printSavedViterbiValues(unsigned,
-			       FILE *, FILE*,
+#if 1
+  void printSavedViterbiValues(unsigned numFrames,
+			       FILE *f, FILE* binVitFile,
+			       bool printObserved,
+			       regex_t *preg);
+#endif
+
+  void printSavedViterbiFrames(unsigned numFrames,
+			       FILE *f, FILE *binVitFile,
 			       bool printObserved,
 			       regex_t *preg,
-			       char* partRangeFilter);
+			       char* frameRangeFilter);
 
   // actuall message routines.
   // void collectMessage(MaxClique& from,MaxClique& to);

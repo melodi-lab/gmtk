@@ -447,9 +447,18 @@ main(int argc,char*argv[])
   }
 
   if (JunctionTree::binaryViterbiFile) {
-    unsigned numSegments = globalObservationMatrix.numSegments();
 //printf("Writing %x segments\n", numSegments);
+    if (fputs(GMTK_VITERBI_COOKIE, JunctionTree::binaryViterbiFile) == EOF) {
+      char *err = strerror(errno);
+      error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+    }
+    unsigned numSegments = globalObservationMatrix.numSegments();
     if (fwrite(&numSegments, sizeof(numSegments), 1, JunctionTree::binaryViterbiFile) != 1) {
+      char *err = strerror(errno);
+      error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+    }
+    unsigned N_best = 1;
+    if (fwrite(&N_best, sizeof(N_best), 1, JunctionTree::binaryViterbiFile) != 1) {
       char *err = strerror(errno);
       error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
     }
@@ -476,7 +485,7 @@ main(int argc,char*argv[])
     float score;
     if (JunctionTree::binaryViterbiFile) {
       off = JunctionTree::nextViterbiOffset;
-      indexOff = (off_t) ( sizeof(unsigned) + segment * (sizeof(off_t) + sizeof(float)) );
+      indexOff = (off_t) ( GMTK_VITERBI_HEADER_SIZE + segment * (sizeof(off_t) + sizeof(float)) );
       if (fseeko(JunctionTree::binaryViterbiFile, indexOff, SEEK_SET)) {
 	char *err = strerror(errno);
 	error("Error seeking in '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
@@ -546,7 +555,7 @@ main(int argc,char*argv[])
     }
 
     if (JunctionTree::binaryViterbiFile) {
-      indexOff = (off_t) ( sizeof(unsigned) + sizeof(off_t) + segment * (sizeof(off_t) + sizeof(float)) );
+      indexOff = (off_t) ( GMTK_VITERBI_HEADER_SIZE + sizeof(off_t) + segment * (sizeof(off_t) + sizeof(float)) );
       if (fseeko(JunctionTree::binaryViterbiFile, indexOff, SEEK_SET)) {
 	char *err = strerror(errno);
 	error("Error seeking in '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
@@ -580,10 +589,17 @@ main(int argc,char*argv[])
       if (vitValsFile) {
 	fprintf(vitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
 		segment,numFrames,probe.val());
-	myjt.printSavedViterbiValues(vitValsFile,
-				     vitAlsoPrintObservedVariables,
-				     vitPreg,
-				     pVitPartRangeFilter);
+	if (!vitFrameRangeFilter) {
+          myjt.printSavedViterbiValues(numFrames, vitValsFile, NULL,
+	                               vitAlsoPrintObservedVariables,
+				       vitPreg,
+				       vitPartRangeFilter);
+	} else {
+          myjt.printSavedViterbiFrames(numFrames, vitValsFile, NULL,
+	                               vitAlsoPrintObservedVariables,
+				       vitPreg,
+				       vitFrameRangeFilter);
+	}
       }
 #endif
 
