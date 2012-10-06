@@ -81,6 +81,11 @@ const char* JunctionTree::interfaceCliquePriorityStr = "W";
 
 bool JunctionTree::probEvidenceTimeExpired = false;
 bool JunctionTree::viterbiScore = false;
+bool JunctionTree::mmapViterbi = true;
+FILE * JunctionTree::binaryViterbiFile = NULL;
+char * JunctionTree::binaryViterbiFilename = NULL;
+off_t  JunctionTree::binaryViterbiOffset;
+off_t  JunctionTree::nextViterbiOffset;
 
 // default names of the three partitions for printing/debugging messages.
 const char* JunctionTree::P1_n = "P'";
@@ -3692,7 +3697,7 @@ JunctionTree::unroll(const unsigned int numFrames,
     // Next C
     C_partition_values.resize(N_best
 			      *partitionStructureArray[1].packer.packedLen()
-			      *numCoPartitionTables);
+			      *  (binaryViterbiFile ? 1 : numCoPartitionTables) );
 
     // Next E
     E_partition_values.resize(N_best
