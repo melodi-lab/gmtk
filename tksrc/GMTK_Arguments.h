@@ -293,7 +293,7 @@ Arg("map",Arg::Opt,dlopenFilenames,"Deterministic mapping dynamic library file. 
 
 #else
 #endif
-#endif // defined(GMTK_ARG_INPUT_MASTER_FILE)
+#endif // defined(GMTK_ARG_DLOPEN_MAPPERS)
 
 
 /*-----------------------------------------------------------------------------------------------------------*/
@@ -2061,8 +2061,11 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 
   Arg("vitPrintObservedVariables",Arg::Opt,vitAlsoPrintObservedVariables,"Vit: also print observed random variables in addtion to hidden"),
 
-    Arg("binaryVitFile",Arg::Opt,JunctionTree::binaryViterbiFilename,"File to write binary Viterbi values for later printing"),
-
+#if defined(GMTK_ARGUMENTS_REQUIRE_BINARY_VIT_FILE)
+  Arg("binaryVitFile",Arg::Req,JunctionTree::binaryViterbiFilename,"File containing binary Viterbi values for printing"),
+#else
+  Arg("binaryVitFile",Arg::Opt,JunctionTree::binaryViterbiFilename,"File to write binary Viterbi values for later printing"),
+#endif
 #if 0
   // this is not implemented yet.
   Arg("vitReverseOrder",Arg::Opt,vitReverseOrder,"Vit: print values in reverse order."),
