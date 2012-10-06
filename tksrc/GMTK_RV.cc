@@ -420,6 +420,24 @@ void RV::setParents(vector<RV *> &sparents,vector<vector<RV *> > &cpl)
     }
 
 
+#define DO_IF_REGEX_AND_FRAME_MATCH(preg,rv,pcommand)		\
+    if (preg) { \
+      if (frameRange->contains(rv->frame()) && !regexec(preg,rv->name().c_str(),0,0,0)) { \
+        if (!first) \
+          fprintf(f,","); \
+	pcommand; \
+	first = false; \
+      } \
+    } else { \
+       if (frameRange->contains(rv->frame())) { \
+         if (!first) \
+           fprintf(f,","); \
+         pcommand; \
+         first = false; \
+       } \
+     }
+
+
 /*-
  *-----------------------------------------------------------------------
  * printRVSet{,AndValues}()
@@ -445,6 +463,15 @@ void printRVSetAndValues(FILE*f,vector<RV*>& locset,const bool nl,regex_t* preg)
   for (unsigned i=0;i<locset.size();i++) {
     RV* rv = locset[i];
     DO_IF_REGEX_MATCH(preg,rv,rv->printNameFrameValue(f,false));
+  }
+  if (nl) fprintf(f,"\n");
+}
+void printRVSetAndValues(FILE*f,vector<RV*>& locset,const bool nl,regex_t* preg, Range *frameRange)
+{
+  bool first = true;
+  for (unsigned i=0;i<locset.size();i++) {
+    RV* rv = locset[i];
+    DO_IF_REGEX_AND_FRAME_MATCH(preg,rv,rv->printNameFrameValue(f,false));
   }
   if (nl) fprintf(f,"\n");
 }
