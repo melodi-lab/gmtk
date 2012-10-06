@@ -1021,6 +1021,28 @@ Arg("map",Arg::Opt,dlopenFilenames,"Deterministic mapping dynamic library file. 
 #endif
 #endif // defined(GMTK_ARG_CLEAR_CLIQUE_VAL_MEM)
 
+
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+#if defined(GMTK_ARG_USE_MMAP)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("mmapViterbiValues",Arg::Opt,JunctionTree::mmapViterbi,"Use mmap() to get memory to hold Viterbi values"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#else
+#endif
+#endif // defined(GMTK_ARG_USE_MMAP)
+
+
 /*==============================================================================================================*/
 /****************************************************************************************************************/
 /****************************************************************************************************************/
@@ -2001,6 +2023,8 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
   // static bool vitValsFileBinp = false;
   static char* vitRegexFilter = NULL;
   static bool vitCaseSensitiveRegexFilter = false;
+  static char* vitPartRangeFilter = NULL;
+  static char* vitFrameRangeFilter = NULL;
   static bool vitAlsoPrintObservedVariables = false;
 //  static bool vitReverseOrder = false;
 #define MAX_VITERBI_TRIGGERS 3
@@ -2020,7 +2044,7 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
   Arg("pVitRegexFilter",Arg::Opt,pVitRegexFilter,"Partition Vit: Regular expression to filter variable names."),
   Arg("pVitCaseSensitiveRegexFilter",Arg::Opt,pVitCaseSensitiveRegexFilter,"Partition Vit: Case sensitivity of the rv regular expression filter."),
 
-  Arg("pVitPrintRange",Arg::Opt,pVitPartRangeFilter,"Partition Vit: value printing, integer range filter for partitions (e.g., frames, slices) to print."),
+  Arg("pVitPrintRange",Arg::Opt,pVitPartRangeFilter,"Partition Vit: value printing, integer range filter for modified partitions (e.g., frames, slices) to print."),
 
   Arg("pVitPrintObservedVariables",Arg::Opt,pVitAlsoPrintObservedVariables,"Partition Vit: also print observed random variables in addtion to hidden"),
 
@@ -2032,7 +2056,12 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
   Arg("vitRegexFilter",Arg::Opt,vitRegexFilter,"Vit: Regular expression to filter variable names."),
   Arg("vitCaseSensitiveRegexFilter",Arg::Opt,vitCaseSensitiveRegexFilter,"Vit: Case sensitivity of the rv regular expression filter."),
 
+  Arg("vitPrintRange",Arg::Opt,vitPartRangeFilter,"Vit: value printing, integer range filter for original partitions (e.g., frames, slices) to print."),
+  Arg("vitFrameRange",Arg::Opt,vitFrameRangeFilter,"Vit: value printing, integer range filter for frames to print."),
+
   Arg("vitPrintObservedVariables",Arg::Opt,vitAlsoPrintObservedVariables,"Vit: also print observed random variables in addtion to hidden"),
+
+    Arg("binaryVitFile",Arg::Opt,JunctionTree::binaryViterbiFilename,"File to write binary Viterbi values for later printing"),
 
 #if 0
   // this is not implemented yet.
@@ -2044,7 +2073,25 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
+  if (JunctionTree::binaryViterbiFilename) {
+#if defined(GMTK_VITERBI_FILE_WRITE)
+    JunctionTree::binaryViterbiFile = fopen(JunctionTree::binaryViterbiFilename, "w+b");
+#else
+    JunctionTree::binaryViterbiFile = fopen(JunctionTree::binaryViterbiFilename, "rb");
+#endif
+    if (!JunctionTree::binaryViterbiFile) {
+      char *err = strerror(errno);
+      error("ERROR: Failed to open '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+    }
+  }
 
+  if (vitPartRangeFilter && vitFrameRangeFilter) {
+    error("%s: Can't use both -vitPrintRange and -vitFrameRange\n", argerr);
+  }
+
+  if ( (vitPartRangeFilter || vitFrameRangeFilter) && ! vitValsFileName ) {
+    error("%s: -vitPrintRange and -vitFrameRange require -vitValsFile to be specified\n", argerr);
+  }
 #else
 #endif
 #endif // defined(GMTK_ARG_NEW_DECODING_OPTIONS)
