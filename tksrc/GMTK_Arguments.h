@@ -995,6 +995,28 @@ extern bool ObservationsAllowNan;
 #endif
 #endif // defined(GMTK_ARG_CLEAR_CLIQUE_VAL_MEM)
 
+
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+#if defined(GMTK_ARG_USE_MMAP)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("mmapViterbiValues",Arg::Opt,JunctionTree::mmapViterbi,"Use mmap() to get memory to hold Viterbi values"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#else
+#endif
+#endif // defined(GMTK_ARG_USE_MMAP)
+
+
 /*==============================================================================================================*/
 /****************************************************************************************************************/
 /****************************************************************************************************************/
@@ -2006,6 +2028,8 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 
   Arg("vitPrintObservedVariables",Arg::Opt,vitAlsoPrintObservedVariables,"Vit: also print observed random variables in addtion to hidden"),
 
+    Arg("binaryVitFile",Arg::Opt,JunctionTree::binaryViterbiFilename,"File to write binary Viterbi values for later printing"),
+
 #if 0
   // this is not implemented yet.
   Arg("vitReverseOrder",Arg::Opt,vitReverseOrder,"Vit: print values in reverse order."),
@@ -2016,6 +2040,17 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
+  if (JunctionTree::binaryViterbiFilename) {
+#if defined(GMTK_VITERBI_FILE_WRITE)
+    JunctionTree::binaryViterbiFile = fopen(JunctionTree::binaryViterbiFilename, "w+b");
+#else
+    JunctionTree::binaryViterbiFile = fopen(JunctionTree::binaryViterbiFilename, "rb");
+#endif
+    if (!JunctionTree::binaryViterbiFile) {
+      char *err = strerror(errno);
+      error("Failed to open '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+    }
+  }
 
 #else
 #endif
