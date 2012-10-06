@@ -68,6 +68,7 @@ VCID(HGID)
 #include "GMTK_MaxClique.h"
 #include "GMTK_Signals.h"
 
+#define GMTK_ARGUMENTS_REQUIRE_BINARY_VIT_FILE
 
 /*****************************   OBSERVATION INPUT FILE HANDLING   **********************************************/
 #define GMTK_ARG_OBS_FILES
@@ -325,7 +326,6 @@ main(int argc,char*argv[])
 
   logpr total_data_prob = 1.0;
 
-  // FIXME - make this required for gmtkPrint
   if (!JunctionTree::binaryViterbiFile) {
     error("Argument Error: Missing REQUIRED argument: -binaryViterbiFile <str>\n");
   }
