@@ -1216,13 +1216,18 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
   // allocated, so we make sure to do that here.
   PartitionTables* pt = new PartitionTables(inference_it.cur_jt_partition());
   storeIsland(0,pt);
-  ceGatherIntoRoot(0,pt);
-  collectDistributeIslandRecurse(0,totalNumberPartitions-1,base,linear_section_threshold,
-				 runEMalgorithm,
-				 runViterbiAlgorithm,
-				 localCliqueNormalization);
-  deleteIsland(0);
-
+  try {
+    ceGatherIntoRoot(0,pt);
+    collectDistributeIslandRecurse(0,totalNumberPartitions-1,base,linear_section_threshold,
+				   runEMalgorithm,
+				   runViterbiAlgorithm,
+				   localCliqueNormalization);
+    deleteIsland(0);
+  } catch (ZeroCliqueException &e) {
+    islandsMap.clear();
+    E1.useLISeparator();
+    throw ZeroCliqueException();
+  }
   // TODO: if we get zero probability, right now the code unwinds all
   // the way to delete the islands. Since we have all the islands here
   // in this map data structure, we don't need to do that and can jump

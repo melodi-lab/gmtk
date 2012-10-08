@@ -141,6 +141,7 @@ VCID(HGID)
 #define GMTK_ARG_CLIQUE_VAR_ITER_ORDERS
 #define GMTK_ARG_JT_OPTIONS
 #define GMTK_ARG_VE_SEPS
+#define GMTK_ARG_FAIL_ON_ZERO_CLIQUE
 
 /************************  OBSERVATION MATRIX TRANSFORMATION OPTIONS   ******************************************/
 #define GMTK_ARG_OBS_MATRIX_OPTIONS
@@ -376,39 +377,42 @@ main(int argc,char*argv[])
 	Range::iterator* dcdrng_it = new Range::iterator(dcdrng->begin());
 	while (!dcdrng_it->at_end()) {
 	  const unsigned segment = (unsigned)(*(*dcdrng_it));
-	  if (globalObservationMatrix.numSegments() < (segment+1)) 
-	    error("ERROR: only %d segments in file, segment must be in range [%d,%d]\n",
-		  globalObservationMatrix.numSegments(),
-		  0,globalObservationMatrix.numSegments()-1);
+	  try {
+	    if (globalObservationMatrix.numSegments() < (segment+1)) 
+	      error("ERROR: only %d segments in file, segment must be in range [%d,%d]\n",
+		    globalObservationMatrix.numSegments(),
+		    0,globalObservationMatrix.numSegments()-1);
 
-	  const unsigned numFrames = GM_Parms.setSegment(segment);
+	    const unsigned numFrames = GM_Parms.setSegment(segment);
 
-	  unsigned numUsableFrames;
-	  numCurPartitionsDone = 0;
-	  if (probE && !island) {
-	    logpr probe = myjt.probEvidenceTime(numFrames,numUsableFrames,numCurPartitionsDone,noEPartition);
-	    totalNumberPartitionsDone += numCurPartitionsDone;
-	    infoMsg(IM::Info,"Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-		    segment,
-		    probe.val(),
-		    probe.val()/numFrames,
-		    probe.val()/numUsableFrames);
-	  } else if (island) {
-	    myjt.collectDistributeIsland(numFrames,
-					 numUsableFrames,
-					 base,
-					 lst,
-					 sqrtBase);
-	    // TODO: note that frames not always equal to partitions but
-	    // do this for now. Ultimately fix this.
-	    totalNumberPartitionsDone += numUsableFrames;
-	  } else {
-	    error("gmtkTime doesn't currently support linear full-mem collect/distribute evidence. Use either '-probE' option, or as a simulation, '-island -lst HUGE_INT'\n");
-	  }
+	    unsigned numUsableFrames;
+	    numCurPartitionsDone = 0;
+	    if (probE && !island) {
+	      logpr probe = myjt.probEvidenceTime(numFrames,numUsableFrames,numCurPartitionsDone,noEPartition);
+	      totalNumberPartitionsDone += numCurPartitionsDone;
+	      infoMsg(IM::Info,"Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+		      segment,
+		      probe.val(),
+		      probe.val()/numFrames,
+		      probe.val()/numUsableFrames);
+	    } else if (island) {
+	      myjt.collectDistributeIsland(numFrames,
+					   numUsableFrames,
+					   base,
+					   lst,
+					   sqrtBase);
+	      // TODO: note that frames not always equal to partitions but
+	      // do this for now. Ultimately fix this.
+	      totalNumberPartitionsDone += numUsableFrames;
+	    } else {
+	      error("gmtkTime doesn't currently support linear full-mem collect/distribute evidence. Use either '-probE' option, or as a simulation, '-island -lst HUGE_INT'\n");
+	    }
       
-	  if (JunctionTree::probEvidenceTimeExpired)
-	    break;
-
+	    if (JunctionTree::probEvidenceTimeExpired)
+	      break;
+	  } catch (ZeroCliqueException &e) {
+	    warning("Segment %d aborted due to zero clique\n", segment);
+	  }
 	  (*dcdrng_it)++;
 	  totalNumberSegmentsDone ++;
 	}
