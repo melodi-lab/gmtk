@@ -200,6 +200,12 @@ class FileSource: public ObservationSource {
     return file->numLogicalSegments(); 
   }
 
+  // The number of ObservationFiles combined into the observation matrix
+  unsigned numFiles() {
+    assert(file);
+    return file->numFiles();
+  }
+
   // The current segment 
   unsigned segmentNumber() {
     assert(segment >= 0);

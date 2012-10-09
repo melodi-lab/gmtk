@@ -93,6 +93,12 @@ class FilterFile: public ObservationFile {
   }
 
 
+  // The number of ObservationFiles combined into the observation matrix.
+  unsigned numFiles() { 
+    assert(file);
+    return file->numFiles(); 
+  }
+
   bool openSegment(unsigned seg) {
     bool result = file->openLogicalSegment(seg);
     _numFrames = filter->getTotalOutputFrames(file->numLogicalFrames());

@@ -18,6 +18,7 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "arguments.h"
 #include "pfile.h"
 #include "GMTK_WordOrganization.h"
+#include "GMTK_ObservationArguments.h"
 
 #define DEBUG 0
 
@@ -86,27 +87,15 @@ done:
   return err;
 }
 
-bool
-littleEndian() {
-  ByteEndian byteEndian = getWordOrganization();
-  switch(byteEndian) {
-  case BYTE_BIG_ENDIAN:
-    return false;
-  case BYTE_LITTLE_ENDIAN:
-    return true;
-  default:
-    // We weren't able to figure the Endian out.  Leave the swap defaults as they are.
-#ifdef INTV_WORDS_BIGENDIAN
-    return true;
-#else
-    return false;
-#endif
-  }
-}
-
 
 char *pfileName = NULL;
 #define MAX_OBJECTS 10
+
+#ifdef INTV_WORDS_BIGENDIAN
+bool iswp[MAX_OBJECTS] = {true,true,true,true,true,true,true,true,true,true};
+#else
+bool iswp[MAX_OBJECTS] = {false,false,false,false,false,false,false,false,false,false};
+#endif 
 
 char *input_fname[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};  // Input file name.
 unsigned int numInt;
@@ -117,7 +106,7 @@ Arg Arg::Args[] = {
 
   Arg("\n*** Input arguments ***\n"),
 
-  Arg("i",    Arg::Req, input_fname,"input file. Replace X with the file number",Arg::ARRAY,MAX_OBJECTS),
+  Arg("of",   Arg::Req, input_fname,"input file. Replace X with the file number",Arg::ARRAY,MAX_OBJECTS),
   Arg("nf",   Arg::Req, numFloat,"number of floats in input file(s)"),
   Arg("ni",   Arg::Req, numInt,"number of ints (labels) in input file(s)"),
 
@@ -136,6 +125,8 @@ Arg Arg::Args[] = {
 int
 main(int argc, char *argv[]) {
 
+  CODE_TO_COMPUTE_ENDIAN
+
   bool parse_was_ok = Arg::parse(argc,(char**)argv);
 
   if(help) {
@@ -153,8 +144,6 @@ main(int argc, char *argv[]) {
 #endif
     exit(0);
   }
-
-  bool  doWeSwap  = littleEndian();
 
 #if DEBUG
   fprintf(stderr, "writing to %s\n", pfileName);

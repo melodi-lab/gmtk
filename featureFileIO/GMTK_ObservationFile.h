@@ -18,6 +18,9 @@
 #include <config.h>
 #endif
 
+#include <stdlib.h>
+
+#include "error.h"
 #include "machine-dependent.h"
 #include "range.h"
 
@@ -117,6 +120,9 @@ class ObservationFile {
 
   // The number of physical (before -srX) segments in the file.
   virtual unsigned numSegments() = 0;
+
+  // The number of ObservationFiles combined into the observation matrix.
+  virtual unsigned numFiles() { return 1; };
 
   // Begin sourcing data from the requested physical (before -srX) segment.
   // Must be called before any other operations are performed on a segment.
