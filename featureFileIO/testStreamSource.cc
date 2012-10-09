@@ -71,11 +71,12 @@ main(int argc, char *argv[]) {
     exit(0);
   }
 
-  Filter *filt = NULL;
+  //  Filter *filt = NULL;
   ASCIIStream as(stdin, numFloat, numInt, frs_str, irs_str);
-  ObservationStream *os = &as;
-  if (strans) filt = instantiateFilters(strans, as.numLogicalContinuous());
-  StreamSource ss(1, &os, 100, filt);
+  ObservationStream *os[1];
+  os[0] = &as;
+  //  if (strans) filt = instantiateFilters(strans, as.numLogicalContinuous());
+  StreamSource ss(1U, os, 100U, strans);
 
   unsigned segNum, frameNum;
   for (segNum=0; !ss.EOS(); segNum+=1) {

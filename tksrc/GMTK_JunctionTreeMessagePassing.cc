@@ -2450,17 +2450,26 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
   unsigned S = gm_template.S;
 
   unsigned numFramesInPprime = fp.numFramesInP() + fp.numFramesInC() * M;
-  unsigned numFramesInCprime = fp.numFramesInC() * S;
+  unsigned numFramesInCprime = fp.numFramesInC() * (S+M);
   unsigned numFramesInEprime = fp.numFramesInE() + fp.numFramesInC() * M;
 
+#if 0
   unsigned numPreloadFrames = Dlinks::globalMinLag() + 
     numFramesInPprime + 2 * numFramesInCprime + numFramesInEprime;
+#else
+  // FIXME - assume this won't over-flow with just 5 partitions
+  unsigned numPreloadFrames = Dlinks::globalMinLag() + 
+    fp.numFramesInP() + (3 * S + M) * fp.numFramesInC() + fp.numFramesInE() +
+    Dlinks::globalMaxLag();
+#endif
+
+  unsigned numNewFrames = fp.numFramesInC() * S;
 
 printf("preaload %u frames\n", numPreloadFrames);
   globalObservationMatrix->preloadFrames(numPreloadFrames);
 
   unsigned truePtLen = 0; // 0 until we know the true number of modified partitions
-
+  unsigned currentMaxFrameNum;
   {
     unsigned T = globalObservationMatrix->numFrames();
     unsigned tmp;
@@ -2470,11 +2479,12 @@ printf("preaload %u frames\n", numPreloadFrames);
     if (T > 0) {
       // We already know the length of this segment (it's probably
       // very short, since we only try to pre-load enough frames to
-      // process P' C' C' E'), so we can pass the true number of
+      // process P' C' C' C' E'), so we can pass the true number of
       // frames to unroll...
       
       tmp = unroll(T,ZeroTable,&totalNumberPartitions);
       truePtLen = totalNumberPartitions;
+      currentMaxFrameNum  = T;
     } else {
       // We don't know how many frames are in the segment yet,
       // so just assume it's very long. Should be OK, since the
@@ -2487,9 +2497,11 @@ printf("preaload %u frames\n", numPreloadFrames);
 #  define UINT32_MAX		(4294967295U)
 #endif
 
+#define MAX_FRAME_NUMBER (1073741824U)
 
-      tmp = unroll(UINT32_MAX/8,ZeroTable,&totalNumberPartitions);
-      // UINT32_MAX seems to cause overflow, so UINT32_MAX/2 instead      
+      tmp = unroll(MAX_FRAME_NUMBER,ZeroTable,&totalNumberPartitions);
+
+      currentMaxFrameNum = numPreloadFrames;
     }
 
 printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
@@ -2592,6 +2604,7 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
     prev_part_tab = cur_part_tab;
 
     setCurrentInferenceShiftTo(part);
+
     cur_part_tab
       = new PartitionTables(inference_it.cur_jt_partition());
 
@@ -2698,10 +2711,20 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
     if (limitTime && probEvidenceTimeExpired)
       goto finished;
 
+    if (currentMaxFrameNum > MAX_FRAME_NUMBER - numNewFrames) {
+      // frame number is about to overflow
+      infoMsg(IM::Inference, IM::Info, "resetting frame to %u\n", numNewFrames);
+      globalObservationMatrix->resetFrameNumbers(0);
+      infoMsg(IM::Inference, IM::Info, "resetting ptps to partition 2\n");
+      part = 1; // restart @ C'_1 (1 is C'_0, but about to increment part at top of loop)
+      currentMaxFrameNum = numPreloadFrames;
+    }
 
     // read in the same # of frames that we're about to consume to maintain
     // enough queued frames to be sure we don't overshoot the C'->E' transition
-    unsigned nQueued = globalObservationMatrix->enqueueFrames(numFramesInCprime);
+    unsigned nQueued = globalObservationMatrix->enqueueFrames(numNewFrames);
+
+    currentMaxFrameNum += nQueued;
 
     // update the ptps_iterator if we just found out the true length of the segment
     if (truePtLen == 0 && globalObservationMatrix->numFrames() != 0) {
