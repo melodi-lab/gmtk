@@ -119,6 +119,8 @@ instantiateFileSource() {
     nCont += obsFile[i]->numContinuous();
   }
 
+  if (nFiles == 0) return NULL;
+
   for (unsigned i=nFiles+1; i < MAX_NUM_OBS_FILES; i+=1) {
     if (ofs[i]) error("instantiateFileSource: Observation files [%u,%u] are missing\n", nFiles,i-1);
   }

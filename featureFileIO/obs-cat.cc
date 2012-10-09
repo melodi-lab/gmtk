@@ -56,10 +56,13 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "ObsArguments.h"
 #undef GMTK_ARGUMENTS_DEFINITION
 
+unsigned verb = IM::Default;
+
 Arg Arg::Args[] = {
 #define GMTK_ARGUMENTS_DOCUMENTATION
 #include "ObsArguments.h"
 #undef GMTK_ARGUMENTS_DOCUMENTATION
+  Arg("verbosity",Arg::Opt, verb, "Level of debugging output, [0-100]"),
   // final one to signal the end of the list
   Arg()
 };
@@ -229,6 +232,7 @@ main(int argc, char *argv[]) {
 #include "ObsArguments.h"
 #undef GMTK_ARGUMENTS_CHECK_ARGS
 
+  IM::setGlbMsgLevel(IM::ObsStream, verb);
   
   bool machineBigEndian = getWordOrganization() == BYTE_BIG_ENDIAN;
   bool needOutputSwap   = machineBigEndian != outputNetByteOrder;
@@ -252,7 +256,9 @@ main(int argc, char *argv[]) {
   }
   if (allFiles) {
     obsStream[0] = makeFileSource();
-    assert(obsStream[0]);
+    if (!obsStream[0]) {
+      error("ERROR: no input sources specified\n");
+    }
     nStreams = 1;
   } else {
     for (unsigned i=0; i < MAX_NUM_OBS_STREAMS && (ofs[i] || oss[i]); i+=1) {
@@ -270,7 +276,8 @@ main(int argc, char *argv[]) {
   if (nStreams == 0) {
     error("ERROR: no input sources specified (use -ofX or -osX)");
   }
-  StreamSource *source = new StreamSource(nStreams, obsStream, streamBufferSize);
+
+  StreamSource *source = new StreamSource(nStreams, obsStream, streamBufferSize, Post_Transforms, startSkip);
   sendFeatureCounts(source, binaryOutputStream, needOutputSwap);
 
   unsigned segNum = 0;
