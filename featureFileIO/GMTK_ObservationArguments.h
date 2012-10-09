@@ -47,19 +47,6 @@
 /*************************************************************************************************************/
 /*************************************************************************************************************/
 
-
-// for gmtkOnline? only accept a single input stream
-#if defined(GMTK_ARG_STREAM_INPUT)
-#if defined(GMTK_ARGUMENTS_DEFINITION)
-
-#define MAX_NUM_OBS_STREAMS (1)
-
-#define DEFAULT_STREAM_BUFFER_SIZE (sizeof(Data32))
-
-  bool inputNetByteOrder[MAX_NUM_OBS_STREAMS] = {true};
-  char *oss[MAX_NUM_OBS_STREAMS] = {NULL};
-  unsigned streamBufferSize = DEFAULT_STREAM_BUFFER_SIZE;
-
 // This next code is used by a number of routines to compute and set
 // the default endian swapping condition associated with the
 // arguments. We figure out the Endian of the machine this is running
@@ -90,6 +77,18 @@
 #define CODE_TO_COMPUTE_ENDIAN DEF_CODE_TO_COMPUTE_ENDIAN(false) 
 #endif
 
+
+// for gmtkOnline? only accept a single input stream
+#if defined(GMTK_ARG_STREAM_INPUT)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+#define MAX_NUM_OBS_STREAMS (1)
+
+#define DEFAULT_STREAM_BUFFER_SIZE (sizeof(Data32))
+
+  bool inputNetByteOrder[MAX_NUM_OBS_STREAMS] = {true};
+  char *oss[MAX_NUM_OBS_STREAMS] = {NULL};
+  unsigned streamBufferSize = DEFAULT_STREAM_BUFFER_SIZE;
 
    // observation input file handling
    unsigned nfs[MAX_NUM_OBS_STREAMS] = {0};
@@ -479,7 +478,7 @@ extern bool ObservationsAllowNan;
   Arg("postpr",Arg::Opt, postpr,"Post Per-segment frame Range for obs file X after per-stream transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("gpr",   Arg::Opt, gpr_str,"Global Per-segment final frame Range"),
   Arg("justification", Arg::Opt, justification_str, "Justification of usable frames (left, center, right)"),
-  Arg("obsNAN",   Arg::Opt, ObservationsAllowNan," True if observation files allow FP NAN values"),
+  Arg("obsNAN",   Arg::Opt, ObservationsAllowNan,"True if observation files allow FP NAN values"),
 
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)

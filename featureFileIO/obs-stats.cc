@@ -109,38 +109,7 @@ main(int argc, char *argv[]) {
 
   infoMsg(IM::Max,"Opening Files ...\n");
 
-#if 0
-  FileSource globalObservationMatrix;
-  ObservationFile *obsFile[MAX_NUM_OBS_FILES];
-  unsigned nFiles=0;
-  unsigned nCont = 0;
-  for (unsigned i=0; i < MAX_NUM_OBS_FILES && ofs[i] != NULL; i+=1, nFiles+=1) {
-    
-    obsFile[i] = instantiateFile(ifmts[i], ofs[i], nfs[i], nis[i], i, iswp[i],
-                                 Cpp_If_Ascii, cppCommandOptions, prefrs[i], preirs[i],
-                                 prepr[i], sr[i]);
-    assert(obsFile[i]);
-    Filter *fileFilter = instantiateFilters(Per_Stream_Transforms[i],
-                                            obsFile[i]->numContinuous());
-    if (fileFilter) {
-      obsFile[i] = new FilterFile(fileFilter, obsFile[i], frs[i], irs[i], postpr[i]);
-      nCont += obsFile[i]->numContinuous();
-    } else
-      error("current implementation requires filter\n");
-  }
-  MergeFile *mf  = new  MergeFile(nFiles, obsFile,
-				  Action_If_Diff_Num_Sents,
-				  Action_If_Diff_Num_Frames,
-				  Ftr_Combo);
-  FilterFile *ff = new FilterFile(instantiateFilters(Post_Transforms, nCont), 
-				  mf, NULL, NULL, gpr_str);
-  globalObservationMatrix.initialize(ff, 1024*1024, /* FIXME - argument */
-				     startSkip, endSkip, justification);
-
-  FileSource *f = &globalObservationMatrix;
-#else
   FileSource *f = instantiateFileSource();
-#endif
 
   unsigned nCont = f->numContinuous();
 

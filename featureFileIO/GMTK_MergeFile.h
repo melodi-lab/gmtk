@@ -87,6 +87,16 @@ class MergeFile: public ObservationFile {
   // The number of segments after -sdiffact
   unsigned numSegments() { return _numSegments; }
 
+  // The number of ObservationFiles combined into the observation matrix.
+  unsigned numFiles() { 
+    unsigned sum = 0;
+    for (unsigned i=0; i < nFiles; i+=1) {
+      assert(file);
+      sum += file[i]->numFiles();
+    }
+    return sum;
+  };
+
   bool openSegment(unsigned seg);
 
   // The number of frames in the currently open segment after -fdiffact

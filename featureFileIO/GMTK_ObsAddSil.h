@@ -4,7 +4,7 @@
 #include "GMTK_ObsPrint.h"
 
 void addSil(FILE* out_fp, 
-	     ObservationMatrix* obs_mat,
+	     FileSource* obs_mat,
 	     Range& srrng,
 	     const int nb,
 	     const char *prb_str,

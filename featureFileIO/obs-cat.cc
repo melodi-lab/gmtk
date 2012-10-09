@@ -210,6 +210,8 @@ makeFileSource() {
 int 
 main(int argc, char *argv[]) {
 
+  CODE_TO_COMPUTE_ENDIAN
+
   bool parse_was_ok = Arg::parse(argc,(char**)argv);
 
   if(help) {
