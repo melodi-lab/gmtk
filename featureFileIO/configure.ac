@@ -79,22 +79,25 @@ AC_CHECK_LIB([m], [sqrt])
 #AC_CHECK_LIB([hdf5_cpp], [H5File::isHdf5])  
 #AC_LANG_POP([C++])
 
-# It would be nice to check for HDF5 version >= 1.8, but I haven't found
-# a good way to do it for the C++ API 
+AC_MSG_CHECKING([for HDF5 >= 1.8])
 AC_LANG_PUSH([C++])
 hdf_check_save_LIBS=${LIBS}
 LIBS="${LIBS} -lhdf5_cpp"
+# H5Lregister should only be present in >= 1.8
 AC_LINK_IFELSE([AC_LANG_PROGRAM([#include <H5Cpp.h>
 #ifndef H5_NO_NAMESPACE
 using namespace H5;
 #endif],
-[H5File file("/dev/null", H5F_ACC_RDONLY )])],
+[H5Lregister(NULL); H5File file("/dev/null", H5F_ACC_RDONLY )])],
         AC_SUBST([HAVE_HDF5],[yes]),[])
 LIBS=${hdf_check_save_LIBS}
 AC_LANG_POP([C++])
 if test x"$HAVE_HDF5" = x"yes"; then 
   LIBS="-lhdf5_cpp $LIBS"
   AC_DEFINE([HAVE_LIBHDF5_CPP],[1],[Are the C++ bindings for HDF5 available?])
+  AC_MSG_RESULT([yes])
+else
+  AC_MSG_RESULT([no])
 fi
 
 case "${host}" in

@@ -28,7 +28,7 @@
 #include "GMTK_MergeStream.h"
 
 // The StreamSource subclasses (see GMTK_StreamSource.h) handle
-// non-random access data sources like pipes and sockets.
+// sequential access data sources like pipes and sockets.
 // Online inference assumes a StreamSource.
 
 class StreamSource : public ObservationSource {
@@ -60,7 +60,6 @@ class StreamSource : public ObservationSource {
   unsigned curFrame;
 
   unsigned _startSkip;
-  // FIXME - add endSkip, probably to base class?
 
   unsigned _minPastFrames;
   unsigned _minFutureFrames;
@@ -84,7 +83,6 @@ class StreamSource : public ObservationSource {
 
   // side effect: may set numFramesInSegment
 
-  // FIXME - error conditions?
   void preloadFrames(unsigned nFrames);
 
   // Add the requested # of frames to the queue, possibly 

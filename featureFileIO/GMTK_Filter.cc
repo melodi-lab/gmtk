@@ -194,7 +194,7 @@ parseTransform(char*& trans_str, int& magic_int, double& magic_double, char *&fi
 
 
 Filter *
-instantiateFilters(char *filterStr, unsigned numContinuous) {
+instantiateFilters(char *filterStr, unsigned numContinuous, unsigned numDiscrete) {
   int magicInt;
   double magicDouble;
   char * filterFileName;
@@ -230,7 +230,6 @@ instantiateFilters(char *filterStr, unsigned numContinuous) {
 #endif
       case MULTIPLY:
 	//	printf("multiply by %f (%u)\n", magicDouble, numContinuous);
-	// FIXME - hmm... assume xforms won't change # floats
 	B = new float[numContinuous];
 	for (unsigned j=0; j < numContinuous; j+=1)
 	  B[j] = (float)magicDouble;
@@ -248,6 +247,7 @@ instantiateFilters(char *filterStr, unsigned numContinuous) {
       case AFFINE:
 	//printf("affine with %s\n", filterFileName);
 	xformer = new AffineFilter(filterFileName, NULL);
+	xformer->numOutputFeatures(numContinuous, numDiscrete, numContinuous, numDiscrete);
 	break;
       case FILTER:
 	//printf("filter stream with %s\n", filterFileName);

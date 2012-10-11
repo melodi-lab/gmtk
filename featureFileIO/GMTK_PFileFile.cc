@@ -38,6 +38,8 @@ PFileFile::PFileFile(const char *name, unsigned nfloats, unsigned nints,
 		    preFrameRangeStr_,
 		    segRangeStr_)
 {
+  assert(name);
+  fileName = strdup(name);
   buffer = NULL;
   bufferSize = 0;
   contBuf = NULL;
@@ -117,8 +119,7 @@ PFileFile::getFrames(unsigned first, unsigned count) {
   float  *contSrc = contBuf;
   UInt32 *discSrc = discBuf;
   if (pfile->set_pos(currentSegment, first) == SEGID_BAD) {
-    // FIXME - remember file name for error reporting
-    error("ERROR: PFileFile: unable to seek in PFile");
+    error("ERROR: PFileFile: unable to seek in PFile %s", fileName);
   }
   unsigned framesRead = pfile->read_ftrslabs(count, contBuf, discBuf);
   assert(framesRead == count);

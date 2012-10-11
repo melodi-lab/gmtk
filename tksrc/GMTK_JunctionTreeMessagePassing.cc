@@ -2433,34 +2433,54 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
   // in a local variable for use in our iterator.
   unsigned totalNumberPartitions;
 
-
-  // read enough frames from the stream to get us started
-
-  // compute min # of frames
-  // startSkip? + max(frames(P'),frames(C'),pastFrames(dlinks)) + 
-  //              \tau * frames(C') + 
-  // endSkip?   + max(frames(C'),frames(E'),future(dlinks))
-
-  // FIXME - fp.numFramesInP() returns frame length of unmodified P,
-  //         but we want P'. Likewise C and E.  
-  // gm_template.computeUnrollParameters(...,modifiedTemplateMinUnrollAmount,...)
-  // might show the way
-
   unsigned M = gm_template.M;
   unsigned S = gm_template.S;
 
+#if 0
   unsigned numFramesInPprime = fp.numFramesInP() + fp.numFramesInC() * M;
   unsigned numFramesInCprime = fp.numFramesInC() * (S+M);
   unsigned numFramesInEprime = fp.numFramesInE() + fp.numFramesInC() * M;
+#endif
 
 #if 0
   unsigned numPreloadFrames = Dlinks::globalMinLag() + 
     numFramesInPprime + 2 * numFramesInCprime + numFramesInEprime;
 #else
-  // FIXME - assume this won't over-flow with just 5 partitions
-  unsigned numPreloadFrames = Dlinks::globalMinLag() + 
-    fp.numFramesInP() + (3 * S + M) * fp.numFramesInC() + fp.numFramesInE() +
+  
+  if ((unsigned) Dlinks::globalMinLag() > globalObservationMatrix->startSkip()) {
+    error("ERROR: -startSkip must be at least %d\n", Dlinks::globalMinLag());
+  }
+  if (fp.numFramesInC() == 0) {
+    error("ERROR: gmtkOnline does not support empty chunks\n");
+  }
+
+  // Try to read in enough frames for P' C' C' C' E'
+  // because we need enough frames in the queue to notice the
+  // C' to E' transition before inference needs to start working
+  // on E'. Also, if we need to reset the frame # due to overflow,
+  // we want to come back to the C'C' state (rather than P'C').
+  // So, we "work" on the middle C', with the following C'E' as
+  // "runway" to notice the end of stream, and the preceeding C'
+  // in case of frame # overflow. When we start doing smoothing,
+  // we will also need to include the C's for the "psuedofuture".
+
+  // Now we also need to preload startSkip frames so that they
+  // can be skipped :) and the max Dlink lag so that the last
+  // partition has sufficient future available.
+  
+  // The (3S + M) is because P'C' share M|C| frames, then each
+  // C' requires S|C| new frames (the last C' and E' share
+  // M|C| frames, but they're already counted in the C's). Here
+  // |X| is the number of frames in partition X.
+
+  unsigned tau = 0; // # of "future" C's for smoothing
+  unsigned numPreloadFrames = 
+    globalObservationMatrix->startSkip() + 
+    fp.numFramesInP() + 
+    ( (3+tau) * S + M ) * fp.numFramesInC() + 
+    fp.numFramesInE() +
     Dlinks::globalMaxLag();
+  // Assume the above won't over-flow with just 5 partitions
 #endif
 
   unsigned numNewFrames = fp.numFramesInC() * S;
@@ -2595,9 +2615,6 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
   // if the LI separator was turned off, we need to turn it back on.
   if (inference_it.at_first_c() && P1.cliques.size() == 0)
     Co.useLISeparator();
-
-  // FIXME - I think if C' and E' are empty (can that happen?), we
-  //   might never pick up the end of stream - enqueue P' frames here?
 
   for (unsigned part=1; part < inference_it.pt_len(); part += 1 ) {
     delete prev_part_tab;

@@ -103,8 +103,6 @@ class ObservationFile {
       segRangeStr(segRangeStr_), segRange(NULL), 
       logicalObservationBuffer(NULL), logicalObsBufSize(0)
     {
-      // FIXME - _numContinuousFeatures & _numDiscreteFeatures must be set first
-      //      _numLogicalFeatures = numLogicalContinuous() + numLogicalDiscrete();
     }
 
   virtual ~ObservationFile() {

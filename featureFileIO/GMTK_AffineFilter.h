@@ -37,6 +37,10 @@
 // skip over integer features, but that would need a
 // float x float or float x double mul_mdmd_md
 
+// FIXME - would be nice to use the PHiPAC A*B+C, which 
+// might work with Cstride=0. The problem is that the
+// result overwrites C.
+
 // So B should have n rows. If B has k columns, the output of
 // the filter will have k continuous features. Store B in the 
 // file thusly:
@@ -98,6 +102,13 @@ class AffineFilter: public Filter {
     if (buffer) free(buffer);
     if (workBuffer) free (workBuffer);
     if (xBuffer) free (xBuffer);
+  }
+
+  void numOutputFeatures(unsigned inputContinuous, unsigned inputDiscrete,
+			 unsigned &outputContinuous, unsigned &outputDiscrete) 
+  {
+    outputContinuous = cols;
+    outputDiscrete = inputDiscrete;
   }
 
   subMatrixDescriptor *

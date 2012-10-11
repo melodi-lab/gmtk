@@ -43,6 +43,7 @@ class ASCIIFile: public ObservationFile {
   char     **dataNames;  // pointers to individual filenames
 
   Data32    *buffer;     // data for current segment
+  unsigned   bufferSize; // in Data32s
 
  public:
 
@@ -62,7 +63,7 @@ class ASCIIFile: public ObservationFile {
 	  delete [] dataNames[i];
       delete [] dataNames;
     }
-    if (buffer) delete [] buffer;
+    if (buffer) free(buffer);
   }
  
   // The number of available segments.

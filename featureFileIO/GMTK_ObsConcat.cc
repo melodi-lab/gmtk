@@ -296,7 +296,6 @@ openOneSourceFile(char *ofs,
   if (gpr_str && ALLOREMPTY(gpr_str)) gpr_str = NULL;
 
   ObservationFile *obsFile;
-  unsigned nCont = 0;
   
   obsFile = instantiateFile(ifmt, ofs, nfs, nis, fileNum, iswp,
 			    Cpp_If_Ascii, cppCommandOptions, prefrs, preirs,
@@ -304,17 +303,18 @@ openOneSourceFile(char *ofs,
   assert(obsFile);
   if (Per_Stream_Transforms || frs || irs || postpr) {
     Filter *fileFilter = instantiateFilters(Per_Stream_Transforms,
-					    obsFile->numContinuous());
+					    obsFile->numContinuous(),
+					    obsFile->numDiscrete());
     assert(fileFilter);
     obsFile = new FilterFile(fileFilter, obsFile, frs, irs, postpr);
   }
-  nCont += obsFile->numContinuous();
-
   ObservationFile *mf = obsFile;
 
   ObservationFile *ff;
   if (Post_Transforms || gpr_str) {
-    ff = new FilterFile(instantiateFilters(Post_Transforms, nCont), 
+    ff = new FilterFile(instantiateFilters(Post_Transforms, 
+                                           obsFile->numLogicalContinuous(),
+			                   obsFile->numLogicalDiscrete()),
                         mf, NULL, NULL, gpr_str);
   } else {
     ff = mf;

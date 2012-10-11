@@ -32,12 +32,17 @@
 // can be stacked in a linked list to apply multiple transformations
 // to the observations. The FilterFile (see GMTK_FilterFile.h) class
 // is responsible for applying the Filters to ObservationFile instances.
+// FilterStream applies a single Filter to an ObservationStream.
 //
 // Subclasses should implement 
 //   getReqiredInput()
 //   describeLocalOutput()
 //   localTransform()
-//
+//   getNextFrameInfo()
+//   getEOSFrameInfo()
+//   getTotalOutputFrames()
+//   numOutputFeatures()
+
 // You should also update parseTransform() and instantiateFilters()
 // to facilitate command line argument parsing.
 
@@ -59,8 +64,6 @@ class Filter {
 
  public:
 
-  // FIXME - ctor should take prevFilter ?
-  
   Filter(Filter *nextFilter = NULL) : nextFilter(nextFilter), frameNum(0) {}
 
   
@@ -77,7 +80,23 @@ class Filter {
   }
 
 
+  // This is called by FilterStream after the last frame in a segment
+  // is read. Any state can be reset in preparation for the next segment.
   virtual void nextStreamSegment() { frameNum = 0; }
+
+  // FileStream has a random access backing store so that the frames 
+  // needed to produce the requested filter output can always be
+  // accessed. In contrast, FilterStream can only maintain a small
+  // queue of the most recent input frames to which the filter is applied
+  // to produce the next frame(s) of filter output. getNextFrameInfo()
+  // tells FilterStream how to manage its input frame queue - drop dropOldIn
+  // frames for the queue, enqueue numNewIn new frames; then applying the
+  // filter will produce numNewOut output frames. This method requires state
+  // since the first and last frames may need to be handled differently from
+  // the middle frames within a segment. inputContinuous and inputDiscrete
+  // are the number of real and discrete features in the input frames. The
+  // input subMatrixDescriptor is setup to tell the filter how to interpret 
+  // the input frames.
 
   virtual void getNextFrameInfo(unsigned &numNewIn, unsigned &dropOldIn, unsigned &numNewOut,
 				unsigned inputContinuous, unsigned inputDiscrete,
@@ -96,6 +115,14 @@ class Filter {
     input.requestedFirst = 0; 
     input.requestedCount = 1;
   }
+
+  // A stream segment may end before the FilterStream can read the numNewIn 
+  // frames requested by getNExtFrameInfo(). In that case, the FitlerStream
+  // will call getEOSFrameInfo, passing in the number of requested frames that
+  // were unavailable in numFramesShort. It returns numNewOut, the number of 
+  // output frames that will be produced from these last frames in the segment.
+  // The input subMatrixDescriptor again describes how the input frames should
+  // be interpreted by the Fitler.
 
   virtual void getEOSFrameInfo(int numFramesShort, unsigned &numNewOut, subMatrixDescriptor &input) {
     numNewOut = 0;
@@ -148,6 +175,16 @@ class Filter {
     }
   }
 
+
+  // How many continuous/discrete features in the output given
+  // the number of input continous/discrete features.
+
+  virtual void numOutputFeatures(unsigned inputContinuous, unsigned inputDiscrete,
+				 unsigned &outputContinuous, unsigned &outputDiscrete) 
+  {
+    outputContinuous = inputContinuous;
+    outputDiscrete = inputDiscrete;
+  }
 
   // What will the output look like if the input described by
   // inputDescription is feed into this Filter?
@@ -217,7 +254,6 @@ class Filter {
 					      inputDescription, 
 					      &myOutput);
     if (nextFilter) {
-      // FIXME - check that myOutput == *(inputDescription->next)
       outputData = 
 	nextFilter->transform(outputData, *(inputDescription.next), outputDescription);
     } else {
@@ -246,9 +282,8 @@ int
 parseTransform(char*& trans_str, int& magic_int, double& magic_double, char *&filterFileName);
 
 
-// FIXME - add bool mayAlterFrameCount
 Filter *
-instantiateFilters(char *filterStr, unsigned numContinuous);
+instantiateFilters(char *filterStr, unsigned numContinuous, unsigned numDiscrete);
 
 #define NONE_LETTER 'X'
 #define TRANS_AFFINE_LETTER 'A'

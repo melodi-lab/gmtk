@@ -4,7 +4,7 @@
  * 
  * Written by Richard Rogers <rprogers@ee.washington.edu>
  *
- * Copyright (c) 2011, < fill in later >
+ * Copyright (c) 2012, < fill in later >
  * 
  * < License reference >
  * < Disclaimer >
