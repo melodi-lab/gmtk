@@ -97,7 +97,8 @@ main(int argc, char *argv[]) {
 				 prepr[i], sr[i]);
     assert(obsFile[i]);
     Filter *fileFilter = instantiateFilters(Per_Stream_Transforms[i],
-					    obsFile[i]->numContinuous());
+					    obsFile[i]->numLogicalContinuous(),
+                                            obsFile[i]->numLogicalDiscrete());
     if (fileFilter) {
       obsFile[i] = new FilterFile(fileFilter, obsFile[i], frs[i], irs[i], postpr[i]);
       nCont += obsFile[i]->numContinuous();

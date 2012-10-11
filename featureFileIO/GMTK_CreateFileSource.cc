@@ -104,7 +104,6 @@ instantiateFileSource() {
 
   ObservationFile *obsFile[MAX_NUM_OBS_FILES];
   unsigned nFiles=0;
-  unsigned nCont = 0;
   for (unsigned i=0; i < MAX_NUM_OBS_FILES && ofs[i] != NULL; i+=1, nFiles+=1) {
     obsFile[i] = instantiateFile(ifmts[i], ofs[i], nfs[i], nis[i], i, iswp[i],
                                  Cpp_If_Ascii, cppCommandOptions, prefrs[i], preirs[i],
@@ -112,11 +111,11 @@ instantiateFileSource() {
     assert(obsFile[i]);
     if (Per_Stream_Transforms[i] || frs[i] || irs[i] || postpr[i]) {
       Filter *fileFilter = instantiateFilters(Per_Stream_Transforms[i],
-					      obsFile[i]->numContinuous());
+					      obsFile[i]->numContinuous(),
+					      obsFile[i]->numDiscrete());
       assert(fileFilter);
       obsFile[i] = new FilterFile(fileFilter, obsFile[i], frs[i], irs[i], postpr[i]);
     }
-    nCont += obsFile[i]->numContinuous();
   }
 
   if (nFiles == 0) return NULL;
@@ -136,7 +135,8 @@ instantiateFileSource() {
   }
   ObservationFile *ff;
   if (Post_Transforms || gpr_str) {
-    ff = new FilterFile(instantiateFilters(Post_Transforms, nCont), 
+    ff = new FilterFile(instantiateFilters(Post_Transforms,
+			mf->numLogicalContinuous(), mf->numLogicalDiscrete()), 
 			mf, NULL, NULL, gpr_str);
   } else {
     ff = mf;
@@ -153,49 +153,3 @@ instantiateFileSource() {
   }
 }
 
-// FIXME - drop this version
-#if 1
-void 
-instantiateFileSource(FileSource *source) {
-  error("ERROR: deprecated instantiateFileSource()");
-  // range selection is much more efficient if "all" is replaced with NULL
-  // since the logical <-> physical mapping step can be skipped
-  for (unsigned i=0; i < MAX_NUM_OBS_FILES; i+=1) {
-    if (   frs[i] && ALLOREMPTY(frs[i]))       frs[i] = NULL;
-    if (   irs[i] && ALLOREMPTY(irs[i]))       irs[i] = NULL;
-    if (prefrs[i] && ALLOREMPTY(prefrs[i])) prefrs[i] = NULL;
-    if (preirs[i] && ALLOREMPTY(preirs[i])) preirs[i] = NULL;
-    if (    sr[i] && ALLOREMPTY(sr[i]))         sr[i] = NULL;
-    if ( prepr[i] && ALLOREMPTY(prepr[i]))   prepr[i] = NULL;
-    if (postpr[i] && ALLOREMPTY(postpr[i])) postpr[i] = NULL;
-  }
-  if (gpr_str && ALLOREMPTY(gpr_str)) gpr_str = NULL;
-
-  ObservationFile *obsFile[MAX_NUM_OBS_FILES];
-  unsigned nFiles=0;
-  unsigned nCont = 0;
-  for (unsigned i=0; i < MAX_NUM_OBS_FILES && ofs[i] != NULL; i+=1, nFiles+=1) {
-    obsFile[i] = instantiateFile(ifmts[i], ofs[i], nfs[i], nis[i], i, iswp[i],
-                                 Cpp_If_Ascii, cppCommandOptions, prefrs[i], preirs[i],
-                                 prepr[i], sr[i]);
-    assert(obsFile[i]);
-    Filter *fileFilter = instantiateFilters(Per_Stream_Transforms[i],
-                                            obsFile[i]->numContinuous());
-    assert(fileFilter);
-    obsFile[i] = new FilterFile(fileFilter, obsFile[i], frs[i], irs[i], postpr[i]);
-    nCont += obsFile[i]->numContinuous();
-  }
-  MergeFile *mf  = new  MergeFile(nFiles, obsFile,
-				  Action_If_Diff_Num_Sents,
-				  Action_If_Diff_Num_Frames,
-				  Ftr_Combo);
-  FilterFile *ff = new FilterFile(instantiateFilters(Post_Transforms, nCont), 
-				  mf, NULL, NULL, gpr_str);
-  unsigned windowBytes = fileWindowSize * MEBIBYTE;
-  infoMsg(IM::ObsFile, IM::Low, "WindowBytes = %u MiB = %u B\n", fileWindowSize, windowBytes);
-  infoMsg(IM::ObsFile, IM::Low, "fileBufferSize = %u\n", fileBufferSize);
-  source->initialize(ff, windowBytes, fileWindowDelta, fileBufferSize, 
-		     startSkip, endSkip, justification, constantSpace);
-}
-
-#endif

@@ -24,6 +24,7 @@ StreamSource::StreamSource() {
   currentCookedFrames = 0;
   numFramesInSegment = 0;
   segmentNum = -1;
+  _startSkip = 0;
   nFloat = 0;
   nInt = 0;
   nFeatures = 0;
@@ -44,10 +45,8 @@ StreamSource::StreamSource(unsigned nStreams,
     this->stream = stream[0];
   }
   
-  // FIXME - make a separate FilterStream for each filter!
-
   if (filterStr) {
-    Filter *filters = instantiateFilters(filterStr, this->stream->numLogicalContinuous());
+    Filter *filters = instantiateFilters(filterStr, this->stream->numLogicalContinuous(),this->stream->numLogicalDiscrete());
     while (filters) {
       // unlike the FilterFile, each filter needs its own independent FilterStream
       Filter *next = filters->nextFilter;
@@ -72,7 +71,6 @@ StreamSource::initialize(unsigned queueLength, unsigned startSkip)
 
   cookedBuffer = new Data32[cookedBuffSize];
   maxCookedFrames = cookedBuffSize / nFeatures;
-  // FIXME - check that maxCookedFrames is reasonably large
   currentCookedFrames = 0;
   firstCookedFrameNum = 0;
   firstCookedFrameIndex = 0;
@@ -118,7 +116,7 @@ StreamSource::loadFrames(unsigned first, unsigned count) {
 //fprintf(stdout, "loadFrames(%u,%u)\n", first, count);  
   first += _startSkip;
   if (count > maxCookedFrames) {
-    error("ERROR: StreamSource::loadFrames: requested %u frames, but the frame queue can only hold %u\n", count, maxCookedFrames);
+    error("ERROR: StreamSource::loadFrames: requested %u frames, but the frame queue can only hold %u. Increase -streamBufferSize\n", count, maxCookedFrames);
   }
 
   if (numFramesInSegment > 0 && first + count > numFramesInSegment) {

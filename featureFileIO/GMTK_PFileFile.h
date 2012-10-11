@@ -42,6 +42,7 @@ class PFileFile: public ObservationFile {
   UInt32    *discBuf;
 
   unsigned   currentSegment;
+  char      *fileName;
   FILE      *dataFile;
   InFtrLabStream_PFile *pfile;
 
@@ -62,6 +63,7 @@ class PFileFile: public ObservationFile {
     if (buffer)   free(buffer);
     if (contBuf)  free(contBuf);
     if (discBuf)  free(discBuf);
+    if (fileName) free(fileName);
   }
  
   // The number of available segments.

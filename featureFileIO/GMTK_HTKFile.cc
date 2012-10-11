@@ -353,7 +353,6 @@ HTKFile::getFrames(unsigned first, unsigned count) {
     bufferSize = needed;
   }
   const HTKFileInfo *htkInfo = info->curHTKFileInfo;
-  // FIXME - error checking
   if (fseek(info->curDataFile, htkInfo->startOfData + first * htkInfo->samp_size, SEEK_SET)) {
     error("HTKFile: fseek() failed for '%s'", info->fofName);
   }

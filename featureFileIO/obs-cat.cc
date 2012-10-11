@@ -136,7 +136,8 @@ makeFileStream(unsigned ifmts[], unsigned i) {
   assert(obsFile);
   if (Per_Stream_Transforms[i]) {
     Filter *fileFilter = instantiateFilters(Per_Stream_Transforms[i],
-					    obsFile->numContinuous());
+					    obsFile->numLogicalContinuous(),
+					    obsFile->numLogicalDiscrete());
     if (fileFilter) {
       obsFile = new FilterFile(fileFilter, obsFile, frs[i], irs[i], postpr[i]);
     } else {
@@ -195,10 +196,10 @@ makeFileSource() {
     error("ERROR: no input files specified");
   }
   FileSource *fileSrc = new FileSource();
-  fileSrc->initialize(nFiles, obsFile, 1024*1024 /* FIXME */,
+  fileSrc->initialize(nFiles, obsFile, fileBufferSize,
 		      Action_If_Diff_Num_Sents,
 		      Action_If_Diff_Num_Frames,
-		      gpr_str, 0 /*startSkip*/, 0 /*endSkip*/,
+		      gpr_str, startSkip, endSkip,
 		      instantiateFilters(Post_Transforms, nCont));
   return new FileSrcStream(fileSrc);
 #else

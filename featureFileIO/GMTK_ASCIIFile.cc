@@ -41,6 +41,7 @@ ASCIIFile::ASCIIFile(const char *name, unsigned nfloats, unsigned nints,
     cppCommandOptions(cppCommandOptions)
 {
   buffer = NULL;
+  bufferSize = 0;
   if (name == NULL) 	
     error("ASCIIFile: File name is NULL for stream %i\n",num);	
   if (nfloats == 0 && nints == 0)
@@ -128,10 +129,10 @@ ASCIIFile::openSegment(unsigned seg) {
   }
 
   nFrames = n_samples;
-
-  // FIXME - track size and only realloc when it needs to grow
-  if (buffer) delete [] buffer;
-  buffer = new Data32[n_samples * _numFeatures];
+  if (n_samples > bufferSize) {
+    buffer = (Data32 *) realloc(buffer, n_samples * _numFeatures * sizeof(Data32));
+    bufferSize = n_samples;
+  }
   Data32 *dest = buffer;
 
   int lineNum=0;

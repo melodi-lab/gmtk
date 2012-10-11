@@ -79,7 +79,7 @@ main(int argc, char *argv[]) {
 
   infoMsg(IM::Max,"Opening Files ...\n");
 
-  FileSource globalObservationMatrix;
-  instantiateFileSource(&globalObservationMatrix);
+  FileSource *globalObservationMatrix;
+  globalObservationMatrix = instantiateFileSource();
   exit(0);
 }

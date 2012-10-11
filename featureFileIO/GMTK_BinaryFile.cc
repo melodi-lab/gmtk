@@ -95,6 +95,8 @@ BinaryFile::BinaryFile(const char *name, unsigned nfloats, unsigned nints,
 bool
 BinaryFile::openSegment(unsigned seg) {
   assert(seg < numFileNames);
+  unsigned prevSegment = curSegment;
+  curSegment = seg;
   char *fname = dataNames[seg];
 
   if (fname == NULL) {
@@ -104,8 +106,7 @@ BinaryFile::openSegment(unsigned seg) {
 
   if (curDataFile) {
     if (fclose(curDataFile)) {
-      // FIXME - track file name for error messages
-      warning("BinaryFile::openSegment: failed to close data file\n");
+      warning("BinaryFile::openSegment: failed to close data file %s\n", dataNames[prevSegment]);
       return false;
     }
     curDataFile = NULL;
@@ -150,7 +151,7 @@ BinaryFile::getFrames(unsigned first, unsigned count) {
     buffSize = needed;
   }
   if (fseek(curDataFile,first * sizeof(Data32) * numFeatures(),SEEK_SET) == -1) {
-    warning("BinaryFile::getFrames: Can't seek to frame %u", first);
+    warning("BinaryFile::getFrames: Can't seek to frame %u in %s\n", first, dataNames[curSegment]);
     return NULL;
   }
   float* float_buffer_ptr = (float *) buffer;
@@ -177,7 +178,7 @@ BinaryFile::getFrames(unsigned first, unsigned count) {
     int_buffer_ptr   += numFeatures();
   }
   if (n_read != needed) {
-    warning("BinaryFile::getFrames: read %i items, expected %i",n_read,needed);
+    warning("BinaryFile::getFrames: read %i items, expected %i in %s\n",n_read,needed, dataNames[curSegment]);
     return NULL;
   }
   return buffer;

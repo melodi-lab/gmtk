@@ -28,7 +28,6 @@ using namespace std;
 
 #include "GMTK_HDF5File.h"
 
-// FIXME - configure should check for 1.8, won't build with 1.6
 #if HAVE_LIBHDF5_CPP
 // Only use HDF5 library if Autoconf found it
 

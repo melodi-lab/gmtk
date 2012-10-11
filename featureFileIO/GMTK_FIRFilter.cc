@@ -130,8 +130,6 @@ FIRFilter::localTransform(Data32 const *inputSubMatrix,
 			  subMatrixDescriptor const &inputDescription,
 			  subMatrixDescriptor *outputDescription) 
 {
-
-  // FIXME - error checking that B and c are compatible with X
   if (numFeatures != inputDescription.numContinuous) {
     error("FIRFilter: filter expects %u features, but input has %u\n", 
 	  numFeatures, inputDescription.numContinuous);

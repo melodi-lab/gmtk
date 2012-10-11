@@ -42,6 +42,8 @@ class BinaryFile: public ObservationFile {
 
   unsigned   nFrames;                   // # frames in current segment before -preprX
 
+  unsigned   curSegment;                // current segment #
+
   char     **dataNames;  // pointers to individual filenames
 
   Data32    *buffer;     // data for current segment

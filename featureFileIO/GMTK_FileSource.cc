@@ -78,14 +78,14 @@ FileSource::initialize(ObservationFile *file,
   }
   // window size in frames
   this->window = windowBytes / (file->numLogicalFeatures() * sizeof(Data32));
-  if (this->window < 1) {
-    error("ERROR: fileWindowSize (%u MB) must be at least %u MB to hold 1 frame",
-	  windowBytes / MEBIBYTE, file->numLogicalFeatures() * sizeof(Data32) / MEBIBYTE);
+  if (this->window < 2 * deltaFrames + 1) {
+    error("ERROR: fileWindowSize (%u MB) must be at least %u MB to hold %u frame",
+	  windowBytes / MEBIBYTE, file->numLogicalFeatures() * sizeof(Data32) / MEBIBYTE,
+	  2 * deltaFrames + 1);
   }
 
-  // FIXME - if the number of buffered frames less than 2 delta, it's ambiguous whether
-  //         we should prefetch forward or backward. That's a goofy case though, so 
-  //         should it be an error, or just don't prefetch?
+  // Note: if the number of buffered frames less than 2 delta, it's ambiguous whether
+  //       we should prefetch forward or backward. That's a goofy case thoug...
   this->delta = deltaFrames;
   this->_startSkip = startSkip;
   this->_endSkip = endSkip;
@@ -231,7 +231,7 @@ static unsigned cachehit  = 0;
 #endif
 
 
-// FIXME - check for and handle NaNs
+// FIXME - check for and handle NaNs ?
 
 // This loadFrames() method just loads the frames from the ObservationFile
 // into the indicated position within the cookedBuffer. The other loadFrames()
@@ -243,12 +243,7 @@ FileSource::loadFrames(unsigned bufferIndex, unsigned first, unsigned count) {
   
   unsigned buffOffset = bufferIndex * bufStride;
 
-  // FIXME - this should probably be an assert, since it indicates a coding
-  //         error rather than a user error...
-  if (first > _numCacheableFrames || first + count > _numCacheableFrames) {
-    error("ERROR: FileSource::loadFrames: requested frames [%u,%u), but %u is the last available frame\n", 
-	  first, first+count, _numCacheableFrames);
-  }
+  assert(!(first > _numCacheableFrames || first + count > _numCacheableFrames));
     
   Data32 const *fileBuf = file->getLogicalFrames(first,count);
   assert(fileBuf);
@@ -373,7 +368,6 @@ infoMsg(IM::ObsFile, IM::Giga, "frames [%7u,%7u) cache hit %7u  cache miss %7u\n
       preCount = firstBufferedFrame + numBufferedFrames + window < _numCacheableFrames ? 
 	window : _numCacheableFrames - preFirst;
       if (firstBufferedFrameIndex + numBufferedFrames + preCount < bufferFrames) { // do prefetch
-	// FIXME - does the above need a -1 ?
 #if 0
 	infoMsg(IM::ObsFile, IM::Giga, "prefetch >  [%u,%u) + [%u,%u)@%u for [%u,%u)\n",
 		firstBufferedFrame, firstBufferedFrame + numBufferedFrames,

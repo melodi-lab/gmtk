@@ -96,6 +96,10 @@ AffineFilter::describeLocalOutput(subMatrixDescriptor const &inputDescription) {
   return myOutput;
 }
 
+extern "C" void mul_mfmf_mf(const int M, const int K, const int N, 
+		       const float *const A, const float *const B, float *const C, 
+                       const int Astride, const int Bstride, const int Cstride);
+
 extern "C" void mul_mdmd_md(const int M, const int K, const int N, 
                        const double *const A, const double *const B, double *const C, 
                        const int Astride, const int Bstride, const int Cstride);

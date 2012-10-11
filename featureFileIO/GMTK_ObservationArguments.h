@@ -34,8 +34,6 @@
   if (binaryOutputStream && !outputNetByteOrder) {
     warning("using non-standard byte order for output binary observation stream data");
   }
-  // FIXME - error if stream & file(s) both specified
-  // warn? if options not relevant to stype specified
 
 #else
 #endif
@@ -118,6 +116,12 @@ extern bool ObservationsAllowNan;
   streamBufferSize *= MEBIBYTE;
   bool gotStdin = false;
   for (int i=0;i<MAX_NUM_OBS_STREAMS;i++) {
+    if (oss[i] && strcmp(oss[i],"-") == 0) {
+      if (gotStdin) {
+	error("%s: can only use stdin as an input stream once", argerr);
+      }
+      gotStdin = true;
+    }
     if (strcmp(fmts[i],"binary") == 0)
       ifmts[i] = RAWBIN;
     else if (strcmp(fmts[i],"ascii") == 0)
@@ -253,11 +257,8 @@ extern bool ObservationsAllowNan;
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
-  // FIXME - error if stream & file(s) both specified
-  // warn? if options not relevant to stype specified
-
 #define MEBIBYTE (1048576)
-    streamBufferSize *= MEBIBYTE; // FIXME - / sizeof(Data32)
+    streamBufferSize *= MEBIBYTE / sizeof(Data32);
     fileBufferSize *= MEBIBYTE / sizeof(Data32);
 
   /////////////////////////////////////////////////////////
@@ -270,20 +271,16 @@ extern bool ObservationsAllowNan;
       error("%s: Can't specify both -of%u and -os%u", argerr,i+1,i+1);
     }
 
-    // FIXME - can random access files read from stdin?  
     if ( (ofs[i] && strcmp(ofs[i],"-")==0) ||
          (oss[i] && strcmp(oss[i],"-")==0) )
     {
       if (gotStdin) {
-	error("%s: can only use stdin once");
+	error("%s: can only use stdin as an input once", argerr);
       }
       gotStdin = true;
     }
 
     if (ofs[i]) {
-      // FIXME - check don't specify inputNetByteOrder[i]
-      // FIXME - check don't specify binaryInputStream[i]
-
       int fmtNum = formatStrToNumber(fmts[i]);
       if (fmtNum >= 0) {
 	ifmts[i] = fmtNum;
@@ -291,8 +288,6 @@ extern bool ObservationsAllowNan;
 	error("%s: Unknown observation file format type '%s' for -of%u\n",argerr,fmts[i],i+1);
       }
     } else {
-      // FIXME - check don't specify iswp[i]
-      
       if (prefrs[i] || preirs[i]) {
 	error("%s: Can't specify -prefrs%u or -preirs%u because -os%u is a stream",argerr,i+1,i+1,i+1);
       }
