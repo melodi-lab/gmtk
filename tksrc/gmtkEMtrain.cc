@@ -83,6 +83,7 @@ VCID(HGID)
 #define GMTK_ARG_CPP_CMD_OPTS
 #define GMTK_ARG_INPUT_MASTER_FILE
 #define GMTK_ARG_OUTPUT_MASTER_FILE
+#define GMTK_ARG_DLOPEN_MAPPERS
 #define GMTK_ARG_INPUT_TRAINABLE_PARAMS
 #define GMTK_ARG_OUTPUT_TRAINABLE_PARAMS
 #define GMTK_ARG_WPAEEI
@@ -147,6 +148,7 @@ VCID(HGID)
 #define GMTK_ARG_CLIQUE_VAR_ITER_ORDERS
 #define GMTK_ARG_JT_OPTIONS
 #define GMTK_ARG_VE_SEPS
+#define GMTK_ARG_FAIL_ON_ZERO_CLIQUE
 
 /****************************         EM TRAINING OPTIONS         ***********************************************/
 #define GMTK_ARG_EM_TRAINING_OPTIONS
@@ -219,6 +221,7 @@ main(int argc,char*argv[])
   /////////////////////////////////////////////
   // read in all the parameters
 
+  dlopenDeterministicMaps(dlopenFilenames, MAX_NUM_DLOPENED_FILES);
   if (inputMasterFile) {
     // flat, where everything is contained in one file, always ASCII
     iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
@@ -421,68 +424,72 @@ main(int argc,char*argv[])
       Range::iterator* trrng_it = new Range::iterator(trrng->begin());
       while (!trrng_it->at_end()) {
 	const unsigned segment = (unsigned)(*(*trrng_it));
-	if (gomFS->numSegments() < (segment+1)) 
-	  error("ERROR: only %d segments in file, training range must be in range [%d,%d] inclusive\n",
-		gomFS->numSegments(),
-		0,gomFS->numSegments()-1);
+	try {
+	  if (gomFS->numSegments() < (segment+1)) 
+	    error("ERROR: only %d segments in file, training range must be in range [%d,%d] inclusive\n",
+		  gomFS->numSegments(),
+		  0,gomFS->numSegments()-1);
 
-	const unsigned numFrames = GM_Parms.setSegment(segment);
+	  const unsigned numFrames = GM_Parms.setSegment(segment);
 #if 0
-	if (gomFS->active()) {
-	  gomFS->printSegmentInfo();
-	  ::fflush(stdout);
-	}
+	  if (gomFS->active()) {
+	    gomFS->printSegmentInfo();
+	    ::fflush(stdout);
+	  }
 #endif
 
 
-	if (island) {
-	  unsigned numUsableFrames;
-	  myjt.collectDistributeIsland(numFrames,
-				       numUsableFrames,
-				       base,
-				       lst,
-				       rootBase, islandRootPower,
-				       true, // run EM algorithm
-				       false, // run Viterbi algorithm
-				       localCliqueNormalization);
-	  total_num_frames += numUsableFrames;
-	  printf("Segment %d, after Island, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-		 segment,
-		 myjt.curProbEvidenceIsland().val(),
-		 myjt.curProbEvidenceIsland().val()/numFrames,
-		 myjt.curProbEvidenceIsland().val()/numUsableFrames);
-	  if (myjt.curProbEvidenceIsland().not_essentially_zero()) {
-	    total_data_prob *= myjt.curProbEvidenceIsland();
-	  }
-	} else {
-	  unsigned numUsableFrames = myjt.unroll(numFrames);
-	  total_num_frames += numUsableFrames;
-	  infoMsg(IM::Low,"Collecting Evidence\n");
-	  myjt.collectEvidence();
-	  infoMsg(IM::Low,"Done Collecting Evidence\n");
-	  logpr probe = myjt.probEvidence();
-	  printf("Segment %d, after CE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-		 segment,
-		 probe.val(),
-		 probe.val()/numFrames,
-		 probe.val()/numUsableFrames);
-	  if (probe.essentially_zero()) {
-	    infoMsg(IM::Default,"Not training segment since probability is essentially zero\n");
-	  } else {
-	    total_data_prob *= probe;
-	    infoMsg(IM::Low,"Distributing Evidence\n");
-	    myjt.distributeEvidence();
-	    infoMsg(IM::Low,"Done Distributing Evidence\n");
-	    
-	    if (IM::messageGlb(IM::Huge)) {
-	      // print out all the clique probabilities. In the ideal
-	      // case, they should be the same.
-	      myjt.printProbEvidenceAccordingToAllCliques();
+	  if (island) {
+	    unsigned numUsableFrames;
+	    myjt.collectDistributeIsland(numFrames,
+					 numUsableFrames,
+					 base,
+					 lst,
+					 rootBase, islandRootPower,
+					 true, // run EM algorithm
+					 false, // run Viterbi algorithm
+					 localCliqueNormalization);
+	    total_num_frames += numUsableFrames;
+	    printf("Segment %d, after Island, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+		   segment,
+		   myjt.curProbEvidenceIsland().val(),
+		   myjt.curProbEvidenceIsland().val()/numFrames,
+		   myjt.curProbEvidenceIsland().val()/numUsableFrames);
+	    if (myjt.curProbEvidenceIsland().not_essentially_zero()) {
+	      total_data_prob *= myjt.curProbEvidenceIsland();
 	    }
-	    // And actually train with EM.
-	    infoMsg(IM::Low,"Incrementing EM Accumulators\n");
-	    myjt.emIncrement(probe,localCliqueNormalization,emTrainingBeam);
+	  } else {
+	    unsigned numUsableFrames = myjt.unroll(numFrames);
+	    total_num_frames += numUsableFrames;
+	    infoMsg(IM::Low,"Collecting Evidence\n");
+	    myjt.collectEvidence();
+	    infoMsg(IM::Low,"Done Collecting Evidence\n");
+	    logpr probe = myjt.probEvidence();
+	    printf("Segment %d, after CE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+		   segment,
+		   probe.val(),
+		   probe.val()/numFrames,
+		   probe.val()/numUsableFrames);
+	    if (probe.essentially_zero()) {
+	      infoMsg(IM::Default,"Not training segment since probability is essentially zero\n");
+	    } else {
+	      total_data_prob *= probe;
+	      infoMsg(IM::Low,"Distributing Evidence\n");
+	      myjt.distributeEvidence();
+	      infoMsg(IM::Low,"Done Distributing Evidence\n");
+	    
+	      if (IM::messageGlb(IM::Huge)) {
+		// print out all the clique probabilities. In the ideal
+		// case, they should be the same.
+		myjt.printProbEvidenceAccordingToAllCliques();
+	      }
+	      // And actually train with EM.
+	      infoMsg(IM::Low,"Incrementing EM Accumulators\n");
+	      myjt.emIncrement(probe,localCliqueNormalization,emTrainingBeam);
+	    }
 	  }
+	} catch (ZeroCliqueException &e) {
+	  warning("Segment %d aborted due to zero clique\n", segment);
 	}
 	(*trrng_it)++;
       }

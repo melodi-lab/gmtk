@@ -821,11 +821,6 @@ int main(int argc, const char *argv[])
 
   bool parse_was_ok = Arg::parse(argc,(char**)argv);
 
-  if(help) {
-    Arg::usage();
-    exit(0);
-  }
-
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }

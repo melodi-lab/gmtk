@@ -475,6 +475,15 @@ int main(int argc, const char *argv[]) {
 
   bool parse_was_ok = Arg::parse(argc,(char**)argv);
 
+  if (printVersion) {
+#ifdef HAVE_CONFIG_H
+    printf("%s (Mercurial id: %s)\n",gmtk_version_id,HGID);
+#else
+    printf("%s\n", gmtk_version_id);
+#endif
+    exit(0);
+  }
+
   if(help) {
     Arg::usage();
     exit(0);

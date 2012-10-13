@@ -237,7 +237,13 @@ void printSegment(unsigned sent_no, FILE* out_fp, float* cont_buf, unsigned num_
 	  copy_swap_func_ptr(1,(int*)&sent_no,(int*)&sent_no);
 	  copy_swap_func_ptr(1,(int*)&frame_no,(int*)&frame_no);
 	  fwrite_result = fwrite(&sent_no,sizeof(sent_no),1,out_fp);
+	  if (fwrite_result != 1) {
+	    error("Error writting to output file");
+	  }
 	  fwrite_result = fwrite(&frame_no,sizeof(frame_no),1,out_fp);
+	  if (fwrite_result != 1) {
+	    error("Error writting to output file");
+	  }
 	} else if(ofmt==FLATASC || ofmt==RAWASC ){
 	  fprintf(out_fp,"%d %u",sent_no,frame_no);
 	  ns = true;
@@ -250,6 +256,9 @@ void printSegment(unsigned sent_no, FILE* out_fp, float* cont_buf, unsigned num_
 	  DBGFPRINTF((stderr,"obsPrint: Printing HTK float %f.\n",cont_buf_p[frit]));
 	  copy_swap_func_ptr(1,(int*)&cont_buf_p[frit],(int*)&cont_buf_p[frit]);
 	  fwrite_result = fwrite(&cont_buf_p[frit], sizeof(cont_buf_p[frit]),  1,out_fp);
+	  if (fwrite_result != 1) {
+	    error("Error writting to output file");
+	  }
 	} 
 	else if(ofmt==FLATASC || ofmt==RAWASC){
 	  if (ns) fprintf(out_fp," ");
@@ -264,6 +273,9 @@ void printSegment(unsigned sent_no, FILE* out_fp, float* cont_buf, unsigned num_
 	if (ofmt==FLATBIN || ofmt==RAWBIN || (ofmt==HTK && num_continuous>0) ) {
 	  copy_swap_func_ptr(1,(int*)&disc_buf_p[lrit],(int*)&disc_buf_p[lrit]);
 	  fwrite_result = fwrite(&disc_buf_p[lrit],  sizeof(disc_buf_p[lrit]), 1,out_fp);
+	  if (fwrite_result != 1) {
+	    error("Error writting to output file");
+	  }
 	} 
 	else if(ofmt==HTK && num_continuous==0) { // in the HTK format we
   // cannot mix floats with discrete data; that's why if there is at
@@ -274,6 +286,9 @@ void printSegment(unsigned sent_no, FILE* out_fp, float* cont_buf, unsigned num_
 	     short_lab_buf_p = swapb_short_short(short_lab_buf_p);
 	   }
 	  fwrite_result = fwrite(&short_lab_buf_p,  sizeof(short_lab_buf_p), 1,out_fp);
+	  if (fwrite_result != 1) {
+	    error("Error writting to output file");
+	  }
 	}
 	else if(ofmt==FLATASC || ofmt==RAWASC) {
 	  if (ns) fprintf(out_fp," ");	    
@@ -386,7 +401,13 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
 	  copy_swap_func_ptr(1,(int*)&frame_no,(int*)&frame_no);
 
 	  fwrite_result = fwrite(&sent_no,sizeof(sent_no),1,out_fp);
+	  if (fwrite_result != 1) {
+	    error("Error writting to output file");
+	  }
 	  fwrite_result = fwrite(&frame_no,sizeof(frame_no),1,out_fp);
+	  if (fwrite_result != 1) {
+	    error("Error writting to output file");
+	  }
 	} else if(ofmt==FLATASC || ofmt==RAWASC ){
 	  fprintf(out_fp,"%d %u",srit,prit);
 	  ns = true;
@@ -398,6 +419,9 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
 	  DBGFPRINTF((stderr,"obsPrint: Printing HTK float %f.\n",ftr_buf_p[frit]));
 	  copy_swap_func_ptr(1,(int*)&ftr_buf_p[frit],(int*)&ftr_buf_p[frit]);
 	  fwrite_result = fwrite(&ftr_buf_p[frit], sizeof(ftr_buf_p[frit]),  1,out_fp);
+	  if (fwrite_result != 1) {
+	    error("Error writting to output file");
+	  }
 	} 
 	else if(ofmt==PFILE) {
 	  *oftr_buf_p++ = ftr_buf_p[frit];
@@ -412,6 +436,9 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
 	if (ofmt==FLATBIN || ofmt==RAWBIN || (ofmt==HTK && n_ftrs>0) ) {
 	  copy_swap_func_ptr(1,(int*)&lab_buf_p[lrit],(int*)&lab_buf_p[lrit]);
 	  fwrite_result = fwrite(&lab_buf_p[lrit],  sizeof(lab_buf_p[lrit]), 1,out_fp);
+	  if (fwrite_result != 1) {
+	    error("Error writting to output file");
+	  }
 	} 
 	else if(ofmt==HTK && n_ftrs==0) { // in the HTK format we
   // cannot mix floats with discrete data; that's why if there is at
@@ -422,6 +449,9 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
 	     short_lab_buf = swapb_short_short(short_lab_buf);
 	   }
 	  fwrite_result = fwrite(&short_lab_buf,  sizeof(short_lab_buf), 1,out_fp);
+	  if (fwrite_result != 1) {
+	    error("Error writting to output file");
+	  }
 	}
 	else if(ofmt==PFILE) {
 	  *olab_buf_p++ = lab_buf_p[lrit];
@@ -603,10 +633,6 @@ int main(int argc, const char *argv[]) {
 
   bool parse_was_ok = Arg::parse(argc,(char**)argv);
 
-  if(help) {
-    Arg::usage();
-    exit(0);
-  }
   if(Usage_Str!=NULL) {
     if(strcmp(Usage_Str,"norm")==0)  Arg::usage("norm");
     else if(strcmp(Usage_Str,"gauss")==0)  Arg::usage("gauss");

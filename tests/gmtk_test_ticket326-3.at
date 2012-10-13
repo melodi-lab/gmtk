@@ -1,0 +1,10 @@
+
+# Verify that -vitPrintRange and -vitFrameRange produce correct output
+
+# See $TEST_AND_DEV/scripts/326_test.sh for test details
+
+AT_SETUP([-vitPrintRange and -vitFrameRange on test_hmm2])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/test_hmm2])
+AT_CHECK([cp $TEST_AND_DEV/test_hmm2/{3d.master,3d.str,3d_observations.ascii_data,observation_file_list.txt,atjt.sh,atvit.sh,atprt.sh} .],[],[ignore])
+AT_CHECK([$TEST_AND_DEV/scripts/326_test.sh 3d.str > 326_test.log], [], [ignore])
+AT_CLEANUP

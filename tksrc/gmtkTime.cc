@@ -92,6 +92,7 @@ VCID(HGID)
 #define GMTK_ARG_INPUT_TRAINABLE_FILE_HANDLING
 #define GMTK_ARG_CPP_CMD_OPTS
 #define GMTK_ARG_INPUT_MASTER_FILE
+#define GMTK_ARG_DLOPEN_MAPPERS
 #define GMTK_ARG_INPUT_TRAINABLE_PARAMS
 #define GMTK_ARG_ALLOC_DENSE_CPTS
 #define GMTK_ARG_CPT_NORM_THRES
@@ -155,6 +156,7 @@ VCID(HGID)
 #define GMTK_ARG_CLIQUE_VAR_ITER_ORDERS
 #define GMTK_ARG_JT_OPTIONS
 #define GMTK_ARG_VE_SEPS
+#define GMTK_ARG_FAIL_ON_ZERO_CLIQUE
 
 /************************  OBSERVATION MATRIX TRANSFORMATION OPTIONS   ******************************************/
 #define GMTK_ARG_OBS_MATRIX_OPTIONS
@@ -247,6 +249,7 @@ main(int argc,char*argv[])
 
   /////////////////////////////////////////////
   // read in all the parameters
+  dlopenDeterministicMaps(dlopenFilenames, MAX_NUM_DLOPENED_FILES);
   if (inputMasterFile) {
     // flat, where everything is contained in one file, always ASCII
     iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);

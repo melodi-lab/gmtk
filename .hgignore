@@ -65,6 +65,7 @@ miscSupport/testVHashMap
 miscSupport/testVSHashMap
 miscSupport/testcArray
 miscSupport/testsArray
+miscSupport/testmArray
 mitk/bivariate-mi
 mitk/mvnrnd
 mitk/test-matrix-ops
@@ -95,6 +96,7 @@ tksrc/gmtkTime
 tksrc/gmtkTriangulate
 tksrc/gmtkViterbi
 tksrc/gmtkOnline
+tksrc/gmtkPrint
 tksrc/gmtkViz
 tksrc/gmtkViz.app
 tksrc/gmtkViz.app/*
@@ -103,3 +105,4 @@ tksrc/testPackCliqueValue
 tksrc/testViterbi
 tksrc/testPackCliqueValue
 tksrc/dlinktest
+tksrc/parserTest

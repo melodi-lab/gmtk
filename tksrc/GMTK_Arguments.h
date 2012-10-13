@@ -30,7 +30,6 @@
 #include "GMTK_Filter.h"
 #include "GMTK_ProgramDefaultParms.h"
 
-
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
 /*************************************************************************************************************/
@@ -98,11 +97,37 @@ const char*const argerr = "ARG ERROR";
    Arg("inputMasterFile",Arg::Req,inputMasterFile,"Input file of multi-level master CPP processed GM input parameters"),
 #endif
 
-#elif defined(GMTK_ARGUMENTS_CHECK_ARGSo)
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
 #else
 #endif
 #endif // defined(GMTK_ARG_INPUT_MASTER_FILE)
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
+#if defined(GMTK_ARG_DLOPEN_MAPPERS)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+#include <vector>
+#include <dlfcn.h>
+
+#define MAX_NUM_DLOPENED_FILES (5)
+   char *dlopenFilenames[MAX_NUM_DLOPENED_FILES] = {NULL,NULL,NULL,NULL,NULL};
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+Arg("map",Arg::Opt,dlopenFilenames,"Deterministic mapping dynamic library file. Replace X with the file number",Arg::ARRAY,MAX_NUM_DLOPENED_FILES),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#else
+#endif
+#endif // defined(GMTK_ARG_DLOPEN_MAPPERS)
 
 
 /*-----------------------------------------------------------------------------------------------------------*/
@@ -1076,6 +1101,8 @@ const char*const argerr = "ARG ERROR";
 #if defined(GMTK_ARG_VERB)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
+#include "debug.h"
+
 #ifdef GMTK_ARG_VERB_DEF_VAL
   static unsigned verbosity = GMTK_ARG_VERB_DEF_VAL;
 #else
@@ -1086,7 +1113,7 @@ const char*const argerr = "ARG ERROR";
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("verbosity",Arg::Opt,modularVerbosity,"Verbosity - coma separated list of m=v, where m is all, default, inference, inference-memory, training, triangulation, boundary, unrolling, printing, modelinfo, obsfile, obsstream; 0 <= v <= 100"),
+  Arg("verbosity",Arg::Opt,modularVerbosity,"Verbosity - coma separated list of m=v, where m is all, " moduleHelpString "; 0 <= v <= 100"),
   Arg("printIntValues",Arg::Opt,RV::alwaysPrintIntegerRVValues,"Always print rv values as integer rather than symbols"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
@@ -1454,6 +1481,28 @@ static const char* varCliqueAssignmentPrior = "COT";
 
 
 
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
+#if defined(GMTK_ARG_FAIL_ON_ZERO_CLIQUE)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("failOnZeroClique",Arg::Opt,MaxClique::failOnZeroClique,"abort GMTK program on zero clique errors"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#else
+#endif
+#endif // defined(GMTK_ARG_FAIL_ON_ZERO_CLIQUE)
+
+
+
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
 /*************************************************************************************************************/
@@ -1742,6 +1791,8 @@ static bool writeLogVals = false;
   // static bool vitValsFileBinp = false;
   static char* vitRegexFilter = NULL;
   static bool vitCaseSensitiveRegexFilter = false;
+  static char* vitPartRangeFilter = NULL;
+  static char* vitFrameRangeFilter = NULL;
   static bool vitAlsoPrintObservedVariables = false;
 //  static bool vitReverseOrder = false;
 #define MAX_VITERBI_TRIGGERS 3
@@ -1761,7 +1812,7 @@ static bool writeLogVals = false;
   Arg("pVitRegexFilter",Arg::Opt,pVitRegexFilter,"Partition Vit: Regular expression to filter variable names."),
   Arg("pVitCaseSensitiveRegexFilter",Arg::Opt,pVitCaseSensitiveRegexFilter,"Partition Vit: Case sensitivity of the rv regular expression filter."),
 
-  Arg("pVitPrintRange",Arg::Opt,pVitPartRangeFilter,"Partition Vit: value printing, integer range filter for partitions (e.g., frames, slices) to print."),
+  Arg("pVitPrintRange",Arg::Opt,pVitPartRangeFilter,"Partition Vit: value printing, integer range filter for modified partitions (e.g., frames, slices) to print."),
 
   Arg("pVitPrintObservedVariables",Arg::Opt,pVitAlsoPrintObservedVariables,"Partition Vit: also print observed random variables in addtion to hidden"),
 
@@ -1773,8 +1824,16 @@ static bool writeLogVals = false;
   Arg("vitRegexFilter",Arg::Opt,vitRegexFilter,"Vit: Regular expression to filter variable names."),
   Arg("vitCaseSensitiveRegexFilter",Arg::Opt,vitCaseSensitiveRegexFilter,"Vit: Case sensitivity of the rv regular expression filter."),
 
+  Arg("vitPrintRange",Arg::Opt,vitPartRangeFilter,"Vit: value printing, integer range filter for original partitions (e.g., frames, slices) to print."),
+  Arg("vitFrameRange",Arg::Opt,vitFrameRangeFilter,"Vit: value printing, integer range filter for frames to print."),
+
   Arg("vitPrintObservedVariables",Arg::Opt,vitAlsoPrintObservedVariables,"Vit: also print observed random variables in addtion to hidden"),
 
+#if defined(GMTK_ARGUMENTS_REQUIRE_BINARY_VIT_FILE)
+  Arg("binaryVitFile",Arg::Req,JunctionTree::binaryViterbiFilename,"File containing binary Viterbi values for printing"),
+#else
+  Arg("binaryVitFile",Arg::Opt,JunctionTree::binaryViterbiFilename,"File to write binary Viterbi values for later printing"),
+#endif
 #if 0
   // this is not implemented yet.
   Arg("vitReverseOrder",Arg::Opt,vitReverseOrder,"Vit: print values in reverse order."),
@@ -1785,7 +1844,25 @@ static bool writeLogVals = false;
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
+  if (JunctionTree::binaryViterbiFilename) {
+#if defined(GMTK_VITERBI_FILE_WRITE)
+    JunctionTree::binaryViterbiFile = fopen(JunctionTree::binaryViterbiFilename, "w+b");
+#else
+    JunctionTree::binaryViterbiFile = fopen(JunctionTree::binaryViterbiFilename, "rb");
+#endif
+    if (!JunctionTree::binaryViterbiFile) {
+      char *err = strerror(errno);
+      error("ERROR: Failed to open '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+    }
+  }
 
+  if (vitPartRangeFilter && vitFrameRangeFilter) {
+    error("%s: Can't use both -vitPrintRange and -vitFrameRange\n", argerr);
+  }
+
+  if ( (vitPartRangeFilter || vitFrameRangeFilter) && ! vitValsFileName ) {
+    error("%s: -vitPrintRange and -vitFrameRange require -vitValsFile to be specified\n", argerr);
+  }
 #else
 #endif
 #endif // defined(GMTK_ARG_NEW_DECODING_OPTIONS)

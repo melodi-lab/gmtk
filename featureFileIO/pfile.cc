@@ -34,6 +34,7 @@ static const char* pfile_version0_string =
 // which can then be used by any software that wishes to use pfiles.
 
 
+#pragma GCC diagnostic ignored "-Wformat"
 // This routine is used to get one pfile_ulonglong_t integer argument from a pfile
 // header stored in a buffer. It returns 0 on success, else -1.
 static int
@@ -684,12 +685,15 @@ InFtrLabStream_PFile::set_pos(size_t segno, size_t frameno)
 
     if (indexed)
     {
+#if 0
+      // unused
 	long this_sent_row;	// The number of the row at the start of sent.
+#endif
 	long next_sent_row;	// The row at the start of next sent.
 	long row;		// The number of the row we require
 	pfile_longlong_t offset;		// The position as a file offset
 
-	this_sent_row = sentind[segno];
+//	this_sent_row = sentind[segno];
 	row = sentind[segno] + frameno;
 	next_sent_row = sentind[segno+1];
 	if (row > next_sent_row)

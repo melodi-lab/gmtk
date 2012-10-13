@@ -85,6 +85,7 @@ VCID(HGID)
 #define GMTK_ARG_CPP_CMD_OPTS
 #define GMTK_ARG_INPUT_MASTER_FILE
 #define GMTK_ARG_OUTPUT_MASTER_FILE
+#define GMTK_ARG_DLOPEN_MAPPERS
 #define GMTK_ARG_INPUT_TRAINABLE_PARAMS
 #define GMTK_ARG_OUTPUT_TRAINABLE_PARAMS
 #define GMTK_ARG_WPAEEI
@@ -145,6 +146,7 @@ VCID(HGID)
 #define GMTK_ARG_CLIQUE_VAR_ITER_ORDERS
 #define GMTK_ARG_JT_OPTIONS
 #define GMTK_ARG_VE_SEPS
+#define GMTK_ARG_FAIL_ON_ZERO_CLIQUE
 
 /****************************         EM TRAINING OPTIONS         ***********************************************/
 #define GMTK_ARG_KERNEL_OPTIONS
@@ -248,6 +250,7 @@ main(int argc,char*argv[])
 
   /////////////////////////////////////////////
   // read in all the parameters
+  dlopenDeterministicMaps(dlopenFilenames, MAX_NUM_DLOPENED_FILES);
   if (inputMasterFile) {
     // flat, where everything is contained in one file, always ASCII
     iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
@@ -385,64 +388,68 @@ main(int argc,char*argv[])
     bool firstTime = true;
     while (!dcdrng_it->at_end()) {
       const unsigned segment = (unsigned)(*(*dcdrng_it));
-      if (gomFS->numSegments() < (segment+1)) 
-	error("ERROR: only %d segments in file, segment must be in range [%d,%d]\n",
-	      gomFS->numSegments(),
-	      0,gomFS->numSegments()-1);
+      try {
+	if (gomFS->numSegments() < (segment+1)) 
+	  error("ERROR: only %d segments in file, segment must be in range [%d,%d]\n",
+		gomFS->numSegments(),
+		0,gomFS->numSegments()-1);
 
-      const unsigned numFrames = GM_Parms.setSegment(segment);
+	const unsigned numFrames = GM_Parms.setSegment(segment);
 
-      logpr data_prob = 1.0;
-      GM_Parms.emInitAccumulators(firstTime);
+	logpr data_prob = 1.0;
+	GM_Parms.emInitAccumulators(firstTime);
 
-      unsigned numUsableFrames;
-      if (island) {
-	myjt.collectDistributeIsland(numFrames,
-				     numUsableFrames,
-				     base,
-				     lst,
-				     rootBase, islandRootPower, 
-				     true, // run EM algorithm,
-				     false, // run Viterbi algorithm
-				     localCliqueNormalization);
-	printf("Segment %d, after Island, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f, ",
-	       segment,
-	       myjt.curProbEvidenceIsland().val(),
-	       myjt.curProbEvidenceIsland().val()/numFrames,
-	       myjt.curProbEvidenceIsland().val()/numUsableFrames);
-	data_prob = myjt.curProbEvidenceIsland();
-      } else {
-	numUsableFrames = myjt.unroll(numFrames);
-	infoMsg(IM::Low,"Collecting Evidence\n");
-	myjt.collectEvidence();
-	infoMsg(IM::Low,"Done Collecting Evidence\n");
-	data_prob = myjt.probEvidence();
+	unsigned numUsableFrames;
+	if (island) {
+	  myjt.collectDistributeIsland(numFrames,
+				       numUsableFrames,
+				       base,
+				       lst,
+				       rootBase, islandRootPower, 
+				       true, // run EM algorithm,
+				       false, // run Viterbi algorithm
+				       localCliqueNormalization);
+	  printf("Segment %d, after Island, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f, ",
+		 segment,
+		 myjt.curProbEvidenceIsland().val(),
+		 myjt.curProbEvidenceIsland().val()/numFrames,
+		 myjt.curProbEvidenceIsland().val()/numUsableFrames);
+	  data_prob = myjt.curProbEvidenceIsland();
+	} else {
+	  numUsableFrames = myjt.unroll(numFrames);
+	  infoMsg(IM::Low,"Collecting Evidence\n");
+	  myjt.collectEvidence();
+	  infoMsg(IM::Low,"Done Collecting Evidence\n");
+	  data_prob = myjt.probEvidence();
 
-	infoMsg(IM::Low,"Distributing Evidence\n");
-	myjt.distributeEvidence();
-	infoMsg(IM::Low,"Done Distributing Evidence\n");
+	  infoMsg(IM::Low,"Distributing Evidence\n");
+	  myjt.distributeEvidence();
+	  infoMsg(IM::Low,"Done Distributing Evidence\n");
 
-	printf("Segment %d, after CE/DE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f, ",
-	       segment,
-	       data_prob.val(),
-	       data_prob.val()/numFrames,
-	       data_prob.val()/numUsableFrames);
+	  printf("Segment %d, after CE/DE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f, ",
+		 segment,
+		 data_prob.val(),
+		 data_prob.val()/numFrames,
+		 data_prob.val()/numUsableFrames);
       
-	myjt.emIncrement(data_prob,localCliqueNormalization);
+	  myjt.emIncrement(data_prob,localCliqueNormalization);
 
-      }
+	}
 
 
-      printf("writing %s-kernel feature space vector ...\n",(fisherKernelP?"Fisher":"accumulator"));
-      if (annotateTransformationOutput) {
-	char buff[1024];
-	sprintf(buff,"Segment %d : %d frames, %d usable frames, log(PE) = %f",segment,numFrames,numUsableFrames,data_prob.val());
-	outf.write(buff);
+	printf("writing %s-kernel feature space vector ...\n",(fisherKernelP?"Fisher":"accumulator"));
+	if (annotateTransformationOutput) {
+	  char buff[1024];
+	  sprintf(buff,"Segment %d : %d frames, %d usable frames, log(PE) = %f",segment,numFrames,numUsableFrames,data_prob.val());
+	  outf.write(buff);
+	  outf.nl();
+	};
+	outf.write(data_prob.val());
+	GM_Parms.emWriteUnencodedAccumulators(outf,writeLogVals);
 	outf.nl();
-      };
-      outf.write(data_prob.val());
-      GM_Parms.emWriteUnencodedAccumulators(outf,writeLogVals);
-      outf.nl();
+      } catch (ZeroCliqueException &e) {
+	warning("Segment %d aborted due to zero clique\n", segment);
+      }
       
       (*dcdrng_it)++;
       firstTime = false;

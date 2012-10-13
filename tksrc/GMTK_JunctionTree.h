@@ -31,9 +31,7 @@
 #include <regex.h>
 
 #include "bp_range.h"
-
-// FIXME: why is this needed with the new IO? It wasn't there before...
-#include "range.h"
+#include "mArray.h"
 
 #include "GMTK_RV.h"
 #include "GMTK_FileParser.h"
@@ -581,9 +579,6 @@ class JunctionTree {
 
   };
 
-#if 0
-#include "GMTK_OnlinePtPs.h"
-#endif
 
   // this is an iterator that is used by island (it obviously
   // is not always used in the typical sequential left/right fashion.
@@ -616,10 +611,9 @@ class JunctionTree {
   // Support variables specific to Viterbi and N-best decoding
   // 
   sArray < unsigned > P_partition_values;
-  sArray < unsigned > C_partition_values;
+  mArray < unsigned > C_partition_values;
   sArray < unsigned > E_partition_values;
   void recordPartitionViterbiValue(ptps_iterator& it);
-
 
   ////////////////////////////////////////////////////////////////////////
 
@@ -865,6 +859,26 @@ public:
   // or P(evidence,best_hidden)), or the full inference score,
   // namely \sum_hidden P(evidence,hidden)
   static bool viterbiScore;
+
+  // if true, use mmap() to allocate memory for C_partition_values,
+  // otherwise use new
+  static bool mmapViterbi;
+
+  // For O(1) memory inference, write Viterbi values to this file for
+  // later printing by a separate program
+  static FILE *binaryViterbiFile;
+  static char *binaryViterbiFilename;
+  static off_t binaryViterbiOffset;    // offset to start of current segment
+  static off_t nextViterbiOffset;      // offset to start of next segment
+
+  // binary viterbi files should start with the cookie
+#define GMTK_VITERBI_COOKIE        "GMTKVIT\n"
+#define GMTK_VITERBI_COOKIE_LENGTH 8
+  // cookie + k (for k-best) + # segements
+#define GMTK_VITERBI_HEADER_SIZE (sizeof(unsigned) + \
+                                  sizeof(unsigned) + \
+                                  GMTK_VITERBI_COOKIE_LENGTH)
+
 
   // online filtering/smoothing needs to take some Viterbi code
   // paths but not others (particularly it should not allocate O(T)
@@ -1176,6 +1190,13 @@ public:
 					regex_t *preg,
 					char* partRangeFilter);
 
+  void printSavedPartitionViterbiValues(unsigned,
+					FILE*, FILE*,
+					bool printObserved,
+					regex_t *preg,
+					char* partRangeFilter);
+
+#if 0
   void printSavedViterbiValues(FILE*,
 			       bool printObserved = false,
 			       regex_t *preg = NULL,
@@ -1183,7 +1204,7 @@ public:
 			       unsigned maxTriggerVars = 0,
 			       const char **triggerVars = NULL,
 			       const char **triggerValSets = NULL);
-
+#endif
 
   void resetViterbiPrinting() { setCurrentInferenceShiftTo(0); }
 
@@ -1199,10 +1220,37 @@ public:
 			  vector<sArray<DiscRVType *> > &CprimeValuePtrs, 
 			  vector<sArray<DiscRVType *> > &EprimeValuePtrs);
 
-  void printSavedViterbiValues(FILE*,
+#if 0
+  void printSavedViterbiValues(FILE* f,
 			       bool printObserved,
 			       regex_t *preg,
 			       char* partRangeFilter);
+#endif
+
+  void readBinaryVitPartition(PartitionStructures& ps, unsigned part);
+
+  void printSavedViterbiValues(FILE *f,
+			       bool printObserved,
+			       regex_t *preg);
+
+  void printSavedViterbiValues(unsigned numFrames,
+			       FILE *f, FILE *binVitFile,
+			       bool printObserved,
+			       regex_t *preg,
+			       char* partRangeFilter);
+
+#if 1
+  void printSavedViterbiValues(unsigned numFrames,
+			       FILE *f, FILE* binVitFile,
+			       bool printObserved,
+			       regex_t *preg);
+#endif
+
+  void printSavedViterbiFrames(unsigned numFrames,
+			       FILE *f, FILE *binVitFile,
+			       bool printObserved,
+			       regex_t *preg,
+			       char* frameRangeFilter);
 
   // actuall message routines.
   // void collectMessage(MaxClique& from,MaxClique& to);
@@ -1237,6 +1285,9 @@ public:
   inline vector <RV*>& curNodes() { return cur_unrolled_rvs; }
 
 
+};
+
+class ZeroCliqueException : exception {
 };
 
 #endif

@@ -299,27 +299,39 @@ void kmeans::writeMgDoubleRecord2D(FILE *stream) {
     // mean x
     tmp = meansp[0];
     fwrite_result = fwrite(&tmp,sizeof(tmp),1,stream);
-
+    if (fwrite_result != 1) {
+      error("Error writing to kmeans output file");
+    }
     // mean y
     tmp = meansp[1];
     fwrite_result = fwrite(&tmp,sizeof(tmp),1,stream);
-
+    if (fwrite_result != 1) {
+      error("Error writing to kmeans output file");
+    }
     // var x
     tmp = varsp[0];
     fwrite_result = fwrite(&tmp,sizeof(tmp),1,stream);
-
+    if (fwrite_result != 1) {
+      error("Error writing to kmeans output file");
+    }
     // cov xy
     tmp = 0.0;
     fwrite_result = fwrite(&tmp,sizeof(tmp),1,stream);
-
+    if (fwrite_result != 1) {
+      error("Error writing to kmeans output file");
+    }
     // var y
     tmp = varsp[1];
     fwrite_result = fwrite(&tmp,sizeof(tmp),1,stream);
-
+    if (fwrite_result != 1) {
+      error("Error writing to kmeans output file");
+    }
     // coef
     tmp = saved_counts[i]/(double)total_count;
     fwrite_result = fwrite(&tmp,sizeof(tmp),1,stream);
-
+    if (fwrite_result != 1) {
+      error("Error writing to kmeans output file");
+    }
     meansp += vector_length;
     varsp += vector_length;
   }

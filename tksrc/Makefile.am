@@ -17,15 +17,16 @@ EXCCFLAGS = -m32
 EXCXXFLAGS = -m32
 EXLDDFLAGS = -m32
 OSXLDFLAGS = -dylib_file /System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib
-distclean-local:
-	-rm -rf gmtkViz.app
 else
 OSXLDFLAGS =
 EXCCFLAGS =
 EXCXXFLAGS =
 EXLDFLAGS = 
 endif
- 
+
+clean-local:
+	-rm -rf gmtkViz.app
+
 DEBUGFLAGS = -g
 if NO_ASSERTIONS
 DEBUGFLAGS += -DNDEBUG
@@ -99,6 +100,7 @@ GMTK_RngDecisionTree.h GMTK_RngDecisionTree.cc \
 GMTK_NameCollection.h GMTK_NameCollection.cc \
 GMTK_GMTemplate.h GMTK_GMTemplate.cc \
 GMTK_JunctionTree.h GMTK_JunctionTree.cc \
+GMTK_CountIterator.h \
 GMTK_GraphicalModel.h GMTK_GraphicalModel.cc \
 GMTK_MaxClique.h GMTK_MaxClique.cc \
 GMTK_BoundaryTriangulate.h GMTK_BoundaryTriangulate.cc \
@@ -177,14 +179,27 @@ $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 # include register_user_internal_cfunc_dts.cc and 
 #   user_internal_cfunc_dts.cc in the tar ball
 EXTRA_DIST = \
+GMTK_dlopenDeterministicMappings.h \
 register_user_internal_cfunc_dts.cc \
-user_internal_cfunc_dts.cc
+user_internal_cfunc_dts.cc \
+dlopen_cfunc_dts.cc
 
 
 bin_PROGRAMS = \
-gmtkTime gmtkJT gmtkEMtrain gmtkKernel gmtkViterbi gmtkTriangulate \
-gmtkParmConvert gmtkTFmerge gmtkDTindex gmtkNGramIndex gmtkTie gmtkModelInfo \
+gmtkTime \
+gmtkJT \
+gmtkEMtrain \
+gmtkKernel \
+gmtkViterbi \
+gmtkTriangulate \
+gmtkParmConvert \
+gmtkTFmerge \
+gmtkDTindex \
+gmtkNGramIndex \
+gmtkTie \
+gmtkModelInfo \
 gmtkOnline \
+gmtkPrint \
 $(GMTKVIZ) $(OSXBUNDLE)
 EXTRA_PROGRAMS = gmtkViz gmtkViz.app
 
@@ -194,6 +209,7 @@ gmtkTime_SOURCES = gmtkTime.cc
 gmtkEMtrain_SOURCES = gmtkEMtrain.cc
 gmtkKernel_SOURCES = gmtkKernel.cc
 gmtkViterbi_SOURCES = gmtkViterbi.cc
+gmtkPrint_SOURCES = gmtkPrint.cc
 gmtkTriangulate_SOURCES = gmtkTriangulate.cc
 gmtkParmConvert_SOURCES = gmtkParmConvert.cc
 gmtkModelInfo_SOURCES = gmtkModelInfo.cc
@@ -235,6 +251,7 @@ gmtkViz.app/Contents/PkgInfo: gmtkViz$(EXEEXT) $(srcdir)/Info.plist.in \
 endif
 
 check_PROGRAMS =  \
+parserTest \
 testPackCliqueValue \
 testViterbi \
 neghead \
