@@ -1988,7 +1988,10 @@ int main(int argc, const char *argv[])
     const char *lfr_str = 0;   // lagged feature range string
     Range *lfr_rng = NULL;
 
+#if 0
+    // unused
     int debug_level = 0;
+#endif
     bool mg_mi = false; // true if we use the gaussian mixture MI measure.
     int n_comps=1;
     double term_dist=0.1;
@@ -2222,7 +2225,7 @@ int main(int argc, const char *argv[])
             if (argc>0)
             {
                 // Next argument is debug level.
-                debug_level = (int) parse_long(*argv++);
+	      (void) parse_long(*argv++);
                 argc--;
             }
             else

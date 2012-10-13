@@ -4188,8 +4188,17 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 		// valid below we may mark it invalid
 		bool strFile_valid = true;
 		//these are just char * versions of the filenames
+#if 1
+                // Fix for strange wxWidgets wxString::char_str() issue
+                // See https://j.ee.washington.edu/trac/gmtk/ticket/349
+                wxCharBuffer str_cb = strFile.char_str(wxConvUTF8);
+                const char *strFile_cstr = str_cb.data();
+                wxCharBuffer gvp_cb = gvpFile.char_str(wxConvUTF8);
+                const char *gvpFile_cstr = gvp_cb.data();
+#else
 		char * strFile_cstr = strFile.char_str(wxConvUTF8);
 		char * gvpFile_cstr = gvpFile.char_str(wxConvUTF8);
+#endif
 		/* store the strFile name so that we can use it to in the FileParser
 		 * this way we only need to have 1 call to the FileParser, even
 		 * if we modify the tempFileName
@@ -5146,7 +5155,15 @@ StructPage::OnChar( wxKeyEvent &event )
 	mouse_pos.x = (int)round(mouse_pos.x / gZoomMap[displayScale]);
 	mouse_pos.y = (int)round(mouse_pos.y / gZoomMap[displayScale]);
 
-	if (event.m_keyCode == WXK_DELETE || event.m_keyCode == 'r') {
+// See https://j.ee.washington.edu/trac/gmtk/71 - Some Apple keyboards
+// have keys labeled "delete" tht actually generate backspace events.
+// Uncomment WXK_BACK below to allow backspace to also delete control
+// points in addition to the delete key. Note that, at least on my MacBook,
+// I can generate WXK_DELETE by holding down the fn key and hitting delete
+
+	if (event.m_keyCode == WXK_DELETE || /* event.m_keyCode == WXK_BACK || */
+            event.m_keyCode == 'r') 
+  	{
 		save_undo();
 		//if we actually deleted any cps then redraw, otherwise pop
 		//one state from the undo stack
@@ -9638,11 +9655,13 @@ GmtkHelp::doLayout()
 	help_msg->SetDefaultStyle(italic);
 	help_msg->AppendText("\t'delete'");
 	help_msg->SetDefaultStyle(normal);
-	help_msg->AppendText(" : deletes selected contropoint(s). NOTE: this will not delete anything except control points\n");
+	help_msg->AppendText(" : deletes selected contropoint(s). NOTE: this will not delete anything except control points.\n"
+			     "\t\tAlso note that some Apple keyboards label the BACKSPACE key as DELETE. You might try fn-DELETE\n"
+			     "\t\tif DELETE by itself doesn't work.\n");
 	help_msg->SetDefaultStyle(italic);
 	help_msg->AppendText("\t'r'");
 	help_msg->SetDefaultStyle(normal);
-	help_msg->AppendText(" : deletes selected contropoint(s). NOTE: this will not delete anything except control points\n");
+	help_msg->AppendText(" : deletes selected contropoint(s). NOTE: this will not delete anything except control points.\n");
 	help_msg->SetDefaultStyle(italic);
 	help_msg->AppendText("\t'g'");
 	help_msg->SetDefaultStyle(normal);

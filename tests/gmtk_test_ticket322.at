@@ -51,13 +51,10 @@ AT_CHECK([cd $TEST_AND_DEV/auroraTutorial && \
                  -inputMasterFile PARAMS/nonTrainable.master \
                  -inputTrainable PARAMS/highly_trained.gmp \
                  -str PARAMS/aurora_decode.str \
-                 -triF PARAMS/aurora_decode.str.trifile-322-5],[],[ignore],
-[WARNING: Triangulation file 'PARAMS/aurora_decode.str.trifile-322-5' was created by a buggy version of GMTK.
-It will work fine as-is, but you can repair the file and eliminate this
-warning by running the fixTri.sh script distributed with GMTK:
-  /usr/local/bin/fixTri.sh PARAMS/aurora_decode.str.trifile-322-5
+                 -triF PARAMS/aurora_decode.str.trifile-322-5],[],[ignore],[stderr])
+AT_CHECK([grep "WARNING: Triangulation file 'PARAMS/aurora_decode.str.trifile-322-5' was created by a buggy version of GMTK." stderr],
+	 [0],[ignore],[ignore])
 
-])
 AT_CHECK([cd $TEST_AND_DEV/auroraTutorial && \
           gmtkJT -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
                  -inputMasterFile PARAMS/nonTrainable.master \

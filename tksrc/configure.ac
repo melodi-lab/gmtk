@@ -209,9 +209,15 @@ grey)
   ;;
 esac
 
+dnl The dlopen() function is in the C library for *BSD and in
+dnl libdl on GLIBC-based systems
+AC_SEARCH_LIBS([dlopen], [dl dld], [], [
+  AC_MSG_ERROR([unable to find the dlopen() function])
+])
+
 # Checks for header files.
 AC_PATH_XTRA
-AC_CHECK_HEADERS([float.h stdlib.h string.h sys/time.h unistd.h])
+AC_CHECK_HEADERS([float.h stdlib.h string.h sys/time.h unistd.h dlfcn.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL

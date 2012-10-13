@@ -1315,6 +1315,7 @@ FileParser::parseFactorSoftConstraintAttribute()
     curFactor.softConstraintInfo.softConstraintType = FactorInfo::fct_logLinear;
   } else
     parseErrorExpecting("table or logLinear");
+  consumeToken();
   
 
   ensureNotAtEOF("(");

@@ -121,6 +121,7 @@ Each routine has:
 #include <set>
 #include <regex.h>
 
+#include "range.h"
 #include "logp.h"
 #include "GMTK_RVInfo.h"
 #include "GMTK_NamedObject.h"
@@ -495,8 +496,8 @@ public:
 // TODO: below routines should be in RV namespace.
 
 void printRVSetAndValues(FILE*f,vector<RV*>& locset,const bool nl=true,regex_t* preg = NULL); 
-void printRVSetAndValues(FILE*f,sArray<RV*>& locset,
-			 const bool nl=true,regex_t* preg = NULL);
+void printRVSetAndValues(FILE*f,vector<RV*>& locset,const bool nl,regex_t* preg, Range *frameRange); 
+void printRVSetAndValues(FILE*f,sArray<RV*>& locset,const bool nl=true,regex_t* preg = NULL);
 void printRVSetAndValues(FILE*f,set<RV*>& locset,const bool nl=true,regex_t* preg = NULL);
 void printRVSet(FILE*f,vector<RV*>& locvec,const bool nl=true,regex_t* preg = NULL);
 void printRVSet(FILE*f,sArray<RV*>& locset,const bool nl=true,regex_t* preg = NULL);

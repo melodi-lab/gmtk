@@ -90,6 +90,7 @@ VCID(HGID)
 
 #define GMTK_ARG_INPUT_TRAINABLE_FILE_HANDLING
 #define GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG
+#define GMTK_ARG_DLOPEN_MAPPERS
 #define GMTK_ARG_INPUT_TRAINABLE_PARAMS
 #define GMTK_ARG_ALLOC_DENSE_CPTS
 #define GMTK_ARG_CHECK_TRI_FILE_CARD
@@ -230,6 +231,7 @@ main(int argc,char*argv[])
   /////////////////////////////////////////////
   if (loadParameters) {
     // read in all the parameters
+    dlopenDeterministicMaps(dlopenFilenames, MAX_NUM_DLOPENED_FILES);
     if (inputMasterFile) {
       // flat, where everything is contained in one file, always ASCII
       iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);

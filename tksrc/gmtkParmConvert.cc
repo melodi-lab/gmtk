@@ -74,6 +74,7 @@ VCID(HGID)
 #include "GMTK_DlinkMatrix.h"
 
 #define GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG
+#define GMTK_ARG_DLOPEN_MAPPERS
 #define GMTK_ARG_OUTPUT_MASTER_FILE
 #define GMTK_ARG_OUTPUT_TRAINABLE_PARAMS
 
@@ -167,6 +168,7 @@ main(int argc,char*argv[])
   }
 
   ////////////////////////////////////////////
+  dlopenDeterministicMaps(dlopenFilenames, MAX_NUM_DLOPENED_FILES);
   if (inputMasterFile != NULL) {
     iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
     GM_Parms.read(pf);

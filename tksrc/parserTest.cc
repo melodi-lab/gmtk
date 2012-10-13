@@ -1,10 +1,10 @@
 /*
- * gmtkJT.cc
+ * gmtkModelInfo.cc
  * produce a junction tree
  *
- * Written by Chris Bartels & Jeff Bilmes <bilmes@ee.washington.edu>
+ * Written by Richard Rogers <rprogers@ee.washington.edu>
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (c) 2011, < fill in later >
  *
  * Permission to use, copy, modify, and distribute this
  * software and its documentation for any non-commercial purpose
@@ -22,13 +22,6 @@
  *
  */
 
-#if HAVE_CONFIG_H
-#include <config.h>
-#endif
-#if HAVE_HG_H
-#include "hgstamp.h"
-#endif
-
 
 #include <math.h>
 #include <stdlib.h>
@@ -43,9 +36,16 @@
 #include "rand.h"
 #include "arguments.h"
 #include "ieeeFPsetup.h"
+#include "debug.h"
 //#include "spi.h"
 #include "version.h"
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
 VCID(HGID)
 
 
@@ -54,11 +54,14 @@ VCID(HGID)
 #include "GMTK_DiscRV.h"
 #include "GMTK_ContRV.h"
 #include "GMTK_GMParms.h"
+#include "GMTK_GMTemplate.h"
+#include "GMTK_Partition.h"
 #if 0
 #  include "GMTK_ObservationMatrix.h"
 #else
 #  include "GMTK_ObservationSource.h"
 #  include "GMTK_FileSource.h"
+#  include "GMTK_CreateFileSource.h"
 #  include "GMTK_ASCIIFile.h"
 #  include "GMTK_FlatASCIIFile.h"
 #  include "GMTK_PFileFile.h"
@@ -70,22 +73,25 @@ VCID(HGID)
 #endif
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_GaussianComponent.h"
+#include "GMTK_LinMeanCondDiagGaussian.h"
 #include "GMTK_MeanVector.h"
 #include "GMTK_DiagCovarVector.h"
 #include "GMTK_DlinkMatrix.h"
-#include "GMTK_RngDecisionTree.h"
 
-#define GMTK_ARG_INPUT_TRAINABLE_FILE_HANDLING
-#define GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG
-#define GMTK_ARG_DLOPEN_MAPPERS
+#include "GMTK_WordOrganization.h"
+
+
+/*************************   INPUT STRUCTURE PARAMETER FILE HANDLING  *******************************************/
+#define GMTK_ARG_INPUT_MODEL_FILE_HANDLING
+#define GMTK_ARG_STR_FILE_OPT_ARG
 #define GMTK_ARG_CPP_CMD_OPTS
+
 #define GMTK_ARG_GENERAL_OPTIONS
-#define GMTK_ARG_HELP
-#define GMTK_ARG_VERB
 #define GMTK_ARG_VERSION
+#define GMTK_ARG_HELP
 
-static char *DTFiles           = NULL;
-
+#define GMTK_ARG_INFOSEPARATOR
+#define GMTK_ARG_INFOFIELDFILE
 
 #define GMTK_ARGUMENTS_DEFINITION
 #include "GMTK_Arguments.h"
@@ -94,12 +100,12 @@ static char *DTFiles           = NULL;
 
 Arg Arg::Args[] = {
 
+
 #define GMTK_ARGUMENTS_DOCUMENTATION
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_DOCUMENTATION
 
-  Arg("\n*** Decision tree files ***\n"),
-  Arg("decisionTreeFiles", Arg::Opt, DTFiles, "List of decision tree files"),
+
 
   // final one to signal the end of the list
   Arg()
@@ -111,75 +117,52 @@ Arg Arg::Args[] = {
  */
 RAND rnd(false);
 GMParms GM_Parms;
+#if 0
+ObservationMatrix globalObservationMatrix;
+#endif
 
-FileSource fileSource;
-FileSource *gomFS = &fileSource;
-ObservationSource *globalObservationMatrix = &fileSource;
-
+FileSource *gomFS;
+ObservationSource *globalObservationMatrix;
 
 int
 main(int argc,char*argv[])
 {
   ////////////////////////////////////////////
-  // set things up so that if an FP exception
-  // occurs such as an "invalid" (NaN), overflow
-  // or divide by zero, we actually get a FPE
-  ieeeFPsetup();
-
-  ////////////////////////////////////////////
   // parse arguments
   bool parse_was_ok = Arg::parse(argc,(char**)argv,
-"\nThis program creates index files for decision trees to make them "
-"more efficent\n");
+"\nThis program prints out some information about the number of variables\n"
+"in a model and which GMTK features the model uses\n");
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }
+
 
 #define GMTK_ARGUMENTS_CHECK_ARGS
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_CHECK_ARGS
 
 
+  /////////////////////////////////////////////
 
-  ////////////////////////////////////////////
-  // Write index files for all decision trees in the master file 
-  if (inputMasterFile != NULL) {
-    iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
-
-    GM_Parms.read(pf);
-    GM_Parms.writeDecisionTreeIndexFiles();
+  if (!strFileName) {
+    error("Structure file required\n");
   }
 
-  ////////////////////////////////////////////
-  // Write index files for all decision trees named in the list 
-  if (DTFiles != NULL) {
+  // load up the structure file as we might want
+  // it to allocate some Dense CPTs.
+  FileParser fp(strFileName,cppCommandOptions);
+  infoMsg(IM::Tiny,"Finished reading in all parameters and structures\n");
+    
+  // parse the file
+  infoMsg(IM::Max,"Parsing structure file...\n");
+  fp.parseGraphicalModel();
+  // create the rv variable objects
+  infoMsg(IM::Max,"Creating rv objects...\n");
+  fp.createRandomVariableGraph();
 
-    string DT_file_name;
-    unsigned int i;
-
-    i = 0;
-    while( DTFiles[i]!='\0' ) { 
-
-      RngDecisionTree decision_tree;
-
-      ////////////////////////////////////////////
-      // Skip white space 
-      while( (DTFiles[i]==' ') || (DTFiles[i]=='\t') ) { 
-        ++i;
-      }
- 
-      ////////////////////////////////////////////
-      // Get the file name, create a tree object, and write the index file 
-      DT_file_name = "";
-      while( (DTFiles[i]!=' ') && (DTFiles[i]!='\t') && (DTFiles[i]!='\0') ) {
-        DT_file_name += DTFiles[i];
-        ++i;
-      }
-
-      decision_tree.initializeIterableDT(DT_file_name);
-      decision_tree.writeIndexFile();
-    }
-  }
+  // Make sure that there are no directed loops in the graph.
+  infoMsg(IM::Max,"Checking template...\n");
+  fp.ensureValidTemplate();
 
   exit_program_with_status(0);
 }
