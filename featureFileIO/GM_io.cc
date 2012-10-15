@@ -1,8 +1,21 @@
 //static char *rcsid = "$Id$";
 
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 #include <stdio.h>
 #include "GM_io.h"
 
+#ifdef HAVE_FSEEKO
+#  define gm_fseek(a,b,c) fseeko(a,b,c)
+#  define gm_ftell(a)     ftello(a)
+   typedef off_t gm_off_t;
+#else
+#  define gm_fseek(a,b,c) fseek(a,b,c)
+#  define gm_ftell(a)     ftell(a)
+   typedef long gm_off_t;
+#endif
 
 GM_buf::GM_buf(size_t n_records, size_t rec_size) {
 
@@ -110,23 +123,23 @@ GM_input::open_binary_file(const char *fname, FILE *fp, int nfloats, int nints) 
     return 0;
   }
 
-  if (fseek(fp,0L,SEEK_END) == -1) {
+  if (gm_fseek(fp,(gm_off_t)0,SEEK_END) == -1) {
     GM_warning("GM_io::open_binary_file: Can't skip to end of file",fname);
     return 0;
   }
 
-  size_t file_size = ftell(fp);
+  gm_off_t file_size = gm_ftell(fp);
 
   rewind(fp);
 
-  int rec_size = nfloats * sizeof(float) + nints * sizeof(int);
+  gm_off_t rec_size = (gm_off_t)(nfloats * sizeof(float) + nints * sizeof(int));
   
   if ((file_size % rec_size) > 0) {
     GM_warning("GM_io::open_binary_file: odd number of bytes in file %s\n",fname);
     return 0;
   }
 
-  int n_samples = file_size / rec_size;
+  int n_samples = (int)(file_size / rec_size);
   
   return n_samples;
 }
@@ -180,7 +193,7 @@ GM_input::open_htk_file(const char *fname,FILE *fp, int nfloats, int nints) {
     GM_warning("GM_io::open_htk_file: Can't open '%s' for input\n",fname);
     return 0;
   }
-  if (fseek(fp,0L,SEEK_END) == -1) {
+  if (gm_fseek(fp,(gm_off_t)0,SEEK_END) == -1) {
     GM_warning("GM_io::open_binary_file: Can't skip to end of file",fname);
     return 0;
   }

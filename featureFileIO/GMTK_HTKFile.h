@@ -31,6 +31,17 @@ using namespace std;
 #include "GMTK_ObservationFile.h"
 
 
+#ifdef HAVE_FSEEKO
+#  define htk_fseek(a,b,c) fseeko(a,b,c)
+#  define htk_ftell(a)     ftello(a)
+   typedef off_t htk_off_t;
+#else
+#  define htk_fseek(a,b,c) fseek(a,b,c)
+#  define htk_ftell(a)     ftell(a)
+   typedef long htk_off_t;
+#endif
+
+
 // Most of the implementation is recycled from the
 // previous implementation
 
