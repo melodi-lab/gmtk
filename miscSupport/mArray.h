@@ -94,6 +94,11 @@ class mArray_nd {
 
   T *ptr;
 
+// see https://j.ee.washington.edu/trac/gmtk/ticket/371
+#ifndef   MAP_ANONYMOUS
+#  define MAP_ANONYMOUS MAP_ANON
+#endif
+
   mArray_nd(int arg_size=0, bool usemmap=true) {
     _size = arg_size;
     _usemmap = usemmap;
@@ -101,6 +106,7 @@ class mArray_nd {
     if (_size < 0)
       coredump("Error: mArray::mArray arg_size < 0");
     if (_size > 0) {
+#ifdef HAVE_MMAP
       if (_usemmap) {
 	void *block = mmap(NULL, _size * sizeof(T), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
 	assert(block);
@@ -108,6 +114,9 @@ class mArray_nd {
       } else {
 	ptr = new T[_size];
       }
+#else
+      ptr = new T[_size];
+#endif
       assert(ptr);
     }
   }
@@ -117,6 +126,7 @@ class mArray_nd {
   }
 
   void allocate(int arg_size=0) {
+#ifdef HAVE_MMAP
     if (_usemmap) {
       void *block = mmap(NULL, arg_size * sizeof(T), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
       assert(block);
@@ -124,11 +134,15 @@ class mArray_nd {
     } else {
       ptr = new T[arg_size];
     }
+#else
+    ptr = new T[arg_size];
+#endif
     assert(ptr);
     _size = arg_size;
   }
 
   void deallocate() {
+#ifdef HAVE_MMAP
     if (_usemmap) {
       while (_size) 
 	ptr[--_size].~T();
@@ -136,6 +150,9 @@ class mArray_nd {
     } else {
       delete [] ptr;
     }
+#else
+    delete [] ptr;
+#endif
     _size = 0;
     ptr = NULL;
   }
@@ -204,6 +221,7 @@ class mArray_nd {
     if (arg_size < 0)
       coredump("Error: mArray:resize arg_size < 0");
     T* tmp;
+#ifdef HAVE_MMAP
     if (_usemmap) {
       void *block = mmap(NULL, arg_size * sizeof(T), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
       assert(block);
@@ -211,6 +229,9 @@ class mArray_nd {
     } else {
       tmp = new T[arg_size];
     }
+#else
+    tmp = new T[arg_size];
+#endif
     assert(tmp);
     const int nsize = (_size<arg_size?_size:arg_size);
     ::memcpy((void*)tmp,(void*)ptr,sizeof(T)*nsize);
