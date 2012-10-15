@@ -118,11 +118,11 @@ BinaryFile::openSegment(unsigned seg) {
   }
 
   // get the file length to determine the # of frames in the segment
-  if (fseek(curDataFile,0L,SEEK_END) == -1) {
+  if (bin_fseek(curDataFile,(bin_off_t)0,SEEK_END) == -1) {
     warning("BinaryFile::openSegment:: Can't skip to end of file %s",
 	      dataNames[seg]);
   }
-  unsigned long fsize = (unsigned long)ftell(curDataFile);
+  unsigned long fsize = (unsigned long)bin_ftell(curDataFile);
 
   if ((fsize % numFeatures()) > 0)
       error("BinaryFile::openSegment: odd number of bytes in file %s\n",dataNames[seg]);
@@ -150,7 +150,7 @@ BinaryFile::getFrames(unsigned first, unsigned count) {
     assert(buffer);
     buffSize = needed;
   }
-  if (fseek(curDataFile,first * sizeof(Data32) * numFeatures(),SEEK_SET) == -1) {
+  if (bin_fseek(curDataFile,(bin_off_t)(first * sizeof(Data32) * numFeatures()),SEEK_SET) == -1) {
     warning("BinaryFile::getFrames: Can't seek to frame %u in %s\n", first, dataNames[curSegment]);
     return NULL;
   }
