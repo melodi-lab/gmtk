@@ -41,12 +41,7 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 
 #include "range.h"
 #include "rand.h"
-//#include "spi.h"
 
-#include "GMTK_ObservationMatrix.h"
-
-#include "pfile.h"
-//#include "parse_subset.h"
 #include "error.h"
 #include "arguments.h"
 #include "GMTK_WordOrganization.h"
@@ -57,8 +52,35 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "GMTK_Kmeans.h"
 #include "GMTK_ObsInitmg.h"
 
+#include "arguments.h"
 
-ObservationMatrix globalObservationMatrix;
+#include "GMTK_ObservationSource.h"
+#include "GMTK_FileSource.h"
+#include "GMTK_CreateFileSource.h"
+#include "GMTK_FilterFile.h"
+#include "GMTK_MergeFile.h"
+#include "GMTK_ASCIIFile.h"
+#include "GMTK_FlatASCIIFile.h"
+#include "GMTK_PFileFile.h"
+#include "GMTK_HTKFile.h"
+#include "GMTK_HDF5File.h"
+#include "GMTK_BinaryFile.h"
+#include "GMTK_Stream.h"
+
+#define GMTK_ARG_OBS_FILES
+#define GMTK_ARG_CPP_CMD_OPTS
+#define GMTK_ARG_OBS_MATRIX_XFORMATION
+#define GMTK_ARG_FILE_RANGE_OPTIONS
+#define GMTK_ARG_START_END_SKIP
+#define GMTK_ARG_GENERAL_OPTIONS
+#define GMTK_ARG_HELP
+#define GMTK_ARG_VERSION
+
+#define GMTK_ARGUMENTS_DEFINITION
+#include "ObsArguments.h"
+#undef GMTK_ARGUMENTS_DEFINITION
+
+FileSource *gomFS;
 
 void (*copy_swap_func_ptr)(size_t, const intv_int32_t*, intv_int32_t*)=NULL;
 
@@ -152,7 +174,7 @@ SentIdStream_File::next()
 /////////////////////////////////////////////////////////////////////////////
 
 
-static void uniformSkmeans(ObservationMatrix* obs_mat,
+static void uniformSkmeans(FileSource *obs_mat,
 			   FILE *out_fp,
 			   SentIdStream_File& sid_stream,
 			   const int num_words, const int num_segments, 
@@ -218,7 +240,7 @@ static void uniformSkmeans(ObservationMatrix* obs_mat,
 	    wait(0); // wait for the child to complete
 	  }
 	  
-	  obs_mat->loadSegment(sent_no);
+	  obs_mat->openSegment(sent_no);
 	  //	  const size_t n_frames = in_streamp->n_frms((sent_no));
 	  const size_t n_frames = obs_mat->numFrames();
 
@@ -345,7 +367,7 @@ static void uniformSkmeans(ObservationMatrix* obs_mat,
       sid_stream.rewind();
       //      for (sent_no=0;sent_no<in_streamp->n_segs();sent_no++) {
       for (sent_no=0;sent_no<num_stream_sentences;sent_no++) {
-	obs_mat->loadSegment(sent_no);
+	obs_mat->openSegment(sent_no);
 	//	  const size_t n_frames = in_streamp->n_frms((sent_no));
 	const size_t n_frames = obs_mat->numFrames();
 	//const size_t n_frames = in_streamp->n_frms((sent_no));
@@ -436,7 +458,7 @@ static void uniformSkmeans(ObservationMatrix* obs_mat,
 
 static void
 //pfile_viterbi_skmeans(SPI_base *in_streamp,
-viterbiSkmeans(ObservationMatrix * obs_mat,
+viterbiSkmeans(FileSource *obs_mat,
 	       FILE *out_fp,
 	       //		      SPI_base* in_lstreamp,
 	       const int num_labels,
@@ -514,7 +536,7 @@ viterbiSkmeans(ObservationMatrix * obs_mat,
 	    wait(0); // wait for the child to complete
 	  }
 
-	  obs_mat->loadSegment(sent_no);
+	  obs_mat->openSegment(sent_no);
 	  //	  const size_t n_frames = in_streamp->n_frms((sent_no));
 	  const size_t n_frames = obs_mat->numFrames();
 	  //if (in_lstreamp != NULL) {
@@ -531,7 +553,7 @@ viterbiSkmeans(ObservationMatrix * obs_mat,
 
 	  for(unsigned frame_no = 0;  frame_no < n_frames; ++frame_no) {
 	    const float* start_of_frame = obs_mat->floatVecAtFrame(frame_no);
-	    const UInt32* start_of_unsigned_frame = obs_mat->unsignedAtFrame(frame_no);
+	    const UInt32* start_of_unsigned_frame = obs_mat->unsignedVecAtFrame(frame_no);
 	    for(unsigned feat_no = 0;  feat_no < n_ftrs; ++feat_no) {
 	      ftr_buf[frame_no * n_ftrs + feat_no] = *(start_of_frame  + feat_no);
 	    }
@@ -639,7 +661,7 @@ viterbiSkmeans(ObservationMatrix * obs_mat,
       // Do one more pass over file to compute the variances.
       //      for (sent_no=0;sent_no<in_streamp->n_segs();sent_no++) {
       for (sent_no=0;sent_no<num_stream_sentences;sent_no++) {
-	obs_mat->loadSegment(sent_no);
+	obs_mat->openSegment(sent_no);
 	//	  const size_t n_frames = in_streamp->n_frms((sent_no));
 	const size_t n_frames = obs_mat->numFrames();
 
@@ -720,60 +742,19 @@ viterbiSkmeans(ObservationMatrix * obs_mat,
 
 
 
-#define MAX_OBJECTS 5
-
-char *   input_fname[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL};  // Input file name.
-const char *   ifmtStr[MAX_OBJECTS]     = {"pfile","pfile","pfile","pfile","pfile"};
-unsigned ifmt[MAX_OBJECTS];
-
 char *   output_fname      = NULL;
 
 char *   input_uname       = NULL;
 bool     Print_Stream_Info = false;
 bool     Print_Sent_Frames = false;
 
-unsigned nis[MAX_OBJECTS];
-unsigned nfs[MAX_OBJECTS];
-
-
-char  *sr_str               = 0;   // sentence range string
-Range *sr_rng;
-char  *fr_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL};   // feature range string    
-char  *lr_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL};   // label range string  
-char  *spr_str[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL};   // per stream per sentence range string 
-char  *pr_str               = 0;   // per-sentence range string
-
-
-const char*    actionIfDiffNumFramesStr[MAX_OBJECTS]={"er","er","er","er","er"};   // 
-unsigned actionIfDiffNumFrames[MAX_OBJECTS]={FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR};   // 
-const char*    actionIfDiffNumSentsStr[MAX_OBJECTS]={"te","te","te","te","te"}; 
-unsigned actionIfDiffNumSents[MAX_OBJECTS]={SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END};   // 
-
 bool     quiet = false;
 
 #ifdef INTV_WORDS_BIGENDIAN
-bool iswap[MAX_OBJECTS]={true,true,true,true,true};
 bool oswap = true;
 #else
-bool iswap[MAX_OBJECTS]= {false,false,false,false,false};
 bool oswap             = false;
 #endif
-
-char* perStreamTransforms[MAX_OBJECTS]={NULL,NULL,NULL,NULL,NULL};   // 
-char* postTransforms=NULL;
-
-unsigned startSkip = 0;
-unsigned endSkip   = 0;
-
-
-const char*    ftrcomboStr = "none";
-unsigned ftrcombo    = FTROP_NONE;
-
-bool     cppIfAscii        = true;
-char*    cppCommandOptions = NULL;
-
-bool     help              = false;
-bool     printVersion      = false;
 
 int num_words = 0;
 int num_segments = 0;
@@ -785,6 +766,8 @@ float conv_thres = 0.0;
 
 bool binary = false;
 int  debug_level = 0;
+char  *sr_str               = 0;   // sentence range string
+Range *sr_rng;
 
 // if not true, we do viterbi k-means
 bool uniform_skm = true;
@@ -795,24 +778,14 @@ bool  Init_MG     = false;
 char* Init_MG_CFR = NULL;
 
 Arg Arg::Args[] = {
-  Arg("i",        Arg::Req, input_fname,  "Input file",Arg::ARRAY,MAX_OBJECTS),
-  Arg("ifmt",     Arg::Opt, ifmtStr ,     "Format of input file",Arg::ARRAY,MAX_OBJECTS),
+#define GMTK_ARGUMENTS_DOCUMENTATION
+#include "ObsArguments.h"
+#undef GMTK_ARGUMENTS_DOCUMENTATION
+
+  Arg("gsr",       Arg::Opt, sr_str,       "Sentence range"),
   Arg("o",        Arg::Opt, output_fname, "Output file"),
   Arg("b",        Arg::Opt, binary,       "Binary rather than ascii output"),
-  Arg("nf",       Arg::Opt, nfs,          "Number of floats in input file",Arg::ARRAY,MAX_OBJECTS),
-  Arg("ni",       Arg::Opt, nis,          "Number of ints (labels) in input file",Arg::ARRAY,MAX_OBJECTS),
-  Arg("sr",       Arg::Opt, sr_str,       "Sentence range"),
-  Arg("fr",       Arg::Opt, fr_str,       "Feature range",Arg::ARRAY,MAX_OBJECTS),
-  Arg("spr",      Arg::Opt, spr_str,      "Per stream per-sentence range",Arg::ARRAY,MAX_OBJECTS),
-  Arg("lr",       Arg::Opt, lr_str,       "Label range",Arg::ARRAY,MAX_OBJECTS),
-  Arg("startskip",Arg::Opt, startSkip,    "Start skip"),
-  Arg("endskip",  Arg::Opt, endSkip,      "End skip"),
   Arg("q",        Arg::Tog, quiet,        "Quiet."),
-  Arg("fdiffact", Arg::Opt, actionIfDiffNumFramesStr , "Action if different number of frames in streams: error (er), repeat last frame (rl), first frame (rf), segmentally expand (se), truncate from start (ts), truncate from end (te)",Arg::ARRAY,MAX_OBJECTS),
-  Arg("sdiffact", Arg::Opt, actionIfDiffNumSentsStr ,  "Action if different number of sentences in streams: error (er), truncate from end (te), repeat last sent (rl), and wrap around (wa).",Arg::ARRAY,MAX_OBJECTS),
-  Arg("trans",    Arg::Opt, perStreamTransforms , "Per stream transformations string",Arg::ARRAY,MAX_OBJECTS),
-  Arg("posttrans",Arg::Opt, postTransforms ,      "Final global transformations string"),
-  Arg("comb",     Arg::Opt, ftrcomboStr,  "Combine float features (none: no combination, add, sub, mul,div"),
   Arg("k",        Arg::Opt, num_clusters, "Number of clusters (i.e., K)"),
   Arg("r",        Arg::Opt, numRandomReStarts, "Number of epoch random restarts to take best of"),
   Arg("m",        Arg::Opt, maxReInits,        "Maximum number of re-inits before giving up"),
@@ -826,11 +799,6 @@ Arg Arg::Args[] = {
   Arg("prefetch", Arg::Opt, prefetch,     "Prefetch next sentence at each iteration"),
   Arg("initmg",   Arg::Opt, Init_MG,      "Create an initialization .mg file for bivariate-mi.cc"), 
   Arg("initmgCfr",Arg::Opt, Init_MG_CFR,  "Range of past/future context frames to use when initializing an .mg file"), 
-  Arg("iswap",    Arg::Opt, iswap,        "Do byte swapping on the input file",Arg::ARRAY,MAX_OBJECTS),
-  Arg("cppifascii",        Arg::Opt, cppIfAscii,        "Pre-process ASCII files using CPP"),
-  Arg("cppCommandOptions", Arg::Opt, cppCommandOptions, "Additional CPP command line"),
-  Arg("help",     Arg::Tog, help,                       "Print this message"),
-  Arg("version", Arg::Tog, printVersion, "Print GMTK version and exit."),
   // The argumentless argument marks the end of the above list.
   Arg()
 };
@@ -844,50 +812,22 @@ int main(int argc, const char *argv[])
   int numFiles=0;
 
   // Figure out the Endian of the machine this is running on and set the swap defaults accordingly
-  bool doWeSwap;
 
-  ByteEndian byteEndian = getWordOrganization();
-  switch(byteEndian) {
-  case BYTE_BIG_ENDIAN:
-    doWeSwap=false;
-    break;
-  case BYTE_LITTLE_ENDIAN:
-    doWeSwap=true;
-    break;
-  default:
-    // We weren't able to figure the Endian out.  Leave the swap defaults as they are.
-#ifdef INTV_WORDS_BIGENDIAN
-    doWeSwap=true;
-#else
-    doWeSwap=false;
-#endif
-  }
+  CODE_TO_COMPUTE_ENDIAN
 
   oswap=doWeSwap;
-  for(int i=0; i<MAX_OBJECTS; ++i) {
-    iswap[i]=doWeSwap;
-  }
+
   ///////////////////////////////////////////
 
   bool parse_was_ok = Arg::parse(argc,(char**)argv);
 
-  if (printVersion) {
-#ifdef HAVE_CONFIG_H
-    printf("%s (Mercurial id: %s)\n",gmtk_version_id,HGID);
-#else
-    printf("%s\n", gmtk_version_id);
-#endif
-    exit(0);
-  }
-
-  if(help) {
-    Arg::usage();
-    exit(0);
-  }
-
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }
+
+#define GMTK_ARGUMENTS_CHECK_ARGS
+#include "ObsArguments.h"
+#undef GMTK_ARGUMENTS_CHECK_ARGS
 
   // oswap might been assigned a new value on the command line
   if(oswap) {
@@ -909,77 +849,15 @@ int main(int argc, const char *argv[])
     if(viterbi) uniform_skm = false;
 
 
-    for (int i=0;i<MAX_OBJECTS;i++) {
-      numFiles += (input_fname[i] != NULL);
-      if (strcmp(ifmtStr[i],"htk") == 0)
-	ifmt[i] = HTK;
-      else if (strcmp(ifmtStr[i],"binary") == 0)
-	ifmt[i] = RAWBIN;
-      else if (strcmp(ifmtStr[i],"ascii") == 0)
-      ifmt[i] = RAWASC;
-      else if (strcmp(ifmtStr[i],"pfile") == 0)
-	ifmt[i] = PFILE;
-      //    else if (strcmp(ifmtStr[i],"flatbin") == 0)
-      //  ifmt[i]=FLATBIN;
-      //else if (strcmp(ifmtStr[i],"flatasc") == 0)
-      //  ifmt[i]=FLATASC;
-      else
-	error("ERROR: Unknown observation file format type: '%s'\n",ifmtStr[i]);
+    for (int i=0;i<MAX_NUM_OBS_FILES;i++) {
+      numFiles += (ofs[i] != NULL);
     }
     
     for(int i=0; i < numFiles; ++i)
-      if(output_fname!=NULL && strcmp(input_fname[i],output_fname)==0) {
-     error("Input and output filenames cannot be the same.");
+      if(output_fname!=NULL && strcmp(ofs[i],output_fname)==0) {
+	error("Input and output filenames cannot be the same.");
       }
-    
-    if (strcmp(ftrcomboStr,"none") == 0)
-      ftrcombo = FTROP_NONE;
-    else if (strcmp(ftrcomboStr,"add") == 0)
-      ftrcombo = FTROP_ADD;
-    else if (strcmp(ftrcomboStr,"sub") == 0)
-      ftrcombo = FTROP_SUB;
-    else if (strcmp(ftrcomboStr,"mul") == 0)
-      ftrcombo = FTROP_MUL;
-    else if (strcmp(ftrcomboStr,"div") == 0)
-      ftrcombo = FTROP_DIV;
-    else
-      error("ERROR: Unknown feature combination type: '%s'\n",ftrcomboStr);
-    
-    for(int i=0; i < MAX_OBJECTS; ++i) {
-      if(input_fname[i]!=NULL) {
-	if (strcmp(actionIfDiffNumFramesStr[i],"er") == 0)
-	  actionIfDiffNumFrames[i] = FRAMEMATCH_ERROR;
-	else if (strcmp(actionIfDiffNumFramesStr[i],"rl") == 0)
-	  actionIfDiffNumFrames[i] = FRAMEMATCH_REPEAT_LAST;
-	else if (strcmp(actionIfDiffNumFramesStr[i],"rf") == 0)
-	  actionIfDiffNumFrames[i] = FRAMEMATCH_REPEAT_FIRST;
-	else if (strcmp(actionIfDiffNumFramesStr[i],"se") == 0)
-	  actionIfDiffNumFrames[i] = FRAMEMATCH_EXPAND_SEGMENTALLY;
-	else if (strcmp(actionIfDiffNumFramesStr[i],"ts") == 0)
-	  actionIfDiffNumFrames[i] = FRAMEMATCH_TRUNCATE_FROM_START;
-	else if (strcmp(actionIfDiffNumFramesStr[i],"te") == 0)
-	  actionIfDiffNumFrames[i] = FRAMEMATCH_TRUNCATE_FROM_END;
-	else
-	  error("ERROR: Unknown action when diff num of frames: '%s'\n",actionIfDiffNumFramesStr[i]);
-      }
-    }
-    
-    for(int i=0; i < MAX_OBJECTS; ++i) {
-      if(input_fname[i]!=NULL) {
-	if (strcmp(actionIfDiffNumSentsStr[i],"er") == 0)
-	  actionIfDiffNumSents[i] = SEGMATCH_ERROR;
-	else if (strcmp(actionIfDiffNumSentsStr[i],"rl") == 0)
-	  actionIfDiffNumSents[i] = SEGMATCH_REPEAT_LAST;
-	else if (strcmp(actionIfDiffNumSentsStr[i],"wa") == 0)
-	  actionIfDiffNumSents[i] = SEGMATCH_WRAP_AROUND;
-	else if (strcmp(actionIfDiffNumSentsStr[i],"te") == 0)
-	  actionIfDiffNumSents[i] = SEGMATCH_TRUNCATE_FROM_END;
-	else
-	  error("ERROR: Unknown action when diff num of sentences: '%s'\n",actionIfDiffNumSentsStr[i]);
-      }
-    }
-    
-    
+        
     FILE *out_fp=NULL;
     if (output_fname==NULL || !strcmp(output_fname,"-")) {
       out_fp = stdout;
@@ -995,54 +873,17 @@ int main(int argc, const char *argv[])
     // Create objects.
     //////////////////////////////////////////////////////////////////////
 
-    // If we have a pfile, we can extract the number if features from the file directly
-    for(int i=0; i < MAX_OBJECTS; ++i) {
-      if(input_fname[i]!=NULL) {
-	if(ifmt[i]==PFILE) {
-	  FILE *in_fp = fopen(input_fname[i], "r");
-	  if (in_fp==NULL) error("Couldn't open input pfile %s for reading.", input_fname[i]);
-	  InFtrLabStream_PFile* in_streamp = new InFtrLabStream_PFile(debug_level,"",in_fp,1,iswap[i]);
-	  nis[i]=in_streamp->num_labs();
-	  nfs[i]=in_streamp->num_ftrs();
-	  if (fclose(in_fp)) error("Couldn't close input pfile.");
-	  delete in_streamp;
-	}
-	
-	if(nis[i]==0 && nfs[i]==0) {
-	  error("The number of floats and the number of ints cannot be both zero.");
-	}
-      }
-    }
+    gomFS = instantiateFileSource();
     
-    globalObservationMatrix.openFiles(numFiles,  // number of files.   For now we use only one
-				      (const char**)&input_fname,
-				      (const char**)&fr_str,
-				      (const char**)&lr_str,
-				      (unsigned*)&nfs,
-				      (unsigned*)&nis,
-				      (unsigned*)&ifmt,
-				      (bool*)&iswap,
-				      startSkip,  // startSkip
-				      endSkip,  // endSkip  pr_rng takes care of these two  
-				      cppIfAscii,
-				      cppCommandOptions,
-				      (const char**)&spr_str,
-				      actionIfDiffNumFrames,
-				      actionIfDiffNumSents,
-				      perStreamTransforms,
-				      postTransforms,
-				      ftrcombo);   
-    
-    
-    sr_rng = new Range(sr_str,0,globalObservationMatrix.numSegments());
+    sr_rng = new Range(sr_str,0,gomFS->numSegments());
 
     //////////////////////////////////////////////////////////////////////
     // Do the work.
     //////////////////////////////////////////////////////////////////////
     if(Init_MG) {
-      Range* Init_MG_CFR_Range = new Range(Init_MG_CFR,-(int)globalObservationMatrix.numFrames(),(int)globalObservationMatrix.numFrames());
-      initmg(&globalObservationMatrix,out_fp,
-	     *sr_rng, *Init_MG_CFR_Range, pr_str,
+      Range* Init_MG_CFR_Range = new Range(Init_MG_CFR,-(int)gomFS->numFrames(),(int)gomFS->numFrames());
+      initmg(gomFS,out_fp,
+	     *sr_rng, *Init_MG_CFR_Range, gpr_str,
 	     num_clusters,maxReInits,
 	     minSamplesPerCluster,
 	     numRandomReStarts,
@@ -1061,11 +902,11 @@ int main(int argc, const char *argv[])
       }
       SentIdStream_File* sid_streamp
 	= new SentIdStream_File(ut_fp,num_words);
-      uniformSkmeans(&globalObservationMatrix,out_fp,*sid_streamp,
+      uniformSkmeans(gomFS,out_fp,*sid_streamp,
 		     num_words,num_segments,num_clusters,maxReInits,
 		     minSamplesPerCluster,
 		     numRandomReStarts,
-		     pr_str,
+		     gpr_str,
 		     binary,quiet,conv_thres,
 		     prefetch);
       if (ut_fp) {
@@ -1074,14 +915,14 @@ int main(int argc, const char *argv[])
       }
     } 
     else {
-      if(globalObservationMatrix.numDiscrete() < 1 ) {
+      if(gomFS->numDiscrete() < 1 ) {
 	error("No label found.");
       }      
-      viterbiSkmeans(&globalObservationMatrix,out_fp,
+      viterbiSkmeans(gomFS,out_fp,
 		     num_words,num_clusters,maxReInits,
 		     minSamplesPerCluster,
 		     numRandomReStarts,
-		     pr_str,
+		     gpr_str,
 		     binary,quiet,conv_thres,
 		     prefetch);
     }

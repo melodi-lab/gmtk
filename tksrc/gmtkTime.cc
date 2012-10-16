@@ -57,7 +57,21 @@ VCID(HGID)
 #include "GMTK_ContRV.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_GMParms.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_FileSource.h"
+#  include "GMTK_CreateFileSource.h"
+#  include "GMTK_ASCIIFile.h"
+#  include "GMTK_FlatASCIIFile.h"
+#  include "GMTK_PFileFile.h"
+#  include "GMTK_HTKFile.h"
+#  include "GMTK_HDF5File.h"
+#  include "GMTK_BinaryFile.h"
+#  include "GMTK_Filter.h"
+//#  include "GMTK_FileDescription.h"
+//#  include "gmtk_temporary.h"
+#endif
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_MeanVector.h"
@@ -114,6 +128,7 @@ VCID(HGID)
 #define GMTK_ARG_HASH_LOAD_FACTOR
 #define GMTK_ARG_STORE_DETERMINISTIC_CHILDREN
 #define GMTK_ARG_CLEAR_CLIQUE_VAL_MEM
+#define GMTK_ARG_MEM_GROWTH
 
 
 /****************************      FILE RANGE OPTIONS             ***********************************************/
@@ -184,7 +199,12 @@ Arg Arg::Args[] = {
  */
 RAND rnd(seedme);
 GMParms GM_Parms;
+#if 0
 ObservationMatrix globalObservationMatrix;
+#endif
+
+FileSource *gomFS;
+ObservationSource *globalObservationMatrix;
 
 /*
  *  Signal handler to set JunctionTree's probEvidenceTime expired timer.
@@ -224,28 +244,8 @@ main(int argc,char*argv[])
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_CHECK_ARGS
 
-  globalObservationMatrix.openFiles(nfiles,
-				    (const char**)&ofs,
-				    (const char**)&frs,
-				    (const char**)&irs,
-				    (unsigned*)&nfs,
-				    (unsigned*)&nis,
-				    (unsigned*)&ifmts,
-				    (bool*)&iswp,
-				    startSkip,
-				    endSkip,
-				    Cpp_If_Ascii,
-				    cppCommandOptions,
-				    (const char**)&postpr,  //Frame_Range_Str,
-				    Action_If_Diff_Num_Frames,
-				    Action_If_Diff_Num_Sents,
-				    Per_Stream_Transforms,
-				    Post_Transforms,
-				    Ftr_Combo,
-				    (const char**)&sr,
-				    (const char**)&prepr,
-				    gpr_str
-				    );
+  gomFS = instantiateFileSource();
+  globalObservationMatrix = gomFS;
 
   /////////////////////////////////////////////
   // read in all the parameters
@@ -295,7 +295,7 @@ main(int argc,char*argv[])
   fp.checkConsistentWithGlobalObservationStream();
   GM_Parms.checkConsistentWithGlobalObservationStream();
 
-  GM_Parms.setStride(globalObservationMatrix.stride());
+  GM_Parms.setStride(gomFS->stride());
 
   /////
   // TODO: check that beam is a valid value.
@@ -332,6 +332,17 @@ main(int argc,char*argv[])
       }
     }
 
+
+    //    printf("Dlinks: min lag %d    max lag %d\n", Dlinks::globalMinLag(), Dlinks::globalMaxLag());
+    // FIXME - min past = min(dlinkPast, VECPTPast), likewise for future
+    int dlinkPast = Dlinks::globalMinLag();
+    dlinkPast = (dlinkPast < 0) ? -dlinkPast : 0;
+    gomFS->setMinPastFrames( dlinkPast );
+    
+    int dlinkFuture = Dlinks::globalMaxLag();
+    dlinkFuture = (dlinkFuture > 0) ? dlinkFuture : 0;
+    gomFS->setMinFutureFrames( dlinkFuture );
+    
     
     ////////////////////////////////////////////////////////////////////
     // CREATE JUNCTION TREE DATA STRUCTURES
@@ -344,10 +355,10 @@ main(int argc,char*argv[])
     infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
     ////////////////////////////////////////////////////////////////////
     
-    if (globalObservationMatrix.numSegments()==0)
+    if (gomFS->numSegments()==0)
       error("ERROR: no segments are available in observation file");
     
-    Range* dcdrng = new Range(dcdrng_str,0,globalObservationMatrix.numSegments());
+    Range* dcdrng = new Range(dcdrng_str,0,gomFS->numSegments());
     if (dcdrng->length() <= 0) {
       infoMsg(IM::Default,"Training range '%s' specifies empty set. Exiting...\n",
 	      dcdrng_str);
@@ -377,42 +388,39 @@ main(int argc,char*argv[])
 	Range::iterator* dcdrng_it = new Range::iterator(dcdrng->begin());
 	while (!dcdrng_it->at_end()) {
 	  const unsigned segment = (unsigned)(*(*dcdrng_it));
-	  try {
-	    if (globalObservationMatrix.numSegments() < (segment+1)) 
-	      error("ERROR: only %d segments in file, segment must be in range [%d,%d]\n",
-		    globalObservationMatrix.numSegments(),
-		    0,globalObservationMatrix.numSegments()-1);
+	  if (gomFS->numSegments() < (segment+1)) 
+	    error("ERROR: only %d segments in file, segment must be in range [%d,%d]\n",
+		  gomFS->numSegments(),
+		  0,gomFS->numSegments()-1);
 
-	    const unsigned numFrames = GM_Parms.setSegment(segment);
+	  const unsigned numFrames = GM_Parms.setSegment(segment);
 
-	    unsigned numUsableFrames;
-	    numCurPartitionsDone = 0;
-	    if (probE && !island) {
-	      logpr probe = myjt.probEvidenceTime(numFrames,numUsableFrames,numCurPartitionsDone,noEPartition);
-	      totalNumberPartitionsDone += numCurPartitionsDone;
-	      infoMsg(IM::Info,"Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-		      segment,
-		      probe.val(),
-		      probe.val()/numFrames,
-		      probe.val()/numUsableFrames);
-	    } else if (island) {
-	      myjt.collectDistributeIsland(numFrames,
-					   numUsableFrames,
-					   base,
-					   lst,
-					   sqrtBase);
-	      // TODO: note that frames not always equal to partitions but
-	      // do this for now. Ultimately fix this.
-	      totalNumberPartitionsDone += numUsableFrames;
-	    } else {
-	      error("gmtkTime doesn't currently support linear full-mem collect/distribute evidence. Use either '-probE' option, or as a simulation, '-island -lst HUGE_INT'\n");
-	    }
-      
-	    if (JunctionTree::probEvidenceTimeExpired)
-	      break;
-	  } catch (ZeroCliqueException &e) {
-	    warning("Segment %d aborted due to zero clique\n", segment);
+	  unsigned numUsableFrames;
+	  numCurPartitionsDone = 0;
+	  if (probE && !island) {
+	    logpr probe = myjt.probEvidenceTime(numFrames,numUsableFrames,numCurPartitionsDone,noEPartition);
+	    totalNumberPartitionsDone += numCurPartitionsDone;
+	    infoMsg(IM::Info,"Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+		    segment,
+		    probe.val(),
+		    probe.val()/numFrames,
+		    probe.val()/numUsableFrames);
+	  } else if (island) {
+	    myjt.collectDistributeIsland(numFrames,
+					 numUsableFrames,
+					 base,
+					 lst,
+					 rootBase, islandRootPower);
+	    // TODO: note that frames not always equal to partitions but
+	    // do this for now. Ultimately fix this.
+	    totalNumberPartitionsDone += numUsableFrames;
+	  } else {
+	    error("gmtkTime doesn't currently support linear full-mem collect/distribute evidence. Use either '-probE' option, or as a simulation, '-island -lst HUGE_INT'\n");
 	  }
+      
+	  if (JunctionTree::probEvidenceTimeExpired)
+	    break;
+
 	  (*dcdrng_it)++;
 	  totalNumberSegmentsDone ++;
 	}
@@ -696,10 +704,10 @@ main(int argc,char*argv[])
       infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
       ////////////////////////////////////////////////////////////////////
 
-      if (globalObservationMatrix.numSegments()==0)
+      if (gomFS->numSegments()==0)
 	error("ERROR: no segments are available in observation file");
 
-      Range* dcdrng = new Range(dcdrng_str,0,globalObservationMatrix.numSegments());
+      Range* dcdrng = new Range(dcdrng_str,0,gomFS->numSegments());
       if (dcdrng->length() <= 0) {
 	infoMsg(IM::Default,"Training range '%s' specifies empty set. Exiting...\n",
 		dcdrng_str);
@@ -843,10 +851,10 @@ main(int argc,char*argv[])
 	  Range::iterator* dcdrng_it = new Range::iterator(dcdrng->begin());
 	  while (!dcdrng_it->at_end()) {
 	    const unsigned segment = (unsigned)(*(*dcdrng_it));
-	    if (globalObservationMatrix.numSegments() < (segment+1)) 
+	    if (gomFS->numSegments() < (segment+1)) 
 	      error("ERROR: only %d segments in file, segment must be in range [%d,%d]\n",
-		    globalObservationMatrix.numSegments(),
-		    0,globalObservationMatrix.numSegments()-1);
+		    gomFS->numSegments(),
+		    0,gomFS->numSegments()-1);
 
 	    const unsigned numFrames = GM_Parms.setSegment(segment);
 
@@ -865,7 +873,7 @@ main(int argc,char*argv[])
 					   numUsableFrames,
 					   base,
 					   lst,
-					   sqrtBase);
+					   rootBase, islandRootPower);
 	      // TODO: note that frames not always equal to partitions but
 	      // do this for now. Ultimately fix this.
 	      child_info.totalNumberPartitionsDone += numUsableFrames;

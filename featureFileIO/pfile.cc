@@ -381,10 +381,19 @@ InFtrLabStream_PFile::build_index_from_sentind_sect()
 
     if (sentind[total_sents] != total_frames)
     {
+
+      // try with opposite bswap
+      if (bswap) bswap = 0; else bswap = 1;
+      swapb_vi32_vi32(total_sents+1, (intv_int32_t*) sentind,
+		      (intv_int32_t*) sentind);
+      if (sentind[total_sents] != total_frames) {
 	error("Last sentence index (%lu) does not correspond"
-		 " with number of frames (%i) in PFile '%s' - probably a"
-		 " corrupted PFile.", (unsigned long) sentind[total_sents],
-		 total_frames, filename);
+	      " with number of frames (%i) in PFile '%s' - probably a"
+	      " corrupted PFile.", (unsigned long) sentind[total_sents],
+	      total_frames, filename);
+      } else {
+	if (*filename) warning("WARNING: PFile '%s' appears to need -iswpX %c", filename, bswap ? 'T' : 'F');
+      }
     }
 }
 

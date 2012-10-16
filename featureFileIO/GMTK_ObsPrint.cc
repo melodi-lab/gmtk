@@ -78,7 +78,11 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 
 #define MIN(a,b) ((a)<(b)?(a):(b))
 
+#if 0
 ObservationMatrix globalObservationMatrix;
+#else
+FileSource *gomFS;
+#endif
 
 void (*copy_swap_func_ptr)(size_t, const intv_int32_t*, intv_int32_t*)=NULL;
 
@@ -152,20 +156,20 @@ void printHTKHeader(FILE* ofp,
 /**
    Prints Observation file(s) info only.
 */
-void obsInfo(FILE* out_fp, ObservationMatrix* obs_mat, bool dont_print_info, bool print_sent_frames, bool print_stream_info, const bool quiet) {
+void obsInfo(FILE* out_fp, FileSource* obs_mat, bool dont_print_info, bool print_sent_frames, bool print_stream_info, const bool quiet) {
 
   unsigned num_segments      = obs_mat->numSegments();
-  unsigned num_streams       = obs_mat->numStreams();
+  unsigned num_streams       = obs_mat->numFiles();
   unsigned total_num_frames  = 0;
-  StreamInfo* current_stream = NULL;
+  //  StreamInfo* current_stream = NULL;
 
   for (unsigned seg_no=0; seg_no < num_segments; ++seg_no) {
     //    if (!quiet) {
     //      if (seg_no % 100 == 0)
     //	printf("Processing segment %u out of %u\n",seg_no,num_segments);
     //    }
-
-    unsigned num_frames=obs_mat->numFrames(seg_no);
+    obs_mat->openSegment(seg_no);
+    unsigned num_frames=obs_mat->numFrames();
     total_num_frames += num_frames;
   }
   
@@ -179,16 +183,21 @@ void obsInfo(FILE* out_fp, ObservationMatrix* obs_mat, bool dont_print_info, boo
   }
   
   if(print_stream_info) {
+#if 0
     for (unsigned stream_no=0; stream_no < num_streams; ++stream_no) {
       current_stream = obs_mat->getStream(stream_no);
       assert(current_stream != NULL);
       fprintf(out_fp,"stream %d: %d discrete feature(s), %d continuous feature(s)\n",stream_no,current_stream->getNumInts(),current_stream->getNumFloats());
     }
+#else
+    error("printing stream info is not supported with the new observation implementation\n");
+#endif
   }
 
   if (print_sent_frames) {
       for (unsigned seg_no=0; seg_no < num_segments; ++seg_no) {
-	fprintf(out_fp,"%d %d\n",seg_no,obs_mat->numFrames(seg_no));
+	obs_mat->openSegment(seg_no);
+	fprintf(out_fp,"%d %d\n",seg_no,obs_mat->numFrames());
       }
   }
 
@@ -311,8 +320,8 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
 
   // Feature and label buffers are dynamically grown as needed.
   size_t buf_size = 300;      // Start with storage for 300 frames.
-  const size_t n_labs = globalObservationMatrix.numDiscrete();
-  const size_t n_ftrs = globalObservationMatrix.numContinuous();
+  const size_t n_labs = gomFS->numDiscrete();
+  const size_t n_ftrs = gomFS->numContinuous();
 
   float *ftr_buf_p;
   UInt32* lab_buf_p;
@@ -329,10 +338,11 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
   
   // Go through input pfile to get the initial statistics,
   // i.e., max, min, mean, std, etc.
-  for (Range::iterator srit=srrng.begin();!srit.at_end();srit++) {
-    DBGFPRINTF((stderr,"obsPrint: Loading segment no %d\n",*srit));
-    globalObservationMatrix.loadSegment((const unsigned)(*srit));
-    const size_t n_frames = globalObservationMatrix.numFrames();
+  unsigned n_segments = gomFS->numSegments();
+  for (unsigned srit=0; srit < n_segments; srit+=1) {
+    DBGFPRINTF((stderr,"obsPrint: Loading segment no %d\n",srit));
+    gomFS->openSegment(srit);
+    const size_t n_frames = gomFS->numFrames();
     
     // Increase size of buffers if needed.
     if (ofmt==PFILE && n_frames > buf_size) {
@@ -346,11 +356,11 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
       olab_buf = new UInt32[buf_size * n_labs];
     }
     
-    Range prrng(pr_str,0,n_frames);
-    
+    Range prrng("all",0,n_frames);
+
     if (!quiet) {
-      if (*srit % 100 == 0)
-	printf("Processing sentence %d\n",*srit);
+      if (srit % 100 == 0)
+	printf("Processing sentence %d\n",srit);
     }
     
     if(ofmt==PFILE) {
@@ -359,7 +369,7 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
     }
     else if(ofmt==RAWASC || ofmt==RAWBIN || ofmt==HTK) {
       char* current_output_fname = new char[strlen(output_fname)+strlen(outputNameSeparatorStr)+50];
-      sprintf(current_output_fname,"%s%s%d",output_fname,outputNameSeparatorStr,*srit);
+      sprintf(current_output_fname,"%s%s%d",output_fname,outputNameSeparatorStr,srit);
       if ((out_fp = fopen(current_output_fname, "w")) == NULL) {
 	error("Couldn't open output file (%s) for writing.",current_output_fname);
       }
@@ -377,15 +387,15 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
     }
 
     size_t fwrite_result;
-    for (Range::iterator prit=prrng.begin(); !prit.at_end() ; ++prit) {
+    for (unsigned prit=0; prit < n_frames ; prit+=1) {
       bool ns = false;
-      ftr_buf_p = globalObservationMatrix.floatVecAtFrame((*prit));
-      lab_buf_p = globalObservationMatrix.unsignedAtFrame((*prit));
+      ftr_buf_p = gomFS->floatVecAtFrame(prit);
+      lab_buf_p = gomFS->unsignedVecAtFrame(prit);
       if (!dontPrintFrameID) {
 	//	if (ofmt==FLATBIN || ofmt==RAWBIN) {
 	if (ofmt==FLATBIN) {
-	  int sent_no = *srit;
-	  int frame_no = *prit;
+	  int sent_no = srit;
+	  int frame_no = prit;
 	  
 	  copy_swap_func_ptr(1,(int*)&sent_no,(int*)&sent_no);
 	  copy_swap_func_ptr(1,(int*)&frame_no,(int*)&frame_no);
@@ -399,12 +409,12 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
 	    error("Error writting to output file");
 	  }
 	} else if(ofmt==FLATASC || ofmt==RAWASC ){
-	  fprintf(out_fp,"%d %u",*srit,*prit);
+	  fprintf(out_fp,"%d %u",srit,prit);
 	  ns = true;
 	}
       }
       
-      for (unsigned frit=0;frit<globalObservationMatrix.numContinuous(); ++frit) {
+      for (unsigned frit=0;frit<gomFS->numContinuous(); ++frit) {
 	if (ofmt==FLATBIN || ofmt==RAWBIN || ofmt==HTK) {
 	  DBGFPRINTF((stderr,"obsPrint: Printing HTK float %f.\n",ftr_buf_p[frit]));
 	  copy_swap_func_ptr(1,(int*)&ftr_buf_p[frit],(int*)&ftr_buf_p[frit]);
@@ -422,7 +432,7 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
 	  ns = true;
 	}
       }
-      for (unsigned lrit=0;lrit<globalObservationMatrix.numDiscrete(); ++lrit) {
+      for (unsigned lrit=0;lrit<gomFS->numDiscrete(); ++lrit) {
 	if (ofmt==FLATBIN || ofmt==RAWBIN || (ofmt==HTK && n_ftrs>0) ) {
 	  copy_swap_func_ptr(1,(int*)&lab_buf_p[lrit],(int*)&lab_buf_p[lrit]);
 	  fwrite_result = fwrite(&lab_buf_p[lrit],  sizeof(lab_buf_p[lrit]), 1,out_fp);
@@ -457,7 +467,7 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
     }
     if(ofmt==PFILE) {
       out_stream->write_ftrslabs(prrng.length(), oftr_buf, olab_buf);
-      out_stream->doneseg((SegID) *srit);
+      out_stream->doneseg((SegID) srit);
     }
     if(ofmt==RAWASC || ofmt==RAWBIN || ofmt==HTK) {
       if (fclose(out_fp)) error("Couldn't close output file.");
@@ -477,58 +487,20 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
 
 
 
-#define MAX_OBJECTS 10
-
-char *input_fname[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};  // Input file name.
-const char * ifmtStr[MAX_OBJECTS]={"pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile"};
-unsigned ifmt[MAX_OBJECTS];
+#define MAX_OBJECTS 5
 
 const char * ofmtStr="flatasc";
 unsigned ofmt;
 
-unsigned int nis[MAX_OBJECTS];
-unsigned int nfs[MAX_OBJECTS];
 
-char  *gsr_str               = 0;   // sentence range string
-Range *gsr_rng;
-char  *sr_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}; // per-stream sentence range string
-char  *fr_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}; // float range string    
-char  *ir_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}; // int range string  
-char  *prepr_str[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}; // per stream pre-transform per sentence frame range string 
-char  *postpr_str[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}; // per stream post-transform frame range string 
-char  *gpr_str               = 0;   // global final frame range string
-
-const char* actionIfDiffNumFramesStr[MAX_OBJECTS]={"er","er","er","er","er","er","er","er","er","er"};   // 
-unsigned actionIfDiffNumFrames[MAX_OBJECTS]={FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR};   // 
-
-
-const char*    actionIfDiffNumSentsStr[MAX_OBJECTS] = {"te","te","te","te","te","te","te","te","te","te"}; 
-unsigned actionIfDiffNumSents[MAX_OBJECTS]    = {SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END};   // 
-
-char* perStreamTransforms[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};   // 
-char* postTransforms                   = NULL;
-
-bool printVersion = false;
 int  debug_level = 0;
 bool dontPrintFrameID = false;
 bool quiet = false;
 #ifdef INTV_WORDS_BIGENDIAN
-bool iswap[MAX_OBJECTS]={true,true,true,true,true,true,true,true,true,true};
 bool oswap = true;
 #else
-bool iswap[MAX_OBJECTS]= {false,false,false,false,false,false,false,false,false,false};
 bool oswap             = false;
 #endif 
-
-bool     cppIfAscii        = true;
-char*    cppCommandOptions = NULL;
-
-unsigned startSkip = 0;
-unsigned endSkip   = 0;
-
-
-const char*    ftrcomboStr = "none";
-unsigned ftrcombo    = FTROP_NONE;
 
 
 bool     Normalize = false;
@@ -568,24 +540,25 @@ bool     Info_Dont_Print_Info   = false;
 bool     Info_Print_Stream_Info = false;
 bool     Info_Print_Sent_Frames = false;
 
-
 char* Usage_Str = NULL;
-//bool help=false;
-unsigned help=0;  // help=0...5 depending on the amount of info we want printed
 
-//unsigned Usage_Info_Level=0;
+#define GMTK_ARG_OBS_FILES
+#define GMTK_ARG_CPP_CMD_OPTS
+#define GMTK_ARG_OBS_MATRIX_XFORMATION
+#define GMTK_ARG_FILE_RANGE_OPTIONS
+#define GMTK_ARG_START_END_SKIP
+#define GMTK_ARG_HELP
+#define GMTK_ARG_VERSION
+
+#define GMTK_ARGUMENTS_DEFINITION
+#include "ObsArguments.h"
+#undef GMTK_ARGUMENTS_DEFINITION
 
 Arg Arg::Args[] = {
 
-  Arg("\n*** Input arguments ***\n"),
-
-  Arg("i",    Arg::Req, input_fname,"input file. Replace X with the file number",Arg::ARRAY,MAX_OBJECTS),
-  Arg("ifmt", Arg::Opt,ifmtStr ,"format of input file X",Arg::ARRAY,MAX_OBJECTS),
-  Arg("iswp", Arg::Opt, iswap,"do byte swapping on the input file X",Arg::ARRAY,MAX_OBJECTS,false,PRIORITY_2),
-  Arg("nf",   Arg::Opt, nfs,"number of floats in input file X",Arg::ARRAY,MAX_OBJECTS),
-  Arg("ni",   Arg::Opt, nis,"number of ints (labels) in input file X",Arg::ARRAY,MAX_OBJECTS),
-  Arg("cppifascii",Arg::Opt, cppIfAscii,"Pre-process ASCII files using CPP",Arg::SINGLE,0,false,PRIORITY_2),
-  Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Additional CPP command line",Arg::SINGLE,0,false,PRIORITY_2),
+#define GMTK_ARGUMENTS_DOCUMENTATION
+#include "ObsArguments.h"
+#undef GMTK_ARGUMENTS_DOCUMENTATION
 
   Arg("\n*** Output arguments ***\n"),
 
@@ -597,29 +570,6 @@ Arg Arg::Args[] = {
   Arg("ns",    Arg::Opt, dontPrintFrameID,"Don't print the frame IDs (i.e., sent and frame #)"),
   Arg("oHtkKind",         Arg::Opt, HTK_Param_Kind,"Kind of output HTK parameters",Arg::SINGLE,0,false,PRIORITY_3),
   Arg("oHtkSamplePeriod", Arg::Opt, HTK_Sample_Period,"Output HTK Sample Period",Arg::SINGLE,0,false,PRIORITY_3),
-
-  Arg("\n*** Selection arguments ***\n"),
-
-  Arg("fr",   Arg::Opt, fr_str,"float range for obs file X",Arg::ARRAY,MAX_OBJECTS),
-  Arg("ir",   Arg::Opt, ir_str,"int range for obs file X",Arg::ARRAY,MAX_OBJECTS),
-  Arg("sr",   Arg::Opt, sr_str,"per-stream sentence range",Arg::ARRAY,MAX_OBJECTS),
-  Arg("gsr",  Arg::Opt, gsr_str,"global sentence range. Is applied on top of the per-stream sentence range above."),
-  Arg("prepr",  Arg::Opt, prepr_str,"frame range for obs file X before any transformations are applied",Arg::ARRAY,MAX_OBJECTS),
-  Arg("postpr", Arg::Opt, postpr_str,"frame range for obs file X after per-stream transformations are applied",Arg::ARRAY,MAX_OBJECTS),
-  Arg("gpr",    Arg::Opt, gpr_str,"global final frame range"),
-  Arg("startskip",   Arg::Opt, startSkip,"start skip",Arg::SINGLE,0,false,PRIORITY_2),
-  Arg("endskip",   Arg::Opt, endSkip,"end skip",Arg::SINGLE,0,false,PRIORITY_2),
-
-  Arg("\n*** Matching arguments ***\n"),
-
-  Arg("fdiffact",  Arg::Opt,actionIfDiffNumFramesStr ,"Action if different number of frames in streams: error (er), repeat last frame (rl), first frame (rf), segmentally expand (se), truncate from start (ts), truncate from end (te)",Arg::ARRAY,MAX_OBJECTS),
-  Arg("sdiffact",  Arg::Opt,actionIfDiffNumSentsStr ,"Action if different number of sentences in streams: error (er), truncate from end (te), repeat last sent (rl), and wrap around (wa).",Arg::ARRAY,MAX_OBJECTS),
-
-  Arg("\n*** Transformation arguments ***\n"),
-
-  Arg("trans",     Arg::Opt,perStreamTransforms ,"transformations string for obs file X",Arg::ARRAY,MAX_OBJECTS),
-  Arg("posttrans", Arg::Opt,postTransforms ,"Final global transformations string"),
-  Arg("comb",      Arg::Opt, ftrcomboStr,"Combine float features (none: no combination, add, sub, mul,div"),
 
   Arg("\n*** Special ops arguments ***\n"),
 
@@ -665,9 +615,6 @@ Arg Arg::Args[] = {
   Arg("debug", Arg::Opt, debug_level,"Number giving level of debugging output to produce 0=none",Arg::SINGLE,0,false,PRIORITY_3),
   Arg("q",     Arg::Tog, quiet,"quiet mode"),
   Arg("usage", Arg::Opt, Usage_Str, "Print usage information about one of the following topics: {norm, gauss, klt, addsil}"),
-  //  Arg("help",  Arg::Tog, help,  "Print this message. Repeat this flag for more info."),
-  Arg("help",  Arg::Help, help,  "Print this message. Add an argument from 1 to 5 for increasing help info."),
-  Arg("version", Arg::Tog, printVersion, "Print GMTK version and exit."),
   //  Arg("usageInfoLevel",  Arg::Opt, Usage_Info_Level,  "Amount of help information to print on a scale from 1 to 5 ranked by importance. (0 means this value is not used)"),
   // The argumentless argument marks the end of the above list.
   Arg()
@@ -679,46 +626,13 @@ int main(int argc, const char *argv[]) {
   int numFiles=0;
 
   // Figure out the Endian of the machine this is running on and set the swap defaults accordingly
-  bool doWeSwap;
 
-  ByteEndian byteEndian = getWordOrganization();
-  switch(byteEndian) {
-  case BYTE_BIG_ENDIAN:
-    doWeSwap=false;
-    break;
-  case BYTE_LITTLE_ENDIAN:
-    doWeSwap=true;
-    break;
-  default:
-    // We weren't able to figure the Endian out.  Leave the swap defaults as they are.
-#ifdef INTV_WORDS_BIGENDIAN
-    doWeSwap=true;
-#else
-    doWeSwap=false;
-#endif
-  }
+  CODE_TO_COMPUTE_ENDIAN
 
   oswap=doWeSwap;
-  for(int i=0; i<MAX_OBJECTS; ++i) {
-    iswap[i]=doWeSwap;
-  }
-  ///////////////////////////////////////////
 
   bool parse_was_ok = Arg::parse(argc,(char**)argv);
 
-  if (printVersion) {
-#ifdef HAVE_CONFIG_H
-    printf("%s (Mercurial id: %s)\n",gmtk_version_id,HGID);
-#else
-    printf("%s\n", gmtk_version_id);
-#endif
-    exit(0);
-  }
-
-  if(help) {
-    Arg::usage();
-    exit(0);
-  }
   if(Usage_Str!=NULL) {
     if(strcmp(Usage_Str,"norm")==0)  Arg::usage("norm");
     else if(strcmp(Usage_Str,"gauss")==0)  Arg::usage("gauss");
@@ -735,14 +649,9 @@ int main(int argc, const char *argv[]) {
     Arg::usage(); exit(-1);
   }
 
-  if (printVersion) {
-#ifdef HAVE_CONFIG_H
-    printf("%s (Mercurial id: %s)\n",gmtk_version_id,HGID);
-#else
-    printf("%s\n", gmtk_version_id);
-#endif
-    exit(0);
-  }
+#define GMTK_ARGUMENTS_CHECK_ARGS
+#include "ObsArguments.h"
+#undef GMTK_ARGUMENTS_CHECK_ARGS
 
 
   // oswap might been assigned a new value on the command line
@@ -757,26 +666,8 @@ int main(int argc, const char *argv[]) {
   // Check all necessary arguments provided before creating objects.
   //////////////////////////////////////////////////////////////////////
 
- for (int i=0;i<MAX_OBJECTS;i++) {
-    numFiles += (input_fname[i] != NULL);
-    if (strcmp(ifmtStr[i],"htk") == 0)
-      ifmt[i] = HTK;
-    else if (strcmp(ifmtStr[i],"binary") == 0)
-      ifmt[i] = RAWBIN;
-    else if (strcmp(ifmtStr[i],"ascii") == 0)
-      ifmt[i] = RAWASC;
-    else if (strcmp(ifmtStr[i],"pfile") == 0)
-      ifmt[i] = PFILE;
-    //    else if (strcmp(ifmtStr[i],"flatbin") == 0)
-    //  ifmt[i]=FLATBIN;
-    //else if (strcmp(ifmtStr[i],"flatasc") == 0)
-    //  ifmt[i]=FLATASC;
-    else
-      error("ERROR: Unknown observation file format type: '%s'\n",ifmtStr[i]);
-  }
-
  for(int i=0; i < numFiles; ++i)
-   if(output_fname!=NULL && strcmp(input_fname[i],output_fname)==0) {
+   if(output_fname!=NULL && strcmp(ofs[i],output_fname)==0) {
      error("Input and output filenames cannot be the same.");
    }
  
@@ -793,54 +684,7 @@ int main(int argc, const char *argv[]) {
  else if (strcmp(ofmtStr,"flatasc") == 0)
    ofmt=FLATASC;
  else
-   error("ERROR: Unknown observation file format type: '%s'\n",ofmtStr);
-
-if (strcmp(ftrcomboStr,"none") == 0)
-   ftrcombo = FTROP_NONE;
- else if (strcmp(ftrcomboStr,"add") == 0)
-   ftrcombo = FTROP_ADD;
- else if (strcmp(ftrcomboStr,"sub") == 0)
-   ftrcombo = FTROP_SUB;
- else if (strcmp(ftrcomboStr,"mul") == 0)
-   ftrcombo = FTROP_MUL;
- else if (strcmp(ftrcomboStr,"div") == 0)
-   ftrcombo = FTROP_DIV;
- else
-   error("ERROR: Unknown feature combination type: '%s'\n",ftrcomboStr);
-
- for(int i=0; i < MAX_OBJECTS; ++i) {
-   if(input_fname[i]!=NULL) {
-     if (strcmp(actionIfDiffNumFramesStr[i],"er") == 0)
-       actionIfDiffNumFrames[i] = FRAMEMATCH_ERROR;
-     else if (strcmp(actionIfDiffNumFramesStr[i],"rl") == 0)
-       actionIfDiffNumFrames[i] = FRAMEMATCH_REPEAT_LAST;
-     else if (strcmp(actionIfDiffNumFramesStr[i],"rf") == 0)
-       actionIfDiffNumFrames[i] = FRAMEMATCH_REPEAT_FIRST;
-     else if (strcmp(actionIfDiffNumFramesStr[i],"se") == 0)
-       actionIfDiffNumFrames[i] = FRAMEMATCH_EXPAND_SEGMENTALLY;
-     else if (strcmp(actionIfDiffNumFramesStr[i],"ts") == 0)
-       actionIfDiffNumFrames[i] = FRAMEMATCH_TRUNCATE_FROM_START;
-     else if (strcmp(actionIfDiffNumFramesStr[i],"te") == 0)
-       actionIfDiffNumFrames[i] = FRAMEMATCH_TRUNCATE_FROM_END;
-     else
-       error("ERROR: Unknown action when diff num of frames: '%s'\n",actionIfDiffNumFramesStr[i]);
-   }
- }
-
-for(int i=0; i < MAX_OBJECTS; ++i) {
-   if(input_fname[i]!=NULL) {
-     if (strcmp(actionIfDiffNumSentsStr[i],"er") == 0)
-       actionIfDiffNumSents[i] = SEGMATCH_ERROR;
-     else if (strcmp(actionIfDiffNumSentsStr[i],"rl") == 0)
-       actionIfDiffNumSents[i] = SEGMATCH_REPEAT_LAST;
-     else if (strcmp(actionIfDiffNumSentsStr[i],"wa") == 0)
-       actionIfDiffNumSents[i] = SEGMATCH_WRAP_AROUND;
-     else if (strcmp(actionIfDiffNumSentsStr[i],"te") == 0)
-       actionIfDiffNumSents[i] = SEGMATCH_TRUNCATE_FROM_END;
-     else
-       error("ERROR: Unknown action when diff num of sentences: '%s'\n",actionIfDiffNumSentsStr[i]);
-   }
- }
+   error("ERROR: Unknown output file format type: '%s'\n",ofmtStr);
 
 
  FILE *out_fp=NULL;
@@ -869,45 +713,8 @@ for(int i=0; i < MAX_OBJECTS; ++i) {
  // Create objects.
  //////////////////////////////////////////////////////////////////////
  // If we have a pfile, we can extract the number if features from the file directly
- for(int i=0; i < MAX_OBJECTS; ++i) {
-   if(input_fname[i]!=NULL) {
-     if(ifmt[i]==PFILE) {
-       FILE *in_fp = fopen(input_fname[i], "r");
-       if (in_fp==NULL) error("Couldn't open input pfile %s for reading.", input_fname[i]);
-       InFtrLabStream_PFile* in_streamp = new InFtrLabStream_PFile(debug_level,"",in_fp,1,iswap[i]);
 
-       unsigned num_labs=in_streamp->num_labs();
-       unsigned num_ftrs=in_streamp->num_ftrs();
-
-       ////////////////////////////////////////////////////////////
-       // Check consistency between pfile and supplied arguments //
-       char search_str[]="nXXXXX";
-       sprintf(search_str,"-ni%d",i+1);
-       bool found=false;
-       for(int j=1; j < argc; ++j) {
-	 if(strcmp(argv[j],search_str)==0) found=true;
-       }
-       if(found && nis[i] != num_labs) error("ERROR: command line parameter ni%d (%d) is different from the one found in the pfile (%d)",i+1,nis[i],num_labs); 
-       sprintf(search_str,"-nf%d",i+1);
-       found=false;
-       for(int j=1; j < argc; ++j) {
-	 if(strcmp(argv[j],search_str)==0) found=true;
-       }
-       if(found && nfs[i] != num_ftrs) error("ERROR: command line parameter nf%d (%d) is different from the one found in the pfile (%d)",i+1,nfs[i],num_ftrs); 
-       ////////////////////////////////////////////////////////////
-       nis[i]=num_labs;
-       nfs[i]=num_ftrs;
-
-       if (fclose(in_fp)) error("Couldn't close input pfile.");
-       delete in_streamp;
-     }
-     
-     if(nis[i]==0 && nfs[i]==0) {
-       error("The number of floats and the number of ints cannot be both zero.");
-     }
-   }
- }
- 
+#if 0 
  globalObservationMatrix.openFiles(numFiles,  // number of files.   For now we use only one
 				   (const char**)&input_fname,
 				   (const char**)&fr_str,
@@ -931,6 +738,9 @@ for(int i=0; i < MAX_OBJECTS; ++i) {
 				   gpr_str);   
 
      gsr_rng = new Range(gsr_str,0,globalObservationMatrix.numSegments());
+#else
+     gomFS = instantiateFileSource();
+#endif
 
      /////////////////////////////////////////////////////////////////////
      unsigned too_many_switches=0;
@@ -949,21 +759,20 @@ for(int i=0; i < MAX_OBJECTS; ++i) {
     //////////////////////////////////////////////////////////////////////
 
      if(Info) {
-       obsInfo(out_fp, &globalObservationMatrix,Info_Dont_Print_Info,Info_Print_Sent_Frames,Info_Print_Stream_Info,quiet);
+       obsInfo(out_fp, gomFS,Info_Dont_Print_Info,Info_Print_Sent_Frames,Info_Print_Stream_Info,quiet);
        exit(0);
      }
 
 
+     Range  srrng(NULL,0,gomFS->numSegments());
+     Range fr_rng(NULL,0,gomFS->numContinuous());
      if(Get_Stats) {
-       Range* fr_rng=new Range(NULL,0,globalObservationMatrix.numContinuous());
-       obsStats(out_fp, &globalObservationMatrix, *gsr_rng, *fr_rng, NULL, Num_Hist_Bins, quiet);
-       delete fr_rng;
+       obsStats(out_fp, gomFS, srrng, fr_rng,NULL, Num_Hist_Bins, quiet);
      }
      else if(Normalize) {
-       obsNorm(out_fp,&globalObservationMatrix,*gsr_rng,Norm_Mean, Norm_Std, Norm_Segment_Group_Len_File, Norm_Segment_Group_Len, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
+       obsNorm(out_fp,gomFS,srrng, Norm_Mean, Norm_Std, Norm_Segment_Group_Len_File, Norm_Segment_Group_Len, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
      }
      else if(Gaussian_Norm) {
-       Range* fr_rng=new Range(NULL,0,globalObservationMatrix.numContinuous());
        FILE* os_fp=NULL, * is_fp=NULL;
        if(Gauss_Norm_Output_Stat_File_Name != NULL) {
 	 if((os_fp=fopen(Gauss_Norm_Output_Stat_File_Name,"w")) == NULL) {
@@ -975,13 +784,12 @@ for(int i=0; i < MAX_OBJECTS; ++i) {
 	   error("Could not open input stat file, %s, for writing.",Gauss_Norm_Input_Stat_File_Name);
 	 }
        }
-       gaussianNorm(out_fp,&globalObservationMatrix,is_fp,os_fp,*gsr_rng,*fr_rng, NULL, Num_Hist_Bins, Gaussian_Num_Stds, Gaussian_Uniform, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
-       delete fr_rng;
+       gaussianNorm(out_fp,gomFS,is_fp,os_fp, srrng, fr_rng, NULL, Num_Hist_Bins, Gaussian_Num_Stds, Gaussian_Uniform, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
        if(Gauss_Norm_Output_Stat_File_Name != NULL) fclose(os_fp);
        if(Gauss_Norm_Input_Stat_File_Name  != NULL) fclose(is_fp);
      }
      else if(Perform_KLT) {
-       Range* ofr_rng = new Range(KLT_Output_Ftr_Range,0,globalObservationMatrix.numContinuous());
+       Range* ofr_rng = new Range(KLT_Output_Ftr_Range,0,gomFS->numContinuous());
        
        FILE* os_fp=NULL, * is_fp=NULL;
        if(KLT_Output_Stat_File_Name != NULL) {
@@ -995,22 +803,22 @@ for(int i=0; i < MAX_OBJECTS; ++i) {
 	 }
        }
        
-       obsKLT(out_fp,&globalObservationMatrix,is_fp,os_fp,*gsr_rng,*ofr_rng,KLT_Unity_Variance, KLT_Ascii_Stat_Files, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
+       obsKLT(out_fp,gomFS,is_fp,os_fp,*ofr_rng,KLT_Unity_Variance, KLT_Ascii_Stat_Files, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
        
        delete ofr_rng;
        if(KLT_Output_Stat_File_Name != NULL) fclose(os_fp);
        if(KLT_Input_Stat_File_Name != NULL) fclose(is_fp);
      }
      else if (Add_Sil) {
-       addSil(out_fp,&globalObservationMatrix,*gsr_rng,Add_Sil_Num_Beg_Frames,Add_Sil_Beg_Rng_Str, Add_Sil_Num_End_Frames,Add_Sil_End_Rng_Str, Add_Sil_MMF, Add_Sil_MAF, Add_Sil_SMF, Add_Sil_SAF, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
+       addSil(out_fp,gomFS,srrng,Add_Sil_Num_Beg_Frames,Add_Sil_Beg_Rng_Str, Add_Sil_Num_End_Frames,Add_Sil_End_Rng_Str, Add_Sil_MMF, Add_Sil_MAF, Add_Sil_SMF, Add_Sil_SAF, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
      }
      else {
-       obsPrint(out_fp,*gsr_rng,NULL,dontPrintFrameID,quiet,ofmt,debug_level,oswap);
+       obsPrint(out_fp,srrng,NULL,dontPrintFrameID,quiet,ofmt,debug_level,oswap);
      }
     //////////////////////////////////////////////////////////////////////
     // Clean up and exit.
     //////////////////////////////////////////////////////////////////////
-    delete gsr_rng;
+
     if(ofmt != RAWASC && ofmt != RAWBIN && ofmt != HTK) {
       if (fclose(out_fp)) error("Couldn't close output file.");
     }

@@ -12,6 +12,9 @@
 
 */
 
+#include <string.h>
+#include <math.h>
+
 #include "GMTK_ObsKLT.h"
 extern "C" {
 #include "eig.h"
@@ -85,7 +88,7 @@ void writeStats(FILE*f, size_t N, bool ascii, double *cor, double *means, double
   }
 }
 
-void obsKLT(FILE* out_fp, ObservationMatrix* obs_mat, FILE *in_st_fp,FILE *out_st_fp, Range& srrng,Range& ofrrng,const bool unity_variance,const bool ascii,const bool dontPrintFrameID,const bool quiet,unsigned ofmt,int debug_level,bool oswap) {
+void obsKLT(FILE* out_fp, FileSource* obs_mat, FILE *in_st_fp,FILE *out_st_fp, Range& ofrrng,const bool unity_variance,const bool ascii,const bool dontPrintFrameID,const bool quiet,unsigned ofmt,int debug_level,bool oswap) {
 
 
   // Feature and label buffers are dynamically grown as needed.
@@ -119,6 +122,7 @@ void obsKLT(FILE* out_fp, ObservationMatrix* obs_mat, FILE *in_st_fp,FILE *out_s
   size_t i,j;
   memset(ftr_means,0,n_ftrs*sizeof(double));
   
+  Range srrng("all", 0 , obs_mat->numSegments());
   
   if (in_st_fp == NULL) {
     // correlation vector (i.e., E[X X^T]
@@ -131,7 +135,7 @@ void obsKLT(FILE* out_fp, ObservationMatrix* obs_mat, FILE *in_st_fp,FILE *out_s
     // Go through input pfile to get the initial statistics,
     for (Range::iterator srit=srrng.begin();!srit.at_end();srit++) {
 
-      obs_mat->loadSegment((const unsigned)(*srit));
+      obs_mat->openSegment((const unsigned)(*srit));
       const size_t n_frames = obs_mat->numFrames();
       
       if ((*srit) % 100 == 0)
@@ -280,7 +284,7 @@ void obsKLT(FILE* out_fp, ObservationMatrix* obs_mat, FILE *in_st_fp,FILE *out_s
     double *ftr_dbuf_dst_p;
     
     for (Range::iterator srit=srrng.begin();!srit.at_end();srit++) {
-      obs_mat->loadSegment(*srit);
+      obs_mat->openSegment(*srit);
       const size_t n_frames = obs_mat->numFrames();
       
       if ((*srit) % 100 == 0)
@@ -310,7 +314,7 @@ void obsKLT(FILE* out_fp, ObservationMatrix* obs_mat, FILE *in_st_fp,FILE *out_s
 
       for(unsigned frame_no = 0;  frame_no < n_frames; ++frame_no) {
 	const float* start_of_frame = obs_mat->floatVecAtFrame(frame_no);
-	const UInt32* start_of_unsigned_frame = obs_mat->unsignedAtFrame(frame_no);
+	const UInt32* start_of_unsigned_frame = obs_mat->unsignedVecAtFrame(frame_no);
 	for(unsigned feat_no = 0;  feat_no < n_ftrs; ++feat_no) {
 	  ftr_buf[frame_no * n_ftrs + feat_no] = *(start_of_frame  + feat_no);
 	}

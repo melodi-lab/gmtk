@@ -48,7 +48,14 @@ VCID(HGID)
 #include "GMTK_ContRV.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_GMParms.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_ObservationSource.h"
+#  include "GMTK_FileSource.h"
+#  include "GMTK_ASCIIFile.h"
+#  include "GMTK_Stream.h"
+#endif
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_MeanVector.h"
@@ -186,7 +193,13 @@ void createCommandLineOptionString(string& res)
  */
 RAND rnd(seedme);
 GMParms GM_Parms;
+#if 0
 ObservationMatrix globalObservationMatrix;
+#else
+FileSource fileSource;
+FileSource *gomFS = &fileSource;
+ObservationSource *globalObservationMatrix = &fileSource;
+#endif
 
 /*
  *

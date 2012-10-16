@@ -25,13 +25,13 @@
 #include <limits.h>
 #include <float.h>
 #include <math.h>
-
+#include <string.h>
 
 RAND rnd(true);
 
 
 void addSil(FILE* out_fp, 
-	     ObservationMatrix* obs_mat,
+	     FileSource* obs_mat,
 	     //InFtrLabStream_PFile in_stream,
 	     //OutFtrLabStream_PFile out_stream,
 	     Range& srrng,
@@ -77,7 +77,7 @@ void addSil(FILE* out_fp,
     // Go through input pfile to get the initial statistics,
     // i.e., max, min, mean, std, etc.
     for (Range::iterator srit=srrng.begin();!srit.at_end();srit++) {
-      obs_mat->loadSegment((const unsigned)(*srit));
+      obs_mat->openSegment((const unsigned)(*srit));
       const size_t n_frames = obs_mat->numFrames();
       
       //      const size_t n_frames = in_stream.num_frames((*srit));
@@ -116,7 +116,7 @@ void addSil(FILE* out_fp,
 
 	for(unsigned frame_no = 0;  frame_no < n_frames; ++frame_no) {
 	  const float* start_of_frame = obs_mat->floatVecAtFrame(frame_no);
-	  const UInt32* start_of_unsigned_frame = obs_mat->unsignedAtFrame(frame_no);
+	  const UInt32* start_of_unsigned_frame = obs_mat->unsignedVecAtFrame(frame_no);
 	  for(unsigned feat_no = 0;  feat_no < n_ftrs; ++feat_no) {
 	    ftr_buf[frame_no * n_ftrs + feat_no] = *(start_of_frame  + feat_no);
 	  }

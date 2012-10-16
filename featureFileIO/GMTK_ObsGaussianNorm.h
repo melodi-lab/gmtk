@@ -4,7 +4,7 @@
 #include "GMTK_ObsPrint.h"
 
 void gaussianNorm(FILE* out_fp,
-		  ObservationMatrix* obs_mat,
+		  FileSource* obs_mat,
 		  FILE *in_st_fp,
 		  FILE *out_st_fp,
 		  Range& srrng,

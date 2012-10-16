@@ -48,7 +48,11 @@ VCID(HGID)
 
 #include "GMTK_Sw_ObsContRV.h"
 #include "GMTK_GMParms.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_ObservationSource.h"
+#endif
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_Mixture.h"
 
@@ -108,7 +112,7 @@ void Sw_ObsContRV::printSelfVerbose(FILE *f)
   for (unsigned i=firstFeatureElement();i<=lastFeatureElement();i++) {
     fprintf(f,"%d:%f,",
 	    i,
-	    (*globalObservationMatrix.floatVecAtFrame(frame(), i))
+	    (*(globalObservationMatrix->floatVecAtFrame(frame(), i)))
 	    );
   }
   fprintf(f,"\n");

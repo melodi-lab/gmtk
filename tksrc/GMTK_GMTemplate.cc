@@ -50,7 +50,9 @@
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
 #include "GMTK_Mixture.h"
+#if 0
 #include "GMTK_ObservationMatrix.h"
+#endif
 #include "GMTK_JunctionTree.h"
 #include "GMTK_Partition.h"
 

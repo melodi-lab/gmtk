@@ -40,6 +40,7 @@
 #include "GMTK_JT_Partition.h"
 #include "GMTK_PartitionStructures.h"
 #include "GMTK_PartitionTables.h"
+#include "GMTK_StreamSource.h"
 
 #include "debug.h"
 
@@ -175,7 +176,7 @@ class JunctionTree {
   // it would be useful to look at the computeUnrollParameters()
   // function in class GMTemplate.
   class ptps_iterator {
-  private:
+  protected:
     // the current partition table (pt) index (there can be any number of tables).
     unsigned _pt_i;
     // the current partition structure (ps) index (there are at most 4 structures)
@@ -183,7 +184,7 @@ class JunctionTree {
     
     // associated jt information.
     JunctionTree& jt;
-    const unsigned _pt_len;
+    unsigned _pt_len;
     
   public:
 
@@ -220,6 +221,11 @@ class JunctionTree {
       return std::min(_pt_len,4u);
     }
 
+
+    void set_pt_len(unsigned pt_len) {
+      _pt_len = pt_len;
+    }
+
     // initialization routines.
     void set_to_first_entry() { 
       // set to be at E'
@@ -232,7 +238,7 @@ class JunctionTree {
     }
 
     void go_to_part_no (unsigned i) {
-      assert ( i < pt_len() );
+      assert (pt_len()==0 || i < pt_len() );
       if (pt_len() < 5 || i < 3) {
 	_pt_i = i; _ps_i = i;
       } else {
@@ -873,6 +879,19 @@ public:
                                   sizeof(unsigned) + \
                                   GMTK_VITERBI_COOKIE_LENGTH)
 
+
+  // online filtering/smoothing needs to take some Viterbi code
+  // paths but not others (particularly it should not allocate O(T)
+  // memory for the Viterbi values, but it should call the Viterbi
+  // versions of the MaxClique DE routines and setup the hidRVVector
+  // in the PartitionStructures). JunctionTree::onlineViterbi is only
+  // true in gmtkOnline so it can take the necessary code paths where
+  // viterbiScore needs to be false to avoid the unwanted code paths.
+  static bool onlineViterbi;
+
+  // should printAllCliques() print scores or probabilities?
+  static bool normalizePrintedCliques;
+
   // range of cliques within each partition to print out when doing
   // CE/DE inference. If these are NULL, then we print nothing.
   BP_Range* pPartCliquePrintRange;
@@ -1107,6 +1126,18 @@ public:
 				bool limitTime=false,
 				unsigned *numPartitionsDone = NULL,
 				const bool noE=false);
+
+  // not-quite-right DBN online filtering
+  logpr onlineFixedUnroll(StreamSource *globalObservationMatrx,
+			  unsigned *numUsableFrames=NULL,
+			  bool limitTime=false,
+			  unsigned *numPartitionsDone=NULL,
+			  const bool noE=false,
+			  FILE *f=stdout,
+			  const bool printObserved=false,
+			  regex_t *preg=NULL,
+			  char *partRangeFilter=NULL);
+
   // simple call
   logpr probEvidence(const unsigned numFrames, unsigned& numUsableFrames) {
     return probEvidenceFixedUnroll(numFrames,&numUsableFrames,false,NULL,false);
@@ -1144,7 +1175,8 @@ public:
 			  unsigned& numUsableFrames,
 			  unsigned base,
 			  const unsigned linear_section_threshold,
-			  const bool sqrtBase = false,
+			  const bool rootBase = false,
+			  const float islandRoot = 0.5,
 			  const bool runEMalgorithm = false,
 			  const bool runViterbiAlgorithm = false,
 			  const bool localCliqueNormalization = false);
