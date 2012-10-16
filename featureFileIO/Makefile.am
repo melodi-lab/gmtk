@@ -52,6 +52,7 @@ $(builddir)/../IEEEFloatingpoint/libIEEEsupport.a
 noinst_LIBRARIES = libgmtkio.a
 
 libgmtkio_a_SOURCES = \
+GMTK_ObservationArguments.h ObsArguments.h \
 GMTK_ObservationMatrix.h GMTK_ObservationMatrix.cc \
 GMTK_Stream.h GMTK_Stream.cc \
 GMTK_DataTransformations.cc \

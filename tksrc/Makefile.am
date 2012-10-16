@@ -268,6 +268,8 @@ testViterbi_SOURCES = testViterbi.ll
 
 neghead_SOURCES = neghead.cc
 
+parserTest_SOURCES = parserTest.cc
+
 #testMDCPT_SOURCES = GMTK_MDCPT.cc GMTK_MDCPT.h
 #testMDCPT_CXXFLAGS = -DMAIN \
 #$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
