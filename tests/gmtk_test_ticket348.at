@@ -1,0 +1,13 @@
+
+# Verify that -mmapViterbiValues is accepted
+# see https://j.ee.washington.edu/trac/gmtk/ticket/348
+
+AT_SETUP([-mmapViterbiValues (ticket 348)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/test_hmm3])
+AT_CHECK([(cd $TEST_AND_DEV/test_hmm3 && \
+           gmtkViterbi -strFile 3e.str \
+            -inputMasterFile 3e.master \
+	    -of1 observation_file_list.txt \
+            -fmt1 ascii -nf1 0 -ni1 1 \
+            -mmapViterbiValues T -pVitValsFile /dev/null)],[],[ignore])
+AT_CLEANUP
