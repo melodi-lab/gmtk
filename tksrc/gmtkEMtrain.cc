@@ -49,7 +49,21 @@ VCID(HGID)
 #include "GMTK_ContRV.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_GMParms.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_ObservationSource.h"
+#  include "GMTK_FileSource.h"
+#  include "GMTK_CreateFileSource.h"
+#  include "GMTK_ASCIIFile.h"
+#  include "GMTK_FlatASCIIFile.h"
+#  include "GMTK_PFileFile.h"
+#  include "GMTK_HTKFile.h"
+#  include "GMTK_HDF5File.h"
+#  include "GMTK_BinaryFile.h"
+#  include "GMTK_Filter.h"
+#  include "GMTK_Stream.h"
+#endif
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_MeanVector.h"
@@ -108,7 +122,8 @@ VCID(HGID)
 #define GMTK_ARG_HASH_LOAD_FACTOR
 #define GMTK_ARG_STORE_DETERMINISTIC_CHILDREN
 #define GMTK_ARG_CLEAR_CLIQUE_VAL_MEM
-
+#define GMTK_ARG_MEM_GROWTH
+#define GMTK_ARG_USE_MMAP
 
 /****************************      FILE RANGE OPTIONS             ***********************************************/
 #define GMTK_ARG_FILE_RANGE_OPTIONS
@@ -167,8 +182,12 @@ Arg Arg::Args[] = {
  */
 RAND rnd(seedme);
 GMParms GM_Parms;
+#if 0
 ObservationMatrix globalObservationMatrix;
+#endif
 
+FileSource *gomFS;
+ObservationSource *globalObservationMatrix;
 
 int
 main(int argc,char*argv[])
@@ -197,29 +216,8 @@ main(int argc,char*argv[])
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_CHECK_ARGS
 
-  globalObservationMatrix.openFiles(nfiles,
-				    (const char**)&ofs,
-				    (const char**)&frs,
-				    (const char**)&irs,
-				    (unsigned*)&nfs,
-				    (unsigned*)&nis,
-				    (unsigned*)&ifmts,
-				    (bool*)&iswp,
-				    startSkip,
-				    endSkip,
-				    Cpp_If_Ascii,
-				    cppCommandOptions,
-				    (const char**)&postpr,  //Frame_Range_Str,
-				    Action_If_Diff_Num_Frames,
-				    Action_If_Diff_Num_Sents,
-				    Per_Stream_Transforms,
-				    Post_Transforms,
-				    Ftr_Combo,
-				    (const char**)&sr,
-				    (const char**)&prepr,
-				    gpr_str
-				    );
-
+  gomFS = instantiateFileSource();
+  globalObservationMatrix = gomFS;
 
   /////////////////////////////////////////////
   // read in all the parameters
@@ -239,7 +237,6 @@ main(int argc,char*argv[])
 
   // comment for now Sun Jan 11 09:47:23 2004
   GM_Parms.finalizeParameters();
-
   GM_Parms.markObjectsToNotTrain(objsToNotTrainFile,cppCommandOptions);
 
   /////////////////////////////
@@ -275,7 +272,7 @@ main(int argc,char*argv[])
   fp.checkConsistentWithGlobalObservationStream();
   GM_Parms.checkConsistentWithGlobalObservationStream();
 
-  GM_Parms.setStride(globalObservationMatrix.stride());
+  GM_Parms.setStride(gomFS->stride());
 
   // Utilize both the partition information and elimination order
   // information already computed and contained in the file. This
@@ -310,6 +307,16 @@ main(int argc,char*argv[])
     triangulator.ensurePartitionsAreChordal(gm_template);
   }
 
+  //  printf("Dlinks: min lag %d    max lag %d\n", Dlinks::globalMinLag(), Dlinks::globalMaxLag());
+  // FIXME - min past = min(dlinkPast, VECPTPast), likewise for future
+  int dlinkPast = Dlinks::globalMinLag();
+  dlinkPast = (dlinkPast < 0) ? -dlinkPast : 0;
+  gomFS->setMinPastFrames( dlinkPast );
+  
+  int dlinkFuture = Dlinks::globalMaxLag();
+  dlinkFuture = (dlinkFuture > 0) ? dlinkFuture : 0;
+  gomFS->setMinFutureFrames( dlinkFuture );
+
 
   ////////////////////////////////////////////////////////////////////
   // CREATE JUNCTION TREE DATA STRUCTURES
@@ -332,12 +339,12 @@ main(int argc,char*argv[])
     GM_Parms.writeTrainable(of);
   }
 
-  if (globalObservationMatrix.numSegments()==0) {
+  if (gomFS->numSegments()==0) {
     infoMsg(IM::Default,"ERROR: no segments are available in observation file. Exiting...");
     exit_program_with_status(0);
   }
 
-  Range* trrng = new Range(trrng_str,0,globalObservationMatrix.numSegments());
+  Range* trrng = new Range(trrng_str,0,gomFS->numSegments());
 #if 0
   if (trrng->length() <= 0) {
     infoMsg(IM::Default,"Training range '%s' specifies empty set. Exiting...\n",
@@ -419,15 +426,15 @@ main(int argc,char*argv[])
       while (!trrng_it->at_end()) {
 	const unsigned segment = (unsigned)(*(*trrng_it));
 	try {
-	  if (globalObservationMatrix.numSegments() < (segment+1)) 
+	  if (gomFS->numSegments() < (segment+1)) 
 	    error("ERROR: only %d segments in file, training range must be in range [%d,%d] inclusive\n",
-		  globalObservationMatrix.numSegments(),
-		  0,globalObservationMatrix.numSegments()-1);
+		  gomFS->numSegments(),
+		  0,gomFS->numSegments()-1);
 
 	  const unsigned numFrames = GM_Parms.setSegment(segment);
 #if 0
-	  if (globalObservationMatrix.active()) {
-	    globalObservationMatrix.printSegmentInfo();
+	  if (gomFS->active()) {
+	    gomFS->printSegmentInfo();
 	    ::fflush(stdout);
 	  }
 #endif
@@ -439,7 +446,7 @@ main(int argc,char*argv[])
 					 numUsableFrames,
 					 base,
 					 lst,
-					 sqrtBase,
+					 rootBase, islandRootPower,
 					 true, // run EM algorithm
 					 false, // run Viterbi algorithm
 					 localCliqueNormalization);

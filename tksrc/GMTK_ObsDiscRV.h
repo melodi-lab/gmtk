@@ -28,6 +28,9 @@
 #include <vector>
 
 #include "GMTK_DiscRV.h"
+#if 1
+#  include "GMTK_FileSource.h"
+#endif
 
 class ObsDiscRV : public DiscRV {
   friend class FileParser;

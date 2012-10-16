@@ -143,6 +143,7 @@ AC_FUNC_MALLOC
 AC_FUNC_STRFTIME
 AC_FUNC_STRTOD
 AC_FUNC_VPRINTF
+AC_FUNC_MMAP
 AC_CHECK_FUNCS([floor pow sqrt strchr strerror strspn strtol strtoul log1p])
 
 AC_ARG_WITH([logp], 

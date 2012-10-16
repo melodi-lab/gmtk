@@ -8,12 +8,13 @@
 
 #include <limits.h>
 #include <float.h>
+#include <string.h>
 #include <math.h>
 #include "GMTK_ObsNorm.h"
 #include "general.h"
 
 void obsNorm(FILE*  out_fp,
-	     ObservationMatrix* obs_mat,
+	     FileSource* obs_mat,
 	     Range& srrng,
 	     const double result_mean,
 	     const double result_std,
@@ -80,7 +81,7 @@ void obsNorm(FILE*  out_fp,
     // instead of going through entire range, only calculate ranges in 
     // same seg_group
     for (;!srit.at_end() && seg_markers[(*srit)]==cur_seg_group;srit++) {
-      obs_mat->loadSegment(*srit);
+      obs_mat->openSegment(*srit);
       const size_t n_frames = obs_mat->numFrames();
    
       if (debug_level > 0) 
@@ -151,7 +152,7 @@ void obsNorm(FILE*  out_fp,
 	  printf("Normalizing from utt %d to utt %d.\n",(*srit2),(*srit)-1);
     }
     for (;(*srit2)<(*srit) || (srit.at_end() && !srit2.at_end());srit2++) {
-      obs_mat->loadSegment(*srit2);
+      obs_mat->openSegment(*srit2);
       const size_t n_frames = obs_mat->numFrames();
 
       if (debug_level > 0) 
@@ -183,7 +184,7 @@ void obsNorm(FILE*  out_fp,
       
       for(unsigned frame_no = 0;  frame_no < n_frames; ++frame_no) {
 	float* start_of_frame = obs_mat->floatVecAtFrame(frame_no);
-	UInt32* lab_buf_p =  obs_mat->unsignedAtFrame(frame_no);
+	UInt32* lab_buf_p =  obs_mat->unsignedVecAtFrame(frame_no);
 	ftr_means_p = ftr_means;
 	ftr_stds_p = ftr_stds;
 	for(unsigned feat_no = 0;  feat_no < n_ftrs; ++feat_no) {
