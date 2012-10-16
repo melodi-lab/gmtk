@@ -24,7 +24,7 @@
 #include "machine-dependent.h"
 #include "GMTK_Filter.h"
 
-#include "GMTK_SubmatirxDescriptor.h"
+#include "GMTK_SubmatrixDescriptor.h"
 
 
 class UpsampleFilter: public Filter {

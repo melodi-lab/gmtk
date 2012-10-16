@@ -23,7 +23,7 @@
 
 #include "machine-dependent.h"
 
-#include "GMTK_SubmatirxDescriptor.h"
+#include "GMTK_SubmatrixDescriptor.h"
 
 
 // This is the base class for observation filtering/transformation.

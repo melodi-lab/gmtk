@@ -19,7 +19,7 @@
 #endif
 
 #include "machine-dependent.h"
-#include "GMTK_SubmatirxDescriptor.h"
+#include "GMTK_SubmatrixDescriptor.h"
 #include "GMTK_Filter.h"
 
 // Apply a Finite Impulse Response filter to the continuous features
