@@ -117,14 +117,14 @@ void copyStringWithTag(char *result,const char *const input,
 //
 // Return the file size without moving the file
 // pointer.
-unsigned long
+gmtk_off_t
 fsize(FILE*stream) 
 {
-  long curpos = ftell(stream);
+  gmtk_off_t curpos = gmtk_ftell(stream);
   // rewind
   (void) fseek (stream, 0L, SEEK_END);
-  long filesize = ftell(stream);
-  (void) fseek (stream, curpos, SEEK_SET);
+  gmtk_off_t filesize = gmtk_ftell(stream);
+  (void) gmtk_fseek (stream, curpos, SEEK_SET);
   return filesize;
 }
  
@@ -134,7 +134,7 @@ fsize(FILE*stream)
 // return 0 if it doesn't exist (i.e., this will
 // return 0 if either the file doesn't exist or if
 // the file exists and it has zero size).
-unsigned long
+gmtk_off_t
 fsize(const char *const filename) 
 {
   if (filename == NULL)
@@ -143,7 +143,7 @@ fsize(const char *const filename)
   if ((stream = fopen(filename,"r")) == NULL)
     return 0l;
   (void) fseek (stream, 0L, SEEK_END);
-  long filesize = ftell(stream);
+  gmtk_off_t filesize = gmtk_ftell(stream);
   fclose(stream);
   return filesize;
 }

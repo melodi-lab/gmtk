@@ -513,7 +513,7 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
     // of seeking to a byte offset. Note that we're only skipping
     // the \data\ line and the ngram counts, so this should not be
     // too costly unless we encounter an extremely high order model
-    long filePos = ifs->ftell();
+    gmtk_off_t filePos = ifs->ftell();
 
     unsigned j, k;
     char seps[] = " \t\r\n";
