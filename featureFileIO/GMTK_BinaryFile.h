@@ -28,16 +28,6 @@ using namespace std;
 
 #include "GMTK_ObservationFile.h"
 
-#ifdef HAVE_FSEEKO
-#  define bin_fseek(a,b,c) fseeko(a,b,c)
-#  define bin_ftell(a)     ftello(a)
-   typedef off_t bin_off_t;
-#else
-#  define bin_fseek(a,b,c) fseek(a,b,c)
-#  define bin_ftell(a)     ftell(a)
-   typedef long bin_off_t;
-#endif
-
 class BinaryFile: public ObservationFile {
 
   bool        swap;

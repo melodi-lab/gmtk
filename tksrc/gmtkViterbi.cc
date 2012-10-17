@@ -65,7 +65,7 @@
 #include "arguments.h"
 #include "ieeeFPsetup.h"
 #include "version.h"
-
+#include "file_utils.h"
 
 #include "GMTK_WordOrganization.h"
 
@@ -473,7 +473,7 @@ main(int argc,char*argv[])
       char *err = strerror(errno);
       error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
     }
-    off_t off = (off_t) 0;
+    gmtk_off_t off = (gmtk_off_t) 0;
     float score = 0.0/0.0; // initially nan so I can check that the index is written correctly (non-nan)
     for (unsigned i=0; i < numSegments; i+=1) {
       if (fwrite(&off, sizeof(off), 1, JunctionTree::binaryViterbiFile) != 1) {
@@ -485,19 +485,19 @@ main(int argc,char*argv[])
 	error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
       }
     }
-    JunctionTree::nextViterbiOffset = ftello(JunctionTree::binaryViterbiFile);
+    JunctionTree::nextViterbiOffset = gmtk_ftell(JunctionTree::binaryViterbiFile);
   }
 //printf("seg 0 starts @ %llx\n", ftello(JunctionTree::binaryViterbiFile));
   while (!dcdrng_it->at_end()) {
     const unsigned segment = (unsigned)(*(*dcdrng_it));
 
-    off_t indexOff;
-    off_t off;
+    gmtk_off_t indexOff;
+    gmtk_off_t off;
     float score;
     if (JunctionTree::binaryViterbiFile) {
       off = JunctionTree::nextViterbiOffset;
-      indexOff = (off_t) ( GMTK_VITERBI_HEADER_SIZE + segment * (sizeof(off_t) + sizeof(float)) );
-      if (fseeko(JunctionTree::binaryViterbiFile, indexOff, SEEK_SET)) {
+      indexOff = (gmtk_off_t) ( GMTK_VITERBI_HEADER_SIZE + segment * (sizeof(gmtk_off_t) + sizeof(float)) );
+      if (gmtk_fseek(JunctionTree::binaryViterbiFile, indexOff, SEEK_SET)) {
 	char *err = strerror(errno);
 	error("Error seeking in '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
       }
@@ -506,7 +506,7 @@ main(int argc,char*argv[])
 	char *err = strerror(errno);
 	error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
       }
-      if (fseeko(JunctionTree::binaryViterbiFile, off, SEEK_SET)) {
+      if (gmtk_fseek(JunctionTree::binaryViterbiFile, off, SEEK_SET)) {
 	char *err = strerror(errno);
 	error("Error seeking in '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
       }
@@ -567,8 +567,8 @@ main(int argc,char*argv[])
       }
 
       if (JunctionTree::binaryViterbiFile) {
-	indexOff = (off_t) ( GMTK_VITERBI_HEADER_SIZE + sizeof(off_t) + segment * (sizeof(off_t) + sizeof(float)) );
-	if (fseeko(JunctionTree::binaryViterbiFile, indexOff, SEEK_SET)) {
+	indexOff = (gmtk_off_t) ( GMTK_VITERBI_HEADER_SIZE + sizeof(gmtk_off_t) + segment * (sizeof(gmtk_off_t) + sizeof(float)) );
+	if (gmtk_fseek(JunctionTree::binaryViterbiFile, indexOff, SEEK_SET)) {
 	  char *err = strerror(errno);
 	  error("Error seeking in '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
 	}

@@ -1045,7 +1045,7 @@ OutFtrLabStream_PFile::write_header()
     assert((unsigned long) count<=PFILE_HEADER_SIZE);
 
     // Seek to start of file to write header.
-    ec = fseek(file, 0L, SEEK_SET);
+    ec = pfile_fseek(file, 0L, SEEK_SET);
     if (ec!=0)
     {
 	error("Failed to seek to start of PFile '%s' - %s.",

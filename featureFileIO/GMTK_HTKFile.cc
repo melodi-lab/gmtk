@@ -251,7 +251,7 @@ openHTKFile2(const string& fname, StreamInfo *f) {
 
   }
 
-  f->curHTKFileInfo= new HTKFileInfo(samp_size,n_samples,htk_ftell(f->curDataFile),isCompressed,scale,offset);
+  f->curHTKFileInfo= new HTKFileInfo(samp_size,n_samples,gmtk_ftell(f->curDataFile),isCompressed,scale,offset);
   f->curDataFilename=fname;
 	  
   return n_samples;
@@ -317,7 +317,7 @@ openHTKFile(StreamInfo *f, size_t sentno) {
   DBGFPRINTF((stderr,"In openHTKFile, curNumFrames %d\n",f->curNumFrames));
   
   //now we seek to the start frame 
-  if (htk_fseek(f->curDataFile, (htk_off_t)(htkInfo->startOfData+startFrame*htkInfo->samp_size), SEEK_SET)) {
+  if (gmtk_fseek(f->curDataFile, (gmtk_off_t)(htkInfo->startOfData+startFrame*htkInfo->samp_size), SEEK_SET)) {
     error("ERROR: openHTKFile: fseek() failed for '%s'", f->dataNames[sentno]);
   }
   return f->curNumFrames;
@@ -353,7 +353,7 @@ HTKFile::getFrames(unsigned first, unsigned count) {
     bufferSize = needed;
   }
   const HTKFileInfo *htkInfo = info->curHTKFileInfo;
-  if (htk_fseek(info->curDataFile, (htk_off_t)(htkInfo->startOfData + first * htkInfo->samp_size), SEEK_SET)) {
+  if (gmtk_fseek(info->curDataFile, (gmtk_off_t)(htkInfo->startOfData + first * htkInfo->samp_size), SEEK_SET)) {
     error("HTKFile: fseek() failed for '%s'", info->fofName);
   }
 

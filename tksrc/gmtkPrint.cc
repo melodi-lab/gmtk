@@ -43,7 +43,7 @@
 #include "arguments.h"
 #include "ieeeFPsetup.h"
 #include "version.h"
-
+#include "file_utils.h"
 
 #include "GMTK_WordOrganization.h"
 
@@ -444,12 +444,12 @@ main(int argc,char*argv[])
   while (!dcdrng_it->at_end()) {
     const unsigned segment = (unsigned)(*(*dcdrng_it));
 
-    off_t indexOff;
-    off_t off;
+    gmtk_off_t indexOff;
+    gmtk_off_t off;
     float score;
 
-    indexOff = (off_t) ( GMTK_VITERBI_HEADER_SIZE + segment * (sizeof(off_t) + sizeof(float)) );
-    if (fseeko(JunctionTree::binaryViterbiFile, indexOff, SEEK_SET)) {
+    indexOff = (gmtk_off_t) ( GMTK_VITERBI_HEADER_SIZE + segment * (sizeof(gmtk_off_t) + sizeof(float)) );
+    if (gmtk_fseek(JunctionTree::binaryViterbiFile, indexOff, SEEK_SET)) {
       char *err = strerror(errno);
       error("Error seeking in '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
     }
@@ -462,7 +462,7 @@ main(int argc,char*argv[])
       char *err = strerror(errno);
       error("Error reading from '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
     }
-    if (fseeko(JunctionTree::binaryViterbiFile, off, SEEK_SET)) {
+    if (gmtk_fseek(JunctionTree::binaryViterbiFile, off, SEEK_SET)) {
       char *err = strerror(errno);
       error("Error seeking in '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
     }
