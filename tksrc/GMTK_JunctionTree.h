@@ -33,6 +33,8 @@
 #include "bp_range.h"
 #include "mArray.h"
 
+#include "file_utils.h"
+
 #include "GMTK_RV.h"
 #include "GMTK_FileParser.h"
 #include "GMTK_GMTemplate.h"
@@ -868,8 +870,8 @@ public:
   // later printing by a separate program
   static FILE *binaryViterbiFile;
   static char *binaryViterbiFilename;
-  static off_t binaryViterbiOffset;    // offset to start of current segment
-  static off_t nextViterbiOffset;      // offset to start of next segment
+  static gmtk_off_t binaryViterbiOffset;    // offset to start of current segment
+  static gmtk_off_t nextViterbiOffset;      // offset to start of next segment
 
   // binary viterbi files should start with the cookie
 #define GMTK_VITERBI_COOKIE        "GMTKVIT\n"

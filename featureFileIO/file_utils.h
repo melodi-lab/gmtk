@@ -1,3 +1,5 @@
+#ifndef GMTK_FILE_UTILS
+#define GMTK_FILE_UTILS
 
 /*
  * file_utils.h
@@ -11,12 +13,24 @@
  *
  */
 
-
-
-#ifndef GMTK_FILE_UTILS
-#define GMTK_FILE_UTILS
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <stdio.h>
+
+// Some stuff to deal with large file support
+//  First make sure things still work if we do not have fseeko/ftello
+#if HAVE_FSEEKO
+#  define gmtk_fseek(a,b,c) fseeko(a,b,c)
+#  define gmtk_ftell(a) ftello(a)
+   typedef off_t gmtk_off_t;
+#else
+#  define gmtk_fseek(a,b,c) fseek(a,b,c)
+#  define gmtk_ftell(a) ftell(a)
+   typedef long gmtk_off_t;
+#endif
+
 
 // FIXME - move this to some common constant declaration place
 

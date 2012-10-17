@@ -284,7 +284,7 @@ JunctionTree::recordPartitionViterbiValue(ptps_iterator& it)
       // program. This is O(1) memory and O(T) disk space.
 
       if (it.at_p()) {
-	if (fseeko(binaryViterbiFile, binaryViterbiOffset, SEEK_SET) == (off_t) -1) {
+	if (gmtk_fseek(binaryViterbiFile, binaryViterbiOffset, SEEK_SET) == (off_t) -1) {
 	  char *err = strerror(errno);
 	  error("ERROR: seek failed on '%s': %s\n", binaryViterbiFilename, err);
 	}	
@@ -306,7 +306,7 @@ printf("\n");
 	  (   (   N_best * partitionStructureArray[0].packer.packedLen()       
 	        + N_best * partitionStructureArray[1].packer.packedLen() * it.num_c_partitions()  
 	      ) * sizeof(unsigned)   );                         
-	if (fseeko(binaryViterbiFile, binaryViterbiOffset + offset, SEEK_SET) == (off_t) -1) {
+	if (gmtk_fseek(binaryViterbiFile, binaryViterbiOffset + offset, SEEK_SET) == (off_t) -1) {
 	  char *err = strerror(errno);
 	  error("ERROR: seek failed on '%s': %s\n", binaryViterbiFilename, err);
 	}	
@@ -323,7 +323,7 @@ printf("\n");
 	  char *err = strerror(errno);
 	  error("ERROR: write failed on '%s': %s\n", binaryViterbiFilename, err);
 	}
-	nextViterbiOffset = ftello(binaryViterbiFile); // remember where to start next segment
+	nextViterbiOffset = gmtk_ftell(binaryViterbiFile); // remember where to start next segment
 	if (nextViterbiOffset == (off_t)-1) {
 	  char *err = strerror(errno);
 	  error("ERROR: seek failed on '%s': %s\n", binaryViterbiFilename, err);
@@ -333,7 +333,7 @@ printf("\n");
           (   (   N_best * partitionStructureArray[0].packer.packedLen()       
 		+ N_best * partitionLength * ( it.pt_i() - 1 )
               ) * sizeof(unsigned)   );               
-	if (fseeko(binaryViterbiFile, binaryViterbiOffset + offset, SEEK_SET) == (off_t) -1) {
+	if (gmtk_fseek(binaryViterbiFile, binaryViterbiOffset + offset, SEEK_SET) == (off_t) -1) {
 	  char *err = strerror(errno);
 	  error("seek failed on '%s': %s\n", binaryViterbiFilename, err);
 	}	
@@ -1248,7 +1248,7 @@ JunctionTree::readBinaryVitPartition(PartitionStructures& ps, unsigned part) {
   unsigned num_to_read = N_best * ps.packer.packedLen();
   off_t offset;
   if (inference_it.at_p()) {
-    if (fseeko(binaryViterbiFile, binaryViterbiOffset, SEEK_SET) == (off_t) -1) {
+    if (gmtk_fseek(binaryViterbiFile, binaryViterbiOffset, SEEK_SET) == (off_t) -1) {
       char *err = strerror(errno);
       error("ERROR: seek failed on '%s': %s\n", binaryViterbiFilename, err);
     }       
@@ -1261,7 +1261,7 @@ JunctionTree::readBinaryVitPartition(PartitionStructures& ps, unsigned part) {
       (   (   N_best * partitionStructureArray[0].packer.packedLen()       
 	    + N_best * partitionStructureArray[1].packer.packedLen() * inference_it.num_c_partitions()  
 	  ) * sizeof(unsigned)   );                         
-    if (fseeko(binaryViterbiFile, binaryViterbiOffset + offset, SEEK_SET) == (off_t) -1) {
+    if (gmtk_fseek(binaryViterbiFile, binaryViterbiOffset + offset, SEEK_SET) == (off_t) -1) {
       char *err = strerror(errno);
       error("ERROR: seek failed on '%s': %s\n", binaryViterbiFilename, err);
     }       
@@ -1274,7 +1274,7 @@ JunctionTree::readBinaryVitPartition(PartitionStructures& ps, unsigned part) {
       (   (   N_best * partitionStructureArray[0].packer.packedLen()
             + N_best * partitionStructureArray[1].packer.packedLen() * ( part - 1 )
 	  ) * sizeof(unsigned)   );               
-    if (fseeko(binaryViterbiFile, binaryViterbiOffset + offset, SEEK_SET) == (off_t) -1) {
+    if (gmtk_fseek(binaryViterbiFile, binaryViterbiOffset + offset, SEEK_SET) == (off_t) -1) {
       char *err = strerror(errno);
       error("seek failed on '%s': %s\n", binaryViterbiFilename, err);
     }       
