@@ -606,10 +606,12 @@ iDataStreamFile::readIfMatch(const string& matchTokenStr, const char *msg)
 	      (msg != NULL ? msg : ""));
     }
   } else {
-    if (!prepareNext())
-	error("ERROR: readIfMatch: trouble getting next line in file '%s', '%s', : %s\n",
-	      fileName(),strerror(errno),
-	      (msg != NULL ? msg : ""));
+    if (!prepareNext()) {
+      if (feof(fh)) return false; // hit EOF without matching ...
+      error("ERROR: readIfMatch: trouble getting next line in file '%s', '%s', : %s\n",
+	    fileName(),strerror(errno),
+	    (msg != NULL ? msg : ""));
+    }
     char c;
     // read a string up to the next NULL character while things match
     unsigned i = 0;
