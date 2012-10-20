@@ -1132,7 +1132,6 @@ public:
   // not-quite-right DBN online filtering
   logpr onlineFixedUnroll(StreamSource *globalObservationMatrx,
 			  unsigned *numUsableFrames=NULL,
-			  bool limitTime=false,
 			  unsigned *numPartitionsDone=NULL,
 			  const bool noE=false,
 			  FILE *f=stdout,
