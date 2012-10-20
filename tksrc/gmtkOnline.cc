@@ -461,7 +461,7 @@ main(int argc,char*argv[])
 
   for (; !gomSS->EOS(); ) {
     unsigned numUsableFrames;
-    (void) myjt.onlineFixedUnroll(gomSS, &numUsableFrames, false, NULL, false, 
+    (void) myjt.onlineFixedUnroll(gomSS, &numUsableFrames, NULL, false, 
 				  pVitValsFile,pVitAlsoPrintObservedVariables, NULL, NULL);
     printf("Segment %d, after Filtering: %u usable frames\n",
 	   gomSS->segmentNumber(),

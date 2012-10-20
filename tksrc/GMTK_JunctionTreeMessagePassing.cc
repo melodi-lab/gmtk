@@ -3227,7 +3227,6 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 logpr 
 JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 				unsigned *numUsableFrames,
-				bool limitTime,
 				unsigned *numPartitionsDone,
 				const bool noE,
 				FILE *f,
@@ -3529,11 +3528,6 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
     // if the LI separator was turned off, we need to turn it back on.
     if (inference_it.at_first_c() && P1.cliques.size() == 0)
       Co.useLISeparator();
-
-
-    // FIXME - is it silly to put a time limit on online inference?
-    if (limitTime && probEvidenceTimeExpired)
-      goto finished;
 
     if (currentMaxFrameNum > MAX_FRAME_NUMBER - numNewFrames) {
       // frame number is about to overflow
