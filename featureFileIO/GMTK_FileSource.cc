@@ -250,6 +250,18 @@ FileSource::loadFrames(unsigned bufferIndex, unsigned first, unsigned count) {
   Data32 *dst = cookedBuffer + buffOffset;
 
   memcpy((void *)dst, (const void *)fileBuf, file->numLogicalFeatures() * count * sizeof(Data32));
+#ifdef WARNING_ON_NAN
+  if (!ObservationsAllowNan) {
+    for (float *fp = (float *)dst, unsigned i=0; i < count; i+=1, fp += file->numLogicalFeatures()) {
+      for (unsigned j=0; j < file->numLogicalContinuousFeatures(); j+=1) {
+	if (isnan(fp[j])) {
+	  error("ERROR: Found NaN or +/-INF at %u'th float in frame %u, segment %u\n",
+                j, first+i, segmentNumber());
+	}
+      }
+    }
+  }
+#endif
   return cookedBuffer + buffOffset;
 }
 
