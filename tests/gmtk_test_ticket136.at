@@ -1,0 +1,28 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/136 is fixed
+
+# gmtkViterbi will seg fault unless the bug is fixed
+
+AT_SETUP([ticket 136 (trivial)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/trivial])
+AT_CHECK([(cd $TEST_AND_DEV/trivial && \
+          gmtkViterbi -strF test.str -inputM test.mtr -of1 filelist.txt \
+          -fmt1 ascii -ni1 1 -pVitValsFile -)],[],[ignore],[ignore])
+AT_CLEANUP
+
+AT_SETUP([ticket 136 (2-stream)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/2-stream])
+AT_CHECK([(cd $TEST_AND_DEV/2-stream/misc; 
+	   for f in `ls *.bz2`; do
+	     test -f ${f%.bz2} || bunzip2 -k $f
+           done)],
+	 [],[ignore],[ignore])
+AT_CHECK([(cd $TEST_AND_DEV/2-stream && \
+         GMTK_CPP_CMD="gcc -E -x assembler-with-cpp" \
+         gmtkViterbi -of1 misc/stream1.0:3731 -nf1 60 -fmt1 htk -iswp1 true \
+         -of2 misc/stream2.0:3731 -ni2 2 -fmt2 ascii \
+         -inputMasterFile misc/masterFile.0:3731.score \
+         -strFile misc/nsh5_train_phoneT.str.sync -componentCache false \
+         -cppCommandOptions "-w -DMISC=misc/ -DLEARNED_PARAMS=misc/learnedParams.phoneT.32M.exp5.sync" \
+         -dcdrng 0:10  -pVitValsFile -)],[],[ignore],[ignore])
+AT_CLEANUP

@@ -11,14 +11,9 @@
 #ifndef FILEPARSER_H
 #define FILEPARSER_H
 
-
-/////////////////////////////////////////
-// Define if you want to pipe all ASCII
-// files through the C pre-processor to
-// get to use it's macro facilities. Might
-// need to change the comment character above.
-#define PIPE_ASCII_FILES_THROUGH_CPP
-
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <string>
 #include <vector>
@@ -28,6 +23,7 @@
 #include <stdarg.h>
 
 #include "general.h"
+
 
 class ioDataStreamFile {
 
@@ -50,8 +46,8 @@ class ioDataStreamFile {
   const char *const fileName() { return _fileName.c_str(); }
   int lineNo() { return _curLineNo; }
 
-  long ftell() const { return(::ftell(fh)); }
-  int  fseek ( long offset , int origin ) { return(::fseek(fh,offset,origin)); }
+  gmtk_off_t ftell() const { return(gmtk_ftell(fh)); }
+  int  fseek ( gmtk_off_t offset , int origin ) { return(gmtk_fseek(fh,offset,origin)); }
 };
 
 
@@ -60,17 +56,22 @@ class iDataStreamFile : public ioDataStreamFile {
   char *buff;
   char *buffp;
   enum State { GetNextLine, UseCurLine } state;
-#ifdef PIPE_ASCII_FILES_THROUGH_CPP
+#if defined(PIPE_ASCII_FILES_THROUGH_CPP) || defined(ENABLE_GZIP) || defined(ENABLE_BIZP2) 
   const bool cppIfAscii;
+  const char *cppCommandOptions;
+  // true iff iDataStreamFile is piped through a decompressing program
+  bool piped;
 #endif
   const char extraCommentChar;
 
  public:
 
+
 #define IDATASTREAMFILE_DEFAULT_EXTRA_COMMENT_CHAR '\1'
 
-#ifdef PIPE_ASCII_FILES_THROUGH_CPP
+#if defined(PIPE_ASCII_FILES_THROUGH_CPP) || defined(ENABLE_GZIP) || defined(ENABLE_BIZP2) 
   iDataStreamFile(const char *_name, bool _Binary = false, bool _cppIfAscii = true, const char * const _cppCommandOptions = NULL,const char extraCommentChar = IDATASTREAMFILE_DEFAULT_EXTRA_COMMENT_CHAR);
+  void initialize();
 #else
   iDataStreamFile(const char *_name, bool _Binary = false,const char extraCommentChar = IDATASTREAMFILE_DEFAULT_EXTRA_COMMENT_CHAR);
 #endif
@@ -80,11 +81,16 @@ class iDataStreamFile : public ioDataStreamFile {
   bool prepareNext();
   
   void rewind();
+  int  fseek ( gmtk_off_t offset , int origin );
 
   bool isEOF() { 
     if(feof(fh)) return true;
     else         return false;
   }
+
+#if defined(PIPE_ASCII_FILES_THROUGH_CPP) || defined(ENABLE_GZIP) || defined(ENABLE_BIZP2) 
+  bool isPiped() {return piped;}
+#endif
 
   // These return true if a successful value is returned,
   // false otherwise. If 'msg' is provided and an error

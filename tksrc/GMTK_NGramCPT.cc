@@ -458,14 +458,19 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
     ContextTreeEntry startEntry;
 
     // phase I
-    iDataStreamFile ifs(lmFile, false, false);    // ascii, no cpp
+    iDataStreamFile *ifs = new iDataStreamFile(lmFile, false, false);    // ascii, no cpp
+
+    // Ticket 130: linesToSkip keeps track of how many lines we have
+    // to skip to kludge a rewind() method for pipe streams.
+    unsigned linesToSkip = 0;
 
     // Read in the ARPA header
     char *line = new char [MAX_LINE_LENGTH];
     // readin '\data\'
     do {
-        if ( ! ifs.readLine(line, MAX_LINE_LENGTH) )
+        if ( ! ifs->readLine(line, MAX_LINE_LENGTH) )
             error("Error: expect '\\data\\' in lm file %s", lmFile);
+	linesToSkip += 1;
     } while ( strstr(line, "\\data\\") != line );
 
     // read in number of ngrams
@@ -480,28 +485,35 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
     for ( i = 1; i < (int)_numParents + 2; ++i ) {
         {
             char *foo;
-            if ( ! ifs.readStr(foo) )
+            if ( ! ifs->readStr(foo) )
                 error("ERROR: cannot read string in %s.", lmFile);
             if ( strcmp(foo, "ngram") != 0 )
                 error("ERROR: Wrong ARPA format in %s at %s.", lmFile, foo);
             delete [] foo;
         }
-        if ( ! ifs.readUnsigned(index) )
+        if ( ! ifs->readUnsigned(index) )
             error("ERROR: Wrong ARPA format in %s.", lmFile);
-        ifs.readChar(c);
+        ifs->readChar(c);
         if ( c != '=' )
             error("ERROR: Wrong ARPA format in %s at %c.", lmFile, c);
-        if ( ! ifs.readUnsigned(num) )
+        if ( ! ifs->readUnsigned(num) )
             error("ERROR: Wrong ARPA format in %s.", lmFile);
         numNGrams[index] = num;
         _totalNumberOfParameters += num; // After this, we only need to collect bow
+	linesToSkip += 1; // the file format says these are one per line
     }
 
     // phase II
     // 1. accumulate the statistics for probability
     //    tables
     // 2. contruct the context Trie for later usage
-    unsigned filePos = ifs.ftell();
+
+    // Ticket 130: ftell() fails for pipes, returning -1. If the
+    // stream is piped, we'll skip over linesToSkip lines instead
+    // of seeking to a byte offset. Note that we're only skipping
+    // the \data\ line and the ngram counts, so this should not be
+    // too costly unless we encounter an extremely high order model
+    gmtk_off_t filePos = ifs->ftell();
 
     unsigned j, k;
     char seps[] = " \t\r\n";
@@ -512,7 +524,7 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
     // step 1: readin unigram as this is the easy case
     // looking for \1-gram
     do {
-        if ( ! ifs.readLine(line, MAX_LINE_LENGTH) )
+        if ( ! ifs->readLine(line, MAX_LINE_LENGTH) )
             error("Error: invalid ARPA lm format in %s", lmFile);
     } while ( line[0] != '\\');
     index = atoi(line+1);
@@ -523,7 +535,7 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
     startEntry.probBlockSize = probTotalSize;
 
     for ( j = 0; j < num; ++j ) {
-        if ( ! ifs.readLine(line, MAX_LINE_LENGTH) )
+        if ( ! ifs->readLine(line, MAX_LINE_LENGTH) )
             error("Error: invalid ARPA lm format in %s", lmFile);
 
         // skip prob (we don't have prob hash table yet.)
@@ -555,7 +567,7 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
     for ( i = 1; i < (int)_numParents; ++i ) {
         // looking for \n-gram
         do {
-            if ( ! ifs.readLine(line, MAX_LINE_LENGTH) )
+            if ( ! ifs->readLine(line, MAX_LINE_LENGTH) )
                 error("Error: invalid ARPA lm format in %s", lmFile);
         } while ( line[0] != '\\');
         index = atoi(line+1);
@@ -565,7 +577,7 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
         ContextTreeEntry *prevContextEntry = NULL;
         unsigned accumNum = 0;
         for ( j = 0; j < num; ++j ) {
-            if ( ! ifs.readLine(line, MAX_LINE_LENGTH) )
+            if ( ! ifs->readLine(line, MAX_LINE_LENGTH) )
                 error("Error: invalid ARPA lm format in %s", lmFile);
 
             // get prob
@@ -644,7 +656,7 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
     // looking for \n-gram
     if ( _numParents > 0 ) {    // in case of unigram
         do {
-            if ( ! ifs.readLine(line, MAX_LINE_LENGTH) )
+            if ( ! ifs->readLine(line, MAX_LINE_LENGTH) )
                 error("Error: invalid ARPA lm format in %s", lmFile);
         } while ( line[0] != '\\');
         index = atoi(line+1);
@@ -654,7 +666,7 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
         ContextTreeEntry *prevContextEntry = NULL;
         unsigned accumNum = 0;
         for ( j = 0; j < num; ++j ) {
-            if ( ! ifs.readLine(line, MAX_LINE_LENGTH) )
+            if ( ! ifs->readLine(line, MAX_LINE_LENGTH) )
                 error("Error: invalid ARPA lm format in %s", lmFile);
     
             // get prob
@@ -758,22 +770,33 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
 
     // step 1: set the block size and rewind file position
     _probStartBlockSize = startEntry.probBlockSize;
-    // rewind the file pointer
-    ifs.fseek(filePos-1,SEEK_SET);
 
+    // rewind the file pointer
+    if (ifs->isPiped()) {
+      // Ticket 130: pipes can't rewind or seek, so close the stream
+      // we've been reading, open it again, and skip over linesToSkip lines
+      delete ifs;
+      ifs = new iDataStreamFile(lmFile, false, false);    // ascii, no cpp
+      for (unsigned i=0; i < linesToSkip; i+=1) {
+        if ( ! ifs->readLine(line, MAX_LINE_LENGTH) )
+	  error("Error: failed to skip %u lines in lm file %s", linesToSkip, lmFile);
+      }
+    } else {
+      ifs->fseek(filePos-1,SEEK_SET);
+    }
     double prob;
 
     // step 2: load unigram probabilities
     // looking for \n-gram
     do {
-        ifs.readLine(line, MAX_LINE_LENGTH);
+        ifs->readLine(line, MAX_LINE_LENGTH);
     } while ( line[0] != '\\');
     index = atoi(line+1);
 
     num = numNGrams[index];    // number of ngrams for index
 
     for ( j = 0; j < num; ++j ) {
-        ifs.readLine(line, MAX_LINE_LENGTH);
+        ifs->readLine(line, MAX_LINE_LENGTH);
 
         // get prob
         if ( (tok = strtok(line, seps)) == NULL )
@@ -799,14 +822,14 @@ void NGramCPT::read(const char *lmFile, const Vocab &vocab) {
     for ( i = 1; i < (int)_numParents + 1; ++i ) {
         // looking for \n-gram
         do {
-            ifs.readLine(line, MAX_LINE_LENGTH);
+            ifs->readLine(line, MAX_LINE_LENGTH);
         } while ( line[0] != '\\');
         index = atoi(line+1);
 
         num = numNGrams[index];    // number of ngrams for index
 
         for ( j = 0; j < num; ++j ) {
-            ifs.readLine(line, MAX_LINE_LENGTH);
+            ifs->readLine(line, MAX_LINE_LENGTH);
     
             // get prob
               if ( (tok = strtok(line, seps)) == NULL )

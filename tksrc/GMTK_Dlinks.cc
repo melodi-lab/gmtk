@@ -52,9 +52,9 @@ VCID(HGID)
 ////////////////////////////////////////////////////////////////////
 
 // ok if -startSkip <= _globalMinLag
-int Dlinks::_globalMinLag = 1000000;
+int Dlinks::_globalMinLag = 0;
 // ok if endSkip >= _globalMaxLag
-int Dlinks::_globalMaxLag = -1000000;
+int Dlinks::_globalMaxLag = 0;
 
 int Dlinks::_globalMinOffset = 1000000;
 int Dlinks::_globalMaxOffset = -1000000;
@@ -109,8 +109,8 @@ Dlinks::read(iDataStreamFile& is)
 
   dIndices.resize(nFeats);
   
-  _minLag = 1000000;
-  _maxLag = -1000000;
+  _minLag = 0;
+  _maxLag = 0;
   for (int i=0;i<nFeats;i++) {
     int nLinks;
     is.read(nLinks,"Can't read Dlinks's num links");

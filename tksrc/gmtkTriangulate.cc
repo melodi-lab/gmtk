@@ -48,7 +48,14 @@ VCID(HGID)
 #include "GMTK_ContRV.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_GMParms.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_ObservationSource.h"
+#  include "GMTK_FileSource.h"
+#  include "GMTK_ASCIIFile.h"
+#  include "GMTK_Stream.h"
+#endif
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_MeanVector.h"
@@ -66,6 +73,7 @@ VCID(HGID)
 /*************************   INPUT STRUCTURE PARAMETER FILE HANDLING  *******************************************/
 #define GMTK_ARG_STR_FILE
 #define GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG
+#define GMTK_ARG_DLOPEN_MAPPERS
 #define GMTK_ARG_INPUT_TRAINABLE_PARAMS
 #define GMTK_ARG_INPUT_TRI_FILE
 #define GMTK_ARG_CHECK_TRI_FILE_CARD
@@ -84,6 +92,7 @@ VCID(HGID)
 
 /****************************         GENERAL OPTIONS             ***********************************************/
 #define GMTK_ARG_SEED
+#define GMTK_ARG_SKIP_STARTUP_CHECKS
 #define GMTK_ARG_VERB
 #define GMTK_ARG_HELP
 
@@ -184,7 +193,13 @@ void createCommandLineOptionString(string& res)
  */
 RAND rnd(seedme);
 GMParms GM_Parms;
+#if 0
 ObservationMatrix globalObservationMatrix;
+#else
+FileSource fileSource;
+FileSource *gomFS = &fileSource;
+ObservationSource *globalObservationMatrix = &fileSource;
+#endif
 
 /*
  *
@@ -236,11 +251,13 @@ main(int argc,char*argv[])
   // or divide by zero, we actually get a FPE
   ieeeFPsetup();
   set_new_handler(memory_error);
-  InstallSignalHandlers();
+  InstallSignalHandlersTime();
 
   ////////////////////////////////////////////
   // parse arguments
-  bool parse_was_ok = Arg::parse(argc,(char**)argv);
+  bool parse_was_ok = Arg::parse(argc,(char**)argv,
+"\nThis program analyzes the graphical structure of a model to determine\n"
+"a efficient way to perform inference on it.\n");
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }
@@ -253,6 +270,7 @@ main(int argc,char*argv[])
   /////////////////////////////////////////////
   if (loadParameters) {
     // read in all the parameters
+    dlopenDeterministicMaps(dlopenFilenames, MAX_NUM_DLOPENED_FILES);
     if (inputMasterFile) {
       // flat, where everything is contained in one file, always ASCII
       iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);

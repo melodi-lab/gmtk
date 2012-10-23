@@ -62,7 +62,7 @@ short swapb_short_short(short sval) {
 }
 
 // 32-bit float byte swap
-inline float
+float
 swapb_f32_f32(const float fval)
 {
   union_float_int32 fiu;

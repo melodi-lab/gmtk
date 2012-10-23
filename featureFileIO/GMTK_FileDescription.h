@@ -24,8 +24,10 @@
 enum {
   RAWBIN, 
   RAWASC, 
+  FLATASC,
   PFILE,
   HTK,
+  HDF5,
   GMTK
 };
 

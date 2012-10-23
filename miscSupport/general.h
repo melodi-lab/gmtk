@@ -9,6 +9,10 @@
 #ifndef GENERAL_H
 #define GENERAL_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 using namespace std;
 
 // added this to keep gcc -pedantic flag from complaining
@@ -31,6 +35,20 @@ using namespace std;
 #include "machine-dependent.h"
 
 #define VCID(x) static const char * const version_control_id = x;
+
+
+// Some stuff to deal with large file support
+//  First make sure things still work if we do not have fseeko/ftello
+#if HAVE_FSEEKO
+#  define gmtk_fseek(a,b,c) fseeko(a,b,c)
+#  define gmtk_ftell(a) ftello(a)
+   typedef off_t gmtk_off_t;
+#else
+#  define gmtk_fseek(a,b,c) fseek(a,b,c)
+#  define gmtk_ftell(a) ftell(a)
+   typedef long gmtk_off_t;
+#endif
+
 
 char *copyToNewStr(const char *const str);
 
@@ -82,8 +100,8 @@ void copyStringWithTag(char *result,const char *const input,
 		       const int tag, const int maxLen);
 
 
-unsigned long fsize(FILE*stream);
-unsigned long fsize(const char* const filename);
+gmtk_off_t fsize(FILE*stream);
+gmtk_off_t fsize(const char* const filename);
 
 
 void print_date_string(FILE* f);
@@ -141,6 +159,17 @@ unsigned int numBitsSet(unsigned u);
  */
 const char* CPP_Command();
 
+/*
+ * returns a char* to the gzip command to use.
+ * It returns a string that should not be freed.
+ */
+const char* gzip_Command();
+
+/*
+ * returns a char* to the bzip2 command to use.
+ * It returns a string that should not be freed.
+ */
+const char* bzip2_Command();
 bool freadUntilEOF(FILE *f);
 
 /*

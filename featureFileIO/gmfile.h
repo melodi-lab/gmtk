@@ -29,8 +29,10 @@ static char rcsid = "$Id$";
 enum {
   RAWBIN, 
   RAWASC, 
+  FLATASC,
   PFILE,
   HTK,
+  HDF5
 };
   
 class GM_input {

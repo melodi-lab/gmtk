@@ -1,0 +1,11 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/125 is fixed
+
+# obs-info will seg fault if the bug is not fixed
+
+AT_SETUP([ticket 125])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/switchboard/swbd_data])
+AT_CHECK([pushd . >/dev/null; cd $TEST_AND_DEV/switchboard/swbd_data; obs-info -of1 small.lst -fmt1 htk -nf1 39 -cppifascii T; popd >/dev/null],[],[1 stream(s), 10 sentences, 2284 frames, 0 discrete feature(s), 39 continuous feature(s)
+])
+# extra EOL above is necessary for test to pass
+AT_CLEANUP

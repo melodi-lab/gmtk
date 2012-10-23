@@ -69,9 +69,13 @@ Arg Arg::Args[] = {
 	/////////////////////////////////////////////////////////////
 	// input parameter/structure file handling
 
+        Arg("\n*** Input files ***\n"),
+
 	Arg("lmFile", Arg::Req, lmFile, "Input ARPA language model file"),
 	
 	Arg("vocab", Arg::Req, vocabFile, "vocab file"),
+
+        Arg("\n*** Output format ***\n"),
 
 	Arg("outBin", Arg::Opt, outBin, "Use binary for output index file"),
 
@@ -86,11 +90,11 @@ Arg Arg::Args[] = {
  */
 RAND rnd;
 GMParms GM_Parms;
-ObservationMatrix globalObservationMatrix;
+ObservationMatrix obsMatrix;
+ObservationMatrix *globalObservationMatrix = &obsMatrix;
 
 
 int main(int argc, char *argv[]) {
-#if 0
 	////////////////////////////////////////////
 	// set things up so that if an FP exception
 	// occurs such as an "invalid" (NaN), overflow
@@ -100,7 +104,8 @@ int main(int argc, char *argv[]) {
 
 	////////////////////////////////////////////
 	// parse arguments
-	bool parse_was_ok = Arg::parse(argc,argv);
+	bool parse_was_ok = Arg::parse(argc,argv,
+"\nThis program indexes ARPA language model files to make them more efficient\n");
 
 	if(!parse_was_ok) {
 	  Arg::usage(); exit(-1);
@@ -126,12 +131,20 @@ int main(int argc, char *argv[]) {
 		error("cannot open file %s", lmFile);
 
 	do {
-		if ( getline(&word, &len, fp) < 0 )
+#if defined(HAVE_GETLINE)
+                if ( getline(&word, &len, fp) < 0 )
+#else
+		if ( fgets(word, len, fp) == NULL )
+#endif
 			error("wrong ARPA format in %s", lmFile);
 	} while ( strstr(word, "\\data\\") != word );
 
 	do {
-		if ( getline(&word, &len, fp) < 0 )
+#if defined(HAVE_GETLINE)
+                if ( getline(&word, &len, fp) < 0 )
+#else
+		if ( fgets(word, len, fp) == NULL )
+#endif
 			error("wrong ARPA format in %s", lmFile);
 		if ( strstr(word, "ngram") != NULL && strchr(word, '=') != NULL )
 			++order;
@@ -166,5 +179,4 @@ int main(int argc, char *argv[]) {
 	delete [] indexFile;
 
 	return 0;
-#endif
 }

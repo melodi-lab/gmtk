@@ -38,7 +38,11 @@
 #include "GMTK_DiscRV.h"
 #include "GMTK_ContRV.h"
 #include "GMTK_GMParms.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_ObservationSource.h"
+#endif
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_MeanVector.h"
