@@ -94,6 +94,10 @@
  * for any purpose. It is provided "as is" without express or implied warranty.
  * */
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdio.h>
 #include <string>
 #include "GMTK_ObservationMatrix.h"
@@ -115,9 +119,9 @@ extern "C" {
 }
 #endif
 #endif
-#ifdef PIPE_ASCII_FILES_THROUGH_CPP
+
 #define CPP_DIRECTIVE_CHAR '#'
-#endif
+
 
 #define WARNING_ON_NAN 1
 bool ObservationsAllowNan = false;
@@ -1930,7 +1934,7 @@ size_t ObservationMatrix::openAsciiFile(StreamInfo *f,size_t sentno) {
 	 }
        }
        	 DBGFPRINTF((stderr,"\n"));
-       fclose(f->curDataFile);
+       pclose(f->curDataFile);
        f->curDataFile = ::popen(cppCommand.c_str(),"r");
      }
      else {
@@ -2298,7 +2302,10 @@ void ObservationMatrix::printSegmentInfo() {
  *                 allocated for them
  */
 
-bool ObservationMatrix::readBinSentence(float* float_buffer, unsigned num_floats, Int32* int_buffer, unsigned num_ints,StreamInfo* s) {
+bool 
+ObservationMatrix::readBinSentence(float* float_buffer, unsigned num_floats, 
+				   Int32* int_buffer, unsigned num_ints,StreamInfo* s) 
+{
 
   assert(num_floats > 0 || num_ints > 0);
 
@@ -2319,49 +2326,49 @@ bool ObservationMatrix::readBinSentence(float* float_buffer, unsigned num_floats
   if(num_ints==0) {
     assert(float_buffer !=NULL);
     if (data_format==HTK && s->curHTKFileInfo->isCompressed) {
-			short* tmp_short_buffer = new short[total_num_floats];
-			n_read = fread((short*)tmp_short_buffer, sizeof(short),
-					total_num_floats, f);
-		    if (n_read != total_num_floats) {
-		      warning("ObservationMatrix::readBinFloats: read %i items, expected %i",
-			      n_read,total_num_floats);
-		      return false;
-		    }
+      short* tmp_short_buffer = new short[total_num_floats];
+      n_read = fread((short*)tmp_short_buffer, sizeof(short),
+		     total_num_floats, f);
+      if (n_read != total_num_floats) {
+	warning("ObservationMatrix::readBinFloats: read %i items, expected %i",
+		n_read,total_num_floats);
+	return false;
+      }
 			
-			if (swap) {
-				for (unsigned i=0; i<total_num_floats; ++i) {
-					tmp_short_buffer[i]=swapb_short_short(tmp_short_buffer[i]);
-				}
-			}
-			for (unsigned i=0; i<total_num_floats; ++i) {
-				float_buffer[i]=tmp_short_buffer[i];
-			}
-			delete [] tmp_short_buffer;
-			
-			//uncompress the shorts
-			for (unsigned i=0; i<n_samples;i++){
-				float* curSampPtr=float_buffer+i*num_floats;
-				copy_add_vf32_vf32(num_floats,s->curHTKFileInfo->offset,curSampPtr);
-				copy_div_vf32_vf32(num_floats,s->curHTKFileInfo->scale,curSampPtr);
-
-			}
+      if (swap) {
+	for (unsigned i=0; i<total_num_floats; ++i) {
+	  tmp_short_buffer[i]=swapb_short_short(tmp_short_buffer[i]);
 	}
+      }
+      for (unsigned i=0; i<total_num_floats; ++i) {
+	float_buffer[i]=tmp_short_buffer[i];
+      }
+      delete [] tmp_short_buffer;
+			
+      //uncompress the shorts
+      for (unsigned i=0; i<n_samples;i++){
+	float* curSampPtr=float_buffer+i*num_floats;
+	copy_add_vf32_vf32(num_floats,s->curHTKFileInfo->offset,curSampPtr);
+	copy_div_vf32_vf32(num_floats,s->curHTKFileInfo->scale,curSampPtr);
+
+      }
+    }
     else {
 	    
-	    n_read = fread((float *)float_buffer,sizeof(float),total_num_floats,f);
-	    if (n_read != total_num_floats) {
-	      warning("ObservationMatrix::readBinFloats: read %i items, expected %i",
-		      n_read,total_num_floats);
-	      return false;
-	    }
-	    // swap if needed.
-	    if(swap) {
-	      float tmp_float[1];
-	      for (unsigned i=0; i<total_num_floats; ++i) {
-		swapb_vf32_vf32(1,(float_buffer+i),tmp_float);
-		float_buffer[i]=tmp_float[0];
-	      }
-	    }
+      n_read = fread((float *)float_buffer,sizeof(float),total_num_floats,f);
+      if (n_read != total_num_floats) {
+	warning("ObservationMatrix::readBinFloats: read %i items, expected %i",
+		n_read,total_num_floats);
+	return false;
+      }
+      // swap if needed.
+      if(swap) {
+	float tmp_float[1];
+	for (unsigned i=0; i<total_num_floats; ++i) {
+	  swapb_vf32_vf32(1,(float_buffer+i),tmp_float);
+	  float_buffer[i]=tmp_float[0];
+	}
+      }
     }
   }
   else if(num_floats==0) {
@@ -2442,13 +2449,14 @@ bool ObservationMatrix::readAsciiSentence(float* float_buffer, unsigned num_floa
 
   assert(num_floats > 0 || num_ints > 0);
 
-  int tmp,lineNum=0;
+  int lineNum=0;
   float* float_buffer_ptr = float_buffer;
   Int32* int_buffer_ptr   = int_buffer;
 
 
   // consume CPP special directives if any
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP
+  int tmp;
   if(_cppIfAscii) {
     while((tmp=fgetc(f))==CPP_DIRECTIVE_CHAR) {
       while((tmp=fgetc(f))!='\n');

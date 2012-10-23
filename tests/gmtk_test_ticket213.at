@@ -1,0 +1,19 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/213 is fixed
+
+AT_SETUP([ticket 213])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/mintest.train.nonan])
+
+# obs-print should have identical results if the bug is fixed
+
+AT_CHECK([(cd $TEST_AND_DEV/mintest.train.nonan && \
+           obs-print -iswp1 F -nf1 2 -ni1 0 -of1 float32.list \
+           -fmt1 binary -cppifascii F) > cpp.no],
+         [],[ignore],[ignore])
+AT_CHECK([(cd $TEST_AND_DEV/mintest.train.nonan && \
+           obs-print -iswp1 F -nf1 2 -ni1 0 -of1 float32.list \
+           -fmt1 binary -cppifascii T) > cpp.yes],
+         [],[ignore],[ignore])
+AT_CHECK([cmp cpp.{yes,no}])
+
+AT_CLEANUP

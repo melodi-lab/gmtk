@@ -18,34 +18,38 @@ $(srcdir)/package.m4: $(top_srcdir)/configure.ac
 	echo '  [$(PACKAGE_URL)])'; \
              } >'$(srcdir)/package.m4'
 
-EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE) atlocal.in
 TESTSUITE = testsuite
+LOCAL_GMTK_AT = $(wildcard gmtk_test_*.at)
+EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE) atlocal.in \
+	     gmtk_tests.at $(LOCAL_GMTK_AT)
 
-.PHONY: test_and_dev.at
-test_and_dev.at:
+.PHONY: gmtk_tests.at
+gmtk_tests.at:
 	touch $@
-	find $(TEST_AND_DEV) -type f -name gmtk_test_\*.at | \
+	find $(srcdir) -type f -name gmtk_test_\*.at | \
 	  $(AWK) '{print "m4_include(["$$1"])"}' > $@
 
-check-local: atconfig atlocal $(TESTSUITE)
-	$(SHELL) '$(TESTSUITE)' $(TESTSUITEFLAGS)
+check-local: atconfig atlocal $(TESTSUITE) gmtk_tests.at
+	$(SHELL) '$(srcdir)/$(TESTSUITE)' $(TESTSUITEFLAGS)
 
-installcheck-local: atconfig atlocal $(TESTSUITE)
-	$(SHELL) '$(TESTSUITE)' \
-	AUTOTEST_PATH='$(bindir):$(abs_top_builddir)/tksrc' \
+installcheck-local: atconfig atlocal $(TESTSUITE) gmtk_tests.at
+	$(SHELL) '$(srcdir)/$(TESTSUITE)' \
+	AUTOTEST_PATH='$(bindir):$(abs_top_builddir)/tksrc:$(abs_top_builddir)/miscSupport' \
 	$(TESTSUITEFLAGS)
-#	$(SHELL) '$(TESTSUITE)' AUTOTEST_PATH='$(bindir)' \
-#	$(TESTSUITEFLAGS)
 
 clean-local:
 	test ! -f '$(TESTSUITE)' || \
 	$(SHELL) '$(TESTSUITE)' --clean
 	test ! -f test_and_dev.at || rm test_and_dev.at
+	test ! -f gmtk_tests.at || rm gmtk_tests.at
 	test ! -f $(TESTSUITE) || rm $(TESTSUITE)
+
+distclean-local:
 	test ! -f atconfig || rm atconfig
+	test ! -f $(TESTSUITE).log || rm $(TESTSUITE).log 
 
 AUTOM4TE = $(SHELL) $(top_srcdir)/missing --run autom4te
 AUTOTEST = $(AUTOM4TE) --language=autotest
-$(TESTSUITE): $(srcdir)/testsuite.at test_and_dev.at $(srcdir)/package.m4
+$(TESTSUITE): $(srcdir)/testsuite.at $(srcdir)/gmtk_tests.at $(srcdir)/package.m4
 	$(AUTOTEST) -I '$(srcdir)' -o $@.tmp $@.at
 	mv $@.tmp $@

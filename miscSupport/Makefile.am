@@ -23,10 +23,14 @@ endif
 OPTFLAGS = -O3
 HASH = 
 
-#ANSI = 
-#PEDANTIC =
+if CYGWIN_FLAGS
+ANSI = 
+PEDANTIC =
+else
 ANSI = -ansi
 PEDANTIC = -pedantic
+endif
+
 WALL = -Wall
 
 # used by clients of miscSupport
@@ -51,6 +55,7 @@ arguments.h arguments.cc \
 logp.h logp.cc \
 rand.h rand.cc \
 sArray.h sArray.cc \
+mArray.h mArray.cc \
 cArray.h cArray.cc \
 general.h general.cc \
 lineqsolve.h lineqsolve.cc \
@@ -65,6 +70,8 @@ bin_search.cc \
 lms_filter.h lms_filter.cc \
 rls_filter.h rls_filter.cc \
 vhash_set.h
+
+libmiscSupport_a_CPPFLAGS = -DDEFAULT_CPP="\"$(GMTKCPPCMD)\""
 
 # Compilation flags for miscSupport library objects (user's CXXFLAGS will
 # be appended)
@@ -88,9 +95,9 @@ LDADD = libmiscSupport.a
 check_PROGRAMS = \
 testError \
 testBPRange \
-testArguments testLogp testRand testsArray testcArray fileParserTest \
-testHashMapList testHashTree testVHashMap testSHashSet \
-testSHashMap testVSHashMap testRLS testLMS
+testArguments testLogp testRand testsArray testcArray testmArray \
+fileParserTest testHashMapList testHashTree testVHashMap testSHashSet \
+testSHashMap testVSHashMap testRLS testLMS testLZERO
 # testVHashSet 
 
 # testDebug      doesn't compile?
@@ -104,7 +111,9 @@ testLogp_SOURCES = logp.cc logp.h
 testRand_SOURCES = rand.cc rand.h
 testsArray_SOURCES = sArray.cc sArray.h
 testcArray_SOURCES = cArray.cc cArray.h
+testmArray_SOURCES = mArray.cc mArray.h
 fileParserTest_SOURCES = fileParser.cc fileParser.h
+testLZERO_SOURCES = testLZERO.cc
 
 testHashMapList_SOURCES = hash_map_list.cc hash_map_list.h
 testHashTree_SOURCES = hash_tree.h hash_tree.cc

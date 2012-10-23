@@ -29,7 +29,11 @@
 
 #include "GMTK_RV.h"
 #include "GMTK_CPT.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#ese
+#  include "GMTK_FileSource.h"
+#endif
 #include "GMTK_PackCliqueValue.h"
 #include "GMTK_NameCollection.h"
 
@@ -103,6 +107,8 @@ public:
   }
 
   virtual ~DiscRV() {;}
+
+  bool symbolTable() const { return rv_info.symbolTable != NULL; }
 
   // printing routines.
   virtual void printNameFrameValue(FILE *f,bool nl=true) {

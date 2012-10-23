@@ -36,6 +36,8 @@
 #include <wx/numdlg.h>
 #include <wx/print.h>
 #include <wx/printdlg.h>
+#include <wx/dcps.h>
+#include <wx/dcps.h>
 #include <wx/statline.h>
 #include <wx/textdlg.h>
 #include <wx/textfile.h>
@@ -64,6 +66,16 @@
 #ifndef __WXMSW__
 #include<X11/Xlib.h>
 #include<X11/Xutil.h>
+#endif
+
+
+#if GMTK_WX_OSX
+   // fix for ticket 64 is only needed prior to 2.9.2
+#if wxCHECK_VERSION(2,9,2)
+#undef ENABLE_TOP_OFFSET
+#else
+#define ENABLE_TOP_OFFSET 1
+#endif
 #endif
 
 // Apprently these are needed in order to do anything with gmtk (even
@@ -1319,12 +1331,14 @@ char *cppCommandOptions = NULL;
 int verbosity;
 
 Arg Arg::Args[] = {
-	Arg( "cppCommandOptions", Arg::Opt, cppCommandOptions,
-	 "Additional CPP command line" ),
-	Arg( "gvpFile", Arg::Opt, gvpFileNames, "position file",
-		Arg::ARRAY, MAX_OBJECTS ),
+        Arg("\n*** Input model file handling ***\n"),
 	Arg( "strFile", Arg::Opt, strFileNames, "structure file",
 		Arg::ARRAY, MAX_OBJECTS ),
+	Arg( "gvpFile", Arg::Opt, gvpFileNames, "position file",
+		Arg::ARRAY, MAX_OBJECTS ),
+	Arg( "cppCommandOptions", Arg::Opt, cppCommandOptions,
+	 "Additional CPP command line" ),
+	Arg("\n*** General options ***\n"),
 	Arg("verbosity",Arg::Opt,verbosity,"Verbosity (0 <= v <= 100) of informational/debugging msgs"),
 	Arg( "help", Arg::Tog, help, "print this message" ),
 	Arg()
@@ -1657,7 +1671,7 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	menu_file->AppendSeparator();
 	menu_file->Append(MENU_FILE_PAGESETUP, wxT("Page Setup..."), wxT("Set up page size/orientation"), wxITEM_NORMAL);
 	menu_file->Append(MENU_FILE_PRINT, wxT("&Print...\tCtrl+P"), wxT("Preview and print the current graph"), wxITEM_NORMAL);
-	menu_file->Append(MENU_FILE_PRINT_EPS, wxT("&Print to EPS file...\tCtrl+E"), wxT("Print an Encapsulated PostScript file of the current graph"), wxITEM_NORMAL);
+	menu_file->Append(MENU_FILE_PRINT_EPS, wxT("&Print to "PRINT2FILE_ABBREV" file...\tCtrl+E"), wxT("Print an "PRINT2FILE_FORMAT" file of the current graph"), wxITEM_NORMAL);
 	menu_file->AppendSeparator();
 	menu_file->Append(MENU_FILE_CLOSE, wxT("&Close\tCtrl+W"), wxT("Close current placement file"), wxITEM_NORMAL);
 	menu_file->Append(MENU_FILE_EXIT, wxT("E&xit\tCtrl+Q"), wxT("Close all files and exit"), wxITEM_NORMAL);
@@ -2360,6 +2374,18 @@ void GFrame::OnMenuFilePrint(wxCommandEvent &event)
 	}
 }
 
+
+const char * PS2EPS_Command() 
+{
+  const char * rc = getenv("GMTK_PS2EPS_CMD");
+  if (rc == NULL)
+    rc = PS2EPS_CMD;
+  // fprintf(stdout,"cpp command got is (%s)\n",rc);
+  return rc;
+}
+
+
+
 /**
  *******************************************************************
  * Get a file name from the User, print a temporary PostScript file
@@ -2378,6 +2404,22 @@ void GFrame::OnMenuFilePrint(wxCommandEvent &event)
  * \return void
  *******************************************************************/
 
+
+/*
+ * wxWidgets normally relies on the platform's native rendering
+ * system to do screen drawing, printing to paper, and printing
+ * to files. However, GTK+/GNOME only recently added the capability
+ * to do printing, so wxWidgets used the wxPostScriptDC to translate
+ * the wxWidgets' drawing API into PostScript files for printing
+ * on Unix/Linux platforms. The PostScriptDC code hasn't been 
+ * maintained much since GTK+/GNOME learned how to print and it's
+ * buggy. Unfortunately, the GTK+/GNOME native print-to-file seems 
+ * to produce a high resolution bitmap rather than vector output. 
+ * So, this uses the old wxPostScriptDC class to produce PostScript
+ * output with the hope that its bugs will be fixed enough to make
+ * it usable in wxWidgets 2.9.3, which is due out in autumn 2011.
+ */
+
 void GFrame::OnMenuFilePrintEPS(wxCommandEvent &event)
 {
 	// figure out which page this is for and pass the buck
@@ -2388,7 +2430,7 @@ void GFrame::OnMenuFilePrintEPS(wxCommandEvent &event)
 	// If it couldn't be casted to a StructPage, then curPage will be NULL.
 	if (curPage) {
 
-		wxFileDialog eps_file_dialog(this, "Save to EPS", "", "", "*.eps", wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+		wxFileDialog eps_file_dialog(this, "Save to "PRINT2FILE_FORMAT, "", "", "*."EPS_EXT, wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
 		if(eps_file_dialog.ShowModal() == wxID_CANCEL)
 			return; //canceled
 
@@ -2401,46 +2443,88 @@ void GFrame::OnMenuFilePrintEPS(wxCommandEvent &event)
 		// get a title for the printout
 		wxString name;
 		curPage->getName(name);
-      GmtkPrintout printout(curPage,name);
-// This function is obsolete, please use wxFileName::CreateTempFileName() instead.
-//		wxString temp_file_name = wxGetTempFileName( wxT("gmtkviz") );
-                wxString temp_file_name = wxFileName::CreateTempFileName( wxT("gmtkviz") );
 
-		//give the temp file name to the printData
-		printData.SetFilename(temp_file_name);
-		printData.SetPrintMode(wxPRINT_MODE_FILE);
-		wxPrintDialogData printDialogData(printData);
-		//set up the printer make it print to file
-		printDialogData.SetPrintToFile(true);
-		printDialogData.SetPrintData(printData);
 
-      wxPrinter printer(&printDialogData);
+		wxPrintData pd;
+		pd.SetPrintMode(wxPRINT_MODE_FILE);
+		wxString temp_file_name = wxFileName::CreateTempFileName( wxT("gmtkviz") );
+		pd.SetFilename(temp_file_name);
+		wxPostScriptDC psdc(pd);
 
-//XXX Print direct to file doesn't work in 2.6.1 so we need to pop up the
-//print dialog
-#if wxCHECK_VERSION(2,6,1)
-		wxMessageBox(_T("In order to print to EPS you simply have to press OK, Save, Yes when the print dialog"
-					" shows up, don't change any settings"),
-				wxT("Printing to EPS"), wxOK);
-		if(!printer.Print(this, &printout, true)){
-			wxMessageBox(_T("There was a problem printing to an EPS file.\n"
-						"gmtkViz having trouble printing to file."),
-					wxT("Error Printing to EPS"), wxOK);
-			return;
-		}
-#else
-		if(!printer.Print(this, &printout, false)){
-			wxMessageBox(_T("There was a problem printing to an EPS file.\n"
-						"gmtkViz having trouble printing to file."),
-					wxT("Error Printing to EPS"), wxOK);
-			return;
-		}
-#endif
-		
+//  The following is cribbed from GmtkPrintout::DrawPageOne()
+//  to manage the scaling & origin. We don't need a wxPrintout
+//  since we're drawing directly to a DC.
+
+/* You might use THIS code if you were scaling
+* graphics of known size to fit on the page.
+	*/
+	int w, h;
+	
+	float maxX = curPage->getWidth();
+	float maxY = curPage->getHeight();
+	
+	// Let's have at least 10 device units margin
+	float marginX = 10;
+	float marginY = 10;
+	
+	// Add the margin to the graphic size
+	maxX += (2*marginX);
+	maxY += (2*marginY);
+	
+	// Get the size of the DC in pixels
+	psdc.GetSize(&w, &h);
+	
+	// Calculate a suitable scaling factor
+	float scaleX=(float)(w/maxX);
+	float scaleY=(float)(h/maxY);
+	
+	// Use x or y scaling factor, whichever fits on the DC
+	float actualScale = wxMin(scaleX,scaleY);
+	
+	// Calculate the position on the DC for centring the graphic
+	float posX = (float)((w - (curPage->getWidth()*actualScale))/2.0);
+	float posY = (float)((h - (curPage->getHeight()*actualScale))/2.0);
+	
+	// Set the scale and origin
+	psdc.SetUserScale(actualScale, actualScale);
+	psdc.SetDeviceOrigin( (long)posX, (long)posY );
+	//dc->SetUserScale(1.0, 1.0);
+
+	//wxFont oldFont = dc->GetFont();
+	//wxFont scaledFont(oldFont);
+	//scaledFont.SetPointSize((int)(actualScale*oldFont.GetPointSize()));
+	//dc->SetFont(scaledFont);
+
+	//turn off controlpts and selectBox if they're viewable
+	bool had_view_cps = curPage->getViewCPs();
+	if(had_view_cps)
+		curPage->toggleViewCPs();
+	bool had_view_select_box = curPage->getViewSelectBox();
+	if(had_view_select_box)
+		curPage->toggleViewSelectBox();
+
+	//deselect everything
+	curPage->setAllSelected(false);
+
+
+                psdc.StartDoc(wxT("printing..."));  // create the file
+		curPage->draw(psdc);                // draw the graph
+		psdc.EndDoc();                      // close the file
+
+	//dc->SetFont(oldFont);
+	
+	//revert to the previous settings with the controlpts and selectBox
+	if(had_view_cps)
+		curPage->toggleViewCPs();
+	if(had_view_select_box)
+		curPage->toggleViewSelectBox();
+
 		//this is the command being sent to the shell (single quote the file name)
 		string ps2eps_cmd = "cat ";
-		ps2eps_cmd.append(printer.GetPrintDialogData().GetPrintData().GetFilename());
-		ps2eps_cmd.append(" | ps2eps > '");
+		ps2eps_cmd.append(temp_file_name);
+		ps2eps_cmd.append(" | ");
+		ps2eps_cmd.append(PS2EPS_Command());
+		ps2eps_cmd.append(" > '");
 
 		//quote single quotes to be safe
 		string temp_path = eps_file_dialog.GetPath().wx_str();
@@ -2451,7 +2535,6 @@ void GFrame::OnMenuFilePrintEPS(wxCommandEvent &event)
 		}
 		ps2eps_cmd.append(temp_path);
 		ps2eps_cmd.append("'");
-		
 		//execute the command
 		if(system(ps2eps_cmd.c_str()) != 0){
 			//print error if needed
@@ -2463,10 +2546,10 @@ void GFrame::OnMenuFilePrintEPS(wxCommandEvent &event)
 
 		//get rid of temp file
 		wxRemoveFile(temp_file_name);
-		
+
 		//revert to previous settings
 		if(!had_bounding_box)
-			curPage->toggleViewBoundingBox();
+		  curPage->toggleViewBoundingBox();
 	}
 }
 
@@ -4105,8 +4188,17 @@ StructPage::StructPage(wxWindow *parent, wxWindowID id,
 		// valid below we may mark it invalid
 		bool strFile_valid = true;
 		//these are just char * versions of the filenames
+#if 1
+                // Fix for strange wxWidgets wxString::char_str() issue
+                // See https://j.ee.washington.edu/trac/gmtk/ticket/349
+                wxCharBuffer str_cb = strFile.char_str(wxConvUTF8);
+                const char *strFile_cstr = str_cb.data();
+                wxCharBuffer gvp_cb = gvpFile.char_str(wxConvUTF8);
+                const char *gvpFile_cstr = gvp_cb.data();
+#else
 		char * strFile_cstr = strFile.char_str(wxConvUTF8);
 		char * gvpFile_cstr = gvpFile.char_str(wxConvUTF8);
+#endif
 		/* store the strFile name so that we can use it to in the FileParser
 		 * this way we only need to have 1 call to the FileParser, even
 		 * if we modify the tempFileName
@@ -4665,15 +4757,15 @@ StructPage::initNodes( void )
 				sepType = VizSep::EPILOGUE;
 			frameEnds.push_back(new VizSep( curPos.x, this, sepType ));
 			// if a position was specified, move the frameEnd to it
-			key.sprintf("frameEnds[%d].x", i);
+			key.sprintf("frameEnds[%d].x", curFrame);
 			value = config[key];
 			if (value != wxEmptyString) {
 				long xPos;
 				if (value.ToLong(&xPos)) {
-					frameEnds[i]->x = xPos;
+					frameEnds[curFrame]->x = xPos;
 				} else {
 					wxString msg;
-					msg.sprintf("frameEnds[%d].x is not a number", i);
+					msg.sprintf("frameEnds[%d].x is not a number", curFrame);
 					wxLogMessage(msg);
 					gvpAborted = true;
 				}
@@ -5063,7 +5155,15 @@ StructPage::OnChar( wxKeyEvent &event )
 	mouse_pos.x = (int)round(mouse_pos.x / gZoomMap[displayScale]);
 	mouse_pos.y = (int)round(mouse_pos.y / gZoomMap[displayScale]);
 
-	if (event.m_keyCode == WXK_DELETE || event.m_keyCode == 'r') {
+// See https://j.ee.washington.edu/trac/gmtk/71 - Some Apple keyboards
+// have keys labeled "delete" tht actually generate backspace events.
+// Uncomment WXK_BACK below to allow backspace to also delete control
+// points in addition to the delete key. Note that, at least on my MacBook,
+// I can generate WXK_DELETE by holding down the fn key and hitting delete
+
+	if (event.m_keyCode == WXK_DELETE || /* event.m_keyCode == WXK_BACK || */
+            event.m_keyCode == 'r') 
+  	{
 		save_undo();
 		//if we actually deleted any cps then redraw, otherwise pop
 		//one state from the undo stack
@@ -9555,11 +9655,13 @@ GmtkHelp::doLayout()
 	help_msg->SetDefaultStyle(italic);
 	help_msg->AppendText("\t'delete'");
 	help_msg->SetDefaultStyle(normal);
-	help_msg->AppendText(" : deletes selected contropoint(s). NOTE: this will not delete anything except control points\n");
+	help_msg->AppendText(" : deletes selected contropoint(s). NOTE: this will not delete anything except control points.\n"
+			     "\t\tAlso note that some Apple keyboards label the BACKSPACE key as DELETE. You might try fn-DELETE\n"
+			     "\t\tif DELETE by itself doesn't work.\n");
 	help_msg->SetDefaultStyle(italic);
 	help_msg->AppendText("\t'r'");
 	help_msg->SetDefaultStyle(normal);
-	help_msg->AppendText(" : deletes selected contropoint(s). NOTE: this will not delete anything except control points\n");
+	help_msg->AppendText(" : deletes selected contropoint(s). NOTE: this will not delete anything except control points.\n");
 	help_msg->SetDefaultStyle(italic);
 	help_msg->AppendText("\t'g'");
 	help_msg->SetDefaultStyle(normal);

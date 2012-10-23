@@ -27,8 +27,12 @@
 //#define _TABLE_
 
 // What we call ~log(0).
+
+// See https://j.ee.washington.edu/trac/gmtk/ticket/310
+// making LZERO much bigger than -1e16 for doubles can 
+// result in 0 + 0 != 0 in logp::+ 
 #ifndef LZERO 
-#define LZERO  (-1.0E10)
+#define LZERO  (-1.0E17)
 #endif
 
 // Things that result in log values < LSMALL are set to LZERO.
@@ -204,6 +208,13 @@ public:
       logp<FT,iFT> z((void*)0);
       // could use table lookup here, or if we could
       // write a function to do log(1+exp(x)) directly w/o two calls.
+
+      // See https://j.ee.washington.edu/trac/gmtk/ticket/310
+      // We're relying here on floating point rounding to ensure
+      // that x.v + log(1 + exp(diff)) == LZERO + log(2) == LZERO
+      // when x == y == LZERO. LZERO must be sufficiently smaller
+      // than log(2) for this to work. "Sufficiently" is dependent
+      // on iFT.
 #ifdef _TABLE_
       z.v = x.v + table[int(diff*inc)]; 
 #else
@@ -376,6 +387,9 @@ public:
 /////////////////////////////////////////////////////
 // The default log probability type used by users 
 // of this class.
+
+// See https://j.ee.washington.edu/trac/gmtk/ticket/310
+// You may need to change LZERO if you change iFT
 typedef logp<double,double> logpr;
 /////////////////////////////////////////////////////
 

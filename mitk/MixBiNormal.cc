@@ -40,6 +40,20 @@
 #include "MixBiNormal.h"
 #include "error.h"
 
+
+// Some stuff to deal with large file support
+//  First make sure things still work if we do not have fseeko/ftello
+#if HAVE_FSEEKO
+#  define gmtk_fseek(a,b,c) fseeko(a,b,c)
+#  define gmtk_ftell(a) ftello(a)
+   typedef off_t gmtk_off_t;
+#else
+#  define gmtk_fseek(a,b,c) fseek(a,b,c)
+#  define gmtk_ftell(a) ftell(a)
+   typedef long gmtk_off_t;
+#endif
+
+
 // Read the logic.  If you want ieeefp.h, define HAVE_IEEEFP_H
 // (or, better, use autoconf to set it for you)
 //#ifdef HAVE_SYS_IEEEFP_H
@@ -1552,7 +1566,7 @@ MixBiNormal::readCurParamsBin(FILE *f)
       sizeof(cur_means[0].u[0])*2+
       sizeof(cur_covars[0].s[0])*3+
       sizeof(cur_alphas[0])*1;
-    if (::fseek(f,offset*(OrigNumMixComps-NumMixComps),SEEK_CUR) == -1)
+    if (gmtk_fseek(f,(gmtk_off_t)(offset*(OrigNumMixComps-NumMixComps)),SEEK_CUR) == -1)
       error("Problem seeking over mixture components in file.");
   }
 }
@@ -1579,7 +1593,7 @@ MixBiNormal::printCurParamsBin(FILE *f)
       sizeof(cur_means[0].u[0])*2+
       sizeof(cur_covars[0].s[0])*3+
       sizeof(cur_alphas[0])*1;
-    if (::fseek(f,offset*(OrigNumMixComps-NumMixComps),SEEK_CUR) == -1)
+    if (gmtk_fseek(f,(gmtk_off_t)(offset*(OrigNumMixComps-NumMixComps)),SEEK_CUR) == -1)
       error("Problem seeking over mixture components in file.");
   }
 }
@@ -1591,7 +1605,7 @@ MixBiNormal::seekOverCurParamsBin(FILE *f)
     sizeof(cur_means[0].u[0])*2+
     sizeof(cur_covars[0].s[0])*3+
     sizeof(cur_alphas[0])*1;
-  if (::fseek(f,sizeof(unsigned char) + offset*OrigNumMixComps,SEEK_CUR) == -1)
+  if (gmtk_fseek(f,(gmtk_off_t)(sizeof(unsigned char) + offset*OrigNumMixComps),SEEK_CUR) == -1)
     error("Problem seeking over mixture components in file.");
 }
 

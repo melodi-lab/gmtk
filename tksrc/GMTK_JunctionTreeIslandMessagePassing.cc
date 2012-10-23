@@ -31,6 +31,7 @@
 #include <set>
 #include <algorithm>
 #include <new>
+#include <typeinfo>
 
 #include "general.h"
 #include "error.h"
@@ -43,6 +44,9 @@
 #include "GMTK_GMTemplate.h"
 #include "GMTK_JunctionTree.h"
 #include "GMTK_GMParms.h"
+
+#include "GMTK_FileSource.h"
+#include "GMTK_StreamSource.h"
 
 
 ////////////////////////////////////////////////////////////////////
@@ -71,9 +75,21 @@ VCID(HGID)
 PartitionTables* JunctionTree::
 createPartition(const unsigned part)
 {
+  unsigned inferenceDebugLevel = IM::glbMsgLevel(IM::Inference);
+  unsigned inferenceMemoryDebugLevel = IM::glbMsgLevel(IM::InferenceMemory);
+
+  if (! partitionDebugRange.contains((int)part)) {
+    IM::setGlbMsgLevel(IM::Inference, IM::glbMsgLevel(IM::DefaultModule));
+    IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
+  }
+
   setCurrentInferenceShiftTo(part);
-  infoMsg(IM::Mod,"$$$ createPartition: part = %d, nm = %s\n",
+  infoMsg(IM::Inference, IM::Mod,"$$$ createPartition: part = %d, nm = %s\n",
 	  part,inference_it.cur_nm());
+  if (! partitionDebugRange.contains((int)part)) {
+    IM::setGlbMsgLevel(IM::InferenceMemory, inferenceMemoryDebugLevel);
+    IM::setGlbMsgLevel(IM::Inference, inferenceDebugLevel);
+  }
   if (cur_prob_evidence.not_essentially_zero())
     return new PartitionTables(inference_it.cur_jt_partition());
   else
@@ -188,7 +204,8 @@ void JunctionTree::
 deleteIsland(const unsigned part)
 {
   setCurrentInferenceShiftTo(part);
-  infoMsg(IM::Mod,"*** deleteIsland: part = %d (%s)\n",
+  if (partitionDebugRange.contains((int)part))
+    infoMsg(IM::Inference, IM::Mod,"*** deleteIsland: part = %d (%s)\n",
 	  part,inference_it.cur_nm());
   map < unsigned, PartitionTables*>::iterator it;
   it = islandsMap.find(part);
@@ -205,8 +222,16 @@ void JunctionTree::
 storeIsland(const unsigned part,
 	    PartitionTables *pt)
 {
+  unsigned inferenceDebugLevel = IM::glbMsgLevel(IM::Inference);
+  unsigned inferenceMemoryDebugLevel = IM::glbMsgLevel(IM::InferenceMemory);
+
+  if (! partitionDebugRange.contains((int)part)) {
+    IM::setGlbMsgLevel(IM::Inference, IM::glbMsgLevel(IM::DefaultModule));
+    IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
+  }
+
   setCurrentInferenceShiftTo(part);
-  infoMsg(IM::Mod,"$$$ storeIsland: part = %d, nm = %s\n",
+  infoMsg(IM::Inference, IM::Mod,"$$$ storeIsland: part = %d, nm = %s\n",
 	  part,inference_it.cur_nm());
   // check that it is not there already.
   map < unsigned, PartitionTables*>::iterator it;
@@ -214,19 +239,35 @@ storeIsland(const unsigned part,
   assert (it == islandsMap.end());
   // and add it
   islandsMap[part] = pt;
+  if (! partitionDebugRange.contains((int)part)) {
+    IM::setGlbMsgLevel(IM::InferenceMemory, inferenceMemoryDebugLevel);
+    IM::setGlbMsgLevel(IM::Inference, inferenceDebugLevel);
+  }
 }
 
 
 PartitionTables* JunctionTree::
 retreiveIsland(const unsigned part)
 {
+  unsigned inferenceDebugLevel = IM::glbMsgLevel(IM::Inference);
+  unsigned inferenceMemoryDebugLevel = IM::glbMsgLevel(IM::InferenceMemory);
+
+  if (! partitionDebugRange.contains((int)part)) {
+    IM::setGlbMsgLevel(IM::Inference, IM::glbMsgLevel(IM::DefaultModule));
+    IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
+  }
+
   setCurrentInferenceShiftTo(part);
-  infoMsg(IM::Mod,"$$$ retreiveIsland: part = %d, nm = %s\n",
+  infoMsg(IM::Inference, IM::Mod,"$$$ retreiveIsland: part = %d, nm = %s\n",
 	  part,inference_it.cur_nm());
   map < unsigned, PartitionTables*>::iterator it;
   it = islandsMap.find(part);
   assert (it != islandsMap.end());
   assert ((*it).second != NULL);
+  if (! partitionDebugRange.contains((int)part)) {
+    IM::setGlbMsgLevel(IM::InferenceMemory, inferenceMemoryDebugLevel);
+    IM::setGlbMsgLevel(IM::Inference, inferenceDebugLevel);
+  }
   return ((*it).second);
 }
 
@@ -236,8 +277,20 @@ void JunctionTree::
 ceGatherIntoRoot(const unsigned part,
 		 PartitionTables *pt)
 {
+  unsigned inferenceDebugLevel = IM::glbMsgLevel(IM::Inference);
+  unsigned inferenceMemoryDebugLevel = IM::glbMsgLevel(IM::InferenceMemory);
+
+  if (! partitionDebugRange.contains((int)part)) {
+#if 0
+    printf("ceGather [part %u]: lowering inference level to %d\n", 
+	   part, IM::glbMsgLevel(IM::DefaultModule));
+#endif
+    IM::setGlbMsgLevel(IM::Inference, IM::glbMsgLevel(IM::DefaultModule));
+    IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
+  }
+
   setCurrentInferenceShiftTo(part);
-  infoMsg(IM::Mod,"==> ceGatherIntoRoot: part = %d, nm = %s\n",
+  infoMsg(IM::Inference, IM::Mod,"==> ceGatherIntoRoot: part = %d, nm = %s\n",
 	  part,inference_it.cur_nm());
 
   // We check here the condition if the partition number is 1 (i.e.,
@@ -264,6 +317,15 @@ ceGatherIntoRoot(const unsigned part,
     E1.useLISeparator();
   }
 
+  if (! partitionDebugRange.contains((int)part)) {
+#if 0
+    printf("ceGather [part %u]: raising inference level to %d\n", 
+	   part, inferenceDebugLevel);
+#endif
+    IM::setGlbMsgLevel(IM::InferenceMemory, inferenceMemoryDebugLevel);
+    IM::setGlbMsgLevel(IM::Inference, inferenceDebugLevel);
+  }
+
 }
 
 
@@ -271,8 +333,19 @@ void JunctionTree::
 deScatterOutofRoot(const unsigned part,
 		   PartitionTables* pt)
 {
+  unsigned inferenceDebugLevel = IM::glbMsgLevel(IM::Inference);
+  unsigned inferenceMemoryDebugLevel = IM::glbMsgLevel(IM::InferenceMemory);
+
+  if (! partitionDebugRange.contains((int)part)) {
+#if 0
+    printf("deScatter [part %u]: lowering inference level to %d\n", part, IM::glbMsgLevel(IM::DefaultModule));
+#endif
+    IM::setGlbMsgLevel(IM::Inference, IM::glbMsgLevel(IM::DefaultModule));
+    IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
+  }
+
   setCurrentInferenceShiftTo(part);
-  infoMsg(IM::Mod,"<== deScatterOutofRoot: part = %d (%s)\n",
+  infoMsg(IM::Inference, IM::Mod,"<== deScatterOutofRoot: part = %d (%s)\n",
 	  part,inference_it.cur_nm());
 
   if (inference_it.at_first_c() && P1.cliques.size() == 0) {
@@ -293,6 +366,13 @@ deScatterOutofRoot(const unsigned part,
     E1.useLISeparator();
   }
 
+  if (! partitionDebugRange.contains((int)part)) {
+#if 0
+    printf("deScatter [part %u]: raising inference level to %d\n", part, inferenceDebugLevel);
+#endif
+    IM::setGlbMsgLevel(IM::InferenceMemory, inferenceMemoryDebugLevel);
+    IM::setGlbMsgLevel(IM::Inference, inferenceDebugLevel);
+  }
 }
 
 
@@ -308,9 +388,22 @@ ceSendForwardsCrossPartitions(const unsigned lpart,
   // the right pair is aligned with rpt, and we shift to lpart+1
   // so that both partitions 'lpart' and 'lpart+1' are active, and we
   // need this since we're sending a message from 'lpart' to 'lpart+1'.
+
+  unsigned inferenceDebugLevel = IM::glbMsgLevel(IM::Inference);
+  unsigned inferenceMemoryDebugLevel = IM::glbMsgLevel(IM::InferenceMemory);
+
+  if (! partitionDebugRange.contains((int)lpart+1)) {
+#if 0
+    printf("ceGather [part %u]: lowering inference level to %d\n", 
+	   next_part_num, IM::glbMsgLevel(IM::DefaultModule));
+#endif
+    IM::setGlbMsgLevel(IM::Inference, IM::glbMsgLevel(IM::DefaultModule));
+    IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
+  }
+
   setCurrentInferenceShiftTo(lpart+1);
 
-  infoMsg(IM::Mod,"--> ceSendForwardsCrossPartitions: left part[%d] (%s) --> right part[%d] (%s)\n",
+  infoMsg(IM::Inference, IM::Mod,"--> ceSendForwardsCrossPartitions: left part[%d] (%s) --> right part[%d] (%s)\n",
 	  inference_it.pt_prev_i(),inference_it.prev_nm(),
 	  inference_it.pt_i(),inference_it.cur_nm());
 
@@ -328,6 +421,14 @@ ceSendForwardsCrossPartitions(const unsigned lpart,
 				  inference_it.cur_nm(),
 				  inference_it.pt_i());
 
+  if (! partitionDebugRange.contains((int)lpart+1)) {
+#if 0
+    printf("ceGather [part %u]: raising inference level to %d\n", 
+	   next_part_num, inferenceDebugLevel);
+#endif
+    IM::setGlbMsgLevel(IM::InferenceMemory, inferenceMemoryDebugLevel);
+    IM::setGlbMsgLevel(IM::Inference, inferenceDebugLevel);
+  }
 }
 
 
@@ -345,6 +446,14 @@ deSendBackwardsCrossPartitions(const unsigned left_part,
 			       PartitionTables *lpt,
 			       PartitionTables *rpt)
 {
+  unsigned inferenceDebugLevel = IM::glbMsgLevel(IM::Inference);
+  unsigned inferenceMemoryDebugLevel = IM::glbMsgLevel(IM::InferenceMemory);
+
+  if (! partitionDebugRange.contains((int)left_part)) {
+    IM::setGlbMsgLevel(IM::Inference, IM::glbMsgLevel(IM::DefaultModule));
+    IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
+  }
+
 
   // Some debugging messages. Don't delete in case we want
   // to re-activate them.
@@ -362,7 +471,7 @@ deSendBackwardsCrossPartitions(const unsigned left_part,
   // we shift the variables so that the right pair is aligned
   // with rpt.
   setCurrentInferenceShiftTo(left_part+1);
-  infoMsg(IM::Mod,
+  infoMsg(IM::Inference, IM::Mod,
          "<-- deSendBackwardsCrossPartitions: left part[%d] (%s) <-- right part[%d] (%s)\n",
 	  inference_it.pt_prev_i(),inference_it.prev_nm(),
 	  inference_it.pt_i(),inference_it.cur_nm());
@@ -381,6 +490,10 @@ deSendBackwardsCrossPartitions(const unsigned left_part,
 				  inference_it.cur_nm(),
 				  inference_it.pt_i());
 
+  if (! partitionDebugRange.contains((int)left_part)) {
+    IM::setGlbMsgLevel(IM::InferenceMemory, inferenceMemoryDebugLevel);
+    IM::setGlbMsgLevel(IM::Inference, inferenceDebugLevel);
+  }
 }
 
 
@@ -391,7 +504,8 @@ JunctionTree::probEvidenceRoot(const unsigned part,
 {
   setCurrentInferenceShiftTo(part);
   // return the sum of probs for the root (right interface) clique of the given partition.
-  infoMsg(IM::Mod,"^^^ computing evidence for JT root: part = %d (%s)\n",
+  if (partitionDebugRange.contains((int)part))
+    infoMsg(IM::Inference, IM::Mod,"^^^ computing evidence for JT root: part = %d (%s)\n",
 	  part,inference_it.cur_nm());
   return pt->maxCliques[inference_it.cur_ri()].sumProbabilities();
 }
@@ -403,7 +517,8 @@ JunctionTree::setRootToMaxCliqueValue(const unsigned part,
 {
   setCurrentInferenceShiftTo(part);
   // return the sum of probs for the root (right interface) clique of the given partition.
-  infoMsg(IM::Mod,"^^^ setting JT root to max clique value: part = %d (%s)\n",
+  if (partitionDebugRange.contains((int)part))
+    infoMsg(IM::Inference, IM::Mod,"^^^ setting JT root to max clique value: part = %d (%s)\n",
 	  part,inference_it.cur_nm());
   return pt->maxCliques[inference_it.cur_ri()].maxProbability(partitionStructureArray[inference_it.ps_i()].maxCliquesSharedStructure[inference_it.cur_ri()]);
 }
@@ -417,7 +532,8 @@ JunctionTree::emIncrementIsland(const unsigned part,
 {
   setCurrentInferenceShiftTo(part);
   // increment for this partition.
-  infoMsg(IM::Mod,"^^^ incrementing EM: part = %d (%s)\n",
+  if (partitionDebugRange.contains((int)part))
+    infoMsg(IM::Training, IM::Mod,"^^^ incrementing EM: part = %d (%s)\n",
 	  part,inference_it.cur_nm());
   return pt->emIncrement(partitionStructureArray[inference_it.ps_i()],
 			 cur_prob_evidence,
@@ -614,7 +730,8 @@ JunctionTree::collectDistributeIslandBase(const unsigned start,
       // 'probEvidenceRoot' call above. If this routine changes
       // we'll need to uncomment the following line.
       // setCurrentInferenceShiftTo(part);
-      infoMsg(IM::Low,"XXX Island Finished Inference: part = %d (%s): log probE = %f\n",
+      if (partitionDebugRange.contains((int)part))
+	infoMsg(IM::Inference, IM::Low,"XXX Island Finished Inference: part = %d (%s): log probE = %f\n",
 	      part,inference_it.cur_nm(),
 	      cur_prob_evidence.valref());
 
@@ -622,7 +739,8 @@ JunctionTree::collectDistributeIslandBase(const unsigned start,
 	// TODO: Only initialize this if we are not doing
 	// localCliqueNormalization
 	if (cur_prob_evidence.essentially_zero()) {
-	  infoMsg(IM::Default,"Island not training segment since probability is essentially zero\n");
+	  if (partitionDebugRange.contains((int)part))
+	    infoMsg(IM::Training,IM::Default,"Island not training segment since probability is essentially zero\n");
 	  // Note that we can't freely just jump out as we have to
 	  // free up all the memory that we allocated. We thus have to
 	  // check a bunch of conditions on the way out and do EM
@@ -632,7 +750,8 @@ JunctionTree::collectDistributeIslandBase(const unsigned start,
 	}
       } else if (runViterbiAlgorithm) {
 	if (cur_prob_evidence.essentially_zero()) {
-	  infoMsg(IM::Default,"Island not decoding segment since probability is essentially zero\n");
+	  if (partitionDebugRange.contains((int)part))
+	    infoMsg(IM::Inference, IM::Default,"Island not decoding segment since probability is essentially zero\n");
 	  // note that we can't freely just jump out as we have to
 	  // free up all the memory that we allocated. We thus have to
 	  // check a bunch of conditions on the way out and do
@@ -682,8 +801,8 @@ JunctionTree::collectDistributeIslandBase(const unsigned start,
     // decoding, scoring, etc.
     if (cur_prob_evidence.not_essentially_zero()) {
 
-      if (IM::messageGlb(IM::Mod)) {
-	infoMsg(IM::Mod,"!!! finished partition: part = %d (%s)\n",
+      if (IM::messageGlb(IM::Inference, IM::Mod) && partitionDebugRange.contains((int)part)) {
+	infoMsg(IM::Inference, IM::Mod,"!!! finished partition: part = %d (%s)\n",
 		part,inference_it.cur_nm());
 	printAllCliqueProbabilties(part,islandPartitionTableArray.ptr[part - start]);
       }
@@ -769,7 +888,7 @@ JunctionTree::collectDistributeIslandRecurse(const unsigned start,
     const unsigned section_size = len/base;
 
     if (section_size <= 1) {
-      infoMsg(IM::Huge,"Island collect/distribute inference, log base (%d) too large for current sect length (%d) & linear sect threshold (%d), it would result in sub sect len (%d). Backing off to linear case.\n",base,len,linear_section_threshold,section_size);
+      infoMsg(IM::Inference, IM::Huge,"Island collect/distribute inference, log base (%d) too large for current sect length (%d) & linear sect threshold (%d), it would result in sub sect len (%d). Backing off to linear case.\n",base,len,linear_section_threshold,section_size);
       // First, we might need to reallocate the linear size array since it it is possible that
       // we are jumping down to base before we have reached the linear threshold.
       islandPartitionTableArray.growIfNeeded(end-start+1);
@@ -1022,11 +1141,14 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
 				      // that are actually used.
 				      unsigned& numUsableFrames,
 				      // the base of the logarithm
-				      const unsigned base,
+				      unsigned base,
 				      // the threshold at which we drop
 				      // down to the linear collect/distribute
 				      // evidence stage.
 				      const unsigned linear_section_threshold,
+				      // use pow(numUsableFrames,islandRoot) for logarithm base
+				      const bool rootBase,
+				      const float islandRoot,
 				      const bool runEMalgorithm,
 				      const bool runViterbiAlgorithm,
 				      const bool localCliqueNormalization)
@@ -1037,7 +1159,8 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
 
   // must have a linear_section_threshold of at least two partitions.
   if (linear_section_threshold < 2)
-    error("ERROR: Island algorithm collect/distribute inference. linear section threshold value (%d) is too small.\n",linear_section_threshold);
+    error("ERROR: Island algorithm collect/distribute inference. linear section threshold value (%d) is too small.\n",
+	  linear_section_threshold);
 
   // the log base must be a number that actually causes a split.
   if (base <= 1)
@@ -1045,6 +1168,23 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
 
   unsigned totalNumberPartitions;
   numUsableFrames = unroll(numFrames,ZeroTable,&totalNumberPartitions);
+
+  FileSource *gomFS;
+  // This should be safe since gmtkOnline is the only program
+  // that does inference and doesn't use FileSource and gmtkOnline
+  // only uses onlineFixedUnroll
+  gomFS= static_cast<FileSource *>(globalObservationMatrix);
+  assert(typeid(*globalObservationMatrix) == typeid(*gomFS));
+  gomFS->justifySegment(numUsableFrames);
+
+  if (rootBase) {
+    if (islandRoot < 0.0 || 1.0 < islandRoot) {
+      error("ERROR: Island root (%f) must be between 0 and 1", islandRoot);
+    }
+    base = (unsigned)(pow((double) numUsableFrames, islandRoot) + 0.5);
+    infoMsg(IM::Inference, IM::Moderate, "Island logarithm base is pow(%u,%f) = %u\n", 
+	    numUsableFrames, islandRoot, base);
+  }
 
   // In the island algorithm, we never hold more than the linear
   // section (stored in islandPartitionTableArray) and the island partitions
@@ -1094,13 +1234,18 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
   // allocated, so we make sure to do that here.
   PartitionTables* pt = new PartitionTables(inference_it.cur_jt_partition());
   storeIsland(0,pt);
-  ceGatherIntoRoot(0,pt);
-  collectDistributeIslandRecurse(0,totalNumberPartitions-1,base,linear_section_threshold,
-				 runEMalgorithm,
-				 runViterbiAlgorithm,
-				 localCliqueNormalization);
-  deleteIsland(0);
-
+  try {
+    ceGatherIntoRoot(0,pt);
+    collectDistributeIslandRecurse(0,totalNumberPartitions-1,base,linear_section_threshold,
+				   runEMalgorithm,
+				   runViterbiAlgorithm,
+				   localCliqueNormalization);
+    deleteIsland(0);
+  } catch (ZeroCliqueException &e) {
+    islandsMap.clear();
+    E1.useLISeparator();
+    throw ZeroCliqueException();
+  }
   // TODO: if we get zero probability, right now the code unwinds all
   // the way to delete the islands. Since we have all the islands here
   // in this map data structure, we don't need to do that and can jump

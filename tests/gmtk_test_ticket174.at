@@ -1,0 +1,36 @@
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/174 is fixed
+
+# should include "notfound.pfile" in error message if bug is fixed
+
+AT_SETUP([ticket 174])
+AT_CHECK([obs-concat -of1 notfound.pfile], [ignore], [ignore],
+         [Couldn't open input pfile notfound.pfile for reading.
+])
+# extra EOL above is necessary for test to pass
+
+AT_CHECK([obs-info -of1 notfound.pfile], [ignore], [ignore],
+         [Couldn't open input pfile notfound.pfile for reading.
+])
+# extra EOL above is necessary for test to pass
+
+AT_CHECK([obs-print -of1 notfound.pfile], [ignore], [ignore],
+         [Couldn't open input pfile notfound.pfile for reading.
+])
+# extra EOL above is necessary for test to pass
+
+AT_CHECK([obs-skmeans -of1 notfound.pfile], [ignore], [ignore],
+         [Couldn't open input pfile notfound.pfile for reading.
+])
+# extra EOL above is necessary for test to pass
+
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/simple_hmm_1])
+AT_CHECK([cd $TEST_AND_DEV/simple_hmm_1;
+          gmtkJT -iswp1 -strFile ex.str \
+                 -of1 notfound.pfile -nf1 26 \
+                 -inputMasterFile ex.params],
+         [ignore],[ignore],
+         [Couldn't open input pfile notfound.pfile for reading.
+])
+# extra EOL above is necessary for test to pass
+AT_CLEANUP
+

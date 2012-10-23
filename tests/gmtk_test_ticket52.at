@@ -1,0 +1,11 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/52 is fixed
+
+AT_SETUP([ticket 52])
+AT_CHECK([obs-print -version],[],[ignore])
+AT_CHECK([obs-skmeans -version],[],[ignore])
+AT_CHECK([obs-info -version],[],[ignore])
+AT_CHECK([obs-diff -version],[],[ignore])
+AT_CHECK([obs-concat -version],[],[ignore])
+AT_CLEANUP
+

@@ -49,7 +49,20 @@ VCID(HGID)
 #include "GMTK_ContRV.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_GMParms.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_ObservationSource.h"
+#  include "GMTK_FileSource.h"
+#  include "GMTK_ASCIIFile.h"
+#  include "GMTK_FlatASCIIFile.h"
+#  include "GMTK_PFileFile.h"
+#  include "GMTK_HTKFile.h"
+#  include "GMTK_HDF5File.h"
+#  include "GMTK_BinaryFile.h"
+#  include "GMTK_Filter.h"
+#  include "GMTK_Stream.h"
+#endif
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_MeanVector.h"
@@ -59,14 +72,26 @@ VCID(HGID)
 #include "GMTK_BoundaryTriangulate.h"
 #include "GMTK_JunctionTree.h"
 
+#define GMTK_ARG_INPUT_MODEL_FILE_HANDLING         
 #define GMTK_ARG_STR_FILE
+
+#define GMTK_ARG_GENERAL_OPTIONS
+#define GMTK_ARG_VERB
+#define GMTK_ARG_HELP
+#define GMTK_ARG_SKIP_STARTUP_CHECKS
+
+#define GMTK_ARG_INPUT_TRAINABLE_FILE_HANDLING
 #define GMTK_ARG_CPP_CMD_OPTS
+
+#define GMTK_ARG_TRIANGULATION_OPTIONS
 #define GMTK_ARG_LOAD_PARAMETERS
-#define GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG
-#define GMTK_ARG_INPUT_TRAINABLE_PARAMS
 #define GMTK_ARG_OUTPUT_TRI_FILE
 #define GMTK_ARG_NUM_BACKUP_FILES
-#define GMTK_ARG_VERB
+
+#define GMTK_ARG_INPUT_TRAINABLE_FILE_HANDLING
+#define GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG
+#define GMTK_ARG_DLOPEN_MAPPERS
+#define GMTK_ARG_INPUT_TRAINABLE_PARAMS
 #define GMTK_ARG_ALLOC_DENSE_CPTS
 #define GMTK_ARG_CHECK_TRI_FILE_CARD
 
@@ -114,7 +139,12 @@ Arg Arg::Args[] = {
  */
 RAND rnd(false);
 GMParms GM_Parms;
+#if 0
 ObservationMatrix globalObservationMatrix;
+#else
+FileSource fileSource;
+ObservationSource *globalObservationMatrix = &fileSource;
+#endif
 
 /*
  *
@@ -164,7 +194,10 @@ main(int argc,char*argv[])
 
   ////////////////////////////////////////////
   // parse arguments
-  bool parse_was_ok = Arg::parse(argc,(char**)argv);
+  bool parse_was_ok = Arg::parse(argc,(char**)argv,
+"\nThis program merges optionally the P, C, and E triangulated\n"
+"partitions from up to three trifiles all of which must have the\n"
+"same boundary and same underlying .str file.\n");
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }
@@ -198,6 +231,7 @@ main(int argc,char*argv[])
   /////////////////////////////////////////////
   if (loadParameters) {
     // read in all the parameters
+    dlopenDeterministicMaps(dlopenFilenames, MAX_NUM_DLOPENED_FILES);
     if (inputMasterFile) {
       // flat, where everything is contained in one file, always ASCII
       iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);

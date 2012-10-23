@@ -1,0 +1,47 @@
+
+# Verfiy that -verb X produces the same debugging output 
+# in the new modular debugging message framework as it 
+# did before.
+
+# The test runs gmtkViterbi with verbosities from 0 to 100
+# in increments of 5, and compares the results against a
+# version of gmtkViterbi prior to the introduction of the
+# modular debugging framework. The grep and neghead filter
+# out some extraneous output.
+
+# The neghead program implements the GNU head negative
+# argument functionality, i.e., "neghead X" is equivalent
+# to "head -n -X" where X is the number of lines to skip
+# at the end of the file. Some non-GNU head implementations
+# (the Mac OSX one in particular) don't support negative
+# arguments, so this program allows the test to run on
+# platforms without GNU head.
+
+AT_SETUP([modular debugging output2])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
+
+# Cygwin gets slightly different floating point results
+# that are not relevant to the test, so skip it on that 
+# platform
+AT_SKIP_IF([test `uname` = "CYGWIN_NT-6.1"])
+
+AT_SKIP_IF([true])
+AT_CHECK([
+for (( verb=0 ; $verb < 101 ; verb+=5 )); do
+  (cd $TEST_AND_DEV/auroraTutorial && \
+     gmtkViterbi -of1 DATA/small.pfile \
+                 -iswp1 T -nf1 42 -ni1 0 \
+                 -dcdrng 0:0 \
+	  	 -inputMasterFile PARAMS/nonTrainable.master \
+	  	 -inputTrainable PARAMS/highly_trained.gmp \
+	  	 -str PARAMS/aurora_decode.str \
+	  	 -pVitValsFile /dev/null \
+        -verb $verb | grep -v "^Reading " | neghead 2) > out.$verb
+done],[],[ignore])
+for (( verb=0 ; $verb < 101 ; verb+=5 )); do
+AT_CHECK([
+bzcat $TEST_AND_DEV/auroraTutorial/debug2_out/verb.2748.${verb}.bz2 | \
+diff out.$verb -
+],[],[])
+done
+AT_CLEANUP

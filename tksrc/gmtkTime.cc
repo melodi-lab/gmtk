@@ -57,7 +57,21 @@ VCID(HGID)
 #include "GMTK_ContRV.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_GMParms.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_FileSource.h"
+#  include "GMTK_CreateFileSource.h"
+#  include "GMTK_ASCIIFile.h"
+#  include "GMTK_FlatASCIIFile.h"
+#  include "GMTK_PFileFile.h"
+#  include "GMTK_HTKFile.h"
+#  include "GMTK_HDF5File.h"
+#  include "GMTK_BinaryFile.h"
+#  include "GMTK_Filter.h"
+//#  include "GMTK_FileDescription.h"
+//#  include "gmtk_temporary.h"
+#endif
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_MeanVector.h"
@@ -75,13 +89,16 @@ VCID(HGID)
 #define GMTK_ARG_OBS_FILES
 
 /*************************   INPUT TRAINABLE PARAMETER FILE HANDLING  *******************************************/
+#define GMTK_ARG_INPUT_TRAINABLE_FILE_HANDLING
 #define GMTK_ARG_CPP_CMD_OPTS
 #define GMTK_ARG_INPUT_MASTER_FILE
+#define GMTK_ARG_DLOPEN_MAPPERS
 #define GMTK_ARG_INPUT_TRAINABLE_PARAMS
 #define GMTK_ARG_ALLOC_DENSE_CPTS
 #define GMTK_ARG_CPT_NORM_THRES
 
 /*************************   INPUT STRUCTURE PARAMETER FILE HANDLING  *******************************************/
+#define GMTK_ARG_INPUT_MODEL_FILE_HANDLING
 #define GMTK_ARG_STR_FILE
 #define GMTK_ARG_TRI_FILE
 #define GMTK_ARG_CHECK_TRI_FILE_CARD
@@ -91,11 +108,13 @@ VCID(HGID)
 #define GMTK_ARG_LATTICE_PARAMS
 
 /*************************   CONTINUOUS RANDOM VARIABLE OPTIONS       *******************************************/
+#define GMTK_ARG_CONTINUOUS_RANDOM_VAR_OPTIONS
 #define GMTK_ARG_VAR_FLOOR
 #define GMTK_ARG_VAR_FLOOR_ON_READ
 
 
 /*************************          BEAM PRUNING OPTIONS              *******************************************/
+#define GMTK_ARG_BEAM_PRUNING_OPTIONS
 #define GMTK_ARG_CBEAM
 #define GMTK_ARG_CPBEAM
 #define GMTK_ARG_CKBEAM
@@ -105,23 +124,29 @@ VCID(HGID)
 #define GMTK_ARG_SBEAM
 
 /*************************          MEMORY MANAGEMENT OPTIONS         *******************************************/
+#define GMTK_ARG_MEMORY_MANAGEMENT_OPTIONS
 #define GMTK_ARG_HASH_LOAD_FACTOR
 #define GMTK_ARG_STORE_DETERMINISTIC_CHILDREN
 #define GMTK_ARG_CLEAR_CLIQUE_VAL_MEM
+#define GMTK_ARG_MEM_GROWTH
 
 
 /****************************      FILE RANGE OPTIONS             ***********************************************/
+#define GMTK_ARG_FILE_RANGE_OPTIONS
 #define GMTK_ARG_DCDRNG
 #define GMTK_ARG_START_END_SKIP
 
 /****************************         GENERAL OPTIONS             ***********************************************/
+#define GMTK_ARG_GENERAL_OPTIONS
 #define GMTK_ARG_SEED
+#define GMTK_ARG_SKIP_STARTUP_CHECKS
 #define GMTK_ARG_VERB
 #define GMTK_ARG_VERB_DEF_VAL (IM::Default-1)
 #define GMTK_ARG_HELP
 #define GMTK_ARG_VERSION
 
 /****************************         INFERENCE OPTIONS           ***********************************************/
+#define GMTK_ARG_INFERENCE_OPTIONS
 #define GMTK_ARG_DO_DIST_EVIDENCE
 #define GMTK_ARG_PROB_EVIDENCE
 #define GMTK_ARG_ISLAND
@@ -131,14 +156,18 @@ VCID(HGID)
 #define GMTK_ARG_CLIQUE_VAR_ITER_ORDERS
 #define GMTK_ARG_JT_OPTIONS
 #define GMTK_ARG_VE_SEPS
+#define GMTK_ARG_FAIL_ON_ZERO_CLIQUE
 
 /************************  OBSERVATION MATRIX TRANSFORMATION OPTIONS   ******************************************/
+#define GMTK_ARG_OBS_MATRIX_OPTIONS
 #define GMTK_ARG_OBS_MATRIX_XFORMATION
 
 /************************            TIMING OPTIONS                    ******************************************/
+#define GMTK_ARG_TIMING_OPTIONS
 #define GMTK_ARG_TIMING
 
 // should be made conditional on having setrlimit available
+#define GMTK_ARG_RESOURCE_OPTIONS
 #define GMTK_ARG_RLIMIT_PARAMS
 
 /////////////////////////////////////////////////////////////
@@ -170,7 +199,12 @@ Arg Arg::Args[] = {
  */
 RAND rnd(seedme);
 GMParms GM_Parms;
+#if 0
 ObservationMatrix globalObservationMatrix;
+#endif
+
+FileSource *gomFS;
+ObservationSource *globalObservationMatrix;
 
 /*
  *  Signal handler to set JunctionTree's probEvidenceTime expired timer.
@@ -196,7 +230,11 @@ main(int argc,char*argv[])
 
   ////////////////////////////////////////////
   // parse arguments
-  bool parse_was_ok = Arg::parse(argc,(char**)argv);
+  bool parse_was_ok = Arg::parse(argc,(char**)argv,
+"\nThis program runs inference for a given fixed amount of\n"
+"absolute time and reports back the amount of work that was\n"
+"done in that time. This is useful for upper limit timing of\n"
+"a particular triangulation\n");
   if(!parse_was_ok) {
     Arg::usage(); 
     exit(EXIT_FAILURE);
@@ -206,31 +244,12 @@ main(int argc,char*argv[])
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_CHECK_ARGS
 
-  globalObservationMatrix.openFiles(nfiles,
-				    (const char**)&ofs,
-				    (const char**)&frs,
-				    (const char**)&irs,
-				    (unsigned*)&nfs,
-				    (unsigned*)&nis,
-				    (unsigned*)&ifmts,
-				    (bool*)&iswp,
-				    startSkip,
-				    endSkip,
-				    Cpp_If_Ascii,
-				    cppCommandOptions,
-				    (const char**)&postpr,  //Frame_Range_Str,
-				    Action_If_Diff_Num_Frames,
-				    Action_If_Diff_Num_Sents,
-				    Per_Stream_Transforms,
-				    Post_Transforms,
-				    Ftr_Combo,
-				    (const char**)&sr,
-				    (const char**)&prepr,
-				    gpr_str
-				    );
+  gomFS = instantiateFileSource();
+  globalObservationMatrix = gomFS;
 
   /////////////////////////////////////////////
   // read in all the parameters
+  dlopenDeterministicMaps(dlopenFilenames, MAX_NUM_DLOPENED_FILES);
   if (inputMasterFile) {
     // flat, where everything is contained in one file, always ASCII
     iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
@@ -276,7 +295,7 @@ main(int argc,char*argv[])
   fp.checkConsistentWithGlobalObservationStream();
   GM_Parms.checkConsistentWithGlobalObservationStream();
 
-  GM_Parms.setStride(globalObservationMatrix.stride());
+  GM_Parms.setStride(gomFS->stride());
 
   /////
   // TODO: check that beam is a valid value.
@@ -313,6 +332,17 @@ main(int argc,char*argv[])
       }
     }
 
+
+    //    printf("Dlinks: min lag %d    max lag %d\n", Dlinks::globalMinLag(), Dlinks::globalMaxLag());
+    // FIXME - min past = min(dlinkPast, VECPTPast), likewise for future
+    int dlinkPast = Dlinks::globalMinLag();
+    dlinkPast = (dlinkPast < 0) ? -dlinkPast : 0;
+    gomFS->setMinPastFrames( dlinkPast );
+    
+    int dlinkFuture = Dlinks::globalMaxLag();
+    dlinkFuture = (dlinkFuture > 0) ? dlinkFuture : 0;
+    gomFS->setMinFutureFrames( dlinkFuture );
+    
     
     ////////////////////////////////////////////////////////////////////
     // CREATE JUNCTION TREE DATA STRUCTURES
@@ -325,10 +355,10 @@ main(int argc,char*argv[])
     infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
     ////////////////////////////////////////////////////////////////////
     
-    if (globalObservationMatrix.numSegments()==0)
+    if (gomFS->numSegments()==0)
       error("ERROR: no segments are available in observation file");
     
-    Range* dcdrng = new Range(dcdrng_str,0,globalObservationMatrix.numSegments());
+    Range* dcdrng = new Range(dcdrng_str,0,gomFS->numSegments());
     if (dcdrng->length() <= 0) {
       infoMsg(IM::Default,"Training range '%s' specifies empty set. Exiting...\n",
 	      dcdrng_str);
@@ -358,10 +388,10 @@ main(int argc,char*argv[])
 	Range::iterator* dcdrng_it = new Range::iterator(dcdrng->begin());
 	while (!dcdrng_it->at_end()) {
 	  const unsigned segment = (unsigned)(*(*dcdrng_it));
-	  if (globalObservationMatrix.numSegments() < (segment+1)) 
+	  if (gomFS->numSegments() < (segment+1)) 
 	    error("ERROR: only %d segments in file, segment must be in range [%d,%d]\n",
-		  globalObservationMatrix.numSegments(),
-		  0,globalObservationMatrix.numSegments()-1);
+		  gomFS->numSegments(),
+		  0,gomFS->numSegments()-1);
 
 	  const unsigned numFrames = GM_Parms.setSegment(segment);
 
@@ -379,7 +409,8 @@ main(int argc,char*argv[])
 	    myjt.collectDistributeIsland(numFrames,
 					 numUsableFrames,
 					 base,
-					 lst);
+					 lst,
+					 rootBase, islandRootPower);
 	    // TODO: note that frames not always equal to partitions but
 	    // do this for now. Ultimately fix this.
 	    totalNumberPartitionsDone += numUsableFrames;
@@ -673,10 +704,10 @@ main(int argc,char*argv[])
       infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
       ////////////////////////////////////////////////////////////////////
 
-      if (globalObservationMatrix.numSegments()==0)
+      if (gomFS->numSegments()==0)
 	error("ERROR: no segments are available in observation file");
 
-      Range* dcdrng = new Range(dcdrng_str,0,globalObservationMatrix.numSegments());
+      Range* dcdrng = new Range(dcdrng_str,0,gomFS->numSegments());
       if (dcdrng->length() <= 0) {
 	infoMsg(IM::Default,"Training range '%s' specifies empty set. Exiting...\n",
 		dcdrng_str);
@@ -820,10 +851,10 @@ main(int argc,char*argv[])
 	  Range::iterator* dcdrng_it = new Range::iterator(dcdrng->begin());
 	  while (!dcdrng_it->at_end()) {
 	    const unsigned segment = (unsigned)(*(*dcdrng_it));
-	    if (globalObservationMatrix.numSegments() < (segment+1)) 
+	    if (gomFS->numSegments() < (segment+1)) 
 	      error("ERROR: only %d segments in file, segment must be in range [%d,%d]\n",
-		    globalObservationMatrix.numSegments(),
-		    0,globalObservationMatrix.numSegments()-1);
+		    gomFS->numSegments(),
+		    0,gomFS->numSegments()-1);
 
 	    const unsigned numFrames = GM_Parms.setSegment(segment);
 
@@ -841,7 +872,8 @@ main(int argc,char*argv[])
 	      myjt.collectDistributeIsland(numFrames,
 					   numUsableFrames,
 					   base,
-					   lst);
+					   lst,
+					   rootBase, islandRootPower);
 	      // TODO: note that frames not always equal to partitions but
 	      // do this for now. Ultimately fix this.
 	      child_info.totalNumberPartitionsDone += numUsableFrames;

@@ -1,3 +1,4 @@
+
 /*-
  * GMTK_JunctionTree.cc
  *     Junction Tree, message passing routines.
@@ -31,6 +32,20 @@
 #include <set>
 #include <algorithm>
 #include <new>
+#include <typeinfo>
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_INTTYPES_H
+   // The ISO C99 standard specifies that the macros in inttypes.h must
+   //  only be defined if explicitly requested. 
+#  define __STDC_FORMAT_MACROS 1
+#  include <inttypes.h>
+#endif
+#if HAVE_STDINT_H
+#  include <stdint.h>
+#endif
 
 #include "general.h"
 #include "error.h"
@@ -43,7 +58,14 @@
 #include "GMTK_GMTemplate.h"
 #include "GMTK_JunctionTree.h"
 #include "GMTK_GMParms.h"
+#include "GMTK_Dlinks.h"
 
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_FileSource.h"
+#  include "GMTK_StreamSource.h"
+#endif
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -118,15 +140,15 @@ JunctionTree::shiftCCtoPosition(int pos)
 }
 
 /*
- * shiftUnprimeVarstoPosition(vector<RV*> rvs, int pos, int &prevPos)
- *  Shift the random variables in 'rvs' from in time (frames) by
+ * shiftOriginalVarstoPosition(vector<RV*> rvs, int pos, int &prevPos)
+ *  Shift the random variables in 'rvs' in time (frames) by
  *  the difference between 'prevPos' and 'pos'. This is used  in 
  *  printSavedViterbiValues to adjust the rvs' frame numbers in
  *  the unpacking buffers.
  */
 
 void
-JunctionTree::shiftUnprimeVarstoPosition(vector<RV*> rvs, int pos, int &prevPos)
+JunctionTree::shiftOriginalVarstoPosition(vector<RV*> rvs, int pos, int &prevPos)
 {
   set<RV*> uprvs(rvs.begin(),rvs.end());
   int delta = (pos - prevPos);
@@ -249,19 +271,100 @@ void
 JunctionTree::recordPartitionViterbiValue(ptps_iterator& it)
 {
   PartitionStructures& ps = partitionStructureArray[it.ps_i()];
-  if (ps.packer.packedLen() > 0)  {
+  unsigned partitionLength = ps.packer.packedLen();
+  unsigned N_best = 1;
+  unsigned num_to_write = N_best * partitionLength;
+  if (partitionLength > 0)  {
     // if it is not greater than zero, then the partition has
     // no hidden discrete variables.
 
-    if (it.at_p()) {
-      ps.packer.pack(ps.hrvValuePtrs.ptr,P_partition_values.ptr);
-    } else if (it.at_e()) {
-      ps.packer.pack(ps.hrvValuePtrs.ptr,E_partition_values.ptr);
+    if (binaryViterbiFile) {
+      // Do a binary dump of the Viterbi values to a file
+      // in chronological order for later printing by a separate
+      // program. This is O(1) memory and O(T) disk space.
+
+      if (it.at_p()) {
+	if (gmtk_fseek(binaryViterbiFile, binaryViterbiOffset, SEEK_SET) == (off_t) -1) {
+	  char *err = strerror(errno);
+	  error("ERROR: seek failed on '%s': %s\n", binaryViterbiFilename, err);
+	}	
+	ps.packer.pack(ps.hrvValuePtrs.ptr,P_partition_values.ptr);
+#if 0
+printf("P     %03u %08x", (unsigned) ftell(binaryViterbiFile), P_partition_values.ptr[0]);
+for (unsigned i=1; i < ps.packer.packedLen(); i+=1)
+  printf(" %08x", P_partition_values.ptr[i]);
+printf("\n");
+#endif
+	if (fwrite(P_partition_values.ptr, sizeof(unsigned), num_to_write, binaryViterbiFile) 
+	    != num_to_write) 
+	{
+	  char *err = strerror(errno);
+	  error("ERROR: write failed on '%s': %s\n", binaryViterbiFilename, err);
+	}
+      } else if (it.at_e()) {
+	off_t offset = (off_t)  // P size + (T-2) * C size
+	  (   (   N_best * partitionStructureArray[0].packer.packedLen()       
+	        + N_best * partitionStructureArray[1].packer.packedLen() * it.num_c_partitions()  
+	      ) * sizeof(unsigned)   );                         
+	if (gmtk_fseek(binaryViterbiFile, binaryViterbiOffset + offset, SEEK_SET) == (off_t) -1) {
+	  char *err = strerror(errno);
+	  error("ERROR: seek failed on '%s': %s\n", binaryViterbiFilename, err);
+	}	
+	ps.packer.pack(ps.hrvValuePtrs.ptr,E_partition_values.ptr);
+#if 0
+printf("E %03llu %03u %08x", offset, (unsigned)ftell(binaryViterbiFile), E_partition_values.ptr[0]);
+for (unsigned i=1; i < ps.packer.packedLen(); i+=1)
+  printf(" %08x", E_partition_values.ptr[i]);
+printf("\n");
+#endif
+	if (fwrite(E_partition_values.ptr, sizeof(unsigned), num_to_write, binaryViterbiFile) 
+	    != num_to_write) 
+	{
+	  char *err = strerror(errno);
+	  error("ERROR: write failed on '%s': %s\n", binaryViterbiFilename, err);
+	}
+	nextViterbiOffset = gmtk_ftell(binaryViterbiFile); // remember where to start next segment
+	if (nextViterbiOffset == (off_t)-1) {
+	  char *err = strerror(errno);
+	  error("ERROR: seek failed on '%s': %s\n", binaryViterbiFilename, err);
+	}
+      } else { // at a C partition
+	off_t offset = (off_t)  // P size + (t-1) * C size
+          (   (   N_best * partitionStructureArray[0].packer.packedLen()       
+		+ N_best * partitionLength * ( it.pt_i() - 1 )
+              ) * sizeof(unsigned)   );               
+	if (gmtk_fseek(binaryViterbiFile, binaryViterbiOffset + offset, SEEK_SET) == (off_t) -1) {
+	  char *err = strerror(errno);
+	  error("seek failed on '%s': %s\n", binaryViterbiFilename, err);
+	}	
+	ps.packer.pack(ps.hrvValuePtrs.ptr, C_partition_values.ptr);  // stomp on old values to be O(1) memory
+#if 0
+printf("C %03llu %03u %08x", offset, (unsigned) ftell(binaryViterbiFile), C_partition_values.ptr[0]);
+for (unsigned i=1; i < ps.packer.packedLen(); i+=1)
+  printf(" %08x", C_partition_values.ptr[i]);
+printf("\n");
+#endif
+	if (fwrite(C_partition_values.ptr, sizeof(unsigned), num_to_write, binaryViterbiFile) 
+	    != num_to_write) 
+	{
+	  char *err = strerror(errno);
+	  error("write failed on '%s': %s\n", binaryViterbiFilename, err);
+	}
+      }      
     } else {
-      ps.packer.pack(ps.hrvValuePtrs.ptr,
-		     C_partition_values.ptr
-		     + 
-		     (it.pt_i()-1)*ps.packer.packedLen());
+      // Store the Viterbi values in ?_partition_values in O(T)
+      // memory for printing within this program.
+
+      if (it.at_p()) {
+	ps.packer.pack(ps.hrvValuePtrs.ptr,P_partition_values.ptr);
+      } else if (it.at_e()) {
+	ps.packer.pack(ps.hrvValuePtrs.ptr,E_partition_values.ptr);
+      } else {
+	ps.packer.pack(ps.hrvValuePtrs.ptr,
+		       C_partition_values.ptr
+		       + 
+		       (it.pt_i()-1)*partitionLength);
+      }
     }
   }
 }
@@ -303,7 +406,9 @@ JunctionTree::printSavedPartitionViterbiValues(FILE* f,
   if (partRangeFilter != NULL) {
     partRange = new Range(partRangeFilter,0,inference_it.pt_len());
     if (partRange->length() == 0) { 
-      warning("WARNING: Part range filter must specify a valid non-zero length range within [0:%d]. Range given is %s\n",inference_it.pt_len(),partRangeFilter);
+      warning("WARNING: Part range filter must specify a valid non-zero "
+	      "length range within [0:%d]. Range given is %s\n",
+	      inference_it.pt_len(), partRangeFilter);
       delete partRange;
       partRange = NULL;
     }
@@ -313,7 +418,10 @@ JunctionTree::printSavedPartitionViterbiValues(FILE* f,
 
   Range::iterator* partRange_it = new Range::iterator(partRange->begin());
 
+#if 0
+  // unused
   int previous_C = -1;
+#endif
   while (!partRange_it->at_end()) {
 
     unsigned part = (*partRange_it);
@@ -321,58 +429,174 @@ JunctionTree::printSavedPartitionViterbiValues(FILE* f,
 
     PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
 
-    if (ps.packer.packedLen() > 0) {
-      if (inference_it.at_p()) {
-	// print P partition
-	fprintf(f,"Ptn-%d P': ",part);
+    if (inference_it.at_p()) {
+      // print P partition
+      if (ps.packer.packedLen() > 0) 
 	ps.packer.unpack(P_partition_values.ptr,ps.hrvValuePtrs.ptr);
-	if (printObserved) 
-	  printRVSetAndValues(f,ps.allrvs,true,preg);
-	else
-	  printRVSetAndValues(f,ps.hidRVVector,true,preg);
-      } else if (inference_it.at_e()) {
-	// print E partition
-	PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+      if (printObserved && ps.allrvs.size() > 0) {
+	fprintf(f,"Ptn-%d P': ",part);
+	printRVSetAndValues(f,ps.allrvs,true,preg);
+      } else if (ps.packer.packedLen() > 0) {
+	fprintf(f,"Ptn-%d P': ",part);
+	printRVSetAndValues(f,ps.hidRVVector,true,preg);
+      }
+    } else if (inference_it.at_e()) {
+      // print E partition
+      if (ps.packer.packedLen() > 0) 
 	ps.packer.unpack(E_partition_values.ptr,ps.hrvValuePtrs.ptr);
+      if (printObserved && ps.allrvs.size() > 0) {
 	fprintf(f,"Ptn-%d E': ",part);
-	if (printObserved) 
-	  printRVSetAndValues(f,ps.allrvs,true,preg);
-	else
-	  printRVSetAndValues(f,ps.hidRVVector,true,preg);
-      } else {
-	assert ( inference_it.at_c() );      
-	// print C partition
+	printRVSetAndValues(f,ps.allrvs,true,preg);
+      } else if (ps.packer.packedLen() > 0) {
+	fprintf(f,"Ptn-%d E': ",part);
+	printRVSetAndValues(f,ps.hidRVVector,true,preg);
+      }
+    } else {
+      assert ( inference_it.at_c() );      
+      // print C partition
 #if 0
-	if ((previous_C == -1)
-	    ||
-	    ps.packer.compare(C_partition_values.ptr
-			      + 
-			      (inference_it.pt_i()-1)*ps.packer.packedLen(),
-			      C_partition_values.ptr
-			      + 
-			      (previous_C-1)*ps.packer.packedLen())) 
+      if ((previous_C == -1)
+	  ||
+	  ps.packer.compare(C_partition_values.ptr
+			    + 
+			    (inference_it.pt_i()-1)*ps.packer.packedLen(),
+			    C_partition_values.ptr
+			    + 
+			    (previous_C-1)*ps.packer.packedLen())) 
 #endif
-	  {
+	{
+	  if (ps.packer.packedLen() > 0)
 	    ps.packer.unpack(C_partition_values.ptr
 			     + 
 			     (inference_it.pt_i()-1)*ps.packer.packedLen(),
 			     ps.hrvValuePtrs.ptr);
-	    
+	  if (printObserved && ps.allrvs.size() > 0) {
 	    fprintf(f,"Ptn-%d C': ",part);
-	    if (printObserved) 
-	      printRVSetAndValues(f,ps.allrvs,true,preg);
-	    else
-	      printRVSetAndValues(f,ps.hidRVVector,true,preg);
+	    printRVSetAndValues(f,ps.allrvs,true,preg);
+	  } else if (ps.packer.packedLen() > 0) {
+	    fprintf(f,"Ptn-%d C': ",part);
+	    printRVSetAndValues(f,ps.hidRVVector,true,preg);
 	  }
-	previous_C = inference_it.pt_i();
+	}
+      // previous_C = inference_it.pt_i();
+    }
+    (*partRange_it)++;
+  }
+  delete partRange;
+}
+
+
+
+/*
+ * This version of the above reads the Viterbi values from a file.
+ *
+ */
+void
+JunctionTree::printSavedPartitionViterbiValues(unsigned numFrames,
+					       FILE* vitFile,
+					       FILE* f,
+					       bool printObserved,
+					       regex_t* preg,
+					       char* partRangeFilter)
+{
+  unsigned totalNumberPartitions;
+  (void) unroll(numFrames,ZeroTable,&totalNumberPartitions);
+
+  new (&inference_it) ptps_iterator(*this,totalNumberPartitions);
+  init_CC_CE_rvs(inference_it);
+
+  Range* partRange = NULL;
+  if (partRangeFilter != NULL) {
+    partRange = new Range(partRangeFilter,0,inference_it.pt_len());
+    if (partRange->length() == 0) { 
+      warning("WARNING: Part range filter must specify a valid non-zero length range "
+	      "within [0:%d]. Range given is %s\n",inference_it.pt_len(),partRangeFilter);
+      delete partRange;
+      partRange = NULL;
+    }
+  }
+  if (partRange == NULL)
+    partRange = new Range("all",0,inference_it.pt_len());
+
+  Range::iterator* partRange_it = new Range::iterator(partRange->begin());
+
+  while (!partRange_it->at_end()) {
+    unsigned part = (*partRange_it);
+    setCurrentInferenceShiftTo(part);
+    PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+
+#if 0
+    // obsoleted by N-best support
+    if (inference_it.at_p()) {
+      if (fread(P_partition_values.ptr, sizeof(unsigned), ps.packer.packedLen(), binaryViterbiFile) != ps.packer.packedLen())
+	error("ERROR: faild to read viterbi values from '%s'\n", binaryViterbiFilename);
+    } else if (inference_it.at_e()) {
+      if (fread(E_partition_values.ptr, sizeof(unsigned), ps.packer.packedLen(), binaryViterbiFile) != ps.packer.packedLen())
+	error("ERROR: faild to read viterbi values from '%s'\n", binaryViterbiFilename);
+    } else {
+      if (fread(C_partition_values.ptr, sizeof(unsigned), ps.packer.packedLen(), binaryViterbiFile) != ps.packer.packedLen())
+	error("ERROR: faild to read viterbi values from '%s'\n", binaryViterbiFilename);
+    }
+#endif
+
+    unsigned N_best = 1;
+    unsigned num_to_read = N_best * ps.packer.packedLen();
+    if (inference_it.at_p()) {
+      if (fread(P_partition_values.ptr, sizeof(unsigned), num_to_read, binaryViterbiFile) != num_to_read) {
+	char *err = strerror(errno);
+	error("Error reading '%s': %s\n", binaryViterbiFilename, err);
+      }
+    } else if (inference_it.at_e()) {
+      if (fread(E_partition_values.ptr, sizeof(unsigned), num_to_read, binaryViterbiFile) != num_to_read) {
+	char *err = strerror(errno);
+	error("Error reading '%s': %s\n", binaryViterbiFilename, err);
+      }
+    } else {
+      if (fread(C_partition_values.ptr, sizeof(unsigned), num_to_read, binaryViterbiFile) != num_to_read) {
+	char *err = strerror(errno);
+	error("Error reading '%s': %s\n", binaryViterbiFilename, err);
       }
     }
 
+    if (inference_it.at_p()) {
+      // print P partition
+      if (ps.packer.packedLen() > 0) 
+	ps.packer.unpack(P_partition_values.ptr,ps.hrvValuePtrs.ptr);
+	fprintf(f,"Ptn-%d P': ",part);
+      if (printObserved && ps.allrvs.size() > 0) {
+	printRVSetAndValues(f,ps.allrvs,true,preg);
+      } else if (ps.packer.packedLen() > 0) {
+	printRVSetAndValues(f,ps.hidRVVector,true,preg);
+      }
+    } else if (inference_it.at_e()) {
+      // print E partition
+      if (ps.packer.packedLen() > 0) 
+	ps.packer.unpack(E_partition_values.ptr,ps.hrvValuePtrs.ptr);
+	fprintf(f,"Ptn-%d E': ",part);
+      if (printObserved && ps.allrvs.size() > 0) {
+	printRVSetAndValues(f,ps.allrvs,true,preg);
+      } else if (ps.packer.packedLen() > 0) {
+	printRVSetAndValues(f,ps.hidRVVector,true,preg);
+      }
+    } else {
+      assert ( inference_it.at_c() );      
+      // print C partition
+	{
+	  if (ps.packer.packedLen() > 0)
+	    ps.packer.unpack(C_partition_values.ptr, ps.hrvValuePtrs.ptr);
+	    fprintf(f,"Ptn-%d C': ",part);
+	  if (printObserved && ps.allrvs.size() > 0) {
+	    printRVSetAndValues(f,ps.allrvs,true,preg);
+	  } else if (ps.packer.packedLen() > 0) {
+	    printRVSetAndValues(f,ps.hidRVVector,true,preg);
+	  }
+	}
+      // previous_C = inference_it.pt_i();
+    }
     (*partRange_it)++;
   }
-
   delete partRange;
-
+  //clearAfterUnroll();
 }
 
 
@@ -401,6 +625,7 @@ JunctionTree::printSavedPartitionViterbiValues(FILE* f,
  * 
  *
  */
+#if 0
 void 
 JunctionTree::printSavedViterbiValues(FILE* f,
 				      bool printObserved,
@@ -426,7 +651,7 @@ JunctionTree::printSavedViterbiValues(FILE* f,
   error("ERROR: function not implemented yet\n");
 
 }
-
+#endif
 
 
 /* FTOC maps frame # f to chunk # given a prologue of P frames and chunks of C frames */
@@ -437,7 +662,7 @@ JunctionTree::printSavedViterbiValues(FILE* f,
  * Create the printing (P,C,E _rvs) and unpacking (Pprime,Cprime,Eprime _rvs) buffers for printSavedViterbiValues
  */
 
-void JunctionTree::createUnprimingMap(
+void JunctionTree::createUnpackingMap(
   vector<RV*> &unrolled_rvs, map<RVInfo::rvParent, unsigned> &unrolled_map,
   vector<RV*> &P_rvs, vector<RV*> &hidP_rvs, vector<RV*> &Pprime_rvs, vector<RV *> &hidPprime_rvs,
   vector<vector<RV*> > &C_rvs, vector<vector<RV*> > &hidC_rvs, vector<vector<RV*> > &Cprime_rvs, vector<vector<RV*> > &hidCprime_rvs,
@@ -456,6 +681,7 @@ void JunctionTree::createUnprimingMap(
 
   // the # of original C partitions needed
   unsigned nCs = nCprimes * S;
+  infoMsg(IM::Printing, IM::Moderate, "# C' = %u   # C = %u\n", nCprimes, nCs);
 
   // unroll to create RV instances shared by the printing & unpacking sets
   fp.unroll(nCs-1, unrolled_rvs, unrolled_map);
@@ -493,7 +719,12 @@ void JunctionTree::createUnprimingMap(
   // each possible case, and use the sentence length to 
   // determine which to use at unpacking time
 
-  infoMsg(IM::Printing, IM::Info+1, "\nP':\n");
+  // TODO: Since the mapping is now based on partitionStructureArray,
+  //       the number of C's in the unrolled model is known at map
+  //       creation time. Thus we should be able to construct only
+  //       the E' mapping for only the relevant C'E' transition 
+
+  infoMsg(IM::Printing, IM::Moderate, "\nP':\n");
   vector<RV*> P = partitionStructureArray[0].allrvs_vec;
   for (vector<RV*>::iterator it = P.begin(); it != P.end(); ++it) {
     RV *v = getRV(unrolled_rvs, unrolled_map, *it);
@@ -504,7 +735,7 @@ void JunctionTree::createUnprimingMap(
 	hidP_rvs.push_back(v);
 	hidPprime_rvs.push_back(v);
       }
-      infoMsg(IM::Printing, IM::Info+1, "%s(%u) -> P\n", (*it)->name().c_str(), (*it)->frame());
+      infoMsg(IM::Printing, IM::Moderate, "%s(%u) -> P\n", (*it)->name().c_str(), (*it)->frame());
     } else {                     // v is in P' but not P
       Pprime_rvs.push_back(v);
       unsigned t = FTOC(NP,NC,(*it)->frame()); // the unmodified C index this variable belongs in
@@ -514,7 +745,7 @@ void JunctionTree::createUnprimingMap(
 	hidPprime_rvs.push_back(v);
 	hidC_rvs[t].push_back(v);
       }
-      infoMsg(IM::Printing, IM::Info+1, "%s(%u) -> C(%u)\n", (*it)->name().c_str(), (*it)->frame(), t);
+      infoMsg(IM::Printing, IM::Moderate, "%s(%u) -> C(%u)\n", (*it)->name().c_str(), (*it)->frame(), t);
     }
   }
   PprimeValuePtrs.resize(hidPprime_rvs.size());
@@ -523,68 +754,74 @@ void JunctionTree::createUnprimingMap(
     PprimeValuePtrs[i] = &(drv->val);
   }
 
-  // Map the first C' variables to their corresponding C (for printing)
-  // and C' (for unpacking) instances
-  infoMsg(IM::Printing, IM::Info+1, "\nC':\n");
-  vector<RV*> C = partitionStructureArray[1].allrvs_vec;
-  for (vector<RV*>::iterator it = C.begin(); it != C.end(); ++it) {
-    RV *v = getRV(unrolled_rvs, unrolled_map, *it);
-    unsigned t = FTOC(NP,NC,(*it)->frame()); // the unmodified C index this variable belongs in
-    C_rvs[t].push_back(v);
-    Calready[t].insert(v);
-    Cprime_rvs[0].push_back(v);
-    if (v->hidden()) {
-      hidC_rvs[t].push_back(v);
-      hidCprime_rvs[0].push_back(v);
+  // If the unrolling consists of just P'E' then partitionStructureArray does
+  // not contain a C' to base the C' -> C mapping on. But since there are no
+  // C's to unpack, we don't need to construct the C' -> C mapping. Ticket #127
+  if (partitionStructureArray.size() > 2) {
+    // Map the first C' variables to their corresponding C (for printing)
+    // and C' (for unpacking) instances
+    infoMsg(IM::Printing, IM::Moderate, "\nC':\n");
+    vector<RV*> C = partitionStructureArray[1].allrvs_vec;
+    for (vector<RV*>::iterator it = C.begin(); it != C.end(); ++it) {
+      RV *v = getRV(unrolled_rvs, unrolled_map, *it);
+      unsigned t = FTOC(NP,NC,(*it)->frame()); // the unmodified C index this variable belongs in
+#if 1
+      C_rvs[t].push_back(v);
+      Calready[t].insert(v);
+      Cprime_rvs[0].push_back(v);
+      if (v->hidden()) {
+	hidC_rvs[t].push_back(v);
+	hidCprime_rvs[0].push_back(v);
+      }
+#endif
+      infoMsg(IM::Printing, IM::Moderate, "C(%u) C'[0] : %s(%u)\n", FTOC(NP,NC,(*it)->frame()), (*it)->name().c_str(), (*it)->frame());
     }
-    infoMsg(IM::Printing, IM::Info+1, "C(%u) C'[0] : %s(%u)\n", FTOC(NP,NC,(*it)->frame()), (*it)->name().c_str(), (*it)->frame());
-  }
 
-  // Slide each C'[0] variable forward S Cs to compute the
-  // remaining C's
-  for (unsigned i=1; i < nCprimes; i+=1) {
-    infoMsg(IM::Printing, IM::Info+1, "\n");
-    for (vector<RV*>::iterator it = Cprime_rvs[i-1].begin(); 
-	 it != Cprime_rvs[i-1].end();
-	 ++it)
-    {
-      RV *v = *it;
-      unsigned f = NP + ( v->frame() - NP + S * NC ) % (NC * nCs); // shift v over S original Cs (mod nCs)
-      RVInfo::rvParent target(v->name(), f);
-      RV *rv = getRV(unrolled_rvs, unrolled_map, target);
-      unsigned t = FTOC(NP,NC,f);
+    // Slide each C'[0] variable forward S Cs to compute the
+    // remaining C's
+    for (unsigned i=1; i < nCprimes; i+=1) {
+      infoMsg(IM::Printing, IM::Moderate, "\n");
+      for (vector<RV*>::iterator it = Cprime_rvs[i-1].begin(); 
+	   it != Cprime_rvs[i-1].end();
+	   ++it)
+	{
+	  RV *v = *it;
+	  unsigned f = NP + ( v->frame() - NP + S * NC ) % (NC * nCs); // shift v over S original Cs (mod nCs)
+	  RVInfo::rvParent target(v->name(), f);
+	  RV *rv = getRV(unrolled_rvs, unrolled_map, target);
+	  unsigned t = FTOC(NP,NC,f);
 
-      // rv may already be in (hid?)C_rvs[t], resulting in excess length when printing C.
-      // We want the ordering of a vector, but the single membership of a set...
-      // Does need to be added to (hid?)Cprime_rvs[i], as that is newly constructed...
-      if (Calready[t].find(rv) == Calready[t].end()) {
-	C_rvs[t].push_back(rv);
-	if (rv->hidden()) {
-	  hidC_rvs[t].push_back(rv);
+	  // rv may already be in (hid?)C_rvs[t], resulting in excess length when printing C.
+	  // We want the ordering of a vector, but the single membership of a set...
+	  // Does need to be added to (hid?)Cprime_rvs[i], as that is newly constructed...
+	  if (Calready[t].find(rv) == Calready[t].end()) {
+	    C_rvs[t].push_back(rv);
+	    if (rv->hidden()) {
+	      hidC_rvs[t].push_back(rv);
+	    }
+	    Calready[t].insert(rv);
+	  }
+	  Cprime_rvs[i].push_back(rv);
+	  if (rv->hidden()) {
+	    hidCprime_rvs[i].push_back(rv);
+	  }
+	  infoMsg(IM::Printing, IM::Moderate, "C(%u) C'[%u] : %s(%u)\n", t, i, target.first.c_str(), target.second);
 	}
-	Calready[t].insert(rv);
-      }
-      Cprime_rvs[i].push_back(rv);
-      if (rv->hidden()) {
-	hidCprime_rvs[i].push_back(rv);
-      }
-      infoMsg(IM::Printing, IM::Info+1, "C(%u) C'[%u] : %s(%u)\n", t, i, target.first.c_str(), target.second);
     }
-  }
-  for (unsigned i=0; i < nCprimes; i+=1) {
-    CprimeValuePtrs[i].resize(hidCprime_rvs[i].size());
-    for (unsigned j=0; j < hidCprime_rvs[i].size(); j+=1) {
-      DiscRV *drv = (DiscRV *) hidCprime_rvs[i][j];
-      CprimeValuePtrs[i][j] = &(drv->val);
+    for (unsigned i=0; i < nCprimes; i+=1) {
+      CprimeValuePtrs[i].resize(hidCprime_rvs[i].size());
+      for (unsigned j=0; j < hidCprime_rvs[i].size(); j+=1) {
+	DiscRV *drv = (DiscRV *) hidCprime_rvs[i][j];
+	CprimeValuePtrs[i][j] = &(drv->val);
+      }
     }
   }
 
-
-  infoMsg(IM::Printing, IM::Info+1, "\nE':\n");
+  infoMsg(IM::Printing, IM::Moderate, "\nE':\n");
   int Eidx  = partitionStructureArray.size() - 1;
   int delta = (nCs - ( (partitionStructureArray.size() - 2) * S + M ) ) * NC;
   unsigned firstEframe = NP + nCs * NC;
-  infoMsg(IM::Printing, IM::Info+1, "delta = %d    firstE = %u\n", delta, firstEframe);
+  infoMsg(IM::Printing, IM::Moderate, "delta = %d    firstE = %u\n", delta, firstEframe);
   vector<RV*> E = partitionStructureArray[Eidx].allrvs_vec;
   for (vector<RV*>::iterator it = E.begin(); it != E.end(); ++it) {
     RV *v = *it;
@@ -596,7 +833,7 @@ void JunctionTree::createUnprimingMap(
 	Eprime_rvs[i].push_back(rv);
 	if (rv->hidden()) hidEprime_rvs[i].push_back(rv);
       }
-      infoMsg(IM::Printing, IM::Info+1, "%s(%u) -> %s(%u) -> E\n", v->name().c_str(), v->frame()+delta, rv->name().c_str(), rv->frame());
+      infoMsg(IM::Printing, IM::Moderate, "%s(%u) -> %s(%u) -> E\n", v->name().c_str(), v->frame()+delta, rv->name().c_str(), rv->frame());
     } else { // v is in E' but not E
       // The C'E' transition could occur after unpacking any of the nCprimes C' sets,
       // so Eprime_rvs[i] handles the C'[i]E' transition
@@ -606,7 +843,7 @@ void JunctionTree::createUnprimingMap(
 	Eprime_rvs[i].push_back(rv_shifted);
 	if (rv_shifted->hidden()) hidEprime_rvs[i].push_back(rv_shifted);
       }
-      infoMsg(IM::Printing, IM::Info+1, "%s(%u) -> C(%u)\n", v->name().c_str(), v->frame()+delta, FTOC(NP,NC,v->frame()+delta));
+      infoMsg(IM::Printing, IM::Moderate, "%s(%u) -> C(%u)\n", v->name().c_str(), v->frame()+delta, FTOC(NP,NC,v->frame()+delta));
     }
   }
   for (unsigned i=0; i < nCprimes; i+=1) {
@@ -701,8 +938,7 @@ void JunctionTree::createUnprimingMap(
 void
 JunctionTree::printSavedViterbiValues(FILE* f,
 				      bool printObserved,
-				      regex_t* preg,
-				      char* partRangeFilter)
+				      regex_t* preg)
 {
 
   vector<RV*> unrolled_rvs;
@@ -727,7 +963,7 @@ JunctionTree::printSavedViterbiValues(FILE* f,
   vector<sArray<DiscRVType *> > CprimeValuePtrs;
   vector<sArray<DiscRVType *> > EprimeValuePtrs;
 
-  createUnprimingMap(unrolled_rvs, unrolled_map, 
+  createUnpackingMap(unrolled_rvs, unrolled_map, 
 		     P_rvs, hidP_rvs, Pprime_rvs, hidPprime_rvs, 
 		     C_rvs, hidC_rvs, Cprime_rvs, hidCprime_rvs,
 		     E_rvs, hidE_rvs, Eprime_rvs, hidEprime_rvs,
@@ -744,17 +980,7 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 	  E_partition_values.size());
 #endif
 
-  Range* partRange = NULL;
-  if (partRangeFilter != NULL) {
-    partRange = new Range(partRangeFilter,0,inference_it.pt_len());
-    if (partRange->length() == 0) { 
-      warning("WARNING: Part range filter must specify a valid non-zero length range within [0:%d]. Range given is %s\n",inference_it.pt_len(),partRangeFilter);
-      delete partRange;
-      partRange = NULL;
-    }
-  }
-  if (partRange == NULL)
-    partRange = new Range("all",0,inference_it.pt_len());
+  Range* partRange = new Range("all",0,inference_it.pt_len());
 
   Range::iterator* partRange_it = new Range::iterator(partRange->begin());
 
@@ -765,9 +991,12 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 
 
   unsigned primeIndex = 0;
-  unsigned unprimeIndex = 0;
+  unsigned originalIndex = 0;
   unsigned Ccount = 1;
+#if 0
+// unused
   int previous_C = -1;
+#endif
 
   while (!partRange_it->at_end()) {
 
@@ -782,81 +1011,72 @@ JunctionTree::printSavedViterbiValues(FILE* f,
     }
     infoMsg(IM::Printing,IM::Info, "\n");
 #endif
-    if (ps.packer.packedLen() > 0) {
-      if (inference_it.at_p()) {
-	// print P partition
-#if 0
-	fprintf(f,"P'[%3d]   P     : ",part);
-#else	
-	fprintf(f,"Ptn-0 P: ");
-#endif
+    if (inference_it.at_p()) {
+      // print P partition
+      if (ps.packer.packedLen() > 0) 
 	ps.packer.unpack(P_partition_values.ptr,PprimeValuePtrs.ptr);
-	if (printObserved) 
+      if (hidP_rvs.size() > 0  ||  (printObserved && P_rvs.size() > 0) ) { 
+	fprintf(f,"Ptn-0 P: ");
+	if (printObserved)
 	  printRVSetAndValues(f,P_rvs,true,preg);
 	else
 	  printRVSetAndValues(f,hidP_rvs,true,preg);
-      } else if (inference_it.at_e()) {
-	primeIndex = (primeIndex + Eprime_rvs.size() - 1) % Eprime_rvs.size(); // primeIndex -= 1 mod nCprimes
-	PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];	  
+      }
+    } else if (inference_it.at_e()) {
+      primeIndex = (primeIndex + Eprime_rvs.size() - 1) % Eprime_rvs.size(); // primeIndex -= 1 mod nCprimes
+      if (ps.packer.packedLen() > 0) 
 	ps.packer.unpack(E_partition_values.ptr,EprimeValuePtrs[primeIndex].ptr);
-	// print completed C partitions
-	int targetFrame = fp.numFramesInP() + (int)(part-1) * gm_template.S * fp.numFramesInC();
-	for (unsigned i=0; i < gm_template.M; i+=1) { // unpacking E' completes the last M Cs
-	  shiftUnprimeVarstoPosition(C_rvs[unprimeIndex], targetFrame, Cpos[unprimeIndex]);
-#if 0
-	  fprintf(f,"E'[%3d] %1d C[%3d]:",part,primeIndex,(targetFrame - fp.numFramesInP()) / fp.numFramesInC());
-	  fprintf(f,"C[%3d]: ",(targetFrame - fp.numFramesInP()) / fp.numFramesInC());
-#else
-	  fprintf(f,"Ptn-%u C: ", Ccount++);
-#endif
-	  if (printObserved)
-	    printRVSetAndValues(f,C_rvs[unprimeIndex],true,preg);
+      // print completed C partitions
+      int targetFrame = fp.numFramesInP() + (int)(part-1) * gm_template.S * fp.numFramesInC();
+      for (unsigned i=0; i < gm_template.M; i+=1) { // unpacking E' completes the last M Cs
+	shiftOriginalVarstoPosition(C_rvs[originalIndex], targetFrame, Cpos[originalIndex]);
+	if (hidC_rvs[originalIndex].size() > 0 || (printObserved && C_rvs[originalIndex].size() > 0) ) {
+	  fprintf(f,"Ptn-%u C: ", Ccount);
+	  if (printObserved) 
+	    printRVSetAndValues(f,C_rvs[originalIndex],true,preg);
 	  else
-	    printRVSetAndValues(f,hidC_rvs[unprimeIndex],true,preg);
-	  unprimeIndex = (unprimeIndex + 1) % C_rvs.size();
-	  targetFrame += fp.numFramesInC();
-	} 
-	// print E partition
-	shiftUnprimeVarstoPosition(E_rvs, targetFrame, Epos);
-#if 0
-	fprintf(f,"E'[%3d] %1d E     : ",part, primeIndex);
-#else
+	    printRVSetAndValues(f,hidC_rvs[originalIndex],true,preg);
+	}
+	Ccount += 1;
+	originalIndex = (originalIndex + 1) % C_rvs.size();
+	targetFrame += fp.numFramesInC();
+      } 
+      // print E partition
+      if ( (hidE_rvs.size() > 0)  || (printObserved && E_rvs.size() > 0) ) {
+	shiftOriginalVarstoPosition(E_rvs, targetFrame, Epos);
 	fprintf(f,"Ptn-%u E: ", Ccount);
-#endif
 	if (printObserved) 
 	  printRVSetAndValues(f,E_rvs,true,preg);
 	else
 	  printRVSetAndValues(f,hidE_rvs,true,preg);
-      } else {
-	assert ( inference_it.at_c() );
-	// print C partition
-	  {
-	    ps.packer.unpack(C_partition_values.ptr
-			     + 
-			     (inference_it.pt_i()-1)*ps.packer.packedLen(),
-			     CprimeValuePtrs[primeIndex].ptr);
-	    int targetFrame = fp.numFramesInP() + (int)(part-1) * gm_template.S * fp.numFramesInC();
-	    for (unsigned i=0; i < gm_template.S; i+=1) { // unpacking a C' completes S Cs
-	      shiftUnprimeVarstoPosition(C_rvs[unprimeIndex], targetFrame, Cpos[unprimeIndex]);
-#if 0
-	      fprintf(f,"C'[%3d] %1d C[%3d]: ",part,primeIndex, (targetFrame - fp.numFramesInP()) / fp.numFramesInC());
-	      fprintf(f,"C[%3d]: ",(targetFrame - fp.numFramesInP()) / fp.numFramesInC());
-#else
-	      fprintf(f,"Ptn-%u C: ", Ccount++);
-#endif
-	      if (printObserved) 
-		printRVSetAndValues(f,C_rvs[unprimeIndex],true,preg);
-	      else
-		printRVSetAndValues(f,hidC_rvs[unprimeIndex],true,preg);
-	      unprimeIndex = (unprimeIndex + 1) % C_rvs.size();
-	      targetFrame += fp.numFramesInC();
-	    }
-	    primeIndex = (primeIndex + 1) % Cprime_rvs.size();
-	  }
-	previous_C = inference_it.pt_i();
       }
+    } else {
+      assert ( inference_it.at_c() );
+      // print C partition
+      {
+        if (ps.packer.packedLen() > 0) 
+	  ps.packer.unpack(C_partition_values.ptr
+			   + 
+			   (inference_it.pt_i()-1)*ps.packer.packedLen(),
+			   CprimeValuePtrs[primeIndex].ptr);
+	int targetFrame = fp.numFramesInP() + (int)(part-1) * gm_template.S * fp.numFramesInC();
+	for (unsigned i=0; i < gm_template.S; i+=1) { // unpacking a C' completes S Cs
+	  shiftOriginalVarstoPosition(C_rvs[originalIndex], targetFrame, Cpos[originalIndex]);
+	  if ( (hidC_rvs[originalIndex].size() > 0)  || (printObserved && C_rvs[originalIndex].size() > 0) ) {
+	    fprintf(f,"Ptn-%u C: ", Ccount);
+	    if (printObserved) 
+	      printRVSetAndValues(f,C_rvs[originalIndex],true,preg);
+	    else
+	      printRVSetAndValues(f,hidC_rvs[originalIndex],true,preg);
+	  }
+	  Ccount += 1;
+	  originalIndex = (originalIndex + 1) % C_rvs.size();
+	  targetFrame += fp.numFramesInC();
+	}
+	primeIndex = (primeIndex + 1) % Cprime_rvs.size();
+      }
+      // previous_C = inference_it.pt_i();
     }
-
     (*partRange_it)++;
   }
 
@@ -864,6 +1084,608 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 
 }
 
+
+/*
+ * This version of the above reads the Viterbi values from a file.
+ *
+ */
+void
+JunctionTree::printSavedViterbiValues(unsigned numFrames,
+				      FILE* f,
+				      FILE* binVitFile,
+				      bool printObserved,
+				      regex_t* preg)
+{
+  unsigned totalNumberPartitions;
+  (void) unroll(numFrames,ZeroTable,&totalNumberPartitions);
+
+  new (&inference_it) ptps_iterator(*this,totalNumberPartitions);
+  init_CC_CE_rvs(inference_it);
+
+  vector<RV*> unrolled_rvs;
+  map<RVInfo::rvParent, unsigned> unrolled_map;
+
+  vector<RV*> P_rvs;      // original P for printing
+  vector<RV*> Pprime_rvs; // modified P' for unpacking
+  vector<RV*> hidP_rvs;      // hidden subset of original P for printing
+  vector<RV*> hidPprime_rvs; // hidden subset of modified P' for unpacking
+
+  vector<vector<RV*> > C_rvs; // original Cs for printing
+  vector<vector<RV*> > Cprime_rvs; // modified C's for unpacking
+  vector<vector<RV*> > hidC_rvs; // hidden subset of original Cs for printing
+  vector<vector<RV*> > hidCprime_rvs; // hidden subset of modified C's for unpacking
+
+  vector<RV*> E_rvs; // ... printing
+  vector<vector<RV*> > Eprime_rvs; // ... unpacking
+  vector<RV*> hidE_rvs; // ... printing
+  vector<vector<RV*> > hidEprime_rvs; // ... unpacking
+
+  sArray<DiscRVType *>PprimeValuePtrs;
+  vector<sArray<DiscRVType *> > CprimeValuePtrs;
+  vector<sArray<DiscRVType *> > EprimeValuePtrs;
+
+  createUnpackingMap(unrolled_rvs, unrolled_map, 
+		     P_rvs, hidP_rvs, Pprime_rvs, hidPprime_rvs, 
+		     C_rvs, hidC_rvs, Cprime_rvs, hidCprime_rvs,
+		     E_rvs, hidE_rvs, Eprime_rvs, hidEprime_rvs,
+		     PprimeValuePtrs, CprimeValuePtrs, EprimeValuePtrs);
+
+  Range* partRange = new Range("all",0,inference_it.pt_len());
+
+  Range::iterator* partRange_it = new Range::iterator(partRange->begin());
+
+  vector<int> Cpos(C_rvs.size());
+  for (unsigned int i=0; i < Cpos.size(); i+=1) 
+    Cpos[i] = fp.numFramesInP() + i * fp.numFramesInC();
+  int Epos = fp.numFramesInP() + C_rvs.size() * fp.numFramesInC();
+
+
+  unsigned primeIndex = 0;
+  unsigned originalIndex = 0;
+  unsigned Ccount = 1;
+
+  while (!partRange_it->at_end()) {
+
+    unsigned part = (*partRange_it);
+    setCurrentInferenceShiftTo(part);
+    PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+
+
+    unsigned N_best = 1;
+    unsigned num_to_read = N_best * ps.packer.packedLen();
+    if (inference_it.at_p()) {
+      if (fread(P_partition_values.ptr, sizeof(unsigned), num_to_read, binaryViterbiFile) != num_to_read) {
+	char *err = strerror(errno);
+	error("Error reading '%s': %s\n", binaryViterbiFilename, err);
+      }
+    } else if (inference_it.at_e()) {
+      if (fread(E_partition_values.ptr, sizeof(unsigned), num_to_read, binaryViterbiFile) != num_to_read) {
+	char *err = strerror(errno);
+	error("Error reading '%s': %s\n", binaryViterbiFilename, err);
+      }
+    } else {
+      if (fread(C_partition_values.ptr, sizeof(unsigned), num_to_read, binaryViterbiFile) != num_to_read) {
+	char *err = strerror(errno);
+	error("Error reading '%s': %s\n", binaryViterbiFilename, err);
+      }
+    }
+
+    if (inference_it.at_p()) {
+      // print P partition
+      if (ps.packer.packedLen() > 0) 
+	ps.packer.unpack(P_partition_values.ptr,PprimeValuePtrs.ptr);
+      if (hidP_rvs.size() > 0  ||  (printObserved && P_rvs.size() > 0) ) { 
+	fprintf(f,"Ptn-0 P: ");
+	if (printObserved)
+	  printRVSetAndValues(f,P_rvs,true,preg);
+	else
+	  printRVSetAndValues(f,hidP_rvs,true,preg);
+      }
+    } else if (inference_it.at_e()) {
+      primeIndex = (primeIndex + Eprime_rvs.size() - 1) % Eprime_rvs.size(); // primeIndex -= 1 mod nCprimes
+      if (ps.packer.packedLen() > 0) 
+	ps.packer.unpack(E_partition_values.ptr,EprimeValuePtrs[primeIndex].ptr);
+      // print completed C partitions
+      int targetFrame = fp.numFramesInP() + (int)(part-1) * gm_template.S * fp.numFramesInC();
+      for (unsigned i=0; i < gm_template.M; i+=1) { // unpacking E' completes the last M Cs
+	shiftOriginalVarstoPosition(C_rvs[originalIndex], targetFrame, Cpos[originalIndex]);
+	if (hidC_rvs[originalIndex].size() > 0 || (printObserved && C_rvs[originalIndex].size() > 0) ) {
+	  fprintf(f,"Ptn-%u C: ", Ccount);
+	  if (printObserved) 
+	    printRVSetAndValues(f,C_rvs[originalIndex],true,preg);
+	  else
+	    printRVSetAndValues(f,hidC_rvs[originalIndex],true,preg);
+	}
+	Ccount += 1;
+	originalIndex = (originalIndex + 1) % C_rvs.size();
+	targetFrame += fp.numFramesInC();
+      } 
+      // print E partition
+      if ( (hidE_rvs.size() > 0)  || (printObserved && E_rvs.size() > 0) ) {
+	shiftOriginalVarstoPosition(E_rvs, targetFrame, Epos);
+	fprintf(f,"Ptn-%u E: ", Ccount);
+	if (printObserved) 
+	  printRVSetAndValues(f,E_rvs,true,preg);
+	else
+	  printRVSetAndValues(f,hidE_rvs,true,preg);
+      }
+    } else {
+      assert ( inference_it.at_c() );
+      // print C partition
+      {
+        if (ps.packer.packedLen() > 0) 
+	  ps.packer.unpack(C_partition_values.ptr, CprimeValuePtrs[primeIndex].ptr);
+	int targetFrame = fp.numFramesInP() + (int)(part-1) * gm_template.S * fp.numFramesInC();
+	for (unsigned i=0; i < gm_template.S; i+=1) { // unpacking a C' completes S Cs
+	  shiftOriginalVarstoPosition(C_rvs[originalIndex], targetFrame, Cpos[originalIndex]);
+	  if ( (hidC_rvs[originalIndex].size() > 0)  || (printObserved && C_rvs[originalIndex].size() > 0) ) {
+	    fprintf(f,"Ptn-%u C: ", Ccount);
+	    if (printObserved) 
+	      printRVSetAndValues(f,C_rvs[originalIndex],true,preg);
+	    else
+	      printRVSetAndValues(f,hidC_rvs[originalIndex],true,preg);
+	  }
+	  Ccount += 1;
+	  originalIndex = (originalIndex + 1) % C_rvs.size();
+	  targetFrame += fp.numFramesInC();
+	}
+	primeIndex = (primeIndex + 1) % Cprime_rvs.size();
+      }
+      // previous_C = inference_it.pt_i();
+    }
+    (*partRange_it)++;
+  }
+
+  delete partRange;
+  //clearAfterUnroll();
+}
+
+
+void
+JunctionTree::readBinaryVitPartition(PartitionStructures& ps, unsigned part) {
+  assert(part == inference_it.pt_i());
+  unsigned N_best = 1;
+  unsigned num_to_read = N_best * ps.packer.packedLen();
+  off_t offset;
+  if (inference_it.at_p()) {
+    if (gmtk_fseek(binaryViterbiFile, binaryViterbiOffset, SEEK_SET) == (off_t) -1) {
+      char *err = strerror(errno);
+      error("ERROR: seek failed on '%s': %s\n", binaryViterbiFilename, err);
+    }       
+    if (fread(P_partition_values.ptr, sizeof(unsigned), num_to_read, binaryViterbiFile) != num_to_read) {
+      char *err = strerror(errno);
+      error("Error reading '%s': %s\n", binaryViterbiFilename, err);
+    }
+  } else if (inference_it.at_e()) {
+    offset = (off_t)  // P' size + (T-2) * C' size
+      (   (   N_best * partitionStructureArray[0].packer.packedLen()       
+	    + N_best * partitionStructureArray[1].packer.packedLen() * inference_it.num_c_partitions()  
+	  ) * sizeof(unsigned)   );                         
+    if (gmtk_fseek(binaryViterbiFile, binaryViterbiOffset + offset, SEEK_SET) == (off_t) -1) {
+      char *err = strerror(errno);
+      error("ERROR: seek failed on '%s': %s\n", binaryViterbiFilename, err);
+    }       
+    if (fread(E_partition_values.ptr, sizeof(unsigned), num_to_read, binaryViterbiFile) != num_to_read) {
+      char *err = strerror(errno);
+      error("Error reading '%s': %s\n", binaryViterbiFilename, err);
+    }
+  } else {
+    offset = (off_t)  // P' size + (t-1) * C' size
+      (   (   N_best * partitionStructureArray[0].packer.packedLen()
+            + N_best * partitionStructureArray[1].packer.packedLen() * ( part - 1 )
+	  ) * sizeof(unsigned)   );               
+    if (gmtk_fseek(binaryViterbiFile, binaryViterbiOffset + offset, SEEK_SET) == (off_t) -1) {
+      char *err = strerror(errno);
+      error("seek failed on '%s': %s\n", binaryViterbiFilename, err);
+    }       
+    if (fread(C_partition_values.ptr, sizeof(unsigned), num_to_read, binaryViterbiFile) != num_to_read) {
+      char *err = strerror(errno);
+      error("Error reading '%s': %s\n", binaryViterbiFilename, err);
+    }
+  } 
+}
+
+
+void
+JunctionTree::printSavedViterbiValues(unsigned numFrames, FILE* f,
+				      FILE *binVitFile,
+				      bool printObserved,
+				      regex_t* preg,
+				      char *partRangeFilter)
+{
+
+  if (partRangeFilter == NULL) {
+    if (binaryViterbiFile) 
+      printSavedViterbiValues(numFrames, f, binaryViterbiFile, printObserved, preg);
+    else
+      printSavedViterbiValues(f, printObserved, preg);
+    return;
+  }
+
+  if (binaryViterbiFile) {
+    unsigned totalNumberPartitions;
+    (void) unroll(numFrames,ZeroTable,&totalNumberPartitions);
+    
+    new (&inference_it) ptps_iterator(*this,totalNumberPartitions);
+    init_CC_CE_rvs(inference_it);
+  }
+
+  vector<RV*> unrolled_rvs;
+  map<RVInfo::rvParent, unsigned> unrolled_map;
+
+  vector<RV*> P_rvs;      // original P for printing
+  vector<RV*> Pprime_rvs; // modified P' for unpacking
+  vector<RV*> hidP_rvs;      // hidden subset of original P for printing
+  vector<RV*> hidPprime_rvs; // hidden subset of modified P' for unpacking
+
+  vector<vector<RV*> > C_rvs; // original Cs for printing
+  vector<vector<RV*> > Cprime_rvs; // modified C's for unpacking
+  vector<vector<RV*> > hidC_rvs; // hidden subset of original Cs for printing
+  vector<vector<RV*> > hidCprime_rvs; // hidden subset of modified C's for unpacking
+
+  vector<RV*> E_rvs; // ... printing
+  vector<vector<RV*> > Eprime_rvs; // ... unpacking
+  vector<RV*> hidE_rvs; // ... printing
+  vector<vector<RV*> > hidEprime_rvs; // ... unpacking
+
+  sArray<DiscRVType *>PprimeValuePtrs;
+  vector<sArray<DiscRVType *> > CprimeValuePtrs;
+  vector<sArray<DiscRVType *> > EprimeValuePtrs;
+
+  createUnpackingMap(unrolled_rvs, unrolled_map, 
+		     P_rvs, hidP_rvs, Pprime_rvs, hidPprime_rvs, 
+		     C_rvs, hidC_rvs, Cprime_rvs, hidCprime_rvs,
+		     E_rvs, hidE_rvs, Eprime_rvs, hidEprime_rvs,
+		     PprimeValuePtrs, CprimeValuePtrs, EprimeValuePtrs);
+
+  fprintf(f,"Printing random variables from (P',C',E')=(%d,%d,%d) modified partitions\n",
+	  P_partition_values.size(),
+	  C_partition_values.size(),
+	  E_partition_values.size());
+
+  unsigned M = gm_template.M;
+  unsigned S = gm_template.S;
+  unsigned totalOriginalPartitions = 2 + inference_it.num_c_partitions() * S + M;
+
+  infoMsg(IM::Printing,IM::High,"M = %u   S = %u   # orig parts = %u\n",
+       M, S, totalOriginalPartitions);
+
+  Range* partRange = NULL;
+  partRange = new Range(partRangeFilter,0,totalOriginalPartitions);
+  if (partRange->length() == 0) { 
+    warning("WARNING: Part range filter must specify a valid non-zero "
+	    "length range within [0:%d]. Range given is %s\n",
+	    totalOriginalPartitions, partRangeFilter);
+    delete partRange;
+    partRange = NULL;
+  }
+
+  if (partRange == NULL)
+    partRange = new Range("all",0,totalOriginalPartitions);
+
+  Range::iterator* partRange_it = new Range::iterator(partRange->begin());
+
+  vector<int> Cpos(C_rvs.size());
+  for (unsigned int i=0; i < Cpos.size(); i+=1) 
+    Cpos[i] = fp.numFramesInP() + i * fp.numFramesInC();
+  int Epos = fp.numFramesInP() + C_rvs.size() * fp.numFramesInC();
+  
+ 
+  int primeIndex = 0;     // which of the Cprime_rvs or Eprime_rvs to unpack to
+  int originalIndex = 0;  // which of the C_rvs to print from
+
+  while (!partRange_it->at_end()) {
+
+    unsigned part = (*partRange_it);
+
+    /* Before we can print this original partition $C_j$ (j = part), we must 
+       unpack the modified partitions 
+
+       $$\left\{ C'_i \left| \, \max\left(-1,\left\lceil\frac{j-s-m+1}{s}\right\rceil\right) \leq i 
+         \leq \left\lfloor \frac{j}{s} \right\rfloor \right. \right\}$$
+
+       where $s$ and $m$ are the boundary algorithm parameters, $C'_{-1}=P'$, and $C'_{N_{C'}}=E'$. 
+     */
+    
+    int numerator = ( (int)part - 1 - (int)S - (int)M + 1 );
+    int firstPrimePart;
+    if (numerator <= -(int)S) {
+      firstPrimePart = -1; // max
+    } else if (numerator <= 0){
+      firstPrimePart = 0;  // ceil
+    } else {
+      firstPrimePart = numerator / (int)S;
+      if (numerator % (int)S)
+	firstPrimePart += 1;   // ceil
+    }
+    firstPrimePart += 1; // account for C_{-1} = P'
+
+    unsigned lastPrimePart =  (part > 0) ?  1 + ((int)part-1) / (int)S : 0;
+    if (lastPrimePart >= inference_it.pt_len())  // E original partition # may > # of modified partitions
+      lastPrimePart = inference_it.pt_len() - 1;
+
+    infoMsg(IM::Printing,IM::High,"original partition %u requires unpacking modified partitions %u to %u:\n", 
+	    part, firstPrimePart, lastPrimePart);
+
+    for (unsigned i = (unsigned) firstPrimePart; i <= lastPrimePart; i += 1) { // unpack C'_{i} set
+      infoMsg(IM::Printing,IM::High,"unpack %u'\n", i); 
+      setCurrentInferenceShiftTo(i);
+      PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+
+      if (binaryViterbiFile) {
+	readBinaryVitPartition(ps, i);
+      }
+      
+      if (inference_it.at_p()) { // P'
+	if (ps.packer.packedLen() > 0) 
+	  ps.packer.unpack(P_partition_values.ptr,PprimeValuePtrs.ptr);
+      } else if (inference_it.at_e()) { // E'
+	// -1 to get the preceding C', -1 to account for C'_{-1} = P'
+	primeIndex = ((int)i - 2) % (int)Eprime_rvs.size(); 
+	if (ps.packer.packedLen() > 0) 
+	  ps.packer.unpack(E_partition_values.ptr,EprimeValuePtrs[primeIndex].ptr);
+      } else { // C'
+	assert ( inference_it.at_c() );
+	primeIndex = ((int)i - 1) % (int)Cprime_rvs.size();
+	if (ps.packer.packedLen() > 0) 
+	  ps.packer.unpack(C_partition_values.ptr  + 
+			   ( binaryViterbiFile ? 0 : (inference_it.pt_i()-1)*ps.packer.packedLen() ),
+			   CprimeValuePtrs[primeIndex].ptr);
+      }
+    }
+
+    if (part == 0) { // print P partition
+      if (hidP_rvs.size() > 0  ||  (printObserved && P_rvs.size() > 0) ) { 
+	fprintf(f,"Ptn-0 P: ");
+	if (printObserved)
+	  printRVSetAndValues(f,P_rvs,true,preg);
+	else
+	  printRVSetAndValues(f,hidP_rvs,true,preg);
+      }
+    } else if (part == totalOriginalPartitions-1) { // print E partition
+      if ( (hidE_rvs.size() > 0)  || (printObserved && E_rvs.size() > 0) ) {
+	int targetFrame = fp.numFramesInP() + (int)(part-1) * fp.numFramesInC();
+	shiftOriginalVarstoPosition(E_rvs, targetFrame, Epos);
+	fprintf(f,"Ptn-%u E: ", totalOriginalPartitions-1);
+	if (printObserved) 
+	  printRVSetAndValues(f,E_rvs,true,preg);
+	else
+	  printRVSetAndValues(f,hidE_rvs,true,preg);
+      }
+    } else {      // print C partition
+      int targetFrame = fp.numFramesInP() + (int)(part-1) * fp.numFramesInC();
+      originalIndex = ((int)part - 1) % (int) C_rvs.size();
+      shiftOriginalVarstoPosition(C_rvs[originalIndex], targetFrame, Cpos[originalIndex]);
+      if ( (hidC_rvs[originalIndex].size() > 0)  || (printObserved && C_rvs[originalIndex].size() > 0) ) {
+	fprintf(f,"Ptn-%u C: ", part);
+	if (printObserved) 
+	  printRVSetAndValues(f,C_rvs[originalIndex],true,preg);
+	else
+	  printRVSetAndValues(f,hidC_rvs[originalIndex],true,preg);
+      }
+    }
+    (*partRange_it)++;
+  }
+  
+  delete partRange;
+}
+
+
+void
+JunctionTree::printSavedViterbiFrames(unsigned numFrames, FILE* f,
+				      FILE *binVitFile,
+				      bool printObserved,
+				      regex_t* preg,
+				      char *frameRangeFilter)
+{
+  unsigned numUsableFrames;
+  if (binaryViterbiFile) {
+    unsigned totalNumberPartitions;
+    numUsableFrames = unroll(numFrames,ZeroTable,&totalNumberPartitions);
+    
+    new (&inference_it) ptps_iterator(*this,totalNumberPartitions);
+    init_CC_CE_rvs(inference_it);
+  } else {
+    numUsableFrames = this->numUsableFrames;
+  }
+
+  vector<RV*> unrolled_rvs;
+  map<RVInfo::rvParent, unsigned> unrolled_map;
+
+  vector<RV*> P_rvs;      // original P for printing
+  vector<RV*> Pprime_rvs; // modified P' for unpacking
+  vector<RV*> hidP_rvs;      // hidden subset of original P for printing
+  vector<RV*> hidPprime_rvs; // hidden subset of modified P' for unpacking
+
+  vector<vector<RV*> > C_rvs; // original Cs for printing
+  vector<vector<RV*> > Cprime_rvs; // modified C's for unpacking
+  vector<vector<RV*> > hidC_rvs; // hidden subset of original Cs for printing
+  vector<vector<RV*> > hidCprime_rvs; // hidden subset of modified C's for unpacking
+
+  vector<RV*> E_rvs; // ... printing
+  vector<vector<RV*> > Eprime_rvs; // ... unpacking
+  vector<RV*> hidE_rvs; // ... printing
+  vector<vector<RV*> > hidEprime_rvs; // ... unpacking
+
+  sArray<DiscRVType *>PprimeValuePtrs;
+  vector<sArray<DiscRVType *> > CprimeValuePtrs;
+  vector<sArray<DiscRVType *> > EprimeValuePtrs;
+
+  createUnpackingMap(unrolled_rvs, unrolled_map, 
+		     P_rvs, hidP_rvs, Pprime_rvs, hidPprime_rvs, 
+		     C_rvs, hidC_rvs, Cprime_rvs, hidCprime_rvs,
+		     E_rvs, hidE_rvs, Eprime_rvs, hidEprime_rvs,
+		     PprimeValuePtrs, CprimeValuePtrs, EprimeValuePtrs);
+
+  fprintf(f,"Printing random variables from (P',C',E')=(%d,%d,%d) modified partitions\n",
+	  P_partition_values.size(),
+	  C_partition_values.size(),
+	  E_partition_values.size());
+
+
+  unsigned NP = fp.numFramesInP();
+  unsigned NC = fp.numFramesInC();
+
+  unsigned M = gm_template.M;
+  unsigned S = gm_template.S;
+  unsigned totalOriginalPartitions = 2 + inference_it.num_c_partitions() * S + M;
+
+  infoMsg(IM::Printing,IM::High,"NP = %u   NC = %u   M = %u   S = %u   # orig parts = %u\n",
+       NP, NC, M, S, totalOriginalPartitions);
+
+  Range* frameRange = NULL;
+  frameRange = new Range(frameRangeFilter,0,numUsableFrames);
+  if (frameRange->length() == 0) { 
+    warning("WARNING: Frame range filter must specify a valid non-zero "
+	    "length range within [0:%d]. Range given is %s\n",
+	    numUsableFrames, frameRangeFilter);
+    delete frameRange;
+    frameRange = NULL;
+  }
+
+  if (frameRange == NULL)
+    frameRange = new Range("all",0,numUsableFrames);
+
+  Range::iterator* frameRange_it = new Range::iterator(frameRange->begin());
+
+  vector<int> Cpos(C_rvs.size());
+  for (unsigned int i=0; i < Cpos.size(); i+=1) 
+    Cpos[i] = fp.numFramesInP() + i * fp.numFramesInC();
+  int Epos = fp.numFramesInP() + C_rvs.size() * fp.numFramesInC();
+  
+ 
+  int primeIndex = 0;     // which of the Cprime_rvs or Eprime_rvs to unpack to
+  int originalIndex = 0;  // which of the C_rvs to print from
+
+  int minAvailableFrame = -1; // nothing unpacked yet
+  int maxAvailableFrame = -1;
+
+  while (!frameRange_it->at_end()) {
+    unsigned ppp = (*frameRange_it);
+    infoMsg(IM::Printing,IM::High,"frame %u ", ppp);
+
+    // map frame to original partition
+    unsigned part;
+    if ( (*frameRange_it) < (int)NP ) {
+      part = 0; // P
+    } else if ( (*frameRange_it) >= (int)NP + ((int)totalOriginalPartitions-2)*(int)NC ) {
+      part = totalOriginalPartitions - 1; // E
+    } else {
+      part = 1 + ((*frameRange_it) - NP) / NC; // C
+    }
+    infoMsg(IM::Printing,IM::High,"in original partition %u ", part);
+
+    // already fully unpacked? if so, print it
+    if (minAvailableFrame <= (*frameRange_it) && (*frameRange_it) <= maxAvailableFrame) {
+      infoMsg(IM::Printing,IM::High,"is available to print:\n");
+      if (part == 0) { // print P partition
+	if (hidP_rvs.size() > 0  ||  (printObserved && P_rvs.size() > 0) ) { 
+	  fprintf(f,"Ptn-0 P: ");
+	  if (printObserved)
+	    printRVSetAndValues(f,P_rvs,true,preg, frameRange);
+	  else
+	    printRVSetAndValues(f,hidP_rvs,true,preg, frameRange);
+	}
+      } else if (part == totalOriginalPartitions-1) { // print E partition
+	if ( (hidE_rvs.size() > 0)  || (printObserved && E_rvs.size() > 0) ) {
+	  int targetFrame = fp.numFramesInP() + (int)(part-1) * fp.numFramesInC();
+	  shiftOriginalVarstoPosition(E_rvs, targetFrame, Epos);
+	  fprintf(f,"Ptn-%u E: ", totalOriginalPartitions-1);
+	  if (printObserved) 
+	    printRVSetAndValues(f,E_rvs,true,preg, frameRange);
+	  else
+	    printRVSetAndValues(f,hidE_rvs,true,preg, frameRange);
+	}
+      } else {      // print C partition
+	int targetFrame = fp.numFramesInP() + (int)(part-1) * fp.numFramesInC();
+	originalIndex = ((int)part - 1) % (int) C_rvs.size();
+	shiftOriginalVarstoPosition(C_rvs[originalIndex], targetFrame, Cpos[originalIndex]);
+	if ( (hidC_rvs[originalIndex].size() > 0)  || (printObserved && C_rvs[originalIndex].size() > 0) ) {
+	  fprintf(f,"Ptn-%u C: ", part);
+	  if (printObserved) 
+	    printRVSetAndValues(f,C_rvs[originalIndex],true,preg, frameRange);
+	  else
+	    printRVSetAndValues(f,hidC_rvs[originalIndex],true,preg, frameRange);
+	}
+      }
+      (*frameRange_it)++;  // move on to next frame
+      continue;
+    }
+
+    /* Before we can print this original partition $C_j$ (j = part), we must 
+       unpack the modified partitions 
+
+       $$\left\{ C'_i \left| \, \max\left(-1,\left\lceil\frac{j-s-m+1}{s}\right\rceil\right) \leq i 
+         \leq \left\lfloor \frac{j}{s} \right\rfloor \right. \right\}$$
+
+       where $s$ and $m$ are the boundary algorithm parameters, $C'_{-1}=P'$, and $C'_{N_{C'}}=E'$. 
+     */
+    
+    int numerator = ( (int)part - 1 - (int)S - (int)M + 1 );
+    int firstPrimePart;
+    if (numerator <= -(int)S) {
+      firstPrimePart = -1; // max
+    } else if (numerator <= 0){
+      firstPrimePart = 0;  // ceil
+    } else {
+      firstPrimePart = numerator / (int)S;
+      if (numerator % (int)S)
+	firstPrimePart += 1;   // ceil
+    }
+    firstPrimePart += 1; // account for C_{-1} = P'
+
+    unsigned lastPrimePart = (part > 0) ?  1 + ((int)part-1) / (int)S : 0;
+    if (lastPrimePart >= inference_it.pt_len())  // E original partition # may > # of modified partitions
+      lastPrimePart = inference_it.pt_len() - 1;
+
+    infoMsg(IM::Printing,IM::High,"requires unpacking modified partitions %u to %u:\n  unpack:", 
+	    firstPrimePart, lastPrimePart);
+
+    for (unsigned i = (unsigned) firstPrimePart; i <= lastPrimePart; i += 1) { // unpack C'_{i} set
+      infoMsg(IM::Printing,IM::High,"  %u'", i); 
+      setCurrentInferenceShiftTo(i);
+      PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+
+      if (binaryViterbiFile) { // load packed values from disk if not already in memory
+	readBinaryVitPartition(ps, i);
+      }
+      
+      // unpack
+      if (inference_it.at_p()) { // P'
+	if (ps.packer.packedLen() > 0) 
+	  ps.packer.unpack(P_partition_values.ptr,PprimeValuePtrs.ptr);
+      } else if (inference_it.at_e()) { // E'
+	// -1 to get the preceding C', -1 to account for C'_{-1} = P'
+	primeIndex = ((int)i - 2) % (int)Eprime_rvs.size(); 
+	if (ps.packer.packedLen() > 0) 
+	  ps.packer.unpack(E_partition_values.ptr,EprimeValuePtrs[primeIndex].ptr);
+      } else { // C'
+	assert ( inference_it.at_c() );
+	primeIndex = ((int)i - 1) % (int)Cprime_rvs.size();
+	if (ps.packer.packedLen() > 0) 
+	  ps.packer.unpack(C_partition_values.ptr  + 
+			   ( binaryViterbiFile ? 0 : (inference_it.pt_i()-1)*ps.packer.packedLen() ),
+			   CprimeValuePtrs[primeIndex].ptr);
+      }
+    }
+
+    // unpacking firstPrimePart ... lastPrimePart makes these frames available:
+    if (firstPrimePart == 0) {
+      minAvailableFrame = 0;
+    } else {
+      minAvailableFrame = NP + (  ( (firstPrimePart-1) * S + M ) * NC  );
+    }
+
+    if (lastPrimePart == inference_it.pt_len()-1) {
+      maxAvailableFrame = numUsableFrames - 1;
+    } else {
+      maxAvailableFrame = NP + lastPrimePart * S * NC - 1;
+    }
+    infoMsg(IM::Printing,IM::High,"  available frames %u to %u\n", minAvailableFrame, maxAvailableFrame);
+  }
+  
+  delete frameRange;
+}
 
 
 /*-
@@ -969,52 +1791,90 @@ JunctionTree::ceGatherIntoRoot(PartitionStructures& ps,
   if (ps.maxCliquesSharedStructure.size() == 0)
     return;
 
-  // Now, do partition messages.
-  for (unsigned msgNo=0;msgNo < message_order.size(); msgNo ++) {
-    const unsigned from = message_order[msgNo].first;
-    const unsigned to = message_order[msgNo].second;
-    infoMsg(IM::Med+5,
-	    "CE: gathering into %s,part[%d]: clique %d\n",
-	    part_type_name,part_num,from);
-    pt.maxCliques[from].
-      ceGatherFromIncommingSeparators(ps.maxCliquesSharedStructure[from],
-				      pt.separatorCliques,
-				      ps.separatorCliquesSharedStructure.ptr);
-    infoMsg(IM::Mod,
-	    "CE: message %s,part[%d]: clique %d --> clique %d\n",
-	    part_type_name,part_num,from,to);
-    pt.maxCliques[from].
-      ceSendToOutgoingSeparator(ps.maxCliquesSharedStructure[from],
-				pt.separatorCliques,
-				ps.separatorCliquesSharedStructure.ptr);
+  unsigned inferenceDebugLevel = IM::glbMsgLevel(IM::Inference);
+  unsigned inferenceMemoryDebugLevel = IM::glbMsgLevel(IM::InferenceMemory);
 
-    // TODO: if we are just computing probE here, we should delete
-    // memory in pt.maxCliques[from]. Also, if we're only doing probE,
-    // we should not keep the cliques around at all, only the outgoing
-    // separator.
-    if (clearWhenDone) {
+  if (! partitionDebugRange.contains((int)part_num)) {
+#if 0
+    printf("ceGather [part %u]: lowering inference level to %d\n", 
+	   part_num, IM::glbMsgLevel(IM::DefaultModule));
+#endif
+    IM::setGlbMsgLevel(IM::Inference, IM::glbMsgLevel(IM::DefaultModule));
+    IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
+  }
+
+  bool zeroClique = false;
+  try {
+    // Now, do partition messages.
+    for (unsigned msgNo=0;msgNo < message_order.size(); msgNo ++) {
+      const unsigned from = message_order[msgNo].first;
+      const unsigned to = message_order[msgNo].second;
+      infoMsg(IM::Inference, IM::Med+5,
+	      "CE: gathering into %s,part[%d]: clique %d\n",
+	      part_type_name,part_num,from);
+
+      // this may now throw an exception on zero clique errors - RR
       pt.maxCliques[from].
-	clearCliqueAndIncommingSeparatorMemory(ps.maxCliquesSharedStructure[from],
-					       pt.separatorCliques,
-					       ps.separatorCliquesSharedStructure.ptr);
+	ceGatherFromIncommingSeparators(ps.maxCliquesSharedStructure[from],
+					pt.separatorCliques,
+					ps.separatorCliquesSharedStructure.ptr);
+  
+      infoMsg(IM::Inference, IM::Mod,
+	      "CE: message %s,part[%d]: clique %d --> clique %d\n",
+	      part_type_name,part_num,from,to);
+      pt.maxCliques[from].
+	ceSendToOutgoingSeparator(ps.maxCliquesSharedStructure[from],
+				  pt.separatorCliques,
+				  ps.separatorCliquesSharedStructure.ptr);
 
-      if (alsoClearOrigins) {
-	// then clear out the origin memory used for inference.
-	ps.origin.clearCliqueAndIncommingSeparatorMemoryForClique(from); 
+      // TODO: if we are just computing probE here, we should delete
+      // memory in pt.maxCliques[from]. Also, if we're only doing probE,
+      // we should not keep the cliques around at all, only the outgoing
+      // separator.
+      if (clearWhenDone) {
+	pt.maxCliques[from].
+	  clearCliqueAndIncommingSeparatorMemory(ps.maxCliquesSharedStructure[from],
+						 pt.separatorCliques,
+						 ps.separatorCliquesSharedStructure.ptr);
+
+	if (alsoClearOrigins) {
+	  // then clear out the origin memory used for inference.
+	  ps.origin.clearCliqueAndIncommingSeparatorMemoryForClique(from); 
+	}
+      }
+    }
+  } catch (ZeroCliqueException &e) {
+    zeroClique = true; // abort this partition & segment
+  }
+  if (!zeroClique) {
+    // collect to partition's root clique
+    infoMsg(IM::Inference, IM::Med+5,
+	    "CE: gathering into partition root %s,part[%d]: clique %d\n",
+	    part_type_name,part_num,root);
+    try {
+      pt.maxCliques[root].
+	ceGatherFromIncommingSeparators(ps.maxCliquesSharedStructure[root],
+					pt.separatorCliques,
+					ps.separatorCliquesSharedStructure.ptr);
+    } catch (ZeroCliqueException &e) {
+      zeroClique = true; // abort this partition & segment
+    }
+    if (!zeroClique) {
+      if (IM::messageGlb(IM::InferenceMemory, IM::Med+9)) {
+	pt.reportMemoryUsageTo(ps,stdout);
       }
     }
   }
-  // collect to partition's root clique
-  infoMsg(IM::Med+5,
-	  "CE: gathering into partition root %s,part[%d]: clique %d\n",
-	  part_type_name,part_num,root);
-  pt.maxCliques[root].
-    ceGatherFromIncommingSeparators(ps.maxCliquesSharedStructure[root],
-				    pt.separatorCliques,
-				    ps.separatorCliquesSharedStructure.ptr);
-
-  if (IM::messageGlb(IM::Med+9)) {
-    pt.reportMemoryUsageTo(ps,stdout);
+  if (! partitionDebugRange.contains((int)part_num)) {
+#if 0
+    printf("ceGather [part %u]: raising inference level to %d\n", 
+	   part_num, inferenceDebugLevel);
+#endif
+    IM::setGlbMsgLevel(IM::InferenceMemory, inferenceMemoryDebugLevel);
+    IM::setGlbMsgLevel(IM::Inference, inferenceDebugLevel);
+  }
+  if (zeroClique) {
+    throw ZeroCliqueException(); // continue to abort segment
   }
 }
 
@@ -1078,19 +1938,42 @@ JunctionTree::ceSendForwardsCrossPartitions(// previous partition
   if (previous_ps.maxCliquesSharedStructure.size() == 0 || next_ps.maxCliquesSharedStructure.size() == 0)
     return;
 
-  infoMsg(IM::Mod,"CE: message %s,part[%d],clique(%d) --> %s,part[%d],clique(%d)\n",
-	   previous_part_type_name,
-	   previous_part_num,
-	   previous_part_root,
-	   next_part_type_name,
-	   next_part_num,
-	   next_part_leaf);
+  unsigned inferenceDebugLevel = IM::glbMsgLevel(IM::Inference);
+  unsigned inferenceMemoryDebugLevel = IM::glbMsgLevel(IM::InferenceMemory);
+
+  if (! partitionDebugRange.contains((int)next_part_num)) {
+#if 0
+    printf("ceGather [part %u]: lowering inference level to %d\n", 
+	   next_part_num, IM::glbMsgLevel(IM::DefaultModule));
+#endif
+    IM::setGlbMsgLevel(IM::Inference, IM::glbMsgLevel(IM::DefaultModule));
+    IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
+  }
+
+
+  infoMsg(IM::Inference, IM::Mod,"CE: message %s,part[%d],clique(%d) --> %s,part[%d],clique(%d)\n",
+	  previous_part_type_name,
+	  previous_part_num,
+	  previous_part_root,
+	  next_part_type_name,
+	  next_part_num,
+	  next_part_leaf);
   previous_pt.maxCliques[previous_part_root].
     ceSendToOutgoingSeparator(previous_ps.maxCliquesSharedStructure[previous_part_root],
 			      next_pt.separatorCliques[next_ps.separatorCliquesSharedStructure.size()-1],
 			      next_ps.separatorCliquesSharedStructure[next_ps.separatorCliquesSharedStructure.size()-1]);
-  if (IM::messageGlb(IM::Med+9)) {
+
+  if (IM::messageGlb(IM::InferenceMemory, IM::Med+9)) {
     previous_pt.reportMemoryUsageTo(previous_ps,stdout);
+  }
+
+  if (! partitionDebugRange.contains((int)next_part_num)) {
+#if 0
+    printf("ceGather [part %u]: raising inference level to %d\n", 
+	   next_part_num, inferenceDebugLevel);
+#endif
+    IM::setGlbMsgLevel(IM::InferenceMemory, inferenceMemoryDebugLevel);
+    IM::setGlbMsgLevel(IM::Inference, inferenceDebugLevel);
   }
 }
 
@@ -1170,6 +2053,7 @@ JunctionTree::collectEvidence()
     Co.useLISeparator();
 
   for (unsigned part=1;part < inference_it.pt_len(); part ++ ) {
+
     setCurrentInferenceShiftTo(part);
 
     // inference_it.printState(stdout);
@@ -1189,6 +2073,11 @@ JunctionTree::collectEvidence()
 			  inference_it.pt_i());
 
 
+    // we skip the first Co's LI separator if there is no P1
+    // partition, since otherwise we'll get zero probability.
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.skipLISeparator();
+
     // it might be that E is the first partition as well, say if this is
     // a static graph, and in this case we need in this case to skip the
     // incomming separator, which doesn't exist.
@@ -1203,6 +2092,11 @@ JunctionTree::collectEvidence()
 		     inference_it.pt_i());
     if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
       E1.useLISeparator();
+
+    // if the LI separator was turned off, we need to turn it back on.
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.useLISeparator();
+
   }
   assert ( inference_it.at_e() );
 
@@ -1332,7 +2226,18 @@ JunctionTree::deScatterOutofRoot(// the partition
   if (ps.maxCliquesSharedStructure.size() == 0)
     return;
 
-  infoMsg(IM::Med+5,"DE: distributing out of partition root %s,part[%d]: clique %d\n",
+  unsigned inferenceDebugLevel = IM::glbMsgLevel(IM::Inference);
+  unsigned inferenceMemoryDebugLevel = IM::glbMsgLevel(IM::InferenceMemory);
+
+  if (! partitionDebugRange.contains((int)part_num)) {
+#if 0
+    printf("deScatter [part %u]: lowering inference level to %d\n", part, IM::glbMsgLevel(IM::DefaultModule));
+#endif
+    IM::setGlbMsgLevel(IM::Inference, IM::glbMsgLevel(IM::DefaultModule));
+    IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
+  }
+
+  infoMsg(IM::Inference, IM::Med+5,"DE: distributing out of partition root %s,part[%d]: clique %d\n",
 	  part_type_name,part_num,root);
   pt.maxCliques[root].
     deScatterToOutgoingSeparators(ps.maxCliquesSharedStructure[root],
@@ -1341,20 +2246,30 @@ JunctionTree::deScatterOutofRoot(// the partition
   for (unsigned msgNoP1=message_order.size();msgNoP1 > 0; msgNoP1 --) {
     const unsigned to = message_order[msgNoP1-1].first;
     const unsigned from = message_order[msgNoP1-1].second;
-    infoMsg(IM::Mod,"DE: message %s,part[%d]: clique %d <-- clique %d\n",
+    infoMsg(IM::Inference, IM::Mod,"DE: message %s,part[%d]: clique %d <-- clique %d\n",
 	    part_type_name,part_num,to,from);
     pt.maxCliques[to].
       deReceiveFromIncommingSeparator(ps.maxCliquesSharedStructure[to],
 				      pt.separatorCliques,
 				      ps.separatorCliquesSharedStructure.ptr);
 
-    infoMsg(IM::Med+5,"DE: distributing out of %s,part[%d]: clique %d\n",
+    infoMsg(IM::Inference, IM::Med+5,"DE: distributing out of %s,part[%d]: clique %d\n",
 	    part_type_name,part_num,to);
     pt.maxCliques[to].
       deScatterToOutgoingSeparators(ps.maxCliquesSharedStructure[to],
 				    pt.separatorCliques,
 				    ps.separatorCliquesSharedStructure.ptr);
   }
+
+  if (! partitionDebugRange.contains((int)part_num)) {
+#if 0
+    printf("deScatter [part %u]: raising inference level to %d\n", part, inferenceDebugLevel);
+#endif
+    IM::setGlbMsgLevel(IM::InferenceMemory, inferenceMemoryDebugLevel);
+    IM::setGlbMsgLevel(IM::Inference, inferenceDebugLevel);
+  }
+
+
 }
 
 
@@ -1415,13 +2330,34 @@ JunctionTree::deSendBackwardsCrossPartitions(// previous partition
   if (previous_ps.maxCliquesSharedStructure.size() == 0 || next_ps.maxCliquesSharedStructure.size() == 0)
     return;
 
-  infoMsg(IM::Mod,"DE: message %s,part[%d],clique(%d) <-- %s,part[%d],clique(%d)\n",
+  unsigned inferenceDebugLevel = IM::glbMsgLevel(IM::Inference);
+  unsigned inferenceMemoryDebugLevel = IM::glbMsgLevel(IM::InferenceMemory);
+
+  if (! partitionDebugRange.contains((int)previous_part_num)) {
+#if 0
+    printf("deScatter [part %u]: lowering inference level to %d\n", 
+	   previous_part_num, IM::glbMsgLevel(IM::DefaultModule));
+#endif
+    IM::setGlbMsgLevel(IM::Inference, IM::glbMsgLevel(IM::DefaultModule));
+    IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
+  }
+
+  infoMsg(IM::Inference, IM::Mod,"DE: message %s,part[%d],clique(%d) <-- %s,part[%d],clique(%d)\n",
 	  previous_part_type_name,previous_part_num,previous_part_root,
 	  next_part_type_name,next_part_num,next_part_leaf);
   previous_pt.maxCliques[previous_part_root].
     deReceiveFromIncommingSeparator(previous_ps.maxCliquesSharedStructure[previous_part_root],
 				    next_pt.separatorCliques[next_ps.separatorCliquesSharedStructure.size()-1],
 				    next_ps.separatorCliquesSharedStructure[next_ps.separatorCliquesSharedStructure.size()-1]);
+
+  if (! partitionDebugRange.contains((int)previous_part_num)) {
+#if 0
+    printf("deScatter [part %u]: raising inference level to %d\n", 
+	   previous_part_num, inferenceDebugLevel);
+#endif
+    IM::setGlbMsgLevel(IM::InferenceMemory, inferenceMemoryDebugLevel);
+    IM::setGlbMsgLevel(IM::Inference, inferenceDebugLevel);
+  }
 }
 
 
@@ -1478,8 +2414,8 @@ JunctionTree::deSendBackwardsCrossPartitions(// previous partition
 void
 JunctionTree::distributeEvidence()
 {
-
   for (unsigned part= (inference_it.pt_len()-1) ; part > 0 ; part -- ) {
+
     setCurrentInferenceShiftTo(part);
     
     if (inference_it.at_first_c() && P1.cliques.size() == 0)
@@ -1513,11 +2449,11 @@ JunctionTree::distributeEvidence()
 				   inference_it.cur_li(),
 				   inference_it.cur_nm(),
 				   inference_it.pt_i());
-
   }
 
   setCurrentInferenceShiftTo(0);
   // do the final scatter out of root of initial P partition.
+
   deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
 		     partitionTableArray[inference_it.pt_i()],
 		     inference_it.cur_ri(),
@@ -1685,7 +2621,7 @@ JunctionTree::emIncrement(const logpr probE,
   // than normal EM???") we use the reverse order here.
   for (unsigned part=inference_it.pt_len();part > 0 ; part --) {
     setCurrentInferenceShiftTo(part-1);
-    infoMsg(IM::High-1,
+    infoMsg(IM::Training, IM::High-1,
 	    "EM: accumulating stats for %s,part[%d]\n",
 	    inference_it.cur_nm(),inference_it.pt_i());
     partitionTableArray[inference_it.pt_i()].
@@ -1715,7 +2651,7 @@ JunctionTree::emIncrement(const logpr probE,
   }
 
   while (1) {
-    infoMsg(IM::High-1,
+    infoMsg(IM::Training, IM::High-1,
 	    "EM: accumulating stats for %s,part[%d]\n",
 	    ptps_it.cur_nm(),ptps_it.pt_i());
 
@@ -1959,12 +2895,20 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 				      const bool noE)
 {
 
+  FileSource *gomFS;
+  // This should be safe since gmtkOnline is the only program
+  // that does inference and doesn't use FileSource and gmtkOnline
+  // only uses onlineFixedUnroll
+  gomFS= static_cast<FileSource *>(globalObservationMatrix);
+  assert(typeid(*globalObservationMatrix) == typeid(*gomFS));
+
   // Unroll, but do not use the long table array (2nd parameter is
   // false) for allocation, but get back the long table length
   // in a local variable for use in our iterator.
   unsigned totalNumberPartitions;
   {
     unsigned tmp = unroll(numFrames,ZeroTable,&totalNumberPartitions);
+    gomFS->justifySegment(tmp);
     if (numUsableFrames) 
       *numUsableFrames = tmp;
     // limit scope of tmp.
@@ -2002,7 +2946,7 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 		    inference_it.cur_nm(),
 		    inference_it.cur_part_clique_print_range(),
 		    stdout,
-		    false);
+		    normalizePrintedCliques);
   // if the LI separator was turned off, we need to turn it back on.
   if (inference_it.at_first_c() && P1.cliques.size() == 0)
     Co.useLISeparator();
@@ -2029,6 +2973,15 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 			  inference_it.cur_nm(),
 			  inference_it.pt_i());
 
+    // we skip the first Co's LI separator if there is no P1
+    // partition, since otherwise we'll get zero probability.
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.skipLISeparator();
+
+    // we skip the first Co's LI separator if there is no P1
+    // partition, since otherwise we'll get zero probability.
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.skipLISeparator();
 
     // it might be that E is the first partition as well, say if this is
     // a static graph, and in this case we need in this case to skip the
@@ -2054,10 +3007,14 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 			inference_it.cur_nm(),
 			inference_it.cur_part_clique_print_range(),
 			stdout,
-			false);
+			normalizePrintedCliques);
     }
     if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
       E1.useLISeparator();
+
+    // if the LI separator was turned off, we need to turn it back on.
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.useLISeparator();
 
 
     if (limitTime && probEvidenceTimeExpired)
@@ -2140,7 +3097,7 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 		      ptps_it.cur_nm(),
 		      ptps_it.cur_part_clique_print_range(),
 		      stdout,
-		      false);
+		      normalizePrintedCliques);
 
     if (limitTime && probEvidenceTimeExpired)
       goto finished;
@@ -2239,7 +3196,7 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 		      ptps_it.cur_nm(),
 		      ptps_it.cur_part_clique_print_range(),
 		      stdout,
-		      false);
+		      normalizePrintedCliques);
 
   // root clique of last partition did not do partition, since it
   // never sent to next separator (since there is none). We explicitly
@@ -2260,6 +3217,388 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
   return rc;
 
 #endif
+
+}
+
+
+
+
+// not-quite-right DBN online filtering
+logpr 
+JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
+				unsigned *numUsableFrames,
+				unsigned *numPartitionsDone,
+				const bool noE,
+				FILE *f,
+				const bool printObserved,
+				regex_t *preg,
+				char *partRangeFilter)
+{
+  // Unroll, but do not use the long table array (2nd parameter is
+  // false) for allocation, but get back the long table length
+  // in a local variable for use in our iterator.
+  unsigned totalNumberPartitions;
+
+  unsigned M = gm_template.M;
+  unsigned S = gm_template.S;
+
+#if 0
+  unsigned numFramesInPprime = fp.numFramesInP() + fp.numFramesInC() * M;
+  unsigned numFramesInCprime = fp.numFramesInC() * (S+M);
+  unsigned numFramesInEprime = fp.numFramesInE() + fp.numFramesInC() * M;
+#endif
+
+#if 0
+  unsigned numPreloadFrames = Dlinks::globalMinLag() + 
+    numFramesInPprime + 2 * numFramesInCprime + numFramesInEprime;
+#else
+  
+  if ((unsigned) Dlinks::globalMinLag() > globalObservationMatrix->startSkip()) {
+    error("ERROR: -startSkip must be at least %d\n", Dlinks::globalMinLag());
+  }
+  if (fp.numFramesInC() == 0) {
+    error("ERROR: gmtkOnline does not support empty chunks\n");
+  }
+
+  // Try to read in enough frames for P' C' C' C' E'
+  // because we need enough frames in the queue to notice the
+  // C' to E' transition before inference needs to start working
+  // on E'. Also, if we need to reset the frame # due to overflow,
+  // we want to come back to the C'C' state (rather than P'C').
+  // So, we "work" on the middle C', with the following C'E' as
+  // "runway" to notice the end of stream, and the preceeding C'
+  // in case of frame # overflow. When we start doing smoothing,
+  // we will also need to include the C's for the "psuedofuture".
+
+  // Now we also need to preload startSkip frames so that they
+  // can be skipped :) and the max Dlink lag so that the last
+  // partition has sufficient future available.
+  
+  // The (3S + M) is because P'C' share M|C| frames, then each
+  // C' requires S|C| new frames (the last C' and E' share
+  // M|C| frames, but they're already counted in the C's). Here
+  // |X| is the number of frames in partition X.
+
+  unsigned tau = 0; // # of "future" C's for smoothing
+  unsigned numPreloadFrames = 
+    globalObservationMatrix->startSkip() + 
+    fp.numFramesInP() + 
+    ( (3+tau) * S + M ) * fp.numFramesInC() + 
+    fp.numFramesInE() +
+    Dlinks::globalMaxLag();
+  // Assume the above won't over-flow with just 5 partitions
+#endif
+
+  unsigned numNewFrames = fp.numFramesInC() * S;
+
+printf("preaload %u frames\n", numPreloadFrames);
+  globalObservationMatrix->preloadFrames(numPreloadFrames);
+
+  unsigned truePtLen = 0; // 0 until we know the true number of modified partitions
+  unsigned currentMaxFrameNum;
+  {
+    unsigned T = globalObservationMatrix->numFrames();
+    unsigned tmp;
+
+    viterbiScore = false; // avoid allocating space for O(T) viterbi values in unroll()
+
+    if (T > 0) {
+      // We already know the length of this segment (it's probably
+      // very short, since we only try to pre-load enough frames to
+      // process P' C' C' C' E'), so we can pass the true number of
+      // frames to unroll...
+      
+      tmp = unroll(T,ZeroTable,&totalNumberPartitions);
+      truePtLen = totalNumberPartitions;
+      currentMaxFrameNum  = T;
+    } else {
+      // We don't know how many frames are in the segment yet,
+      // so just assume it's very long. Should be OK, since the
+      // ZeroTable option just uses the minimum number of partitions.
+      // We'll reset the ptps_iterator's partition length later
+      // when we actually know it.
+      
+#ifndef UINT32_MAX
+      // FIXME - this should be in stdint.h as arranged by autoconf
+#  define UINT32_MAX		(4294967295U)
+#endif
+
+#define MAX_FRAME_NUMBER (1073741824U)
+
+      tmp = unroll(MAX_FRAME_NUMBER,ZeroTable,&totalNumberPartitions);
+
+      currentMaxFrameNum = numPreloadFrames;
+    }
+
+printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
+
+
+  viterbiScore = true;  // do compute viterbi values in deScatterOutofRoot() (max-product semiring)
+  
+  if (numUsableFrames) 
+      *numUsableFrames = tmp;
+    // limit scope of tmp.
+  }
+  if (numPartitionsDone)
+    *numPartitionsDone = 0;
+  
+  // Set up our iterator, write over the member island iterator since
+  // we assume the member does not have any dynamc sub-members.
+  new (&inference_it) ptps_iterator(*this,totalNumberPartitions);
+
+  init_CC_CE_rvs(inference_it);
+
+  PartitionTables* prev_part_tab = NULL;
+  PartitionTables* cur_part_tab
+    = new PartitionTables(inference_it.cur_jt_partition());
+
+  PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+      
+
+  // we skip the first Co's LI separator if there is no P1
+  // partition, since otherwise we'll get zero probability.
+  if (inference_it.at_first_c() && P1.cliques.size() == 0)
+    Co.skipLISeparator();
+  // gather into the root of the current  partition
+  ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
+		   *cur_part_tab,
+		   inference_it.cur_ri(),
+		   inference_it.cur_message_order(),
+		   inference_it.cur_nm(),
+		   inference_it.pt_i());
+
+  // Set clique to most probable values given observations up to
+  // the current partition
+  cur_part_tab->maxCliques[inference_it.cur_ri()].
+    maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
+
+  // Send messages from the root clique to the rest of the cliques
+  // in this partition so that they are consistant with the observations
+  // in this partition. We originally wanted to send messages only to
+  // the cliques actually being printed, but deScatterToOutgoingSeparators()
+  // sends messages to all of a clique's outgoing separators (rather
+  // than just those on the path to a printing clique) and we decided
+  // not to implement a "subset" scatter. We think that in the common
+  // cases there won't be much extra work from the full scatter.
+  deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
+		     *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
+		     inference_it.cur_ri(),
+		     inference_it.cur_message_order(),
+		     inference_it.cur_nm(),
+		     inference_it.pt_i());
+
+  // print filter ("Viterbi") values
+
+  fprintf(f,"Ptn-%d P': ", inference_it.pt_i());
+  if (printObserved && ps.allrvs.size() > 0) {
+    printRVSetAndValues(f,ps.allrvs,true,preg);
+  } else if (ps.packer.packedLen() > 0) {
+    printRVSetAndValues(f,ps.hidRVVector,true,preg);
+  }
+
+  if (inference_it.cur_part_clique_print_range() != NULL) {
+    viterbiScore = false; // sum-product semiring
+    
+    deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
+		       *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
+		       inference_it.cur_ri(),
+		       inference_it.cur_message_order(),
+		       inference_it.cur_nm(),
+		       inference_it.pt_i());
+    
+    // possibly print the P or C partition information
+    printAllCliques(partitionStructureArray[inference_it.ps_i()],
+		    *cur_part_tab,
+		    inference_it.pt_i(),
+		    inference_it.cur_nm(),
+		    inference_it.cur_part_clique_print_range(),
+		    stdout,
+		    normalizePrintedCliques);
+    viterbiScore = true;  // do compute viterbi values in deScatterOutofRoot() (max-product semiring)
+  }
+
+
+  // if the LI separator was turned off, we need to turn it back on.
+  if (inference_it.at_first_c() && P1.cliques.size() == 0)
+    Co.useLISeparator();
+
+  for (unsigned part=1; part < inference_it.pt_len(); part += 1 ) {
+    delete prev_part_tab;
+    prev_part_tab = cur_part_tab;
+
+    setCurrentInferenceShiftTo(part);
+
+    cur_part_tab
+      = new PartitionTables(inference_it.cur_jt_partition());
+
+    PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+      
+
+    // send from previous to current
+    ceSendForwardsCrossPartitions(// previous partition
+			  partitionStructureArray[inference_it.ps_prev_i()],
+			  *prev_part_tab,
+			  inference_it.prev_ri(),
+			  inference_it.prev_nm(),
+			  inference_it.pt_prev_i(),
+			  // current partition
+			  partitionStructureArray[inference_it.ps_i()],
+			  *cur_part_tab,
+			  inference_it.cur_li(),
+			  inference_it.cur_nm(),
+			  inference_it.pt_i());
+
+
+    // we skip the first Co's LI separator if there is no P1
+    // partition, since otherwise we'll get zero probability.
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.skipLISeparator();
+
+    // it might be that E is the first partition as well, say if this is
+    // a static graph, and in this case we need in this case to skip the
+    // incomming separator, which doesn't exist.
+    if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      E1.skipLISeparator();
+    if (!(inference_it.at_e() && noE)) {  
+      // we only do this if we're either not at an E, or if we are at
+      // an E and noE is false.
+
+      // next, gather into the root of the final E partition
+      ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
+		       *cur_part_tab,
+		       inference_it.cur_ri(),
+		       inference_it.cur_message_order(),
+		       inference_it.cur_nm(),
+		       inference_it.pt_i());
+
+      cur_part_tab->maxCliques[inference_it.cur_ri()].
+	maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
+
+      // Send messages from the root clique to the rest of the cliques
+      // in this partition so that they are consistant with the observations
+      // in this partition. We originally wanted to send messages only to
+      // the cliques actually being printed, but deScatterToOutgoingSeparators()
+      // sends messages to all of a clique's outgoing separators (rather
+      // than just those on the path to a printing clique) and we decided
+      // not to implement a "subset" scatter. We think that in the common
+      // cases there won't be much extra work from the full scatter.
+      deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
+			 *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
+			 inference_it.cur_ri(),
+			 inference_it.cur_message_order(),
+			 inference_it.cur_nm(),
+			 inference_it.pt_i());
+
+
+      // print filter values
+
+      fprintf(f,"Ptn-%d %c': ",inference_it.pt_i(), inference_it.at_e() ? 'E' : 'C');
+      if (printObserved && ps.allrvs.size() > 0) {
+	printRVSetAndValues(f,ps.allrvs,true,preg);
+      } else if (ps.packer.packedLen() > 0) {
+	printRVSetAndValues(f,ps.hidRVVector,true,preg);
+      }
+
+      // possibly print the P or C partition information
+      if (inference_it.cur_part_clique_print_range() != NULL) {
+	viterbiScore = false; // sum-product semiring
+	
+	deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
+			   *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
+			   inference_it.cur_ri(),
+			   inference_it.cur_message_order(),
+			   inference_it.cur_nm(),
+			   inference_it.pt_i());
+
+	printAllCliques(partitionStructureArray[inference_it.ps_i()],
+			*cur_part_tab,
+			inference_it.pt_i(),
+			inference_it.cur_nm(),
+			inference_it.cur_part_clique_print_range(),
+			stdout,
+			normalizePrintedCliques);
+	viterbiScore = true;  // do compute viterbi values in deScatterOutofRoot() (max-product semiring)
+      }
+
+
+    }
+    if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      E1.useLISeparator();
+
+    // if the LI separator was turned off, we need to turn it back on.
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.useLISeparator();
+
+    if (currentMaxFrameNum > MAX_FRAME_NUMBER - numNewFrames) {
+      // frame number is about to overflow
+      infoMsg(IM::Inference, IM::Info, "resetting frame to %u\n", numNewFrames);
+      globalObservationMatrix->resetFrameNumbers(0);
+      infoMsg(IM::Inference, IM::Info, "resetting ptps to partition 2\n");
+      part = 1; // restart @ C'_1 (1 is C'_0, but about to increment part at top of loop)
+      currentMaxFrameNum = numPreloadFrames;
+    }
+
+    // read in the same # of frames that we're about to consume to maintain
+    // enough queued frames to be sure we don't overshoot the C'->E' transition
+    unsigned nQueued = globalObservationMatrix->enqueueFrames(numNewFrames);
+
+    currentMaxFrameNum += nQueued;
+
+    // update the ptps_iterator if we just found out the true length of the segment
+    if (truePtLen == 0 && globalObservationMatrix->numFrames() != 0) {
+#if 0
+printf("learned T=%u at %u %u\n", globalObservationMatrix->numFrames(), part, inference_it.pt_i());
+#endif
+      unsigned basicTempMaxUnrollAmnt;
+      unsigned basicTempMinUnrollAmnt;
+      int      modTempMaxUnrollAmnt;
+      int      modTempMinUnrollAmnt;
+      unsigned numUsableFrm;
+      unsigned frmStart;
+      if (!gm_template.computeUnrollParameters(globalObservationMatrix->numFrames(),
+					       basicTempMaxUnrollAmnt,
+					       basicTempMinUnrollAmnt,
+					       modTempMaxUnrollAmnt,
+					       modTempMinUnrollAmnt,
+					       numUsableFrm,
+					       frmStart))
+	error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, different template, or decrease M,S if >1.\n",
+	      globalObservationMatrix->numFrames(),
+	      fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
+	      fp.numFrames(),
+	      gm_template.M,gm_template.S);
+      
+      truePtLen = modTempMaxUnrollAmnt + 3;
+      inference_it.set_pt_len(truePtLen);
+      if (numUsableFrames) 
+	*numUsableFrames = numUsableFrm;
+
+#if 0
+    if (nQueued != numFramesInCprime && nQueued != 0) {
+      error("Stream segment %u length %u is incompatible with model unrolling",
+	    globalObservationMatrix->segmentNumber(), 
+	    globalObservationMatrix->numFrames());
+    }
+#endif
+    }
+    
+    
+  }
+  assert ( inference_it.at_e() );
+
+ finished:
+
+  logpr rc;
+  if (inference_it.at_e()) {
+    // then we finished.
+    rc = cur_part_tab->maxCliques[E_root_clique].sumProbabilities();
+  }
+  if (numPartitionsDone)
+    *numPartitionsDone = inference_it.pt_i();
+
+  delete cur_part_tab;
+
+  return rc;
 
 }
 

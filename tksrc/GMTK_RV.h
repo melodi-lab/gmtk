@@ -121,6 +121,7 @@ Each routine has:
 #include <set>
 #include <regex.h>
 
+#include "range.h"
 #include "logp.h"
 #include "GMTK_RVInfo.h"
 #include "GMTK_NamedObject.h"
@@ -292,9 +293,33 @@ public:
   // hierarchy's point of view).  If we add subclasses for each
   // combination of cases for each switching condition, this might
   // change.
-  bool scale() const { return (rv_info.rvWeightInfo.size() > 0); }
-  bool penalty() const { return (rv_info.rvWeightInfo.size() > 0); }
-  bool shift() const { return (rv_info.rvWeightInfo.size() > 0); }
+#if 1
+  bool scale() const { 
+    for (unsigned i=0; i < rv_info.rvWeightInfo.size(); i+=1) {
+      if (rv_info.rvWeightInfo[i].scale.wt_Status != RVInfo::WeightInfo::WeightItem::wt_NoWeight)
+	return true;
+    }
+    return false;
+  }
+  bool penalty() const { 
+    for (unsigned i=0; i < rv_info.rvWeightInfo.size(); i+=1) {
+      if (rv_info.rvWeightInfo[i].penalty.wt_Status != RVInfo::WeightInfo::WeightItem::wt_NoWeight) 
+	return true;
+    }
+    return false;
+  }
+  bool shift() const { 
+    for (unsigned i=0; i < rv_info.rvWeightInfo.size(); i+=1) {
+      if (rv_info.rvWeightInfo[i].shift.wt_Status != RVInfo::WeightInfo::WeightItem::wt_NoWeight)
+	return true;
+    }
+    return false;
+  }
+#else
+  virtual bool scale() const { return (rv_info.rvWeightInfo.size() > 0); }
+  virtual bool penalty() const { return (rv_info.rvWeightInfo.size() > 0); }
+  virtual bool shift() const { return (rv_info.rvWeightInfo.size() > 0); }
+#endif
   // returns true if the implementation of this RV changes with each segment.
   virtual bool iterable() const { return false; } 
 
@@ -471,8 +496,8 @@ public:
 // TODO: below routines should be in RV namespace.
 
 void printRVSetAndValues(FILE*f,vector<RV*>& locset,const bool nl=true,regex_t* preg = NULL); 
-void printRVSetAndValues(FILE*f,sArray<RV*>& locset,
-			 const bool nl=true,regex_t* preg = NULL);
+void printRVSetAndValues(FILE*f,vector<RV*>& locset,const bool nl,regex_t* preg, Range *frameRange); 
+void printRVSetAndValues(FILE*f,sArray<RV*>& locset,const bool nl=true,regex_t* preg = NULL);
 void printRVSetAndValues(FILE*f,set<RV*>& locset,const bool nl=true,regex_t* preg = NULL);
 void printRVSet(FILE*f,vector<RV*>& locvec,const bool nl=true,regex_t* preg = NULL);
 void printRVSet(FILE*f,sArray<RV*>& locset,const bool nl=true,regex_t* preg = NULL);

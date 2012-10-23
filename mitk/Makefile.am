@@ -21,12 +21,13 @@ DEBUGFLAGS += -DNMODELCHECK
 endif
 OPTFLAGS = -O3
 
+if CYGWIN_FLAGS
+ANSI = 
+PEDANTIC =
+else
 ANSI = -ansi
-#ANSI = 
-
-#PEDANTIC = -pedantic
 PEDANTIC = -pedantic
-#PEDANTIC = -Wno-long-long
+endif
 
 WALL = -Wall
 #WALL = -Wall -Wno-deprecated
