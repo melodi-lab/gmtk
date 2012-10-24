@@ -1,9 +1,7 @@
 if HAVE_HG
 # this will keep the Mercurial revision id current if you're building 
 # in a working directory. If you're not, use the distributed hgstamp.h
-HGID = $(shell hg id)
-HGDATE = $(shell hg parents --template '{date|date}')
-VERSIONFLAG = -DHGID="\"$(HGID)\"" -DHGDATE="\"$(HGDATE)\""
+VERSIONFLAG = -DHGID="\"`hg id`\"" -DHGDATE="\"`hg parents --template '{date|date}'`\""
 else
 VERSIONFLAG = 
 endif

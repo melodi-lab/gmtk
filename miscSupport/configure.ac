@@ -93,6 +93,8 @@ AC_ARG_WITH([cppCmd],
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
+AM_PROG_CC_C_O
+AM_PROG_AR
 AC_PROG_RANLIB
 
 AC_CHECK_FILE([../.hg/dirstate],[
