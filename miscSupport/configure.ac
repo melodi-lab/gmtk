@@ -10,7 +10,7 @@ AC_CANONICAL_HOST
 AC_CONFIG_SRCDIR([adaptive_filter.h])
 AC_CONFIG_HEADER([config.h])
 
-AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
+AM_INIT_AUTOMAKE([1.12 silent-rules -Wall -Werror foreign])
 
 AC_ARG_ENABLE([assertions],
               [AS_HELP_STRING([--disable-assertions],

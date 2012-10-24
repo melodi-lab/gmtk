@@ -7,7 +7,7 @@ AC_INIT(GMTK, 0.0, https://lungs.ee.washington.edu/trac/gmtk/newticket)
 AC_CONFIG_SRCDIR([mixNormalCollection.cc])
 AC_CONFIG_HEADER([ac_config.h])
 
-AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
+AM_INIT_AUTOMAKE([1.12 silent-rules -Wall -Werror foreign])
 
 AC_ARG_ENABLE([assertions],
               [AS_HELP_STRING([--disable-assertions],
