@@ -11,7 +11,7 @@ AC_CANONICAL_HOST
 AC_CONFIG_SRCDIR([GMTK_DlinkMatrix.h])
 AC_CONFIG_HEADERS([config.h])
 
-AM_INIT_AUTOMAKE([1.12 silent-rules -Wall -Werror foreign])
+AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
 
 AC_ARG_ENABLE([assertions],
               [AS_HELP_STRING([--disable-assertions],
@@ -79,7 +79,7 @@ AC_DEFINE_UNQUOTED([LZERO], [(${with_LZERO})], [smallest log value that we repre
 AC_PROG_CXX
 AC_PROG_CC
 AM_PROG_LEX
-AM_PROG_AR
+m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 AC_PROG_INSTALL
 AC_PROG_RANLIB
 

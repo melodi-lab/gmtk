@@ -9,7 +9,7 @@ scripts/triangulateTimings
 
 SUBDIRS = IEEEFloatingpoint miscSupport featureFileIO mitk tksrc tests
 
-.PHONY: revdist datedist
+.PHONY: revdist datedist hgdatedist autoclean
 revdist:
 	make VERSION=`hg id | tr ' ' _` dist
 

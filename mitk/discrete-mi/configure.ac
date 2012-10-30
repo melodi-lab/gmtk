@@ -7,7 +7,7 @@ AC_INIT(GMTK, 0.0, https://lungs.ee.washington.edu/trac/gmtk/newticket)
 AC_CONFIG_SRCDIR([mixNormalCollection.cc])
 AC_CONFIG_HEADER([ac_config.h])
 
-AM_INIT_AUTOMAKE([1.12 silent-rules -Wall -Werror foreign])
+AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
 
 AC_ARG_ENABLE([assertions],
               [AS_HELP_STRING([--disable-assertions],
@@ -25,7 +25,7 @@ AM_CONDITIONAL([NO_MODEL_CHECKS],[test x$model_checks != xyes])
 # Checks for programs
 AC_PROG_CXX
 AC_PROG_CC
-AM_PROG_AR
+m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 
 # Checks for libraries.
 AC_CHECK_LIB([m], [log])

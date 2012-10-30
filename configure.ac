@@ -4,7 +4,7 @@
 AC_PREREQ([2.65])
 AC_INIT([GMTK],m4_esyscmd([printf %s `head -n 1 RELEASE`]),
         [https://lungs.ee.washington.edu/trac/gmtk/newticket])
-AM_INIT_AUTOMAKE([1.12 tar-ustar silent-rules -Wall -Werror foreign])
+AM_INIT_AUTOMAKE([1.11 tar-ustar silent-rules -Wall -Werror foreign])
 
 AC_ARG_ENABLE([gmtkViz], 
               [AS_HELP_STRING([--disable-gmtkViz],

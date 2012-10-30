@@ -10,7 +10,7 @@ AC_CANONICAL_HOST
 AC_CONFIG_SRCDIR([adaptive_filter.h])
 AC_CONFIG_HEADER([config.h])
 
-AM_INIT_AUTOMAKE([1.12 silent-rules -Wall -Werror foreign])
+AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
 
 AC_ARG_ENABLE([assertions],
               [AS_HELP_STRING([--disable-assertions],
@@ -94,7 +94,7 @@ AC_ARG_WITH([cppCmd],
 AC_PROG_CXX
 AC_PROG_CC
 AM_PROG_CC_C_O
-AM_PROG_AR
+m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 AC_PROG_RANLIB
 
 AC_CHECK_FILE([../.hg/dirstate],[
