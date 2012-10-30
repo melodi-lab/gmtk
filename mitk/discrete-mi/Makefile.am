@@ -36,10 +36,3 @@ mixNormal.h mixNormal.cc \
 readRange.h readRange.cc \
 rangeSetCollection.h rangeSetCollection.cc
 
-
-
-
-
-
-
-

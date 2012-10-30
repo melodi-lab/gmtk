@@ -28,7 +28,7 @@ AC_CANONICAL_HOST
 
 # Turn on automake error checking and turn off whinging about missing
 # some files GNU projects are supposed to have
-AM_INIT_AUTOMAKE([1.12 silent-rules -Wall -Werror foreign])
+AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
 
 # Check that we're in the correct directory by verifying the existence 
 # of the file
@@ -41,7 +41,7 @@ AC_CONFIG_HEADER([config.h])
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
-AM_PROG_AR
+m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 AC_PROG_RANLIB
 AC_PROG_LN_S
 

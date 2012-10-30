@@ -141,4 +141,3 @@ obs_concat_SOURCES = GMTK_ObsConcat.cc
 
 obs_diff_SOURCES = GMTK_ObsDiff.cc
 
-
