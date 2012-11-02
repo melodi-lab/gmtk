@@ -106,31 +106,26 @@ AC_ARG_ENABLE([gmtkViz],
               [AS_HELP_STRING([--disable-gmtkViz],
                               [disable gmtkViz @<:@default: no@:>@])],
               [gmtkViz=${enableval}], [gmtkViz=yes])
-if test x"$gmtkViz" = x"yes"; then
-   AC_CHECK_PROG([HAVE_WXCONFIG],[wx-config],[yes])
-   if test x"$HAVE_WXCONFIG" = x"yes"; then
-     AC_LANG_PUSH([C++])
-     wx_check_save_CXXFLAGS=${CXXFLAGS}
-     CXXFLAGS=`wx-config --cxxflags`
-     wx_check_save_LIBS=${LIBS}
-     LIBS=`wx-config --libs`
-     AC_LINK_IFELSE([AC_LANG_PROGRAM([#include "wx/wx.h"],
-                                     [wxString s("foo");s.Capitalize()])],
-        AC_SUBST([HAVE_WXWIDGETS],[yes]),
-        AC_MSG_WARN(
-	 [wx-config found but not wxWidgets >= 2.9. gmtkViz will not be built.])
-     )
-     LIBS=${wx_check_save_LIBS}
-     CXXFLAGS=${wx_check_save_CXXFLAGS}
-     AC_LANG_POP([C++])
-   fi
-fi
-if test x"$HAVE_WXWIDGETS" = x"yes"; then
-   AC_SUBST([GMTKVIZ],[gmtkViz])
-   AC_SUBST([VIZCXXFLAGS],[`wx-config --cxxflags`])
-   AC_SUBST([VIZLDFLAGS],[`wx-config --libs`])
-fi
 
+if test x"$gmtkViz" = x"yes"; then
+  WX_CONFIG_OPTIONS
+  WX_CONFIG_CHECK([2.9.0], [wxWin=1])
+  if test "$wxWin" != 1; then
+     AC_MSG_ERROR([
+             wxWidgets must be installed on your system
+             but wx-config script couldn't be found.
+
+             Please check that wx-config is in path, the directory
+             where wxWidgets libraries are installed (returned by
+             'wx-config --libs' command) is in LD_LIBRARY_PATH or
+             equivalent variable and wxWidgets version is 2.9.0 or above.
+     ])
+  else
+    AC_SUBST([GMTKVIZ],[gmtkViz])
+    AC_SUBST([VIZCXXFLAGS],[$WX_CPPFLAGS $WX_CXXFLAGS_ONLY])
+    AC_SUBST([VIZLDFLAGS],[$WX_LIBS])
+  fi
+fi
      AC_ARG_WITH(
        [ps2eps],
        [AS_HELP_STRING([--with-ps2eps],

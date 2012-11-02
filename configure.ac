@@ -110,6 +110,8 @@ AC_PROG_AWK
 
 # Checks for libraries.
 
+WX_CONFIG_OPTIONS
+
 # Checks for header files.
 
 # Checks for typedefs, structures, and compiler characteristics.
