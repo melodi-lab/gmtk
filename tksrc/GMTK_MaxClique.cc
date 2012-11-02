@@ -71,11 +71,16 @@
 #include "GMTK_ContRV.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_GMParms.h"
+#include "GMTK_MaxClique.h"
 #include "GMTK_MDCPT.h"
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
 #include "GMTK_Mixture.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_ObservationSource.h"
+#endif
 #include "GMTK_JunctionTree.h"
 
 #if HAVE_CONFIG_H
@@ -87,7 +92,7 @@
 VCID(HGID)
 
 
-
+#if 0
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 //        Constants
@@ -166,6 +171,7 @@ VCID(HGID)
 #define REMAINDER_VALUE_SPACE_MANAGER_DECAY_RATE   0.9
 
 #endif
+#endif
 
 // for sorting an array of RVs ascending based on increasing cardinality
 struct ParentCardinalityCompare 
@@ -235,6 +241,8 @@ namespace CliqueBuffer {
 
 
 
+
+
 /*
  *
  * Continuous observation per-feature penalty, default value defined here.
@@ -253,9 +261,34 @@ FILE* SeparatorClique::veSeparatorFile = NULL;
 float SeparatorClique::veSeparatorLogProdCardLimit = 7.0; // i.e., 1e7=10M is default max.
 
 
+/*
+ * Memory management options
+ */
+
+unsigned SeparatorClique::aiStartingSize;
+float    SeparatorClique::aiGrowthFactor;
+unsigned SeparatorClique::remStartingSize;
+float    SeparatorClique::remGrowthFactor;
+unsigned SeparatorClique::sepSpaceMgrStartingSize;
+float    SeparatorClique::sepSpaceMgrGrowthRate;
+float    SeparatorClique::sepSpaceMgrDecayRate;
+unsigned SeparatorClique::remSpaceMgrStartingSize;
+float    SeparatorClique::remSpaceMgrGrowthRate;
+float    SeparatorClique::remSpaceMgrDecayRate;
+
+unsigned MaxClique::spaceMgrStartingSize;
+float    MaxClique::spaceMgrGrowthRate;
+float    MaxClique::spaceMgrDecayRate;
+
+float MaxCliqueTable::valuePoolGrowthRate;
+
+unsigned ConditionalSeparatorTable::remHashMapStartingSize;
+
 bool MaxClique::storeDeterministicChildrenInClique = true;
 
 double MaxClique::normalizeScoreEachClique = 1.0;
+
+bool MaxClique::failOnZeroClique = true;
 
 
 /*
@@ -440,9 +473,9 @@ MaxClique::MaxClique(MaxClique& from_clique,
 		     const unsigned int frameDelta)
 
   :  cliqueValueSpaceManager(1,     // starting size
-			     CLIQUE_VALUE_SPACE_MANAGER_GROWTH_RATE,   // growth rate
+			     spaceMgrGrowthRate,   // growth rate
 			     1,     // growth addition
-			     CLIQUE_VALUE_SPACE_MANAGER_DECAY_RATE)    // decay rate 
+			     spaceMgrDecayRate)    // decay rate 
 {
   set<RV*>::iterator it;
 
@@ -1208,7 +1241,7 @@ MaxClique::clearCliqueValueCache(bool force)
 {
   if (force && packer.packedLen() > IMC_NWWOH) {
     valueHolder.prepare();
-    cliqueValueHashSet.clear(CLIQUE_VALUE_HOLDER_STARTING_SIZE);
+    cliqueValueHashSet.clear(spaceMgrStartingSize);
 #ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
     temporaryCliqueValuePool.clear();
 #endif
@@ -1515,15 +1548,14 @@ MaxClique::prepareForUnrolling()
 
   if (packer.packedLen() > IMC_NWWOH) {
     // setup value hodler
-    new (&valueHolder) CliqueValueHolder(packer.packedLen(),
-					 CLIQUE_VALUE_HOLDER_STARTING_SIZE, // set to 1 to test.
-					 CLIQUE_VALUE_HOLDER_GROWTH_RATE); // 1.25
+    new (&valueHolder) CliqueValueHolder(packer.packedLen());
+
     // set up common clique hash tables 
     // TODO: add appropriate default staring hash sizes.
     // new (&cliqueValueHashSet) vhash_set< unsigned > (packer.packedLen(),2);
-    new (&cliqueValueHashSet) vhash_set< unsigned > (packer.packedLen(),CLIQUE_VALUE_HOLDER_STARTING_SIZE);
+    new (&cliqueValueHashSet) vhash_set< unsigned > (packer.packedLen(),spaceMgrStartingSize);
 #ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
-    temporaryCliqueValuePool.resize(CLIQUE_VALUE_HOLDER_STARTING_SIZE*packer.packedLen());
+    temporaryCliqueValuePool.resize(spaceMgrStartingSize*packer.packedLen());
 #endif
 
   } else {
@@ -2492,8 +2524,15 @@ ceGatherFromIncommingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStru
   // check if we have a zero clique, and if we do, print message and exit.
   // TODO: rather than exit, pop back to the top and allow continuation and/or
   // beam expansion.
-  if (numCliqueValuesUsed == 0)
-    error("ERROR: ZERO CLIQUE: clique with no entries. Final probability will be zero.\n");
+  if (numCliqueValuesUsed == 0) {
+    if (MaxClique::failOnZeroClique) 
+        error("ERROR: ZERO CLIQUE: clique with no entries. Final probability will be zero.\n");
+
+    // It looks like there's no cleanup to do here - the loop above just breaks
+    // without doing anything to cleanup the previous clique expansion tries. - RR
+    warning("ZERO CLIQUE: clique with no entries. Final probability will be zero.\n");
+    throw ZeroCliqueException();
+  }
 
   // We have some clique entries, so we store new previous max CE
   // values, before any pruning.
@@ -2534,7 +2573,7 @@ ceGatherFromIncommingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStru
     // finally, insert surviving entries into global shared pool.
     insertLocalCliqueValuesIntoSharedPool(origin);
     // and free up the local buffer.
-    origin.temporaryCliqueValuePool.resize(CLIQUE_VALUE_HOLDER_STARTING_SIZE*origin.packer.packedLen());
+    origin.temporaryCliqueValuePool.resize(MaxClique::spaceMgrStartingSize*origin.packer.packedLen());
   }
 #endif
 
@@ -2711,7 +2750,9 @@ ceGatherFromIncommingSeparatorsCliqueObserved(MaxCliqueTable::SharedLocalStructu
   }
 
   if (message(Inference,High)) {
-    psp2(stdout,spi*(traceIndent+1+sharedStructure.fSortedAssignedNodes.size()));
+    // see https://j.ee.washington.edu/trac/gmtk/ticket/214#comment:14
+    if (message(Inference,High+5))
+      psp2(stdout,spi*(traceIndent+1+sharedStructure.fSortedAssignedNodes.size()));
     infoMsg(IM::Inference, IM::High,"CI:Inserting Observed %d-clique ent #0,pr=%f,sm=%f:",
 	    sharedStructure.fNodes.size(),
 	    cliqueValues.ptr[0].p.val(),sumProbabilities().val());
@@ -2823,8 +2864,8 @@ MaxCliqueTable::ceIterateSeparatorsRecurse(MaxCliqueTable::SharedLocalStructure&
     sepSeparatorValuesPtr = sep.separatorValues->ptr; 
 
 
+  traceIndent++;
   if (message(Inference,High+5)) {
-    traceIndent++;
     psp2(stdout,spi*traceIndent);    
     infoMsg(Inference,High+5,"S%d:Starting separator iter,partSepNo=%d,p=%f,nodes:",
 	    sepNumber,origin.ceReceiveSeparators[sepNumber],p.val());
@@ -2996,8 +3037,8 @@ MaxCliqueTable::ceIterateSeparatorsRecurse(MaxCliqueTable::SharedLocalStructure&
   }
 
  ceIterateSeparatorsFinished:
-  if (message(Inference, High+5))
-    traceIndent--;
+  //  if (message(Inference, High+5))
+  traceIndent--;
 }
 
 
@@ -3051,8 +3092,8 @@ MaxCliqueTable::ceIterateUnassignedIteratedNodesRecurse(MaxCliqueTable::SharedLo
 
   RV* rv = sharedStructure.fUnassignedIteratedNodes[nodeNumber];
   // TODO: update comments here to match others.
+  traceIndent++;
   if (message(Inference, High+5)) {
-    traceIndent++;
     psp2(stdout,spi*traceIndent);
     infoMsg(Inference, High+5,"U%d:Starting Unassigned iteration of rv %s(%d),p=%f\n",
 	    nodeNumber,
@@ -3102,8 +3143,8 @@ MaxCliqueTable::ceIterateUnassignedIteratedNodesRecurse(MaxCliqueTable::SharedLo
 				     maxCEValue,
 				     nodeNumber+1,p);
   }
-  if (message(Inference, High+5))
-    traceIndent--;
+  //  if (message(Inference, High+5))
+  traceIndent--;
 }
 
 
@@ -3211,7 +3252,7 @@ MaxCliqueTable::ceIterateAssignedNodesRecurse(MaxCliqueTable::SharedLocalStructu
 	// use aggressive growth factor for now to avoid expensive copies.
 	origin.temporaryCliqueValuePool.resizeAndCopy(
 						      origin.packer.packedLen()*
-						      int(1.5+(double)origin.temporaryCliqueValuePool.size()*TEMPORARY_LOCAL_CLIQUE_VALUE_POOL_GROWTH_RATE));
+						      int(1.5+(double)origin.temporaryCliqueValuePool.size()*valuePoolGrowthRate));
       }
       unsigned *pcv = 
 	&origin.temporaryCliqueValuePool.ptr[lindex];
@@ -3246,7 +3287,9 @@ MaxCliqueTable::ceIterateAssignedNodesRecurse(MaxCliqueTable::SharedLocalStructu
     numCliqueValuesUsed++;
 
     if (message(Inference, High)) {
-      psp2(stdout,spi*(traceIndent+1));
+      // see https://j.ee.washington.edu/trac/gmtk/ticket/214#comment:14
+      if (message(Inference, High+5))
+	psp2(stdout,spi*(traceIndent+1));
       infoMsg(Inference, High,"CI:Inserting %d-clique ent #%d,pr=%f,sm=%f:",
 	      sharedStructure.fNodes.size(),
 	      (numCliqueValuesUsed-1),
@@ -3258,8 +3301,8 @@ MaxCliqueTable::ceIterateAssignedNodesRecurse(MaxCliqueTable::SharedLocalStructu
   RV* rv = sharedStructure.fSortedAssignedNodes[nodeNumber];
   // do the loop right here
 
+  traceIndent++;
   if (message(Inference, High+5)) {
-    traceIndent++;
     psp2(stdout,spi*traceIndent);
     infoMsg(Inference, High+5,"A%d:Starting assigned iteration of rv %s(%d),crClqPr=%f\n",
 	    nodeNumber,
@@ -3453,8 +3496,8 @@ MaxCliqueTable::ceIterateAssignedNodesRecurse(MaxCliqueTable::SharedLocalStructu
     assert(0);
     break;
   }
-  if (message(Inference, High+5))
-    traceIndent--;
+  //  if (message(Inference, High+5))
+  traceIndent--;
 
 }
 
@@ -3652,7 +3695,7 @@ MaxCliqueTable::ceIterateAssignedNodesNoRecurse(MaxCliqueTable::SharedLocalStruc
 	  // use aggressive growth factor for now to avoid expensive copies.
 	  origin.temporaryCliqueValuePool.resizeAndCopy(
 							origin.packer.packedLen()*
-							int(1.5+(double)origin.temporaryCliqueValuePool.size()*TEMPORARY_LOCAL_CLIQUE_VALUE_POOL_GROWTH_RATE));
+							int(1.5+(double)origin.temporaryCliqueValuePool.size()*valuePoolGrowthRate));
 	}
 	unsigned *pcv = 
 	  &origin.temporaryCliqueValuePool.ptr[lindex];
@@ -3677,7 +3720,7 @@ MaxCliqueTable::ceIterateAssignedNodesNoRecurse(MaxCliqueTable::SharedLocalStruc
 	// be stored if it ends up being used.
 	unsigned *pcv = origin.valueHolder.curCliqueValuePtr();
 	// Next, pack the clique values into this position.
-	origin.packer.pack((unsigned**)discreteValuePtrs.ptr,(unsigned*)pcv);
+	origin.packer.pack((unsigned**)sharedStructure.discreteValuePtrs.ptr,(unsigned*)pcv);
 	// Look it up in the hash table.
 	bool foundp;
 	unsigned *key;
@@ -4207,7 +4250,7 @@ ceSendToOutgoingSeparator(MaxCliqueTable::SharedLocalStructure& sharedStructure,
 		// re-construct hash tables only for new entries.
 		new (&sepSeparatorValuesPtr[i].iRemHashMap)
 		  VHashMapUnsignedUnsignedKeyUpdatable
-		  (sepOrigin.remPacker.packedLen(),REM_HASH_MAP_STARTING_SIZE);
+		  (sepOrigin.remPacker.packedLen(),ConditionalSeparatorTable::remHashMapStartingSize);
 		// TODO: potentially preallocate default size of  
 		// separatorValues->ptr[i].remValues.resize(default);
 		// TODO: potentially create zero size here, and only
@@ -7214,13 +7257,13 @@ deScatterToOutgoingSeparatorsViterbi(MaxCliqueTable::SharedLocalStructure& share
 SeparatorClique::SeparatorClique(MaxClique& c1, MaxClique& c2)
   :  veSeparator(false),
      separatorValueSpaceManager(1,     // starting size
-				SEPARATOR_VALUE_SPACE_MANAGER_GROWTH_RATE,   // growth rate
+				sepSpaceMgrGrowthRate,   // growth rate
 				1,     // growth addition
-				SEPARATOR_VALUE_SPACE_MANAGER_DECAY_RATE),   // decay rate 
+				sepSpaceMgrDecayRate),   // decay rate 
      remainderValueSpaceManager(1,     // starting size
-				REMAINDER_VALUE_SPACE_MANAGER_GROWTH_RATE,   // growth rate
+				remSpaceMgrGrowthRate,   // growth rate
 				1,     // growth addition
-				REMAINDER_VALUE_SPACE_MANAGER_DECAY_RATE)    // decay rate
+				remSpaceMgrDecayRate)    // decay rate
      
 {
   nodes.clear();
@@ -7361,11 +7404,11 @@ SeparatorClique::clearSeparatorValueCache(bool force)
 {
   if (force && accPacker.packedLen() > ISC_NWWOH_AI) {
     accValueHolder.prepare();
-    accSepValHashSet.clear(AI_SEP_VALUE_HOLDER_STARTING_SIZE);
+    accSepValHashSet.clear(aiStartingSize);
   }
   if (force && remPacker.packedLen() > ISC_NWWOH_RM) { 
     remValueHolder.prepare();
-    remSepValHashSet.clear(REM_SEP_VALUE_HOLDER_STARTING_SIZE);
+    remSepValHashSet.clear(remStartingSize);
   }
   // shrink space asked for by clique values. 
   separatorValueSpaceManager.decay();
@@ -7424,12 +7467,10 @@ SeparatorClique::prepareForUnrolling()
     if (accPacker.packedLen() > ISC_NWWOH_AI) {
       // only setup hash table if the packed accumulated insersection
       // set is larger than one machine word (unsigned).
-      new (&accValueHolder) CliqueValueHolder(accPacker.packedLen(),
-					      // TODO: optimize this 1000 value.
-					      AI_SEP_VALUE_HOLDER_STARTING_SIZE,
-					      AI_SEP_VALUE_HOLDER_GROWTH_RATE); // 1.25
+      new (&accValueHolder) CliqueValueHolder(accPacker.packedLen());
+
       // TODO: optimize starting size.
-      new (&accSepValHashSet) vhash_set< unsigned > (accPacker.packedLen(),AI_SEP_VALUE_HOLDER_STARTING_SIZE);
+      new (&accSepValHashSet) vhash_set< unsigned > (accPacker.packedLen(),aiStartingSize);
     }
   }
 
@@ -7451,11 +7492,8 @@ SeparatorClique::prepareForUnrolling()
     if (remPacker.packedLen() > ISC_NWWOH_RM) { 
       // Only setup hash table if the packed remainder set is larger
       // than one machine word (unsigned).
-      new (&remValueHolder) CliqueValueHolder(remPacker.packedLen(),
-					      // TODO: optimize this starting sizse
-					      REM_SEP_VALUE_HOLDER_STARTING_SIZE, // 2
-					      REM_SEP_VALUE_HOLDER_GROWTH_RATE); // 1.25
-      new (&remSepValHashSet) vhash_set< unsigned > (remPacker.packedLen(),REM_SEP_VALUE_HOLDER_STARTING_SIZE);
+      new (&remValueHolder) CliqueValueHolder(remPacker.packedLen());
+      new (&remSepValHashSet) vhash_set< unsigned > (remPacker.packedLen(),remStartingSize);
     }
   }
 
@@ -8119,7 +8157,7 @@ void ConditionalSeparatorTable::init(SeparatorClique& origin)
 	for (unsigned i=0;i<starting_size;i++) {
 	  // need to re-construct individual hash tables.
 	  new (&separatorValues->ptr[i].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable
-	    (origin.remPacker.packedLen(),REM_HASH_MAP_STARTING_SIZE);
+	    (origin.remPacker.packedLen(),remHashMapStartingSize);
 	  // TODO: while we potentially could preallocate default size
 	  // of separatorValues->ptr[i].remValues.resize(default); here,
 	  // we don't really know what it should be. Since there are
@@ -8392,7 +8430,7 @@ ConditionalSeparatorTable
       for (unsigned i=0;i<starting_size;i++) {
 	// need to re-construct individual hash tables.
 	new (&separatorValues->ptr[i].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable
-	  (origin.remPacker.packedLen(),REM_HASH_MAP_STARTING_SIZE);
+	  (origin.remPacker.packedLen(),remHashMapStartingSize);
 	// TODO: while we potentially could preallocate default size
 	// of separatorValues->ptr[i].remValues.resize(default); here,
 	// we don't really know what it should be. Since there are
@@ -8502,7 +8540,7 @@ void ConditionalSeparatorTable::insert(SeparatorClique& origin,
 	  // re-construct hash tables only for new entries.
 	  new (&sepSeparatorValuesPtr[i].iRemHashMap)
 	    VHashMapUnsignedUnsignedKeyUpdatable
-	    (origin.remPacker.packedLen(),REM_HASH_MAP_STARTING_SIZE);
+	    (origin.remPacker.packedLen(),remHashMapStartingSize);
 	  // TODO: potentially preallocate default size of  
 	  // separatorValues->ptr[i].remValues.resize(default);
 	  // TODO: potentially create zero size here, and only
@@ -8989,6 +9027,20 @@ reportMemoryUsageTo(SeparatorClique& origin, FILE *f)
 //        CliqueValueHolder support
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
+
+float CliqueValueHolder::defaultGrowthFactor;
+unsigned CliqueValueHolder::defaultAllocationUnitChunkSize;
+
+
+CliqueValueHolder::CliqueValueHolder(unsigned _cliqueValueSize) 
+  : cliqueValueSize(_cliqueValueSize),
+    growthFactor(defaultGrowthFactor),
+    allocationUnitChunkSize(defaultAllocationUnitChunkSize)
+
+{
+  assert ( allocationUnitChunkSize > 0 );
+  prepare();
+}
 
 
 CliqueValueHolder::CliqueValueHolder(unsigned _cliqueValueSize,

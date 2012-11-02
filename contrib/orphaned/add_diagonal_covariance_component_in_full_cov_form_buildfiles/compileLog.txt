@@ -1,0 +1,52 @@
+-----------------------------------------------------------------
+Loaded cache file: /homes/zafer/.matlab/R2009a/mcc.cache/1.24.4.17:egg.ee.washington.edu:2135637983
+-----------------------------------------------------------------
+Warning: No display specified.  You will not be able to display graphics on the screen.
+{Compiler version: 4.10 (R2009a)} 
+Processing include files...
+2 item(s) added.
+Processing directories installed with MCR...
+The file ./add_diagonal_covariance_component_in_full_cov_form_buildfiles/mccExcludedFiles.log contains a list of functions excluded from the CTF archive.
+0 item(s) added.
+Generating MATLAB path for the compiled application...
+Created 38 path items.
+{Begin validation of MEX files: Fri Jun 18 03:17:44 2010} 
+{End validation of MEX files: Fri Jun 18 03:17:44 2010} 
+{Parsing file "/atm/chicken/home/zafer/projects/pssp/grid_analysis/other_profiles/results/a_day/add_diagonal_covariance_component_in_full_cov_form.m"
+	(Referenced from: "Compiler Command Line").} 
+{Parsing file "/afs/ee.washington.edu/nikola/.as40-amd64/pkgs/matlab/.2009a/toolbox/compiler/deploy/deployprint.m"
+	(Referenced from: "Compiler Command Line").} 
+{Parsing file "/afs/ee.washington.edu/nikola/.as40-amd64/pkgs/matlab/.2009a/toolbox/compiler/deploy/printdlg.m"
+	(Referenced from: "Compiler Command Line").} 
+{Deleting 0 temporary MEX authorization files.} 
+{Generating file "./add_diagonal_covariance_component_in_full_cov_form_buildfiles/add_diagonal_covariance_component_in_full_cov_form_main.c".} 
+{Generating file "/atm/chicken/home/zafer/projects/pssp/grid_analysis/other_profiles/results/a_day/add_diagonal_covariance_component_in_full_cov_form_buildfiles/run_add_diagonal_covariance_component_in_full_cov_form.sh".} 
+{Generating file "/atm/chicken/home/zafer/projects/pssp/grid_analysis/other_profiles/results/a_day/add_diagonal_covariance_component_in_full_cov_form_buildfiles/readme.txt".} 
+{Generating file "./add_diagonal_covariance_component_in_full_cov_form_buildfiles/add_diagonal_covariance_component_in_full_cov_form_mcc_component_data.c".} 
+{Executing command: mbuild  -O -v -output "add_diagonal_covariance_component_in_full_cov_form" -I"./add_diagonal_covariance_component_in_full_cov_form_buildfiles" "./add_diagonal_covariance_component_in_full_cov_form_buildfiles/add_diagonal_covariance_component_in_full_cov_form_main.c" "./add_diagonal_covariance_component_in_full_cov_form_buildfiles/add_diagonal_covariance_component_in_full_cov_form_mcc_component_data.c" -link exe -outdir "./add_diagonal_covariance_component_in_full_cov_form_buildfiles"} 
+----------------------------------------------------------------
+-> mbuildopts.sh sourced from directory (DIR = $TMW_ROOT/bin)
+   FILE = /afs/ee.washington.edu/nikola/.as40-amd64/pkgs/matlab/.2009a/bin/mbuildopts.sh
+----------------------------------------------------------------
+->    TMW_ROOT              = /afs/ee.washington.edu/nikola/.as40-amd64/pkgs/matlab/.2009a
+->    CC                    = gcc
+->    CC flags:
+         CFLAGS             = -ansi -D_GNU_SOURCE -I/afs/ee.washington.edu/nikola/.as40-amd64/pkgs/matlab/.2009a/extern/include -DUNIX -DX11 -pthread
+         CDEBUGFLAGS        = -g
+         COPTIMFLAGS        = -O -DNDEBUG
+         CLIBS              = -Wl,-rpath-link,/afs/ee.washington.edu/nikola/.as40-amd64/pkgs/matlab/.2009a/bin/glnxa64 -L/afs/ee.washington.edu/nikola/.as40-amd64/pkgs/matlab/.2009a/bin/glnxa64  -lmwmclmcrrt -lm
+         arguments          = 
+->    LD                    = gcc
+->    Link flags:
+         LDFLAGS            = -pthread
+         LDDEBUGFLAGS       = -g
+         LDOPTIMFLAGS       = -O
+         arguments          = 
+----------------------------------------------------------------
+
+-> gcc -c  -I./add_diagonal_covariance_component_in_full_cov_form_buildfiles -ansi -D_GNU_SOURCE -I/afs/ee.washington.edu/nikola/.as40-amd64/pkgs/matlab/.2009a/extern/include -DUNIX -DX11 -pthread  -O -DNDEBUG  "./add_diagonal_covariance_component_in_full_cov_form_buildfiles/add_diagonal_covariance_component_in_full_cov_form_main.c" -o ./add_diagonal_covariance_component_in_full_cov_form_buildfiles/add_diagonal_covariance_component_in_full_cov_form_main.o
+
+-> gcc -c  -I./add_diagonal_covariance_component_in_full_cov_form_buildfiles -ansi -D_GNU_SOURCE -I/afs/ee.washington.edu/nikola/.as40-amd64/pkgs/matlab/.2009a/extern/include -DUNIX -DX11 -pthread  -O -DNDEBUG  "./add_diagonal_covariance_component_in_full_cov_form_buildfiles/add_diagonal_covariance_component_in_full_cov_form_mcc_component_data.c" -o ./add_diagonal_covariance_component_in_full_cov_form_buildfiles/add_diagonal_covariance_component_in_full_cov_form_mcc_component_data.o
+
+-> gcc -O -pthread  -o ./add_diagonal_covariance_component_in_full_cov_form_buildfiles/add_diagonal_covariance_component_in_full_cov_form  ./add_diagonal_covariance_component_in_full_cov_form_buildfiles/add_diagonal_covariance_component_in_full_cov_form_main.o ./add_diagonal_covariance_component_in_full_cov_form_buildfiles/add_diagonal_covariance_component_in_full_cov_form_mcc_component_data.o -Wl,-rpath-link,/afs/ee.washington.edu/nikola/.as40-amd64/pkgs/matlab/.2009a/bin/glnxa64 -L/afs/ee.washington.edu/nikola/.as40-amd64/pkgs/matlab/.2009a/bin/glnxa64  -lmwmclmcrrt -lm 
+

@@ -1,0 +1,59 @@
+#!/bin/sh
+#Written by Elliot Saba, 2009
+#expects one argument, the MATLAB filename (without .m extension)
+if [ $# -ne 1 ]; then
+	echo "Usage: $0 [m-file]";
+	exit
+fi
+
+#Set handy variables
+INPUT_M_FILE_WITH_EXT=${1##*/}
+INPUT_M_FILE_DIR=${1%/*}
+if [ "${INPUT_M_FILE_DIR}" == "${INPUT_M_FILE_WITH_EXT}" ]; then
+	INPUT_M_FILE_DIR="."
+fi
+INPUT_M_FILE=${INPUT_M_FILE_WITH_EXT%%.*}
+OUTPUT_DIR=${INPUT_M_FILE_DIR}/${INPUT_M_FILE}_buildfiles
+RUN_HELPER_IN=${OUTPUT_DIR}/run_${INPUT_M_FILE}.sh
+RUN_HELPER_OUT=${INPUT_M_FILE_DIR}/run_${INPUT_M_FILE}.sh
+MATLAB_ROOT=/usr/nikola/pkgs/matlab
+#MATLAB_ROOT=/net/gs/vol3/software/matlab-R2008b/bin/matlab
+CURR_DIR=`pwd`
+
+#If the output dir already exists, delete it.
+if [ -d $OUTPUT_DIR ]; then
+	echo "Cleaning up all files in $OUTPUT_DIR"
+	rm -rf $OUTPUT_DIR
+fi
+mkdir $OUTPUT_DIR
+
+
+#compile code to c/binary
+echo "Compiling ${INPUT_M_FILE}.m... (You may safely ignore 'ifconfig: command not found' errors)"
+$MATLAB_ROOT/bin/mcc -mv -R nojit -R nojvm -d $OUTPUT_DIR ${INPUT_M_FILE_DIR}/${INPUT_M_FILE}.m >> ${OUTPUT_DIR}/compileLog.txt
+echo "Compile completed, log file may be found at ${CURR_DIR}/${OUTPUT_DIR}/compileLog.txt"
+
+
+###############################################################
+##Edits the shell script that runs the compiled output to not require
+##  the MATLAB_ROOT to be passed in on the command-line.
+
+#First, get rid of the parenting pair of it/else/fi statements
+sed -i -e "/^if \[ .*/d" -e '/^else/d' -e '/^fi/d' $RUN_HELPER_IN
+
+#then remove the spaces at the beginning of everything and the shift 1
+sed -i -e 's_^\ \ __' -e '/shift 1/d' $RUN_HELPER_IN
+
+#remove the unused echo commands,
+sed -i -e '/^echo/d' -e '/.*deployedMCRroot.*/d' $RUN_HELPER_IN
+
+#change execution path
+sed -i -e "s|^exe_dir=.*|exe_dir='${OUTPUT_DIR##*/}'|" $RUN_HELPER_IN
+
+#finally remove empty lines and replace all $1's with MATLAB_ROOT's.
+sed -i -e "/^$/d" -e "s_\$1_\"${MATLAB_ROOT}\"_" $RUN_HELPER_IN
+###############################################################
+mv $RUN_HELPER_IN $RUN_HELPER_OUT
+
+
+echo "To run compiled output, run the file ${RUN_HELPER_OUT}"

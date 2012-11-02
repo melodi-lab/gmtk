@@ -1,7 +1,8 @@
 syntax: glob
 
 *~
-#*#
+\#*\#
+*.chk
 *.deps
 *.exe
 {Makefile,config.h}.in
@@ -27,12 +28,26 @@ stamp-h1
 ylwrap
 IEEEFloatingpoint/ieeeFPsetup.h
 IEEEFloatingpoint/ieeeTest
+featureFileIO/unrevisioned
 featureFileIO/obs-concat
 featureFileIO/obs-create
 featureFileIO/obs-diff
 featureFileIO/obs-info
 featureFileIO/obs-print
 featureFileIO/obs-skmeans
+featureFileIO/obs-cat
+featureFileIO/obs-stats
+featureFileIO/testASCIIFile
+featureFileIO/testPFileFile
+featureFileIO/testFileSource
+featureFileIO/testStreamSource
+featureFileIO/testASCIIStream
+featureFileIO/testBinStream
+featureFileIO/testFileStream
+featureFileIO/testObsFile
+featureFileIO/testFileSrc
+featureFileIO/testFilter
+featureFileIO/testMerge
 miscSupport/fileParserTest
 miscSupport/testArguments
 miscSupport/testBPRange
@@ -40,6 +55,7 @@ miscSupport/testError
 miscSupport/testHashMapList
 miscSupport/testHashTree
 miscSupport/testLMS
+miscSupport/testLZERO
 miscSupport/testLogp
 miscSupport/testRLS
 miscSupport/testRand
@@ -49,6 +65,7 @@ miscSupport/testVHashMap
 miscSupport/testVSHashMap
 miscSupport/testcArray
 miscSupport/testsArray
+miscSupport/testmArray
 mitk/bivariate-mi
 mitk/mvnrnd
 mitk/test-matrix-ops
@@ -65,6 +82,7 @@ tests/test_and_dev.at
 tests/testsuite
 tests/testsuite.dir
 tests/testsuite.log
+tksrc/unrevisioned
 tksrc/gmtkDTindex
 tksrc/gmtkEMtrain
 tksrc/gmtkJT
@@ -77,6 +95,8 @@ tksrc/gmtkTie
 tksrc/gmtkTime
 tksrc/gmtkTriangulate
 tksrc/gmtkViterbi
+tksrc/gmtkOnline
+tksrc/gmtkPrint
 tksrc/gmtkViz
 tksrc/gmtkViz.app
 tksrc/gmtkViz.app/*
@@ -84,3 +104,5 @@ tksrc/neghead
 tksrc/testPackCliqueValue
 tksrc/testViterbi
 tksrc/testPackCliqueValue
+tksrc/dlinktest
+tksrc/parserTest

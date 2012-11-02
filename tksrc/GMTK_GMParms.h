@@ -525,5 +525,9 @@ private:
 // actually defined near where main() is defined.
 extern GMParms GM_Parms;
 
+// load & register C determinstic mapping functions as decision trees
+// from files specified by -mapX arguments
+void dlopenDeterministicMaps(char **dlopenFilenames, unsigned maxFilenames);
+
 #endif
 

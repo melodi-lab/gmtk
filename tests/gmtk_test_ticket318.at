@@ -1,0 +1,234 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/318 is fixed
+
+# gmtkViterbi should run successfully with -failOnZeroClique F
+#   and fail without it.
+
+AT_SETUP([continue after zero clique (ticket 318)])
+AT_DATA([318.str],[
+GRAPHICAL_MODEL zc
+
+frame: 0 {
+  variable: X {
+    type: discrete hidden cardinality 2;
+    switchingparents: nil;
+    conditionalparents: nil using DenseCPT("initialX");
+  }
+
+  variable: Y {
+    type: discrete observed 0:0 cardinality 2;
+    switchingparents: nil;
+    conditionalparents: X(0) using DenseCPT("obs");
+  }
+}
+
+frame: 1 {
+  variable: X {
+    type: discrete hidden cardinality 2;
+    switchingparents: nil;
+    conditionalparents: X(-1) using DenseCPT("Xtransition");
+  }
+
+  variable: Y {
+    type: discrete observed 0:0 cardinality 2;
+    switchingparents: nil;
+    conditionalparents: X(0) using DenseCPT("obs");
+  }
+} 
+
+chunk 1:1
+])
+AT_DATA([318.mtr],[
+DENSE_CPT_IN_FILE inline
+3
+
+0
+initialX
+0
+2
+0.7 0.3
+
+1
+Xtransition
+1
+2 2
+0.4 0.6
+0.9 0.1
+
+2
+obs
+1
+2 2
+0 1
+0 1
+])
+AT_DATA([zc0],[
+1
+1
+1
+1
+1
+1
+1
+0
+1
+1
+1
+1
+1
+1
+1
+])
+AT_DATA([zc1],[
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+])
+AT_DATA([318.dat],[
+zc1
+zc1
+zc0
+zc1
+zc1
+])
+AT_DATA([318.str.trifile],[
+% Structure File Identification Information
+0 X 0 2 D 0 1 0 
+1 Y 0 2 D 0 1 1 X 0 
+2 X 1 2 D 0 1 1 X -1 
+3 Y 1 2 D 0 1 1 X 0 
+1 1 
+@@@!!!TRIFILE_END_OF_ID_STRING!!!@@@ 
+
+% ---
+% GMTK Triangulation File Created: Sunday October 07 2012, 21:59:19 PDT
+% Options-: triangulationHeuristic: completed, jtWeight: T, jtwUB: F, jtwPUI: 0.000000, jtwMC: F, jtwSNSC: 1.000000, jtwDNSC: 1.000000, pfCobWeight: 0.000000, findBestBoundary: T, traverseFraction: 1.000000, noBoundaryMemoize: F, forceLeftRight: , boundaryHeuristic: S, 
+% ---
+
+
+% ---
+% --- M, number of chunks in which to find interface boundary
+1 
+
+% ---
+% --- S, chunk skip
+1 
+
+% ---
+% --- interface method
+LEFT 
+
+% ---
+% --- boundary method
+Left_interface:Run_Bdry_Alg(T),Bnd_Heurs(S),TravFrac(1.000000),Tri_Heur(completed) 
+
+% ---
+% --- P partition information: variables and their neighbors
+% X(0) : Y(0), X(1),
+% Y(0) : X(0), X(1),
+% X(1) : X(0), Y(0),
+% --- P partition definition
+P_PARTITION 3 X 0 Y 0 X 1 
+
+% ---
+% --- C partition information: variables and their neighbors
+% X(1) : Y(1), X(2),
+% Y(1) : X(1), X(2),
+% X(2) : X(1), Y(1),
+% --- C partition definition
+C_PARTITION 3 X 1 Y 1 X 2 
+
+% ---
+% --- E partition information: variables and their neighbors
+% X(2) : Y(2),
+% Y(2) : X(2),
+% --- E partition definition
+E_PARTITION 2 X 2 Y 2 
+
+% ---
+% --- PC information : variables and their neighbors
+% X(1) : Y(1), X(2),
+% --- PC interface definition
+PC_PARTITION 1 X 1 
+
+% ---
+% --- CE information : variables and their neighbors
+% X(2) : X(1), Y(1),
+% --- CE interface definition
+CE_PARTITION 1 X 2 
+
+% ---
+% ---- P Partitions Cliques and their weights
+% ---- 1 total max-cliques 
+% ---- Triangulation came from method: 1-completed
+% 0 : 3  0.602060
+%    X(0)
+%    Y(0)
+%    X(1)
+% Maximum clique state space = 1e0.602060, total state space = 1e0.602060
+1-completed 
+1 
+0 3 X 0 Y 0 X 1 
+
+% ---
+% ---- C Partitions Cliques and their weights
+% ---- 1 total max-cliques 
+% ---- Triangulation came from method: 1-completed
+% 0 : 3  0.602060
+%    X(1)
+%    Y(1)
+%    X(2)
+% Maximum clique state space = 1e0.602060, total state space = 1e0.602060
+1-completed 
+1 
+0 3 X 1 Y 1 X 2 
+
+% ---
+% ---- E Partitions Cliques and their weights
+% ---- 1 total max-cliques 
+% ---- Triangulation came from method: 1-completed
+% 0 : 2  0.301030
+%    X(2)
+%    Y(2)
+% Maximum clique state space = 1e0.301030, total state space = 1e0.301030
+1-completed 
+1 
+0 2 X 2 Y 2 
+
+
+% ----
+% ----
+% ----
+% ---- Printing final clique set and clique weights---
+%   --- Prologue summary, 1 cliques
+%    --- P curWeight = 0.602060
+%   --- Prologue max clique weight = 0.602060, total weight = 0.602060, jt_weight = 1.000000
+%   --- Chunk summary, 1 cliques
+%    --- C curWeight = 0.602060
+%   --- Chunk max clique weight = 0.602060, total Cx1 weight = 0.602060, per-chunk total C weight = 0.602060, jt_weight = 1.000000
+%   --- Epilogue summary, 1 cliques
+%    --- E curWeight = 0.301030
+%   --- Epilogue max clique weight = 0.301030, total weight = 0.301030, jt_weight = 1.000000
+% --- Final set (P,Cx1,E) has max clique weight = 0.602060, total state space = 1.000000 ---
+% --- Total weight when unrolling 1x = 1.000000 ---
+% --- Total weight when unrolling 2x = 1.146128 ---
+% --- Total weight when unrolling 5x = 1.414973 ---
+% --- Total weight when unrolling 10x = 1.662758 ---
+% --- Total weight when unrolling 20x = 1.934498 ---
+% --- Total weight when unrolling 50x = 2.313867 ---
+% --- Total weight when unrolling 100x = 2.608526 ---
+% --- Total weight when unrolling 500x = 3.302331 ---
+% --- Total weight when unrolling 1000x = 3.602711 ---
+])
+AT_CHECK([gmtkViterbi -of1 318.dat -ni1 1 -fmt1 ascii -strF 318.str -inputM 318.mtr -vitValsFile -],1,[ignore],[ignore])
+AT_CHECK([gmtkViterbi -of1 318.dat -ni1 1 -fmt1 ascii -strF 318.str -inputM 318.mtr -vitValsFile - -failOnZeroClique F],0,[ignore],[ignore])
+AT_CLEANUP	 
+

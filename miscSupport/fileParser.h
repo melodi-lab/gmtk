@@ -24,6 +24,7 @@
 
 #include "general.h"
 
+
 class ioDataStreamFile {
 
  protected:
@@ -45,8 +46,8 @@ class ioDataStreamFile {
   const char *const fileName() { return _fileName.c_str(); }
   int lineNo() { return _curLineNo; }
 
-  long ftell() const { return(::ftell(fh)); }
-  int  fseek ( long offset , int origin ) { return(::fseek(fh,offset,origin)); }
+  gmtk_off_t ftell() const { return(gmtk_ftell(fh)); }
+  int  fseek ( gmtk_off_t offset , int origin ) { return(gmtk_fseek(fh,offset,origin)); }
 };
 
 
@@ -80,7 +81,7 @@ class iDataStreamFile : public ioDataStreamFile {
   bool prepareNext();
   
   void rewind();
-  int  fseek ( long offset , int origin );
+  int  fseek ( gmtk_off_t offset , int origin );
 
   bool isEOF() { 
     if(feof(fh)) return true;

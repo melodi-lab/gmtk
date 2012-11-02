@@ -127,6 +127,8 @@ protected:
   int              dtNum;      // the current DT number
   string           curName;    // the current DT name
   unsigned         firstDT;    // index of the first decision tree
+
+  string getSourceString();
  
   ///////////////////////////////////////////////////////////////////////////   
   // Equation Parsing 
@@ -181,7 +183,8 @@ protected:
 		      string leafNodeVal 
 		      );
 
-    leafNodeValType evaluateFormula(const vector< RV* >& variables,
+    leafNodeValType evaluateFormula(RngDecisionTree &dt,
+				    const vector< RV* >& variables,
 				    const RV* rv = NULL);
 
     void write(oDataStreamFile& os); 

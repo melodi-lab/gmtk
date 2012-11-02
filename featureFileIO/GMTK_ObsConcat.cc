@@ -37,6 +37,7 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include <cassert>
 #include "pfile.h"
 //#include "parse_subset.h"
+#include "debug.h"
 #include "error.h"
 #include "arguments.h"
 #include "GMTK_WordOrganization.h"
@@ -46,6 +47,24 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "GMTK_ObsStats.h"
 #include "GMTK_ObsNorm.h"
 #include "GMTK_ObsGaussianNorm.h"
+
+#include "GMTK_ObservationFile.h"
+#include "GMTK_FilterFile.h"
+#include "GMTK_FileSource.h"
+#include "GMTK_FileSourceNoCache.h"
+#include "GMTK_ASCIIFile.h"
+#include "GMTK_FlatASCIIFile.h"
+#include "GMTK_PFileFile.h"
+#include "GMTK_HTKFile.h"
+#include "GMTK_HDF5File.h"
+#include "GMTK_BinaryFile.h"
+#include "GMTK_Filter.h"
+#include "GMTK_ObservationArguments.h"
+#include "GMTK_FIRFilter.h"
+#include "GMTK_ARMAFilter.h"
+#include "GMTK_AffineFilter.h"
+#include "GMTK_UpsampleFilter.h"
+#include "GMTK_UpsampleSmoothFilter.h"
 
 #include "range.h"
 #include "vbyteswapping.h"
@@ -57,7 +76,21 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #endif
 
 
-char *output_fname = 0; // Output pfile name.
+
+#define GMTK_ARG_OBS_FILES
+#define GMTK_ARG_CPP_CMD_OPTS
+#define GMTK_ARG_OBS_MATRIX_XFORMATION
+#define GMTK_ARG_FILE_RANGE_OPTIONS
+#define GMTK_ARG_START_END_SKIP
+#define GMTK_ARG_HELP
+#define GMTK_ARG_VERSION
+
+#define GMTK_ARGUMENTS_DEFINITION
+#include "ObsArguments.h"
+#undef GMTK_ARGUMENTS_DEFINITION
+
+
+char *output_fname = NULL; // Output pfile name.
 char * outputList = NULL;
 FILE * outputListFp=NULL;
 const char * outputNameSeparatorStr="_";
@@ -65,7 +98,11 @@ const char * outputNameSeparatorStr="_";
 
 void (*copy_swap_func_ptr)(size_t, const intv_int32_t*, intv_int32_t*)=NULL;
 
+#if 0
 ObservationMatrix globalObservationMatrix;
+#else
+FileSource *gomFS;
+#endif
 
 void printHTKHeader(FILE* ofp, bool oswap, int numInts, int numFloats, int numSamples) {
 
@@ -143,7 +180,13 @@ void printSegment(unsigned sent_no, FILE* out_fp, float* cont_buf, unsigned num_
 	  copy_swap_func_ptr(1,(int*)&sent_no,(int*)&sent_no);
 	  copy_swap_func_ptr(1,(int*)&frame_no,(int*)&frame_no);
 	  fwrite_result = fwrite(&sent_no,sizeof(sent_no),1,out_fp);
+          if (fwrite_result != 1) {
+            error("Error writing to output file");
+          }
 	  fwrite_result = fwrite(&frame_no,sizeof(frame_no),1,out_fp);
+          if (fwrite_result != 1) {
+            error("Error writing to output file");
+          }
 	} else if(ofmt==FLATASC || ofmt==RAWASC ){
 	  fprintf(out_fp,"%d %u",sent_no,frame_no);
 	  ns = true;
@@ -156,6 +199,9 @@ void printSegment(unsigned sent_no, FILE* out_fp, float* cont_buf, unsigned num_
 	  DBGFPRINTF((stderr,"obsPrint: Printing HTK float %f.\n",cont_buf_p[frit]));
 	  copy_swap_func_ptr(1,(int*)&cont_buf_p[frit],(int*)&cont_buf_p[frit]);
 	  fwrite_result = fwrite(&cont_buf_p[frit], sizeof(cont_buf_p[frit]),  1,out_fp);
+          if (fwrite_result != 1) {
+            error("Error writing to output file");
+          }
 	} 
 	else if(ofmt==FLATASC || ofmt==RAWASC){
 	  if (ns) fprintf(out_fp," ");
@@ -170,6 +216,9 @@ void printSegment(unsigned sent_no, FILE* out_fp, float* cont_buf, unsigned num_
 	if (ofmt==FLATBIN || ofmt==RAWBIN || (ofmt==HTK && num_continuous>0) ) {
 	  copy_swap_func_ptr(1,(int*)&disc_buf_p[lrit],(int*)&disc_buf_p[lrit]);
 	  fwrite_result = fwrite(&disc_buf_p[lrit],  sizeof(disc_buf_p[lrit]), 1,out_fp);
+          if (fwrite_result != 1) {
+            error("Error writing to output file");
+          }
 	} 
 	else if(ofmt==HTK && num_continuous==0) { // in the HTK format we
   // cannot mix floats with discrete data; that's why if there is at
@@ -180,6 +229,9 @@ void printSegment(unsigned sent_no, FILE* out_fp, float* cont_buf, unsigned num_
 	     short_lab_buf_p = swapb_short_short(short_lab_buf_p);
 	   }
 	  fwrite_result = fwrite(&short_lab_buf_p,  sizeof(short_lab_buf_p), 1,out_fp);
+          if (fwrite_result != 1) {
+            error("Error writing to output file");
+          }
 	}
 	else if(ofmt==FLATASC || ofmt==RAWASC) {
 	  if (ns) fprintf(out_fp," ");	    
@@ -208,237 +260,236 @@ void printSegment(unsigned sent_no, FILE* out_fp, float* cont_buf, unsigned num_
 }
 
 
+#ifndef MEBIBYTE
+#define MEBIBYTE (1048576)  
+#endif
+
+#define ALLOREMPTY(var) \
+  ( ( strncasecmp(var, "all",  4) == 0 ) || \
+    ( strncasecmp(var, "nil",  4) == 0 ) || \
+    ( strncasecmp(var, "none", 5) == 0 ) || \
+    ( strncasecmp(var, "full", 5) == 0 ) || \
+    ( strlen(var) == 0 ) )
+
+
+FileSource *
+openOneSourceFile(char *ofs,
+		  unsigned ifmt,
+		  unsigned nfs,
+		  unsigned nis,
+		  bool iswp,
+		  bool Cpp_If_Ascii,
+		  char *cppCommandOptions,
+		  const char *prefrs,
+		  const char *preirs,
+		  const char *prepr,
+		  const char *sr,
+		  char *Per_Stream_Transforms,
+		  const char *frs,
+		  const char *irs,
+		  char *postpr,
+		  char *Post_Transforms,
+		  char *gpr_str,
+		  bool constantSpace,
+		  int startSkip,
+		  int endSkip,
+		  unsigned fileBufferSize,
+		  unsigned fileWindowSize,
+		  unsigned fileWindowDelta,
+		  unsigned justification,
+		  unsigned fileNum)
+{
+  // range selection is much more efficient if "all" is replaced with NULL
+  // since the logical <-> physical mapping step can be skipped
+  if (    frs && ALLOREMPTY(frs))         frs = NULL;
+  if (    irs && ALLOREMPTY(irs))         irs = NULL;
+  if ( prefrs && ALLOREMPTY(prefrs))   prefrs = NULL;
+  if ( preirs && ALLOREMPTY(preirs))   preirs = NULL;
+  if (     sr && ALLOREMPTY(sr))           sr = NULL;
+  if (  prepr && ALLOREMPTY(prepr))     prepr = NULL;
+  if ( postpr && ALLOREMPTY(postpr))   postpr = NULL;
+  if (gpr_str && ALLOREMPTY(gpr_str)) gpr_str = NULL;
+
+  ObservationFile *obsFile;
+  
+  obsFile = instantiateFile(ifmt, ofs, nfs, nis, fileNum, iswp,
+			    Cpp_If_Ascii, cppCommandOptions, prefrs, preirs,
+			    prepr, sr);
+  assert(obsFile);
+  if (Per_Stream_Transforms || frs || irs || postpr) {
+    Filter *fileFilter = instantiateFilters(Per_Stream_Transforms,
+					    obsFile->numContinuous(),
+					    obsFile->numDiscrete());
+    assert(fileFilter);
+    obsFile = new FilterFile(fileFilter, obsFile, frs, irs, postpr);
+  }
+  ObservationFile *mf = obsFile;
+
+  ObservationFile *ff;
+  if (Post_Transforms || gpr_str) {
+    ff = new FilterFile(instantiateFilters(Post_Transforms, 
+                                           obsFile->numLogicalContinuous(),
+			                   obsFile->numLogicalDiscrete()),
+                        mf, NULL, NULL, gpr_str);
+  } else {
+    ff = mf;
+  }
+  unsigned windowBytes = fileWindowSize * MEBIBYTE;
+  infoMsg(IM::ObsFile, IM::Low, "windowBytes = %u MiB = %u B\n", fileWindowSize, windowBytes);
+  infoMsg(IM::ObsFile, IM::Low, "fileBufferSize = %u\n", fileBufferSize);
+  if (constantSpace) {
+    return new FileSource(ff, windowBytes, fileWindowDelta, fileBufferSize, 
+                          startSkip, endSkip, justification, constantSpace);
+  } else {
+    return new FileSourceNoCache(ff, windowBytes, fileWindowDelta, fileBufferSize, 
+                                 startSkip, endSkip, justification);
+  }
+}
+
+
 static void obsConcat(FILE *out_fp, 
-		      const char *sr_str[], 
-		      const char *fr_str[], 
-		      const char *lr_str[], 
-		      const char *spr_str[], 
-		      char *input_fname[],
 		      int n_input_fnames, 
-		      unsigned nfs[],
-		      unsigned nis[],
-		      unsigned ifmt[],
-		      bool iswap[],
 		      unsigned ofmt,
-		      unsigned startSkip,
-		      unsigned endSkip,
-		      bool cppIfAscii,
-		      char* cppCommandOptions,
-		      char* perStreamTransforms[],
-		      char* postTransforms,
 		      bool dontPrintFrameID,
 		      const int debug_level, 
 		      const bool quiet,
 		      bool oswap)
 
 {
-    // Feature and label buffers are dynamically grown as needed.
-    size_t buf_size = 300;      // Start with storage for 300 frames.
-    char errmsg[1024];
+  // Feature and label buffers are dynamically grown as needed.
+  size_t buf_size = 300;      // Start with storage for 300 frames.
+  char errmsg[1024];
 
-    // pre-open the first input file so we can check its size
-    const char *file_name;
-    assert(n_input_fnames > 0);
-    file_name = input_fname[0];
-    FILE *in_fp = fopen(file_name, "r");
-    if (in_fp==NULL) {
-	sprintf(errmsg, "Couldn't open input pfile %s for reading.",file_name);
-	error(errmsg);
-    }
-
-    globalObservationMatrix.openFiles(1,  // number of files
-				      (const char**)&file_name,
-				      (const char**)&fr_str[0],
-				      (const char**)&lr_str[0],
-				      (unsigned*)&nfs[0],
-				      (unsigned*)&nis[0],
-				      (unsigned*)&ifmt[0],
-				      (bool*)&iswap[0],
-				      startSkip,
-				      endSkip,
-				      cppIfAscii,
-				      cppCommandOptions,
-				      (const char**)&spr_str[0],
-				      NULL, // actionIfDiffNumFrames,
-				      NULL, //actionIfDiffNumSents,
-				      perStreamTransforms,
-				      postTransforms);
-
-    unsigned n_ftrs = globalObservationMatrix.numContinuous();
-    unsigned n_labs = globalObservationMatrix.numDiscrete();
+  // pre-open the first input file so we can check its size
+  const char *file_name;
+  assert(n_input_fnames > 0);
+  file_name = ofs[0];
+  gomFS = openOneSourceFile(ofs[0], ifmts[0], nfs[0], nis[0], iswp[0], 
+			    Cpp_If_Ascii, cppCommandOptions,
+			    prefrs[0], preirs[0], prepr[0], sr[0],
+			    Per_Stream_Transforms[0], frs[0], irs[0],
+			    postpr[0], Post_Transforms, gpr_str,
+			    constantSpace, startSkip, endSkip,
+			    fileBufferSize, fileWindowSize, fileWindowDelta, 
+			    justification, 0);
+  unsigned n_ftrs = gomFS->numContinuous();
+  unsigned n_labs = gomFS->numDiscrete();
     
-    OutFtrLabStream_PFile* out_stream=NULL;
-    if(ofmt==PFILE) {
-      out_stream = new OutFtrLabStream_PFile(debug_level,"",out_fp,n_ftrs,n_labs,1,oswap);
+  OutFtrLabStream_PFile* out_stream=NULL;
+  if(ofmt==PFILE) {
+    out_stream = new OutFtrLabStream_PFile(debug_level,"",out_fp,n_ftrs,n_labs,1,oswap);
+  }
+
+  float *ftr_buf = new float[buf_size * n_ftrs];
+  UInt32 *lab_buf = new UInt32[buf_size * n_labs];
+
+  // Outer loop around input filenames
+  unsigned global_seg_num=0;
+  for (int file_ix = 0; file_ix < n_input_fnames; ++file_ix) {
+    file_name = ofs[file_ix];
+    delete gomFS;
+    gomFS = openOneSourceFile(ofs[file_ix], ifmts[file_ix], nfs[file_ix], nis[file_ix], iswp[file_ix], 
+			      Cpp_If_Ascii, cppCommandOptions,
+			      prefrs[file_ix], preirs[file_ix], prepr[file_ix], sr[file_ix],
+			      Per_Stream_Transforms[file_ix], frs[file_ix], irs[file_ix],
+			      postpr[file_ix], Post_Transforms, gpr_str,
+			      constantSpace, startSkip, endSkip,
+			      fileBufferSize, fileWindowSize, fileWindowDelta, 
+			      justification, file_ix);
+    unsigned check_n_ftrs = gomFS->numContinuous();
+    unsigned check_n_labs = gomFS->numDiscrete();
+
+    // Check that this input pfile is the same size as predecessors
+    if(check_n_ftrs != n_ftrs || check_n_labs != n_labs) {
+      sprintf(errmsg, "Features/labels of %s (%d/%d) don't match first input file (%d/%d)", 
+	      file_name, check_n_labs, check_n_ftrs, n_labs, n_ftrs);
+      error(errmsg);
     }
-
-    float *ftr_buf = new float[buf_size * n_ftrs];
-    UInt32 *lab_buf = new UInt32[buf_size * n_labs];
-
-    // Outer loop around input filenames
-    unsigned global_seg_num=0;
-    for (int file_ix = 0; file_ix < n_input_fnames; ++file_ix) {
-		file_name = input_fname[file_ix];
-		// in_fp actually already open first time into the loop (i.e. for file_ix==0)
-		if (in_fp == NULL) {
-			in_fp = fopen(file_name, "r");
-			if (in_fp==NULL) {
-				error("Couldn't open input file %s for reading.",file_name);
-			}
-			
-			
-			globalObservationMatrix.openFiles(1,  // number of files
-											  (const char**)&file_name,
-											  (const char**)&fr_str[file_ix],
-											  (const char**)&lr_str[file_ix],
-											  (unsigned*)&nfs[file_ix],
-											  (unsigned*)&nis[file_ix],
-											  (unsigned*)&ifmt[file_ix],
-											  (bool*)&iswap[file_ix],
-											  startSkip,
-											  endSkip,
-											  cppIfAscii,
-											  cppCommandOptions,
-											  (const char**)&spr_str[file_ix],
-											  NULL, // actionIfDiffNumFrames,
-											  NULL, //actionIfDiffNumSents,
-											  &perStreamTransforms[file_ix],
-											  postTransforms);
-			
-			unsigned check_n_ftrs = globalObservationMatrix.numContinuous();
-			unsigned check_n_labs = globalObservationMatrix.numDiscrete();
-			
-			
-			// Check that this input pfile is the same size as predecessors
-			if(check_n_ftrs != n_ftrs || check_n_labs != n_labs) {
-				sprintf(errmsg, "Features/labels of %s (%d/%d) don't match first input file (%d/%d)", file_name, check_n_labs, check_n_ftrs, n_labs, n_ftrs);
-				error(errmsg);
-			}
-		}
 		
-		// create the sentence-range iterator specifically for this 
-		// input file
-		Range sr_rng(sr_str[file_ix],0,globalObservationMatrix.numSegments());
+    // create the sentence-range iterator specifically for this 
+    // input file
+    Range sr_rng(sr[file_ix],0,gomFS->numSegments());
 		
-		for (Range::iterator srit=sr_rng.begin();!srit.at_end();srit++,global_seg_num++) {
-			globalObservationMatrix.loadSegment(*srit);
-			const size_t n_frames = globalObservationMatrix.numFrames();
+    for (Range::iterator srit=sr_rng.begin();!srit.at_end();srit++,global_seg_num++) {
+      gomFS->openSegment(*srit);
+      const size_t n_frames = gomFS->numFrames();
 			
-			if (!quiet && (*srit) % 100 == 0)
-				printf("Processing sentence %d of file %s\n",
-					   (*srit), file_name);
+      if (!quiet && (*srit) % 100 == 0)
+	printf("Processing sentence %d of file %s\n",
+	       (*srit), file_name);
 			
-			// Increase size of buffers if needed.
-			if (n_frames > buf_size){
-				// Free old buffers.
-				delete lab_buf;
-				delete ftr_buf;
-				// Make twice as big to cut down on future reallocs.
-				buf_size = n_frames * 2;
-				// Allocate new larger buffers.
-				ftr_buf = new float[buf_size * n_ftrs];
-				lab_buf = new UInt32[buf_size * n_labs];
-			}
+      // Increase size of buffers if needed.
+      if (n_frames > buf_size){
+	// Free old buffers.
+	delete lab_buf;
+	delete ftr_buf;
+	// Make twice as big to cut down on future reallocs.
+	buf_size = n_frames * 2;
+	// Allocate new larger buffers.
+	ftr_buf = new float[buf_size * n_ftrs];
+	lab_buf = new UInt32[buf_size * n_labs];
+      }
 			
-			for(unsigned frame_no = 0;  frame_no < n_frames; ++frame_no) {
-				const float* start_of_frame = globalObservationMatrix.floatVecAtFrame(frame_no);
-				const UInt32* start_of_unsigned_frame = globalObservationMatrix.unsignedAtFrame(frame_no);
-				for(unsigned feat_no = 0;  feat_no < n_ftrs; ++feat_no) {
-					ftr_buf[frame_no * n_ftrs + feat_no] = *(start_of_frame  + feat_no);
-				}
-				for(unsigned unsigned_feat_no = 0;  unsigned_feat_no < n_labs; ++unsigned_feat_no) {
-					lab_buf[frame_no*n_labs + unsigned_feat_no] = *(start_of_unsigned_frame+unsigned_feat_no);
-				}
+      for(unsigned frame_no = 0;  frame_no < n_frames; ++frame_no) {
+	const float* start_of_frame = gomFS->floatVecAtFrame(frame_no);
+	const UInt32* start_of_unsigned_frame = gomFS->unsignedVecAtFrame(frame_no);
+	for(unsigned feat_no = 0;  feat_no < n_ftrs; ++feat_no) {
+	  ftr_buf[frame_no * n_ftrs + feat_no] = *(start_of_frame  + feat_no);
+	}
+	for(unsigned unsigned_feat_no = 0;  unsigned_feat_no < n_labs; ++unsigned_feat_no) {
+	  lab_buf[frame_no*n_labs + unsigned_feat_no] = *(start_of_unsigned_frame+unsigned_feat_no);
+	}
 				
-			}
-			// Write output.
-			printSegment(global_seg_num, out_fp, ftr_buf,n_ftrs,lab_buf,n_labs,n_frames, dontPrintFrameID,quiet, ofmt, debug_level, oswap, out_stream);
-		}
-		fclose(in_fp);
-		// make sure top of loop knows to open next file
-		in_fp = NULL;
+      }
+      // Write output.
+      printSegment(global_seg_num, out_fp, ftr_buf,n_ftrs,lab_buf,n_labs,n_frames, dontPrintFrameID,
+		   quiet, ofmt, debug_level, oswap, out_stream);
     }
+  }
     
-    // All done; close output
-    // must delete pfile object first, because it needs to rewrite
-    if(ofmt==PFILE)
-      delete out_stream;
+  // All done; close output
+  // must delete pfile object first, because it needs to rewrite
+  if(ofmt==PFILE)
+    delete out_stream;
+  if (out_fp)
     if (fclose(out_fp))
       error("Couldn't close output file.");
 	
-    delete lab_buf;
-    delete ftr_buf;
+  delete lab_buf;
+  delete ftr_buf;
 }
-
-#define MAX_OBJECTS 5
-
-char *input_fname[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL};  // Input file name.
-const char * ifmtStr[MAX_OBJECTS]={"pfile","pfile","pfile","pfile","pfile"};
-unsigned ifmt[MAX_OBJECTS];
-
-
 
 const char * ofmtStr="flatasc";
 unsigned ofmt;
-
-unsigned int nis[MAX_OBJECTS];
-unsigned int nfs[MAX_OBJECTS];
-
-//char  *sr_str               = 0;   // sentence range string
-const char  *sr_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL};
-const char  *fr_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL};   // feature range string    
-const char  *lr_str[MAX_OBJECTS]  = {NULL,NULL,NULL,NULL,NULL};   // label range string  
-const char  *spr_str[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL};   // per stream per sentence range string 
 
 int  debug_level = 0;
 bool dontPrintFrameID = false;
 bool quiet = false;
 #ifdef INTV_WORDS_BIGENDIAN
-bool iswap[MAX_OBJECTS]={true,true,true,true,true};
 bool oswap = true;
 #else
-bool iswap[MAX_OBJECTS]= {false,false,false,false,false};
 bool oswap             = false;
 #endif 
 
-bool     cppIfAscii        = true;
-char*    cppCommandOptions = NULL;
-
-unsigned startSkip = 0;
-unsigned endSkip   = 0;
-
-char* perStreamTransforms[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL};   // 
-char* postTransforms                   = NULL;
-
-bool help=false;
-bool printVersion = false;
-
 Arg Arg::Args[] = {
-  Arg("i",      Arg::Req, input_fname,"input file",Arg::ARRAY,MAX_OBJECTS),
-  Arg("ifmt",      Arg::Opt,ifmtStr ,"format of input file",Arg::ARRAY,MAX_OBJECTS),
+
+#define GMTK_ARGUMENTS_DOCUMENTATION
+#include "ObsArguments.h"
+#undef GMTK_ARGUMENTS_DOCUMENTATION
+
+  Arg("\n*** Output arguments ***\n"),
+
   Arg("o",      Arg::Opt, output_fname,"output file"),
-  Arg("ofmt",      Arg::Opt, ofmtStr,"format of output file"),
-  Arg("nf",   Arg::Opt, nfs,"number of floats in input file",Arg::ARRAY,MAX_OBJECTS),
-  Arg("ni",   Arg::Opt, nis,"number of ints (labels) in input file",Arg::ARRAY,MAX_OBJECTS),
-  Arg("q",  Arg::Tog, quiet,"quiet mode"),
-  Arg("sr",   Arg::Opt, sr_str,"sentence range"),
-  Arg("fr",   Arg::Opt, fr_str,"feature range",Arg::ARRAY,MAX_OBJECTS),
-  Arg("lr",   Arg::Opt, lr_str,"label range",Arg::ARRAY,MAX_OBJECTS),
-  Arg("spr",  Arg::Opt, spr_str,"per stream per-sentence range",Arg::ARRAY,MAX_OBJECTS),
-  Arg("startskip",   Arg::Opt, startSkip,"start skip"),
-  Arg("endskip",   Arg::Opt, endSkip,"end skip"),
-  Arg("iswap",Arg::Opt, iswap,"do byte swapping on the input file",Arg::ARRAY,MAX_OBJECTS),
-  Arg("oswap",Arg::Opt, oswap,"do byte swapping on the output file"),
-  Arg("cppifascii",Arg::Opt, cppIfAscii,"Pre-process ASCII files using CPP"),
-  Arg("ns",    Arg::Opt, dontPrintFrameID,"Don't print the frame IDs (i.e., sent and frame #)"),
-  Arg("sep",      Arg::Opt, outputNameSeparatorStr,"String to use as separator when outputting raw ascii or binary files (one sentence per file)."),
+  Arg("ofmt",      Arg::Opt, ofmtStr,"format of output file (htk, binary, ascii, pfile, flatbin, flatasc)"),
   Arg("olist",      Arg::Opt, outputList,"output list-of-files name.  Only meaningful if used with the RAW or HTK formats."),
-  Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Additional CPP command line"),
-  Arg("trans",  Arg::Opt,perStreamTransforms ,"per stream transformations string",Arg::ARRAY,MAX_OBJECTS),
-  Arg("posttrans",  Arg::Opt,postTransforms ,"Final global transformations string"),
+  Arg("sep",      Arg::Opt, outputNameSeparatorStr,"String to use as separator when outputting raw ascii or binary files (one sentence per file)."),
+  Arg("oswp",Arg::Opt, oswap,"do byte swapping on the output file"),
+  Arg("ns",    Arg::Opt, dontPrintFrameID,"Don't print the frame IDs (i.e., sent and frame #)"),
+
+  Arg("\n*** Misc arguments ***\n"),
+
   Arg("debug",  Arg::Opt, debug_level,"number giving level of debugging output to produce 0=none"),
-  Arg("help",   Arg::Tog, help,"print this message"),
-  Arg("version", Arg::Tog, printVersion, "Print GMTK version and exit."),
+  Arg("q",  Arg::Tog, quiet,"quiet mode"),
   // The argumentless argument marks the end of the above list.
   Arg()
 };
@@ -447,49 +498,27 @@ Arg Arg::Args[] = {
 
 int main(int argc, const char *argv[]) {
 
-    //////////////////////////////////////////////////////////////////////
-    // Check all necessary arguments provided before creating objects.
-    //////////////////////////////////////////////////////////////////////
-      
-    int numFiles=0;
-
-    // Figure out the Endian of the machine this is running on and set the swap defaults accordingly
-    bool doWeSwap;
-
-    ByteEndian byteEndian = getWordOrganization();
-    switch(byteEndian) {
-    case BYTE_BIG_ENDIAN:
-      doWeSwap=false;
-      break;
-    case BYTE_LITTLE_ENDIAN:
-    doWeSwap=true;
-    break;
-    default:
-      // We weren't able to figure the Endian out.  Leave the swap defaults as they are.
-#ifdef INTV_WORDS_BIGENDIAN
-      doWeSwap=true;
-#else
-      doWeSwap=false;
-#endif
-  }
-
+  //////////////////////////////////////////////////////////////////////
+  // Check all necessary arguments provided before creating objects.
+  //////////////////////////////////////////////////////////////////////
+  
+  int numFiles=0;
+  
+  CODE_TO_COMPUTE_ENDIAN
   oswap=doWeSwap;
-  for(int i=0; i<MAX_OBJECTS; ++i) {
-    iswap[i]=doWeSwap;
-  }
+  
   ///////////////////////////////////////////
 
 
   bool parse_was_ok = Arg::parse(argc,(char**)argv);
 
-  if(help) {
-    Arg::usage();
-    exit(0);
-  }
-
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }
+
+#define GMTK_ARGUMENTS_CHECK_ARGS
+#include "ObsArguments.h"
+#undef GMTK_ARGUMENTS_CHECK_ARGS
 
 
   // oswap might been assigned a new value on the command line
@@ -503,131 +532,83 @@ int main(int argc, const char *argv[]) {
   //////////////////////////////////////////////////////////////////////
   // Check all necessary arguments provided before creating objects.
   //////////////////////////////////////////////////////////////////////
-
- for (int i=0;i<MAX_OBJECTS;i++) {
-    numFiles += (input_fname[i] != NULL);
-    if (strcmp(ifmtStr[i],"htk") == 0)
-      ifmt[i] = HTK;
-    else if (strcmp(ifmtStr[i],"binary") == 0)
-      ifmt[i] = RAWBIN;
-    else if (strcmp(ifmtStr[i],"ascii") == 0)
-      ifmt[i] = RAWASC;
-    else if (strcmp(ifmtStr[i],"pfile") == 0)
-      ifmt[i] = PFILE;
-    //    else if (strcmp(ifmtStr[i],"flatbin") == 0)
-    //  ifmt[i]=FLATBIN;
-    //else if (strcmp(ifmtStr[i],"flatasc") == 0)
-    //  ifmt[i]=FLATASC;
-    else
-      error("ERROR: Unknown observation file format type: '%s'\n",ifmtStr[i]);
- }
  
- for(int i=0; i < numFiles; ++i) {
-   // first check that we don't have gaps
-   if (input_fname[i] == NULL) {
-     error("ERROR: Cannot skip an observation file number.");
-   }
+  for(int i=0; i < MAX_NUM_OBS_FILES; i+=1) 
+    if (ofs[i]) numFiles += 1;
 
-   if(output_fname!=NULL && strcmp(input_fname[i],output_fname)==0) {
-     error("Input and output filenames cannot be the same.");
-   }
- }
- if (strcmp(ofmtStr,"htk") == 0)
-   ofmt = HTK;
- else if (strcmp(ofmtStr,"binary") == 0)
-   ofmt = RAWBIN;
- else if (strcmp(ofmtStr,"ascii") == 0)
-   ofmt = RAWASC;
- else if (strcmp(ofmtStr,"pfile") == 0)
-   ofmt = PFILE;
- else if (strcmp(ofmtStr,"flatbin") == 0)
-   ofmt=FLATBIN;
- else if (strcmp(ofmtStr,"flatasc") == 0)
-   ofmt=FLATASC;
- else
-   error("ERROR: Unknown observation file format type: '%s'\n",ofmtStr);
+  for(int i=0; i < numFiles; ++i) {
+    // first check that we don't have gaps
+    if (ofs[i] == NULL) {
+      error("ERROR: Cannot skip an observation file number.");
+    }
+
+    if(output_fname!=NULL && strcmp(ofs[i],output_fname)==0) {
+      error("Input and output filenames cannot be the same.");
+    }
+  }
+  if (strcmp(ofmtStr,"htk") == 0)
+    ofmt = HTK;
+  else if (strcmp(ofmtStr,"binary") == 0)
+    ofmt = RAWBIN;
+  else if (strcmp(ofmtStr,"ascii") == 0)
+    ofmt = RAWASC;
+  else if (strcmp(ofmtStr,"pfile") == 0)
+    ofmt = PFILE;
+  else if (strcmp(ofmtStr,"flatbin") == 0)
+    ofmt=FLATBIN;
+  else if (strcmp(ofmtStr,"flatasc") == 0)
+    ofmt=FLATASC;
+  else
+    error("ERROR: Unknown observation file format type: '%s'\n",ofmtStr);
 
 
- FILE *out_fp=NULL;
- if (output_fname==0 || !strcmp(output_fname,"-")) {
-   if(ofmt==RAWASC || ofmt==RAWBIN || ofmt==HTK) {
-     error("Need to specify output filename when output type is RAWBIN, RAWASC, or HTK.\n");
-   }
-   out_fp = stdout;
- }
- else {
-   if(ofmt != RAWASC && ofmt != RAWBIN && ofmt != HTK) {
-     if ((out_fp = fopen(output_fname, "w")) == NULL) {
-       error("Couldn't open output file for writing.\n");
-     }
-   }
- }
+  FILE *out_fp=NULL;
+  if (output_fname==0 || !strcmp(output_fname,"-")) {
+    if(ofmt==RAWASC || ofmt==RAWBIN || ofmt==HTK) {
+      error("Need to specify output filename when output type is RAWBIN, RAWASC, or HTK.\n");
+    }
+    out_fp = stdout;
+  } else {
+    if(ofmt != RAWASC && ofmt != RAWBIN && ofmt != HTK) {
+      if ((out_fp = fopen(output_fname, "w")) == NULL) {
+	error("Couldn't open output file for writing.\n");
+      }
+    }
+  }
  
 
- if(outputList != NULL) {
-   if ((outputListFp = fopen(outputList, "w")) == NULL) {
-     error("Couldn't open output list (%s) for writing.\n",outputList);
-   }
- }
+  if(outputList != NULL) {
+    if ((outputListFp = fopen(outputList, "w")) == NULL) {
+      error("Couldn't open output list (%s) for writing.\n",outputList);
+    }
+  }
  
- //////////////////////////////////////////////////////////////////////
- // Create objects.
- //////////////////////////////////////////////////////////////////////
- // If we have a pfile, we can extract the number if features from the file directly
- for(int i=0; i < numFiles; ++i) {
-   if(input_fname[i]!=NULL) {
-     if(ifmt[i]==PFILE) {
-       FILE *in_fp = fopen(input_fname[i], "r");
-       if (in_fp==NULL) error("Couldn't open input pfile %s for reading.", input_fname[i]);
-       InFtrLabStream_PFile* in_streamp = new InFtrLabStream_PFile(debug_level,"",in_fp,1,iswap[i]);
-       nis[i]=in_streamp->num_labs();
-       nfs[i]=in_streamp->num_ftrs();
-       if (fclose(in_fp)) error("Couldn't close input pfile.");
-       delete in_streamp;
-     }
-     
-     if(nis[i]==0 && nfs[i]==0) {
-       error("The number of floats and the number of ints cannot be both zero.");
-     }
-   }
- }
- 
- //////////////////////////////////////////////////////////////////////
-    // Create objects.
-    //////////////////////////////////////////////////////////////////////
+  
+  if(nis[0]==0 && nfs[0]==0) {
+    error("The number of floats and the number of ints cannot be both zero.");
+  }
+  
+  //////////////////////////////////////////////////////////////////////
+  // Create objects.
+  //////////////////////////////////////////////////////////////////////
     
-    // done in subroutine now, after we open the first input file
+  // done in subroutine now, after we open the first input file
 
-    //////////////////////////////////////////////////////////////////////
-    // Do the work.
-    //////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////
+  // Do the work.
+  //////////////////////////////////////////////////////////////////////
 
-    obsConcat(out_fp, 
-	      sr_str, 
-	      fr_str, 
-	      lr_str, 
-	      spr_str, 
-	      input_fname, 
-	      numFiles,
-	      nfs,
-	      nis,
-	      ifmt,
-	      iswap,
-	      ofmt,
-	      startSkip,
-	      endSkip,
-	      cppIfAscii,
-	      cppCommandOptions,
-	      perStreamTransforms,
-	      postTransforms,
-	      dontPrintFrameID,
-	      debug_level, 
-	      quiet,
-	      oswap);
+  obsConcat(out_fp, 
+	    numFiles,
+	    ofmt,
+	    dontPrintFrameID,
+	    debug_level, 
+	    quiet,
+	    oswap);
 
-    //////////////////////////////////////////////////////////////////////
-    // Clean up and exit.
-    //////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////
+  // Clean up and exit.
+  //////////////////////////////////////////////////////////////////////
 
-    return EXIT_SUCCESS;
+  return EXIT_SUCCESS;
 }

@@ -31,6 +31,7 @@
 #include <set>
 #include <algorithm>
 #include <new>
+#include <typeinfo>
 
 #include "general.h"
 #include "error.h"
@@ -43,6 +44,9 @@
 #include "GMTK_GMTemplate.h"
 #include "GMTK_JunctionTree.h"
 #include "GMTK_GMParms.h"
+
+#include "GMTK_FileSource.h"
+#include "GMTK_StreamSource.h"
 
 
 ////////////////////////////////////////////////////////////////////
@@ -1137,11 +1141,14 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
 				      // that are actually used.
 				      unsigned& numUsableFrames,
 				      // the base of the logarithm
-				      const unsigned base,
+				      unsigned base,
 				      // the threshold at which we drop
 				      // down to the linear collect/distribute
 				      // evidence stage.
 				      const unsigned linear_section_threshold,
+				      // use pow(numUsableFrames,islandRoot) for logarithm base
+				      const bool rootBase,
+				      const float islandRoot,
 				      const bool runEMalgorithm,
 				      const bool runViterbiAlgorithm,
 				      const bool localCliqueNormalization)
@@ -1152,7 +1159,8 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
 
   // must have a linear_section_threshold of at least two partitions.
   if (linear_section_threshold < 2)
-    error("ERROR: Island algorithm collect/distribute inference. linear section threshold value (%d) is too small.\n",linear_section_threshold);
+    error("ERROR: Island algorithm collect/distribute inference. linear section threshold value (%d) is too small.\n",
+	  linear_section_threshold);
 
   // the log base must be a number that actually causes a split.
   if (base <= 1)
@@ -1160,6 +1168,23 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
 
   unsigned totalNumberPartitions;
   numUsableFrames = unroll(numFrames,ZeroTable,&totalNumberPartitions);
+
+  FileSource *gomFS;
+  // This should be safe since gmtkOnline is the only program
+  // that does inference and doesn't use FileSource and gmtkOnline
+  // only uses onlineFixedUnroll
+  gomFS= static_cast<FileSource *>(globalObservationMatrix);
+  assert(typeid(*globalObservationMatrix) == typeid(*gomFS));
+  gomFS->justifySegment(numUsableFrames);
+
+  if (rootBase) {
+    if (islandRoot < 0.0 || 1.0 < islandRoot) {
+      error("ERROR: Island root (%f) must be between 0 and 1", islandRoot);
+    }
+    base = (unsigned)(pow((double) numUsableFrames, islandRoot) + 0.5);
+    infoMsg(IM::Inference, IM::Moderate, "Island logarithm base is pow(%u,%f) = %u\n", 
+	    numUsableFrames, islandRoot, base);
+  }
 
   // In the island algorithm, we never hold more than the linear
   // section (stored in islandPartitionTableArray) and the island partitions
@@ -1209,13 +1234,18 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
   // allocated, so we make sure to do that here.
   PartitionTables* pt = new PartitionTables(inference_it.cur_jt_partition());
   storeIsland(0,pt);
-  ceGatherIntoRoot(0,pt);
-  collectDistributeIslandRecurse(0,totalNumberPartitions-1,base,linear_section_threshold,
-				 runEMalgorithm,
-				 runViterbiAlgorithm,
-				 localCliqueNormalization);
-  deleteIsland(0);
-
+  try {
+    ceGatherIntoRoot(0,pt);
+    collectDistributeIslandRecurse(0,totalNumberPartitions-1,base,linear_section_threshold,
+				   runEMalgorithm,
+				   runViterbiAlgorithm,
+				   localCliqueNormalization);
+    deleteIsland(0);
+  } catch (ZeroCliqueException &e) {
+    islandsMap.clear();
+    E1.useLISeparator();
+    throw ZeroCliqueException();
+  }
   // TODO: if we get zero probability, right now the code unwinds all
   // the way to delete the islands. Since we have all the islands here
   // in this map data structure, we don't need to do that and can jump

@@ -20,7 +20,11 @@
  */
 
 #ifndef GMTK_Stream_h
+
 #define GMTK_Stream_h
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
 
 #include <ctype.h>
 #include "range.h"
@@ -29,15 +33,23 @@
 
 using namespace std;
 
+#ifdef HAVE_FSEEKO
+   typedef off_t htk_off_t;
+#else
+   typedef long  htk_off_t;
+#endif
+
+
 // possible file formats
 
 enum {
   RAWBIN, 
   RAWASC, 
+  FLATASC,
   PFILE,
   HTK,
   FLATBIN,
-  FLATASC
+  HDF5
 };
 
 
@@ -85,7 +97,7 @@ public:
 
 	int samp_size; /// bytes per sample
 	int n_samples; /// number of samples
-	int startOfData; ///the offset from start of file to the start of actual data
+	htk_off_t startOfData; ///the offset from start of file to the start of actual data
 	
 	///HTK kind flags.  See sect. "5.10.1 HTK Format Parameter Files" of the HTK book
 	bool isCompressed;

@@ -34,6 +34,7 @@ static const char* pfile_version0_string =
 // which can then be used by any software that wishes to use pfiles.
 
 
+#pragma GCC diagnostic ignored "-Wformat"
 // This routine is used to get one pfile_ulonglong_t integer argument from a pfile
 // header stored in a buffer. It returns 0 on success, else -1.
 static int
@@ -380,10 +381,19 @@ InFtrLabStream_PFile::build_index_from_sentind_sect()
 
     if (sentind[total_sents] != total_frames)
     {
+
+      // try with opposite bswap
+      if (bswap) bswap = 0; else bswap = 1;
+      swapb_vi32_vi32(total_sents+1, (intv_int32_t*) sentind,
+		      (intv_int32_t*) sentind);
+      if (sentind[total_sents] != total_frames) {
 	error("Last sentence index (%lu) does not correspond"
-		 " with number of frames (%i) in PFile '%s' - probably a"
-		 " corrupted PFile.", (unsigned long) sentind[total_sents],
-		 total_frames, filename);
+	      " with number of frames (%i) in PFile '%s' - probably a"
+	      " corrupted PFile.", (unsigned long) sentind[total_sents],
+	      total_frames, filename);
+      } else {
+	if (*filename) warning("WARNING: PFile '%s' appears to need -iswpX %c", filename, bswap ? 'T' : 'F');
+      }
     }
 }
 
@@ -675,12 +685,15 @@ InFtrLabStream_PFile::set_pos(size_t segno, size_t frameno)
 
     if (indexed)
     {
+#if 0
+      // unused
 	long this_sent_row;	// The number of the row at the start of sent.
+#endif
 	long next_sent_row;	// The row at the start of next sent.
 	long row;		// The number of the row we require
 	pfile_longlong_t offset;		// The position as a file offset
 
-	this_sent_row = sentind[segno];
+//	this_sent_row = sentind[segno];
 	row = sentind[segno] + frameno;
 	next_sent_row = sentind[segno+1];
 	if (row > next_sent_row)
@@ -1032,7 +1045,7 @@ OutFtrLabStream_PFile::write_header()
     assert((unsigned long) count<=PFILE_HEADER_SIZE);
 
     // Seek to start of file to write header.
-    ec = fseek(file, 0L, SEEK_SET);
+    ec = pfile_fseek(file, 0L, SEEK_SET);
     if (ec!=0)
     {
 	error("Failed to seek to start of PFile '%s' - %s.",

@@ -19,6 +19,7 @@
 #include "GMTK_Signals.h" 
 #include "error.h"
 #include "general.h"
+#include "debug.h"
 
 #include <stdio.h>     /* standard I/O functions                         */
 #include <signal.h>    /* signal name macros, and the signal() prototype */
@@ -27,10 +28,9 @@
 // in the std namespace
 volatile bool sigterminate = false;
 
-
 /*-
  *-----------------------------------------------------------------------
- * catch_sigusr1 
+ * catch_terminate
  *   The signal handler for SIGUSR1
  *
  * Preconditions:
@@ -47,11 +47,52 @@ volatile bool sigterminate = false;
  *
  *-----------------------------------------------------------------------
  */
-void catch_sigusr1(int sig_num)
+void catch_terminate(int sig_num)
 {
   // Display warning 
   fprintf(stderr, "GMTK received sigusr1, terminating...\n");
   sigterminate = true;
+}
+
+int debugIncrement = 1;
+
+/*-
+ *-----------------------------------------------------------------------
+ * catch_increment
+ *   The signal handler for SIGUSR1
+ *
+ * Preconditions:
+ *   none
+ *   
+ * Postconditions:
+ *   The inference module's verbosity is incresed by debugIncrement
+ *
+ * Side Effects:
+ *   none
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+void catch_increment(int sig_num)
+{
+  unsigned debugLevel = IM::glbMsgLevel(IM::Inference) + debugIncrement; 
+  if (debugLevel > IM::Max) debugLevel = IM::Max;
+  IM::setGlbMsgLevel(IM::Inference, debugLevel);
+  //fprintf(stderr, " +++ %u\n", debugLevel);
+}
+
+
+void catch_decrement(int sig_num)
+{
+  unsigned debugLevel = IM::glbMsgLevel(IM::Inference);
+  if ((int)debugLevel >= debugIncrement)
+    debugLevel -= debugIncrement;
+  else
+    debugLevel = 0;
+  IM::setGlbMsgLevel(IM::Inference, debugLevel);
+  //fprintf(stderr, " --- %u\n", debugLevel);
 }
 
 
@@ -92,7 +133,7 @@ void catch_sigxcpu(int sig_num)
 /*-
  *-----------------------------------------------------------------------
  * InstallSignalHandlers 
- *   Installs signal handlers (currently only SIGUSR1 is caught).
+ *   Installs signal handlers 
  *
  * Preconditions:
  *   none
@@ -111,7 +152,34 @@ void InstallSignalHandlers()
 {
   sigterminate = false;
 
-  signal(SIGUSR1, catch_sigusr1);
+  signal(SIGUSR1, catch_increment);
+  signal(SIGUSR2, catch_decrement);
+  signal(SIGXCPU, catch_sigxcpu);
+}
+
+/*-
+ *-----------------------------------------------------------------------
+ * InstallSignalHandlersTime 
+ *   Installs signal handlers for gmtkTime
+ *
+ * Preconditions:
+ *   none
+ *
+ * Postconditions:
+ *   Signal handlers are installed, sigterminate flag set to false
+ *
+ * Side Effects:
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+void InstallSignalHandlersTime()
+{
+  sigterminate = false;
+
+  signal(SIGUSR1, catch_terminate);
   signal(SIGXCPU, catch_sigxcpu);
 }
 
