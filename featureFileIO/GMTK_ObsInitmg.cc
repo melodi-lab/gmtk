@@ -27,7 +27,7 @@
 #include "rand.h"
 //#include "spi.h"
 
-#include "GMTK_ObservationMatrix.h"
+#include "GMTK_FileSource.h"
 
 #include "pfile.h"
 //#include "parse_subset.h"
@@ -38,7 +38,7 @@
 #include "GMTK_Kmeans.h"
 
 
-void initmg(ObservationMatrix* obs_mat,
+void initmg(FileSource *obs_mat,
 	    FILE *out_fp,
 	    Range& srrng,
 	    Range& cfrrng,
@@ -91,7 +91,7 @@ void initmg(ObservationMatrix* obs_mat,
 	for (Range::iterator srit=srrng.begin();!srit.at_end();srit++) {
 	  sent_no = (*srit);
 
-	  obs_mat->loadSegment(sent_no);
+	  obs_mat->openSegment(sent_no);
 	  const size_t n_frames = obs_mat->numFrames();
 
 	  if (!quiet_mode) {
@@ -187,7 +187,7 @@ void initmg(ObservationMatrix* obs_mat,
       for (Range::iterator srit=srrng.begin();!srit.at_end();srit++) {
 	sent_no = (*srit);
 
-	obs_mat->loadSegment(sent_no);
+	obs_mat->openSegment(sent_no);
 	const size_t n_frames = obs_mat->numFrames();
 
 	if (!quiet_mode) {

@@ -1043,16 +1043,18 @@ void LatticeADT::normalizePosterior() {
 	  }
 	} while ( it.next() );
       }
-      // start iter again
-      _latticeNodes[i].edges.begin(it);
-      {
-	do {
-	  LatticeEdgeList &edge_list = (*it);
-	  for (unsigned edge_ctr=0;edge_ctr < edge_list.num_edges; edge_ctr ++ ) {
-	    LatticeEdge &edge = edge_list.edge_array[edge_ctr];
-	    edge.posterior = edge.posterior / sum;
-	  }
-	} while ( it.next() );
+      if (! sum.essentially_zero()) {
+	// start iter again
+	_latticeNodes[i].edges.begin(it);
+	{
+	  do {
+	    LatticeEdgeList &edge_list = (*it);
+	    for (unsigned edge_ctr=0;edge_ctr < edge_list.num_edges; edge_ctr ++ ) {
+	      LatticeEdge &edge = edge_list.edge_array[edge_ctr];
+	      edge.posterior = edge.posterior / sum;
+	    }
+	  } while ( it.next() );
+	}
       }
     }
   }

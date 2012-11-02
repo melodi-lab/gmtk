@@ -20,6 +20,7 @@
 #define GMTK_SIGNALS_H 
 
 void InstallSignalHandlers();
+void InstallSignalHandlersTime();
 bool TerminateSignalReceived();
 
 #endif

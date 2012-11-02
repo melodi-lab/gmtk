@@ -44,10 +44,13 @@
 #include "GMTK_GMParms.h"
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
+#if 0
 #include "GMTK_ObservationMatrix.h"
+#endif
 #include "GMTK_JunctionTree.h"
 #include "GMTK_GraphicalModel.h"
 #include "GMTK_NetworkFlowTriangulate.h"
+#include "GMTK_CountIterator.h"
 
 #if HAVE_CONFIG_H
 #include <config.h>
@@ -585,10 +588,11 @@ computeFillIn(const set<RV*>& nodes)
     // TODO: figure out if there is a way to just to compute
     // the size of the set intersection rather than to
     // actually produce the set intersection and then use its size.
-    set<RV*> tmp;
+    // Done - RR 7/11/12
+    count_iterator<set <RV*> > tmp;
     set_intersection(nodes.begin(),nodes.end(),
 		     (*j)->neighbors.begin(),(*j)->neighbors.end(),
-		     inserter(tmp,tmp.end()));
+		     tmp);
 
     // Nodes i and j should share the same neighbors except for
     // node i has j as a neighbor and node j has i as a
@@ -599,7 +603,7 @@ computeFillIn(const set<RV*>& nodes)
     //  but not tmp).
     // In otherwords, we have:
 
-    fill_in += (nodes.size() - 1 - tmp.size());
+    fill_in += (nodes.size() - 1 - tmp.count());
   }
   // counted each edge twice, so fix that (although not 
   // strictly necessary since we could just compute with 2*fill_in,
@@ -2003,7 +2007,10 @@ BoundaryTriangulate
   vector<MaxClique>       cliques;
   vector<RV*>             order;
   TimerClass              type_timer;
+#if 0
+  // unused
   double                  prvs_best_weight;
+#endif
   double                  weight;
   string                  meth_str;
   char                    buff[64];
@@ -2022,7 +2029,7 @@ BoundaryTriangulate
   ////////////////////////////////////////////////////////////////////////
   // Initialize variables 
   ////////////////////////////////////////////////////////////////////////
-  prvs_best_weight = best_weight;
+  //  prvs_best_weight = best_weight;
   ea_tri_heur = tri_heur;
 
   ////////////////////////////////////////////////////////////////////////
@@ -3748,7 +3755,10 @@ triangulateRandom(
 
   double     best_graph_weight = DBL_MAX;   // Best overal graph weight
   double     best_this_weight;    // Best graph weight on most recent trial
+#if 0
+  // unused
   unsigned   moves_accepted;
+#endif
   double     weight_sum = 0;      // Sum of weights (for variance calculation)
   double     weight_sqr_sum = 0;  // Sum of weights^2 (for variance calculation)
 
@@ -3772,7 +3782,7 @@ triangulateRandom(
   ////////////////////////////////////////////////////////////////////////
   if ((fill_in.size() > 0) ||
       (missing.size() > 0)) {
-    moves_accepted = edgeAnnealChain(
+    (void) edgeAnnealChain(
       triangulate_nodes,
       fill_in,
       missing, 
@@ -8245,11 +8255,11 @@ findBestInterfaceRecurse(
       // We ensure this condition by making sure that C2_1 is not a
       // proper subset of (left_C_l U {v}) = next_left_C_l.
 
-      set<RV*> tmp;      
+      count_iterator<set <RV*> > tmp;      
       set_difference(C2_1.begin(),C2_1.end(),
 		     next_left_C_l.begin(),next_left_C_l.end(),
-		     inserter(tmp,tmp.end()));
-      if (tmp.size() == 0)
+		     tmp);
+      if (tmp.count() == 0)
 	continue;
     }
 

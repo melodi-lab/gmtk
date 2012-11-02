@@ -72,6 +72,7 @@ RVInfo::clear() {
 
     rvType = t_unknown;
     rvDisp = d_unknown;
+    rvCard = 0;
     rvFeatureRange.clear();
     rvWeightInfo.clear();
     eliminationOrderHint = 0.0;

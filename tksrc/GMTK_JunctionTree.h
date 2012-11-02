@@ -31,6 +31,9 @@
 #include <regex.h>
 
 #include "bp_range.h"
+#include "mArray.h"
+
+#include "file_utils.h"
 
 #include "GMTK_RV.h"
 #include "GMTK_FileParser.h"
@@ -39,6 +42,7 @@
 #include "GMTK_JT_Partition.h"
 #include "GMTK_PartitionStructures.h"
 #include "GMTK_PartitionTables.h"
+#include "GMTK_StreamSource.h"
 
 #include "debug.h"
 
@@ -174,7 +178,7 @@ class JunctionTree {
   // it would be useful to look at the computeUnrollParameters()
   // function in class GMTemplate.
   class ptps_iterator {
-  private:
+  protected:
     // the current partition table (pt) index (there can be any number of tables).
     unsigned _pt_i;
     // the current partition structure (ps) index (there are at most 4 structures)
@@ -182,7 +186,7 @@ class JunctionTree {
     
     // associated jt information.
     JunctionTree& jt;
-    const unsigned _pt_len;
+    unsigned _pt_len;
     
   public:
 
@@ -219,6 +223,11 @@ class JunctionTree {
       return std::min(_pt_len,4u);
     }
 
+
+    void set_pt_len(unsigned pt_len) {
+      _pt_len = pt_len;
+    }
+
     // initialization routines.
     void set_to_first_entry() { 
       // set to be at E'
@@ -231,7 +240,7 @@ class JunctionTree {
     }
 
     void go_to_part_no (unsigned i) {
-      assert ( i < pt_len() );
+      assert (pt_len()==0 || i < pt_len() );
       if (pt_len() < 5 || i < 3) {
 	_pt_i = i; _ps_i = i;
       } else {
@@ -604,10 +613,9 @@ class JunctionTree {
   // Support variables specific to Viterbi and N-best decoding
   // 
   sArray < unsigned > P_partition_values;
-  sArray < unsigned > C_partition_values;
+  mArray < unsigned > C_partition_values;
   sArray < unsigned > E_partition_values;
   void recordPartitionViterbiValue(ptps_iterator& it);
-
 
   ////////////////////////////////////////////////////////////////////////
 
@@ -854,6 +862,38 @@ public:
   // namely \sum_hidden P(evidence,hidden)
   static bool viterbiScore;
 
+  // if true, use mmap() to allocate memory for C_partition_values,
+  // otherwise use new
+  static bool mmapViterbi;
+
+  // For O(1) memory inference, write Viterbi values to this file for
+  // later printing by a separate program
+  static FILE *binaryViterbiFile;
+  static char *binaryViterbiFilename;
+  static gmtk_off_t binaryViterbiOffset;    // offset to start of current segment
+  static gmtk_off_t nextViterbiOffset;      // offset to start of next segment
+
+  // binary viterbi files should start with the cookie
+#define GMTK_VITERBI_COOKIE        "GMTKVIT\n"
+#define GMTK_VITERBI_COOKIE_LENGTH 8
+  // cookie + k (for k-best) + # segements
+#define GMTK_VITERBI_HEADER_SIZE (sizeof(unsigned) + \
+                                  sizeof(unsigned) + \
+                                  GMTK_VITERBI_COOKIE_LENGTH)
+
+
+  // online filtering/smoothing needs to take some Viterbi code
+  // paths but not others (particularly it should not allocate O(T)
+  // memory for the Viterbi values, but it should call the Viterbi
+  // versions of the MaxClique DE routines and setup the hidRVVector
+  // in the PartitionStructures). JunctionTree::onlineViterbi is only
+  // true in gmtkOnline so it can take the necessary code paths where
+  // viterbiScore needs to be false to avoid the unwanted code paths.
+  static bool onlineViterbi;
+
+  // should printAllCliques() print scores or probabilities?
+  static bool normalizePrintedCliques;
+
   // range of cliques within each partition to print out when doing
   // CE/DE inference. If these are NULL, then we print nothing.
   BP_Range* pPartCliquePrintRange;
@@ -1088,6 +1128,17 @@ public:
 				bool limitTime=false,
 				unsigned *numPartitionsDone = NULL,
 				const bool noE=false);
+
+  // not-quite-right DBN online filtering
+  logpr onlineFixedUnroll(StreamSource *globalObservationMatrx,
+			  unsigned *numUsableFrames=NULL,
+			  unsigned *numPartitionsDone=NULL,
+			  const bool noE=false,
+			  FILE *f=stdout,
+			  const bool printObserved=false,
+			  regex_t *preg=NULL,
+			  char *partRangeFilter=NULL);
+
   // simple call
   logpr probEvidence(const unsigned numFrames, unsigned& numUsableFrames) {
     return probEvidenceFixedUnroll(numFrames,&numUsableFrames,false,NULL,false);
@@ -1123,8 +1174,10 @@ public:
   logpr
   collectDistributeIsland(const unsigned numFrames,
 			  unsigned& numUsableFrames,
-			  const unsigned base,
+			  unsigned base,
 			  const unsigned linear_section_threshold,
+			  const bool rootBase = false,
+			  const float islandRoot = 0.5,
 			  const bool runEMalgorithm = false,
 			  const bool runViterbiAlgorithm = false,
 			  const bool localCliqueNormalization = false);
@@ -1138,6 +1191,13 @@ public:
 					regex_t *preg,
 					char* partRangeFilter);
 
+  void printSavedPartitionViterbiValues(unsigned,
+					FILE*, FILE*,
+					bool printObserved,
+					regex_t *preg,
+					char* partRangeFilter);
+
+#if 0
   void printSavedViterbiValues(FILE*,
 			       bool printObserved = false,
 			       regex_t *preg = NULL,
@@ -1145,7 +1205,7 @@ public:
 			       unsigned maxTriggerVars = 0,
 			       const char **triggerVars = NULL,
 			       const char **triggerValSets = NULL);
-
+#endif
 
   void resetViterbiPrinting() { setCurrentInferenceShiftTo(0); }
 
@@ -1161,10 +1221,37 @@ public:
 			  vector<sArray<DiscRVType *> > &CprimeValuePtrs, 
 			  vector<sArray<DiscRVType *> > &EprimeValuePtrs);
 
-  void printSavedViterbiValues(FILE*,
+#if 0
+  void printSavedViterbiValues(FILE* f,
 			       bool printObserved,
 			       regex_t *preg,
 			       char* partRangeFilter);
+#endif
+
+  void readBinaryVitPartition(PartitionStructures& ps, unsigned part);
+
+  void printSavedViterbiValues(FILE *f,
+			       bool printObserved,
+			       regex_t *preg);
+
+  void printSavedViterbiValues(unsigned numFrames,
+			       FILE *f, FILE *binVitFile,
+			       bool printObserved,
+			       regex_t *preg,
+			       char* partRangeFilter);
+
+#if 1
+  void printSavedViterbiValues(unsigned numFrames,
+			       FILE *f, FILE* binVitFile,
+			       bool printObserved,
+			       regex_t *preg);
+#endif
+
+  void printSavedViterbiFrames(unsigned numFrames,
+			       FILE *f, FILE *binVitFile,
+			       bool printObserved,
+			       regex_t *preg,
+			       char* frameRangeFilter);
 
   // actuall message routines.
   // void collectMessage(MaxClique& from,MaxClique& to);
@@ -1199,6 +1286,9 @@ public:
   inline vector <RV*>& curNodes() { return cur_unrolled_rvs; }
 
 
+};
+
+class ZeroCliqueException : exception {
 };
 
 #endif

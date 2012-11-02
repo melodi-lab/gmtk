@@ -1,7 +1,9 @@
 #ifndef GMTK_OBSINITMG_H
 #define GMTK_OBSINITMG_H
 
-void initmg(ObservationMatrix* obs_mat,
+#include "GMTK_FileSource.h"
+
+void initmg(FileSource *obs_mat,
 	    FILE *out_fp,
 	    Range& srrng,
 	    Range& cfrrng,

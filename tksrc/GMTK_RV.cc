@@ -43,6 +43,7 @@ VCID(HGID)
 
 #include "GMTK_RV.h"
 #include "GMTK_ObsDiscRV.h"
+#include "GMTK_CountIterator.h"
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -419,6 +420,24 @@ void RV::setParents(vector<RV *> &sparents,vector<vector<RV *> > &cpl)
     }
 
 
+#define DO_IF_REGEX_AND_FRAME_MATCH(preg,rv,pcommand)		\
+    if (preg) { \
+      if (frameRange->contains(rv->frame()) && !regexec(preg,rv->name().c_str(),0,0,0)) { \
+        if (!first) \
+          fprintf(f,","); \
+	pcommand; \
+	first = false; \
+      } \
+    } else { \
+       if (frameRange->contains(rv->frame())) { \
+         if (!first) \
+           fprintf(f,","); \
+         pcommand; \
+         first = false; \
+       } \
+     }
+
+
 /*-
  *-----------------------------------------------------------------------
  * printRVSet{,AndValues}()
@@ -444,6 +463,15 @@ void printRVSetAndValues(FILE*f,vector<RV*>& locset,const bool nl,regex_t* preg)
   for (unsigned i=0;i<locset.size();i++) {
     RV* rv = locset[i];
     DO_IF_REGEX_MATCH(preg,rv,rv->printNameFrameValue(f,false));
+  }
+  if (nl) fprintf(f,"\n");
+}
+void printRVSetAndValues(FILE*f,vector<RV*>& locset,const bool nl,regex_t* preg, Range *frameRange)
+{
+  bool first = true;
+  for (unsigned i=0;i<locset.size();i++) {
+    RV* rv = locset[i];
+    DO_IF_REGEX_AND_FRAME_MATCH(preg,rv,rv->printNameFrameValue(f,false));
   }
   if (nl) fprintf(f,"\n");
 }
@@ -689,32 +717,6 @@ getRVOVec(const vector <RV*>& rvs, // a set of RVs
   }
   return res;
 }
-
-/*
- * simple count iterator that counts the number
- * of insertions made, but doesn't do anything else.
- */
-template <typename _Container>
-class count_iterator 
-  : public iterator<output_iterator_tag, void, void, void, void> {
-  unsigned counter;
-public:
-
-  count_iterator(_Container& __x) { counter = 0; }
-  count_iterator() { counter = 0; }
-
-  // count_iterator(const count_iterator& ci) { counter = ci.counter; }
-  // count_iterator& operator=(const count_iterator& ci) { counter = ci.counter; }
-
-  count_iterator& operator=(const typename _Container::const_reference _value) 
-  { counter++; return *this; }
-  count_iterator& operator*() { return *this; }
-  count_iterator& operator++() {  return *this; }
-  count_iterator& operator++(int) { return *this; }
-
-  void reset() { counter = 0; }
-  unsigned count() { return counter; }
-};
 
 class setrv_count_iterator: public count_iterator <set <RV*> > {
 public:

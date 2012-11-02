@@ -21,7 +21,7 @@ $(srcdir)/package.m4: $(top_srcdir)/configure.ac
 TESTSUITE = testsuite
 LOCAL_GMTK_AT = $(wildcard gmtk_test_*.at)
 EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE) atlocal.in \
-	     $(LOCAL_GMTK_AT)
+	     gmtk_tests.at $(LOCAL_GMTK_AT)
 
 .PHONY: gmtk_tests.at
 gmtk_tests.at:
@@ -34,7 +34,7 @@ check-local: atconfig atlocal $(TESTSUITE) gmtk_tests.at
 
 installcheck-local: atconfig atlocal $(TESTSUITE) gmtk_tests.at
 	$(SHELL) '$(srcdir)/$(TESTSUITE)' \
-	AUTOTEST_PATH='$(bindir):$(abs_top_builddir)/tksrc' \
+	AUTOTEST_PATH='$(bindir):$(abs_top_builddir)/tksrc:$(abs_top_builddir)/miscSupport' \
 	$(TESTSUITEFLAGS)
 
 clean-local:

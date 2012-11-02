@@ -56,7 +56,21 @@ VCID(HGID)
 #include "GMTK_GMParms.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_Partition.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_ObservationSource.h"
+#  include "GMTK_FileSource.h"
+#  include "GMTK_CreateFileSource.h"
+#  include "GMTK_ASCIIFile.h"
+#  include "GMTK_FlatASCIIFile.h"
+#  include "GMTK_PFileFile.h"
+#  include "GMTK_HTKFile.h"
+#  include "GMTK_HDF5File.h"
+#  include "GMTK_BinaryFile.h"
+#  include "GMTK_Filter.h"
+#  include "GMTK_Stream.h"
+#endif
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_LinMeanCondDiagGaussian.h"
@@ -69,26 +83,40 @@ VCID(HGID)
 
 #define GMTK_ARG_OBS_FILES
 /****************************      FILE RANGE OPTIONS             ***********************************************/
+#define GMTK_ARG_FILE_RANGE_OPTIONS
 #define GMTK_ARG_DCDRNG
 #define GMTK_ARG_START_END_SKIP
 /************************  OBSERVATION MATRIX TRANSFORMATION OPTIONS   ******************************************/
+#define GMTK_ARG_OBS_MATRIX_OPTIONS
 #define GMTK_ARG_OBS_MATRIX_XFORMATION
 
 
+/*************************   INPUT TRAINABLE PARAMETER FILE HANDLING  *******************************************/
+#define GMTK_ARG_INPUT_TRAINABLE_FILE_HANDLING
 #define GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG
+#define GMTK_ARG_DLOPEN_MAPPERS
 #define GMTK_ARG_OUTPUT_MASTER_FILE
 #define GMTK_ARG_OUTPUT_TRAINABLE_PARAMS
 #define GMTK_ARG_INPUT_TRAINABLE_PARAMS
 #define GMTK_ARG_CPP_CMD_OPTS
-#define GMTK_ARG_VERB
 #define GMTK_ARG_ALLOC_DENSE_CPTS
-#define GMTK_ARG_SEED
-#define GMTK_ARG_VAR_FLOOR
-#define GMTK_ARG_STR_FILE_OPT_ARG
-#define GMTK_ARG_VAR_FLOOR
-#define GMTK_ARG_VERSION
-#define GMTK_ARG_VAR_FLOOR_ON_READ
 #define GMTK_ARG_CPT_NORM_THRES
+
+/*************************   INPUT STRUCTURE PARAMETER FILE HANDLING  *******************************************/
+#define GMTK_ARG_INPUT_MODEL_FILE_HANDLING
+#define GMTK_ARG_STR_FILE_OPT_ARG
+
+/*************************   CONTINUOUS RANDOM VARIABLE OPTIONS       *******************************************/
+#define GMTK_ARG_CONTINUOUS_RANDOM_VAR_OPTIONS
+#define GMTK_ARG_VAR_FLOOR
+#define GMTK_ARG_VAR_FLOOR_ON_READ
+
+
+#define GMTK_ARG_GENERAL_OPTIONS
+#define GMTK_ARG_SEED
+#define GMTK_ARG_VERB
+#define GMTK_ARG_VERSION
+#define GMTK_ARG_HELP
 
 #define GMTK_ARG_INFOSEPARATOR
 #define GMTK_ARG_INFOFIELDFILE
@@ -117,7 +145,12 @@ Arg Arg::Args[] = {
  */
 RAND rnd(false);
 GMParms GM_Parms;
+#if 0
 ObservationMatrix globalObservationMatrix;
+#endif
+
+FileSource *gomFS;
+ObservationSource *globalObservationMatrix;
 
   // these are the available fields
   enum fields {
@@ -189,7 +222,9 @@ main(int argc,char*argv[])
 
   ////////////////////////////////////////////
   // parse arguments
-  bool parse_was_ok = Arg::parse(argc,(char**)argv);
+  bool parse_was_ok = Arg::parse(argc,(char**)argv,
+"\nThis program prints out some information about the number of variables\n"
+"in a model and which GMTK features the model uses\n");
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }
@@ -215,31 +250,13 @@ main(int argc,char*argv[])
   }
 
   infoMsg(IM::Max,"Opening Files ...\n");
-  globalObservationMatrix.openFiles(nfiles,
-				    (const char**)&ofs,
-				    (const char**)&frs,
-				    (const char**)&irs,
-				    (unsigned*)&nfs,
-				    (unsigned*)&nis,
-				    (unsigned*)&ifmts,
-				    (bool*)&iswp,
-				    startSkip,
-				    endSkip,
-				    Cpp_If_Ascii,
-				    cppCommandOptions,
-				    (const char**)&postpr,  //Frame_Range_Str,
-				    Action_If_Diff_Num_Frames,
-				    Action_If_Diff_Num_Sents,
-				    Per_Stream_Transforms,
-				    Post_Transforms,
-				    Ftr_Combo,
-				    (const char**)&sr,
-				    (const char**)&prepr,
-				    gpr_str);
+  gomFS = instantiateFileSource();
+  globalObservationMatrix = gomFS;
   infoMsg(IM::Max,"Finished opening files.\n");
 
 
   ////////////////////////////////////////////
+  dlopenDeterministicMaps(dlopenFilenames, MAX_NUM_DLOPENED_FILES);
   if (inputMasterFile != NULL) {
     iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
     GM_Parms.read(pf);

@@ -2923,7 +2923,11 @@ GMTK_Tie::decision_tree_cluster(unsigned command_index,
 
 
   std::list<Cluster> clusters;
-  std::list<Cluster>::iterator ci,save1=NULL_ITERATOR,save2=NULL_ITERATOR;
+  std::list<Cluster>::iterator ci;
+#if 0
+  // unused
+  std::list<Cluster>::iterator save1=NULL_ITERATOR,save2=NULL_ITERATOR;
+#endif
   int p_counter=0;
 
 
@@ -3062,7 +3066,11 @@ GMTK_Tie::decision_tree_cluster(unsigned command_index,
 
     
     double this_score= LZERO, best_score=LZERO;
-    double best_ll=LZERO, before_ll = cluster_scaled_log_likelihood(ci->items);
+#if 0
+    // unused
+    double best_ll=LZERO;
+#endif
+    double before_ll = cluster_scaled_log_likelihood(ci->items);
 
     for (unsigned i=0;i<decision_tree.questions->questions.size();i++){
       
@@ -3126,7 +3134,7 @@ GMTK_Tie::decision_tree_cluster(unsigned command_index,
 	  if (this_score > best_score) {
 	    qindex=i;
 	    best_score=this_score;
-	    best_ll=after_ll;
+	    // best_ll=after_ll;
 	  }
 	}
 

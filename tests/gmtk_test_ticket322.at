@@ -1,0 +1,148 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/322 is fixed
+
+# ensure that variously mangled tri files trigger warnings
+
+AT_SETUP([ticket322])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
+AT_CHECK([cd $TEST_AND_DEV/auroraTutorial && \
+          gmtkJT -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
+                 -inputMasterFile PARAMS/nonTrainable.master \
+                 -inputTrainable PARAMS/highly_trained.gmp \
+                 -str PARAMS/aurora_decode.str \
+                 -triF PARAMS/aurora_decode.str.trifile-322-1],[1],[ignore],
+[WARNING: Triangulation file 'PARAMS/aurora_decode.str.trifile-322-1' has out-of-order GM ID entries
+ERROR: triangulation file 'PARAMS/aurora_decode.str.trifile-322-1' does not match graph given in structure file 'PARAMS/aurora_decode.str'
+
+])
+AT_CHECK([cd $TEST_AND_DEV/auroraTutorial && \
+          gmtkJT -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
+                 -inputMasterFile PARAMS/nonTrainable.master \
+                 -inputTrainable PARAMS/highly_trained.gmp \
+                 -str PARAMS/aurora_decode.str \
+                 -triF PARAMS/aurora_decode.str.trifile-322-2],[1],[ignore],
+[WARNING: Triangulation file 'PARAMS/aurora_decode.str.trifile-322-2' has variable XXXXXXX at position 2, expected wholeWordState
+ERROR: triangulation file 'PARAMS/aurora_decode.str.trifile-322-2' does not match graph given in structure file 'PARAMS/aurora_decode.str'
+
+])
+AT_CHECK([cd $TEST_AND_DEV/auroraTutorial && \
+          gmtkJT -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
+                 -inputMasterFile PARAMS/nonTrainable.master \
+                 -inputTrainable PARAMS/highly_trained.gmp \
+                 -str PARAMS/aurora_decode.str \
+                 -triF PARAMS/aurora_decode.str.trifile-322-3],[1],[ignore],
+[WARNING: Triangulation file 'PARAMS/aurora_decode.str.trifile-322-3' has variable wordPosition(7), expected wordPosition(2)
+ERROR: triangulation file 'PARAMS/aurora_decode.str.trifile-322-3' does not match graph given in structure file 'PARAMS/aurora_decode.str'
+
+])
+AT_CHECK([cd $TEST_AND_DEV/auroraTutorial && \
+          gmtkJT -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
+                 -inputMasterFile PARAMS/nonTrainable.master \
+                 -inputTrainable PARAMS/highly_trained.gmp \
+                 -str PARAMS/aurora_decode.str \
+                 -triF PARAMS/aurora_decode.str.trifile-322-4],[1],[ignore],
+[WARNING: Triangulation file 'PARAMS/aurora_decode.str.trifile-322-4' has cardinality 12 for variable wholeWordState, expected 91
+
+ERROR: triangulation file 'PARAMS/aurora_decode.str.trifile-322-4' does not match graph given in structure file 'PARAMS/aurora_decode.str'
+
+])
+AT_CHECK([cd $TEST_AND_DEV/auroraTutorial && \
+          gmtkJT -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
+                 -inputMasterFile PARAMS/nonTrainable.master \
+                 -inputTrainable PARAMS/highly_trained.gmp \
+                 -str PARAMS/aurora_decode.str \
+                 -triF PARAMS/aurora_decode.str.trifile-322-5],[],[ignore],[stderr])
+AT_CHECK([grep "WARNING: Triangulation file 'PARAMS/aurora_decode.str.trifile-322-5' was created by a buggy version of GMTK." stderr],
+	 [0],[ignore],[ignore])
+
+AT_CHECK([cd $TEST_AND_DEV/auroraTutorial && \
+          gmtkJT -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
+                 -inputMasterFile PARAMS/nonTrainable.master \
+                 -inputTrainable PARAMS/highly_trained.gmp \
+                 -str PARAMS/aurora_decode.str \
+                 -triF PARAMS/aurora_decode.str.trifile-322-6],[1],[ignore],
+[WARNING: Triangulation file 'PARAMS/aurora_decode.str.trifile-322-6' has wordTransition as continuous, expected discrete
+ERROR: triangulation file 'PARAMS/aurora_decode.str.trifile-322-6' does not match graph given in structure file 'PARAMS/aurora_decode.str'
+
+])
+AT_CHECK([cd $TEST_AND_DEV/auroraTutorial && \
+          gmtkJT -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
+                 -inputMasterFile PARAMS/nonTrainable.master \
+                 -inputTrainable PARAMS/highly_trained.gmp \
+                 -str PARAMS/aurora_decode.str \
+                 -triF PARAMS/aurora_decode.str.trifile-322-7],[1],[ignore],
+[WARNING: Triangulation file 'PARAMS/aurora_decode.str.trifile-322-7' has obs as discrete, expected continuous
+ERROR: triangulation file 'PARAMS/aurora_decode.str.trifile-322-7' does not match graph given in structure file 'PARAMS/aurora_decode.str'
+
+])
+AT_CHECK([cd $TEST_AND_DEV/auroraTutorial && \
+          gmtkJT -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
+                 -inputMasterFile PARAMS/nonTrainable.master \
+                 -inputTrainable PARAMS/highly_trained.gmp \
+                 -str PARAMS/aurora_decode.str \
+                 -triF PARAMS/aurora_decode.str.trifile-322-8],[1],[ignore],
+[WARNING: Triangulation file 'PARAMS/aurora_decode.str.trifile-322-8' has 1 switching parents for variable obs, expected 0
+ERROR: triangulation file 'PARAMS/aurora_decode.str.trifile-322-8' does not match graph given in structure file 'PARAMS/aurora_decode.str'
+
+])
+AT_CHECK([cd $TEST_AND_DEV/auroraTutorial && \
+          gmtkJT -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
+                 -inputMasterFile PARAMS/nonTrainable.master \
+                 -inputTrainable PARAMS/highly_trained.gmp \
+                 -str PARAMS/aurora_decode.str \
+                 -triF PARAMS/aurora_decode.str.trifile-322-9],[1],[ignore],
+[WARNING: Triangulation file 'PARAMS/aurora_decode.str.trifile-322-9' has XXXXXXXX as the 0th switching parent of word, expected wordTransition
+ERROR: triangulation file 'PARAMS/aurora_decode.str.trifile-322-9' does not match graph given in structure file 'PARAMS/aurora_decode.str'
+
+])
+AT_CHECK([cd $TEST_AND_DEV/auroraTutorial && \
+          gmtkJT -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
+                 -inputMasterFile PARAMS/nonTrainable.master \
+                 -inputTrainable PARAMS/highly_trained.gmp \
+                 -str PARAMS/aurora_decode.str \
+                 -triF PARAMS/aurora_decode.str.trifile-322-A],[1],[ignore],
+[WARNING: Triangulation file 'PARAMS/aurora_decode.str.trifile-322-A' has wordTransition(1) as the 0th switching parent of word, expected wordTransition(-1)
+ERROR: triangulation file 'PARAMS/aurora_decode.str.trifile-322-A' does not match graph given in structure file 'PARAMS/aurora_decode.str'
+
+])
+AT_CHECK([cd $TEST_AND_DEV/auroraTutorial && \
+          gmtkJT -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
+                 -inputMasterFile PARAMS/nonTrainable.master \
+                 -inputTrainable PARAMS/highly_trained.gmp \
+                 -str PARAMS/aurora_decode.str \
+                 -triF PARAMS/aurora_decode.str.trifile-322-B],[1],[ignore],
+[WARNING: Triangulation file 'PARAMS/aurora_decode.str.trifile-322-B' has 5 conditional parent sets for variable phoneTransition, expected 1
+ERROR: triangulation file 'PARAMS/aurora_decode.str.trifile-322-B' does not match graph given in structure file 'PARAMS/aurora_decode.str'
+
+])
+AT_CHECK([cd $TEST_AND_DEV/auroraTutorial && \
+          gmtkJT -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
+                 -inputMasterFile PARAMS/nonTrainable.master \
+                 -inputTrainable PARAMS/highly_trained.gmp \
+                 -str PARAMS/aurora_decode.str \
+                 -triF PARAMS/aurora_decode.str.trifile-322-C],[1],[ignore],
+[WARNING: Triangulation file 'PARAMS/aurora_decode.str.trifile-322-C' has 7 conditional parents of variable wordTransition in the 0th set, expected 3
+ERROR: triangulation file 'PARAMS/aurora_decode.str.trifile-322-C' does not match graph given in structure file 'PARAMS/aurora_decode.str'
+
+])
+AT_CHECK([cd $TEST_AND_DEV/auroraTutorial && \
+          gmtkJT -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
+                 -inputMasterFile PARAMS/nonTrainable.master \
+                 -inputTrainable PARAMS/highly_trained.gmp \
+                 -str PARAMS/aurora_decode.str \
+                 -triF PARAMS/aurora_decode.str.trifile-322-D],[1],[ignore],
+[WARNING: Triangulation file 'PARAMS/aurora_decode.str.trifile-322-D' has XXXXXXXXX as conditional parent of wordTransition, expected wordPosition
+ERROR: triangulation file 'PARAMS/aurora_decode.str.trifile-322-D' does not match graph given in structure file 'PARAMS/aurora_decode.str'
+
+])
+AT_CHECK([cd $TEST_AND_DEV/auroraTutorial && \
+          gmtkJT -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
+                 -inputMasterFile PARAMS/nonTrainable.master \
+                 -inputTrainable PARAMS/highly_trained.gmp \
+                 -str PARAMS/aurora_decode.str \
+                 -triF PARAMS/aurora_decode.str.trifile-322-E],[1],[ignore],
+[WARNING: Triangulation file 'PARAMS/aurora_decode.str.trifile-322-E' has phoneTransition(7) as conditional parent of wordTransition, expected phoneTransition(0)
+ERROR: triangulation file 'PARAMS/aurora_decode.str.trifile-322-E' does not match graph given in structure file 'PARAMS/aurora_decode.str'
+
+])
+AT_CLEANUP

@@ -19,21 +19,39 @@ static const char * gmtk_version_id = PACKAGE_STRING;
 static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 2004";
 #endif
 
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+//#  include "GMTK_ObservationSource.h"
+#  include "GMTK_FileSource.h"
+#  include "GMTK_CreateFileSource.h"
+#  include "GMTK_ASCIIFile.h"
+#  include "GMTK_FlatASCIIFile.h"
+#  include "GMTK_PFileFile.h"
+#  include "GMTK_HTKFile.h"
+#  include "GMTK_HDF5File.h"
+#  include "GMTK_BinaryFile.h"
+#  include "GMTK_Filter.h"
+#  include "GMTK_Stream.h"
+#endif
 
-#include "GMTK_ObservationMatrix.h"
 
-
+#if 0
 ObservationMatrix globalObservationMatrix;
+#else
+FileSource *gomFS;
+#endif
 
-void obsInfo(FILE* out_fp, ObservationMatrix* obs_mat, bool dont_print_info, bool print_sent_frames, bool print_stream_info) {
+void obsInfo(FILE* out_fp, FileSource* obs_mat, bool dont_print_info, bool print_sent_frames, bool print_stream_info) {
 
   unsigned num_segments      = obs_mat->numSegments();
-  unsigned num_streams       = obs_mat->numStreams();
+  unsigned num_streams       = obs_mat->numFiles();
   unsigned total_num_frames  = 0;
-  StreamInfo* current_stream = NULL;
+  //  StreamInfo* current_stream = NULL;
 
   for (unsigned seg_no=0; seg_no < num_segments; ++seg_no) {
-    total_num_frames += obs_mat->numFrames(seg_no);
+    obs_mat->openSegment(seg_no);
+    total_num_frames += obs_mat->numFrames();
   }
   
   if (!dont_print_info) {
@@ -46,16 +64,21 @@ void obsInfo(FILE* out_fp, ObservationMatrix* obs_mat, bool dont_print_info, boo
   }
   
   if(print_stream_info) {
+#if 0
     for (unsigned stream_no=0; stream_no < num_streams; ++stream_no) {
       current_stream = obs_mat->getStream(stream_no);
       assert(current_stream != NULL);
       fprintf(out_fp,"stream %d: %d discrete feature(s), %d continuous feature(s)\n",stream_no,current_stream->getNumInts(),current_stream->getNumFloats());
     }
+#else
+    error("printing stream info is not supported with the new observation implementation\n");
+#endif
   }
 
   if (print_sent_frames) {
       for (unsigned seg_no=0; seg_no < num_segments; ++seg_no) {
-	fprintf(out_fp,"%d %d\n",seg_no,obs_mat->numFrames(seg_no));
+	obs_mat->openSegment(seg_no);
+	fprintf(out_fp,"%d %d\n",seg_no,obs_mat->numFrames());
       }
   }
 
@@ -72,71 +95,52 @@ void obsInfo(FILE* out_fp, ObservationMatrix* obs_mat, bool dont_print_info, boo
 #include <float.h>
 #include <math.h>
 #include <assert.h>
-#include "pfile.h"
+
+//#include "pfile.h"
 #include "error.h"
 #include "arguments.h"
 #include "GMTK_WordOrganization.h"
 
 
 
-#define MAX_OBJECTS 60
-
-char *   input_fname[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};  // Input file name.
-
-const char *   ifmtStr[MAX_OBJECTS]     = {"pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile","pfile"};
-unsigned ifmt[MAX_OBJECTS];
+//#define MAX_OBJECTS 60
 
 char *   output_fname      = NULL;
 bool     Print_Stream_Info = false;
 bool     Print_Sent_Frames = false;
-
-unsigned nis[MAX_OBJECTS];
-unsigned nfs[MAX_OBJECTS];
-
-const char*    actionIfDiffNumFramesStr[MAX_OBJECTS]={"er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er","er"};   // 
-
-unsigned actionIfDiffNumFrames[MAX_OBJECTS]={FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR};   // #
-
-const char*    actionIfDiffNumSentsStr[MAX_OBJECTS]={"te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te","te"}; 
-
-unsigned actionIfDiffNumSents[MAX_OBJECTS]={SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END};   // 
-
 bool     quiet = false;
-bool printVersion = false;
-#ifdef INTV_WORDS_BIGENDIAN
-bool     iswap[MAX_OBJECTS]={true,true,true,true,true};
-#else
-bool     iswap[MAX_OBJECTS]={false,false,false,false,false};
-#endif 
 
-bool     cppIfAscii        = true;
-char*    cppCommandOptions = NULL;
+#define GMTK_ARG_OBS_FILES
+#define GMTK_ARG_CPP_CMD_OPTS
+#define GMTK_ARG_OBS_MATRIX_XFORMATION
+#define GMTK_ARG_FILE_RANGE_OPTIONS
+#define GMTK_ARG_START_END_SKIP
+#define GMTK_ARG_HELP
+#define GMTK_ARG_VERSION
 
-bool     help              = false;
+#define GMTK_ARGUMENTS_DEFINITION
+#include "ObsArguments.h"
+#undef GMTK_ARGUMENTS_DEFINITION
 
 Arg Arg::Args[] = {
-  Arg("i",        Arg::Req, input_fname,"input file",Arg::ARRAY,MAX_OBJECTS),
-  Arg("ifmt",     Arg::Opt, ifmtStr ,"format of input file",Arg::ARRAY,MAX_OBJECTS),
+  Arg("\n*** ObsInfo options ***\n"),
   Arg("o",        Arg::Opt, output_fname,"output file"),
   Arg("s",        Arg::Opt, Print_Stream_Info,"Also print individual stream info."),
   Arg("p",        Arg::Opt, Print_Sent_Frames,"Also print # frames for each sentence."),
-  Arg("nf",       Arg::Opt, nfs,"number of floats in input file",Arg::ARRAY,MAX_OBJECTS),
-  Arg("ni",       Arg::Opt, nis,"number of ints (labels) in input file",Arg::ARRAY,MAX_OBJECTS),
   Arg("q",        Arg::Tog, quiet,"Don't print the normal info (i.e., useful with -p option)."),
-  Arg("fdiffact", Arg::Opt, actionIfDiffNumFramesStr ,"Action if different number of frames in streams: error (er), repeat last frame (rl), first frame (rf), segmentally expand (se), truncate from start (ts), truncate from end (te)",Arg::ARRAY,MAX_OBJECTS),
-  Arg("sdiffact", Arg::Opt, actionIfDiffNumSentsStr ,"Action if different number of sentences in streams: error (er), truncate from end (te), repeat last sent (rl), and wrap around (wa).",Arg::ARRAY,MAX_OBJECTS),
-  Arg("iswap",    Arg::Opt, iswap,"do byte swapping on the input file",Arg::ARRAY,MAX_OBJECTS),
-  Arg("cppifascii",        Arg::Opt, cppIfAscii,"Pre-process ASCII files using CPP"),
-  Arg("cppCommandOptions", Arg::Opt, cppCommandOptions,"Additional CPP command line"),
-  Arg("help",     Arg::Tog, help,"print this message"),
-  Arg("version", Arg::Tog, printVersion, "Print GMTK version and exit."),
+#define GMTK_ARGUMENTS_DOCUMENTATION
+#include "ObsArguments.h"
+#undef GMTK_ARGUMENTS_DOCUMENTATION
+
   // The argumentless argument marks the end of the above list.
   Arg()
 };
 
 
 int main(int argc, const char *argv[]) {
-  
+
+  CODE_TO_COMPUTE_ENDIAN
+
   //////////////////////////////////////////////////////////////////////
   // Check all necessary arguments provided before creating objects.
   //////////////////////////////////////////////////////////////////////
@@ -144,104 +148,26 @@ int main(int argc, const char *argv[]) {
    
   int numFiles=0;
 
-  // Figure out the Endian of the machine this is running on and set the swap defaults accordingly
-  bool doWeSwap;
-
-  ByteEndian byteEndian = getWordOrganization();
-  switch(byteEndian) {
-  case BYTE_BIG_ENDIAN:
-    doWeSwap=false;
-    break;
-  case BYTE_LITTLE_ENDIAN:
-    doWeSwap=true;
-    break;
-  default:
-    // We weren't able to figure the Endian out.  Leave the swap defaults as they are.
-#ifdef INTV_WORDS_BIGENDIAN
-    doWeSwap=true;
-#else
-    doWeSwap=false;
-#endif
-  }
-
-  for(int i=0; i<MAX_OBJECTS; ++i) {
-    iswap[i]=doWeSwap;
-  }
-  ///////////////////////////////////////////
-
   bool parse_was_ok = Arg::parse(argc,(char**)argv);
-
-  if(help) {
-    Arg::usage();
-    exit(0);
-  }
 
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }
+
+#define GMTK_ARGUMENTS_CHECK_ARGS
+#include "ObsArguments.h"
+#undef GMTK_ARGUMENTS_CHECK_ARGS
 
 
   //////////////////////////////////////////////////////////////////////
   // Check all necessary arguments provided before creating objects.
   //////////////////////////////////////////////////////////////////////
 
- for (int i=0;i<MAX_OBJECTS;i++) {
-    numFiles += (input_fname[i] != NULL);
-    if (strcmp(ifmtStr[i],"htk") == 0)
-      ifmt[i] = HTK;
-    else if (strcmp(ifmtStr[i],"binary") == 0)
-      ifmt[i] = RAWBIN;
-    else if (strcmp(ifmtStr[i],"ascii") == 0)
-      ifmt[i] = RAWASC;
-    else if (strcmp(ifmtStr[i],"pfile") == 0)
-      ifmt[i] = PFILE;
-    //    else if (strcmp(ifmtStr[i],"flatbin") == 0)
-    //  ifmt[i]=FLATBIN;
-    //else if (strcmp(ifmtStr[i],"flatasc") == 0)
-    //  ifmt[i]=FLATASC;
-    else
-      error("ERROR: Unknown observation file format type: '%s'\n",ifmtStr[i]);
-  }
 
  for(int i=0; i < numFiles; ++i)
-   if(output_fname!=NULL && strcmp(input_fname[i],output_fname)==0) {
+   if(output_fname!=NULL && strcmp(ofs[i],output_fname)==0) {
      error("Input and output filenames cannot be the same.");
    }
-
- for(int i=0; i < MAX_OBJECTS; ++i) {
-   if(input_fname[i]!=NULL) {
-     if (strcmp(actionIfDiffNumFramesStr[i],"er") == 0)
-       actionIfDiffNumFrames[i] = FRAMEMATCH_ERROR;
-     else if (strcmp(actionIfDiffNumFramesStr[i],"rl") == 0)
-       actionIfDiffNumFrames[i] = FRAMEMATCH_REPEAT_LAST;
-     else if (strcmp(actionIfDiffNumFramesStr[i],"rf") == 0)
-       actionIfDiffNumFrames[i] = FRAMEMATCH_REPEAT_FIRST;
-     else if (strcmp(actionIfDiffNumFramesStr[i],"se") == 0)
-       actionIfDiffNumFrames[i] = FRAMEMATCH_EXPAND_SEGMENTALLY;
-     else if (strcmp(actionIfDiffNumFramesStr[i],"ts") == 0)
-       actionIfDiffNumFrames[i] = FRAMEMATCH_TRUNCATE_FROM_START;
-     else if (strcmp(actionIfDiffNumFramesStr[i],"te") == 0)
-       actionIfDiffNumFrames[i] = FRAMEMATCH_TRUNCATE_FROM_END;
-     else
-       error("ERROR: Unknown action when diff num of frames: '%s'\n",actionIfDiffNumFramesStr[i]);
-   }
- }
-
-for(int i=0; i < MAX_OBJECTS; ++i) {
-   if(input_fname[i]!=NULL) {
-     if (strcmp(actionIfDiffNumSentsStr[i],"er") == 0)
-       actionIfDiffNumSents[i] = SEGMATCH_ERROR;
-     else if (strcmp(actionIfDiffNumSentsStr[i],"rl") == 0)
-       actionIfDiffNumSents[i] = SEGMATCH_REPEAT_LAST;
-     else if (strcmp(actionIfDiffNumSentsStr[i],"wa") == 0)
-       actionIfDiffNumSents[i] = SEGMATCH_WRAP_AROUND;
-     else if (strcmp(actionIfDiffNumSentsStr[i],"te") == 0)
-       actionIfDiffNumSents[i] = SEGMATCH_TRUNCATE_FROM_END;
-     else
-       error("ERROR: Unknown action when diff num of sentences: '%s'\n",actionIfDiffNumSentsStr[i]);
-   }
- }
-
 
 
   FILE *out_fp=NULL;
@@ -258,24 +184,8 @@ for(int i=0; i < MAX_OBJECTS; ++i) {
  // Create objects.
  //////////////////////////////////////////////////////////////////////
  // If we have a pfile, we can extract the number if features from the file directly
- for(int i=0; i < MAX_OBJECTS; ++i) {
-   if(input_fname[i]!=NULL) {
-     if(ifmt[i]==PFILE) {
-       FILE *in_fp = fopen(input_fname[i], "r");
-       if (in_fp==NULL) error("Couldn't open input pfile %s for reading.", input_fname[i]);
-       InFtrLabStream_PFile* in_streamp = new InFtrLabStream_PFile(0,"",in_fp,1,iswap[i]);
-       nis[i]=in_streamp->num_labs();
-       nfs[i]=in_streamp->num_ftrs();
-       if (fclose(in_fp)) error("Couldn't close input pfile.");
-       delete in_streamp;
-     }
-     
-     if(nis[i]==0 && nfs[i]==0) {
-       error("The number of floats and the number of ints cannot be both zero.");
-     }
-   }
- }
- 
+
+#if 0
  globalObservationMatrix.openFiles(numFiles,  // number of files.   For now we use only one
 				   (const char**)&input_fname,
 				   NULL,      // all feature range
@@ -292,7 +202,9 @@ for(int i=0; i < MAX_OBJECTS; ++i) {
 				   actionIfDiffNumFrames,
 				   actionIfDiffNumSents
 				   );   
-
+#else
+ gomFS = instantiateFileSource();
+#endif
 
 
 
@@ -300,7 +212,7 @@ for(int i=0; i < MAX_OBJECTS; ++i) {
     // Do the work.
     //////////////////////////////////////////////////////////////////////
     
-    obsInfo(out_fp, &globalObservationMatrix,quiet,Print_Sent_Frames,Print_Stream_Info);
+    obsInfo(out_fp, gomFS,quiet,Print_Sent_Frames,Print_Stream_Info);
 
     if (fclose(out_fp))
       error("Couldn't close output file.");

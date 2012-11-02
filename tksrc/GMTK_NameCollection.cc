@@ -221,10 +221,6 @@ NameCollection::writeHTK(oDataStreamFile& os,char *triphoneCollectionName,
 void
 NameCollection::fillMxTable()
 {
-#if 0
-  infoMsg(IM::Huge,"NameCollection::fillMxTable\n");
-#endif
-
   if (mxTable.size() >= table.size())
     return;
 
@@ -508,8 +504,10 @@ NameCollection::commit_all_searches_and_replacements(){
     sort();  
 
 
-
+#if 0
+  // unused
   vector<pair<string,string> >::iterator qi=queued_changes.begin(), qie=queued_changes.end();
+#endif
   vector<std::string>::iterator nci=sorted_table.begin(), ncie=sorted_table.end();
   unsigned nchanged=0;
 

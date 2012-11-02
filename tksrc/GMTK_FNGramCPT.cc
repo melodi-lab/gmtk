@@ -2127,7 +2127,7 @@ void FNGramCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV*>& parents,
 
 		  // TODO: This if condition does not make sense. See ticket #98
 		  // Determine what was really meant here and fix it.
-		  if ( _fngram->_bgNodes[nodeAtLevel].valid && (nodeAtLevel | _startNode == _startNode) ) {
+		  if ( _fngram->_bgNodes[nodeAtLevel].valid && (nodeAtLevel | (_startNode == _startNode)) ) {
 				// figure out which bits are on
 				std::vector<unsigned> onPos = FNGramImp::bitsOn(nodeAtLevel);	// this will be something like 0, 1, 3
 				for ( unsigned i = 0; i < _fngram->_bgNodes[nodeAtLevel].order - 1; i++ ) {
@@ -2191,7 +2191,7 @@ logpr FNGramCPT::probGivenParents(vector < RV* >& parents, DiscRV* drv) {
 
 		  // TODO: This if condition does not make sense. See ticket #98
 		  // Determine what was really meant here and fix it.
-		  if ( _fngram->_bgNodes[nodeAtLevel].valid && (nodeAtLevel | _startNode == _startNode) ) {
+		  if ( _fngram->_bgNodes[nodeAtLevel].valid && (nodeAtLevel | (_startNode == _startNode)) ) {
 				// figure out which bits are on
 				std::vector<unsigned> onPos = FNGramImp::bitsOn(nodeAtLevel);	// this will be something like 0, 1, 3
 				for ( unsigned i = 0; i < _fngram->_bgNodes[nodeAtLevel].order - 1; i++ ) {
