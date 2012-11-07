@@ -392,7 +392,7 @@ HTKFile::getFrames(unsigned first, unsigned count) {
       }
     }
     if (numContinuous()) { // uncompress
-      for (unsigned i=0; i<totalFeatures; i+=1) {
+      for (unsigned i=0; i < count; i+=1) {
 	float* curSampPtr=(float *)buffer+i*featuresPerFrame;
 	copy_add_vf32_vf32(featuresPerFrame,htkInfo->offset,curSampPtr);
 	copy_div_vf32_vf32(featuresPerFrame,htkInfo->scale, curSampPtr);	
