@@ -37,6 +37,8 @@ $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 AM_CXXFLAGS = \
 $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 
+SUBDIRS = discrete-mi
+
 EXTRA_DIST = global-parameters.h mixNormal.h
 noinst_PROGRAMS = multivariate-mi bivariate-mi
 check_PROGRAMS = mvnrnd testReadRange test-matrix-ops
@@ -69,3 +71,4 @@ MixBiNormal_chelp.c
 
 test_matrix_ops_SOURCES = test-matrix-ops.cc \
 matrix-ops.h matrix-ops.cc
+
