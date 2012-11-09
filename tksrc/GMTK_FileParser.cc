@@ -472,6 +472,7 @@ FileParser::fillKeywordTable()
     /* 52 */ "logLinear",
     /* 53 */ "emarfNum",
     /* 54 */ "symboltable",
+    /* 55 */ "makeExplicitClique",
   };
   vector<string> v;
   const unsigned len = sizeof(kw_table)/sizeof(char*);
@@ -1012,7 +1013,8 @@ FileParser::parseFactorAttributeList()
   if (tokenInfo == KW_Variables  
       || tokenInfo == KW_SymmetricConstraint 
       || tokenInfo == KW_DirectionalConstraint
-      || tokenInfo == KW_SoftConstraint) 
+      || tokenInfo == KW_SoftConstraint
+      || tokenInfo == KW_ExplicitClique) 
     {
       parseFactorAttribute();
       parseFactorAttributeList();
@@ -1033,6 +1035,8 @@ FileParser::parseFactorAttribute()
     return parseFactorDirectionalConstraintAttribute();
   } else if (tokenInfo == KW_SoftConstraint) {
     return parseFactorSoftConstraintAttribute();
+  } else if (tokenInfo == KW_ExplicitClique) {
+    return parseFactorExplicitCliqueAttribute();
   } else
     parseErrorExpecting("factor attribute");
 
@@ -1338,6 +1342,24 @@ FileParser::parseFactorSoftConstraintAttribute()
   consumeToken();
 }
 
+
+void
+FileParser::parseFactorExplicitCliqueAttribute() 
+{
+  ensureNotAtEOF(KW_ExplicitClique);
+  if (tokenInfo != KW_ExplicitClique)
+    parseError(KW_ExplicitClique);
+  consumeToken();
+
+  if (curFactor.fType != FactorInfo::ft_unknown)
+    parseError("already defined a type for this factor");
+  curFactor.fType = FactorInfo::ft_explicitClique;
+
+  ensureNotAtEOF(";");
+  if (tokenInfo != TT_SemiColon)
+    parseErrorExpecting("';'");
+  consumeToken();
+}
 
 
 
