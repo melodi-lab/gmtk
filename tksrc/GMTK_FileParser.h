@@ -190,7 +190,8 @@ public:
     KW_Table=51,
     KW_LogLinear=52,
     KW_EmarfNum=53,
-    KW_SymbolTable=54
+    KW_SymbolTable=54,
+    KW_ExplicitClique=55
   };
 
   // list of token keyword strings.
@@ -310,6 +311,7 @@ private:
   void parseFactorSymmetricConstraintAttribute();
   void parseFactorDirectionalConstraintAttribute();
   void parseFactorSoftConstraintAttribute();
+  void parseFactorExplicitCliqueAttribute();
 
   void parseRandomVariableEliminationHintAttribute();
   void parseRandomVariableType();

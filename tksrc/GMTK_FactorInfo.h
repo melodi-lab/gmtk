@@ -109,7 +109,8 @@ public:
   enum FactorType { ft_unknown, // used to add undirected edges and for error checking
 		    ft_symmetricConstraint,
 		    ft_directionalConstraint,
-		    ft_softConstraint };
+		    ft_softConstraint,
+                    ft_explicitClique};
 
   // types of symmetricConstraints
   enum SymmetricConstraintType {
