@@ -79,6 +79,7 @@ AC_DEFINE_UNQUOTED([LZERO], [(${with_LZERO})], [smallest log value that we repre
 AC_PROG_CXX
 AC_PROG_CC
 AM_PROG_LEX
+m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 AC_PROG_INSTALL
 AC_PROG_RANLIB
 

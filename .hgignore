@@ -26,6 +26,8 @@ install-sh
 missing
 stamp-h1
 ylwrap
+ar-lib
+compile
 IEEEFloatingpoint/ieeeFPsetup.h
 IEEEFloatingpoint/ieeeTest
 featureFileIO/unrevisioned
