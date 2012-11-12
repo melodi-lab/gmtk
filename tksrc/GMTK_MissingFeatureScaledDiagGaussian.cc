@@ -400,7 +400,12 @@ MissingFeatureScaledDiagGaussian::emStartIteration()
  * log_p()
  *      Computes the probability of this Gaussian, but in this case any value
  *      of the observation that is a NaN is treated as a missing feature (i.e.,
- *      the Gaussian integrates that feature out.
+ *      the Gaussian integrates that feature out. Note that another option
+ *      might be to use the mean value of the missing feature rather than
+ *      integrating it out. It should still produce valid values, however, to
+ *      do integration since any ratios or sums we do will always involve
+ *      the same quantities (i.e., if we do \sum_i x p(x| i), then each of the 
+ *      p(x|i) will always have the same element of x integrated out).
  * 
  * Preconditions:
  *      preCompute() must have been called on covariance matrix before this.
