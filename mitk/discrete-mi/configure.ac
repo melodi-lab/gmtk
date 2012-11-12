@@ -25,6 +25,7 @@ AM_CONDITIONAL([NO_MODEL_CHECKS],[test x$model_checks != xyes])
 # Checks for programs
 AC_PROG_CXX
 AC_PROG_CC
+m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 
 # Checks for libraries.
 AC_CHECK_LIB([m], [log])
