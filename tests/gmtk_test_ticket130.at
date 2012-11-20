@@ -10,7 +10,8 @@ AT_SKIP_IF([test ! -d $TEST_AND_DEV/switchboard/lattice_trigram])
 # seem to have enough memory either (it may be that 32-bit Windows is 
 # insufficient).
 
-AT_SKIP_IF([test `hostname` = "bluffon.ee.washington.edu" -o `hostname` = "xpc" -o `hostname` = "harlequin.ee.washington.edu" -o `hostname` = "peacock.ee.washington.edu"])
+AT_SKIP_IF([test `hostname` = "bluffon.ee.washington.edu" -o `hostname` = "xpc" -o `hostname` = "harlequin.ee.washington.edu" -o `hostname` = "PEACOCK"])
+AT_CHECK([hostname > ~/hostname])
 AT_CHECK([(cd $TEST_AND_DEV/switchboard/lattice_trigram && \
 gmtkViterbi \
         -of1 params/eval01_ftr.lst \
