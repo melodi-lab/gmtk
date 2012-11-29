@@ -960,6 +960,20 @@ FileParser::parseFrameEntryList()
     }
 
     factorList.push_back(curFactor);
+#if 0
+if (curFactor.fType == FactorInfo::ft_explicitClique) {
+  printf("factor %s RVs:", curFactor.name.c_str());
+  for (vector<RV *>::iterator it = curFactor.rvs.begin(); it != curFactor.rvs.end(); it++) {
+    printf(" %s(%u)", (*it)->name().c_str(), (*it)->frame());
+  }
+  printf("\n     info:");
+  for (vector<RVInfo::rvParent>::iterator it = curFactor.variables.begin(); it != curFactor.variables.end(); it++) {
+    printf(" %s(%d)", it->first.c_str(), it->second);
+  }
+  printf("\n");
+
+}
+#endif
   }
 
   parseFrameEntryList();
@@ -2585,6 +2599,7 @@ FileParser::createRandomVariableGraph()
 
   for (unsigned factorNo=0;factorNo<factorList.size();factorNo++) {
     FactorInfo& factor = factorList[factorNo];
+printf("Factor RV set %s %u:\n", factor.name.c_str(), factor.frame);
     factor.rvs.resize(factor.variables.size());
 
     set < RV* > factorVarsSet; // possibly include this in the FactorInfo itself
@@ -2605,6 +2620,7 @@ FileParser::createRandomVariableGraph()
       } else {
 	factor.rvs[varNo] = rvInfoVector[ nameRVmap[ pp ] ].rv;
 	// factors only defined over discrete variables for now.
+printf("  %s(%u)", factor.rvs[varNo]->name().c_str(), factor.rvs[varNo]->frame());
 	if (factor.rvs[varNo]->continuous()) {
 	  error("Error: RV \"%s(%d)\" declared as \"%s(%d)\" in factor '%s' at frame %d (line %d of file '%s'), must be discrete (for now)\n",
 		pp.first.c_str(),pp.second,
@@ -2617,6 +2633,7 @@ FileParser::createRandomVariableGraph()
 	factorVarsSet.insert(factor.rvs[varNo]);
       }
     }
+printf("\n\n");
 
     // do a bit more sanity checking of factors.
     if (factor.fType == FactorInfo::ft_directionalConstraint) {
@@ -4265,6 +4282,47 @@ FileParser::addUndirectedFactorEdges(unsigned timesToUnroll,
 	timesToUnroll*numFramesInC();
       completeRVsInFactor(factor,offset,rvs,pos,rv_factor);
       factorArray.push_back(rv_factor);
+    }
+  }
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * assignExplicitFactorsToPartitions()
+ *
+ * Parsed factors end up in the factorList, but we can't tell which
+ * partition (P, C, or E) they belong in until we see the chunk
+ * specifier at the end of the .str file. So, call this after parsing
+ * the .str file to fill {P,C,E}_explicitFactors 
+ *
+ * Preconditions:
+ *     factorList must contain the parsed factors and frameInTemplate{P,C,E}
+ *     must be working
+ *
+ * Postconditions:
+ *     The {P,C,E}_explicitFactors vectors will be filled
+ *
+ * Results:
+ *     None
+ *
+ *----------------------------------------------------------------------- 
+ */
+void 
+FileParser::assignExplicitFactorsToPartitions() {
+printf("assignExplictFactorsToPartitions()\n");
+  for (unsigned factorNo=0;factorNo<factorList.size();factorNo++) {
+    FactorInfo& factor = factorList[factorNo];
+printf("   %s(%u) -> ", factor.name.c_str(), factor.frame);
+    if (frameInTemplateP(factor.frame)) {
+printf("P\n");
+      P_explicitFactors.push_back(factor);
+    } else if (frameInTemplateC(factor.frame)) {
+printf("C\n");
+      C_explicitFactors.push_back(factor);
+    } else {
+printf("E\n");
+      E_explicitFactors.push_back(factor);
     }
   }
 }

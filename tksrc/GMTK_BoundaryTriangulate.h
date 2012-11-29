@@ -1019,6 +1019,8 @@ public:
   void checkPartitions();
 
 
+  void addExplicitFactorCliques(GMTemplate &gm_template);
+				
 
   // use the timer given by arg, returning the old timer.
   // If no argument given, then don't use any timer.

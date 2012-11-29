@@ -626,6 +626,17 @@ MaxClique::MaxClique(MaxClique& from_clique,
 }
 
 
+MaxClique::MaxClique(MaxClique& from_clique,
+		     vector <RV*>& newRvs)
+  :  cliqueValueSpaceManager(1,     // starting size
+			     1.25, //spaceMgrGrowthRate,   // growth rate
+			     1,     // growth addition
+			     spaceMgrDecayRate)    // decay rate 
+{
+  set<RV*> newRVSet(newRvs.begin(), newRvs.end());
+  nodes = newRVSet;
+}
+
 
 /*-
  *-----------------------------------------------------------------------
@@ -7257,11 +7268,11 @@ deScatterToOutgoingSeparatorsViterbi(MaxCliqueTable::SharedLocalStructure& share
 SeparatorClique::SeparatorClique(MaxClique& c1, MaxClique& c2)
   :  veSeparator(false),
      separatorValueSpaceManager(1,     // starting size
-				sepSpaceMgrGrowthRate,   // growth rate
+				1.25, //sepSpaceMgrGrowthRate,   // growth rate
 				1,     // growth addition
 				sepSpaceMgrDecayRate),   // decay rate 
      remainderValueSpaceManager(1,     // starting size
-				remSpaceMgrGrowthRate,   // growth rate
+				1.25, //remSpaceMgrGrowthRate,   // growth rate
 				1,     // growth addition
 				remSpaceMgrDecayRate)    // decay rate
      
