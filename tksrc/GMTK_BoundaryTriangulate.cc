@@ -1621,6 +1621,68 @@ BoundaryTriangulate
 }
 
 
+void
+BoundaryTriangulate::addExplicitFactorCliques(GMTemplate &gm_template) {
+  vector< FactorInfo > factors = fp.getPexplicitFactors();
+  for (vector< FactorInfo >::iterator it = factors.begin(); it != factors.end(); it++) {
+printf("addExplictFactorCliques P: %s(%u)\n", it->name.c_str(), it->frame);
+    // search for a clique with exactly the same variables as the factor
+    // if found, print factor.name(factor.frame) -> clique #
+    // else add clique containing factor.variables
+    if (0 /* clique search */) {
+    } else {
+#if 1
+      MaxClique firstP = gm_template.P.cliques[0]; // must exist since there's a P factor
+      MaxClique factorClique(firstP, it->rvs);
+      gm_template.P.cliques.push_back( factorClique );
+#endif
+    }
+  }
+printf("finished P explicitFactors\n");
+
+
+  factors = fp.getCexplicitFactors();
+  for (vector< FactorInfo >::iterator it = factors.begin(); it != factors.end(); it++) {
+printf("addExplictFactorCliques C: %s(%u)\n", it->name.c_str(), it->frame);
+    if (0 /* clique search */) {
+    } else {
+#if 1
+      MaxClique firstC = gm_template.C.cliques[0]; // must exist since there's a C factor
+      MaxClique factorClique(firstC, it->rvs);
+printf("  factor %s rvs:\n  ", it->name.c_str());
+for (vector<RV *>::iterator var = it->rvs.begin(); var != it->rvs.end(); var++) {
+  printf(" %s(%u)", (*var)->name().c_str(), (*var)->frame());
+}
+printf("\n");
+printf("  factor %s variables:\n  ", it->name.c_str());
+for (vector<RVInfo::rvParent>::iterator var = it->variables.begin(); var != it->variables.end(); var++) {
+  printf(" %s(%d)", var->first.c_str(), var->second);
+}
+printf("\n");
+
+      gm_template.C.cliques.push_back( factorClique );
+#endif
+    }
+  }
+printf("finished C explicitFactors\n");
+
+
+  factors = fp.getEexplicitFactors();
+  for (vector< FactorInfo >::iterator it = factors.begin(); it != factors.end(); it++) {
+printf("addExplictFactorCliques E: %s(%u)\n", it->name.c_str(), it->frame);
+    if (0 /* clique search */) {
+    } else {
+#if 1
+      MaxClique firstE = gm_template.E.cliques[0]; // must exist since there's a E factor
+      MaxClique factorClique(firstE, it->rvs);
+      gm_template.E.cliques.push_back( factorClique );
+#endif
+    }
+  }
+printf("finished E explicitFactors\n");
+}
+
+
 /*******************************************************************************
  *******************************************************************************
  *******************************************************************************

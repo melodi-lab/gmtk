@@ -87,6 +87,12 @@ class FileParser : public IM
   //     3) a set of feature functions of the variables involved in the clique along with
   //        weights that are learned along with EM using an iterative scaling form of algorithm.
   vector < FactorInfo > factorList;
+
+  // see https://j.ee.washington.edu/trac/gmtk/ticket/352
+  vector < FactorInfo > P_explicitFactors; // any factors with makeExplicitFactor in prolog
+  vector < FactorInfo > C_explicitFactors; //   ...                               in chunk
+  vector < FactorInfo > E_explicitFactors; //   ...                               in epilog
+
   FactorInfo curFactor; 
 
   //////////////////////////////////////////////
@@ -423,6 +429,18 @@ public:
 				// return value
 				vector < set < RV* > >& factorArray);
 
+
+  // Explicit factor accessors
+  // see https://j.ee.washington.edu/trac/gmtk/ticket/352
+  vector< FactorInfo > getPexplicitFactors() { return P_explicitFactors; }
+  vector< FactorInfo > getCexplicitFactors() { return C_explicitFactors; }
+  vector< FactorInfo > getEexplicitFactors() { return E_explicitFactors; }
+
+  // Parsed factors end up in the factorList, but we can't tell which
+  // partition (P, C, or E) they belong in until we see the chunk
+  // specifier at the end of the .str file. So, call this after parsing
+  // the .str file to fill {P,C,E}_explicitFactors 
+  void assignExplicitFactorsToPartitions();
 
   // A routine to write out the graph template (P,C,E) in condensed
   // form but in sufficient detail so that it can be used to quickly

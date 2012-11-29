@@ -379,6 +379,10 @@ class MaxClique : public IM {
 	    const unsigned int frameDelta = 0);
 
 
+  // like basic ctor, except grab spaceManagers from an existing clique
+  MaxClique(MaxClique &from_clique,
+	    vector <RV*> &newRvs);
+
   ~MaxClique() { 
     // TODO: do this right so that it works with tmp values in these objects.
     //   right now, not deleting these causes a memory leak.

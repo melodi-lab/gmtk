@@ -501,6 +501,9 @@ main(int argc,char*argv[])
 	triangulator.anyTimeTriangulate(gm_template,jtWeight);
       }
 
+      fp.assignExplicitFactorsToPartitions();
+      triangulator.addExplicitFactorCliques(gm_template);
+
       backupTriFile(output_tri_file);
       oDataStreamFile os(output_tri_file.c_str());
       os.setWriteCommentsStatus(writeComments);
