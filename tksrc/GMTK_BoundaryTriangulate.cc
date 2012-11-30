@@ -1633,7 +1633,12 @@ printf("addExplictFactorCliques P: %s(%u)\n", it->name.c_str(), it->frame);
     } else {
 #if 1
       MaxClique firstP = gm_template.P.cliques[0]; // must exist since there's a P factor
+#if 0
       MaxClique factorClique(firstP, it->rvs);
+#else
+      set<RV*> vars(it->rvs.begin(), it->rvs.end());
+      MaxClique factorClique(vars);
+#endif
       gm_template.P.cliques.push_back( factorClique );
 #endif
     }
@@ -1648,7 +1653,12 @@ printf("addExplictFactorCliques C: %s(%u)\n", it->name.c_str(), it->frame);
     } else {
 #if 1
       MaxClique firstC = gm_template.C.cliques[0]; // must exist since there's a C factor
+#if 0
       MaxClique factorClique(firstC, it->rvs);
+#else
+      set<RV*> vars(it->rvs.begin(), it->rvs.end());
+      MaxClique factorClique(vars);
+#endif      
 printf("  factor %s rvs:\n  ", it->name.c_str());
 for (vector<RV *>::iterator var = it->rvs.begin(); var != it->rvs.end(); var++) {
   printf(" %s(%u)", (*var)->name().c_str(), (*var)->frame());
@@ -1674,7 +1684,12 @@ printf("addExplictFactorCliques E: %s(%u)\n", it->name.c_str(), it->frame);
     } else {
 #if 1
       MaxClique firstE = gm_template.E.cliques[0]; // must exist since there's a E factor
+#if 0
       MaxClique factorClique(firstE, it->rvs);
+#else
+      set<RV*> vars(it->rvs.begin(), it->rvs.end());
+      MaxClique factorClique(vars);
+#endif
       gm_template.E.cliques.push_back( factorClique );
 #endif
     }
