@@ -206,6 +206,7 @@ public:
     fileName = v.fileName;
     name = v.name;
     variables = v.variables;
+    rvs = v.rvs;
     fType = v.fType;
     if (fType == ft_symmetricConstraint) {
       symmetricConstraintInfo = v.symmetricConstraintInfo;
