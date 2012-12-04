@@ -41,6 +41,8 @@ FlatASCIIFile::FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints,
     cppCommandOptions(cppCommandOptions)
 {
   buffer = NULL;
+  fileName = name;
+  writeFile = NULL;
   if (name == NULL) 	
     error("FlatASCIIFile: File name is NULL for stream %i",num);	
   if (nfloats == 0 && nints == 0)
@@ -180,5 +182,66 @@ FlatASCIIFile::FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints,
 
   if (segRangeStr_)
     segRange = new Range(segRangeStr_,0,nSegments);
+}
+
+
+FlatASCIIFile::FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints) 
+  : ObservationFile(NULL, NULL, NULL, NULL),
+    cppIfAscii(false), cppCommandOptions(NULL)
+{
+  _numContinuousFeatures = _numLogicalContinuousFeatures = nfloats;
+  _numDiscreteFeatures   = _numLogicalDiscreteFeatures   = nints;
+  _numFeatures           = _numLogicalFeatures           = nfloats + nints;
+
+  logicalObservationBuffer = NULL;
+  logicalObsBufSize = 0;
+  buffer = NULL;
+  segment = NULL;
+
+  nSegments = 0;
+  currSegment = 0;
+  currFrame = 0;
+
+  writeFile = fopen(name, "w+");
+  if (!writeFile) {
+    error("FlatASCIIFile: couldn't open '%s' for reading\n", name);
+  }
+}
+
+
+void 
+FlatASCIIFile::writeSegment(Data32 const *segment, unsigned nFrames) {
+  for (unsigned f=0; f < nFrames; f+=1) {
+    fprintf(writeFile, "%u %u", currSegment, f);
+    for (unsigned i=0; i < _numContinuousFeatures; i+=1) {
+      fprintf(writeFile, " %f", *((float *)segment++));
+    }
+    for (unsigned i=0; i < _numDiscreteFeatures; i+=1) {
+      fprintf(writeFile, " %u", *((unsigned *)segment++));
+    }
+    fprintf(writeFile, "\n");
+  }
+  currSegment += 1;
+  nSegments += 1;
+}
+  
+
+void 
+FlatASCIIFile::writeFrame(Data32 const *frame) {
+  fprintf(writeFile, "%u %u", currSegment, currFrame++);
+  for (unsigned i=0; i < _numContinuousFeatures; i+=1) {
+    fprintf(writeFile, " %f", *((float *)frame++));
+  }
+  for (unsigned i=0; i < _numDiscreteFeatures; i+=1) {
+    fprintf(writeFile, " %u", *((unsigned *)frame++));
+  }
+  fprintf(writeFile, "\n");
+}
+
+void 
+FlatASCIIFile::endOfSegment() {
+  currSegment += 1;
+  currFrame = 0;
+  nSegments += 1;
 }
 

@@ -297,7 +297,8 @@ openOneSourceFile(char *ofs,
 		  unsigned fileWindowSize,
 		  unsigned fileWindowDelta,
 		  unsigned justification,
-		  unsigned fileNum)
+		  unsigned fileNum,
+		  const char *ifmtStr)
 {
   // range selection is much more efficient if "all" is replaced with NULL
   // since the logical <-> physical mapping step can be skipped
@@ -314,7 +315,7 @@ openOneSourceFile(char *ofs,
   
   obsFile = instantiateFile(ifmt, ofs, nfs, nis, fileNum, iswp,
 			    Cpp_If_Ascii, cppCommandOptions, prefrs, preirs,
-			    prepr, sr);
+			    prepr, sr, ifmtStr);
   assert(obsFile);
   if (Per_Stream_Transforms || frs || irs || postpr) {
     Filter *fileFilter = instantiateFilters(Per_Stream_Transforms,
@@ -371,7 +372,7 @@ static void obsConcat(FILE *out_fp,
 			    postpr[0], Post_Transforms, gpr_str,
 			    constantSpace, startSkip, endSkip,
 			    fileBufferSize, fileWindowSize, fileWindowDelta, 
-			    justification, 0);
+			    justification, 0, fmts[0]);
   unsigned n_ftrs = gomFS->numContinuous();
   unsigned n_labs = gomFS->numDiscrete();
     
@@ -395,7 +396,7 @@ static void obsConcat(FILE *out_fp,
 			      postpr[file_ix], Post_Transforms, gpr_str,
 			      constantSpace, startSkip, endSkip,
 			      fileBufferSize, fileWindowSize, fileWindowDelta, 
-			      justification, file_ix);
+			      justification, file_ix, fmts[file_ix]);
     unsigned check_n_ftrs = gomFS->numContinuous();
     unsigned check_n_labs = gomFS->numDiscrete();
 
