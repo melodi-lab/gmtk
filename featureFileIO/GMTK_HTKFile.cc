@@ -422,3 +422,217 @@ HTKFile::getFrames(unsigned first, unsigned count) {
   return NULL;
 }
 
+
+void printHTKHeader(FILE* ofp, bool oswap, int numInts, int numFloats, int numSamples) {
+
+  DBGFPRINTF((stderr,"obsPrint: Printing HTK header.\n"));
+  // structure of HTK header
+  //  Int32 numSamples;
+  Int32 samplePeriod=1;
+  short parameterKind;
+  short sampleSize;
+  if(numFloats > 0) {
+    sampleSize=numFloats*sizeof(float);
+    parameterKind=USER;  // enum in GMTK_Stream.h
+  } else {
+    sampleSize=numInts*sizeof(short);
+    parameterKind=DISCRETE;  // enum in GMTK_Stream.h
+  }
+
+  if (oswap) {
+    numSamples = swapb_i32_i32(numSamples);
+    samplePeriod = swapb_i32_i32(samplePeriod);
+    sampleSize = swapb_short_short(sampleSize);
+    parameterKind = swapb_short_short(parameterKind);
+  }
+
+  if (fwrite(&numSamples,sizeof(Int32),1,ofp) != 1) {
+    error("Cannot write HTK number of samples\n");
+  }
+  if (fwrite((Int32 *)&samplePeriod,sizeof(Int32),1,ofp) != 1) {
+    error("Cannot write HTK sample period\n");
+  }
+
+  if (fwrite((short *)&sampleSize,sizeof(short),1,ofp) != 1) {
+    error("Cannot write HTK sample size\n");
+  }
+
+  if (fwrite(&parameterKind,sizeof(short),1,ofp) != 1) {
+    error("Cannot write HTK parm kind\n");
+  }
+
+  DBGFPRINTF((stderr,"obsPrint: Finished printing HTK header.\n"));
+}
+
+
+void 
+HTKFile::writeSegment(Data32 const *segment, unsigned nFrames) {
+  if (writeFile) {
+    if (fclose(writeFile)) {
+      error("ERROR closing output file\n");
+    }
+    writeFile = NULL;
+  }
+  char* current_output_fname = new char[strlen(outputFileName)+strlen(outputNameSeparatorStr)+50];
+  sprintf(current_output_fname,"%s%s%d",outputFileName,outputNameSeparatorStr,currSegment);
+  if ((writeFile = fopen(current_output_fname, "w")) == NULL) {
+    error("Couldn't open output file '%s' for writing.",current_output_fname);
+  }
+  fprintf(listFile,"%s\n",current_output_fname);
+
+  void (*copy_swap_func_ptr)(size_t, const intv_int32_t*, intv_int32_t*)=NULL;
+  if(oswap) {
+    copy_swap_func_ptr=&swapb_vi32_vi32;
+  } else {
+    copy_swap_func_ptr=&copy_vi32_vi32;
+  }
+  
+  printHTKHeader(writeFile, oswap, _numDiscreteFeatures, _numContinuousFeatures, nFrames);
+
+  //////////  Print the frames ////////////////////////////////////
+  float  *cont_buf_p = (float  *) segment;
+  UInt32 *disc_buf_p = (UInt32 *) segment + _numContinuousFeatures;
+  size_t fwrite_result;
+
+  for (unsigned frame_no=0; frame_no < nFrames ; frame_no+=1) {
+
+    /// Print continuous part of frame /////////////////////////////
+    for (unsigned frit=0; frit < _numContinuousFeatures; frit+=1) {
+      DBGFPRINTF((stderr,"obsPrint: Printing HTK float %f.\n", cont_buf_p[frit]));
+      copy_swap_func_ptr(1, (int*)&cont_buf_p[frit],(int*)&cont_buf_p[frit]);
+      fwrite_result = fwrite(&cont_buf_p[frit], sizeof(cont_buf_p[frit]), 1, writeFile);
+      if (fwrite_result != 1) {
+	error("Error writing to output file '%s'\n", current_output_fname);
+      }
+    }
+    ///////////////////////////////////////////////////////////////
+    
+    /// Print discrete part of the frame ///////////////////////////
+    for (unsigned lrit=0; lrit < _numDiscreteFeatures; lrit+=1) {
+      if (_numContinuousFeatures > 0) {
+	copy_swap_func_ptr(1, (int*)&disc_buf_p[lrit],(int*)&disc_buf_p[lrit]);
+	fwrite_result = fwrite(&disc_buf_p[lrit], sizeof(disc_buf_p[lrit]), 1, writeFile);
+	if (fwrite_result != 1) {
+	  error("Error writing to output file '%s'\n", current_output_fname);
+	}
+      } else if (_numContinuousFeatures == 0) { // in the HTK format we
+	// cannot mix floats with discrete data; that's why if there is at
+	// least one float component everyting is written out as a float.
+	short short_lab_buf_p=(short)disc_buf_p[0];
+	DBGFPRINTF((stderr,"obsPrint: Printing HTK short %d.\n", short_lab_buf_p));
+	if (oswap) {
+	  short_lab_buf_p = swapb_short_short(short_lab_buf_p);
+	}
+	fwrite_result = fwrite(&short_lab_buf_p, sizeof(short_lab_buf_p), 1, writeFile);
+	if (fwrite_result != 1) {
+	  error("Error writing to output file '%s'\n", current_output_fname);
+	}
+      }
+    } // end of for (unsigned lrit=0;lrit<num_discrete; ++lrit)
+
+    cont_buf_p += _numFeatures;
+    disc_buf_p += _numFeatures;
+  }  // end of for (unsigned frame_no=0; frame_no < num_frames ; ++frame_no)
+  //////////////////////////////////////////////////////////////////////////// 
+
+  if (fclose(writeFile)) {
+    error("ERROR closing output file '%s'\n", current_output_fname);
+  }
+  writeFile = NULL;
+  delete []  current_output_fname;
+
+  currSegment += 1;
+  currFrame = 0;
+}
+
+
+void 
+HTKFile::writeFrame(Data32 const *frame) {
+  void (*copy_swap_func_ptr)(size_t, const intv_int32_t*, intv_int32_t*)=NULL;
+  if(oswap) {
+    copy_swap_func_ptr=&swapb_vi32_vi32;
+  } else {
+    copy_swap_func_ptr=&copy_vi32_vi32;
+  }
+  
+  if (currFrame == 0) {
+    assert(!writeFile); // previous EoS (or ctor) should have closed it
+    char* current_output_fname = new char[strlen(outputFileName)+strlen(outputNameSeparatorStr)+50];
+    sprintf(current_output_fname,"%s%s%d",outputFileName,outputNameSeparatorStr,currSegment);
+    if ((writeFile = fopen(current_output_fname, "w")) == NULL) {
+      error("Couldn't open output file '%s' for writing.",current_output_fname);
+    }
+    fprintf(listFile,"%s\n",current_output_fname);
+    delete [] current_output_fname;
+    // write fake header - EoS will seek back & wirte correct header
+    printHTKHeader(writeFile, oswap, _numDiscreteFeatures, _numContinuousFeatures, 1);
+  }
+  float  *cont_buf_p = (float  *) frame;
+  UInt32 *disc_buf_p = (UInt32 *) frame + _numContinuousFeatures;
+  size_t fwrite_result;
+
+  /// Print continuous part of frame /////////////////////////////
+  for (unsigned frit=0; frit < _numContinuousFeatures; frit+=1) {
+    DBGFPRINTF((stderr,"obsPrint: Printing HTK float %f.\n", cont_buf_p[frit]));
+    copy_swap_func_ptr(1, (int*)&cont_buf_p[frit],(int*)&cont_buf_p[frit]);
+    fwrite_result = fwrite(&cont_buf_p[frit], sizeof(cont_buf_p[frit]), 1, writeFile);
+    if (fwrite_result != 1) {
+      error("Error writing to output file\n");
+    }
+  }
+  ///////////////////////////////////////////////////////////////
+  
+  /// Print discrete part of the frame ///////////////////////////
+  for (unsigned lrit=0; lrit < _numDiscreteFeatures; lrit+=1) {
+    if (_numContinuousFeatures > 0) {
+      copy_swap_func_ptr(1, (int*)&disc_buf_p[lrit],(int*)&disc_buf_p[lrit]);
+      fwrite_result = fwrite(&disc_buf_p[lrit], sizeof(disc_buf_p[lrit]), 1, writeFile);
+      if (fwrite_result != 1) {
+	error("Error writing to output file\n");
+      }
+    } else if (_numContinuousFeatures == 0) { // in the HTK format we
+      // cannot mix floats with discrete data; that's why if there is at
+      // least one float component everyting is written out as a float.
+      short short_lab_buf_p=(short)disc_buf_p[0];
+      DBGFPRINTF((stderr,"obsPrint: Printing HTK short %d.\n", short_lab_buf_p));
+      if (oswap) {
+	short_lab_buf_p = swapb_short_short(short_lab_buf_p);
+      }
+      fwrite_result = fwrite(&short_lab_buf_p, sizeof(short_lab_buf_p), 1, writeFile);
+      if (fwrite_result != 1) {
+	error("Error writing to output file\n");
+      }
+    }
+  } // end of for (unsigned lrit=0;lrit<num_discrete; ++lrit) 
+  currFrame += 1;
+}
+
+
+void 
+HTKFile::endOfSegment() {
+  if (currFrame == 0) {
+    assert(!writeFile); // previous EoS (or ctor) should have closed it
+    char* current_output_fname = new char[strlen(outputFileName)+strlen(outputNameSeparatorStr)+50];
+    sprintf(current_output_fname,"%s%s%d",outputFileName,outputNameSeparatorStr,currSegment);
+    if ((writeFile = fopen(current_output_fname, "w")) == NULL) {
+      error("Couldn't open output file '%s' for writing.",current_output_fname);
+    }
+    fprintf(listFile,"%s\n",current_output_fname);
+    delete [] current_output_fname;
+  } else {
+    assert(writeFile); // if not, what have we been writing to?
+    // Now that we know the number of frames, re-do the header correctly
+    if (fseek(writeFile, 0, SEEK_SET)) {
+      error("ERROR seeking in output file\n");
+    }
+  }
+  printHTKHeader(writeFile, oswap, _numDiscreteFeatures, _numContinuousFeatures, currFrame);
+
+  if (fclose(writeFile)) {
+    error("ERROR closing output file\n");
+  }
+  writeFile = NULL;
+  currSegment += 1;
+  currFrame = 0;
+}
+

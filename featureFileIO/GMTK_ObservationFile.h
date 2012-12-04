@@ -69,6 +69,8 @@ class ObservationFile {
 
  protected:
 
+  char const *fileName;
+
   char const *contFeatureRangeStr;  // -frX
   Range      *contFeatureRange;
   char const *discFeatureRangeStr;  // -irX
@@ -97,7 +99,7 @@ class ObservationFile {
 		  char const *discFeatureRangeStr_=NULL,
 		  char const *preFrameRangeStr_=NULL, 
 		  char const *segRangeStr_=NULL)
-    : contFeatureRangeStr(contFeatureRangeStr_), contFeatureRange(NULL),
+    : fileName(NULL), contFeatureRangeStr(contFeatureRangeStr_), contFeatureRange(NULL),
       discFeatureRangeStr(discFeatureRangeStr_), discFeatureRange(NULL),
       preFrameRangeStr(preFrameRangeStr_), preFrameRange(NULL),
       segRangeStr(segRangeStr_), segRange(NULL), 
@@ -114,6 +116,21 @@ class ObservationFile {
       free(logicalObservationBuffer);
       logicalObservationBuffer = NULL;
     }
+  }
+
+  // Write segment to the file (no need to call endOfSegment)
+  virtual void writeSegment(Data32 const *segment, unsigned nFrames) {
+    error("ERROR: writeSegment unimplemented\n");
+  }
+
+  // Write frame to the file (call endOfSegment after last frame of a segment)
+  virtual void writeFrame(Data32 const *frame) {
+    error("ERROR: writeFrame unimplemented\n");
+  }
+
+  // Call after last writeFrame of a segment
+  virtual void endOfSegment() {
+    error("ERROR: endOfSegment unimplemented\n");
   }
 
   // The number of physical (before -srX) segments in the file.
@@ -173,7 +190,7 @@ ObservationFile *
 instantiateFile(unsigned ifmt, char *ofs, unsigned nfs, unsigned nis,
 		unsigned number, bool iswp, bool Cpp_If_Ascii, 
 		char *cppCommandOptions, char const *frs, char const *irs, 
-		char const *prepr, char const *sr);
+		char const *prepr, char const *sr, char const *ifmtStr);
 
 // Converts the command line -fmtX string to an integer (enum)
 int

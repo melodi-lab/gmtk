@@ -144,7 +144,7 @@ ObservationFile *
 instantiateFile(unsigned ifmt, char *ofs, unsigned nfs, unsigned nis,
 		unsigned number, bool iswp, bool Cpp_If_Ascii, 
 		char *cppCommandOptions, char const *frs, char const *irs, 
-		char const *prepr, char const *sr)
+		char const *prepr, char const *sr, char const *ifmtStr)
 {
   ObservationFile *obsFile = NULL;
   switch (ifmt) {
@@ -173,7 +173,7 @@ instantiateFile(unsigned ifmt, char *ofs, unsigned nfs, unsigned nis,
 				frs, irs, prepr, sr);
     break;
   default:
-    error("ERROR: Unknown observation file format type: '%s'\n", ifmt);
+    error("ERROR: Unknown observation file format type: '%s'\n", ifmtStr);
   }
   return obsFile;
 }
