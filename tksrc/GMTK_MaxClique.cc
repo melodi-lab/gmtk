@@ -6194,6 +6194,174 @@ printCliqueEntries(MaxCliqueTable::SharedLocalStructure& sharedStructure,
   }
 }
 
+// a - b; so positive iff a > b       == 0 if a == b      negative iff a < b
+int
+MaxCliqueTable::
+cliqueValueDistance(MaxCliqueTable::SharedLocalStructure& sharedStructure, 
+		    unsigned a, unsigned b) 
+{
+  MaxClique& origin = *(sharedStructure.origin);
+  const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH);
+  const bool clique_has_hidden_vars = (origin.hashableNodes.size() > 0);
+
+  unsigned nDigits = sharedStructure.discreteValuePtrs.size();
+
+  if (nDigits == 0) return 0;
+  assert(a < cliqueValues.size() && b < cliqueValues.size());
+
+  vector<unsigned> aVals(nDigits);
+  vector<unsigned> bVals(nDigits);
+  vector<unsigned> base (nDigits);
+  vector<DiscRV *> digitRVs(nDigits);
+
+  for (unsigned i = 0, digit = 0; i < sharedStructure.fNodes.size(); i += 1) {
+    if (sharedStructure.fNodes[i]->discrete() && sharedStructure.fNodes[i]->hidden()) {
+      digitRVs[digit++] = RV2DRV(sharedStructure.fNodes[i]);
+    }
+  }
+
+  base[nDigits-1] = 1;
+  for (int i = nDigits-2; i >= 0; i -= 1) {
+    base[i] = base[i+1] * digitRVs[i+1]->cardinality;
+  }
+
+  for (unsigned i=0; i < nDigits; i+=1) {
+    printf("  |%s(%u)|=%u", digitRVs[i]->name().c_str(), digitRVs[i]->frame(), digitRVs[i]->cardinality);
+  }
+  printf("\n");
+
+printf(" < ");
+  if (clique_has_hidden_vars) {
+    if (imc_nwwoh_p) {
+      origin.packer.unpack((unsigned*)&(cliqueValues.ptr[a].val[0]),
+			   (unsigned**)sharedStructure.discreteValuePtrs.ptr);
+    } else {
+#if defined(USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL) && defined(PRINT_CLIQUE_ENTRIES_USING_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL)
+      // the entries are currently stored in the temporary clique value pool.
+      // This might be useful for debugging to print the entries before they are copied into their
+      // permanent locations (i.e., if we wish to print before pruning has occured).
+      origin.packer.unpack((unsigned*)&origin.temporaryCliqueValuePool.ptr[cliqueValues.ptr[a].ival],
+			   (unsigned**)sharedStructure.discreteValuePtrs.ptr);
+#else
+      // assume entries are stored in their final locations.
+      origin.packer.unpack((unsigned*)cliqueValues.ptr[a].ptr,
+			   (unsigned**)sharedStructure.discreteValuePtrs.ptr);
+#endif
+    }
+    for (unsigned j=0;j<sharedStructure.fDeterminableNodes.size();j++) {
+      RV* rv = sharedStructure.fDeterminableNodes.ptr[j];
+      RV2DRV(rv)->assignDeterministicChild();
+    }
+    for (unsigned i=0; i < nDigits; i+=1) {
+      aVals[i] = digitRVs[i]->val; //*(sharedStructure.discreteValuePtrs[i]);
+    }
+
+
+  for (unsigned i=0; i < digitRVs.size(); i+=1) {
+    printf(" %s(%u)=%u ", digitRVs[i]->name().c_str(), digitRVs[i]->frame(), digitRVs[i]->val);
+  }
+  printf(" > - < ");
+
+#if 1
+    if (imc_nwwoh_p) {
+      origin.packer.unpack((unsigned*)&(cliqueValues.ptr[b].val[0]),
+			   (unsigned**)sharedStructure.discreteValuePtrs.ptr);
+    } else {
+#if defined(USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL) && defined(PRINT_CLIQUE_ENTRIES_USING_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL)
+      // the entries are currently stored in the temporary clique value pool.
+      // This might be useful for debugging to print the entries before they are copied into their
+      // permanent locations (i.e., if we wish to print before pruning has occured).
+      origin.packer.unpack((unsigned*)&origin.temporaryCliqueValuePool.ptr[cliqueValues.ptr[b].ival],
+			   (unsigned**)sharedStructure.discreteValuePtrs.ptr);
+#else
+      // assume entries are stored in their final locations.
+      origin.packer.unpack((unsigned*)cliqueValues.ptr[b].ptr,
+			   (unsigned**)sharedStructure.discreteValuePtrs.ptr);
+#endif
+    }
+    for (unsigned j=0;j<sharedStructure.fDeterminableNodes.size();j++) {
+      RV* rv = sharedStructure.fDeterminableNodes.ptr[j];
+      RV2DRV(rv)->assignDeterministicChild();
+    }
+    for (unsigned i=0; i < nDigits; i+=1) {
+      bVals[i] = digitRVs[i]->val; //*(sharedStructure.discreteValuePtrs[i]);
+    }
+#endif
+  }
+
+  int diff = 0;
+  for (unsigned i=0; i < nDigits; i+=1) {
+    diff += (aVals[i] - bVals[i]) * base[i];
+  }
+
+  for (unsigned i=0; i < digitRVs.size(); i+=1) {
+    printf(" %s(%u)=%u ", digitRVs[i]->name().c_str(), digitRVs[i]->frame(), digitRVs[i]->val);
+  }
+  printf(" > = %d\n", diff);
+
+  return diff;
+}
+
+
+void
+MaxCliqueTable::
+printCliqueEntries(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+		   ObservationFile *f, const bool normalize)
+{
+  MaxClique& origin = *(sharedStructure.origin);
+
+  printf("clique has %d variables (%d hidden discrete), %d entries\n", 
+	 sharedStructure.fNodes.size(),sharedStructure.discreteValuePtrs.size(),numCliqueValuesUsed);
+
+  logpr sum;
+  if (normalize)
+    sum = sumProbabilities();
+  const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH);
+  const bool clique_has_hidden_vars = (origin.hashableNodes.size() > 0);
+  for (unsigned cvn=0;cvn<numCliqueValuesUsed;cvn++) {
+
+
+    (void)cliqueValueDistance(sharedStructure, cvn, 0);
+
+#if 0
+    if (clique_has_hidden_vars) {
+      if (imc_nwwoh_p) {
+	origin.packer.unpack((unsigned*)&(cliqueValues.ptr[cvn].val[0]),
+			     (unsigned**)sharedStructure.discreteValuePtrs.ptr);
+      } else {
+#if defined(USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL) && defined(PRINT_CLIQUE_ENTRIES_USING_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL)
+	// then we print the entries that are currently stored in the temporary clique value pool.
+	// This might be useful for debugging to print the entries before they are copied into their
+	// permanent locations (i.e., if we wish to print before pruning has occured).
+	origin.packer.unpack((unsigned*)&origin.temporaryCliqueValuePool.ptr[cliqueValues.ptr[cvn].ival],
+			     (unsigned**)sharedStructure.discreteValuePtrs.ptr);
+#else
+        // print the entries assuming they are stored in their final locations.
+	origin.packer.unpack((unsigned*)cliqueValues.ptr[cvn].ptr,
+			     (unsigned**)sharedStructure.discreteValuePtrs.ptr);
+#endif
+      }
+    }
+#endif
+
+
+#if 0
+    double x;
+    if (normalize) {
+      // then print the exponentiated probability
+      x = (cliqueValues.ptr[cvn].p/sum).unlog();
+    } else {
+      // print the log value directly
+      x = cliqueValues.ptr[cvn].p.valref();
+    }
+    printf("  %u: %.8e", cvn, x);
+#endif
+
+
+  }
+  //  printf("\n");
+}
+
 
 
 /*-

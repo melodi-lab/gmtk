@@ -136,9 +136,15 @@ JunctionTree::printAllCliques(FILE* f,
 	sprintf(buff,"Partition %d (P), Clique %d:",ptps_it.pt_i(),cliqueNum); 
 	partitionTableArray[ptps_it.pt_i()]
 	  .maxCliques[cliqueNum]
+#if 0
 	  .printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
 			      .maxCliquesSharedStructure[cliqueNum],
 			      f,buff,normalize,justPrintEntropy);
+#else
+	  .printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
+			      .maxCliquesSharedStructure[cliqueNum],
+			      NULL,normalize);
+#endif
       }
       it++;
     }
@@ -156,9 +162,15 @@ JunctionTree::printAllCliques(FILE* f,
 	  sprintf(buff,"Partition %d (C), Clique %d:",currentPartition,cliqueNum); 
 	  partitionTableArray[ptps_it.pt_i()].
 	    maxCliques[cliqueNum].
+#if 0
 	    printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
 			       .maxCliquesSharedStructure[cliqueNum],
 			       f,buff,normalize,justPrintEntropy);
+#else
+	    printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
+			       .maxCliquesSharedStructure[cliqueNum],
+			       NULL,normalize);
+#endif
 	}
 	it++;
       }
@@ -177,9 +189,15 @@ JunctionTree::printAllCliques(FILE* f,
 	sprintf(buff,"Partition %d (E), Clique %d:",ptps_it.pt_i(),cliqueNum); 
 	partitionTableArray[ptps_it.pt_i()]
 	  .maxCliques[cliqueNum]
+#if 0
 	  .printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
 			      .maxCliquesSharedStructure[cliqueNum],
 			      f,buff,normalize,justPrintEntropy);
+#else
+	  .printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
+			      .maxCliquesSharedStructure[cliqueNum],
+			      NULL,normalize);
+#endif     
       }
       it++;
     }
@@ -205,8 +223,14 @@ JunctionTree::printAllCliques(PartitionStructures& ps, // partition
       const unsigned cliqueNum = (unsigned)(*it);
       if (cliqueNum < ps.maxCliquesSharedStructure.size()) {
 	sprintf(buff,"Partition %d (%s), Clique %d:",partNo,nm,cliqueNum); 
-	pt.maxCliques[cliqueNum].printCliqueEntries(ps.maxCliquesSharedStructure[cliqueNum],
-						    f,buff,normalize,justPrintEntropy);
+	pt.maxCliques[cliqueNum].
+#if 0
+	  printCliqueEntries(ps.maxCliquesSharedStructure[cliqueNum],
+			     f,buff,normalize,justPrintEntropy);
+#else
+	  printCliqueEntries(ps.maxCliquesSharedStructure[cliqueNum],
+			     NULL,normalize);
+#endif
       } else {
 	// could print out a warning here.
       }

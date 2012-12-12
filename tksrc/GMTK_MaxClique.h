@@ -71,6 +71,7 @@
 #include "GMTK_PackCliqueValue.h"
 #include "GMTK_SpaceManager.h"
 #include "GMTK_FactorInfo.h"
+#include "GMTK_ObservationFile.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -1891,6 +1892,12 @@ public:
 			  const bool normalize = false,
 			  const bool justPrintEntropy = false);
   
+  void printCliqueEntries(MaxCliqueTable::SharedLocalStructure&,
+			  ObservationFile *f, const bool normalize = false);
+  
+  int cliqueValueDistance(MaxCliqueTable::SharedLocalStructure& sharedStructure, 
+			  unsigned a, unsigned b);
+
   // EM accumulation support.
   void emIncrement(MaxCliqueTable::SharedLocalStructure&,
 		   const logpr probE, 
