@@ -118,12 +118,19 @@ main(int argc, char *argv[]) {
     obsFile = new FlatASCIIFile(output_fname, f->numContinuous(), f->numDiscrete());
     break;
   case RAWASC:
+    obsFile = new ASCIIFile(outputList, output_fname, outputNameSeparatorStr, f->numContinuous(), f->numDiscrete());
+    break;
   case PFILE:
+    obsFile = new PFileFile(output_fname, f->numContinuous(), f->numDiscrete(), oswap);
+    break;
   case HTK:
     obsFile = new HTKFile(outputList, output_fname, outputNameSeparatorStr, oswap, f->numContinuous(), f->numDiscrete());
     break;
   case HDF5:
+    error("ERROR: Unknown observation file format type: '%s'\n", ofmtStr);
   case RAWBIN:
+    obsFile = new BinaryFile(outputList, output_fname, outputNameSeparatorStr, f->numContinuous(), f->numDiscrete());
+    break;
   default:
     error("ERROR: Unknown observation file format type: '%s'\n", ofmtStr);
   }
@@ -131,14 +138,25 @@ main(int argc, char *argv[]) {
   for (unsigned j=0; j < f->numSegments(); j+=1) {
     assert(f->openSegment(j));
     printf("Processing sentence %u\n", j);
-#if 1
+#if 0
     for (unsigned i=0; i < f->numFrames(); i+=1) {
+#if 0
       obsFile->writeFrame(f->loadFrames(i, 1));
+#else
+      Data32 const *frame = f->loadFrames(i, 1);
+      for (unsigned j=0; j < f->numContinuous(); j+=1) {
+	obsFile->writeFeature((Data32)frame[j]);
+      }
+      for (unsigned j=f->numContinuous(); j < f->numFeatures(); j+=1) {
+	obsFile->writeFeature((Data32)frame[j]);
+      }
+#endif
     }
     obsFile->endOfSegment();
 #else
     obsFile->writeSegment(f->loadFrames(0, f->numFrames()), f->numFrames());
 #endif
   }
+  delete obsFile;
   exit(0);
 }

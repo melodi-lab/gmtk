@@ -311,6 +311,12 @@ public:
     void write_ftrslabs(size_t frames, const float* ftrs,
 		       const UInt32* labs);
 
+    // Write a single feature, keeping it part of the current frame/segment.
+    void write_ftr(unsigned currFeature, float x);
+
+    // Write a single label, keeping it part of the current frame/segment.
+    void write_lab(unsigned currFeature, UInt32 x);
+
     // Wrt. just features - compatible with OutFtrStream abstract interface.
     // NOTE - cannot use write_labs then write_ftrslabs - must use
     // write_ftrslabs if we need none-zero values for both.

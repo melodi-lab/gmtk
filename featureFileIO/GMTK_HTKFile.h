@@ -51,6 +51,7 @@ class HTKFile: public ObservationFile {
 
   unsigned    currSegment;
   unsigned    currFrame;
+  unsigned    currFeature;
 
  public:
 
@@ -120,6 +121,7 @@ class HTKFile: public ObservationFile {
     writeFile = NULL;
     currSegment = 0;
     currFrame = 0;
+    currFeature = 0;
   }
 
   ~HTKFile() {
@@ -142,6 +144,9 @@ class HTKFile: public ObservationFile {
 
   // Write frame to the file (call endOfSegment after last frame of a segment)
   void writeFrame(Data32 const *frame);
+
+  // Write the next feature in the current frame (call endOfSegment after last frame of a segment)
+  void writeFeature(Data32 x);
 
   // Call after last writeFrame of a segment
   void endOfSegment();

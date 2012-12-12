@@ -120,18 +120,26 @@ class ObservationFile {
 
   // Write segment to the file (no need to call endOfSegment)
   virtual void writeSegment(Data32 const *segment, unsigned nFrames) {
-    error("ERROR: writeSegment unimplemented\n");
+    for (unsigned f=0; f < nFrames; f+=1) {
+      writeFrame(segment);
+      segment += numFeatures();
+    }
+    endOfSegment();
   }
 
   // Write frame to the file (call endOfSegment after last frame of a segment)
   virtual void writeFrame(Data32 const *frame) {
-    error("ERROR: writeFrame unimplemented\n");
+    unsigned nfea = numFeatures();
+    for (unsigned i=0; i < nfea; i+=1) {
+      writeFeature(frame[i]);
+    }
   }
 
+  // Write the next feature in the current frame (call endOfSegment after last frame of a segment)
+  virtual void writeFeature(Data32 x) = 0;
+
   // Call after last writeFrame of a segment
-  virtual void endOfSegment() {
-    error("ERROR: endOfSegment unimplemented\n");
-  }
+  virtual void endOfSegment() = 0;
 
   // The number of physical (before -srX) segments in the file.
   virtual unsigned numSegments() = 0;

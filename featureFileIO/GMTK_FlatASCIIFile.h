@@ -50,6 +50,7 @@ class FlatASCIIFile: public ObservationFile {
   unsigned          nSegments;
   int               currSegment;
   unsigned          currFrame;     // just used for writeFrame
+  unsigned          currFeature;
 
   bool        cppIfAscii;
   char const *cppCommandOptions;
@@ -91,6 +92,9 @@ class FlatASCIIFile: public ObservationFile {
   
   // Write frame to the file (call endOfSegment after last frame of a segment)
   void writeFrame(Data32 const *frame);
+
+  // Write frame to the file (call endOfSegment after last frame of a segment)
+  void writeFeature(Data32 x);
 
   // Call after last writeFrame of a segment
   void endOfSegment();
