@@ -47,6 +47,18 @@ class BinaryFile: public ObservationFile {
 
   Data32    *buffer;     // data for current segment
   unsigned   buffSize;   // in Data32's
+
+  // for writable files
+  FILE       *writeFile;      // current segment file
+  FILE       *listFile;       // list of files
+  char const *outputFileName;
+  char const *outputNameSeparatorStr;
+  bool        oswap;
+
+  unsigned    currSegment;
+  unsigned    currFrame;
+  unsigned    currFeature;
+
  public:
 
   BinaryFile(const char *name, unsigned nfloats, unsigned nints, 
@@ -56,6 +68,29 @@ class BinaryFile: public ObservationFile {
 	     char const *discFeatureRangeStr_=NULL, 
 	     char const *preFrameRangeStr_=NULL, 
 	     char const *segRangeStr_=NULL);
+
+  
+  BinaryFile(char const *listFileName, char const *outputFileName, 
+	     char const *outputNameSeparatorStr, unsigned nfloats, unsigned nints) 
+    : outputFileName(outputFileName), outputNameSeparatorStr(outputNameSeparatorStr)
+  {
+    fileName = listFileName;
+    if(fileName != NULL) {
+      if ((listFile = fopen(fileName, "w")) == NULL) {
+       error("Couldn't open output list (%s) for writing.\n", fileName);
+      }
+    } else {
+      error("ERROR: null ASCII list file name\n");
+    }
+    _numContinuousFeatures = nfloats;
+    _numDiscreteFeatures = nints;
+    _numFeatures = nfloats + nints;
+    
+    writeFile = NULL;
+    currSegment = 0;
+    currFrame = 0;
+    currFeature = 0;
+  }
 
 
   ~BinaryFile() {
@@ -70,8 +105,29 @@ class BinaryFile: public ObservationFile {
     if (curDataFile)
       if (fclose(curDataFile))
 	warning("BinaryFile: Error closing data file\n");
+    if (listFile) {
+      if (fclose(listFile)) {
+       error("Error closing output file '%s'\n", fileName);
+      }
+    }
+    if (writeFile) {
+      if (fclose(writeFile)) {
+       error("Error closing output file\n");
+      }
+    }
   }
  
+
+  // Write frame to the file (call endOfSegment after last frame of a segment)
+  void writeFrame(Data32 const *frame);
+
+  // Write frame to the file (call endOfSegment after last frame of a segment)
+  void writeFeature(Data32 x);
+
+  // Call after last writeFrame of a segment
+  void endOfSegment();
+
+
   // The number of available segments.
   unsigned numSegments() {return numFileNames;}
 

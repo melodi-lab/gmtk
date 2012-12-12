@@ -201,6 +201,7 @@ FlatASCIIFile::FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints)
   nSegments = 0;
   currSegment = 0;
   currFrame = 0;
+  currFeature = 0;
 
   writeFile = fopen(name, "w+");
   if (!writeFile) {
@@ -211,6 +212,7 @@ FlatASCIIFile::FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints)
 
 void 
 FlatASCIIFile::writeSegment(Data32 const *segment, unsigned nFrames) {
+  assert(currFeature == 0);
   for (unsigned f=0; f < nFrames; f+=1) {
     fprintf(writeFile, "%u %u", currSegment, f);
     for (unsigned i=0; i < _numContinuousFeatures; i+=1) {
@@ -223,11 +225,14 @@ FlatASCIIFile::writeSegment(Data32 const *segment, unsigned nFrames) {
   }
   currSegment += 1;
   nSegments += 1;
+  currFrame = 0;
+  currFeature = 0;
 }
-  
+
 
 void 
 FlatASCIIFile::writeFrame(Data32 const *frame) {
+  assert(currFeature == 0);
   fprintf(writeFile, "%u %u", currSegment, currFrame++);
   for (unsigned i=0; i < _numContinuousFeatures; i+=1) {
     fprintf(writeFile, " %f", *((float *)frame++));
@@ -236,12 +241,35 @@ FlatASCIIFile::writeFrame(Data32 const *frame) {
     fprintf(writeFile, " %u", *((unsigned *)frame++));
   }
   fprintf(writeFile, "\n");
+  currFeature = 0;
 }
+
+
+void 
+FlatASCIIFile::writeFeature(Data32 x) {
+  if (currFeature == 0) {
+    fprintf(writeFile, "%u %u", currSegment, currFrame);
+  }
+  if (currFeature < _numContinuousFeatures) {
+    fprintf(writeFile, " %f", *(float *)&x);
+  } else {
+    fprintf(writeFile, " %u", *(unsigned *)&x);
+  }
+  currFeature += 1;
+  if (currFeature == _numFeatures) {
+    fprintf(writeFile, "\n");
+    currFrame += 1;
+    currFeature = 0;
+  }
+}
+
 
 void 
 FlatASCIIFile::endOfSegment() {
+  assert(currFeature == 0);
   currSegment += 1;
   currFrame = 0;
+  currFeature = 0;
   nSegments += 1;
 }
 
