@@ -127,7 +127,7 @@ main(int argc, char *argv[]) {
     obsFile = new HTKFile(outputList, output_fname, outputNameSeparatorStr, oswap, f->numContinuous(), f->numDiscrete());
     break;
   case HDF5:
-    error("ERROR: Unknown observation file format type: '%s'\n", ofmtStr);
+    error("ERROR: Unsupported observation file format type: '%s'\n", ofmtStr);
   case RAWBIN:
     obsFile = new BinaryFile(outputList, output_fname, outputNameSeparatorStr, f->numContinuous(), f->numDiscrete());
     break;
