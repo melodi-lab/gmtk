@@ -487,6 +487,13 @@ main(int argc,char*argv[])
     }
     JunctionTree::nextViterbiOffset = gmtk_ftell(JunctionTree::binaryViterbiFile);
   }
+
+  ObservationFile *pCliqueFile = NULL;
+#if 0
+  ObservationFile *cCliqueFile = NULL;
+  ObservationFile *eCliqueFile = NULL;
+#endif
+
 //printf("seg 0 starts @ %llx\n", ftello(JunctionTree::binaryViterbiFile));
   while (!dcdrng_it->at_end()) {
     const unsigned segment = (unsigned)(*(*dcdrng_it));
@@ -583,9 +590,37 @@ main(int argc,char*argv[])
 	warning("Segment %d: Not printing Viterbi values since segment has zero probability\n",
 		segment);
       else {
-	if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange)
-	  myjt.printAllCliques(stdout,true,cliquePrintOnlyEntropy);
-
+	if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange) {
+	  
+	  if (cliqueOutputName && !pCliqueFile) {
+	    unsigned pSize, cSize, eSize;
+	    myjt.cliquePosteriorSize(pSize, cSize, eSize);
+	    unsigned cliqueSize = (pSize > cSize) ? pSize : cSize;
+	    cliqueSize = (cliqueSize > eSize) ? cliqueSize : eSize;
+	    
+            if (pPartCliquePrintRange && pSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output\n");
+	    }
+            if (cPartCliquePrintRange && cSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output\n");
+	    }
+            if (ePartCliquePrintRange && eSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output\n");
+	    }
+	    pCliqueFile = instantiateWriteFile(cliqueListName, cliqueOutputName, cliquePrintSeparator,
+					       cliquePrintFormat, cliqueSize, 0, cliquePrintSwap);
+	  }
+	  myjt.printAllCliques(stdout,true,cliquePrintOnlyEntropy, pCliqueFile, pCliqueFile, pCliqueFile);
+	  
+	  if (pCliqueFile)
+	    pCliqueFile->endOfSegment();
+#if 0
+	  if (cCliqueFile)
+	    cCliqueFile->endOfSegment();
+	  if (eCliqueFile)
+	    eCliqueFile->endOfSegment();
+#endif
+	}
 	if (pVitValsFile) {
 	  fprintf(pVitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
 		  segment,numFrames,probe.val());
@@ -621,6 +656,12 @@ main(int argc,char*argv[])
     }
     (*dcdrng_it)++;
   }
+  
+  if (pCliqueFile) delete pCliqueFile;
+#if 0
+  if (cCliqueFile) delete cCliqueFile;
+  if (eCliqueFile) delete eCliqueFile;
+#endif
 
   if (pVitPreg != NULL) {
     regfree(pVitPreg);

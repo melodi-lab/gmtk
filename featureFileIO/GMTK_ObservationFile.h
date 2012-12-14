@@ -200,6 +200,10 @@ instantiateFile(unsigned ifmt, char *ofs, unsigned nfs, unsigned nis,
 		char *cppCommandOptions, char const *frs, char const *irs, 
 		char const *prepr, char const *sr, char const *ifmtStr);
 
+ObservationFile *
+instantiateWriteFile(char *listFileName, char *outputFileName, char *outputNameSeparator,
+		     char *fmt, unsigned nfs, unsigned nis, bool swap);
+
 // Converts the command line -fmtX string to an integer (enum)
 int
 formatStrToNumber(char const *fmt);
