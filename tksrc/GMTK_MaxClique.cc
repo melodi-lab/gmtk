@@ -6194,6 +6194,104 @@ printCliqueEntries(MaxCliqueTable::SharedLocalStructure& sharedStructure,
   }
 }
 
+
+#define MAX_CLIQUE_DOMAIN_SIZE (0x7FFFFFFF)
+
+unsigned
+MaxCliqueTable::
+cliqueDomainSize(MaxCliqueTable::SharedLocalStructure& sharedStructure) {
+  if (sharedStructure.discreteValuePtrs.size() == 0) 
+    return 0;
+  unsigned domain = 1;
+  for (unsigned i = 0; i < sharedStructure.fNodes.size(); i += 1) {
+    if (sharedStructure.fNodes[i]->discrete() && sharedStructure.fNodes[i]->hidden()) {
+      domain *= RV2DRV(sharedStructure.fNodes[i])->cardinality;
+    }
+  }
+#if 0
+printf("cliqueDomainSize = %u :", domain);
+for (unsigned i = 0; i < sharedStructure.fNodes.size(); i += 1) {
+  if (sharedStructure.fNodes[i]->discrete() && sharedStructure.fNodes[i]->hidden()) {
+    DiscRV *drv = RV2DRV(sharedStructure.fNodes[i]);
+    printf(" %s(%u)=%u", drv->name().c_str(), drv->frame(), drv->cardinality);
+  }
+}
+printf("\n");
+#endif
+  return domain;
+}
+
+
+unsigned
+MaxCliqueTable::
+cliqueValueMagnitude(MaxCliqueTable::SharedLocalStructure& sharedStructure, unsigned cliqueIndex) {
+
+  MaxClique& origin = *(sharedStructure.origin);
+  const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH);
+  const bool clique_has_hidden_vars = (origin.hashableNodes.size() > 0);
+  unsigned nDigits = sharedStructure.discreteValuePtrs.size();
+  unsigned magnitude = 0;
+
+  if (nDigits == 0) return 0;
+  assert(cliqueIndex < cliqueValues.size());
+
+  vector<unsigned> base (nDigits);
+  vector<DiscRV *> digitRVs(nDigits);
+
+  for (unsigned i = 0, digit = 0; i < sharedStructure.fNodes.size(); i += 1) {
+    if (sharedStructure.fNodes[i]->discrete() && sharedStructure.fNodes[i]->hidden()) {
+      digitRVs[digit++] = RV2DRV(sharedStructure.fNodes[i]);
+    }
+  }
+  base[nDigits-1] = 1;
+  for (int i = nDigits-2; i >= 0; i -= 1) {
+    unsigned card = digitRVs[i+1]->cardinality;
+    if (card >= MAX_CLIQUE_DOMAIN_SIZE / base[i+1]) {
+      error("ERROR: clique state space too large for non-sparse printing\n");
+    }
+    base[i] = base[i+1] * card;
+  }
+  if (digitRVs[0]->cardinality >= MAX_CLIQUE_DOMAIN_SIZE / base[0]) {
+    error("ERROR: clique state space too large for non-sparse printing\n");
+  }
+
+  if (clique_has_hidden_vars) {
+    if (imc_nwwoh_p) {
+      origin.packer.unpack((unsigned*)&(cliqueValues.ptr[cliqueIndex].val[0]),
+			   (unsigned**)sharedStructure.discreteValuePtrs.ptr);
+    } else {
+#if defined(USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL) && defined(PRINT_CLIQUE_ENTRIES_USING_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL)
+      // the entries are currently stored in the temporary clique value pool.
+      // This might be useful for debugging to print the entries before they are copied into their
+      // permanent locations (i.e., if we wish to print before pruning has occured).
+      origin.packer.unpack((unsigned*)&origin.temporaryCliqueValuePool.ptr[cliqueValues.ptr[cliqueIndex].ival],
+			   (unsigned**)sharedStructure.discreteValuePtrs.ptr);
+#else
+      // assume entries are stored in their final locations.
+      origin.packer.unpack((unsigned*)cliqueValues.ptr[cliqueIndex].ptr,
+			   (unsigned**)sharedStructure.discreteValuePtrs.ptr);
+#endif
+    }
+    for (unsigned j=0;j<sharedStructure.fDeterminableNodes.size();j++) {
+      RV* rv = sharedStructure.fDeterminableNodes.ptr[j];
+      RV2DRV(rv)->assignDeterministicChild();
+    }
+    for (unsigned i=0; i < nDigits; i+=1) {
+      magnitude += digitRVs[i]->val * base[i];
+    }
+  }
+#if 0
+printf("cliqueValueMagnitude(%u) = %u :  %s(%u)=%u", cliqueIndex, magnitude,
+       digitRVs[nDigits-1]->name().c_str(), digitRVs[nDigits-1]->frame(), digitRVs[nDigits-1]->val);
+for (int i = nDigits-2; i >= 0; i -= 1) {
+  printf("  %s(%u)=%u", digitRVs[i]->name().c_str(), digitRVs[i]->frame(), digitRVs[i]->val);
+}
+printf("\n");
+#endif
+  return magnitude;
+}
+
+
 // a - b; so positive iff a > b       == 0 if a == b      negative iff a < b
 int
 MaxCliqueTable::
@@ -6222,15 +6320,25 @@ cliqueValueDistance(MaxCliqueTable::SharedLocalStructure& sharedStructure,
 
   base[nDigits-1] = 1;
   for (int i = nDigits-2; i >= 0; i -= 1) {
-    base[i] = base[i+1] * digitRVs[i+1]->cardinality;
+    unsigned card = digitRVs[i+1]->cardinality;
+    if (card >= MAX_CLIQUE_DOMAIN_SIZE / base[i+1]) {
+      error("ERROR: clique state space too large for non-sparse printing\n");
+    }
+    base[i] = base[i+1] * card;
+  }
+  if (digitRVs[0]->cardinality >= MAX_CLIQUE_DOMAIN_SIZE / base[0]) {
+    error("ERROR: clique state space too large for non-sparse printing\n");
   }
 
+#if 0
   for (unsigned i=0; i < nDigits; i+=1) {
     printf("  |%s(%u)|=%u", digitRVs[i]->name().c_str(), digitRVs[i]->frame(), digitRVs[i]->cardinality);
   }
   printf("\n");
 
 printf(" < ");
+#endif
+
   if (clique_has_hidden_vars) {
     if (imc_nwwoh_p) {
       origin.packer.unpack((unsigned*)&(cliqueValues.ptr[a].val[0]),
@@ -6256,11 +6364,12 @@ printf(" < ");
       aVals[i] = digitRVs[i]->val; //*(sharedStructure.discreteValuePtrs[i]);
     }
 
-
+#if 0
   for (unsigned i=0; i < digitRVs.size(); i+=1) {
     printf(" %s(%u)=%u ", digitRVs[i]->name().c_str(), digitRVs[i]->frame(), digitRVs[i]->val);
   }
   printf(" > - < ");
+#endif
 
 #if 1
     if (imc_nwwoh_p) {
@@ -6294,10 +6403,16 @@ printf(" < ");
     diff += (aVals[i] - bVals[i]) * base[i];
   }
 
+#if 0
   for (unsigned i=0; i < digitRVs.size(); i+=1) {
     printf(" %s(%u)=%u ", digitRVs[i]->name().c_str(), digitRVs[i]->frame(), digitRVs[i]->val);
   }
   printf(" > = %d\n", diff);
+#endif
+
+#if 0
+printf("cliqueValueDistance(%u,%u) = %d\n", a, b, diff);
+#endif
 
   return diff;
 }
@@ -6308,45 +6423,69 @@ MaxCliqueTable::
 printCliqueEntries(MaxCliqueTable::SharedLocalStructure& sharedStructure,
 		   ObservationFile *f, const bool normalize)
 {
-  MaxClique& origin = *(sharedStructure.origin);
-
+#if 0
   printf("clique has %d variables (%d hidden discrete), %d entries\n", 
 	 sharedStructure.fNodes.size(),sharedStructure.discreteValuePtrs.size(),numCliqueValuesUsed);
+#endif
 
   logpr sum;
   if (normalize)
     sum = sumProbabilities();
+#if 0
   const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH);
   const bool clique_has_hidden_vars = (origin.hashableNodes.size() > 0);
+#endif
+  sArray<CliqueValueIndex> index(numCliqueValuesUsed);
+
   for (unsigned cvn=0;cvn<numCliqueValuesUsed;cvn++) {
+    index[cvn] = CliqueValueIndex(&sharedStructure, this, cvn);
+  }
 
-
-    (void)cliqueValueDistance(sharedStructure, cvn, 0);
 
 #if 0
-    if (clique_has_hidden_vars) {
-      if (imc_nwwoh_p) {
-	origin.packer.unpack((unsigned*)&(cliqueValues.ptr[cvn].val[0]),
-			     (unsigned**)sharedStructure.discreteValuePtrs.ptr);
-      } else {
-#if defined(USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL) && defined(PRINT_CLIQUE_ENTRIES_USING_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL)
-	// then we print the entries that are currently stored in the temporary clique value pool.
-	// This might be useful for debugging to print the entries before they are copied into their
-	// permanent locations (i.e., if we wish to print before pruning has occured).
-	origin.packer.unpack((unsigned*)&origin.temporaryCliqueValuePool.ptr[cliqueValues.ptr[cvn].ival],
-			     (unsigned**)sharedStructure.discreteValuePtrs.ptr);
-#else
-        // print the entries assuming they are stored in their final locations.
-	origin.packer.unpack((unsigned*)cliqueValues.ptr[cvn].ptr,
-			     (unsigned**)sharedStructure.discreteValuePtrs.ptr);
+printf("  before:    ");
+for (unsigned i=0; i < numCliqueValuesUsed; i+=1){
+  printf(" %d", cliqueValueMagnitude(sharedStructure, index[i].index));
+}
 #endif
-      }
+
+  index.qsort();
+
+#if 0
+printf("    sort:    ");
+for (unsigned i=0; i < numCliqueValuesUsed; i+=1){
+  printf(" %d", cliqueValueMagnitude(sharedStructure, index[i].index));
+}
+printf("\n");
+#endif
+
+  float x;
+
+  unsigned skip = cliqueValueMagnitude(sharedStructure, index[0].index);
+//printf(" (skip %u) ", skip);
+  for (unsigned i=0; i < skip; i+=1) {
+    f->writeFeature(0);
+//printf(" 0");
+  }
+  if (normalize) {
+    // then print the exponentiated probability
+    x = (cliqueValues.ptr[index[0].index].p/sum).unlog();
+  } else {
+    // print the log value directly
+    x = cliqueValues.ptr[index[0].index].p.valref();
+  }
+  f->writeFeature(* (Data32 *)(&x) );
+//printf(" %f", x);
+  unsigned prevIdx = 0;
+  for (unsigned cvnIdx=1;cvnIdx<numCliqueValuesUsed;cvnIdx++) {
+    unsigned cvn = index[cvnIdx].index;
+    skip = cliqueValueDistance(sharedStructure, cvn, prevIdx) - 1;
+    prevIdx = cvn;
+//printf(" (skip %u) ", skip);
+    for (unsigned i=0; i < skip; i+=1) {
+      f->writeFeature(0);
+//printf(" 0");
     }
-#endif
-
-
-#if 0
-    double x;
     if (normalize) {
       // then print the exponentiated probability
       x = (cliqueValues.ptr[cvn].p/sum).unlog();
@@ -6354,12 +6493,17 @@ printCliqueEntries(MaxCliqueTable::SharedLocalStructure& sharedStructure,
       // print the log value directly
       x = cliqueValues.ptr[cvn].p.valref();
     }
-    printf("  %u: %.8e", cvn, x);
-#endif
-
-
+    f->writeFeature(* (Data32 *)(&x) );
+//printf(" %f", x);
   }
-  //  printf("\n");
+
+  skip = cliqueDomainSize(sharedStructure) - cliqueValueMagnitude(sharedStructure,index[numCliqueValuesUsed-1].index) - 1;
+//printf(" (skip %u) ", skip);
+  for (unsigned i=0; i < skip; i+=1) {
+    f->writeFeature(0);
+//printf(" 0");
+  }
+//printf("\n");
 }
 
 

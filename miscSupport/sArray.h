@@ -41,6 +41,7 @@
 
 #include "error.h"
 #include "assert.h"
+#include "rand.h"
 
 template <class T>
 class sArray_nd {
@@ -81,6 +82,61 @@ class sArray_nd {
     }
   }
 
+
+  // ascending quicksort with randomized median-of-3 pivot
+  void internalQSort(int begin,int end) {
+    if (end > begin) {
+
+      // choose a pivot by taking the median of 3 randomly choosen values.
+      unsigned pl1 = rnd.uniform(begin,end);
+      unsigned pl2 = rnd.uniform(begin,end);
+      unsigned pl3 = rnd.uniform(begin,end);
+      unsigned pl;
+      // find rough median
+      if (ptr[pl1] < ptr[pl2]) {
+	if (ptr[pl2] < ptr[pl3]) {
+	  pl = pl2;
+	} else {
+	  pl = pl3;
+	}
+      } else {
+	if (ptr[pl1] < ptr[pl3]) {
+	  pl = pl1;
+	} else {
+	  pl = pl3;
+	}
+      }
+
+      T tmp(ptr[pl]);
+      ptr[pl] = ptr[end];
+      ptr[end] = tmp;
+      T& pivot = ptr[end];
+      int l = begin;
+      int r = end - 1;
+      while (l < r) {
+	if (ptr[l] < pivot) {
+	  l++;
+	} else {
+	  T tmp(ptr[l]);
+	  ptr[l] = ptr[r];
+	  ptr[r] = tmp;
+	  r--;
+	}
+      }
+      if (ptr[l] < pivot) {
+	r++;
+      } else {
+	T tmp(ptr[end]);
+	ptr[end] = ptr[l];
+	ptr[l] = tmp;
+	l--;
+	r++;
+      }
+      internalQSort(begin, l);
+      internalQSort(r, end);
+    }
+  }
+
  public:
 
   T *ptr;
@@ -97,6 +153,7 @@ class sArray_nd {
   ~sArray_nd() {
     // delete [] ptr;
   }
+
 
   // We don't create an operator= since we don't
   // use this array like a regular container class.
@@ -263,6 +320,7 @@ class sArray_nd {
     internalSort(start,end); 
   }
 
+  void qsort() { internalQSort(0,_size-1); }
 
   inline sArray_nd<T>& operator += (sArray_nd<T> &s){
     assert(_size == s.len());

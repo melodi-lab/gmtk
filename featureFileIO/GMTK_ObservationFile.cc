@@ -179,6 +179,31 @@ instantiateFile(unsigned ifmt, char *ofs, unsigned nfs, unsigned nis,
 }
 
 
+ObservationFile *
+instantiateWriteFile(char *listFileName, char *outputFileName, char *outputNameSeparator,
+		     char *fmt, unsigned nfs, unsigned nis, bool swap)
+{
+  unsigned ifmt = formatStrToNumber(fmt);
+  switch (ifmt) {
+  case RAWASC:
+    return new ASCIIFile(listFileName, outputFileName, outputNameSeparator, nfs, nis);
+  case PFILE:
+    return new PFileFile(outputFileName, nfs, nis, swap);
+  case HTK:
+    return new HTKFile(listFileName, outputFileName, outputNameSeparator, swap, nfs, nis);
+  case HDF5:
+    error("ERROR: HDF5 output files not yet supported\n");
+    break;
+  case FLATASC:
+    return new FlatASCIIFile(outputFileName, nfs, nis);
+  case RAWBIN:
+    return new BinaryFile(listFileName, outputFileName, outputNameSeparator, swap, nfs, nis);
+  default:
+    error("ERROR: Unknown output file format type: '%s'\n", fmt);
+  }
+  return NULL;
+}
+
 int
 formatStrToNumber(char const *fmt) {
   if      (strcmp(fmt,"htk") == 0)

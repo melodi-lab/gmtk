@@ -1895,8 +1895,52 @@ public:
   void printCliqueEntries(MaxCliqueTable::SharedLocalStructure&,
 			  ObservationFile *f, const bool normalize = false);
   
-  int cliqueValueDistance(MaxCliqueTable::SharedLocalStructure& sharedStructure, 
+  int cliqueValueDistance(SharedLocalStructure& sharedStructure, 
 			  unsigned a, unsigned b);
+
+  unsigned cliqueDomainSize(SharedLocalStructure& sharedStructure);
+
+  unsigned cliqueValueMagnitude(SharedLocalStructure& sharedStructure, unsigned cliqueIndex);
+
+  class CliqueValueIndex {
+
+    SharedLocalStructure *sharedStructure;
+    MaxCliqueTable       *table;
+
+  public:
+    unsigned index;
+
+    CliqueValueIndex(SharedLocalStructure *sharedStructure, 
+		     MaxCliqueTable       *table,
+		     unsigned index)
+      : sharedStructure(sharedStructure), table(table), index(index)
+    {}
+
+    CliqueValueIndex() 
+      : sharedStructure(NULL), table(NULL), index(0)
+    {}
+ 
+    bool operator<(const CliqueValueIndex& rhs) const {
+      return table->cliqueValueDistance(*sharedStructure, index, rhs.index) < 0;
+    }
+
+    bool operator>(const CliqueValueIndex& rhs) const {
+      return table->cliqueValueDistance(*sharedStructure, index, rhs.index) > 0;
+    }
+
+    bool operator==(const CliqueValueIndex& rhs) const {
+      return table->cliqueValueDistance(*sharedStructure, index, rhs.index) == 0;
+    }
+
+    CliqueValueIndex& operator=(CliqueValueIndex rhs) {
+      this->sharedStructure = rhs.sharedStructure;
+      this->table = rhs.table;
+      this->index = rhs.index;
+      return *this;
+    }
+    
+  };
+
 
   // EM accumulation support.
   void emIncrement(MaxCliqueTable::SharedLocalStructure&,

@@ -38,7 +38,8 @@ FlatASCIIFile::FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints,
 		    preFrameRangeStr_,
 		    segRangeStr_),
     cppIfAscii(cppIfAscii),
-    cppCommandOptions(cppCommandOptions)
+    cppCommandOptions(cppCommandOptions),
+    close(true)
 {
   buffer = NULL;
   fileName = name;
@@ -203,7 +204,16 @@ FlatASCIIFile::FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints)
   currFrame = 0;
   currFeature = 0;
 
-  writeFile = fopen(name, "w+");
+  if (strcmp(name,"-")) {
+    writeFile = fopen(name, "w+");
+    if (!writeFile) {
+      error("ERROR: failed to open output file '%s'\n", name);
+    }
+    close = true;
+  } else {
+    writeFile = stdout;
+    close = false;
+  }
   if (!writeFile) {
     error("FlatASCIIFile: couldn't open '%s' for reading\n", name);
   }

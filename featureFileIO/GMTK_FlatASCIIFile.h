@@ -59,6 +59,7 @@ class FlatASCIIFile: public ObservationFile {
   Data32    **segment;             // the frames for the ith segment start at segment[i]
 
   FILE       *writeFile;           // for writable files
+  bool        close;
 
  public:
 
@@ -76,7 +77,7 @@ class FlatASCIIFile: public ObservationFile {
   ~FlatASCIIFile() {
     if (buffer) delete [] buffer;
     if (segment) delete [] segment;
-    if (writeFile) {
+    if (writeFile && close) {
       if (fclose(writeFile)) {
 	error("ERROR: '%s' %s\n", fileName, strerror(errno));
       }

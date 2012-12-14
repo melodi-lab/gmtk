@@ -71,8 +71,8 @@ class BinaryFile: public ObservationFile {
 
   
   BinaryFile(char const *listFileName, char const *outputFileName, 
-	     char const *outputNameSeparatorStr, unsigned nfloats, unsigned nints) 
-    : outputFileName(outputFileName), outputNameSeparatorStr(outputNameSeparatorStr)
+	     char const *outputNameSeparatorStr, bool swap, unsigned nfloats, unsigned nints) 
+    : outputFileName(outputFileName), outputNameSeparatorStr(outputNameSeparatorStr), oswap(swap)
   {
     fileName = listFileName;
     if(fileName != NULL) {
