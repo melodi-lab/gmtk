@@ -311,6 +311,60 @@ JunctionTree::cliquePosteriorSize(unsigned &pSize, unsigned &cSize, unsigned &eS
 }
 
 
+void 
+JunctionTree::printCliqueOrders(FILE *f) {
+  ptps_iterator ptps_it(*this);
+  ptps_it.set_to_first_entry();
+
+  if (pPartCliquePrintRange != NULL) {
+    setCurrentInferenceShiftTo(ptps_it.pt_i());
+    BP_Range::iterator it = pPartCliquePrintRange->begin();
+    while (!it.at_end()) {
+      const unsigned cliqueNum = (unsigned)(*it);
+      if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
+	fprintf(f, "P partition clique #%u variable order:", cliqueNum);
+	partitionTableArray[ptps_it.pt_i()].maxCliques[cliqueNum].
+	  printCliqueOrder(f, partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum]);
+      }
+      it++;
+    }
+  }
+  ptps_it++;
+
+  if (cPartCliquePrintRange != NULL) {
+    if (!ptps_it.at_last_entry()) {
+      int currentPartition = ptps_it.pt_i();
+      BP_Range::iterator it = cPartCliquePrintRange->begin();
+      setCurrentInferenceShiftTo(currentPartition);
+      while (!it.at_end()) {
+	const unsigned cliqueNum = (unsigned)(*it);
+	if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
+	  fprintf(f, "C partition clique #%u variable order:", cliqueNum);
+	  partitionTableArray[ptps_it.pt_i()].maxCliques[cliqueNum].
+	    printCliqueOrder(f, partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum]);
+	}
+	it++;
+      }
+    }
+  } 
+  // partNo = partitionStructureArray.size()-1;
+  ptps_it.set_to_last_entry();
+
+  if (ePartCliquePrintRange != NULL) {
+    setCurrentInferenceShiftTo(ptps_it.pt_i());
+    BP_Range::iterator it = ePartCliquePrintRange->begin();
+    while (!it.at_end()) {
+      const unsigned cliqueNum = (unsigned)(*it);
+      if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
+	fprintf(f, "E partition clique #%u variable order:", cliqueNum);
+	partitionTableArray[ptps_it.pt_i()].maxCliques[cliqueNum].
+	  printCliqueOrder(f, partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum]);
+      }
+      it++;
+    }
+  }
+}
+
 
 /*-
  *-----------------------------------------------------------------------

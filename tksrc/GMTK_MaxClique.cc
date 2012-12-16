@@ -6222,6 +6222,21 @@ printf("\n");
 }
 
 
+void 
+MaxCliqueTable::
+printCliqueOrder(FILE *f, SharedLocalStructure& sharedStructure) {
+  if (sharedStructure.discreteValuePtrs.size() == 0) 
+    return ;
+  for (unsigned i = 0; i < sharedStructure.fNodes.size(); i += 1) {
+    if (sharedStructure.fNodes[i]->discrete() && sharedStructure.fNodes[i]->hidden()) {
+      DiscRV *drv = RV2DRV(sharedStructure.fNodes[i]);
+      fprintf(f, " %s(%u)", drv->name().c_str(), drv->frame());
+    }
+  }
+  fprintf(f,"\n");
+}
+
+
 unsigned
 MaxCliqueTable::
 cliqueValueMagnitude(MaxCliqueTable::SharedLocalStructure& sharedStructure, unsigned cliqueIndex) {

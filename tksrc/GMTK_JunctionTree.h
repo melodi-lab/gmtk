@@ -1094,6 +1094,8 @@ public:
 
   void cliquePosteriorSize(unsigned &pSize, unsigned &cSize, unsigned &eSize);
 
+  void printCliqueOrders(FILE *f);
+
   // 
   // Do some last-minute data structure setup to prepare for
   // unrolling to work (such as preliminary and pre work for
