@@ -1900,7 +1900,10 @@ public:
 
   unsigned cliqueDomainSize(SharedLocalStructure& sharedStructure);
 
+  void printCliqueOrder(FILE *f, SharedLocalStructure& sharedStructure);
+
   unsigned cliqueValueMagnitude(SharedLocalStructure& sharedStructure, unsigned cliqueIndex);
+
 
   class CliqueValueIndex {
 

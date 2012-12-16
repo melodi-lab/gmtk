@@ -500,6 +500,7 @@ main(int argc,char*argv[])
             if (ePartCliquePrintRange && eSize != cliqueSize) {
 	      error("ERROR: incompatible cliques selected for file output\n");
 	    }
+	    myjt.printCliqueOrders(stdout);
 	    pCliqueFile = instantiateWriteFile(cliqueListName, cliqueOutputName, cliquePrintSeparator,
 					       cliquePrintFormat, cliqueSize, 0, cliquePrintSwap);
 	  }
