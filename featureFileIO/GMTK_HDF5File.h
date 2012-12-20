@@ -160,6 +160,10 @@ class HDF5File: public ObservationFile {
     assert(0);
   }
 
+  void writeFeature(Data32 x) {
+    assert(0);
+  }
+
   // Call after last writeFrame of a segment
   void endOfSegment() {
     assert(0);
