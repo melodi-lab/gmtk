@@ -265,20 +265,26 @@ float SeparatorClique::veSeparatorLogProdCardLimit = 7.0; // i.e., 1e7=10M is de
  * Memory management options
  */
 
-unsigned SeparatorClique::aiStartingSize;
-float    SeparatorClique::aiGrowthFactor;
-unsigned SeparatorClique::remStartingSize;
-float    SeparatorClique::remGrowthFactor;
-unsigned SeparatorClique::sepSpaceMgrStartingSize;
-float    SeparatorClique::sepSpaceMgrGrowthRate;
-float    SeparatorClique::sepSpaceMgrDecayRate;
-unsigned SeparatorClique::remSpaceMgrStartingSize;
-float    SeparatorClique::remSpaceMgrGrowthRate;
-float    SeparatorClique::remSpaceMgrDecayRate;
+// Set these to reasonable defaults (see https://j.ee.washington.edu/trac/gmtk/ticket/384)
+// These defaults may be changed by the -memoryGrowth command line argument (see
+// https://j.ee.washington.edu/trac/gmtk/ticket/342)
+unsigned SeparatorClique::aiStartingSize = 1;
+float    SeparatorClique::aiGrowthFactor = 1.05;
 
-unsigned MaxClique::spaceMgrStartingSize;
-float    MaxClique::spaceMgrGrowthRate;
-float    MaxClique::spaceMgrDecayRate;
+unsigned SeparatorClique::remStartingSize = 1;
+float    SeparatorClique::remGrowthFactor = 1.05;
+
+unsigned SeparatorClique::sepSpaceMgrStartingSize = 1;
+float    SeparatorClique::sepSpaceMgrGrowthRate   = 1.05;
+float    SeparatorClique::sepSpaceMgrDecayRate    = 0.0;
+
+unsigned SeparatorClique::remSpaceMgrStartingSize = 1;
+float    SeparatorClique::remSpaceMgrGrowthRate   = 1.05;
+float    SeparatorClique::remSpaceMgrDecayRate    = 0.0;
+
+unsigned MaxClique::spaceMgrStartingSize = 1;
+float    MaxClique::spaceMgrGrowthRate   = 1.05;
+float    MaxClique::spaceMgrDecayRate    = 0.0;
 
 float MaxCliqueTable::valuePoolGrowthRate;
 
