@@ -1124,9 +1124,13 @@ RngDecisionTree::EquationClass::EquationClass()
  *   Returns a single value 
  *-----------------------------------------------------------------------
  */
+
+#define missingParentErrorString "ERROR: Reference to non-existant parent variable in formula in DT '%s' in '%s'. Asking for parent %d but only parents 0 through %d are available.\n"
+
 leafNodeValType 
 RngDecisionTree::EquationClass::evaluateFormula(
-        RngDecisionTree &dt,
+	RngDecisionTree *dt,
+	//char *dtName, char *dtSourceFile,
 	const vector< RV* >& variables,
 	const RV* const rv
 )
@@ -1139,16 +1143,6 @@ RngDecisionTree::EquationClass::evaluateFormula(
   unsigned val, number, position, bitwidth;
   unsigned mask_1, mask_2;
 
-#if 0
-  //  if (dt.iterable())
-  fprintf(stderr, "DT %s in file '%s' %d of %u. curName '%s' File is %s\n",
-	  dt.name().c_str(), 
-	  dt.dtFileName.c_str(),
-	  dt.dtNum, dt.numDTs,
-	  dt.curName.c_str(),
-	  dt.dtFile ? dt.dtFile->fileName() : "(none)");
-#endif
-
   stack.clear();
 
   for (crrnt_cmnd = 0, 
@@ -1158,6 +1152,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
 
     command = GET_COMMAND(commands[crrnt_cmnd]); 
 
+#if 0
     string dtSourceString;
     if (dt.iterable()) {
       dtSourceString.append(dt.dtFile->fileName());
@@ -1172,6 +1167,12 @@ RngDecisionTree::EquationClass::evaluateFormula(
     //    const char* const dtSourceFile = dt.dtFile ? dtSourceString.c_str() : "master file";
     const char* const dtSourceFile = dt.iterable() ? dtSourceString.c_str() : 
                                                      dt.dtFileName.c_str();
+
+    const char* const missingParentErrorString = "ERROR: Reference to non-existant parent variable in formula in DT '%s' in '%s'. Asking for parent %d but only parents 0 through %d are available.\n";
+    //    const char* const missingParentErrorString ="ERROR\n";
+    const char* const dtSourceFile = "sourceFile";
+#endif
+
     switch (command) {
 	
       case COMMAND_PUSH_CARDINALITY_CHILD:
@@ -1181,7 +1182,11 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_PUSH_CARDINALITY_PARENT:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
         if (operand >= variables.size()) {	
+#if 0
           error(missingParentErrorString,dt.name().c_str(), dtSourceFile,operand,variables.size()-1);
+#else
+          error(missingParentErrorString,dt->name().c_str(), dt->getSourceString().c_str(),operand,variables.size()-1);
+#endif
         }
         stack.push_back( (variables[operand]->discrete() ? 
           RV2DRV(variables[operand])->cardinality : 0) );
@@ -1189,8 +1194,12 @@ RngDecisionTree::EquationClass::evaluateFormula(
 
       case COMMAND_PUSH_PARENT_VALUE:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
-        if (operand >= variables.size()) {	
+        if (operand >= variables.size()) {
+#if 0	
           error(missingParentErrorString,dt.name().c_str(), dtSourceFile,operand,variables.size()-1);
+#else
+          error(missingParentErrorString,dt->name().c_str(), dt->getSourceString().c_str(),operand,variables.size()-1);
+#endif
         }
         stack.push_back( RV2DRV(variables[operand])->discrete() ? 
           RV2DRV(variables[operand])->val : 0 );	
@@ -1198,8 +1207,12 @@ RngDecisionTree::EquationClass::evaluateFormula(
 
       case COMMAND_PUSH_PARENT_VALUE_MINUS_ONE:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
-        if (operand >= variables.size()) {	
+        if (operand >= variables.size()) {
+#if 0	
           error(missingParentErrorString,dt.name().c_str(), dtSourceFile,operand,variables.size()-1);
+#else
+          error(missingParentErrorString,dt->name().c_str(), dt->getSourceString().c_str(),operand,variables.size()-1);
+#endif
         }
         stack.push_back( RV2DRV(variables[operand])->discrete() ? 
           (RV2DRV(variables[operand])->val-1) : 0 );	
@@ -1207,8 +1220,12 @@ RngDecisionTree::EquationClass::evaluateFormula(
 
       case COMMAND_PUSH_PARENT_VALUE_PLUS_ONE:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
-        if (operand >= variables.size()) {	
+        if (operand >= variables.size()) {
+#if 0	
           error(missingParentErrorString,dt.name().c_str(), dtSourceFile,operand,variables.size()-1);
+#else
+          error(missingParentErrorString,dt->name().c_str(), dt->getSourceString().c_str(),operand,variables.size()-1);
+#endif
         }
         stack.push_back( RV2DRV(variables[operand])->discrete() ? 
           (RV2DRV(variables[operand])->val+1) : 0 );	
@@ -1220,8 +1237,12 @@ RngDecisionTree::EquationClass::evaluateFormula(
 
       case COMMAND_PUSH_MAX_VALUE_PARENT:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
-        if (operand >= variables.size()) {	
+        if (operand >= variables.size()) {
+#if 0	
           error(missingParentErrorString,dt.name().c_str(), dtSourceFile,operand,variables.size()-1);
+#else
+          error(missingParentErrorString,dt->name().c_str(), dt->getSourceString().c_str(),operand,variables.size()-1);
+#endif
         }
         stack.push_back( (variables[operand]->discrete() ? 
           (RV2DRV(variables[operand])->cardinality - 1) : 0) );
@@ -1304,8 +1325,13 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_DIVIDE_CEIL:
         last = stack.stackSize() - 1;
         if (stack[last] == 0) {
+#if 0
           error("ERROR:  Divide by zero error in DT '%s' in '%s'\n", 
 		dt.name().c_str(), dt.getSourceString().c_str()); 
+#else
+          error("ERROR:  Divide by zero error in DT '%s' in '%s'\n", 
+		dt->name().c_str(), dt->getSourceString().c_str()); 
+#endif
         }
         stack[last-1] = (stack[last-1] + stack[last] - 1) / stack[last];
         stack.pop_back();
@@ -1314,8 +1340,13 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_DIVIDE_FLOOR:
         last = stack.stackSize() - 1;
         if (stack[last] == 0) {
+#if 0
           error("ERROR:  Divide by zero error in DT '%s' in '%s'\n", 
 		dt.name().c_str(), dt.getSourceString().c_str()); 
+#else
+          error("ERROR:  Divide by zero error in DT '%s' in '%s'\n", 
+		dt->name().c_str(), dt->getSourceString().c_str()); 
+#endif
         }
         stack[last-1] = stack[last-1] / stack[last];
         stack.pop_back();
@@ -1324,8 +1355,13 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_DIVIDE_ROUND:
         last = stack.stackSize() - 1;
         if (stack[last] == 0) {
+#if 0
           error("ERROR:  Divide by zero error in DT '%s' in '%s'\n", 
 		dt.name().c_str(), dt.getSourceString().c_str()); 
+#else
+          error("ERROR:  Divide by zero error in DT '%s' in '%s'\n", 
+		dt->name().c_str(), dt->getSourceString().c_str()); 
+#endif
         }
         stack[last-1] = (stack[last-1] + (stack[last]>>1)) / stack[last];
         stack.pop_back();
@@ -1588,8 +1624,13 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_MOD:
         last = stack.stackSize() - 1;
         if (stack[last] == 0) {
+#if 0
           error("ERROR:  Mod by zero error in DT '%s' in '%s'\n", 
 		dt.name().c_str(), dt.getSourceString().c_str()); 
+#else
+          error("ERROR:  Mod by zero error in DT '%s' in '%s'\n", 
+		dt->name().c_str(), dt->getSourceString().c_str()); 
+#endif
         }
         stack[last-1] = stack[last-1] % stack[last];
         stack.pop_back();
@@ -2951,7 +2992,22 @@ leafNodeValType RngDecisionTree::queryRecurse(const vector < RV* >& arr,
     return (*(n->ln_c().function_ptr))(arr,rv);
   } else if  (n->nodeType == LeafNodeEquation) {
     leafNodeValType answer;
-    answer = n->ln_e().equation.evaluateFormula( *this, arr, rv );
+#if 0
+    string dtSourceString;
+    if (iterable()) {
+      dtSourceString.append(dtFile->fileName());
+      dtSourceString.append("(");
+      dtSourceString.append(curName + ") #");
+#if 0
+      stringstream out;
+      out << dtNum;
+      dtSourceString.append(out.str());
+#endif
+    }
+    const char* const dtSourceFile = iterable() ? dtSourceString.c_str() : 
+                                                  dtFileName.c_str();
+#endif
+    answer = n->ln_e().equation.evaluateFormula( /* *this, (char *)_name.c_str(), (char *)dtSourceFile,*/ this, arr, rv );
     return(answer);
   } else if (n->nodeType == NonLeafNodeArray) {
     assert ( n->nln_a().ftr < int(arr.size()) );
