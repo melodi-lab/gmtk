@@ -74,6 +74,13 @@ class BinaryFile: public ObservationFile {
 	     char const *outputNameSeparatorStr, bool swap, unsigned nfloats, unsigned nints) 
     : outputFileName(outputFileName), outputNameSeparatorStr(outputNameSeparatorStr), oswap(swap)
   {
+    cppCommandOptions = NULL;
+    fofName = NULL;
+    fofFile = NULL;
+    curDataFile = NULL;
+    dataNames = NULL;
+    buffer = NULL;
+
     fileName = listFileName;
     if(fileName != NULL) {
       if ((listFile = fopen(fileName, "w")) == NULL) {

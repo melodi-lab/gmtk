@@ -106,6 +106,9 @@ class HTKFile: public ObservationFile {
 	  unsigned nfloats, unsigned nints) 
     : outputFileName(outputFileName), outputNameSeparatorStr(outputNameSeparatorStr), oswap(swap)
   {
+    info = NULL;
+    buffer = NULL;
+    
     fileName = listFileName;
     if(fileName != NULL) {
       if ((listFile = fopen(fileName, "w")) == NULL) {
