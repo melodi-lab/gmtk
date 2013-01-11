@@ -65,6 +65,13 @@ class PFileFile: public ObservationFile {
   PFileFile(const char *name, unsigned nfloats, unsigned nints, bool swap, int debug_level=0) 
     : fileName((char *)name)
   {
+    buffer = NULL;
+    contBuf = NULL;
+    discBuf = NULL;
+    fileName = NULL;
+    dataFile = NULL;
+    pfile = NULL;
+
     if (name == NULL)     
       error("PFileFile: output file name is NULL\n");    
     if ((out_fp = fopen(name,"wb")) == NULL)

@@ -71,6 +71,13 @@ class ASCIIFile: public ObservationFile {
 	    char const *outputNameSeparatorStr, unsigned nfloats, unsigned nints) 
     : outputFileName(outputFileName), outputNameSeparatorStr(outputNameSeparatorStr)
   {
+    cppIfAscii = false;
+    cppCommandOptions = NULL;
+    fofName = NULL;
+    fofFile = NULL;
+    dataNames = NULL;
+    buffer = NULL;
+    
     fileName = listFileName;
     if(fileName != NULL) {
       if ((listFile = fopen(fileName, "w")) == NULL) {
