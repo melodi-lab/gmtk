@@ -1130,7 +1130,6 @@ RngDecisionTree::EquationClass::EquationClass()
 leafNodeValType 
 RngDecisionTree::EquationClass::evaluateFormula(
 	RngDecisionTree *dt,
-	//char *dtName, char *dtSourceFile,
 	const vector< RV* >& variables,
 	const RV* const rv
 )
