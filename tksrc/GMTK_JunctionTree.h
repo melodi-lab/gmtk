@@ -43,6 +43,7 @@
 #include "GMTK_PartitionStructures.h"
 #include "GMTK_PartitionTables.h"
 #include "GMTK_StreamSource.h"
+#include "GMTK_ObservationFile.h"
 
 #include "debug.h"
 
@@ -1076,7 +1077,10 @@ public:
   void setCliquePrintRanges(char *p,char*c,char*e);
   // this one is general.
   void printAllCliques(FILE* f,const bool normalize,
-		       const bool justPrintEntropy);
+		       const bool justPrintEntropy,
+		       ObservationFile *pFile = NULL,
+		       ObservationFile *cFile = NULL,
+		       ObservationFile *eFile = NULL);
 
   void printAllCliques(PartitionStructures& ps,
 		       PartitionTables& pt,
@@ -1085,7 +1089,12 @@ public:
 		       BP_Range* rng,
 		       FILE* f,
 		       const bool normalize,
-		       const bool justPrintEntropy = false);
+		       const bool justPrintEntropy = false,
+		       ObservationFile *obsFile = NULL);
+
+  void cliquePosteriorSize(unsigned &pSize, unsigned &cSize, unsigned &eSize);
+
+  void printCliqueOrders(FILE *f);
 
   // 
   // Do some last-minute data structure setup to prepare for

@@ -132,7 +132,7 @@ makeFileStream(unsigned ifmts[], unsigned i) {
   ObservationFile *obsFile = 
     instantiateFile(ifmts[i], ofs[i], nfs[i], nis[i], i, iswp[i],
 		    Cpp_If_Ascii, cppCommandOptions, prefrs[i], preirs[i],
-		    prepr[i], sr[i]);
+		    prepr[i], sr[i], fmts[i]);
   assert(obsFile);
   if (Per_Stream_Transforms[i]) {
     Filter *fileFilter = instantiateFilters(Per_Stream_Transforms[i],

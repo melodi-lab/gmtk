@@ -114,8 +114,11 @@ checkNumFrames(unsigned nFiles, ObservationFile *file[],
     if(min_len == 0)
       error("ERROR: MergeFile:openSegment:checkNumFrames: minimum segment length is zero");
     return min_len;
-  } else {
+  } else if (got_expand || got_error) {
     return max_len;  // if there is no expand, it means min_len == max_len
+  } else {
+    assert(0); // shouldn't happen
+    return 0;
   }
 }
 

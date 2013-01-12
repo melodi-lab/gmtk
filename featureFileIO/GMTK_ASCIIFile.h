@@ -45,6 +45,18 @@ class ASCIIFile: public ObservationFile {
   Data32    *buffer;     // data for current segment
   unsigned   bufferSize; // in Data32s
 
+
+  // for writable files
+  FILE       *writeFile;      // current segment file
+  FILE       *listFile;       // list of files
+  char const *outputFileName;
+  char const *outputNameSeparatorStr;
+  bool        oswap;
+
+  unsigned    currSegment;
+  unsigned    currFrame;
+  unsigned    currFeature;
+
  public:
 
   ASCIIFile(const char *name, unsigned nfloats, unsigned nints, 
@@ -53,6 +65,36 @@ class ASCIIFile: public ObservationFile {
 	    char const *discFeatureRangeStr_=NULL, 
 	    char const *preFrameRangeStr_=NULL, 
 	    char const *segRangeStr_=NULL);
+
+  
+  ASCIIFile(char const *listFileName, char const *outputFileName, 
+	    char const *outputNameSeparatorStr, unsigned nfloats, unsigned nints) 
+    : outputFileName(outputFileName), outputNameSeparatorStr(outputNameSeparatorStr)
+  {
+    cppIfAscii = false;
+    cppCommandOptions = NULL;
+    fofName = NULL;
+    fofFile = NULL;
+    dataNames = NULL;
+    buffer = NULL;
+    
+    fileName = listFileName;
+    if(fileName != NULL) {
+      if ((listFile = fopen(fileName, "w")) == NULL) {
+	error("Couldn't open output list (%s) for writing.\n", fileName);
+      }
+    } else {
+      error("ERROR: null ASCII list file name\n");
+    }
+    _numContinuousFeatures = nfloats;
+    _numDiscreteFeatures = nints;
+    _numFeatures = nfloats + nints;
+    
+    writeFile = NULL;
+    currSegment = 0;
+    currFrame = 0;
+    currFeature = 0;
+  }
 
 
   ~ASCIIFile() {
@@ -64,8 +106,30 @@ class ASCIIFile: public ObservationFile {
       delete [] dataNames;
     }
     if (buffer) free(buffer);
+    if (listFile) {
+      if (fclose(listFile)) {
+	error("Error closing output file '%s'\n", fileName);
+      }
+    }
+    if (writeFile) {
+      if (fclose(writeFile)) {
+	error("Error closing output file\n");
+      }
+    }
   }
  
+  // Write segment to the file (no need to call endOfSegment)
+  void writeSegment(Data32 const *segment, unsigned nFrames);
+
+  // Write frame to the file (call endOfSegment after last frame of a segment)
+  void writeFrame(Data32 const *frame);
+
+  // Write the next feature in the current frame (call endOfSegment after last frame of a segment)
+  void writeFeature(Data32 x);
+
+  // Call after last writeFrame of a segment
+  void endOfSegment();
+
   // The number of available segments.
   unsigned numSegments() {return numFileNames;}
 

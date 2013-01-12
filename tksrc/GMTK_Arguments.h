@@ -1176,12 +1176,29 @@ static char* cPartCliquePrintRange = NULL;
 static char* ePartCliquePrintRange = NULL;
 static bool  cliquePrintOnlyEntropy = false;
 
+static char* cliqueOutputName  = NULL;
+static char* cliqueListName    = NULL;
+static char* cliquePrintFormat     = (char *)"pfile";
+static char* cliquePrintSeparator  = (char *)"_";
+#ifdef INTV_WORDS_BIGENDIAN
+static bool  cliquePrintSwap       = true;
+#else
+static bool  cliquePrintSwap       = false;
+#endif
+
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+  Arg("\n*** Clique posterior output options ***\n"),
 
   Arg("pCliquePrintRange",Arg::Opt,pPartCliquePrintRange,"With CE/DE, print range cliques from P partition."),
   Arg("cCliquePrintRange",Arg::Opt,cPartCliquePrintRange,"With CE/DE, print range cliques from C partition."),
   Arg("eCliquePrintRange",Arg::Opt,ePartCliquePrintRange,"With CE/DE, print range cliques from E partition."),
   Arg("cliquePrintOnlyEntropy",Arg::Opt,cliquePrintOnlyEntropy,"With CE/DE, print only clique entropies."),
+
+  Arg("cliqueOutputFileName",Arg::Opt,cliqueOutputName,"Output filename for clique posteriors."),
+  Arg("cliqueListFileName",Arg::Opt,cliqueListName,"Output list filename for clique posteriors (HTK, ASCII, Binary)."),
+  Arg("cliquePrintSeparator",Arg::Opt,cliquePrintSeparator,"String to use as separator when outputting HTK, ASCII, or binary clique posteriors."),
+  Arg("cliquePrintSwap",Arg::Opt,cliquePrintSwap,"Do byte swapping when outputting PFile, HTK, or binary clique posteriors."),
+  Arg("cliquePrintFormat",Arg::Opt,cliquePrintFormat,"Output file format for clique posteriors (htk,binary,ascii,flatascii,hdf5,pfile)."),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
