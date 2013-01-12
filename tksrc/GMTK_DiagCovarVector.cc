@@ -1696,11 +1696,6 @@ DiagCovarVector::emEndIterationNoSharingElementProbabilities(
       nextCovariances[i] = covariances[i];
   } else {
 
-    // TODO: should check for possible overflow here of 
-    // accumulatedProbability when we do the inverse and unlog.
-    // Ideally this won't happen for a given minAccumulatedProbability().
-    const double invRealAccumulatedProbability = 
-      accumulatedProbability.inverse().unlog();
 
     // Finally, divide by N (see the equation above)
     // here computing the final variances.
@@ -1715,6 +1710,12 @@ DiagCovarVector::emEndIterationNoSharingElementProbabilities(
 
 
       if (locAccumulatedProb >=  minContAccumulatedProbability()) {
+	// TODO: should check for possible overflow here of 
+	// accumulatedProbability when we do the inverse and unlog.
+	// Ideally this won't happen for a given minAccumulatedProbability().
+	const double invRealAccumulatedProbability =
+	  locAccumulatedProb.inverse().unlog();
+
 	const double tmp = 
 	  ((double)partialAccumulatedNextCovar[i] - 
 	   (double)partialAccumulatedNextMeans[i]*
