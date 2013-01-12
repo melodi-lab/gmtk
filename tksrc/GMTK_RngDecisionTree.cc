@@ -1151,28 +1151,6 @@ RngDecisionTree::EquationClass::evaluateFormula(
        ++crrnt_cmnd) {
 
     command = GET_COMMAND(commands[crrnt_cmnd]); 
-
-#if 0
-    string dtSourceString;
-    if (dt.iterable()) {
-      dtSourceString.append(dt.dtFile->fileName());
-      dtSourceString.append("(");
-      dtSourceString.append(dt.curName + ") #");
-      stringstream out;
-      out << dt.dtNum;
-      dtSourceString.append(out.str());
-    }
-
-    const char* const missingParentErrorString = "ERROR: Reference to non-existant parent variable in formula in DT '%s' in '%s'. Asking for parent %d but only parents 0 through %d are available.\n";
-    //    const char* const dtSourceFile = dt.dtFile ? dtSourceString.c_str() : "master file";
-    const char* const dtSourceFile = dt.iterable() ? dtSourceString.c_str() : 
-                                                     dt.dtFileName.c_str();
-
-    const char* const missingParentErrorString = "ERROR: Reference to non-existant parent variable in formula in DT '%s' in '%s'. Asking for parent %d but only parents 0 through %d are available.\n";
-    //    const char* const missingParentErrorString ="ERROR\n";
-    const char* const dtSourceFile = "sourceFile";
-#endif
-
     switch (command) {
 	
       case COMMAND_PUSH_CARDINALITY_CHILD:
@@ -1182,11 +1160,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_PUSH_CARDINALITY_PARENT:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
         if (operand >= variables.size()) {	
-#if 0
-          error(missingParentErrorString,dt.name().c_str(), dtSourceFile,operand,variables.size()-1);
-#else
           error(missingParentErrorString,dt->name().c_str(), dt->getSourceString().c_str(),operand,variables.size()-1);
-#endif
         }
         stack.push_back( (variables[operand]->discrete() ? 
           RV2DRV(variables[operand])->cardinality : 0) );
@@ -1195,11 +1169,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_PUSH_PARENT_VALUE:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
         if (operand >= variables.size()) {
-#if 0	
-          error(missingParentErrorString,dt.name().c_str(), dtSourceFile,operand,variables.size()-1);
-#else
           error(missingParentErrorString,dt->name().c_str(), dt->getSourceString().c_str(),operand,variables.size()-1);
-#endif
         }
         stack.push_back( RV2DRV(variables[operand])->discrete() ? 
           RV2DRV(variables[operand])->val : 0 );	
@@ -1208,11 +1178,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_PUSH_PARENT_VALUE_MINUS_ONE:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
         if (operand >= variables.size()) {
-#if 0	
-          error(missingParentErrorString,dt.name().c_str(), dtSourceFile,operand,variables.size()-1);
-#else
           error(missingParentErrorString,dt->name().c_str(), dt->getSourceString().c_str(),operand,variables.size()-1);
-#endif
         }
         stack.push_back( RV2DRV(variables[operand])->discrete() ? 
           (RV2DRV(variables[operand])->val-1) : 0 );	
@@ -1221,11 +1187,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_PUSH_PARENT_VALUE_PLUS_ONE:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
         if (operand >= variables.size()) {
-#if 0	
-          error(missingParentErrorString,dt.name().c_str(), dtSourceFile,operand,variables.size()-1);
-#else
           error(missingParentErrorString,dt->name().c_str(), dt->getSourceString().c_str(),operand,variables.size()-1);
-#endif
         }
         stack.push_back( RV2DRV(variables[operand])->discrete() ? 
           (RV2DRV(variables[operand])->val+1) : 0 );	
@@ -1238,11 +1200,7 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_PUSH_MAX_VALUE_PARENT:	
         operand = GET_OPERAND(commands[crrnt_cmnd]); 
         if (operand >= variables.size()) {
-#if 0	
-          error(missingParentErrorString,dt.name().c_str(), dtSourceFile,operand,variables.size()-1);
-#else
           error(missingParentErrorString,dt->name().c_str(), dt->getSourceString().c_str(),operand,variables.size()-1);
-#endif
         }
         stack.push_back( (variables[operand]->discrete() ? 
           (RV2DRV(variables[operand])->cardinality - 1) : 0) );
@@ -1325,13 +1283,8 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_DIVIDE_CEIL:
         last = stack.stackSize() - 1;
         if (stack[last] == 0) {
-#if 0
-          error("ERROR:  Divide by zero error in DT '%s' in '%s'\n", 
-		dt.name().c_str(), dt.getSourceString().c_str()); 
-#else
           error("ERROR:  Divide by zero error in DT '%s' in '%s'\n", 
 		dt->name().c_str(), dt->getSourceString().c_str()); 
-#endif
         }
         stack[last-1] = (stack[last-1] + stack[last] - 1) / stack[last];
         stack.pop_back();
@@ -1340,13 +1293,8 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_DIVIDE_FLOOR:
         last = stack.stackSize() - 1;
         if (stack[last] == 0) {
-#if 0
-          error("ERROR:  Divide by zero error in DT '%s' in '%s'\n", 
-		dt.name().c_str(), dt.getSourceString().c_str()); 
-#else
           error("ERROR:  Divide by zero error in DT '%s' in '%s'\n", 
 		dt->name().c_str(), dt->getSourceString().c_str()); 
-#endif
         }
         stack[last-1] = stack[last-1] / stack[last];
         stack.pop_back();
@@ -1355,13 +1303,8 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_DIVIDE_ROUND:
         last = stack.stackSize() - 1;
         if (stack[last] == 0) {
-#if 0
-          error("ERROR:  Divide by zero error in DT '%s' in '%s'\n", 
-		dt.name().c_str(), dt.getSourceString().c_str()); 
-#else
           error("ERROR:  Divide by zero error in DT '%s' in '%s'\n", 
 		dt->name().c_str(), dt->getSourceString().c_str()); 
-#endif
         }
         stack[last-1] = (stack[last-1] + (stack[last]>>1)) / stack[last];
         stack.pop_back();
@@ -1624,13 +1567,8 @@ RngDecisionTree::EquationClass::evaluateFormula(
       case COMMAND_MOD:
         last = stack.stackSize() - 1;
         if (stack[last] == 0) {
-#if 0
-          error("ERROR:  Mod by zero error in DT '%s' in '%s'\n", 
-		dt.name().c_str(), dt.getSourceString().c_str()); 
-#else
           error("ERROR:  Mod by zero error in DT '%s' in '%s'\n", 
 		dt->name().c_str(), dt->getSourceString().c_str()); 
-#endif
         }
         stack[last-1] = stack[last-1] % stack[last];
         stack.pop_back();
