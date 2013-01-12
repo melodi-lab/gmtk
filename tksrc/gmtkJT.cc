@@ -399,6 +399,11 @@ main(int argc,char*argv[])
   struct rusage rue; /* ending time */
   getrusage(RUSAGE_SELF,&rus);
 
+  ObservationFile *pCliqueFile = NULL;
+#if 0
+  ObservationFile *cCliqueFile = NULL;
+  ObservationFile *eCliqueFile = NULL;
+#endif
 
   Range::iterator* dcdrng_it = new Range::iterator(dcdrng->begin());
   while (!dcdrng_it->at_end()) {
@@ -478,8 +483,38 @@ main(int argc,char*argv[])
 		   probe.val()/numUsableFrames);
 	  }
 	}
-	if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange)
-	  myjt.printAllCliques(stdout,true,cliquePrintOnlyEntropy);
+	if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange) {
+
+	  if (cliqueOutputName && !pCliqueFile) {
+	    unsigned pSize, cSize, eSize;
+	    myjt.cliquePosteriorSize(pSize, cSize, eSize);
+	    unsigned cliqueSize = (pSize > cSize) ? pSize : cSize;
+	             cliqueSize = (cliqueSize > eSize) ? cliqueSize : eSize;
+	    
+            if (pPartCliquePrintRange && pSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output\n");
+	    }
+            if (cPartCliquePrintRange && cSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output\n");
+	    }
+            if (ePartCliquePrintRange && eSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output\n");
+	    }
+	    myjt.printCliqueOrders(stdout);
+	    pCliqueFile = instantiateWriteFile(cliqueListName, cliqueOutputName, cliquePrintSeparator,
+					       cliquePrintFormat, cliqueSize, 0, cliquePrintSwap);
+	  }
+	  myjt.printAllCliques(stdout,true,cliquePrintOnlyEntropy, pCliqueFile, pCliqueFile, pCliqueFile);
+	  
+	  if (pCliqueFile)
+	    pCliqueFile->endOfSegment();
+#if 0
+	  if (cCliqueFile)
+	    cCliqueFile->endOfSegment();
+	  if (eCliqueFile)
+	    eCliqueFile->endOfSegment();
+#endif
+	}
       }
     } catch (ZeroCliqueException &e) {
       warning("Segment %d aborted due to zero clique\n", segment);
@@ -487,6 +522,11 @@ main(int argc,char*argv[])
     (*dcdrng_it)++;
   }
   
+  if (pCliqueFile) delete pCliqueFile;
+#if 0
+  if (cCliqueFile) delete cCliqueFile;
+  if (eCliqueFile) delete eCliqueFile;
+#endif
   getrusage(RUSAGE_SELF,&rue);
   if (IM::messageGlb(IM::Default)) { 
     infoMsg(IM::Default,"### Final time (seconds) just for inference: ");

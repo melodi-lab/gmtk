@@ -90,6 +90,107 @@ BinaryFile::BinaryFile(const char *name, unsigned nfloats, unsigned nints,
 }
 
 
+void 
+BinaryFile::writeFrame(Data32 const *frame) {
+  void (*copy_swap_func_ptr)(size_t, const intv_int32_t*, intv_int32_t*)=NULL;
+  if(oswap) {
+    copy_swap_func_ptr=&swapb_vi32_vi32;
+  } else {
+    copy_swap_func_ptr=&copy_vi32_vi32;
+  }
+  assert(currFeature == 0);
+  if (currFrame == 0) {
+    assert(listFile);
+    assert(!writeFile); // previous EoS (or ctor) should have closed it
+    char* current_output_fname = new char[strlen(outputFileName)+strlen(outputNameSeparatorStr)+50];
+    sprintf(current_output_fname,"%s%s%d",outputFileName,outputNameSeparatorStr,currSegment);
+    if ((writeFile = fopen(current_output_fname, "wb")) == NULL) {
+      error("Couldn't open output file '%s' for writing.",current_output_fname);
+    }
+    fprintf(listFile,"%s\n",current_output_fname);
+    delete [] current_output_fname;
+  }
+  float  *cont_buf_p = new float[_numContinuousFeatures];
+  copy_swap_func_ptr(_numContinuousFeatures, (const intv_int32_t *) frame, (intv_int32_t *)cont_buf_p);
+  UInt32 *disc_buf_p = new UInt32[_numDiscreteFeatures];
+  copy_swap_func_ptr(_numDiscreteFeatures, (const intv_int32_t *) frame + _numContinuousFeatures, (intv_int32_t *)disc_buf_p);
+
+  /// Print continuous part of frame /////////////////////////////
+  if (_numContinuousFeatures) {
+    if (fwrite(cont_buf_p, sizeof(Data32), _numContinuousFeatures, writeFile) != _numContinuousFeatures) {
+      error("Error writing to output file\n");
+    }
+  }
+  /// Print discrete part of the frame ///////////////////////////
+  if (_numDiscreteFeatures) {
+    if (fwrite(disc_buf_p, sizeof(Data32), _numDiscreteFeatures, writeFile) != _numDiscreteFeatures) {
+      error("Error writing to output file\n");
+    }
+  }
+  currFrame += 1;
+  currFeature = 0;
+  delete []cont_buf_p;
+  delete []disc_buf_p;
+}
+
+
+void 
+BinaryFile::writeFeature(Data32 x) {
+  void (*copy_swap_func_ptr)(size_t, const intv_int32_t*, intv_int32_t*)=NULL;
+  if(oswap) {
+    copy_swap_func_ptr=&swapb_vi32_vi32;
+  } else {
+    copy_swap_func_ptr=&copy_vi32_vi32;
+  }
+  if (currFrame == 0 && currFeature == 0) {
+    assert(listFile);
+    assert(!writeFile); // previous EoS (or ctor) should have closed it
+    char* current_output_fname = new char[strlen(outputFileName)+strlen(outputNameSeparatorStr)+50];
+    sprintf(current_output_fname,"%s%s%d",outputFileName,outputNameSeparatorStr,currSegment);
+    if ((writeFile = fopen(current_output_fname, "wb")) == NULL) {
+      error("Couldn't open output file '%s' for writing.",current_output_fname);
+    }
+    fprintf(listFile,"%s\n",current_output_fname);
+    delete [] current_output_fname;
+  }
+  copy_swap_func_ptr(1, &x, &x);
+  if (fwrite(&x, sizeof(Data32), 1, writeFile) != 1) {
+    error("Error writing to output file\n");
+  }
+  currFeature += 1;
+  if (currFeature == _numFeatures) {
+    currFrame += 1;
+    currFeature = 0;
+  }
+}
+
+
+void 
+BinaryFile::endOfSegment() {
+  assert(currFeature == 0);
+  if (currFrame == 0) {
+    assert(listFile);
+    assert(!writeFile); // previous EoS (or ctor) should have closed it
+    char* current_output_fname = new char[strlen(outputFileName)+strlen(outputNameSeparatorStr)+50];
+    sprintf(current_output_fname,"%s%s%d",outputFileName,outputNameSeparatorStr,currSegment);
+    if ((writeFile = fopen(current_output_fname, "wb")) == NULL) {
+      error("Couldn't open output file '%s' for writing.",current_output_fname);
+    }
+    fprintf(listFile,"%s\n",current_output_fname);
+    delete [] current_output_fname;
+  } else {
+    assert(writeFile); // if not, what have we been writing to?
+  }
+  if (fclose(writeFile)) {
+    error("ERROR closing output file\n");
+  }
+  writeFile = NULL;
+  currSegment += 1;
+  currFrame = 0;
+  currFeature = 0;
+}
+
+
 // Begin sourcing data from the requested segment.
 // Must be called before any other operations are performed on a segment.
 bool

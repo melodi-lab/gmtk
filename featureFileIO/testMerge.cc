@@ -94,7 +94,7 @@ main(int argc, char *argv[]) {
 
     obsFile[i] = instantiateFile(ifmts[i], ofs[i], nfs[i], nis[i], i, iswp[i],
 				 Cpp_If_Ascii, cppCommandOptions, prefrs[i], preirs[i],
-				 prepr[i], sr[i]);
+				 prepr[i], sr[i], fmts[i]);
     assert(obsFile[i]);
     Filter *fileFilter = instantiateFilters(Per_Stream_Transforms[i],
 					    obsFile[i]->numLogicalContinuous(),

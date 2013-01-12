@@ -36,7 +36,8 @@ PFileFile::PFileFile(const char *name, unsigned nfloats, unsigned nints,
   : ObservationFile(contFeatureRangeStr_, 
 		    discFeatureRangeStr_, 
 		    preFrameRangeStr_,
-		    segRangeStr_)
+		    segRangeStr_),
+    out_fp(NULL), out_stream(NULL)
 {
   assert(name);
   fileName = strdup(name);
@@ -137,3 +138,44 @@ PFileFile::getFrames(unsigned first, unsigned count) {
   return buffer;
 }
 
+
+void 
+PFileFile::writeSegment(Data32 const *segment, unsigned nFrames) {
+  assert(currentFeature == 0);
+  Data32 const *frame = segment;
+  for (unsigned f=0; f < nFrames; f+=1, frame += _numFeatures) {
+    writeFrame(frame);
+  }
+  endOfSegment();
+}
+
+
+void 
+PFileFile::writeFrame(Data32 const *frame) {
+  assert(currentFeature == 0);
+  out_stream->write_ftrslabs(1, (float *) frame, (UInt32 *)(frame + _numContinuousFeatures));
+  currentFeature = 0;
+}
+
+
+void 
+PFileFile::writeFeature(Data32 x) {
+  if (currentFeature < _numContinuousFeatures) {
+    out_stream->write_ftr(currentFeature, *(float *)&x);
+  } else {
+    out_stream->write_lab(currentFeature, *(UInt32 *)&x);
+  }
+  currentFeature += 1;
+  if (currentFeature == _numFeatures) {
+    currentFeature = 0;
+  }
+}
+
+
+void 
+PFileFile::endOfSegment() {
+  assert(currentFeature == 0);
+  out_stream->doneseg((SegID) currentSegment);
+  currentSegment += 1;
+  currentFeature = 0;
+}

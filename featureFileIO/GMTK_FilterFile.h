@@ -82,6 +82,24 @@ class FilterFile: public ObservationFile {
     if (file) delete file;
   }
 
+  // Write segment to the file (no need to call endOfSegment)
+  void writeSegment(Data32 const *segment, unsigned nFrames) {
+    assert(0); // can't write to filters
+  }
+
+  // Write frame to the file (call endOfSegment after last frame of a segment)
+  void writeFrame(Data32 const *frame) {
+    assert(0); // can't write to filters
+  }
+
+  void writeFeature(Data32 x) {
+    assert(0); // can't write to filters
+  }
+
+  // Call after last writeFrame of a segment
+  void endOfSegment() {
+    assert(0); // can't write to filters
+  }
 
   // We have to use the ObservationFile's logical methods 
   // so that it can handle -srX, -frX, -irX, -preprX

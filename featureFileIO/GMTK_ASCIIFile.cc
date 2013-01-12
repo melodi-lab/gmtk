@@ -167,3 +167,146 @@ ASCIIFile::openSegment(unsigned seg) {
   return true;
 }
 
+
+void 
+ASCIIFile::writeSegment(Data32 const *segment, unsigned nFrames) {
+  assert(currFeature == 0);
+  if (writeFile) {
+    if (fclose(writeFile)) {
+      error("ERROR closing output file\n");
+    }
+    writeFile = NULL;
+  }
+  char* current_output_fname = new char[strlen(outputFileName)+strlen(outputNameSeparatorStr)+50];
+  sprintf(current_output_fname,"%s%s%d",outputFileName,outputNameSeparatorStr,currSegment);
+  if ((writeFile = fopen(current_output_fname, "w")) == NULL) {
+    error("Couldn't open output file '%s' for writing.",current_output_fname);
+  }
+  assert(listFile);
+  fprintf(listFile,"%s\n",current_output_fname);
+
+  //////////  Print the frames ////////////////////////////////////
+  float  *cont_buf_p = (float  *) segment;
+  UInt32 *disc_buf_p = (UInt32 *) segment + _numContinuousFeatures;
+
+  for (unsigned frame_no=0; frame_no < nFrames ; frame_no+=1) {
+
+    fprintf(writeFile, "%u %u", currSegment, frame_no);
+    /// Print continuous part of frame /////////////////////////////
+    for (unsigned frit=0; frit < _numContinuousFeatures; frit+=1) {
+      fprintf(writeFile, " %f", cont_buf_p[frit]);
+    }
+    ///////////////////////////////////////////////////////////////
+    
+    /// Print discrete part of the frame ///////////////////////////
+    for (unsigned lrit=0; lrit < _numDiscreteFeatures; lrit+=1) {
+      fprintf(writeFile, " %u", disc_buf_p[lrit]);
+    }
+    fprintf(writeFile, "\n");
+
+    cont_buf_p += _numFeatures;
+    disc_buf_p += _numFeatures;
+  }  // end of for (unsigned frame_no=0; frame_no < num_frames ; ++frame_no)
+  //////////////////////////////////////////////////////////////////////////// 
+
+  if (fclose(writeFile)) {
+    error("ERROR closing output file '%s'\n", current_output_fname);
+  }
+  writeFile = NULL;
+  delete []  current_output_fname;
+
+  currSegment += 1;
+  currFrame = 0;
+  currFeature = 0;
+}
+
+
+void 
+ASCIIFile::writeFrame(Data32 const *frame) {
+  assert(currFeature == 0);
+  if (currFrame == 0) {
+    assert(listFile);
+    assert(!writeFile); // previous EoS (or ctor) should have closed it
+    char* current_output_fname = new char[strlen(outputFileName)+strlen(outputNameSeparatorStr)+50];
+    sprintf(current_output_fname,"%s%s%d",outputFileName,outputNameSeparatorStr,currSegment);
+    if ((writeFile = fopen(current_output_fname, "w")) == NULL) {
+      error("Couldn't open output file '%s' for writing.",current_output_fname);
+    }
+    fprintf(listFile,"%s\n",current_output_fname);
+    delete [] current_output_fname;
+  }
+  float  *cont_buf_p = (float  *) frame;
+  UInt32 *disc_buf_p = (UInt32 *) frame + _numContinuousFeatures;
+
+  /// Print continuous part of frame /////////////////////////////
+  for (unsigned frit=0; frit < _numContinuousFeatures; frit+=1) {
+    fprintf(writeFile, " %f", cont_buf_p[frit]);
+  }
+  ///////////////////////////////////////////////////////////////
+  
+  /// Print discrete part of the frame ///////////////////////////
+  for (unsigned lrit=0; lrit < _numDiscreteFeatures; lrit+=1) {
+    fprintf(writeFile, " %u", disc_buf_p[lrit]);
+  }
+  fprintf(writeFile, "\n");
+  currFrame += 1;
+  currFeature = 0;
+}
+
+
+void 
+ASCIIFile::writeFeature(Data32 x) {
+  if (currFrame == 0 && currFeature == 0) {
+    assert(listFile);
+    assert(!writeFile); // previous EoS (or ctor) should have closed it
+    char* current_output_fname = new char[strlen(outputFileName)+strlen(outputNameSeparatorStr)+50];
+    sprintf(current_output_fname,"%s%s%d",outputFileName,outputNameSeparatorStr,currSegment);
+    if ((writeFile = fopen(current_output_fname, "w")) == NULL) {
+      error("Couldn't open output file '%s' for writing.",current_output_fname);
+    }
+    fprintf(listFile,"%s\n",current_output_fname);
+    delete [] current_output_fname;
+  }
+
+  /// Print continuous part of frame /////////////////////////////
+  if (currFeature < _numContinuousFeatures) {
+    fprintf(writeFile, " %f", *(float *)&x);
+  } else {
+    /// Print discrete part of the frame ///////////////////////////
+    fprintf(writeFile, " %u", *(unsigned *)&x);
+  }
+  
+  currFeature += 1;
+  if (currFeature == _numFeatures) {
+    fprintf(writeFile, "\n");
+    currFrame += 1;
+    currFeature = 0;
+  }
+}
+
+
+void 
+ASCIIFile::endOfSegment() {
+  assert(currFeature == 0);
+  if (currFrame == 0) {
+    assert(listFile);
+    assert(!writeFile); // previous EoS (or ctor) should have closed it
+    char* current_output_fname = new char[strlen(outputFileName)+strlen(outputNameSeparatorStr)+50];
+    sprintf(current_output_fname,"%s%s%d",outputFileName,outputNameSeparatorStr,currSegment);
+    if ((writeFile = fopen(current_output_fname, "w")) == NULL) {
+      error("Couldn't open output file '%s' for writing.",current_output_fname);
+    }
+    fprintf(listFile,"%s\n",current_output_fname);
+    delete [] current_output_fname;
+  } else {
+    assert(writeFile); // if not, what have we been writing to?
+  }
+  if (fclose(writeFile)) {
+    error("ERROR closing output file\n");
+  }
+  writeFile = NULL;
+  currSegment += 1;
+  currFrame = 0;
+  currFeature = 0;
+}
+
