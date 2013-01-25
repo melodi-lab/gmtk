@@ -290,7 +290,7 @@ class FileSource: public ObservationSource {
 
   void setMinPastFrames(unsigned n) {
     if (_startSkip < n) {
-      error("ERROR: the model requires a -startSkip of at least %u (currently %u)",
+      error("ERROR: the model requires a -startSkip of at least %u (currently %u)\n",
 	    n, _startSkip);
     }
     _minPastFrames = n;
