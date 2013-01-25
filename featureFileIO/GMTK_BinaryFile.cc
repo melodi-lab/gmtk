@@ -35,7 +35,8 @@ BinaryFile::BinaryFile(const char *name, unsigned nfloats, unsigned nints,
 		       char const *discFeatureRangeStr_, 
 		       char const *preFrameRangeStr_, 
 		       char const *segRangeStr_)
-  : ObservationFile(contFeatureRangeStr_, 
+  : ObservationFile(name, num,
+		    contFeatureRangeStr_, 
 		    discFeatureRangeStr_, 
 		    preFrameRangeStr_,
 		    segRangeStr_),
@@ -47,9 +48,10 @@ BinaryFile::BinaryFile(const char *name, unsigned nfloats, unsigned nints,
   buffSize = 0;
   curDataFile = NULL;
   if (name == NULL) 	
-    error("BinaryFile: File name is NULL for stream %i\n",num);	
+    error("BinaryFile: File name is NULL for stream %u\n",num);	
   if (nfloats == 0 && nints == 0)
-    error("BinaryFile: number of float and int features cannot both be zero");
+    error("BinaryFile: observation file %u '%s': number of float and int features cannot both be zero\n",
+	  num, name);
 
   // local copy of file name
   fofName = new char[strlen(name)+1];
@@ -125,7 +127,7 @@ BinaryFile::openSegment(unsigned seg) {
   gmtk_off_t fsize = gmtk_ftell(curDataFile);
 
   if ((fsize % numFeatures()) > 0)
-      error("BinaryFile::openSegment: odd number of bytes in file %s\n",dataNames[seg]);
+      error("BinaryFile::openSegment: wrong number of bytes in file '%s'\n",dataNames[seg]);
 
   nFrames = fsize / sizeof(Data32) / numFeatures();
 
@@ -151,7 +153,7 @@ BinaryFile::getFrames(unsigned first, unsigned count) {
     buffSize = needed;
   }
   if (gmtk_fseek(curDataFile,(gmtk_off_t)(first * sizeof(Data32) * numFeatures()),SEEK_SET) == -1) {
-    warning("BinaryFile::getFrames: Can't seek to frame %u in %s\n", first, dataNames[curSegment]);
+    warning("BinaryFile::getFrames: Can't seek to frame %u in '%s'\n", first, dataNames[curSegment]);
     return NULL;
   }
   float* float_buffer_ptr = (float *) buffer;

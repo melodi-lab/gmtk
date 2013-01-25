@@ -69,6 +69,9 @@ class ObservationFile {
 
  protected:
 
+  char const *observationFileName;
+  unsigned    observationFileNum;
+
   char const *contFeatureRangeStr;  // -frX
   Range      *contFeatureRange;
   char const *discFeatureRangeStr;  // -irX
@@ -93,11 +96,15 @@ class ObservationFile {
 
  public:
 
-  ObservationFile(char const *contFeatureRangeStr_=NULL, 
-		  char const *discFeatureRangeStr_=NULL,
-		  char const *preFrameRangeStr_=NULL, 
-		  char const *segRangeStr_=NULL)
-    : contFeatureRangeStr(contFeatureRangeStr_), contFeatureRange(NULL),
+ ObservationFile(char const *observationFileName=NULL,
+		 unsigned    observationFileNum=0,
+		 char const *contFeatureRangeStr_=NULL, 
+		 char const *discFeatureRangeStr_=NULL,
+		 char const *preFrameRangeStr_=NULL, 
+		 char const *segRangeStr_=NULL)
+    : observationFileName(observationFileName), 
+      observationFileNum(observationFileNum),
+      contFeatureRangeStr(contFeatureRangeStr_), contFeatureRange(NULL),
       discFeatureRangeStr(discFeatureRangeStr_), discFeatureRange(NULL),
       preFrameRangeStr(preFrameRangeStr_), preFrameRange(NULL),
       segRangeStr(segRangeStr_), segRange(NULL), 
@@ -115,6 +122,10 @@ class ObservationFile {
       logicalObservationBuffer = NULL;
     }
   }
+
+  // Mostly for error messages
+  virtual char const *obsFileName() {return observationFileName;}
+  virtual unsigned    obsFileNum()  {return observationFileNum; }
 
   // The number of physical (before -srX) segments in the file.
   virtual unsigned numSegments() = 0;

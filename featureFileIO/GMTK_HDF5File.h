@@ -122,7 +122,7 @@ class HDF5File: public ObservationFile {
 	   char const *preFrameRangeStr_=NULL, 
 	   char const *segRangeStr_=NULL)
   {
-    error("This GMTK build does not support HDF5 files");
+    error("This GMTK build does not support HDF5 files\n");
   }
 
   ~HDF5File() {}

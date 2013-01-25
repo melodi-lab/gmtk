@@ -50,9 +50,12 @@ class FilterFile: public ObservationFile {
 	     char const *contFeatureRangeStr = NULL,
 	     char const *discFeatureRangeStr = NULL,
 	     char const *postpr = NULL)
-    : ObservationFile(contFeatureRangeStr, discFeatureRangeStr, postpr),
+    : ObservationFile(NULL, 0, contFeatureRangeStr, discFeatureRangeStr, postpr),
       filter(filter), file(file)
   {
+    assert(file);
+    observationFileName = file->obsFileName();
+    observationFileNum  = file->obsFileNum();
     subMatrixDescriptor wholeSegment(0U, 1U, 0U, 0U,
 				     file->numLogicalContinuous(),
 				     file->numLogicalDiscrete(), 1U, 0U, 0U);
