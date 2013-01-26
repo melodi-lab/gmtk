@@ -144,19 +144,26 @@ FlatASCIIFile::FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints,
       if (fscanf(f, "%d %d", &currSegment, &currFrame) != 2) {
 	error("ERROR: FlatASCIIFile: error reading '%s'\n", name);
       }
-      assert(currSegment == (int)seg);
-      assert(currFrame == (int)frame);
+      if (currSegment != (int)seg) {
+	error("ERROR: FlatASCIIFile: expected segment %u but got segment %u in observation file '%s'\n",
+	      seg, currSegment, name);
+      }
+      if (currFrame != (int)frame) {
+	error("ERROR: FlatASCIIFile: expected frame %u but got frame %u in observation file '%s'\n",
+	      frame, currFrame, name);
+      }	
+      fDest = (float *) iDest;
       for (unsigned n = 0; n < _numContinuousFeatures; n+=1) {
 	if (fscanf(f,"%e", fDest++) != 1) {
-	  error("ERROR: FlatASCIIFile: couldn't read %u'th float in segment %u, frame %u\n",
-		n, seg, frame);
+	  error("ERROR: FlatASCIIFile: couldn't read %u'th float in segment %u, frame %u in observation file '%s'\n",
+		n, seg, frame, name);
 	}
       }
       iDest = (Int32 *)fDest;
       for (unsigned n = 0; n < _numDiscreteFeatures; n+=1) {
 	if (fscanf(f,"%d", iDest++) != 1) {
-	error("ERROR: FlatASCIIFile: couldn't read %u'th int in segment %u, frame %u\n",
-	      n, seg, frame);
+	error("ERROR: FlatASCIIFile: couldn't read %u'th int in segment %u, frame %u in observation file '%s'\n",
+	      n, seg, frame, name);
 	}
       }
       lineNum += 1;
