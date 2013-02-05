@@ -127,6 +127,10 @@ class ObservationFile {
     endOfSegment();
   }
 
+  // Set frame # to write within current segemnt
+  // note this only works for file formats that support random access
+  virtual void setFrame(unsigned frame) = 0;
+
   // Write frame to the file (call endOfSegment after last frame of a segment)
   virtual void writeFrame(Data32 const *frame) {
     unsigned nfea = numFeatures();

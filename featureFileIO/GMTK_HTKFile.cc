@@ -556,6 +556,11 @@ HTKFile::writeSegment(Data32 const *segment, unsigned nFrames) {
 
 
 void 
+HTKFile::setFrame(unsigned frame) {
+}
+
+
+void 
 HTKFile::writeFrame(Data32 const *frame) {
   assert(currFeature == 0);
   void (*copy_swap_func_ptr)(size_t, const intv_int32_t*, intv_int32_t*)=NULL;
