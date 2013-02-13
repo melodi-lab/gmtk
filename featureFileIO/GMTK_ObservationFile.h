@@ -127,6 +127,9 @@ class ObservationFile {
     endOfSegment();
   }
 
+  // returns true iff file supports random access writes via setFrame()
+  virtual bool seekable() { return false; }
+
   // Set frame # to write within current segemnt
   // note this only works for file formats that support random access
   virtual void setFrame(unsigned frame) = 0;

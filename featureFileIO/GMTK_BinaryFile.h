@@ -123,6 +123,9 @@ class BinaryFile: public ObservationFile {
       }
     }
   }
+
+  // returns true iff file supports random access writes via setFrame()
+  bool seekable() { return true; }
  
   // Set frame # to write within current segemnt
   void setFrame(unsigned frame);

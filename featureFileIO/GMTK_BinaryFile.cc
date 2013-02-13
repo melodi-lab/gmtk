@@ -91,14 +91,14 @@ BinaryFile::BinaryFile(const char *name, unsigned nfloats, unsigned nints,
 
 
 // Set frame # to write within current segemnt
+
 void 
 BinaryFile::setFrame(unsigned frame) {
   assert(currFeature == 0);
   if (frame == currFrame) return;
 
-  if (currFrame == 0) {
+  if (!writeFile) { // previous EoS (or ctor) should have closed it
     assert(listFile);
-    assert(!writeFile); // previous EoS (or ctor) should have closed it
     char* current_output_fname = new char[strlen(outputFileName)+strlen(outputNameSeparatorStr)+50];
     sprintf(current_output_fname,"%s%s%d",outputFileName,outputNameSeparatorStr,currSegment);
     if ((writeFile = fopen(current_output_fname, "wb")) == NULL) {
@@ -124,9 +124,8 @@ BinaryFile::writeFrame(Data32 const *frame) {
     copy_swap_func_ptr=&copy_vi32_vi32;
   }
   assert(currFeature == 0);
-  if (currFrame == 0) {
+  if (!writeFile) { // previous EoS (or ctor) should have closed it
     assert(listFile);
-    assert(!writeFile); // previous EoS (or ctor) should have closed it
     char* current_output_fname = new char[strlen(outputFileName)+strlen(outputNameSeparatorStr)+50];
     sprintf(current_output_fname,"%s%s%d",outputFileName,outputNameSeparatorStr,currSegment);
     if ((writeFile = fopen(current_output_fname, "wb")) == NULL) {
@@ -167,9 +166,9 @@ BinaryFile::writeFeature(Data32 x) {
   } else {
     copy_swap_func_ptr=&copy_vi32_vi32;
   }
-  if (currFrame == 0 && currFeature == 0) {
+  if (!writeFile) { // previous EoS (or ctor) should have closed it
     assert(listFile);
-    assert(!writeFile); // previous EoS (or ctor) should have closed it
+    assert(currFrame == 0 && currFeature == 0); 
     char* current_output_fname = new char[strlen(outputFileName)+strlen(outputNameSeparatorStr)+50];
     sprintf(current_output_fname,"%s%s%d",outputFileName,outputNameSeparatorStr,currSegment);
     if ((writeFile = fopen(current_output_fname, "wb")) == NULL) {
@@ -193,6 +192,7 @@ BinaryFile::writeFeature(Data32 x) {
 void 
 BinaryFile::endOfSegment() {
   assert(currFeature == 0);
+#if 0
   if (currFrame == 0) {
     assert(listFile);
     assert(!writeFile); // previous EoS (or ctor) should have closed it
@@ -206,8 +206,13 @@ BinaryFile::endOfSegment() {
   } else {
     assert(writeFile); // if not, what have we been writing to?
   }
+#else
+  assert(writeFile);
+#endif
   if (fclose(writeFile)) {
-    error("ERROR closing output file\n");
+    char* current_output_fname = new char[strlen(outputFileName)+strlen(outputNameSeparatorStr)+50];
+    sprintf(current_output_fname,"%s%s%d",outputFileName,outputNameSeparatorStr,currSegment);
+    error("ERROR closing output file '%s'\n", current_output_fname);
   }
   writeFile = NULL;
   currSegment += 1;
