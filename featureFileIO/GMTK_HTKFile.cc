@@ -42,7 +42,7 @@ using namespace std;
 
 void 
 parseSentenceSpec(const string& sentLoc, int* startFrame, int* endFrame, 
-		  string& fnameStr) 
+		  string& fnameStr, char *fofName) 
 {
   size_t fNameLen;
   *startFrame=0, *endFrame=-1; //these are the right values if the frame range is not specified
@@ -50,14 +50,24 @@ parseSentenceSpec(const string& sentLoc, int* startFrame, int* endFrame,
     //have a subrange spec
     fNameLen=sentLoc.find_last_of('[');
     if (fNameLen==string::npos){
+<<<<<<< local
       error("ERROR: parseSentenceSpec: '%s' is an invalid sentence location.  "
 	    "Must be of the form 'filename[startFrame:endFrame]'",sentLoc.c_str());
+=======
+      error("ERROR: parseSentenceSpec: '%s' is an invalid sentence location in observation file '%s'.  "
+	    "Must be of the form 'filename[startFrame:endFrame]'",sentLoc.c_str(), fofName);
+>>>>>>> other
     }
 
     string range= sentLoc.substr(fNameLen+1,sentLoc.length()-2-fNameLen);
     if (sscanf(range.c_str(),"%d:%d",startFrame,endFrame) != 2)
+<<<<<<< local
       error("ERROR: parseSentenceSpec: '%s' is an invalid sentence location.  "
 	    "Must be of the form 'filename[startFrame:endFrame]'",sentLoc.c_str());
+=======
+      error("ERROR: parseSentenceSpec: '%s' is an invalid sentence location in observation file '%s'.  "
+	    "Must be of the form 'filename[startFrame:endFrame]'",sentLoc.c_str(), fofName);		  
+>>>>>>> other
     
     if(*endFrame<*startFrame)
       error("ERROR: parseSentenceSpec: %s has the last frame smaller than first frame.\n",sentLoc.c_str());	  
@@ -132,25 +142,25 @@ openHTKFile2(const string& fname, StreamInfo *f) {
   //printf ("call openHTKFile2(%s)\n",fname.c_str());
 
   if ((f->curDataFile = fopen(fname.c_str(),"rb")) == NULL) {
-    error("ERROR: openHTKFile: Can't open '%s' for input\n",fname.c_str());
+    error("ERROR: openHTKFile: Can't open observation file '%s' for input\n", fname.c_str());
   }
 
   if (fread(&tmp1,sizeof(Int32),1,f->curDataFile) != 1) {
-    error("ERROR: openHTKFile: Can't read number of samples\n");
+    error("ERROR: openHTKFile: Can't read number of samples in observation file '%s'\n", fname.c_str());
   }
 
 
   if (fread((Int32 *)&tmp2,sizeof(Int32),1,f->curDataFile) != 1) {
-    error("ERROR: openHTKFile: Can't read sample period\n");
+    error("ERROR: openHTKFile: Can't read sample period from observation file '%s'\n", fname.c_str());
   }
 
   if (fread((short *)&stmp1,sizeof(short),1,f->curDataFile) != 1) {
-    error("ERROR: openHTKFile: Can't read sample size\n");
+    error("ERROR: openHTKFile: Can't read sample size from observation file '%s'\n", fname.c_str());
     return 0;
   }
 
   if (fread(&stmp2,sizeof(short),1,f->curDataFile) != 1) {
-    error("ERROR: openHTKFile: Can't read parm kind\n");
+    error("ERROR: openHTKFile: Can't read parm kind from observation file '%s'\n", fname.c_str());
   }
 
   if (bswap) {
@@ -167,31 +177,37 @@ openHTKFile2(const string& fname, StreamInfo *f) {
   }
 
   if (n_samples <= 0) {
-    error("ERROR: openHTKFile: number of samples is %i\n",n_samples);
+    error("ERROR: openHTKFile: number of samples %d should be > 0 in observation file '%s'\n",
+	  n_samples, fname.c_str());
   }
 
   if (samp_period <= 0 || samp_period > 1000000) {
-    warning("WARNING: openHTKFile: sample period is %i - must be between 0 and 1000000\n", samp_period);
+    warning("WARNING: openHTKFile: sample period is %d in observation file '%s' - "
+	    "must be between 0 and 1000000\n", samp_period, fname.c_str());
   }
 
   if (samp_size <= 0 || samp_size > 5000) {
-    warning("WARNING: openHTKFile: sample size is %i - must be between 0 and 5000\n",samp_size);
+    warning("WARNING: openHTKFile: sample size %d in observation file '%s' - "
+	    "must be between 0 and 5000\n", samp_size, fname.c_str());
   }
 
   short pk = parm_kind & BASEMASK;
   bool isCompressed = parm_kind & IS_COMPRESSED;
 
   if (pk < WAVEFORM || pk > ANON) {
-    warning("WARNING: openHTKFile: Undefined parameter kind for HTK feature file: %i. Will assume float features.\n",pk);
+    warning("WARNING: openHTKFile: Undefined parameter kind %d for HTK feature file '%s'. "
+	    "Will assume float features.\n",pk, fname.c_str());
   }
 
   // For now we don't support the WAVEFORM and IREFC parameter kind.  It uses
   // shorts instead of floats and that requires special treatment.
   if (pk == WAVEFORM) {
-    warning("WARNING: openHTKFile: HTK WAVEFORM parameter kind not supported: %i\n",pk);
+    warning("WARNING: openHTKFile: HTK WAVEFORM parameter kind %d in not supported in observation file '%s'\n",
+	    pk, fname.c_str());
   }
   else if (pk == IREFC) {
-    warning("WARNING: openHTKFile: HTK IREFC parameter kind not supported: %i\n",pk);
+    warning("WARNING: openHTKFile: HTK IREFC parameter kind %d not supported in observation file '%s'\n",
+	    pk, fname.c_str());
   }
 
   int n_fea;
@@ -203,10 +219,12 @@ openHTKFile2(const string& fname, StreamInfo *f) {
     // (but this is MACHINE DEPENDENT).
     n_fea = samp_size / sizeof(short) ;
     if (n_fea != nints) {
-      error("ERROR: openHTKFile:  Number of features in file (%i) does not match number of ints specified (%i)\n", n_fea,nints);
+      error("ERROR: openHTKFile:  Number of features (%i) does not match number of ints "
+	    "specified (%i) in observation file '%s'\n", n_fea,nints, fname.c_str());
     }
     if(parm_kind != DISCRETE) {
-      warning("WARNING: openHTKFile: Number of floats specified is 0 but the HTK parameter kind is not DISCRETE.\n");
+      warning("WARNING: openHTKFile: Number of floats specified is 0 but the HTK parameter "
+	      "kind is not DISCRETE for observation file '%s'.\n", fname.c_str());
     }
   }
   // otherwise all continuous features
@@ -217,10 +235,12 @@ openHTKFile2(const string& fname, StreamInfo *f) {
       n_fea = samp_size / sizeof(float);
 		
     if (n_fea != nfloats) {
-      error("ERROR: openHTKFile:  Number of features in file (%i) does not match number of floats specified (%i)\n", n_fea,nfloats);
+      error("ERROR: openHTKFile:  Number of features (%i) does not match number of floats "
+	    "specified (%i) in observation file '%s'\n", n_fea,nfloats, fname.c_str());
     }
     if(parm_kind == DISCRETE) {
-      warning("WARNING: openHTKFile:  Number of floats specified (%i) is not 0 but the HTK parameter kind is DISCRETE.\n",nfloats);
+      warning("WARNING: openHTKFile:  Number of floats specified (%i) is not 0 but the HTK "
+	      "parameter kind is DISCRETE for observation file '%s'.\n",nfloats, fname.c_str());
     }
   }
 	  
@@ -234,7 +254,7 @@ openHTKFile2(const string& fname, StreamInfo *f) {
     offset = new float[n_fea]; //B in htk book	  
     float* tmp = new float[n_fea];
     if (fread(tmp,sizeof(float),n_fea,f->curDataFile) != (unsigned short)n_fea) {
-      error("ERROR: openHTKFile: Can't read scales for decompressing.\n");
+      error("ERROR: openHTKFile: Can't read scales for decompressing '%s'.\n", fname.c_str());
     }
     if(bswap)
       swapb_vf32_vf32(n_fea,tmp,scale);
@@ -242,7 +262,7 @@ openHTKFile2(const string& fname, StreamInfo *f) {
       copy_vf32_vf32(n_fea,tmp,scale);
 
     if (fread(tmp,sizeof(float),n_fea,f->curDataFile) != (unsigned short)n_fea) {
-      error("ERROR: openHTKFile: Can't read offsets for decompressing.\n");
+      error("ERROR: openHTKFile: Can't read offsets for decompressing '%s'.\n", fname.c_str());
     }
     if(bswap)
       swapb_vf32_vf32(n_fea,tmp,offset);
@@ -280,22 +300,33 @@ openHTKFile(StreamInfo *f, size_t sentno) {
   DBGFPRINTF((stderr,"In openHTKFile, sentno %d\n",sentno));
   unsigned long htkfile_size = f->getFullFofSize();
   if(sentno < 0 || sentno >= htkfile_size) {
+<<<<<<< local
     error("ERROR: openHTKFile: Requested segment no %li of observation file '%s' but the max "
 	  "num of segments in list of HTK files is %li",sentno,f->fofName,htkfile_size);
+=======
+    error("ERROR: openHTKFile: Requested segment no %li of observation file '%s' "
+	  "but the max num of segments in list of HTK files is %li\n",
+	  sentno, f->fofName, htkfile_size);
+>>>>>>> other
   }
 
   //  assert(sentno >= 0 && sentno < _numSegments);
   if (f->dataNames[sentno] == NULL) {
-    error("ERROR: openHTKFile: Filename is NULL for segment %li\n",f->dataNames[sentno]);
+    error("ERROR: openHTKFile: Filename is NULL for segment %li in observation file '%s'\n",
+	  f->dataNames[sentno], f->fofName);
   }
 
   
   int startFrame, endFrame;
   string fnameStr;
-  parseSentenceSpec(f->dataNames[sentno], &startFrame, &endFrame, fnameStr);
+  parseSentenceSpec(f->dataNames[sentno], &startFrame, &endFrame, fnameStr, f->fofName);
 
   if(f->curDataFilename != fnameStr && f->curDataFile){
+<<<<<<< local
     DBGFPRINTF((stderr,"In openHTKFile, f->curDataFilename  %s fnameStr %s f->curDataFile  %d \n", 
+=======
+    DBGFPRINTF((stderr,"In openHTKFile, f->curDataFilename  %s fnameStr %s f->curDataFile  %d\n", 
+>>>>>>> other
 		f->curDataFilename.c_str(), fnameStr.c_str(), f->curDataFile));
     //the wrong file is open
     fclose(f->curDataFile);
@@ -313,7 +344,11 @@ openHTKFile(StreamInfo *f, size_t sentno) {
     endFrame= htkInfo->n_samples-1;
   
   if(endFrame>=htkInfo->n_samples)
+<<<<<<< local
     error("ERROR: openHTKFile: %s has the last frame at %d, beyond %d, which is the number of frames in file.\n",
+=======
+    error("ERROR: openHTKFile: '%s' has the last frame at %d, beyond %d, which is the number of frames in file.\n",
+>>>>>>> other
 	  f->dataNames[sentno], endFrame, htkInfo->n_samples);	  
   
   f->curNumFrames=endFrame-startFrame+1;
@@ -323,7 +358,7 @@ openHTKFile(StreamInfo *f, size_t sentno) {
   
   //now we seek to the start frame 
   if (gmtk_fseek(f->curDataFile, (gmtk_off_t)(htkInfo->startOfData+startFrame*htkInfo->samp_size), SEEK_SET)) {
-    error("ERROR: openHTKFile: fseek() failed for '%s'", f->dataNames[sentno]);
+    error("ERROR: openHTKFile: fseek() failed for '%s'\n", f->dataNames[sentno]);
   }
   return f->curNumFrames;
 }
@@ -359,7 +394,7 @@ HTKFile::getFrames(unsigned first, unsigned count) {
   }
   const HTKFileInfo *htkInfo = info->curHTKFileInfo;
   if (gmtk_fseek(info->curDataFile, (gmtk_off_t)(htkInfo->startOfData + first * htkInfo->samp_size), SEEK_SET)) {
-    error("HTKFile: fseek() failed for '%s'", info->fofName);
+    error("HTKFile: fseek() failed for '%s'\n", info->fofName);
   }
 
   // HTK files are either all discrete or all continuous
@@ -379,7 +414,8 @@ HTKFile::getFrames(unsigned first, unsigned count) {
     assert(tmpBuf);
     nread = fread(tmpBuf, sizeof(Int16), totalFeatures, info->curDataFile);
     if (nread != totalFeatures) {
-      error("HTKFile: read %u items, expected %u", nread, totalFeatures);
+      error("HTKFile: read %u items, expected %u in observation file '%s'\n",
+	    nread, totalFeatures, info->fofName);
     }
     if (info->swap()) {
       for (unsigned i=0; i<totalFeatures; i+=1) {
@@ -410,7 +446,8 @@ HTKFile::getFrames(unsigned first, unsigned count) {
     float *tmpBuf = (float *)buffer;
     nread = fread(tmpBuf,sizeof(float),totalFeatures, info->curDataFile);
     if (nread != totalFeatures) {
-      error("HTKFile: read %i items, expected %i", nread,totalFeatures);
+      error("HTKFile: read %i items, expected %u from observation file '%s'\n", 
+	    nread, totalFeatures, info->fofName);
     }
     // swap if needed.
     if(info->swap()) {
