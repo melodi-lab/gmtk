@@ -2899,7 +2899,9 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 				      unsigned* numUsableFrames,
 				      bool limitTime,
 				      unsigned* numPartitionsDone,
-				      const bool noE)
+				      const bool noE, 
+				      const bool cliquePosteriorNormalize,
+				      const bool cliquePosteriorUnlog)
 {
 
   FileSource *gomFS;
@@ -2953,7 +2955,7 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 		    inference_it.cur_nm(),
 		    inference_it.cur_part_clique_print_range(),
 		    stdout,
-		    normalizePrintedCliques);
+		    normalizePrintedCliques,normalizePrintedCliques);
   // if the LI separator was turned off, we need to turn it back on.
   if (inference_it.at_first_c() && P1.cliques.size() == 0)
     Co.useLISeparator();
@@ -3014,7 +3016,7 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 			inference_it.cur_nm(),
 			inference_it.cur_part_clique_print_range(),
 			stdout,
-			normalizePrintedCliques);
+			normalizePrintedCliques,normalizePrintedCliques);
     }
     if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
       E1.useLISeparator();
@@ -3239,7 +3241,9 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 				FILE *f,
 				const bool printObserved,
 				regex_t *preg,
-				char *partRangeFilter)
+				char *partRangeFilter,
+				const bool cliquePosteriorNormalize,
+				const bool cliquePosteriorUnlog)
 {
   // Unroll, but do not use the long table array (2nd parameter is
   // false) for allocation, but get back the long table length
@@ -3420,7 +3424,7 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 		    inference_it.cur_nm(),
 		    inference_it.cur_part_clique_print_range(),
 		    stdout,
-		    normalizePrintedCliques);
+		    normalizePrintedCliques,normalizePrintedCliques);
     viterbiScore = true;  // do compute viterbi values in deScatterOutofRoot() (max-product semiring)
   }
 
@@ -3523,7 +3527,7 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 			inference_it.cur_nm(),
 			inference_it.cur_part_clique_print_range(),
 			stdout,
-			normalizePrintedCliques);
+			normalizePrintedCliques,normalizePrintedCliques);
 	viterbiScore = true;  // do compute viterbi values in deScatterOutofRoot() (max-product semiring)
       }
 

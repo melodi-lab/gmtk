@@ -119,7 +119,7 @@ struct PairUnsigned1stElementCompare {
  */
 void
 JunctionTree::printAllCliques(FILE* f,
-			      const bool normalize,
+			      const bool normalize, const bool unlog,
 			      const bool justPrintEntropy,
 			      ObservationFile *pFile,
 			      ObservationFile *cFile,
@@ -141,14 +141,14 @@ JunctionTree::printAllCliques(FILE* f,
 	    .maxCliques[cliqueNum]
 	    .printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
 				.maxCliquesSharedStructure[cliqueNum],
-				pFile,normalize);
+				pFile,normalize, unlog);
 	} else {
 	  sprintf(buff,"Partition %d (P), Clique %d:",ptps_it.pt_i(),cliqueNum); 
 	  partitionTableArray[ptps_it.pt_i()]
 	    .maxCliques[cliqueNum]
 	    .printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
 				.maxCliquesSharedStructure[cliqueNum],
-				f,buff,normalize,justPrintEntropy);
+				f,buff,normalize,unlog,justPrintEntropy);
 	}
       }
       it++;
@@ -169,14 +169,14 @@ JunctionTree::printAllCliques(FILE* f,
 	      maxCliques[cliqueNum].
               printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
 				 .maxCliquesSharedStructure[cliqueNum],
-				 cFile,normalize);
+				 cFile,normalize,unlog);
 	  } else {
 	    sprintf(buff,"Partition %d (C), Clique %d:",currentPartition,cliqueNum); 
 	    partitionTableArray[ptps_it.pt_i()].
 	      maxCliques[cliqueNum].
 	      printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
 				 .maxCliquesSharedStructure[cliqueNum],
-				 f,buff,normalize,justPrintEntropy);
+				 f,buff,normalize,unlog,justPrintEntropy);
 	  }
 	}
 	it++;
@@ -198,14 +198,14 @@ JunctionTree::printAllCliques(FILE* f,
 	    .maxCliques[cliqueNum]
             .printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
 				.maxCliquesSharedStructure[cliqueNum],
-				eFile,normalize);
+				eFile,normalize,unlog);
 	} else {
 	  sprintf(buff,"Partition %d (E), Clique %d:",ptps_it.pt_i(),cliqueNum); 
 	  partitionTableArray[ptps_it.pt_i()]
 	    .maxCliques[cliqueNum]
 	    .printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
 				.maxCliquesSharedStructure[cliqueNum],
-				f,buff,normalize,justPrintEntropy);
+				f,buff,normalize,unlog,justPrintEntropy);
 	}
       }
       it++;
@@ -223,6 +223,7 @@ JunctionTree::printAllCliques(PartitionStructures& ps, // partition
 			      BP_Range* rng,         // range of cliques in partition to print.
 			      FILE* f,               // where to print (ASCII sparse output)
 			      const bool normalize,
+			      const bool unlog,
 			      const bool justPrintEntropy,
 			      ObservationFile *obsFile) // offline observation file output
 {
@@ -235,12 +236,12 @@ JunctionTree::printAllCliques(PartitionStructures& ps, // partition
 	if (obsFile) {
 	  pt.maxCliques[cliqueNum].
             printCliqueEntries(ps.maxCliquesSharedStructure[cliqueNum],
-			       obsFile,normalize);
+			       obsFile,normalize,unlog);
 	} else {
 	  sprintf(buff,"Partition %d (%s), Clique %d:",partNo,nm,cliqueNum); 
 	  pt.maxCliques[cliqueNum].
 	    printCliqueEntries(ps.maxCliquesSharedStructure[cliqueNum],
-			       f,buff,normalize,justPrintEntropy);
+			       f,buff,normalize,unlog,justPrintEntropy);
 	}
       } else {
 	// could print out a warning here.

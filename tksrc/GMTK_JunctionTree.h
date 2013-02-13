@@ -776,7 +776,7 @@ class JunctionTree {
   void printAllCliques(const unsigned part,
 		       PartitionTables* pt,
 		       FILE* f,
-		       const bool normalize,
+		       const bool normalize, const bool unlog,
 		       const bool justPrintEntropy = false,
 		       ObservationFile *posteriorFile = NULL);
   void printAllCliqueProbabilties(const unsigned part,
@@ -791,7 +791,8 @@ class JunctionTree {
 				      const bool runViterbiAlgorithm,
 				      const bool localCliqueNormalization,
 				      ObservationFile *posteriorFile = NULL,
-				      const bool cliquePosteriorNormalization = true);
+				      const bool cliquePosteriorNormalization = true,
+				      const bool cliquePosteriorUnlog = true);
 
   void collectDistributeIslandBase(const unsigned start,
 				   const unsigned end,
@@ -799,7 +800,8 @@ class JunctionTree {
 				   const bool runViterbiAlgorithm,
 				   const bool localCliqueNormalization, 
 				   ObservationFile *posteriorFile = NULL,
-				   const bool cliquePosteriorNormalization = true);
+				   const bool cliquePosteriorNormalization = true,
+				   const bool cliquePosteriorUnlog = true);
 
 public:
 
@@ -1082,7 +1084,7 @@ public:
   // various forms of clique printing
   void setCliquePrintRanges(char *p,char*c,char*e);
   // this one is general.
-  void printAllCliques(FILE* f,const bool normalize,
+  void printAllCliques(FILE* f,const bool normalize, const bool unlog,
 		       const bool justPrintEntropy,
 		       ObservationFile *pFile = NULL,
 		       ObservationFile *cFile = NULL,
@@ -1095,6 +1097,7 @@ public:
 		       BP_Range* rng,
 		       FILE* f,
 		       const bool normalize,
+		       const bool unlog,
 		       const bool justPrintEntropy = false,
 		       ObservationFile *obsFile = NULL);
 
@@ -1142,7 +1145,9 @@ public:
 				unsigned* numUsableFrames = NULL,
 				bool limitTime=false,
 				unsigned *numPartitionsDone = NULL,
-				const bool noE=false);
+				const bool noE=false,
+				const bool cliquePosteriorNormalize = true,
+				const bool cliquePosteriorUnlog = true);
 
   // not-quite-right DBN online filtering
   logpr onlineFixedUnroll(StreamSource *globalObservationMatrx,
@@ -1152,7 +1157,9 @@ public:
 			  FILE *f=stdout,
 			  const bool printObserved=false,
 			  regex_t *preg=NULL,
-			  char *partRangeFilter=NULL);
+			  char *partRangeFilter=NULL,
+			  const bool cliquePosteriorNormalize = true,
+			  const bool cliquePosteriorUnlog = true);
 
   // simple call
   logpr probEvidence(const unsigned numFrames, unsigned& numUsableFrames) {
@@ -1197,7 +1204,8 @@ public:
 			  const bool runViterbiAlgorithm = false,
 			  const bool localCliqueNormalization = false,
 			  ObservationFile *posteriorFile = NULL,
-			  const bool cliquePosteriorNormalization = true);
+			  const bool cliquePosteriorNormalization = true,
+			  const bool cliquePosteriorUnlog = true);
 
 
   // void saveViterbiValuesIsland(oDataStreamFile& vfile);
