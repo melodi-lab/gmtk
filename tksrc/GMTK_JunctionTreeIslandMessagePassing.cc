@@ -650,7 +650,8 @@ JunctionTree::collectDistributeIslandBase(const unsigned start,
 					  const bool runEMalgorithm,
 					  const bool runViterbiAlgorithm,
 					  const bool localCliqueNormalization,
-					  ObservationFile *posteriorFile)
+					  ObservationFile *posteriorFile,
+					  const bool cliquePosteriorNormalization)
 {
 
   // First to through the forward part of the linear section from
@@ -828,7 +829,7 @@ JunctionTree::collectDistributeIslandBase(const unsigned start,
       printAllCliques(part,
 		      islandPartitionTableArray.ptr[part - start],
 		      stdout,
-		      true, false,
+		      cliquePosteriorNormalization, false,
 		      posteriorFile);
     }
 
@@ -881,7 +882,8 @@ JunctionTree::collectDistributeIslandRecurse(const unsigned start,
 					     const bool runEMalgorithm,
 					     const bool runViterbiAlgorithm,
 					     const bool localCliqueNormalization,
-					     ObservationFile *posteriorFile)
+					     ObservationFile *posteriorFile,
+					     const bool cliquePosteriorNormalization)
 {
   // We're doing from [start,end] inclusive, so compute length
   // accordingly
@@ -891,7 +893,8 @@ JunctionTree::collectDistributeIslandRecurse(const unsigned start,
     collectDistributeIslandBase(start,end,runEMalgorithm,
 				runViterbiAlgorithm,
 				localCliqueNormalization,
-				posteriorFile);
+				posteriorFile,
+				cliquePosteriorNormalization);
   } else { 
     const unsigned section_size = len/base;
 
@@ -903,7 +906,8 @@ JunctionTree::collectDistributeIslandRecurse(const unsigned start,
       return collectDistributeIslandBase(start,end,runEMalgorithm,
 					 runViterbiAlgorithm,
 					 localCliqueNormalization,
-					 posteriorFile);
+					 posteriorFile,
+					 cliquePosteriorNormalization);
     }
     // We are now assured there that section_size is at least two.
 
@@ -1018,7 +1022,8 @@ JunctionTree::collectDistributeIslandRecurse(const unsigned start,
 				     runEMalgorithm,
 				     runViterbiAlgorithm,
 				     localCliqueNormalization,
-				     posteriorFile);
+				     posteriorFile,
+				     cliquePosteriorNormalization);
 
       // We need to delete island partition at location
       // section_start+cur_section_size if it is one that we created, since
@@ -1162,7 +1167,8 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
 				      const bool runEMalgorithm,
 				      const bool runViterbiAlgorithm,
 				      const bool localCliqueNormalization,
-				      ObservationFile *posteriorFile)
+				      ObservationFile *posteriorFile,
+				      const bool cliquePosteriorNormalization)
 {
   // cant run both EM and viterbi at the same time.
   assert (!runEMalgorithm || !runViterbiAlgorithm);
@@ -1250,7 +1256,8 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
 				   runEMalgorithm,
 				   runViterbiAlgorithm,
 				   localCliqueNormalization,
-				   posteriorFile);
+				   posteriorFile,
+				   cliquePosteriorNormalization);
     deleteIsland(0);
   } catch (ZeroCliqueException &e) {
     islandsMap.clear();

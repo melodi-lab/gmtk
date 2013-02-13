@@ -479,7 +479,7 @@ main(int argc,char*argv[])
 						   lst,
 						   rootBase, islandRootPower, 
 						   false,false,false,
-						   pCliqueFile);
+						   pCliqueFile, cliquePosteriorNormalize);
 	if (pCliqueFile)
 	  pCliqueFile->endOfSegment();
 
@@ -543,7 +543,8 @@ main(int argc,char*argv[])
 	    pCliqueFile = instantiateWriteFile(cliqueListName, cliqueOutputName, cliquePrintSeparator,
 					       cliquePrintFormat, cliqueSize, 0, cliquePrintSwap);
 	  }
-	  myjt.printAllCliques(stdout,true,cliquePrintOnlyEntropy, pCliqueFile, pCliqueFile, pCliqueFile);
+	  myjt.printAllCliques(stdout,cliquePosteriorNormalize,cliquePrintOnlyEntropy, 
+			       pCliqueFile, pCliqueFile, pCliqueFile);
 	  
 	  if (pCliqueFile)
 	    pCliqueFile->endOfSegment();
