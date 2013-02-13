@@ -1175,6 +1175,7 @@ static char* pPartCliquePrintRange = NULL;
 static char* cPartCliquePrintRange = NULL;
 static char* ePartCliquePrintRange = NULL;
 static bool  cliquePrintOnlyEntropy = false;
+static bool  cliquePosteriorNormalize = false;
 
 static char* cliqueOutputName  = NULL;
 static char* cliqueListName    = NULL;
@@ -1193,6 +1194,7 @@ static bool  cliquePrintSwap       = false;
   Arg("cCliquePrintRange",Arg::Opt,cPartCliquePrintRange,"With CE/DE, print range cliques from C partition."),
   Arg("eCliquePrintRange",Arg::Opt,ePartCliquePrintRange,"With CE/DE, print range cliques from E partition."),
   Arg("cliquePrintOnlyEntropy",Arg::Opt,cliquePrintOnlyEntropy,"With CE/DE, print only clique entropies."),
+  Arg("cliquePosteriorNormalize",Arg::Opt,cliquePosteriorNormalize,"Print normalized probabilities instead of log probabilities."),
 
   Arg("cliqueOutputFileName",Arg::Opt,cliqueOutputName,"Output filename for clique posteriors."),
   Arg("cliqueListFileName",Arg::Opt,cliqueListName,"Output list filename for clique posteriors (HTK, ASCII, Binary)."),

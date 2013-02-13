@@ -6483,10 +6483,12 @@ printf("\n");
   float x;
 
   unsigned skip = cliqueValueMagnitude(sharedStructure, index[0].index);
-//printf(" (skip %u) ", skip);
   for (unsigned i=0; i < skip; i+=1) {
-    f->writeFeature(0);
-//printf(" 0");
+    if (normalize) {
+      f->writeFeature(0);
+    } else {
+      f->writeFeature(LZERO);
+    }
   }
   if (normalize) {
     // then print the exponentiated probability
@@ -6496,16 +6498,17 @@ printf("\n");
     x = cliqueValues.ptr[index[0].index].p.valref();
   }
   f->writeFeature(* (Data32 *)(&x) );
-//printf(" %f", x);
   unsigned prevIdx = 0;
   for (unsigned cvnIdx=1;cvnIdx<numCliqueValuesUsed;cvnIdx++) {
     unsigned cvn = index[cvnIdx].index;
     skip = cliqueValueDistance(sharedStructure, cvn, prevIdx) - 1;
     prevIdx = cvn;
-//printf(" (skip %u) ", skip);
     for (unsigned i=0; i < skip; i+=1) {
-      f->writeFeature(0);
-//printf(" 0");
+      if (normalize) {
+	f->writeFeature(0);
+      } else {
+	f->writeFeature(LZERO);
+      }
     }
     if (normalize) {
       // then print the exponentiated probability
@@ -6515,16 +6518,16 @@ printf("\n");
       x = cliqueValues.ptr[cvn].p.valref();
     }
     f->writeFeature(* (Data32 *)(&x) );
-//printf(" %f", x);
   }
 
   skip = cliqueDomainSize(sharedStructure) - cliqueValueMagnitude(sharedStructure,index[numCliqueValuesUsed-1].index) - 1;
-//printf(" (skip %u) ", skip);
   for (unsigned i=0; i < skip; i+=1) {
-    f->writeFeature(0);
-//printf(" 0");
+    if (normalize) {
+      f->writeFeature(0);
+    } else {
+      f->writeFeature(LZERO);
+    }
   }
-//printf("\n");
 }
 
 
