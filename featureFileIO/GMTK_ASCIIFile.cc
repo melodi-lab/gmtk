@@ -194,7 +194,7 @@ ASCIIFile::writeSegment(Data32 const *segment, unsigned nFrames) {
     fprintf(writeFile, "%u %u", currSegment, frame_no);
     /// Print continuous part of frame /////////////////////////////
     for (unsigned frit=0; frit < _numContinuousFeatures; frit+=1) {
-      fprintf(writeFile, " %f", cont_buf_p[frit]);
+      fprintf(writeFile, " %.8e", cont_buf_p[frit]);
     }
     ///////////////////////////////////////////////////////////////
     
@@ -240,7 +240,7 @@ ASCIIFile::writeFrame(Data32 const *frame) {
 
   /// Print continuous part of frame /////////////////////////////
   for (unsigned frit=0; frit < _numContinuousFeatures; frit+=1) {
-    fprintf(writeFile, " %f", cont_buf_p[frit]);
+    fprintf(writeFile, " %.8e", cont_buf_p[frit]);
   }
   ///////////////////////////////////////////////////////////////
   
@@ -270,7 +270,7 @@ ASCIIFile::writeFeature(Data32 x) {
 
   /// Print continuous part of frame /////////////////////////////
   if (currFeature < _numContinuousFeatures) {
-    fprintf(writeFile, " %f", *(float *)&x);
+    fprintf(writeFile, " %.8e", *(float *)&x);
   } else {
     /// Print discrete part of the frame ///////////////////////////
     fprintf(writeFile, " %u", *(unsigned *)&x);
