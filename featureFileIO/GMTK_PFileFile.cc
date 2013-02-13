@@ -152,6 +152,11 @@ PFileFile::writeSegment(Data32 const *segment, unsigned nFrames) {
 
 
 void 
+PFileFile::setFrame(unsigned frame) {
+}
+
+
+void 
 PFileFile::writeFrame(Data32 const *frame) {
   assert(currentFeature == 0);
   out_stream->write_ftrslabs(1, (float *) frame, (UInt32 *)(frame + _numContinuousFeatures));

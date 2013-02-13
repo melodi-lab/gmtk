@@ -90,6 +90,11 @@ class MergeFile: public ObservationFile {
     assert(0); // can't write to merger
   }
 
+  // Set frame # to write within current segemnt
+  void setFrame(unsigned frame) {
+    assert(0); // can't write to merger
+  }
+
   // Write frame to the file (call endOfSegment after last frame of a segment)
   void writeFrame(Data32 const *frame) {
     assert(0); // can't write to merger

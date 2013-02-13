@@ -136,7 +136,6 @@ JunctionTree::printAllCliques(FILE* f,
     while (!it.at_end()) {
       const unsigned cliqueNum = (unsigned)(*it);
       if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
-	sprintf(buff,"Partition %d (P), Clique %d:",ptps_it.pt_i(),cliqueNum); 
 	if (pFile) {
 	  partitionTableArray[ptps_it.pt_i()]
 	    .maxCliques[cliqueNum]
@@ -144,6 +143,7 @@ JunctionTree::printAllCliques(FILE* f,
 				.maxCliquesSharedStructure[cliqueNum],
 				pFile,normalize);
 	} else {
+	  sprintf(buff,"Partition %d (P), Clique %d:",ptps_it.pt_i(),cliqueNum); 
 	  partitionTableArray[ptps_it.pt_i()]
 	    .maxCliques[cliqueNum]
 	    .printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
@@ -164,7 +164,6 @@ JunctionTree::printAllCliques(FILE* f,
       while (!it.at_end()) {
 	const unsigned cliqueNum = (unsigned)(*it);
 	if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
-	  sprintf(buff,"Partition %d (C), Clique %d:",currentPartition,cliqueNum); 
 	  if (cFile) {
 	    partitionTableArray[ptps_it.pt_i()].
 	      maxCliques[cliqueNum].
@@ -172,6 +171,7 @@ JunctionTree::printAllCliques(FILE* f,
 				 .maxCliquesSharedStructure[cliqueNum],
 				 cFile,normalize);
 	  } else {
+	    sprintf(buff,"Partition %d (C), Clique %d:",currentPartition,cliqueNum); 
 	    partitionTableArray[ptps_it.pt_i()].
 	      maxCliques[cliqueNum].
 	      printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
@@ -193,7 +193,6 @@ JunctionTree::printAllCliques(FILE* f,
     while (!it.at_end()) {
       const unsigned cliqueNum = (unsigned)(*it);
       if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
-	sprintf(buff,"Partition %d (E), Clique %d:",ptps_it.pt_i(),cliqueNum); 
 	if (eFile) {
 	  partitionTableArray[ptps_it.pt_i()]
 	    .maxCliques[cliqueNum]
@@ -201,6 +200,7 @@ JunctionTree::printAllCliques(FILE* f,
 				.maxCliquesSharedStructure[cliqueNum],
 				eFile,normalize);
 	} else {
+	  sprintf(buff,"Partition %d (E), Clique %d:",ptps_it.pt_i(),cliqueNum); 
 	  partitionTableArray[ptps_it.pt_i()]
 	    .maxCliques[cliqueNum]
 	    .printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
@@ -221,10 +221,10 @@ JunctionTree::printAllCliques(PartitionStructures& ps, // partition
 			      const unsigned partNo, // partition Number, for printing/msgs only
 			      const char *const nm,  // partition name
 			      BP_Range* rng,         // range of cliques in partition to print.
-			      FILE* f,               // where to print
+			      FILE* f,               // where to print (ASCII sparse output)
 			      const bool normalize,
 			      const bool justPrintEntropy,
-			      ObservationFile *obsFile)
+			      ObservationFile *obsFile) // offline observation file output
 {
   char buff[2048];
   if (rng != NULL) {
@@ -250,7 +250,7 @@ JunctionTree::printAllCliques(PartitionStructures& ps, // partition
   }
 }
 
-
+#if 0
 void
 JunctionTree::cliquePosteriorSize(unsigned &pSize, unsigned &cSize, unsigned &eSize) {
 
@@ -262,14 +262,18 @@ JunctionTree::cliquePosteriorSize(unsigned &pSize, unsigned &cSize, unsigned &eS
   ptps_it.set_to_first_entry();
 
   if (pPartCliquePrintRange != NULL) {
-    setCurrentInferenceShiftTo(ptps_it.pt_i());
+//    setCurrentInferenceShiftTo(ptps_it.pt_i());
     BP_Range::iterator it = pPartCliquePrintRange->begin();
     while (!it.at_end()) {
       const unsigned cliqueNum = (unsigned)(*it);
       if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
-	pSize += partitionTableArray[ptps_it.pt_i()].maxCliques[cliqueNum].
-                   cliqueDomainSize(partitionStructureArray[ptps_it.ps_i()]
-				    .maxCliquesSharedStructure[cliqueNum]);
+	pSize += 
+#if 0
+partitionTableArray[ptps_it.pt_i()].maxCliques[cliqueNum].cliqueDomainSize(partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum]);
+#else
+	//partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum].origin->
+	MaxCliqueTable::cliqueDomainSize(partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum]);
+#endif
       }
       it++;
     }
@@ -278,15 +282,21 @@ JunctionTree::cliquePosteriorSize(unsigned &pSize, unsigned &cSize, unsigned &eS
 
   if (cPartCliquePrintRange != NULL) {
     if (!ptps_it.at_last_entry()) {
-      int currentPartition = ptps_it.pt_i();
+//      int currentPartition = ptps_it.pt_i();
       BP_Range::iterator it = cPartCliquePrintRange->begin();
-      setCurrentInferenceShiftTo(currentPartition);
+//      setCurrentInferenceShiftTo(currentPartition);
       while (!it.at_end()) {
 	const unsigned cliqueNum = (unsigned)(*it);
 	if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
-	  cSize += partitionTableArray[ptps_it.pt_i()].maxCliques[cliqueNum].
+	  cSize += 
+#if 0
+partitionTableArray[ptps_it.pt_i()].maxCliques[cliqueNum].
 	             cliqueDomainSize(partitionStructureArray[ptps_it.ps_i()]
 				      .maxCliquesSharedStructure[cliqueNum]);
+#else
+	  //partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum].origin->
+	  MaxCliqueTable::cliqueDomainSize(partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum]);
+#endif
 	}
 	it++;
       }
@@ -296,35 +306,93 @@ JunctionTree::cliquePosteriorSize(unsigned &pSize, unsigned &cSize, unsigned &eS
   ptps_it.set_to_last_entry();
 
   if (ePartCliquePrintRange != NULL) {
-    setCurrentInferenceShiftTo(ptps_it.pt_i());
+//    setCurrentInferenceShiftTo(ptps_it.pt_i());
     BP_Range::iterator it = ePartCliquePrintRange->begin();
     while (!it.at_end()) {
       const unsigned cliqueNum = (unsigned)(*it);
       if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
-	eSize += partitionTableArray[ptps_it.pt_i()].maxCliques[cliqueNum].
+	eSize += 
+#if 0
+partitionTableArray[ptps_it.pt_i()].maxCliques[cliqueNum].
                    cliqueDomainSize(partitionStructureArray[ptps_it.ps_i()]
 				    .maxCliquesSharedStructure[cliqueNum]);
+#else
+	//partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum].origin->
+	MaxCliqueTable::cliqueDomainSize(partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum]);
+#endif
       }
       it++;
     }
   }
 }
+#else
+void
+JunctionTree::cliquePosteriorSize(unsigned &pSize, unsigned &cSize, unsigned &eSize) {
 
+  pSize = 0;
+  cSize = 0;
+  eSize = 0;
 
+  assert(partitionStructureArray.size() >= 2);
+  if (pPartCliquePrintRange != NULL) {
+    BP_Range::iterator it = pPartCliquePrintRange->begin();
+    while (!it.at_end()) {
+      const unsigned cliqueNum = (unsigned)(*it);
+      if (cliqueNum < partitionStructureArray[0].maxCliquesSharedStructure.size()) {
+	pSize += 
+	MaxCliqueTable::cliqueDomainSize(partitionStructureArray[0].maxCliquesSharedStructure[cliqueNum]);
+      }
+      it++;
+    }
+  }
+
+  if (cPartCliquePrintRange != NULL) {
+    if (partitionStructureArray.size() > 2) {
+      BP_Range::iterator it = cPartCliquePrintRange->begin();
+      while (!it.at_end()) {
+	const unsigned cliqueNum = (unsigned)(*it);
+	if (cliqueNum < partitionStructureArray[1].maxCliquesSharedStructure.size()) {
+	  cSize += 
+	  MaxCliqueTable::cliqueDomainSize(partitionStructureArray[1].maxCliquesSharedStructure[cliqueNum]);
+	}
+	it++;
+      }
+    }
+  } 
+  if (ePartCliquePrintRange != NULL) {
+    BP_Range::iterator it = ePartCliquePrintRange->begin();
+    while (!it.at_end()) {
+      const unsigned cliqueNum = (unsigned)(*it);
+      size_t Eindex = partitionStructureArray.size() - 1;
+      if (cliqueNum < partitionStructureArray[Eindex].maxCliquesSharedStructure.size()) {
+	eSize += 
+	MaxCliqueTable::cliqueDomainSize(partitionStructureArray[Eindex].maxCliquesSharedStructure[cliqueNum]);
+      }
+      it++;
+    }
+  }
+}
+#endif
+
+#if 0
 void 
 JunctionTree::printCliqueOrders(FILE *f) {
   ptps_iterator ptps_it(*this);
   ptps_it.set_to_first_entry();
 
   if (pPartCliquePrintRange != NULL) {
-    setCurrentInferenceShiftTo(ptps_it.pt_i());
+//    setCurrentInferenceShiftTo(ptps_it.pt_i());
     BP_Range::iterator it = pPartCliquePrintRange->begin();
     while (!it.at_end()) {
       const unsigned cliqueNum = (unsigned)(*it);
       if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
 	fprintf(f, "P partition clique #%u variable order:", cliqueNum);
+#if 0
 	partitionTableArray[ptps_it.pt_i()].maxCliques[cliqueNum].
 	  printCliqueOrder(f, partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum]);
+#else
+	MaxCliqueTable::printCliqueOrder(f, partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum]);
+#endif
       }
       it++;
     }
@@ -333,15 +401,19 @@ JunctionTree::printCliqueOrders(FILE *f) {
 
   if (cPartCliquePrintRange != NULL) {
     if (!ptps_it.at_last_entry()) {
-      int currentPartition = ptps_it.pt_i();
+//      int currentPartition = ptps_it.pt_i();
       BP_Range::iterator it = cPartCliquePrintRange->begin();
-      setCurrentInferenceShiftTo(currentPartition);
+//      setCurrentInferenceShiftTo(currentPartition);
       while (!it.at_end()) {
 	const unsigned cliqueNum = (unsigned)(*it);
 	if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
 	  fprintf(f, "C partition clique #%u variable order:", cliqueNum);
+#if 0
 	  partitionTableArray[ptps_it.pt_i()].maxCliques[cliqueNum].
 	    printCliqueOrder(f, partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum]);
+#else
+	  MaxCliqueTable::printCliqueOrder(f, partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum]);
+#endif
 	}
 	it++;
       }
@@ -351,7 +423,7 @@ JunctionTree::printCliqueOrders(FILE *f) {
   ptps_it.set_to_last_entry();
 
   if (ePartCliquePrintRange != NULL) {
-    setCurrentInferenceShiftTo(ptps_it.pt_i());
+//    setCurrentInferenceShiftTo(ptps_it.pt_i());
     BP_Range::iterator it = ePartCliquePrintRange->begin();
     while (!it.at_end()) {
       const unsigned cliqueNum = (unsigned)(*it);
@@ -359,14 +431,61 @@ JunctionTree::printCliqueOrders(FILE *f) {
 	int numCPrimes = (int)ptps_it.pt_len() - 2;
 	int frameDelta = gm_template.S * fp.numFramesInC() * (numCPrimes - 1);
 	fprintf(f, "E partition clique #%u variable order:", cliqueNum);
+#if 0
 	partitionTableArray[ptps_it.pt_i()].maxCliques[cliqueNum].
-	  printCliqueOrder(f, partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum], -frameDelta);
+	  printCliqueOrder(f, partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum]);
+#else
+	MaxCliqueTable::printCliqueOrder(f, partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum],
+					 -frameDelta);
+#endif
       }
       it++;
     }
   }
 }
+#else
+void 
+JunctionTree::printCliqueOrders(FILE *f) {
+  assert(partitionStructureArray.size() >= 2);
+  if (pPartCliquePrintRange != NULL) {
+    BP_Range::iterator it = pPartCliquePrintRange->begin();
+    while (!it.at_end()) {
+      const unsigned cliqueNum = (unsigned)(*it);
+      if (cliqueNum < partitionStructureArray[0].maxCliquesSharedStructure.size()) {
+	fprintf(f, "P partition clique #%u variable order:", cliqueNum);
+	MaxCliqueTable::printCliqueOrder(f, partitionStructureArray[0].maxCliquesSharedStructure[cliqueNum]);
+      }
+      it++;
+    }
+  }
 
+  if (cPartCliquePrintRange != NULL) {
+    if (partitionStructureArray.size() > 2) {
+      BP_Range::iterator it = cPartCliquePrintRange->begin();
+      while (!it.at_end()) {
+	const unsigned cliqueNum = (unsigned)(*it);
+	if (cliqueNum < partitionStructureArray[1].maxCliquesSharedStructure.size()) {
+	  fprintf(f, "C partition clique #%u variable order:", cliqueNum);
+	  MaxCliqueTable::printCliqueOrder(f, partitionStructureArray[1].maxCliquesSharedStructure[cliqueNum]);
+	}
+	it++;
+      }
+    }
+  } 
+  if (ePartCliquePrintRange != NULL) {
+    BP_Range::iterator it = ePartCliquePrintRange->begin();
+    while (!it.at_end()) {
+      const unsigned cliqueNum = (unsigned)(*it);
+      size_t Eindex = partitionStructureArray.size() - 1;
+      if (cliqueNum < partitionStructureArray[Eindex].maxCliquesSharedStructure.size()) {
+	fprintf(f, "E partition clique #%u variable order:", cliqueNum);
+	MaxCliqueTable::printCliqueOrder(f, partitionStructureArray[Eindex].maxCliquesSharedStructure[cliqueNum]);
+      }
+      it++;
+    }
+  }
+}
+#endif
 
 /*-
  *-----------------------------------------------------------------------
