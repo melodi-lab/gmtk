@@ -777,7 +777,8 @@ class JunctionTree {
 		       PartitionTables* pt,
 		       FILE* f,
 		       const bool normalize,
-		       const bool justPrintEntropy = false);
+		       const bool justPrintEntropy = false,
+		       ObservationFile *posteriorFile = NULL);
   void printAllCliqueProbabilties(const unsigned part,
 				  PartitionTables* pt);
 
@@ -788,12 +789,15 @@ class JunctionTree {
 				      const unsigned linear_section_threshold,
 				      const bool runEMalgorithm,
 				      const bool runViterbiAlgorithm,
-				      const bool localCliqueNormalization);
+				      const bool localCliqueNormalization,
+				      ObservationFile *posteriorFile = NULL);
+
   void collectDistributeIslandBase(const unsigned start,
 				   const unsigned end,
 				   const bool runEMalgorithm,
 				   const bool runViterbiAlgorithm,
-				   const bool localCliqueNormalization);
+				   const bool localCliqueNormalization, 
+				   ObservationFile *posteriorFile = NULL);
 
 public:
 
@@ -1189,7 +1193,8 @@ public:
 			  const float islandRoot = 0.5,
 			  const bool runEMalgorithm = false,
 			  const bool runViterbiAlgorithm = false,
-			  const bool localCliqueNormalization = false);
+			  const bool localCliqueNormalization = false,
+			  ObservationFile *posteriorFile = NULL);
 
 
   // void saveViterbiValuesIsland(oDataStreamFile& vfile);

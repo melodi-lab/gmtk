@@ -105,6 +105,12 @@ class PFileFile: public ObservationFile {
   // Write segment to the file (no need to call endOfSegment)
   void writeSegment(Data32 const *segment, unsigned nFrames);
 
+  // returns true iff file supports random access writes via setFrame()
+  bool seekable() { return false; } // TODO - add seeking to PFile API
+
+  // Set frame # to write within current segemnt
+  void setFrame(unsigned frame);
+
   // Write frame to the file (call endOfSegment after last frame of a segment)
   void writeFrame(Data32 const *frame);
 

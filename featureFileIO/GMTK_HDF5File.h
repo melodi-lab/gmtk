@@ -97,6 +97,11 @@ class HDF5File: public ObservationFile {
     assert(0);
   }
 
+  // Set frame # to write within current segemnt
+  void setFrame(unsigned frame) {
+    assert(0);
+  }
+
   // Write frame to the file (call endOfSegment after last frame of a segment)
   void writeFeature(Data32 x) {
     assert(0);

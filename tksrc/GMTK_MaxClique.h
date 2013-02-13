@@ -1898,9 +1898,9 @@ public:
   int cliqueValueDistance(SharedLocalStructure& sharedStructure, 
 			  unsigned a, unsigned b);
 
-  unsigned cliqueDomainSize(SharedLocalStructure& sharedStructure);
+  static unsigned cliqueDomainSize(SharedLocalStructure& sharedStructure);
 
-  void printCliqueOrder(FILE *f, SharedLocalStructure& sharedStructure, int frameDelta=0);
+  static void printCliqueOrder(FILE *f, SharedLocalStructure& sharedStructure, int frameDelta=0);
 
   unsigned cliqueValueMagnitude(SharedLocalStructure& sharedStructure, unsigned cliqueIndex);
 
