@@ -196,7 +196,7 @@ FlatASCIIFile::FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints,
 
 
 FlatASCIIFile::FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints) 
-  : ObservationFile(NULL, NULL, NULL, NULL),
+  : ObservationFile(NULL, 0, NULL, NULL, NULL, NULL),
     cppIfAscii(false), cppCommandOptions(NULL)
 {
   _numContinuousFeatures = _numLogicalContinuousFeatures = nfloats;

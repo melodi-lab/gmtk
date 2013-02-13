@@ -790,14 +790,16 @@ class JunctionTree {
 				      const bool runEMalgorithm,
 				      const bool runViterbiAlgorithm,
 				      const bool localCliqueNormalization,
-				      ObservationFile *posteriorFile = NULL);
+				      ObservationFile *posteriorFile = NULL,
+				      const bool cliquePosteriorNormalization = true);
 
   void collectDistributeIslandBase(const unsigned start,
 				   const unsigned end,
 				   const bool runEMalgorithm,
 				   const bool runViterbiAlgorithm,
 				   const bool localCliqueNormalization, 
-				   ObservationFile *posteriorFile = NULL);
+				   ObservationFile *posteriorFile = NULL,
+				   const bool cliquePosteriorNormalization = true);
 
 public:
 
@@ -1194,7 +1196,8 @@ public:
 			  const bool runEMalgorithm = false,
 			  const bool runViterbiAlgorithm = false,
 			  const bool localCliqueNormalization = false,
-			  ObservationFile *posteriorFile = NULL);
+			  ObservationFile *posteriorFile = NULL,
+			  const bool cliquePosteriorNormalization = true);
 
 
   // void saveViterbiValuesIsland(oDataStreamFile& vfile);
