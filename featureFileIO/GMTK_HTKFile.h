@@ -42,6 +42,17 @@ class HTKFile: public ObservationFile {
   Data32     *buffer;
   unsigned    bufferSize;     // in Data32's
 
+  // for writable files
+  FILE       *writeFile;      // current segment file
+  FILE       *listFile;       // list of files
+  char const *outputFileName;
+  char const *outputNameSeparatorStr;
+  bool        oswap;
+
+  unsigned    currSegment;
+  unsigned    currFrame;
+  unsigned    currFeature;
+
  public:
 
   HTKFile(char const *name, unsigned nfloats, unsigned nints, unsigned num, 
@@ -50,11 +61,15 @@ class HTKFile: public ObservationFile {
 	  char const *discFeatureRangeStr_=NULL, 
 	  char const *preFrameRangeStr_=NULL, 
 	  char const *segRangeStr_=NULL)  
-    : ObservationFile(contFeatureRangeStr_, 
+    : ObservationFile(name, num, 
+		      contFeatureRangeStr_, 
 		      discFeatureRangeStr_, 
 		      preFrameRangeStr_,
 		      segRangeStr_)
   {
+    listFile = NULL;
+    writeFile = NULL;
+    fileName = name;
     unsigned format = HTK;
     info = new StreamInfo(name, 
 			  contFeatureRangeStr_,
@@ -87,11 +102,65 @@ class HTKFile: public ObservationFile {
     bufferSize = 0;
   }
   
+  HTKFile(char const *listFileName, char const *outputFileName, 
+	  char const *outputNameSeparatorStr, bool swap,
+	  unsigned nfloats, unsigned nints) 
+    : outputFileName(outputFileName), outputNameSeparatorStr(outputNameSeparatorStr), oswap(swap)
+  {
+    info = NULL;
+    buffer = NULL;
+    
+    fileName = listFileName;
+    if(fileName != NULL) {
+      if ((listFile = fopen(fileName, "w")) == NULL) {
+	error("Couldn't open output list (%s) for writing.\n", fileName);
+      }
+    } else {
+      error("ERROR: null HTK list file name\n");
+    }
+    _numContinuousFeatures = nfloats;
+    _numDiscreteFeatures = nints;
+    _numFeatures = nfloats + nints;
+    
+    writeFile = NULL;
+    currSegment = 0;
+    currFrame = 0;
+    currFeature = 0;
+  }
+
   ~HTKFile() {
     if (info)   delete info;
     if (buffer) free(buffer);
+    if (listFile) {
+      if (fclose(listFile)) {
+	error("ERROR: failed to close output list file '%s'\n", fileName);
+      }
+    }
+    if (writeFile) {
+      if (fclose(writeFile)) {
+	error("ERROR: failed to close output file\n");
+      }
+    }
   }
  
+  // Write segment to the file
+  void writeSegment(Data32 const *segment, unsigned nFrames);
+
+  // returns true iff file supports random access writes via setFrame()
+  bool seekable() { return false; } // TODO - implement setFrame and return true
+
+  // Set frame # to write within current segemnt
+  void setFrame(unsigned frame);
+
+  // Write frame to the file (call endOfSegment after last frame of a segment)
+  void writeFrame(Data32 const *frame);
+
+  // Write the next feature in the current frame (call endOfSegment after last frame of a segment)
+  void writeFeature(Data32 x);
+
+  // Call after last writeFrame of a segment
+  void endOfSegment();
+
   // The number of available physical segments.
   unsigned numSegments() {
     assert(info);

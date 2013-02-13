@@ -84,6 +84,32 @@ class MergeFile: public ObservationFile {
     if (buffer) free(buffer);
   }
 
+
+  // Write segment to the file (no need to call endOfSegment)
+  void writeSegment(Data32 const *segment, unsigned nFrames) {
+    assert(0); // can't write to merger
+  }
+
+  // Set frame # to write within current segemnt
+  void setFrame(unsigned frame) {
+    assert(0); // can't write to merger
+  }
+
+  // Write frame to the file (call endOfSegment after last frame of a segment)
+  void writeFrame(Data32 const *frame) {
+    assert(0); // can't write to merger
+  }
+
+  void writeFeature(Data32 x) {
+    assert(0); // can't write to merger
+  }
+
+  // Call after last writeFrame of a segment
+  void endOfSegment() {
+    assert(0); // can't write to merger
+  }
+
+
   // The number of segments after -sdiffact
   unsigned numSegments() { return _numSegments; }
 

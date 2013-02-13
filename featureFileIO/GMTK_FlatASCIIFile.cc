@@ -33,18 +33,23 @@ FlatASCIIFile::FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints,
                              char const *discFeatureRangeStr_, 
                              char const *preFrameRangeStr_, 
                              char const *segRangeStr_)
-  : ObservationFile(contFeatureRangeStr_, 
+  : ObservationFile(name, num,
+		    contFeatureRangeStr_, 
 		    discFeatureRangeStr_, 
 		    preFrameRangeStr_,
 		    segRangeStr_),
     cppIfAscii(cppIfAscii),
-    cppCommandOptions(cppCommandOptions)
+    cppCommandOptions(cppCommandOptions),
+    close(true)
 {
   buffer = NULL;
+  fileName = name;
+  writeFile = NULL;
   if (name == NULL) 	
-    error("FlatASCIIFile: File name is NULL for stream %i",num);	
+    error("FlatASCIIFile: File name is NULL for stream %u\n",num);	
   if (nfloats == 0 && nints == 0)
-    error("FlatASCIIFile: number of float and int features cannot both be zero");
+    error("FlatASCIIFile: observation file %u '%s': number of float and int features cannot both be zero\n",
+	  num, name);
 
   _numContinuousFeatures = nfloats; 
   _numDiscreteFeatures   = nints;
@@ -52,7 +57,7 @@ FlatASCIIFile::FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints,
 
   FILE *f = openCPPableFile(name, cppIfAscii, cppCommandOptions);
   if (!f)
-    error("FlatASCIIFile: couldn't open '%s' for reading", name);
+    error("FlatASCIIFile: couldn't open '%s' for reading\n", name);
 
   unsigned lineNum = 1;
   unsigned totalFrames = 0;
@@ -78,14 +83,14 @@ FlatASCIIFile::FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints,
     int nread = fscanf(f, "%d %d", &currSegment, &currFrame);
     if (nread == EOF) break;
     if (nread != 2) {
-      error("ERROR: FlatASCIIFile: error reading '%s'", name);
+      error("ERROR: FlatASCIIFile: error reading '%s'\n", name);
     }
     if (currSegment != prevSegment) {
       if (currSegment != prevSegment+1)
-	error("ERROR: FlatASCIIFile: expected segment %d, but got %d at line %u in '%s'",
+	error("ERROR: FlatASCIIFile: expected segment %d, but got %d at line %u in '%s'\n",
 	      prevSegment+1, currSegment, lineNum, name);
       if (currFrame != 0) 
-	error("ERROR: FlatASCIIFile: expected frame 0, but got %d at line %u in '%s'",
+	error("ERROR: FlatASCIIFile: expected frame 0, but got %d at line %u in '%s'\n",
 	      currFrame, lineNum, name);
       if (prevSegment > -1) {
 	nFrames.push_back(prevFrame+1); // count of frames in previous segment
@@ -94,7 +99,7 @@ FlatASCIIFile::FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints,
       prevSegment = currSegment;
     } else {
       if (currFrame != prevFrame+1) 
-	error("ERROR: FlatASCIIFile: expected frame %d, but got %d at line %u in '%s'",
+	error("ERROR: FlatASCIIFile: expected frame %d, but got %d at line %u in '%s'\n",
 	      prevFrame+1, currFrame, lineNum, name);
     }
     prevFrame = currFrame;
@@ -110,7 +115,7 @@ FlatASCIIFile::FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints,
 
   buffer = new Data32[totalFrames * _numFeatures];
   if (!buffer) 
-    error("ERROR: FlatASCIIFile: unable to allocate memory for %u frames", totalFrames);
+    error("ERROR: FlatASCIIFile: unable to allocate memory for %u frames\n", totalFrames);
   segment = new Data32 *[nSegments];
   assert(segment);
 
@@ -118,7 +123,7 @@ FlatASCIIFile::FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints,
 
   f = openCPPableFile(name, cppIfAscii, cppCommandOptions);
   if (!f)
-    error("FlatASCIIFile: couldn't open '%s' for reading", name);
+    error("FlatASCIIFile: couldn't open '%s' for reading\n", name);
   
   lineNum = 1;
   // consume CPP special directives if any
@@ -140,21 +145,28 @@ FlatASCIIFile::FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints,
     //printf("seg %u  has %u frames\n",seg,nFrames[seg]);
     for (unsigned frame=0; frame < nFrames[seg]; frame+=1) {
       if (fscanf(f, "%d %d", &currSegment, &currFrame) != 2) {
-	error("ERROR: FlatASCIIFile: error reading '%s'", name);
+	error("ERROR: FlatASCIIFile: error reading '%s'\n", name);
       }
-      assert(currSegment == (int)seg);
-      assert(currFrame == (int)frame);
+      if (currSegment != (int)seg) {
+	error("ERROR: FlatASCIIFile: expected segment %u but got segment %u in observation file '%s'\n",
+	      seg, currSegment, name);
+      }
+      if (currFrame != (int)frame) {
+	error("ERROR: FlatASCIIFile: expected frame %u but got frame %u in observation file '%s'\n",
+	      frame, currFrame, name);
+      }	
+      fDest = (float *) iDest;
       for (unsigned n = 0; n < _numContinuousFeatures; n+=1) {
 	if (fscanf(f,"%e", fDest++) != 1) {
-	  error("ERROR: FlatASCIIFile: couldn't read %u'th float in segment %u, frame %u",
-		n, seg, frame);
+	  error("ERROR: FlatASCIIFile: couldn't read %u'th float in segment %u, frame %u in observation file '%s'\n",
+		n, seg, frame, name);
 	}
       }
       iDest = (Int32 *)fDest;
       for (unsigned n = 0; n < _numDiscreteFeatures; n+=1) {
 	if (fscanf(f,"%d", iDest++) != 1) {
-	error("ERROR: FlatASCIIFile: couldn't read %u'th int in segment %u, frame %u",
-	      n, seg, frame);
+	error("ERROR: FlatASCIIFile: couldn't read %u'th int in segment %u, frame %u in observation file '%s'\n",
+	      n, seg, frame, name);
 	}
       }
       lineNum += 1;
@@ -180,5 +192,103 @@ FlatASCIIFile::FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints,
 
   if (segRangeStr_)
     segRange = new Range(segRangeStr_,0,nSegments);
+}
+
+
+FlatASCIIFile::FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints) 
+  : ObservationFile(NULL, 0, NULL, NULL, NULL, NULL),
+    cppIfAscii(false), cppCommandOptions(NULL)
+{
+  _numContinuousFeatures = _numLogicalContinuousFeatures = nfloats;
+  _numDiscreteFeatures   = _numLogicalDiscreteFeatures   = nints;
+  _numFeatures           = _numLogicalFeatures           = nfloats + nints;
+
+  logicalObservationBuffer = NULL;
+  logicalObsBufSize = 0;
+  buffer = NULL;
+  segment = NULL;
+
+  nSegments = 0;
+  currSegment = 0;
+  currFrame = 0;
+  currFeature = 0;
+
+  if (strcmp(name,"-")) {
+    writeFile = fopen(name, "w+");
+    if (!writeFile) {
+      error("ERROR: failed to open output file '%s'\n", name);
+    }
+    close = true;
+  } else {
+    writeFile = stdout;
+    close = false;
+  }
+  if (!writeFile) {
+    error("FlatASCIIFile: couldn't open '%s' for reading\n", name);
+  }
+}
+
+
+void 
+FlatASCIIFile::writeSegment(Data32 const *segment, unsigned nFrames) {
+  assert(currFeature == 0);
+  for (unsigned f=0; f < nFrames; f+=1) {
+    fprintf(writeFile, "%u %u", currSegment, f);
+    for (unsigned i=0; i < _numContinuousFeatures; i+=1) {
+      fprintf(writeFile, " %.8e", *((float *)segment++));
+    }
+    for (unsigned i=0; i < _numDiscreteFeatures; i+=1) {
+      fprintf(writeFile, " %u", *((unsigned *)segment++));
+    }
+    fprintf(writeFile, "\n");
+  }
+  currSegment += 1;
+  nSegments += 1;
+  currFrame = 0;
+  currFeature = 0;
+}
+
+
+void 
+FlatASCIIFile::writeFrame(Data32 const *frame) {
+  assert(currFeature == 0);
+  fprintf(writeFile, "%u %u", currSegment, currFrame++);
+  for (unsigned i=0; i < _numContinuousFeatures; i+=1) {
+    fprintf(writeFile, " %.8e", *((float *)frame++));
+  }
+  for (unsigned i=0; i < _numDiscreteFeatures; i+=1) {
+    fprintf(writeFile, " %u", *((unsigned *)frame++));
+  }
+  fprintf(writeFile, "\n");
+  currFeature = 0;
+}
+
+
+void 
+FlatASCIIFile::writeFeature(Data32 x) {
+  if (currFeature == 0) {
+    fprintf(writeFile, "%u %u", currSegment, currFrame);
+  }
+  if (currFeature < _numContinuousFeatures) {
+    fprintf(writeFile, " %.8e", *(float *)&x);
+  } else {
+    fprintf(writeFile, " %u", *(unsigned *)&x);
+  }
+  currFeature += 1;
+  if (currFeature == _numFeatures) {
+    fprintf(writeFile, "\n");
+    currFrame += 1;
+    currFeature = 0;
+  }
+}
+
+
+void 
+FlatASCIIFile::endOfSegment() {
+  assert(currFeature == 0);
+  currSegment += 1;
+  currFrame = 0;
+  currFeature = 0;
+  nSegments += 1;
 }
 

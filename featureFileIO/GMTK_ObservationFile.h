@@ -69,6 +69,11 @@ class ObservationFile {
 
  protected:
 
+  char const *fileName;
+
+  char const *observationFileName;
+  unsigned    observationFileNum;
+
   char const *contFeatureRangeStr;  // -frX
   Range      *contFeatureRange;
   char const *discFeatureRangeStr;  // -irX
@@ -93,11 +98,15 @@ class ObservationFile {
 
  public:
 
-  ObservationFile(char const *contFeatureRangeStr_=NULL, 
-		  char const *discFeatureRangeStr_=NULL,
-		  char const *preFrameRangeStr_=NULL, 
-		  char const *segRangeStr_=NULL)
-    : contFeatureRangeStr(contFeatureRangeStr_), contFeatureRange(NULL),
+ ObservationFile(char const *observationFileName=NULL,
+		 unsigned    observationFileNum=0,
+		 char const *contFeatureRangeStr_=NULL, 
+		 char const *discFeatureRangeStr_=NULL,
+		 char const *preFrameRangeStr_=NULL, 
+		 char const *segRangeStr_=NULL)
+    : observationFileName(observationFileName), 
+      observationFileNum(observationFileNum),
+      contFeatureRangeStr(contFeatureRangeStr_), contFeatureRange(NULL),
       discFeatureRangeStr(discFeatureRangeStr_), discFeatureRange(NULL),
       preFrameRangeStr(preFrameRangeStr_), preFrameRange(NULL),
       segRangeStr(segRangeStr_), segRange(NULL), 
@@ -115,6 +124,42 @@ class ObservationFile {
       logicalObservationBuffer = NULL;
     }
   }
+
+
+  // Write segment to the file (no need to call endOfSegment)
+  virtual void writeSegment(Data32 const *segment, unsigned nFrames) {
+    for (unsigned f=0; f < nFrames; f+=1) {
+      writeFrame(segment);
+      segment += numFeatures();
+    }
+    endOfSegment();
+  }
+
+  // returns true iff file supports random access writes via setFrame()
+  virtual bool seekable() { return false; }
+
+  // Mostly for error messages
+  virtual char const *obsFileName() {return observationFileName;}
+  virtual unsigned    obsFileNum()  {return observationFileNum; }
+
+  // Set frame # to write within current segemnt
+  // note this only works for file formats that support random access
+  virtual void setFrame(unsigned frame) = 0;
+
+  // Write frame to the file (call endOfSegment after last frame of a segment)
+  virtual void writeFrame(Data32 const *frame) {
+    unsigned nfea = numFeatures();
+    for (unsigned i=0; i < nfea; i+=1) {
+      writeFeature(frame[i]);
+    }
+  }
+
+  // Write the next feature in the current frame (call endOfSegment after last frame of a segment)
+  virtual void writeFeature(Data32 x) = 0;
+
+  // Call after last writeFrame of a segment
+  virtual void endOfSegment() = 0;
+
 
   // The number of physical (before -srX) segments in the file.
   virtual unsigned numSegments() = 0;
@@ -173,7 +218,11 @@ ObservationFile *
 instantiateFile(unsigned ifmt, char *ofs, unsigned nfs, unsigned nis,
 		unsigned number, bool iswp, bool Cpp_If_Ascii, 
 		char *cppCommandOptions, char const *frs, char const *irs, 
-		char const *prepr, char const *sr);
+		char const *prepr, char const *sr, char const *ifmtStr);
+
+ObservationFile *
+instantiateWriteFile(char *listFileName, char *outputFileName, char *outputNameSeparator,
+		     char *fmt, unsigned nfs, unsigned nis, bool swap);
 
 // Converts the command line -fmtX string to an integer (enum)
 int

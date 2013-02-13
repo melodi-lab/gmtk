@@ -31,7 +31,7 @@ MergeFile::adjustForSdiffact(unsigned fileNum, unsigned seg) {
   } else if (sdiffact[fileNum] == SEGMATCH_ERROR) {
     return seg;
   } else 
-    error("ERROR: MergeFile::adjustForSdiffact: unknown -sdiffact%u %d",
+    error("ERROR: MergeFile::adjustForSdiffact: unknown -sdiffact%u %d\n",
 	  fileNum, sdiffact[fileNum]);
   return 0; // impossilbe to get here, but compiler warns about no return
 }
@@ -42,14 +42,13 @@ MergeFile::adjustForSdiffact(unsigned fileNum, unsigned seg) {
 static
 unsigned
 checkNumFrames(unsigned nFiles, ObservationFile *file[],
-	       unsigned const *fdiffact)
+	       unsigned const *fdiffact, int segment)
 {
   unsigned min_len=file[0]->numLogicalFrames();
   unsigned max_len=min_len;
   if(max_len == 0) 
-    warning("WARNING: MergeFile::openSegment:checkNumFrames:  segment 0 is empty");
+    warning("WARNING: MergeFile::openSegment:checkNumFrames:  segment %d of observation file 1 is empty\n", segment);
 
-  bool got_error    = false;  // an input file insists all files have the same segment length
   bool got_truncate = false;  // an input file will shorten itself to match the others
   bool got_expand   = false;  // an input file will lengthen itself to match the others
 
@@ -70,19 +69,19 @@ checkNumFrames(unsigned nFiles, ObservationFile *file[],
 	got_expand = true;
 	break;
       case FRAMEMATCH_ERROR:
-	got_error = true;
 	break;
       }
-    } else {
-      got_error = true; // FRAMEMATCH_ERROR is the default
     }
-    if(got_truncate && got_expand)
+    if(got_truncate && got_expand && min_len != max_len)
       error("ERROR: MergeFile::openSegment:checkNumFrames: Cannot specify "
-	    "both truncate and expand actions when segments have different lengths."
-            "  Check the supplied and default -fdiff options.\n");
+	    "both truncate (ts, te) and expand (rf, rl, se) actions when "
+	    "segments have different lengths. Observation file %u has %u "
+	    "frames for segment %u, which should be truncated to %u or "
+	    "expanded to %u. Check the supplied and default -fdiffactX options.\n", 
+	    file_no, len, segment, min_len, max_len);
   }
   if(max_len == 0)
-    error("ERROR: MergeFile::openSegment:checkNumFrames:  all segments have zero length");
+    error("ERROR: MergeFile::openSegment:checkNumFrames:  all observation files have zero length for segment %d\n", segment);
   
 #define EXPANSIVE(action,file_no) ( action && (action[file_no] == FRAMEMATCH_REPEAT_FIRST || \
                                                action[file_no] == FRAMEMATCH_REPEAT_LAST  || \
@@ -94,25 +93,24 @@ checkNumFrames(unsigned nFiles, ObservationFile *file[],
   for(unsigned file_no=0; file_no < nFiles; ++file_no) {
     unsigned len=file[file_no]->numLogicalFrames();
     if( got_expand && len < max_len && !EXPANSIVE(fdiffact,file_no) ) {
-      error("ERROR: observation file %u needs an -fdiffact%u that expands", file_no+1, file_no+1);
+      error("ERROR: observation file %u needs an -fdiffact%u that expands (rl, rf, se) as segment %d "
+	    "has %u frames but %u are required\n", file_no+1, file_no+1, segment, len, max_len);
     }
     if ( got_truncate && len > min_len && !CONTRACTIVE(fdiffact,file_no) ) {
-      error("ERROR: observation file %u needs an -fdiffact%u that truncates", file_no+1, file_no+1);
+      error("ERROR: observation file %u needs an -fdiffact%u that truncates (ts, te) as segment %d "
+	    "has %u frames but %u are required\n", file_no+1, file_no+1, segment, len, min_len);
     }
-    if (!fdiffact || fdiffact[file_no] == FRAMEMATCH_ERROR) {
-      if (got_truncate && len != min_len) {
-	error("ERROR: observation file %u needs an -fdiffact%u that truncates", file_no+1, file_no+1);
-      } else if (len != max_len) {
-	error("ERROR: observation file %u needs an -fdiffact%u that expands", file_no+1, file_no+1);
-      }
+    if ( (!fdiffact || fdiffact[file_no] == FRAMEMATCH_ERROR) && min_len != max_len) {
+      error("ERROR: observation file %u needs an -fdiffact%u that truncates (ts, te) or "
+	    "expands (rf, rl, se) as segment %d has %u frames but %u are required "
+	    "(for truncation) or %u frames (for expansion)\n", 
+	    file_no+1, file_no+1, segment, len, min_len, max_len);
     }
   }
   
   if(got_truncate) {
     // Adjust length of segments in the truncate case
     // We don't need to do that in the expand case
-    if(min_len == 0)
-      error("ERROR: MergeFile:openSegment:checkNumFrames: minimum segment length is zero");
     return min_len;
   } else {
     return max_len;  // if there is no expand, it means min_len == max_len
@@ -129,7 +127,7 @@ checkNumSegments(unsigned nFiles, ObservationFile *file[],
   unsigned min_len=file[0]->numLogicalSegments();
   unsigned max_len=min_len;
   if(max_len == 0) 
-    warning("WARNING: MergeFile::checkNumSegments:  file 0 is empty");
+    warning("WARNING: MergeFile::checkNumSegments:  observation file 1 is empty");
 
   bool got_error    = false;
   bool got_truncate = false;
@@ -154,22 +152,27 @@ checkNumSegments(unsigned nFiles, ObservationFile *file[],
     }
   }
   if(max_len == 0)
-    error("ERROR: MergeFile::checkNumSegments:  All files have zero length");
+    error("ERROR: MergeFile::checkNumSegments:  All observation files have zero length\n");
 
   // error checking
   if(min_len != max_len) {
     if(got_error)
-      error("ERROR: MergeFile::checkNumSegments: Files have different # of segments (min=%d, max=%d)",min_len,max_len);
+      error("ERROR: MergeFile::checkNumSegments: Observation files have different # "
+	    "of segments (min=%d, max=%d). Specify one or more -sdiffactX options to "
+	    "adjust # of segments to match.\n",min_len,max_len);
 
     if(got_truncate && got_expand)
-      error("ERROR: MergeFile::checkNumSegments: Cannot specify both truncate and expand actions when using observation files of different lengths");
+      error("ERROR: MergeFile::checkNumSegments: Cannot specify both truncate (te) "
+	    "and expand (rl, wa) actions when using observation files with different "
+	    "# of segments (min=%u, max=%u). Check supplied and default -sdiffactX options\n",
+	    min_len, max_len);
   }
 
   if(got_truncate) {
     // Adjust length of streams in the truncate case
     // We don't need to do that in the expand case
     if(min_len == 0)
-      error("ERROR: MergeFile::checkNumSegments: minimum file length is zero");
+      error("ERROR: MergeFile::checkNumSegments: minimum observation file length is zero segments\n");
     return min_len;
   } else {
     return max_len;  // if there is no expand, it means min_len=max_len
@@ -181,7 +184,7 @@ MergeFile::MergeFile(unsigned nFiles, ObservationFile *file[],
 		     unsigned const *sdiffact, 
 		     unsigned const *fdiffact,
 		     int ftrcombo)
-  : ObservationFile(NULL,NULL,NULL,NULL),
+  : ObservationFile(NULL,0,NULL,NULL,NULL,NULL),
     nFiles(nFiles), ftrcombo(ftrcombo)
 {
   this->sdiffact = sdiffact;
@@ -221,7 +224,10 @@ MergeFile::MergeFile(unsigned nFiles, ObservationFile *file[],
 #if !(ALLOW_VARIABLE_DIM_COMBINED_STREAMS)
     if(ftrcombo!=FTROP_NONE && i > 0) {
       if(file[i]->numLogicalContinuous() != file[i-1]->numLogicalContinuous()) {
-	error("ERROR: MergeFile: When doing feature combination, the number of floats across files has to be the same.\n");
+	error("ERROR: MergeFile: When doing feature combination, the number of "
+	      "floats across observation files has to be the same. File %u has %u "
+	      "floats, while the preceding files have %u. See the -frX option\n",
+	      i, file[i]->numLogicalContinuous(), file[i-1]->numLogicalContinuous());
       }
     }
 #endif
@@ -239,7 +245,7 @@ MergeFile::MergeFile(unsigned nFiles, ObservationFile *file[],
 bool
 MergeFile::openSegment(unsigned seg) {
   if (seg >= _numSegments) {
-    error("ERROR: MergeFile::openSegment: requested segment %u, but only up to %u are available", 
+    error("ERROR: MergeFile::openSegment: requested observation segment %u, but only 0 to %u are available\n", 
 	  seg, _numSegments-1);
   }
   for (unsigned i=0; i < nFiles; i+=1) {
@@ -247,8 +253,10 @@ MergeFile::openSegment(unsigned seg) {
       return false;
   }
   this->segment = seg;
-
-  unsigned numInputFrames = checkNumFrames(nFiles, file, fdiffact);
+  if (this->segment < 0) {
+    error("ERROR: requested segment # %u caused signed integer overflow\n", seg);
+  }
+  unsigned numInputFrames = checkNumFrames(nFiles, file, fdiffact, segment);
   this->_numFrames = numInputFrames;
   // The modular debugging tests require the output to match the output 
   // from before the O(1) observation code, so infoMsg() calls in this
@@ -485,7 +493,7 @@ MergeFile::getFrames(unsigned first, unsigned count) {
 	  }
 	  break;
 	default:
-	  error("ERROR: unknown -comb option value %d", ftrcombo);
+	  error("ERROR: unknown -comb option value %d\n", ftrcombo);
 	}
 	dst += bufStride;
       }
@@ -615,7 +623,7 @@ MergeFile::getFrames(unsigned first, unsigned count) {
       break;
 
     default:
-      error("ERROR: unknown -comb option value %d", ftrcombo);
+      error("ERROR: unknown -comb option value %d\n", ftrcombo);
     }
 #endif
 

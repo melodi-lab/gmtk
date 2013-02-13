@@ -765,7 +765,6 @@ void JunctionTree::createUnpackingMap(
     for (vector<RV*>::iterator it = C.begin(); it != C.end(); ++it) {
       RV *v = getRV(unrolled_rvs, unrolled_map, *it);
       unsigned t = FTOC(NP,NC,(*it)->frame()); // the unmodified C index this variable belongs in
-#if 1
       C_rvs[t].push_back(v);
       Calready[t].insert(v);
       Cprime_rvs[0].push_back(v);
@@ -773,7 +772,6 @@ void JunctionTree::createUnpackingMap(
 	hidC_rvs[t].push_back(v);
 	hidCprime_rvs[0].push_back(v);
       }
-#endif
       infoMsg(IM::Printing, IM::Moderate, "C(%u) C'[0] : %s(%u)\n", FTOC(NP,NC,(*it)->frame()), (*it)->name().c_str(), (*it)->frame());
     }
 
@@ -838,10 +836,23 @@ void JunctionTree::createUnpackingMap(
       // The C'E' transition could occur after unpacking any of the nCprimes C' sets,
       // so Eprime_rvs[i] handles the C'[i]E' transition
       for (unsigned i=0; i < nCprimes; i+=1) {
-	RVInfo::rvParent target(v->name(), NP + (v->frame() + (S * NC * (1 - (Eidx-1))) - NP + S * NC * i) % (NC * nCs));
+	unsigned t = NP + (v->frame() + (S * NC * (1 - (Eidx-1))) - NP + S * NC * i) % (NC * nCs);
+	unsigned originalC = FTOC(NP,NC,t);
+	RVInfo::rvParent target(v->name(), t);
 	RV *rv_shifted = getRV(unrolled_rvs, unrolled_map, target);
 	Eprime_rvs[i].push_back(rv_shifted);
-	if (rv_shifted->hidden()) hidEprime_rvs[i].push_back(rv_shifted);
+	if (rv_shifted->hidden()) 
+	  hidEprime_rvs[i].push_back(rv_shifted);
+	if (Calready[originalC].find(rv_shifted) == Calready[originalC].end()) {
+	  C_rvs[originalC].push_back(rv_shifted);
+	  if (rv_shifted->hidden()) 
+	    hidC_rvs[originalC].push_back(rv_shifted);
+	  Calready[originalC].insert(rv_shifted);
+	  infoMsg(IM::Printing, IM::High, "Eprime_rvs[%u] += %s(%u) -> %s(%u) into C_rvs[%u]\n", 
+		  i, v->name().c_str(), v->frame(), rv_shifted->name().c_str(), rv_shifted->frame(), originalC);
+	} else 
+	  infoMsg(IM::Printing, IM::High, "Eprime_rvs[%u] += %s(%u) -> %s(%u) already in C_rvs[%u]\n", 
+		  i, v->name().c_str(), v->frame(), rv_shifted->name().c_str(), rv_shifted->frame(), originalC);
       }
       infoMsg(IM::Printing, IM::Moderate, "%s(%u) -> C(%u)\n", v->name().c_str(), v->frame()+delta, FTOC(NP,NC,v->frame()+delta));
     }
@@ -896,17 +907,6 @@ void JunctionTree::createUnpackingMap(
 	  }
 	}
     }
-    
-#if 0
-    infoMsg(IM::Printing, IM::Info, "-----------------------------\n");
-    for (vector<RV*>::iterator it = E_rvs.begin();
-	 it != E_rvs.end();
-	 ++it)
-      {
-	RV *v = *it;
-	infoMsg(IM::Printing,IM::Info, "E'    E   : %s(%u)\n", v->name().c_str(), v->frame());
-      }
-#endif
   }
 }
 
@@ -993,10 +993,6 @@ JunctionTree::printSavedViterbiValues(FILE* f,
   unsigned primeIndex = 0;
   unsigned originalIndex = 0;
   unsigned Ccount = 1;
-#if 0
-// unused
-  int previous_C = -1;
-#endif
 
   while (!partRange_it->at_end()) {
 
@@ -1024,12 +1020,23 @@ JunctionTree::printSavedViterbiValues(FILE* f,
       }
     } else if (inference_it.at_e()) {
       primeIndex = (primeIndex + Eprime_rvs.size() - 1) % Eprime_rvs.size(); // primeIndex -= 1 mod nCprimes
+#if 0
+      infoMsg(IM::Printing, IM::High, "@ E' %u -> %u  orig idx %u\n", part, primeIndex, originalIndex);
+#endif
       if (ps.packer.packedLen() > 0) 
 	ps.packer.unpack(E_partition_values.ptr,EprimeValuePtrs[primeIndex].ptr);
       // print completed C partitions
       int targetFrame = fp.numFramesInP() + (int)(part-1) * gm_template.S * fp.numFramesInC();
       for (unsigned i=0; i < gm_template.M; i+=1) { // unpacking E' completes the last M Cs
 	shiftOriginalVarstoPosition(C_rvs[originalIndex], targetFrame, Cpos[originalIndex]);
+#if 0
+	infoMsg(IM::Printing, IM::High, "\n%u: C_rvs[%u] @ %d :", i, originalIndex, Cpos[originalIndex]);
+	if (IM::messageGlb(IM::Printing, IM::High)) {
+	  for (vector<RV*>::iterator it = C_rvs[originalIndex].begin(); it != C_rvs[originalIndex].end(); ++it)
+	    infoMsg(IM::Printing, IM::High, " %s(%u)", (*it)->name().c_str(), (*it)->frame());
+	  infoMsg(IM::Printing, IM::High, "\n\n");
+	}
+#endif
 	if (hidC_rvs[originalIndex].size() > 0 || (printObserved && C_rvs[originalIndex].size() > 0) ) {
 	  fprintf(f,"Ptn-%u C: ", Ccount);
 	  if (printObserved) 
@@ -2892,7 +2899,9 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 				      unsigned* numUsableFrames,
 				      bool limitTime,
 				      unsigned* numPartitionsDone,
-				      const bool noE)
+				      const bool noE, 
+				      const bool cliquePosteriorNormalize,
+				      const bool cliquePosteriorUnlog)
 {
 
   FileSource *gomFS;
@@ -2946,7 +2955,7 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 		    inference_it.cur_nm(),
 		    inference_it.cur_part_clique_print_range(),
 		    stdout,
-		    normalizePrintedCliques);
+		    normalizePrintedCliques,normalizePrintedCliques);
   // if the LI separator was turned off, we need to turn it back on.
   if (inference_it.at_first_c() && P1.cliques.size() == 0)
     Co.useLISeparator();
@@ -3007,7 +3016,7 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 			inference_it.cur_nm(),
 			inference_it.cur_part_clique_print_range(),
 			stdout,
-			normalizePrintedCliques);
+			normalizePrintedCliques,normalizePrintedCliques);
     }
     if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
       E1.useLISeparator();
@@ -3232,7 +3241,9 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 				FILE *f,
 				const bool printObserved,
 				regex_t *preg,
-				char *partRangeFilter)
+				char *partRangeFilter,
+				const bool cliquePosteriorNormalize,
+				const bool cliquePosteriorUnlog)
 {
   // Unroll, but do not use the long table array (2nd parameter is
   // false) for allocation, but get back the long table length
@@ -3413,7 +3424,7 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 		    inference_it.cur_nm(),
 		    inference_it.cur_part_clique_print_range(),
 		    stdout,
-		    normalizePrintedCliques);
+		    normalizePrintedCliques,normalizePrintedCliques);
     viterbiScore = true;  // do compute viterbi values in deScatterOutofRoot() (max-product semiring)
   }
 
@@ -3516,7 +3527,7 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 			inference_it.cur_nm(),
 			inference_it.cur_part_clique_print_range(),
 			stdout,
-			normalizePrintedCliques);
+			normalizePrintedCliques,normalizePrintedCliques);
 	viterbiScore = true;  // do compute viterbi values in deScatterOutofRoot() (max-product semiring)
       }
 
@@ -3585,8 +3596,6 @@ printf("learned T=%u at %u %u\n", globalObservationMatrix->numFrames(), part, in
     
   }
   assert ( inference_it.at_e() );
-
- finished:
 
   logpr rc;
   if (inference_it.at_e()) {

@@ -48,6 +48,11 @@ class PFileFile: public ObservationFile {
 
   unsigned  _numFrames; // # physical frames in current segment
 
+  // for writable files
+  FILE                  *out_fp;
+  OutFtrLabStream_PFile *out_stream;
+  unsigned               currentFeature;
+
  public:
 
   PFileFile(const char *name, unsigned nfloats, unsigned nints,
@@ -57,6 +62,28 @@ class PFileFile: public ObservationFile {
 	    char const *preFrameRangeStr_=NULL, 
 	    char const *segRangeStr_=NULL);
 
+  PFileFile(const char *name, unsigned nfloats, unsigned nints, bool swap, int debug_level=0) 
+    : fileName((char *)name)
+  {
+    buffer = NULL;
+    contBuf = NULL;
+    discBuf = NULL;
+    fileName = NULL;
+    dataFile = NULL;
+    pfile = NULL;
+
+    if (name == NULL)     
+      error("PFileFile: output file name is NULL\n");    
+    if ((out_fp = fopen(name,"wb")) == NULL)
+      error("PFileFile: Can't open '%s' for output", name);
+    out_stream = new OutFtrLabStream_PFile(debug_level,"",out_fp,nfloats,nints,1,swap ? 1 : 0);
+    _numContinuousFeatures = nfloats;
+    _numDiscreteFeatures   = nints;
+    _numFeatures           = nfloats + nints;
+    currentSegment = 0;
+    currentFeature = 0;
+  }
+
   ~PFileFile() {
     if (pfile)    delete pfile;
     if (dataFile) fclose(dataFile);
@@ -64,8 +91,36 @@ class PFileFile: public ObservationFile {
     if (contBuf)  free(contBuf);
     if (discBuf)  free(discBuf);
     if (fileName) free(fileName);
+    if (out_stream) {
+      delete out_stream;
+    }
+    if (out_fp) {
+      if (fclose(out_fp)) {
+	error("Error closing output file '%s'\n", fileName);
+      }
+    }
   }
  
+
+  // Write segment to the file (no need to call endOfSegment)
+  void writeSegment(Data32 const *segment, unsigned nFrames);
+
+  // returns true iff file supports random access writes via setFrame()
+  bool seekable() { return false; } // TODO - add seeking to PFile API
+
+  // Set frame # to write within current segemnt
+  void setFrame(unsigned frame);
+
+  // Write frame to the file (call endOfSegment after last frame of a segment)
+  void writeFrame(Data32 const *frame);
+
+  // Write frame to the file (call endOfSegment after last frame of a segment)
+  void writeFeature(Data32 x);
+
+  // Call after last writeFrame of a segment
+  void endOfSegment();
+
+
   // The number of available segments.
   unsigned numSegments() {
     assert(pfile);

@@ -19,7 +19,11 @@
 #endif
 
 #include <stdio.h>
+#include <errno.h>
+#include <string.h>
+
 #include <string>
+
 using namespace std;
 #include <vector>
 
@@ -45,12 +49,17 @@ class FlatASCIIFile: public ObservationFile {
   vector<unsigned>  nFrames;       // nFrames[i] is the # of frames in the ith segment
   unsigned          nSegments;
   int               currSegment;
+  unsigned          currFrame;     // just used for writeFrame
+  unsigned          currFeature;
 
   bool        cppIfAscii;
   char const *cppCommandOptions;
 
   Data32     *buffer;              // data for current segment
   Data32    **segment;             // the frames for the ith segment start at segment[i]
+
+  FILE       *writeFile;           // for writable files
+  bool        close;
 
  public:
 
@@ -62,15 +71,40 @@ class FlatASCIIFile: public ObservationFile {
 		char const *segRangeStr_=NULL);
 
 
+  // write constructor
+  FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints);
+
   ~FlatASCIIFile() {
     if (buffer) delete [] buffer;
     if (segment) delete [] segment;
+    if (writeFile && close) {
+      if (fclose(writeFile)) {
+	error("ERROR: '%s' %s\n", fileName, strerror(errno));
+      }
+      writeFile = NULL;
+    }
   }
  
   // The number of available segments.
   unsigned numSegments() {return nSegments;}
 
+  // Write segment to the file
+  void writeSegment(Data32 const *segment, unsigned nFrames);
   
+  // Write frame to the file (call endOfSegment after last frame of a segment)
+  void writeFrame(Data32 const *frame);
+
+  // Set frame # to write within current segemnt
+  void setFrame(unsigned frame) {
+    assert(0); // can't write to ASCII files
+  }
+
+  // Write frame to the file (call endOfSegment after last frame of a segment)
+  void writeFeature(Data32 x);
+
+  // Call after last writeFrame of a segment
+  void endOfSegment();
+
   // Set the frame range for the segment
   bool openSegment(unsigned seg) {
     assert(seg < nSegments);

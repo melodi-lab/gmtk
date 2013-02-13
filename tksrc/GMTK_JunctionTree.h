@@ -43,6 +43,7 @@
 #include "GMTK_PartitionStructures.h"
 #include "GMTK_PartitionTables.h"
 #include "GMTK_StreamSource.h"
+#include "GMTK_ObservationFile.h"
 
 #include "debug.h"
 
@@ -775,8 +776,9 @@ class JunctionTree {
   void printAllCliques(const unsigned part,
 		       PartitionTables* pt,
 		       FILE* f,
-		       const bool normalize,
-		       const bool justPrintEntropy = false);
+		       const bool normalize, const bool unlog,
+		       const bool justPrintEntropy = false,
+		       ObservationFile *posteriorFile = NULL);
   void printAllCliqueProbabilties(const unsigned part,
 				  PartitionTables* pt);
 
@@ -787,12 +789,19 @@ class JunctionTree {
 				      const unsigned linear_section_threshold,
 				      const bool runEMalgorithm,
 				      const bool runViterbiAlgorithm,
-				      const bool localCliqueNormalization);
+				      const bool localCliqueNormalization,
+				      ObservationFile *posteriorFile = NULL,
+				      const bool cliquePosteriorNormalization = true,
+				      const bool cliquePosteriorUnlog = true);
+
   void collectDistributeIslandBase(const unsigned start,
 				   const unsigned end,
 				   const bool runEMalgorithm,
 				   const bool runViterbiAlgorithm,
-				   const bool localCliqueNormalization);
+				   const bool localCliqueNormalization, 
+				   ObservationFile *posteriorFile = NULL,
+				   const bool cliquePosteriorNormalization = true,
+				   const bool cliquePosteriorUnlog = true);
 
 public:
 
@@ -1075,8 +1084,11 @@ public:
   // various forms of clique printing
   void setCliquePrintRanges(char *p,char*c,char*e);
   // this one is general.
-  void printAllCliques(FILE* f,const bool normalize,
-		       const bool justPrintEntropy);
+  void printAllCliques(FILE* f,const bool normalize, const bool unlog,
+		       const bool justPrintEntropy,
+		       ObservationFile *pFile = NULL,
+		       ObservationFile *cFile = NULL,
+		       ObservationFile *eFile = NULL);
 
   void printAllCliques(PartitionStructures& ps,
 		       PartitionTables& pt,
@@ -1085,7 +1097,13 @@ public:
 		       BP_Range* rng,
 		       FILE* f,
 		       const bool normalize,
-		       const bool justPrintEntropy = false);
+		       const bool unlog,
+		       const bool justPrintEntropy = false,
+		       ObservationFile *obsFile = NULL);
+
+  void cliquePosteriorSize(unsigned &pSize, unsigned &cSize, unsigned &eSize);
+
+  void printCliqueOrders(FILE *f);
 
   // 
   // Do some last-minute data structure setup to prepare for
@@ -1127,7 +1145,9 @@ public:
 				unsigned* numUsableFrames = NULL,
 				bool limitTime=false,
 				unsigned *numPartitionsDone = NULL,
-				const bool noE=false);
+				const bool noE=false,
+				const bool cliquePosteriorNormalize = true,
+				const bool cliquePosteriorUnlog = true);
 
   // not-quite-right DBN online filtering
   logpr onlineFixedUnroll(StreamSource *globalObservationMatrx,
@@ -1137,7 +1157,9 @@ public:
 			  FILE *f=stdout,
 			  const bool printObserved=false,
 			  regex_t *preg=NULL,
-			  char *partRangeFilter=NULL);
+			  char *partRangeFilter=NULL,
+			  const bool cliquePosteriorNormalize = true,
+			  const bool cliquePosteriorUnlog = true);
 
   // simple call
   logpr probEvidence(const unsigned numFrames, unsigned& numUsableFrames) {
@@ -1180,7 +1202,10 @@ public:
 			  const float islandRoot = 0.5,
 			  const bool runEMalgorithm = false,
 			  const bool runViterbiAlgorithm = false,
-			  const bool localCliqueNormalization = false);
+			  const bool localCliqueNormalization = false,
+			  ObservationFile *posteriorFile = NULL,
+			  const bool cliquePosteriorNormalization = true,
+			  const bool cliquePosteriorUnlog = true);
 
 
   // void saveViterbiValuesIsland(oDataStreamFile& vfile);

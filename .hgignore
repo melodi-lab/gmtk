@@ -50,6 +50,7 @@ featureFileIO/testObsFile
 featureFileIO/testFileSrc
 featureFileIO/testFilter
 featureFileIO/testMerge
+featureFileIO/testFileWriter
 miscSupport/fileParserTest
 miscSupport/testArguments
 miscSupport/testBPRange
