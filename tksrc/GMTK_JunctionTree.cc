@@ -356,9 +356,11 @@ JunctionTree::printCliqueOrders(FILE *f) {
     while (!it.at_end()) {
       const unsigned cliqueNum = (unsigned)(*it);
       if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
+	int numCPrimes = (int)ptps_it.pt_len() - 2;
+	int frameDelta = gm_template.S * fp.numFramesInC() * (numCPrimes - 1);
 	fprintf(f, "E partition clique #%u variable order:", cliqueNum);
 	partitionTableArray[ptps_it.pt_i()].maxCliques[cliqueNum].
-	  printCliqueOrder(f, partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum]);
+	  printCliqueOrder(f, partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum], -frameDelta);
       }
       it++;
     }

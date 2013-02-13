@@ -69,7 +69,12 @@ class ObservationFile {
 
  protected:
 
+<<<<<<< local
   char const *fileName;
+=======
+  char const *observationFileName;
+  unsigned    observationFileNum;
+>>>>>>> other
 
   char const *contFeatureRangeStr;  // -frX
   Range      *contFeatureRange;
@@ -95,11 +100,23 @@ class ObservationFile {
 
  public:
 
+<<<<<<< local
   ObservationFile(char const *contFeatureRangeStr_=NULL, 
 		  char const *discFeatureRangeStr_=NULL,
 		  char const *preFrameRangeStr_=NULL, 
 		  char const *segRangeStr_=NULL)
     : fileName(NULL), contFeatureRangeStr(contFeatureRangeStr_), contFeatureRange(NULL),
+=======
+ ObservationFile(char const *observationFileName=NULL,
+		 unsigned    observationFileNum=0,
+		 char const *contFeatureRangeStr_=NULL, 
+		 char const *discFeatureRangeStr_=NULL,
+		 char const *preFrameRangeStr_=NULL, 
+		 char const *segRangeStr_=NULL)
+    : observationFileName(observationFileName), 
+      observationFileNum(observationFileNum),
+      contFeatureRangeStr(contFeatureRangeStr_), contFeatureRange(NULL),
+>>>>>>> other
       discFeatureRangeStr(discFeatureRangeStr_), discFeatureRange(NULL),
       preFrameRangeStr(preFrameRangeStr_), preFrameRange(NULL),
       segRangeStr(segRangeStr_), segRange(NULL), 
@@ -118,6 +135,7 @@ class ObservationFile {
     }
   }
 
+<<<<<<< local
   // Write segment to the file (no need to call endOfSegment)
   virtual void writeSegment(Data32 const *segment, unsigned nFrames) {
     for (unsigned f=0; f < nFrames; f+=1) {
@@ -126,7 +144,13 @@ class ObservationFile {
     }
     endOfSegment();
   }
+=======
+  // Mostly for error messages
+  virtual char const *obsFileName() {return observationFileName;}
+  virtual unsigned    obsFileNum()  {return observationFileNum; }
+>>>>>>> other
 
+<<<<<<< local
   // Write frame to the file (call endOfSegment after last frame of a segment)
   virtual void writeFrame(Data32 const *frame) {
     unsigned nfea = numFeatures();
@@ -141,6 +165,8 @@ class ObservationFile {
   // Call after last writeFrame of a segment
   virtual void endOfSegment() = 0;
 
+=======
+>>>>>>> other
   // The number of physical (before -srX) segments in the file.
   virtual unsigned numSegments() = 0;
 

@@ -61,7 +61,8 @@ class HTKFile: public ObservationFile {
 	  char const *discFeatureRangeStr_=NULL, 
 	  char const *preFrameRangeStr_=NULL, 
 	  char const *segRangeStr_=NULL)  
-    : ObservationFile(contFeatureRangeStr_, 
+    : ObservationFile(name, num, 
+		      contFeatureRangeStr_, 
 		      discFeatureRangeStr_, 
 		      preFrameRangeStr_,
 		      segRangeStr_)

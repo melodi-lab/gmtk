@@ -183,7 +183,7 @@ protected:
 		      string leafNodeVal 
 		      );
 
-    leafNodeValType evaluateFormula(RngDecisionTree &dt,
+    leafNodeValType evaluateFormula(RngDecisionTree *dt,
 				    const vector< RV* >& variables,
 				    const RV* rv = NULL);
 

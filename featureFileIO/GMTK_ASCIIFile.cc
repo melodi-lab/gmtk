@@ -33,7 +33,8 @@ ASCIIFile::ASCIIFile(const char *name, unsigned nfloats, unsigned nints,
 		     char const *discFeatureRangeStr_, 
 		     char const *preFrameRangeStr_, 
 		     char const *segRangeStr_)
-  : ObservationFile(contFeatureRangeStr_, 
+  : ObservationFile(name, num,
+		    contFeatureRangeStr_, 
 		    discFeatureRangeStr_, 
 		    preFrameRangeStr_,
 		    segRangeStr_),
@@ -43,9 +44,9 @@ ASCIIFile::ASCIIFile(const char *name, unsigned nfloats, unsigned nints,
   buffer = NULL;
   bufferSize = 0;
   if (name == NULL) 	
-    error("ASCIIFile: File name is NULL for stream %i\n",num);	
+    error("ASCIIFile: File name is NULL for observation file %u\n",num);	
   if (nfloats == 0 && nints == 0)
-    error("ASCIIFile: number of float and int features cannot both be zero");
+    error("ASCIIFile: observation file %u '%s': number of float and int features cannot both be zero\n", num, name);
 
   // local copy of file name
   fofName = new char[strlen(name)+1];
@@ -70,7 +71,7 @@ ASCIIFile::ASCIIFile(const char *name, unsigned nfloats, unsigned nints,
 
   fofFile = openCPPableFile(fofName, cppIfAscii, cppCommandOptions);
   if (!fofFile)
-    error("ASCIIFile: couldn't open '%s' for reading\n", fofName);
+    error("ASCIIFile: observation file %u: couldn't open '%s' for reading\n", num, fofName);
 
   // for some reason this asserts while the following doesn't
   // assert(numFileNames == readFof(fofFile));
@@ -96,7 +97,8 @@ ASCIIFile::openSegment(unsigned seg) {
   FILE *curDataFile = NULL;
 
   if (fname == NULL) {
-    warning("ASCIIFile::openSegment: Filename is NULL for segment %u\n",seg);
+    warning("ASCIIFile::openSegment: observation file %u '%s': filename is NULL for segment %u\n",
+	    observationFileNum, observationFileName, seg);
     return false;
   }
 
@@ -154,12 +156,14 @@ ASCIIFile::openSegment(unsigned seg) {
     lineNum++;
     for (unsigned n = 0; n < _numContinuousFeatures; n+=1) {
       if (fscanf(curDataFile,"%e", (float *)(dest++)) != 1) {
-	error("ERROR: ASCIIFile::openSegment: couldn't read %u'th item in frame %u\n",n,s);
+	error("ERROR: ASCIIFile::openSegment: observation file %u '%s' segment %u: couldn't read %u'th item in frame %u\n",
+	      observationFileNum, observationFileName, seg, n, s);
       }
     }
     for (unsigned n = 0; n < _numDiscreteFeatures; n+=1) {
       if (fscanf(curDataFile,"%d", (Int32 *)(dest++)) != 1) {
-	error("ERROR: ASCIIFile::openSegment: couldn't read %u'th item in frame %u\n",n,s);
+	error("ERROR: ASCIIFile::openSegment: observation file %u '%s' segment %u: couldn't read %u'th item in frame %u\n",
+	      observationFileNum, observationFileName, seg, _numContinuousFeatures+n, s);
       }
     }
   }
