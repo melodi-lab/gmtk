@@ -399,6 +399,11 @@ main(int argc,char*argv[])
   struct rusage rue; /* ending time */
   getrusage(RUSAGE_SELF,&rus);
 
+  ObservationFile *pCliqueFile = NULL;
+#if 0
+  ObservationFile *cCliqueFile = NULL;
+  ObservationFile *eCliqueFile = NULL;
+#endif
 
   Range::iterator* dcdrng_it = new Range::iterator(dcdrng->begin());
   while (!dcdrng_it->at_end()) {
@@ -430,6 +435,41 @@ main(int argc,char*argv[])
 	       probe.val()/numFrames,
 	       probe.val()/numUsableFrames);
       } else if (island) {
+
+	if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange) {
+	  
+	  if (cliqueOutputName && !pCliqueFile) {
+	    unsigned totalNumberPartitions;
+	    (void) myjt.unroll(numFrames,JunctionTree::ZeroTable,&totalNumberPartitions);
+	    unsigned pSize, cSize, eSize;
+	    myjt.cliquePosteriorSize(pSize, cSize, eSize);
+	    unsigned cliqueSize = (pSize > cSize) ? pSize : cSize;
+	    cliqueSize = (cliqueSize > eSize) ? cliqueSize : eSize;
+	    
+            if (pPartCliquePrintRange && pSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output. Cliques "
+		    "selected in the prolog, chunk, and epilog must all have the "
+		    "same total domain size.\n");
+	    }
+            if (cPartCliquePrintRange && cSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output. Cliques "
+		    "selected in the prolog, chunk, and epilog must all have the "
+		    "same total domain size.\n");
+	    }
+            if (ePartCliquePrintRange && eSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output. Cliques "
+		    "selected in the prolog, chunk, and epilog must all have the "
+		    "same total domain size.\n");
+	    }
+	    myjt.printCliqueOrders(stdout);
+	    pCliqueFile = instantiateWriteFile(cliqueListName, cliqueOutputName, cliquePrintSeparator,
+					       cliquePrintFormat, cliqueSize, 0, cliquePrintSwap);
+	    if (!pCliqueFile->seekable()) {
+	      error("ERROR: -island T requires a -cliquePrintFormat that supports random access "
+		    "writes (htk, binary, hdf5, or pfile)\n");
+	    }
+	  }
+	}
 	unsigned numUsableFrames;
 
 	infoMsg(IM::Max,"Beginning call to island collect/distribute evidence.\n");
@@ -437,7 +477,11 @@ main(int argc,char*argv[])
 						   numUsableFrames,
 						   base,
 						   lst,
-						   rootBase, islandRootPower);
+						   rootBase, islandRootPower, 
+						   false,false,false,
+						   pCliqueFile, cliquePosteriorNormalize, cliquePosteriorUnlog);
+	if (pCliqueFile)
+	  pCliqueFile->endOfSegment();
 
 	printf("Segment %d, after island Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
 	       segment,
@@ -448,7 +492,7 @@ main(int argc,char*argv[])
       } else {
 
 	infoMsg(IM::Max,"Beginning call to unroll\n");
-	unsigned numUsableFrames = myjt.unroll(numFrames);
+        unsigned numUsableFrames = myjt.unroll(numFrames);
 	gomFS->justifySegment(numUsableFrames);
 
 	infoMsg(IM::Low,"Collecting Evidence\n");
@@ -478,8 +522,39 @@ main(int argc,char*argv[])
 		   probe.val()/numUsableFrames);
 	  }
 	}
-	if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange)
-	  myjt.printAllCliques(stdout,true,cliquePrintOnlyEntropy);
+	if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange) {
+
+	  if (cliqueOutputName && !pCliqueFile) {
+	    unsigned pSize, cSize, eSize;
+	    myjt.cliquePosteriorSize(pSize, cSize, eSize);
+	    unsigned cliqueSize = (pSize > cSize) ? pSize : cSize;
+	             cliqueSize = (cliqueSize > eSize) ? cliqueSize : eSize;
+	    
+            if (pPartCliquePrintRange && pSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output\n");
+	    }
+            if (cPartCliquePrintRange && cSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output\n");
+	    }
+            if (ePartCliquePrintRange && eSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output\n");
+	    }
+	    myjt.printCliqueOrders(stdout);
+	    pCliqueFile = instantiateWriteFile(cliqueListName, cliqueOutputName, cliquePrintSeparator,
+					       cliquePrintFormat, cliqueSize, 0, cliquePrintSwap);
+	  }
+	  myjt.printAllCliques(stdout,cliquePosteriorNormalize,cliquePosteriorUnlog,cliquePrintOnlyEntropy, 
+			       pCliqueFile, pCliqueFile, pCliqueFile);
+	  
+	  if (pCliqueFile)
+	    pCliqueFile->endOfSegment();
+#if 0
+	  if (cCliqueFile)
+	    cCliqueFile->endOfSegment();
+	  if (eCliqueFile)
+	    eCliqueFile->endOfSegment();
+#endif
+	}
       }
     } catch (ZeroCliqueException &e) {
       warning("Segment %d aborted due to zero clique\n", segment);
@@ -487,6 +562,11 @@ main(int argc,char*argv[])
     (*dcdrng_it)++;
   }
   
+  if (pCliqueFile) delete pCliqueFile;
+#if 0
+  if (cCliqueFile) delete cCliqueFile;
+  if (eCliqueFile) delete eCliqueFile;
+#endif
   getrusage(RUSAGE_SELF,&rue);
   if (IM::messageGlb(IM::Default)) { 
     infoMsg(IM::Default,"### Final time (seconds) just for inference: ");

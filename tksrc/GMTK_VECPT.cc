@@ -479,7 +479,7 @@ VECPT::read(iDataStreamFile& is)
       }
       ObservationFile *obsFile = 
 	instantiateFile((unsigned)ifmt, (char *)obsFileName.c_str(), nfs, nis,
-			0, iswp, false, NULL, NULL, NULL, NULL,	sentRange);
+			0, iswp, false, NULL, NULL, NULL, NULL,	sentRange, fmt.c_str());
 
       Filter *preFilt = instantiateFilters(preTransforms, obsFile->numLogicalContinuous(),
                                                           obsFile->numLogicalDiscrete());

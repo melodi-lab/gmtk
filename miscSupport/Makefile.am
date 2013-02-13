@@ -95,8 +95,10 @@ testError \
 testBPRange \
 testArguments testLogp testRand testsArray testcArray testmArray \
 fileParserTest testHashMapList testHashTree testVHashMap testSHashSet \
-testSHashMap testVSHashMap testRLS testLMS testLZERO
+testSHashMap testVSHashMap testRLS testLMS testLZERO testQSort
 # testVHashSet 
+
+testQSort_SOURCES = testQSort.cc
 
 # testDebug      doesn't compile?
 testError_SOURCES = error.cc error.h

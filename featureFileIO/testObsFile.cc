@@ -81,5 +81,6 @@ main(int argc, char *argv[]) {
 
   FileSource *globalObservationMatrix;
   globalObservationMatrix = instantiateFileSource();
+  globalObservationMatrix->numSegments();
   exit(0);
 }

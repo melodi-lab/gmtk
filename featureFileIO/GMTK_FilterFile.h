@@ -50,9 +50,12 @@ class FilterFile: public ObservationFile {
 	     char const *contFeatureRangeStr = NULL,
 	     char const *discFeatureRangeStr = NULL,
 	     char const *postpr = NULL)
-    : ObservationFile(contFeatureRangeStr, discFeatureRangeStr, postpr),
+    : ObservationFile(NULL, 0, contFeatureRangeStr, discFeatureRangeStr, postpr),
       filter(filter), file(file)
   {
+    assert(file);
+    observationFileName = file->obsFileName();
+    observationFileNum  = file->obsFileNum();
     subMatrixDescriptor wholeSegment(0U, 1U, 0U, 0U,
 				     file->numLogicalContinuous(),
 				     file->numLogicalDiscrete(), 1U, 0U, 0U);
@@ -82,6 +85,29 @@ class FilterFile: public ObservationFile {
     if (file) delete file;
   }
 
+  // Write segment to the file (no need to call endOfSegment)
+  void writeSegment(Data32 const *segment, unsigned nFrames) {
+    assert(0); // can't write to filters
+  }
+
+  // Set frame # to write within current segemnt
+  void setFrame(unsigned frame) {
+    assert(0); // can't write to filters
+  }
+
+  // Write frame to the file (call endOfSegment after last frame of a segment)
+  void writeFrame(Data32 const *frame) {
+    assert(0); // can't write to filters
+  }
+
+  void writeFeature(Data32 x) {
+    assert(0); // can't write to filters
+  }
+
+  // Call after last writeFrame of a segment
+  void endOfSegment() {
+    assert(0); // can't write to filters
+  }
 
   // We have to use the ObservationFile's logical methods 
   // so that it can handle -srX, -frX, -irX, -preprX

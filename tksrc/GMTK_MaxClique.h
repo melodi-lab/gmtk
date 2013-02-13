@@ -71,6 +71,7 @@
 #include "GMTK_PackCliqueValue.h"
 #include "GMTK_SpaceManager.h"
 #include "GMTK_FactorInfo.h"
+#include "GMTK_ObservationFile.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -1888,9 +1889,63 @@ public:
   // print all clique values and prob to given file.
   void printCliqueEntries(MaxCliqueTable::SharedLocalStructure&,
 			  FILE*f,const char*str=NULL,
-			  const bool normalize = false,
+			  const bool normalize = true, const bool unlog = true,
 			  const bool justPrintEntropy = false);
   
+  void printCliqueEntries(MaxCliqueTable::SharedLocalStructure&,
+			  ObservationFile *f, const bool normalize = true, 
+			  const bool unlog = true);
+  
+  int cliqueValueDistance(SharedLocalStructure& sharedStructure, 
+			  unsigned a, unsigned b);
+
+  static unsigned cliqueDomainSize(SharedLocalStructure& sharedStructure);
+
+  static void printCliqueOrder(FILE *f, SharedLocalStructure& sharedStructure, int frameDelta=0);
+
+  unsigned cliqueValueMagnitude(SharedLocalStructure& sharedStructure, unsigned cliqueIndex);
+
+
+  class CliqueValueIndex {
+
+    SharedLocalStructure *sharedStructure;
+    MaxCliqueTable       *table;
+
+  public:
+    unsigned index;
+
+    CliqueValueIndex(SharedLocalStructure *sharedStructure, 
+		     MaxCliqueTable       *table,
+		     unsigned index)
+      : sharedStructure(sharedStructure), table(table), index(index)
+    {}
+
+    CliqueValueIndex() 
+      : sharedStructure(NULL), table(NULL), index(0)
+    {}
+ 
+    bool operator<(const CliqueValueIndex& rhs) const {
+      return table->cliqueValueDistance(*sharedStructure, index, rhs.index) < 0;
+    }
+
+    bool operator>(const CliqueValueIndex& rhs) const {
+      return table->cliqueValueDistance(*sharedStructure, index, rhs.index) > 0;
+    }
+
+    bool operator==(const CliqueValueIndex& rhs) const {
+      return table->cliqueValueDistance(*sharedStructure, index, rhs.index) == 0;
+    }
+
+    CliqueValueIndex& operator=(CliqueValueIndex rhs) {
+      this->sharedStructure = rhs.sharedStructure;
+      this->table = rhs.table;
+      this->index = rhs.index;
+      return *this;
+    }
+    
+  };
+
+
   // EM accumulation support.
   void emIncrement(MaxCliqueTable::SharedLocalStructure&,
 		   const logpr probE, 

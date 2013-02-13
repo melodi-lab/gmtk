@@ -917,6 +917,87 @@ OutFtrLabStream_PFile::write_ftrslabs(size_t frames, const float* ftrs,
     }
 }
 
+
+void
+OutFtrLabStream_PFile::write_ftr(unsigned currFeature, float x)
+{
+  size_t bytes_in_buffer;
+  
+  // Note we convert all data to big endian when we write it.
+  
+  int ec;			// Return code.
+  
+  if (bswap) {
+    x = swapb_f32_f32(x);
+  }
+  if (currFeature == 0) { // start of frame
+    if (bswap) {
+      buffer[0].l = swapb_i32_i32(current_sent);
+      buffer[1].l = swapb_i32_i32(current_frame);
+    } else {
+      buffer[0].l = current_sent;
+      buffer[1].l = current_frame;
+    }
+    buffer[2].f = x;
+    bytes_in_buffer = sizeof(PFile_Val) * 3;
+  } else {                // continue frame
+    buffer[0].f = x;
+    bytes_in_buffer = sizeof(PFile_Val);
+  }
+  
+  ec = fwrite((char*) buffer, bytes_in_buffer, 1, file);
+  if (ec!=1) {
+      error("Failed to write frame to PFile '%s' - only written %i items",
+	    filename,ec); 
+  }
+  currFeature += 1;
+  if (currFeature == num_ftr_cols + num_lab_cols) { // end of frame
+    current_frame++;
+    current_row++;
+  }
+}
+
+
+void
+OutFtrLabStream_PFile::write_lab(unsigned currFeature, UInt32 x)
+{
+  size_t bytes_in_buffer;
+  
+  // Note we convert all data to big endian when we write it.
+  
+  int ec;			// Return code.
+  
+  if (bswap) {
+    x = swapb_i32_i32(x);
+  }
+  if (currFeature == 0) { // start of frame
+    if (bswap) {
+      buffer[0].l = swapb_i32_i32(current_sent);
+      buffer[1].l = swapb_i32_i32(current_frame);
+    } else {
+      buffer[0].l = current_sent;
+      buffer[1].l = current_frame;
+    }
+    buffer[2].l = x;
+    bytes_in_buffer = sizeof(PFile_Val) * 3;
+  } else {                // continue frame
+    buffer[0].l = x;
+    bytes_in_buffer = sizeof(PFile_Val);
+  }
+  
+  ec = fwrite((char*) buffer, bytes_in_buffer, 1, file);
+  if (ec!=1) {
+      error("Failed to write frame to PFile '%s' - only written %i items",
+	    filename,ec); 
+  }
+  currFeature += 1;
+  if (currFeature == num_ftr_cols + num_lab_cols) { // end of frame
+    current_frame++;
+    current_row++;
+  }
+}
+
+
 void
 OutFtrLabStream_PFile::doneseg(SegID)
 {

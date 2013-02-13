@@ -42,7 +42,7 @@ using namespace std;
 
 void 
 parseSentenceSpec(const string& sentLoc, int* startFrame, int* endFrame, 
-		  string& fnameStr) 
+		  string& fnameStr, char *fofName) 
 {
   size_t fNameLen;
   *startFrame=0, *endFrame=-1; //these are the right values if the frame range is not specified
@@ -50,12 +50,14 @@ parseSentenceSpec(const string& sentLoc, int* startFrame, int* endFrame,
     //have a subrange spec
     fNameLen=sentLoc.find_last_of('[');
     if (fNameLen==string::npos){
-      error("ERROR: parseSentenceSpec: '%s' is an invalid sentence location.  Must be of the form 'filename[startFrame:endFrame]'",sentLoc.c_str());		  
+      error("ERROR: parseSentenceSpec: '%s' is an invalid sentence location in observation file '%s'.  "
+	    "Must be of the form 'filename[startFrame:endFrame]'\n",sentLoc.c_str(), fofName);
     }
 
     string range= sentLoc.substr(fNameLen+1,sentLoc.length()-2-fNameLen);
     if (sscanf(range.c_str(),"%d:%d",startFrame,endFrame) != 2)
-      error("ERROR: parseSentenceSpec: '%s' is an invalid sentence location.  Must be of the form 'filename[startFrame:endFrame]'",sentLoc.c_str());		  
+      error("ERROR: parseSentenceSpec: '%s' is an invalid sentence location in observation file '%s'.  "
+	    "Must be of the form 'filename[startFrame:endFrame]'\n",sentLoc.c_str(), fofName);		  
     
     if(*endFrame<*startFrame)
       error("ERROR: parseSentenceSpec: %s has the last frame smaller than first frame.\n",sentLoc.c_str());	  
@@ -130,25 +132,25 @@ openHTKFile2(const string& fname, StreamInfo *f) {
   //printf ("call openHTKFile2(%s)\n",fname.c_str());
 
   if ((f->curDataFile = fopen(fname.c_str(),"rb")) == NULL) {
-    error("ERROR: openHTKFile: Can't open '%s' for input\n",fname.c_str());
+    error("ERROR: openHTKFile: Can't open observation file '%s' for input\n", fname.c_str());
   }
 
   if (fread(&tmp1,sizeof(Int32),1,f->curDataFile) != 1) {
-    error("ERROR: openHTKFile: Can't read number of samples\n");
+    error("ERROR: openHTKFile: Can't read number of samples in observation file '%s'\n", fname.c_str());
   }
 
 
   if (fread((Int32 *)&tmp2,sizeof(Int32),1,f->curDataFile) != 1) {
-    error("ERROR: openHTKFile: Can't read sample period\n");
+    error("ERROR: openHTKFile: Can't read sample period from observation file '%s'\n", fname.c_str());
   }
 
   if (fread((short *)&stmp1,sizeof(short),1,f->curDataFile) != 1) {
-    error("ERROR: openHTKFile: Can't read sample size\n");
+    error("ERROR: openHTKFile: Can't read sample size from observation file '%s'\n", fname.c_str());
     return 0;
   }
 
   if (fread(&stmp2,sizeof(short),1,f->curDataFile) != 1) {
-    error("ERROR: openHTKFile: Can't read parm kind\n");
+    error("ERROR: openHTKFile: Can't read parm kind from observation file '%s'\n", fname.c_str());
   }
 
   if (bswap) {
@@ -165,31 +167,37 @@ openHTKFile2(const string& fname, StreamInfo *f) {
   }
 
   if (n_samples <= 0) {
-    error("ERROR: openHTKFile: number of samples is %i\n",n_samples);
+    error("ERROR: openHTKFile: number of samples %d should be > 0 in observation file '%s'\n",
+	  n_samples, fname.c_str());
   }
 
   if (samp_period <= 0 || samp_period > 1000000) {
-    warning("WARNING: openHTKFile: sample period is %i - must be between 0 and 1000000\n", samp_period);
+    warning("WARNING: openHTKFile: sample period is %d in observation file '%s' - "
+	    "must be between 0 and 1000000\n", samp_period, fname.c_str());
   }
 
   if (samp_size <= 0 || samp_size > 5000) {
-    warning("WARNING: openHTKFile: sample size is %i - must be between 0 and 5000\n",samp_size);
+    warning("WARNING: openHTKFile: sample size %d in observation file '%s' - "
+	    "must be between 0 and 5000\n", samp_size, fname.c_str());
   }
 
   short pk = parm_kind & BASEMASK;
   bool isCompressed = parm_kind & IS_COMPRESSED;
 
   if (pk < WAVEFORM || pk > ANON) {
-    warning("WARNING: openHTKFile: Undefined parameter kind for HTK feature file: %i. Will assume float features.\n",pk);
+    warning("WARNING: openHTKFile: Undefined parameter kind %d for HTK feature file '%s'. "
+	    "Will assume float features.\n",pk, fname.c_str());
   }
 
   // For now we don't support the WAVEFORM and IREFC parameter kind.  It uses
   // shorts instead of floats and that requires special treatment.
   if (pk == WAVEFORM) {
-    warning("WARNING: openHTKFile: HTK WAVEFORM parameter kind not supported: %i\n",pk);
+    warning("WARNING: openHTKFile: HTK WAVEFORM parameter kind %d in not supported in observation file '%s'\n",
+	    pk, fname.c_str());
   }
   else if (pk == IREFC) {
-    warning("WARNING: openHTKFile: HTK IREFC parameter kind not supported: %i\n",pk);
+    warning("WARNING: openHTKFile: HTK IREFC parameter kind %d not supported in observation file '%s'\n",
+	    pk, fname.c_str());
   }
 
   int n_fea;
@@ -201,10 +209,12 @@ openHTKFile2(const string& fname, StreamInfo *f) {
     // (but this is MACHINE DEPENDENT).
     n_fea = samp_size / sizeof(short) ;
     if (n_fea != nints) {
-      error("ERROR: openHTKFile:  Number of features in file (%i) does not match number of ints specified (%i)\n", n_fea,nints);
+      error("ERROR: openHTKFile:  Number of features (%i) does not match number of ints "
+	    "specified (%i) in observation file '%s'\n", n_fea,nints, fname.c_str());
     }
     if(parm_kind != DISCRETE) {
-      warning("WARNING: openHTKFile: Number of floats specified is 0 but the HTK parameter kind is not DISCRETE.\n");
+      warning("WARNING: openHTKFile: Number of floats specified is 0 but the HTK parameter "
+	      "kind is not DISCRETE for observation file '%s'.\n", fname.c_str());
     }
   }
   // otherwise all continuous features
@@ -215,10 +225,12 @@ openHTKFile2(const string& fname, StreamInfo *f) {
       n_fea = samp_size / sizeof(float);
 		
     if (n_fea != nfloats) {
-      error("ERROR: openHTKFile:  Number of features in file (%i) does not match number of floats specified (%i)\n", n_fea,nfloats);
+      error("ERROR: openHTKFile:  Number of features (%i) does not match number of floats "
+	    "specified (%i) in observation file '%s'\n", n_fea,nfloats, fname.c_str());
     }
     if(parm_kind == DISCRETE) {
-      warning("WARNING: openHTKFile:  Number of floats specified (%i) is not 0 but the HTK parameter kind is DISCRETE.\n",nfloats);
+      warning("WARNING: openHTKFile:  Number of floats specified (%i) is not 0 but the HTK "
+	      "parameter kind is DISCRETE for observation file '%s'.\n",nfloats, fname.c_str());
     }
   }
 	  
@@ -232,7 +244,7 @@ openHTKFile2(const string& fname, StreamInfo *f) {
     offset = new float[n_fea]; //B in htk book	  
     float* tmp = new float[n_fea];
     if (fread(tmp,sizeof(float),n_fea,f->curDataFile) != (unsigned short)n_fea) {
-      error("ERROR: openHTKFile: Can't read scales for decompressing.\n");
+      error("ERROR: openHTKFile: Can't read scales for decompressing '%s'.\n", fname.c_str());
     }
     if(bswap)
       swapb_vf32_vf32(n_fea,tmp,scale);
@@ -240,7 +252,7 @@ openHTKFile2(const string& fname, StreamInfo *f) {
       copy_vf32_vf32(n_fea,tmp,scale);
 
     if (fread(tmp,sizeof(float),n_fea,f->curDataFile) != (unsigned short)n_fea) {
-      error("ERROR: openHTKFile: Can't read offsets for decompressing.\n");
+      error("ERROR: openHTKFile: Can't read offsets for decompressing '%s'.\n", fname.c_str());
     }
     if(bswap)
       swapb_vf32_vf32(n_fea,tmp,offset);
@@ -278,21 +290,25 @@ openHTKFile(StreamInfo *f, size_t sentno) {
   DBGFPRINTF((stderr,"In openHTKFile, sentno %d\n",sentno));
   unsigned long htkfile_size = f->getFullFofSize();
   if(sentno < 0 || sentno >= htkfile_size) {
-    error("ERROR: openHTKFile: Requested segment no %li of observation file '%s' but the max num of segments in list of HTK files is %li",sentno,f->fofName,htkfile_size);
+    error("ERROR: openHTKFile: Requested segment no %li of observation file '%s' "
+	  "but the max num of segments in list of HTK files is %li\n",
+	  sentno, f->fofName, htkfile_size);
   }
 
   //  assert(sentno >= 0 && sentno < _numSegments);
   if (f->dataNames[sentno] == NULL) {
-    error("ERROR: openHTKFile: Filename is NULL for segment %li\n",f->dataNames[sentno]);
+    error("ERROR: openHTKFile: Filename is NULL for segment %li in observation file '%s'\n",
+	  f->dataNames[sentno], f->fofName);
   }
 
   
   int startFrame, endFrame;
   string fnameStr;
-  parseSentenceSpec(f->dataNames[sentno], &startFrame, &endFrame, fnameStr);
+  parseSentenceSpec(f->dataNames[sentno], &startFrame, &endFrame, fnameStr, f->fofName);
 
   if(f->curDataFilename != fnameStr && f->curDataFile){
-    DBGFPRINTF((stderr,"In openHTKFile, f->curDataFilename  %s fnameStr %s f->curDataFile  %d \n", f->curDataFilename.c_str(), fnameStr.c_str(), f->curDataFile));
+    DBGFPRINTF((stderr,"In openHTKFile, f->curDataFilename  %s fnameStr %s f->curDataFile  %d\n", 
+		f->curDataFilename.c_str(), fnameStr.c_str(), f->curDataFile));
     //the wrong file is open
     fclose(f->curDataFile);
     f->curDataFile = NULL;
@@ -309,7 +325,8 @@ openHTKFile(StreamInfo *f, size_t sentno) {
     endFrame= htkInfo->n_samples-1;
   
   if(endFrame>=htkInfo->n_samples)
-    error("ERROR: openHTKFile: %s has the last frame at %d, beyond %d, which is the number of frames in file.\n",f->dataNames[sentno], endFrame, htkInfo->n_samples);	  
+    error("ERROR: openHTKFile: '%s' has the last frame at %d, beyond %d, which is the number of frames in file.\n",
+	  f->dataNames[sentno], endFrame, htkInfo->n_samples);	  
   
   f->curNumFrames=endFrame-startFrame+1;
   
@@ -318,7 +335,7 @@ openHTKFile(StreamInfo *f, size_t sentno) {
   
   //now we seek to the start frame 
   if (gmtk_fseek(f->curDataFile, (gmtk_off_t)(htkInfo->startOfData+startFrame*htkInfo->samp_size), SEEK_SET)) {
-    error("ERROR: openHTKFile: fseek() failed for '%s'", f->dataNames[sentno]);
+    error("ERROR: openHTKFile: fseek() failed for '%s'\n", f->dataNames[sentno]);
   }
   return f->curNumFrames;
 }
@@ -354,7 +371,7 @@ HTKFile::getFrames(unsigned first, unsigned count) {
   }
   const HTKFileInfo *htkInfo = info->curHTKFileInfo;
   if (gmtk_fseek(info->curDataFile, (gmtk_off_t)(htkInfo->startOfData + first * htkInfo->samp_size), SEEK_SET)) {
-    error("HTKFile: fseek() failed for '%s'", info->fofName);
+    error("HTKFile: fseek() failed for '%s'\n", info->fofName);
   }
 
   // HTK files are either all discrete or all continuous
@@ -374,7 +391,8 @@ HTKFile::getFrames(unsigned first, unsigned count) {
     assert(tmpBuf);
     nread = fread(tmpBuf, sizeof(Int16), totalFeatures, info->curDataFile);
     if (nread != totalFeatures) {
-      error("HTKFile: read %u items, expected %u", nread, totalFeatures);
+      error("HTKFile: read %u items, expected %u in observation file '%s'\n",
+	    nread, totalFeatures, info->fofName);
     }
     if (info->swap()) {
       for (unsigned i=0; i<totalFeatures; i+=1) {
@@ -392,7 +410,7 @@ HTKFile::getFrames(unsigned first, unsigned count) {
       }
     }
     if (numContinuous()) { // uncompress
-      for (unsigned i=0; i<totalFeatures; i+=1) {
+      for (unsigned i=0; i < count; i+=1) {
 	float* curSampPtr=(float *)buffer+i*featuresPerFrame;
 	copy_add_vf32_vf32(featuresPerFrame,htkInfo->offset,curSampPtr);
 	copy_div_vf32_vf32(featuresPerFrame,htkInfo->scale, curSampPtr);	
@@ -405,7 +423,8 @@ HTKFile::getFrames(unsigned first, unsigned count) {
     float *tmpBuf = (float *)buffer;
     nread = fread(tmpBuf,sizeof(float),totalFeatures, info->curDataFile);
     if (nread != totalFeatures) {
-      error("HTKFile: read %i items, expected %i", nread,totalFeatures);
+      error("HTKFile: read %i items, expected %u from observation file '%s'\n", 
+	    nread, totalFeatures, info->fofName);
     }
     // swap if needed.
     if(info->swap()) {
@@ -420,5 +439,292 @@ HTKFile::getFrames(unsigned first, unsigned count) {
   
   assert(false); // should never get here!
   return NULL;
+}
+
+
+static
+void 
+printHTKHeader(FILE* ofp, bool oswap, int numInts, int numFloats, int numSamples) {
+
+  DBGFPRINTF((stderr,"obsPrint: Printing HTK header.\n"));
+  // structure of HTK header
+  //  Int32 numSamples;
+  Int32 samplePeriod=1;
+  short parameterKind;
+  short sampleSize;
+  if(numFloats > 0) {
+    sampleSize=numFloats*sizeof(float);
+    parameterKind=USER;  // enum in GMTK_Stream.h
+  } else {
+    sampleSize=numInts*sizeof(short);
+    parameterKind=DISCRETE;  // enum in GMTK_Stream.h
+  }
+
+  if (oswap) {
+    numSamples = swapb_i32_i32(numSamples);
+    samplePeriod = swapb_i32_i32(samplePeriod);
+    sampleSize = swapb_short_short(sampleSize);
+    parameterKind = swapb_short_short(parameterKind);
+  }
+
+  if (fwrite(&numSamples,sizeof(Int32),1,ofp) != 1) {
+    error("Cannot write HTK number of samples\n");
+  }
+  if (fwrite((Int32 *)&samplePeriod,sizeof(Int32),1,ofp) != 1) {
+    error("Cannot write HTK sample period\n");
+  }
+
+  if (fwrite((short *)&sampleSize,sizeof(short),1,ofp) != 1) {
+    error("Cannot write HTK sample size\n");
+  }
+
+  if (fwrite(&parameterKind,sizeof(short),1,ofp) != 1) {
+    error("Cannot write HTK parm kind\n");
+  }
+
+  DBGFPRINTF((stderr,"obsPrint: Finished printing HTK header.\n"));
+}
+
+
+void 
+HTKFile::writeSegment(Data32 const *segment, unsigned nFrames) {
+  assert(currFeature == 0);
+  if (writeFile) {
+    if (fclose(writeFile)) {
+      error("ERROR closing output file\n");
+    }
+    writeFile = NULL;
+  }
+  char* current_output_fname = new char[strlen(outputFileName)+strlen(outputNameSeparatorStr)+50];
+  sprintf(current_output_fname,"%s%s%d",outputFileName,outputNameSeparatorStr,currSegment);
+  if ((writeFile = fopen(current_output_fname, "wb")) == NULL) {
+    error("Couldn't open output file '%s' for writing.",current_output_fname);
+  }
+  fprintf(listFile,"%s\n",current_output_fname);
+
+  void (*copy_swap_func_ptr)(size_t, const intv_int32_t*, intv_int32_t*)=NULL;
+  if(oswap) {
+    copy_swap_func_ptr=&swapb_vi32_vi32;
+  } else {
+    copy_swap_func_ptr=&copy_vi32_vi32;
+  }
+  
+  printHTKHeader(writeFile, oswap, _numDiscreteFeatures, _numContinuousFeatures, nFrames);
+
+  //////////  Print the frames ////////////////////////////////////
+  float  *cont_buf_p = (float  *) segment;
+  UInt32 *disc_buf_p = (UInt32 *) segment + _numContinuousFeatures;
+  size_t fwrite_result;
+
+  for (unsigned frame_no=0; frame_no < nFrames ; frame_no+=1) {
+
+    /// Print continuous part of frame /////////////////////////////
+    for (unsigned frit=0; frit < _numContinuousFeatures; frit+=1) {
+      DBGFPRINTF((stderr,"obsPrint: Printing HTK float %f.\n", cont_buf_p[frit]));
+      copy_swap_func_ptr(1, (int*)&cont_buf_p[frit],(int*)&cont_buf_p[frit]);
+      fwrite_result = fwrite(&cont_buf_p[frit], sizeof(cont_buf_p[frit]), 1, writeFile);
+      if (fwrite_result != 1) {
+	error("Error writing to output file '%s'\n", current_output_fname);
+      }
+    }
+    ///////////////////////////////////////////////////////////////
+    
+    /// Print discrete part of the frame ///////////////////////////
+    for (unsigned lrit=0; lrit < _numDiscreteFeatures; lrit+=1) {
+      if (_numContinuousFeatures > 0) {
+	copy_swap_func_ptr(1, (int*)&disc_buf_p[lrit],(int*)&disc_buf_p[lrit]);
+	fwrite_result = fwrite(&disc_buf_p[lrit], sizeof(disc_buf_p[lrit]), 1, writeFile);
+	if (fwrite_result != 1) {
+	  error("Error writing to output file '%s'\n", current_output_fname);
+	}
+      } else if (_numContinuousFeatures == 0) { // in the HTK format we
+	// cannot mix floats with discrete data; that's why if there is at
+	// least one float component everyting is written out as a float.
+	short short_lab_buf_p=(short)disc_buf_p[0];
+	DBGFPRINTF((stderr,"obsPrint: Printing HTK short %d.\n", short_lab_buf_p));
+	if (oswap) {
+	  short_lab_buf_p = swapb_short_short(short_lab_buf_p);
+	}
+	fwrite_result = fwrite(&short_lab_buf_p, sizeof(short_lab_buf_p), 1, writeFile);
+	if (fwrite_result != 1) {
+	  error("Error writing to output file '%s'\n", current_output_fname);
+	}
+      }
+    } // end of for (unsigned lrit=0;lrit<num_discrete; ++lrit)
+
+    cont_buf_p += _numFeatures;
+    disc_buf_p += _numFeatures;
+  }  // end of for (unsigned frame_no=0; frame_no < num_frames ; ++frame_no)
+  //////////////////////////////////////////////////////////////////////////// 
+
+  if (fclose(writeFile)) {
+    error("ERROR closing output file '%s'\n", current_output_fname);
+  }
+  writeFile = NULL;
+  delete []  current_output_fname;
+
+  currSegment += 1;
+  currFrame = 0;
+  currFeature = 0;
+}
+
+
+void 
+HTKFile::setFrame(unsigned frame) {
+}
+
+
+void 
+HTKFile::writeFrame(Data32 const *frame) {
+  assert(currFeature == 0);
+  void (*copy_swap_func_ptr)(size_t, const intv_int32_t*, intv_int32_t*)=NULL;
+  if(oswap) {
+    copy_swap_func_ptr=&swapb_vi32_vi32;
+  } else {
+    copy_swap_func_ptr=&copy_vi32_vi32;
+  }
+  
+  if (currFrame == 0) {
+    assert(!writeFile); // previous EoS (or ctor) should have closed it
+    char* current_output_fname = new char[strlen(outputFileName)+strlen(outputNameSeparatorStr)+50];
+    sprintf(current_output_fname,"%s%s%d",outputFileName,outputNameSeparatorStr,currSegment);
+    if ((writeFile = fopen(current_output_fname, "wb")) == NULL) {
+      error("Couldn't open output file '%s' for writing.",current_output_fname);
+    }
+    fprintf(listFile,"%s\n",current_output_fname);
+    delete [] current_output_fname;
+    // write fake header - EoS will seek back & wirte correct header
+    printHTKHeader(writeFile, oswap, _numDiscreteFeatures, _numContinuousFeatures, 1);
+  }
+  float  *cont_buf_p = (float  *) frame;
+  UInt32 *disc_buf_p = (UInt32 *) frame + _numContinuousFeatures;
+  size_t fwrite_result;
+
+  /// Print continuous part of frame /////////////////////////////
+  for (unsigned frit=0; frit < _numContinuousFeatures; frit+=1) {
+    DBGFPRINTF((stderr,"obsPrint: Printing HTK float %f.\n", cont_buf_p[frit]));
+    copy_swap_func_ptr(1, (int*)&cont_buf_p[frit],(int*)&cont_buf_p[frit]);
+    fwrite_result = fwrite(&cont_buf_p[frit], sizeof(cont_buf_p[frit]), 1, writeFile);
+    if (fwrite_result != 1) {
+      error("Error writing to output file\n");
+    }
+  }
+  ///////////////////////////////////////////////////////////////
+  
+  /// Print discrete part of the frame ///////////////////////////
+  for (unsigned lrit=0; lrit < _numDiscreteFeatures; lrit+=1) {
+    if (_numContinuousFeatures > 0) {
+      copy_swap_func_ptr(1, (int*)&disc_buf_p[lrit],(int*)&disc_buf_p[lrit]);
+      fwrite_result = fwrite(&disc_buf_p[lrit], sizeof(disc_buf_p[lrit]), 1, writeFile);
+      if (fwrite_result != 1) {
+	error("Error writing to output file\n");
+      }
+    } else if (_numContinuousFeatures == 0) { // in the HTK format we
+      // cannot mix floats with discrete data; that's why if there is at
+      // least one float component everyting is written out as a float.
+      short short_lab_buf_p=(short)disc_buf_p[0];
+      DBGFPRINTF((stderr,"obsPrint: Printing HTK short %d.\n", short_lab_buf_p));
+      if (oswap) {
+	short_lab_buf_p = swapb_short_short(short_lab_buf_p);
+      }
+      fwrite_result = fwrite(&short_lab_buf_p, sizeof(short_lab_buf_p), 1, writeFile);
+      if (fwrite_result != 1) {
+	error("Error writing to output file\n");
+      }
+    }
+  } // end of for (unsigned lrit=0;lrit<num_discrete; ++lrit) 
+  currFrame += 1;
+  currFeature = 0;
+}
+
+
+void 
+HTKFile::writeFeature(Data32 x) {
+  void (*copy_swap_func_ptr)(size_t, const intv_int32_t*, intv_int32_t*)=NULL;
+  if(oswap) {
+    copy_swap_func_ptr=&swapb_vi32_vi32;
+  } else {
+    copy_swap_func_ptr=&copy_vi32_vi32;
+  }
+  
+  if (currFrame == 0 && currFeature == 0) {
+    assert(!writeFile); // previous EoS (or ctor) should have closed it
+    char* current_output_fname = new char[strlen(outputFileName)+strlen(outputNameSeparatorStr)+50];
+    sprintf(current_output_fname,"%s%s%d",outputFileName,outputNameSeparatorStr,currSegment);
+    if ((writeFile = fopen(current_output_fname, "wb")) == NULL) {
+      error("Couldn't open output file '%s' for writing.",current_output_fname);
+    }
+    fprintf(listFile,"%s\n",current_output_fname);
+    delete [] current_output_fname;
+    // write fake header - EoS will seek back & wirte correct header
+    printHTKHeader(writeFile, oswap, _numDiscreteFeatures, _numContinuousFeatures, 1);
+  }
+  size_t fwrite_result;
+
+  /// Print continuous part of frame /////////////////////////////
+  if (currFeature < _numContinuousFeatures) {
+    copy_swap_func_ptr(1, (intv_int32_t*)&x,(intv_int32_t*)&x);
+    fwrite_result = fwrite(&x, sizeof(x), 1, writeFile);
+    if (fwrite_result != 1) {
+      error("Error writing to output file\n");
+    }
+  } else {
+    /// Print discrete part of the frame ///////////////////////////
+    if (_numContinuousFeatures > 0) {
+      copy_swap_func_ptr(1, (intv_int32_t*)&x,(intv_int32_t*)&x);
+      fwrite_result = fwrite(&x, sizeof(x), 1, writeFile);
+      if (fwrite_result != 1) {
+	error("Error writing to output file\n");
+      }
+    } else if (_numContinuousFeatures == 0) { // in the HTK format we
+      // cannot mix floats with discrete data; that's why if there is at
+      // least one float component everyting is written out as a float.
+      short short_lab_buf_p=(short)x;
+      if (oswap) {
+	short_lab_buf_p = swapb_short_short(short_lab_buf_p);
+      }
+      fwrite_result = fwrite(&short_lab_buf_p, sizeof(short_lab_buf_p), 1, writeFile);
+      if (fwrite_result != 1) {
+	error("Error writing to output file\n");
+      }
+    }
+  } 
+
+  currFeature += 1;
+  if (currFeature == _numFeatures) {
+    currFrame   += 1;
+    currFeature  = 0;
+  }
+}
+
+
+void 
+HTKFile::endOfSegment() {
+  assert(currFeature == 0);
+  if (currFrame == 0) {
+    assert(!writeFile); // previous EoS (or ctor) should have closed it
+    char* current_output_fname = new char[strlen(outputFileName)+strlen(outputNameSeparatorStr)+50];
+    sprintf(current_output_fname,"%s%s%d",outputFileName,outputNameSeparatorStr,currSegment);
+    if ((writeFile = fopen(current_output_fname, "wb")) == NULL) {
+      error("Couldn't open output file '%s' for writing.",current_output_fname);
+    }
+    fprintf(listFile,"%s\n",current_output_fname);
+    delete [] current_output_fname;
+  } else {
+    assert(writeFile); // if not, what have we been writing to?
+    // Now that we know the number of frames, re-do the header correctly
+    if (fseek(writeFile, 0, SEEK_SET)) {
+      error("ERROR seeking in output file\n");
+    }
+  }
+  printHTKHeader(writeFile, oswap, _numDiscreteFeatures, _numContinuousFeatures, currFrame);
+
+  if (fclose(writeFile)) {
+    error("ERROR closing output file\n");
+  }
+  writeFile = NULL;
+  currSegment += 1;
+  currFrame = 0;
+  currFeature = 0;
 }
 

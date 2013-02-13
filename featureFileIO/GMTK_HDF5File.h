@@ -86,6 +86,33 @@ class HDF5File: public ObservationFile {
 
   ~HDF5File();
  
+
+  // Write segment to the file (no need to call endOfSegment)
+  void writeSegment(Data32 const *segment, unsigned nFrames) {
+    assert(0);
+  }
+
+  // Write frame to the file (call endOfSegment after last frame of a segment)
+  void writeFrame(Data32 const *frame) {
+    assert(0);
+  }
+
+  // Set frame # to write within current segemnt
+  void setFrame(unsigned frame) {
+    assert(0);
+  }
+
+  // Write frame to the file (call endOfSegment after last frame of a segment)
+  void writeFeature(Data32 x) {
+    assert(0);
+  }
+
+  // Call after last writeFrame of a segment
+  void endOfSegment() {
+    assert(0);
+  }
+
+
   // The number of available segments.
   unsigned numSegments() { return numSlabs; }
 
@@ -122,11 +149,31 @@ class HDF5File: public ObservationFile {
 	   char const *preFrameRangeStr_=NULL, 
 	   char const *segRangeStr_=NULL)
   {
-    error("This GMTK build does not support HDF5 files");
+    error("This GMTK build does not support HDF5 files\n");
   }
 
   ~HDF5File() {}
  
+
+  // Write segment to the file (no need to call endOfSegment)
+  void writeSegment(Data32 const *segment, unsigned nFrames) {
+    assert(0);
+  }
+
+  // Write frame to the file (call endOfSegment after last frame of a segment)
+  void writeFrame(Data32 const *frame) {
+    assert(0);
+  }
+
+  void writeFeature(Data32 x) {
+    assert(0);
+  }
+
+  // Call after last writeFrame of a segment
+  void endOfSegment() {
+    assert(0);
+  }
+
   // The number of available segments.
   unsigned numSegments() { return 0; }
 

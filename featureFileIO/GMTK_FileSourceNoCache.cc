@@ -50,7 +50,7 @@ FileSourceNoCache::loadFrames(unsigned first, unsigned count) {
     return cookedBuffer + first * bufStride;
   } else {
     error("ERROR: FileSourceNoCache::loadFrames: requested frames [%u,%u), but only "
-	  "frames [0,%u) are available", first, first+count+_minFutureFrames, numBufferedFrames);
+	  "frames [0,%u) are available\n", first, first+count+_minFutureFrames, numBufferedFrames);
     return NULL; // this statement isn't reached, just here to silence warning
   }
 }

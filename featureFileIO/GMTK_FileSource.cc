@@ -73,13 +73,13 @@ FileSource::initialize(ObservationFile *file,
   assert(file);
   assert( 0 <= justificationMode && justificationMode <= FRAMEJUSTIFICATION_RIGHT );
   if (windowBytes > bufferSize * sizeof(Data32)) {
-    error("ERROR: fileWindowSize (%u MB) must be less than fileBufferSize (%u MB)",
+    error("ERROR: -fileWindowSize (%u MB) must be less than -fileBufferSize (%u MB)\n",
 	  windowBytes/MEBIBYTE, bufferSize * sizeof(Data32) / MEBIBYTE);
   }
   // window size in frames
   this->window = windowBytes / (file->numLogicalFeatures() * sizeof(Data32));
   if (this->window < 2 * deltaFrames + 1) {
-    error("ERROR: fileWindowSize (%u MB) must be at least %u MB to hold %u frame",
+    error("ERROR: -fileWindowSize (%u MB) must be at least %u MB to hold %u frames\n",
 	  windowBytes / MEBIBYTE, file->numLogicalFeatures() * sizeof(Data32) / MEBIBYTE,
 	  2 * deltaFrames + 1);
   }
@@ -98,7 +98,7 @@ FileSource::initialize(ObservationFile *file,
   if (bufferSize > 0) {
     cookedBuffer = new Data32[bufferSize];
     if (!cookedBuffer) {
-      error("ERROR: FileSource::intialize: failed to allocate frame buffer");
+      error("ERROR: FileSource::intialize: failed to allocate frame buffer\n");
     }
   } else {
     cookedBuffer = NULL;
@@ -109,7 +109,7 @@ FileSource::initialize(ObservationFile *file,
   if (bufferFrames < 1 && bufferSize > 0) {
     unsigned minSize = bufStride * sizeof(Data32) / MEBIBYTE;
     minSize = (minSize < 1) ? 1 : minSize;
-    error("ERROR: file buffer size must be at least %u MB", minSize);
+    error("ERROR: -fileBufferSize (%u MB) must be at least %u MB\n", bufferSize / MEBIBYTE, minSize);
   }
 
   infoMsg(IM::ObsFile, IM::Low, "FileSource window = %u frames, %u MiB\n"
@@ -122,7 +122,7 @@ FileSource::initialize(ObservationFile *file,
   numDiscreteFeatures = file->numLogicalDiscrete();
   _numFeatures = numContinuousFeatures + numDiscreteFeatures;
   if (_numFeatures == 0) {
-    error("ERROR: No features (continuous or discrete) were selected.  Check the feature ranges.");
+    error("ERROR: No features (continuous or discrete) were selected.  Check the feature ranges -frX and -irX.\n");
   }
 }
 
@@ -131,7 +131,7 @@ bool
 FileSource::openSegment(unsigned seg) {
   assert(file);
   if (seg >= numSegments()) {
-    error("ERROR: FileSource::openSegment: requested segment %u, but only up to %u are available\n", 
+    error("ERROR: FileSource::openSegment: requested segment %u, but only 0 to %u are available\n", 
 	  seg, numSegments()-1);
   }
 
@@ -140,7 +140,7 @@ FileSource::openSegment(unsigned seg) {
 
   _numCacheableFrames = file->numLogicalFrames();  // the file handles -gpr, so this is what's left after that
   if (_numCacheableFrames < _startSkip + _endSkip) {
-    error("ERROR: segment %u has only %u frames, but -startSkip %u and -endSkip %u requires at least %u frames", 
+    error("ERROR: segment %u has only %u frames, but -startSkip %u and -endSkip %u requires at least %u frames\n", 
 	  seg, _numCacheableFrames, _startSkip, _endSkip, _startSkip + _endSkip + 1);
   }
   _numFrames  = _numCacheableFrames;
@@ -166,7 +166,7 @@ FileSource::openSegment(unsigned seg) {
       bufferSize = numFeatures() * _numCacheableFrames;
       cookedBuffer = new Data32[bufferSize];
       if (!cookedBuffer) {
-	error("ERROR: FileSource::openSegment: failed to allocate %u frame buffer for segment %u",
+	error("ERROR: FileSource::openSegment: failed to allocate %u frame buffer for segment %u\n",
 	      bufferSize, seg);
       }
     }
@@ -199,7 +199,7 @@ void
 FileSource::justifySegment(unsigned numUsableFrames) {
   if (numUsableFrames > _numFrames) {
     error("ERROR: FileSource::justifySegment: numUsableFrames (%u) must not be "
-	  "larger than the number of available frames (%u)",
+	  "larger than the number of available frames (%u)\n",
 	  numUsableFrames, _numFrames);
   }
   assert(segment >= 0);
@@ -216,7 +216,7 @@ FileSource::justifySegment(unsigned numUsableFrames) {
     justificationOffset = _numFrames - numUsableFrames;
     break;
   default:
-    error("ERROR: FileSource::justifySegment: unknown justification mode %d", 
+    error("ERROR: FileSource::justifySegment: unknown justification mode %d\n", 
 	  justificationMode);
   }
   infoMsg(IM::ObsFile,IM::Low,"justification mode %u offset = %u\n", 
@@ -278,13 +278,13 @@ FileSource::loadFrames(unsigned first, unsigned count) {
 
   if (first + count > _numFrames) {
     error("ERROR: FileSource::loadFrames: requested frames [%u,%u), but "
-	  "only frames [0,%u) are available", 
+	  "only frames [0,%u) are available\n", 
 	  first, first+count, _numFrames);
   }
   
   if (bufferFrames < count + _minFutureFrames + _minPastFrames) {
     error("ERROR: FileSource::loadFrames: requested %u frames, but buffer "
-	  "can only hold %u", count + _minFutureFrames + _minPastFrames, 
+	  "can only hold %u. Increase -fileBufferSize\n", count + _minFutureFrames + _minPastFrames, 
 	  bufferFrames);
   }
   first += _startSkip + justificationOffset; // adjust for -startSkip and -justification
@@ -327,7 +327,7 @@ FileSource::loadFrames(unsigned first, unsigned count) {
 #endif
     if (firstBufferedFrameIndex + numBufferedFrames > bufferFrames) {
       error("ERROR: FileSource:loadFrames:  attempted to load %u frames at index %u, "
-	    "which overflows the frame buffer", numBufferedFrames, firstBufferedFrameIndex*bufStride);
+	    "which overflows the frame buffer\n", numBufferedFrames, firstBufferedFrameIndex*bufStride);
     }
     Data32 const *frames = loadFrames(firstBufferedFrameIndex, preFirst, preCount);
     assert(frames == cookedBuffer + firstBufferedFrameIndex * bufStride);
