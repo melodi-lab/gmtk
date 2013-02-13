@@ -1889,11 +1889,12 @@ public:
   // print all clique values and prob to given file.
   void printCliqueEntries(MaxCliqueTable::SharedLocalStructure&,
 			  FILE*f,const char*str=NULL,
-			  const bool normalize = false,
+			  const bool normalize = true, const bool unlog = true,
 			  const bool justPrintEntropy = false);
   
   void printCliqueEntries(MaxCliqueTable::SharedLocalStructure&,
-			  ObservationFile *f, const bool normalize = false);
+			  ObservationFile *f, const bool normalize = true, 
+			  const bool unlog = true);
   
   int cliqueValueDistance(SharedLocalStructure& sharedStructure, 
 			  unsigned a, unsigned b);

@@ -6143,7 +6143,7 @@ void
 MaxCliqueTable::
 printCliqueEntries(MaxCliqueTable::SharedLocalStructure& sharedStructure,
 		   FILE *f,const char*str, 
-		   const bool normalize,
+		   const bool normalize, const bool unlog,
 		   const bool justPrintEntropy)
 {
   MaxClique& origin = *(sharedStructure.origin);
@@ -6190,11 +6190,19 @@ printCliqueEntries(MaxCliqueTable::SharedLocalStructure& sharedStructure,
       }
     }
     if (normalize) {
-      // then print the exponentiated probability
-      fprintf(f,"%d: %.8e ",cvn,(cliqueValues.ptr[cvn].p/sum).unlog());
+      if (unlog) {
+	// then print the exponentiated probability
+	fprintf(f,"%d: %.8e ",cvn,(cliqueValues.ptr[cvn].p/sum).unlog());
+      } else {
+	fprintf(f,"%d: %.8e ",cvn,(cliqueValues.ptr[cvn].p/sum).valref());
+      }
     } else {
-      // print the log value directly
-      fprintf(f,"%d: %f ",cvn,cliqueValues.ptr[cvn].p.valref());
+      if (unlog) {
+	fprintf(f,"%d: %.8e ",cvn,cliqueValues.ptr[cvn].p.unlog());
+      } else {
+	// print the log value directly
+	fprintf(f,"%d: %.8e ",cvn,cliqueValues.ptr[cvn].p.valref());
+      }
     }
     printRVSetAndValues(f,sharedStructure.fNodes);
   }
@@ -6442,7 +6450,7 @@ printf("cliqueValueDistance(%u,%u) = %d\n", a, b, diff);
 void
 MaxCliqueTable::
 printCliqueEntries(MaxCliqueTable::SharedLocalStructure& sharedStructure,
-		   ObservationFile *f, const bool normalize)
+		   ObservationFile *f, const bool normalize, const bool unlog)
 {
 #if 0
   printf("clique has %d variables (%d hidden discrete), %d entries\n", 
@@ -6490,18 +6498,26 @@ printf("\n");
   
   unsigned skip = cliqueValueMagnitude(sharedStructure, index[0].index);
   for (unsigned i=0; i < skip; i+=1) {
-    if (normalize) {
+    if (unlog) {
       f->writeFeature(0);
     } else {
       f->writeFeature(zero.d);
     }
   }
   if (normalize) {
-    // then print the exponentiated probability
-    x = (cliqueValues.ptr[index[0].index].p/sum).unlog();
+    if (unlog) {
+      // then print the exponentiated probability
+      x = (cliqueValues.ptr[index[0].index].p/sum).unlog();
+    } else {
+      x = (cliqueValues.ptr[index[0].index].p/sum).valref();
+    }
   } else {
-    // print the log value directly
-    x = cliqueValues.ptr[index[0].index].p.valref();
+    if (unlog) {
+      x = cliqueValues.ptr[index[0].index].p.unlog();
+    } else {
+      // print the log value directly
+      x = cliqueValues.ptr[index[0].index].p.valref();
+    }
   }
   f->writeFeature(* (Data32 *)(&x) );
   unsigned prevIdx = 0;
@@ -6510,25 +6526,33 @@ printf("\n");
     skip = cliqueValueDistance(sharedStructure, cvn, prevIdx) - 1;
     prevIdx = cvn;
     for (unsigned i=0; i < skip; i+=1) {
-      if (normalize) {
+      if (unlog) {
         f->writeFeature(0);
       } else {
         f->writeFeature(zero.d);
       }
     }
     if (normalize) {
-      // then print the exponentiated probability
-      x = (cliqueValues.ptr[cvn].p/sum).unlog();
+      if (unlog) {
+	// then print the exponentiated probability
+	x = (cliqueValues.ptr[cvn].p/sum).unlog();
+      } else {
+	x = (cliqueValues.ptr[cvn].p/sum).valref();
+      }
     } else {
-      // print the log value directly
-      x = cliqueValues.ptr[cvn].p.valref();
+      if (unlog) {
+	x = cliqueValues.ptr[cvn].p.unlog();
+      } else {
+	// print the log value directly
+	x = cliqueValues.ptr[cvn].p.valref();
+      }
     }
     f->writeFeature(* (Data32 *)(&x) );
   }
 
   skip = cliqueDomainSize(sharedStructure) - cliqueValueMagnitude(sharedStructure,index[numCliqueValuesUsed-1].index) - 1;
   for (unsigned i=0; i < skip; i+=1) {
-    if (normalize) {
+    if (unlog) {
       f->writeFeature(0);
     } else {
       f->writeFeature(zero.d);
