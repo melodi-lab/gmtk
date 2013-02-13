@@ -50,24 +50,14 @@ parseSentenceSpec(const string& sentLoc, int* startFrame, int* endFrame,
     //have a subrange spec
     fNameLen=sentLoc.find_last_of('[');
     if (fNameLen==string::npos){
-<<<<<<< local
-      error("ERROR: parseSentenceSpec: '%s' is an invalid sentence location.  "
-	    "Must be of the form 'filename[startFrame:endFrame]'",sentLoc.c_str());
-=======
       error("ERROR: parseSentenceSpec: '%s' is an invalid sentence location in observation file '%s'.  "
-	    "Must be of the form 'filename[startFrame:endFrame]'",sentLoc.c_str(), fofName);
->>>>>>> other
+	    "Must be of the form 'filename[startFrame:endFrame]'\n",sentLoc.c_str(), fofName);
     }
 
     string range= sentLoc.substr(fNameLen+1,sentLoc.length()-2-fNameLen);
     if (sscanf(range.c_str(),"%d:%d",startFrame,endFrame) != 2)
-<<<<<<< local
-      error("ERROR: parseSentenceSpec: '%s' is an invalid sentence location.  "
-	    "Must be of the form 'filename[startFrame:endFrame]'",sentLoc.c_str());
-=======
       error("ERROR: parseSentenceSpec: '%s' is an invalid sentence location in observation file '%s'.  "
-	    "Must be of the form 'filename[startFrame:endFrame]'",sentLoc.c_str(), fofName);		  
->>>>>>> other
+	    "Must be of the form 'filename[startFrame:endFrame]'\n",sentLoc.c_str(), fofName);		  
     
     if(*endFrame<*startFrame)
       error("ERROR: parseSentenceSpec: %s has the last frame smaller than first frame.\n",sentLoc.c_str());	  
@@ -300,14 +290,9 @@ openHTKFile(StreamInfo *f, size_t sentno) {
   DBGFPRINTF((stderr,"In openHTKFile, sentno %d\n",sentno));
   unsigned long htkfile_size = f->getFullFofSize();
   if(sentno < 0 || sentno >= htkfile_size) {
-<<<<<<< local
-    error("ERROR: openHTKFile: Requested segment no %li of observation file '%s' but the max "
-	  "num of segments in list of HTK files is %li",sentno,f->fofName,htkfile_size);
-=======
     error("ERROR: openHTKFile: Requested segment no %li of observation file '%s' "
 	  "but the max num of segments in list of HTK files is %li\n",
 	  sentno, f->fofName, htkfile_size);
->>>>>>> other
   }
 
   //  assert(sentno >= 0 && sentno < _numSegments);
@@ -322,11 +307,7 @@ openHTKFile(StreamInfo *f, size_t sentno) {
   parseSentenceSpec(f->dataNames[sentno], &startFrame, &endFrame, fnameStr, f->fofName);
 
   if(f->curDataFilename != fnameStr && f->curDataFile){
-<<<<<<< local
-    DBGFPRINTF((stderr,"In openHTKFile, f->curDataFilename  %s fnameStr %s f->curDataFile  %d \n", 
-=======
     DBGFPRINTF((stderr,"In openHTKFile, f->curDataFilename  %s fnameStr %s f->curDataFile  %d\n", 
->>>>>>> other
 		f->curDataFilename.c_str(), fnameStr.c_str(), f->curDataFile));
     //the wrong file is open
     fclose(f->curDataFile);
@@ -344,11 +325,7 @@ openHTKFile(StreamInfo *f, size_t sentno) {
     endFrame= htkInfo->n_samples-1;
   
   if(endFrame>=htkInfo->n_samples)
-<<<<<<< local
-    error("ERROR: openHTKFile: %s has the last frame at %d, beyond %d, which is the number of frames in file.\n",
-=======
     error("ERROR: openHTKFile: '%s' has the last frame at %d, beyond %d, which is the number of frames in file.\n",
->>>>>>> other
 	  f->dataNames[sentno], endFrame, htkInfo->n_samples);	  
   
   f->curNumFrames=endFrame-startFrame+1;
