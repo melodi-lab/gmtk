@@ -7,7 +7,7 @@
 			 How to compile GMTK
 
 			  Updated: March, 2011
-
+ 
 
 GMTK uses a simple GNU Autotools build process. The familiar
 
