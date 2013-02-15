@@ -1158,6 +1158,7 @@ public:
 			  const bool printObserved=false,
 			  regex_t *preg=NULL,
 			  char *partRangeFilter=NULL,
+			  ObservationFile *posteriorFile = NULL,
 			  const bool cliquePosteriorNormalize = true,
 			  const bool cliquePosteriorUnlog = true);
 
