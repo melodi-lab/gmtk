@@ -25,6 +25,7 @@ using namespace std;
 #include "machine-dependent.h"
 #include "error.h"
 #include "general.h"
+#include "file_utils.h"
 
 #include "GMTK_Stream.h"
 
@@ -45,13 +46,18 @@ class HTKFile: public ObservationFile {
   // for writable files
   FILE       *writeFile;      // current segment file
   FILE       *listFile;       // list of files
+  char const *fofName;
   char const *outputFileName;
   char const *outputNameSeparatorStr;
   bool        oswap;
 
   unsigned    currSegment;
   unsigned    currFrame;
+  unsigned    frameCount;
   unsigned    currFeature;
+
+  gmtk_off_t  segmentOffset;
+  short       frameSize;
 
  public:
 
@@ -105,7 +111,8 @@ class HTKFile: public ObservationFile {
   HTKFile(char const *listFileName, char const *outputFileName, 
 	  char const *outputNameSeparatorStr, bool swap,
 	  unsigned nfloats, unsigned nints) 
-    : outputFileName(outputFileName), outputNameSeparatorStr(outputNameSeparatorStr), oswap(swap)
+    : fofName(listFileName), outputFileName(outputFileName), 
+      outputNameSeparatorStr(outputNameSeparatorStr), oswap(swap)
   {
     info = NULL;
     buffer = NULL;
@@ -125,6 +132,7 @@ class HTKFile: public ObservationFile {
     writeFile = NULL;
     currSegment = 0;
     currFrame = 0;
+    frameCount = 0;
     currFeature = 0;
   }
 
@@ -147,7 +155,7 @@ class HTKFile: public ObservationFile {
   void writeSegment(Data32 const *segment, unsigned nFrames);
 
   // returns true iff file supports random access writes via setFrame()
-  bool seekable() { return false; } // TODO - implement setFrame and return true
+  bool seekable() { return true; }
 
   // Set frame # to write within current segemnt
   void setFrame(unsigned frame);

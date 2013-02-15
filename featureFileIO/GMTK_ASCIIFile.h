@@ -121,9 +121,19 @@ class ASCIIFile: public ObservationFile {
   // Write segment to the file (no need to call endOfSegment)
   void writeSegment(Data32 const *segment, unsigned nFrames);
 
-  // Set frame # to write within current segemnt (unsupported)
+  // Set frame # to write within current segemnt (partially supported)
   void setFrame(unsigned frame) {
-    error("ERROR: ASCII files do not support random access\n");
+    if (frame == currFrame) return;
+    assert(currFeature == 0);
+    if (frame > currFrame) {
+      for (unsigned i=0; i < frame - currFrame; i+=1) {
+	for (unsigned j=0; j < _numFeatures; j+=1) {
+	  writeFeature(0);
+	}
+      }
+    } else { // frame < currFrame - can't go backwards
+      error("ERROR: ASCII files do not support random access\n");
+    }
   }
 
   // Write frame to the file (call endOfSegment after last frame of a segment)
