@@ -3242,6 +3242,7 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 				const bool printObserved,
 				regex_t *preg,
 				char *partRangeFilter,
+				ObservationFile *posteriorFile,
 				const bool cliquePosteriorNormalize,
 				const bool cliquePosteriorUnlog)
 {
@@ -3424,7 +3425,8 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 		    inference_it.cur_nm(),
 		    inference_it.cur_part_clique_print_range(),
 		    stdout,
-		    normalizePrintedCliques,normalizePrintedCliques);
+		    cliquePosteriorNormalize, cliquePosteriorUnlog,
+		    false, posteriorFile);
     viterbiScore = true;  // do compute viterbi values in deScatterOutofRoot() (max-product semiring)
   }
 
@@ -3527,7 +3529,8 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 			inference_it.cur_nm(),
 			inference_it.cur_part_clique_print_range(),
 			stdout,
-			normalizePrintedCliques,normalizePrintedCliques);
+			cliquePosteriorNormalize, cliquePosteriorUnlog,
+			false, posteriorFile);			
 	viterbiScore = true;  // do compute viterbi values in deScatterOutofRoot() (max-product semiring)
       }
 

@@ -121,6 +121,8 @@ VCID(HGID)
 #define GMTK_ARG_HELP
 #define GMTK_ARG_VERSION
 #define GMTK_ARG_CLIQUE_PRINT
+
+// what difference from cliquePosteriorNormalize ?
 #define GMTK_ARG_CLIQUE_PRINT_NORMALIZE
 
 /****************************         INFERENCE OPTIONS           ***********************************************/
@@ -450,19 +452,58 @@ main(int argc,char*argv[])
 	error("Can't open file '%s' for writing\n",vitValsFileName);
     }
   }
+#if 0
   if (!pVitValsFile && !vitValsFile) {
     error("Argument Error: Missing REQUIRED argument: -pVitValsFile <str>  OR  -vitValsFile <str>\n");
   }
+#else
+  if (!pVitValsFile) {
+    error("Argument Error: Missing REQUIRED argument: -pVitValsFile <str>\n");
+  }
+#endif
+
+  ObservationFile *pCliqueFile = NULL;
+  if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange) {
+    
+    if (cliqueOutputName && !pCliqueFile) {
+      unsigned totalNumberPartitions;
+      // this is just to setup data structures for cliquePosteriorSize and printCliqueOrders
+      (void) myjt.unroll(1000000000 /* fake value*/,
+			 JunctionTree::ZeroTable,&totalNumberPartitions);
+      unsigned pSize, cSize, eSize;
+      myjt.cliquePosteriorSize(pSize, cSize, eSize);
+      unsigned cliqueSize = (pSize > cSize) ? pSize : cSize;
+      cliqueSize = (cliqueSize > eSize) ? cliqueSize : eSize;
+      
+      if (pPartCliquePrintRange && pSize != cliqueSize) {
+	error("ERROR: incompatible cliques selected for file output\n");
+      }
+      if (cPartCliquePrintRange && cSize != cliqueSize) {
+	error("ERROR: incompatible cliques selected for file output\n");
+      }
+      if (ePartCliquePrintRange && eSize != cliqueSize) {
+	error("ERROR: incompatible cliques selected for file output\n");
+      }
+      myjt.printCliqueOrders(stdout);
+      pCliqueFile = instantiateWriteFile(cliqueListName, cliqueOutputName, cliquePrintSeparator,
+					 cliquePrintFormat, cliqueSize, 0, cliquePrintSwap);
+    }
+  }
+
+
 
   struct rusage rus; /* starting time */
   struct rusage rue; /* ending time */
   getrusage(RUSAGE_SELF,&rus);
 
 
+ 
   for (; !gomSS->EOS(); ) {
     unsigned numUsableFrames;
     (void) myjt.onlineFixedUnroll(gomSS, &numUsableFrames, NULL, false, 
-				  pVitValsFile,pVitAlsoPrintObservedVariables, NULL, NULL);
+				  pVitValsFile,pVitAlsoPrintObservedVariables, 
+				  NULL, NULL, pCliqueFile, 
+				  cliquePosteriorNormalize, cliquePosteriorUnlog);
     printf("Segment %d, after Filtering: %u usable frames\n",
 	   gomSS->segmentNumber(),
 	   numUsableFrames);
