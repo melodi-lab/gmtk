@@ -137,6 +137,7 @@ JunctionTree::printAllCliques(FILE* f,
       const unsigned cliqueNum = (unsigned)(*it);
       if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
 	if (pFile) {
+	  pFile->setFrame(0);
 	  partitionTableArray[ptps_it.pt_i()]
 	    .maxCliques[cliqueNum]
 	    .printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
@@ -165,6 +166,7 @@ JunctionTree::printAllCliques(FILE* f,
 	const unsigned cliqueNum = (unsigned)(*it);
 	if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
 	  if (cFile) {
+	    cFile->setFrame(ptps_it.pt_i());
 	    partitionTableArray[ptps_it.pt_i()].
 	      maxCliques[cliqueNum].
               printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
@@ -194,6 +196,7 @@ JunctionTree::printAllCliques(FILE* f,
       const unsigned cliqueNum = (unsigned)(*it);
       if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
 	if (eFile) {
+	  eFile->setFrame(ptps_it.pt_i());
 	  partitionTableArray[ptps_it.pt_i()]
 	    .maxCliques[cliqueNum]
             .printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]

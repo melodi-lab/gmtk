@@ -444,7 +444,9 @@ HTKFile::getFrames(unsigned first, unsigned count) {
 
 static
 void 
-printHTKHeader(FILE* ofp, bool oswap, int numInts, int numFloats, int numSamples) {
+printHTKHeader(FILE* ofp, bool oswap, int numInts, int numFloats, int numSamples,
+	       gmtk_off_t &segmentOffset, short &frameSize)
+{
 
   DBGFPRINTF((stderr,"obsPrint: Printing HTK header.\n"));
   // structure of HTK header
@@ -482,6 +484,9 @@ printHTKHeader(FILE* ofp, bool oswap, int numInts, int numFloats, int numSamples
     error("Cannot write HTK parm kind\n");
   }
 
+  segmentOffset = gmtk_ftell(ofp);
+  frameSize = sampleSize;
+
   DBGFPRINTF((stderr,"obsPrint: Finished printing HTK header.\n"));
 }
 
@@ -509,7 +514,8 @@ HTKFile::writeSegment(Data32 const *segment, unsigned nFrames) {
     copy_swap_func_ptr=&copy_vi32_vi32;
   }
   
-  printHTKHeader(writeFile, oswap, _numDiscreteFeatures, _numContinuousFeatures, nFrames);
+  printHTKHeader(writeFile, oswap, _numDiscreteFeatures, _numContinuousFeatures, nFrames,
+		 segmentOffset, frameSize);
 
   //////////  Print the frames ////////////////////////////////////
   float  *cont_buf_p = (float  *) segment;
@@ -566,11 +572,38 @@ HTKFile::writeSegment(Data32 const *segment, unsigned nFrames) {
   currSegment += 1;
   currFrame = 0;
   currFeature = 0;
+  frameCount = 0;
 }
 
 
 void 
 HTKFile::setFrame(unsigned frame) {
+  assert(currFeature == 0);
+  if (frame == currFrame) return;
+
+  if (!writeFile) { // previous EoS (or ctor) should have closed it
+    assert(listFile);
+    assert(currFeature == 0);
+    assert(currFrame == 0);
+    assert(frameCount == 0);
+    char* current_output_fname = new char[strlen(outputFileName)+strlen(outputNameSeparatorStr)+50];
+    sprintf(current_output_fname,"%s%s%d",outputFileName,outputNameSeparatorStr,currSegment);
+    if ((writeFile = fopen(current_output_fname, "wb")) == NULL) {
+      error("Couldn't open output file '%s' for writing.",current_output_fname);
+    }
+    fprintf(listFile,"%s\n",current_output_fname);
+    delete [] current_output_fname;
+    // write fake header - EoS will seek back & wirte correct header
+    printHTKHeader(writeFile, oswap, _numDiscreteFeatures, _numContinuousFeatures, 1,
+		   segmentOffset, frameSize);
+  }
+  if (gmtk_fseek(writeFile, (gmtk_off_t)(segmentOffset + frameSize * frame), SEEK_SET) == -1) {
+    error("ERROR: failed to seek to frame %u in file '%s' segment %u\n", frame, fofName, currSegment);
+  }
+  currFrame = frame;
+  if (currFrame >= frameCount) {
+    frameCount = currFrame;
+  }
 }
 
 
@@ -584,8 +617,11 @@ HTKFile::writeFrame(Data32 const *frame) {
     copy_swap_func_ptr=&copy_vi32_vi32;
   }
   
-  if (currFrame == 0) {
-    assert(!writeFile); // previous EoS (or ctor) should have closed it
+  if (!writeFile) {  // previous EoS (or ctor) should have closed it
+    assert(listFile);
+    assert(currFeature == 0);
+    assert(currFrame == 0);
+    assert(frameCount == 0);
     char* current_output_fname = new char[strlen(outputFileName)+strlen(outputNameSeparatorStr)+50];
     sprintf(current_output_fname,"%s%s%d",outputFileName,outputNameSeparatorStr,currSegment);
     if ((writeFile = fopen(current_output_fname, "wb")) == NULL) {
@@ -594,7 +630,8 @@ HTKFile::writeFrame(Data32 const *frame) {
     fprintf(listFile,"%s\n",current_output_fname);
     delete [] current_output_fname;
     // write fake header - EoS will seek back & wirte correct header
-    printHTKHeader(writeFile, oswap, _numDiscreteFeatures, _numContinuousFeatures, 1);
+    printHTKHeader(writeFile, oswap, _numDiscreteFeatures, _numContinuousFeatures, 1,
+		   segmentOffset, frameSize);
   }
   float  *cont_buf_p = (float  *) frame;
   UInt32 *disc_buf_p = (UInt32 *) frame + _numContinuousFeatures;
@@ -635,6 +672,9 @@ HTKFile::writeFrame(Data32 const *frame) {
   } // end of for (unsigned lrit=0;lrit<num_discrete; ++lrit) 
   currFrame += 1;
   currFeature = 0;
+  if (currFrame >= frameCount) {
+    frameCount = currFrame;
+  }
 }
 
 
@@ -647,8 +687,11 @@ HTKFile::writeFeature(Data32 x) {
     copy_swap_func_ptr=&copy_vi32_vi32;
   }
   
-  if (currFrame == 0 && currFeature == 0) {
-    assert(!writeFile); // previous EoS (or ctor) should have closed it
+  if (!writeFile) {  // previous EoS (or ctor) should have closed it
+    assert(listFile);
+    assert(currFeature == 0);
+    assert(currFrame == 0);
+    assert(frameCount == 0);
     char* current_output_fname = new char[strlen(outputFileName)+strlen(outputNameSeparatorStr)+50];
     sprintf(current_output_fname,"%s%s%d",outputFileName,outputNameSeparatorStr,currSegment);
     if ((writeFile = fopen(current_output_fname, "wb")) == NULL) {
@@ -657,7 +700,8 @@ HTKFile::writeFeature(Data32 x) {
     fprintf(listFile,"%s\n",current_output_fname);
     delete [] current_output_fname;
     // write fake header - EoS will seek back & wirte correct header
-    printHTKHeader(writeFile, oswap, _numDiscreteFeatures, _numContinuousFeatures, 1);
+    printHTKHeader(writeFile, oswap, _numDiscreteFeatures, _numContinuousFeatures, 1,
+		   segmentOffset, frameSize);
   }
   size_t fwrite_result;
 
@@ -694,6 +738,9 @@ HTKFile::writeFeature(Data32 x) {
   if (currFeature == _numFeatures) {
     currFrame   += 1;
     currFeature  = 0;
+    if (currFrame >= frameCount) {
+      frameCount = currFrame;
+    }
   }
 }
 
@@ -701,8 +748,11 @@ HTKFile::writeFeature(Data32 x) {
 void 
 HTKFile::endOfSegment() {
   assert(currFeature == 0);
-  if (currFrame == 0) {
-    assert(!writeFile); // previous EoS (or ctor) should have closed it
+  if (!writeFile) {  // previous EoS (or ctor) should have closed it
+    assert(listFile);
+    assert(currFeature == 0);
+    assert(currFrame == 0);
+    assert(frameCount == 0);
     char* current_output_fname = new char[strlen(outputFileName)+strlen(outputNameSeparatorStr)+50];
     sprintf(current_output_fname,"%s%s%d",outputFileName,outputNameSeparatorStr,currSegment);
     if ((writeFile = fopen(current_output_fname, "wb")) == NULL) {
@@ -717,7 +767,8 @@ HTKFile::endOfSegment() {
       error("ERROR seeking in output file\n");
     }
   }
-  printHTKHeader(writeFile, oswap, _numDiscreteFeatures, _numContinuousFeatures, currFrame);
+  printHTKHeader(writeFile, oswap, _numDiscreteFeatures, _numContinuousFeatures, frameCount,
+		 segmentOffset, frameSize);
 
   if (fclose(writeFile)) {
     error("ERROR closing output file\n");
@@ -725,6 +776,7 @@ HTKFile::endOfSegment() {
   writeFile = NULL;
   currSegment += 1;
   currFrame = 0;
+  frameCount = 0;
   currFeature = 0;
 }
 
