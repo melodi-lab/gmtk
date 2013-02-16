@@ -530,6 +530,42 @@ main(int argc,char*argv[])
     try {
       logpr probe;
       if (island) {
+
+	if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange) {
+	  
+	  if (cliqueOutputName && !pCliqueFile) {
+	    unsigned totalNumberPartitions;
+	    (void) myjt.unroll(numFrames,JunctionTree::ZeroTable,&totalNumberPartitions);
+	    unsigned pSize, cSize, eSize;
+	    myjt.cliquePosteriorSize(pSize, cSize, eSize);
+	    unsigned cliqueSize = (pSize > cSize) ? pSize : cSize;
+	    cliqueSize = (cliqueSize > eSize) ? cliqueSize : eSize;
+	    
+            if (pPartCliquePrintRange && pSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output. Cliques "
+		    "selected in the prolog, chunk, and epilog must all have the "
+		    "same total domain size.\n");
+	    }
+            if (cPartCliquePrintRange && cSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output. Cliques "
+		    "selected in the prolog, chunk, and epilog must all have the "
+		    "same total domain size.\n");
+	    }
+            if (ePartCliquePrintRange && eSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output. Cliques "
+		    "selected in the prolog, chunk, and epilog must all have the "
+		    "same total domain size.\n");
+	    }
+	    myjt.printCliqueOrders(stdout);
+	    pCliqueFile = instantiateWriteFile(cliqueListName, cliqueOutputName, cliquePrintSeparator,
+					       cliquePrintFormat, cliqueSize, 0, cliquePrintSwap);
+	    if (!pCliqueFile->seekable()) {
+	      error("ERROR: -island T requires a -cliquePrintFormat that supports random access "
+		    "writes (htk, binary, hdf5, or pfile)\n");
+	    }
+	  }
+	}
+
 	unsigned numUsableFrames;
 	myjt.collectDistributeIsland(numFrames,
 				     numUsableFrames,
@@ -538,9 +574,15 @@ main(int argc,char*argv[])
 				     rootBase, islandRootPower,
 				     false, // run EM algorithm
 				     true,  // run viterbi algorithm
-				     false  // localCliqueNormalization, unused here.
+				     false, // localCliqueNormalization, unused here.
+				     pCliqueFile, 
+				     cliquePosteriorNormalize,
+				     cliquePosteriorUnlog
 				     );
 	probe = myjt.curProbEvidenceIsland();
+	if (pCliqueFile)
+	  pCliqueFile->endOfSegment();
+
 	printf("Segment %d, after Island, viterbi log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
 	       segment,
 	       probe.val(),
@@ -571,6 +613,39 @@ main(int argc,char*argv[])
 	  myjt.distributeEvidence();
 	  infoMsg(IM::Inference, IM::Low,"Done Distributing Evidence\n");
 	}
+
+	if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange) {
+	  
+	  if (cliqueOutputName && !pCliqueFile) {
+	    unsigned pSize, cSize, eSize;
+	    myjt.cliquePosteriorSize(pSize, cSize, eSize);
+	    unsigned cliqueSize = (pSize > cSize) ? pSize : cSize;
+	    cliqueSize = (cliqueSize > eSize) ? cliqueSize : eSize;
+	    
+            if (pPartCliquePrintRange && pSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output\n");
+	    }
+            if (cPartCliquePrintRange && cSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output\n");
+	    }
+            if (ePartCliquePrintRange && eSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output\n");
+	    }
+	    myjt.printCliqueOrders(stdout);
+	    pCliqueFile = instantiateWriteFile(cliqueListName, cliqueOutputName, cliquePrintSeparator,
+					       cliquePrintFormat, cliqueSize, 0, cliquePrintSwap);
+	  }
+	  myjt.printAllCliques(stdout,cliquePosteriorNormalize, cliquePosteriorUnlog, cliquePrintOnlyEntropy, pCliqueFile, pCliqueFile, pCliqueFile);
+	  
+	  if (pCliqueFile)
+	    pCliqueFile->endOfSegment();
+#if 0
+	  if (cCliqueFile)
+	    cCliqueFile->endOfSegment();
+	  if (eCliqueFile)
+	    eCliqueFile->endOfSegment();
+#endif
+	}
       }
 
       if (JunctionTree::binaryViterbiFile) {
@@ -590,38 +665,7 @@ main(int argc,char*argv[])
 	warning("Segment %d: Not printing Viterbi values since segment has zero probability\n",
 		segment);
       else {
-	if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange) {
-	  
-	  if (cliqueOutputName && !pCliqueFile) {
-	    unsigned pSize, cSize, eSize;
-	    myjt.cliquePosteriorSize(pSize, cSize, eSize);
-	    unsigned cliqueSize = (pSize > cSize) ? pSize : cSize;
-	    cliqueSize = (cliqueSize > eSize) ? cliqueSize : eSize;
-	    
-            if (pPartCliquePrintRange && pSize != cliqueSize) {
-	      error("ERROR: incompatible cliques selected for file output\n");
-	    }
-            if (cPartCliquePrintRange && cSize != cliqueSize) {
-	      error("ERROR: incompatible cliques selected for file output\n");
-	    }
-            if (ePartCliquePrintRange && eSize != cliqueSize) {
-	      error("ERROR: incompatible cliques selected for file output\n");
-	    }
-	    pCliqueFile = instantiateWriteFile(cliqueListName, cliqueOutputName, cliquePrintSeparator,
-					       cliquePrintFormat, cliqueSize, 0, cliquePrintSwap);
-	  }
-	  myjt.printCliqueOrders(stdout);
-	  myjt.printAllCliques(stdout,true,cliquePrintOnlyEntropy, pCliqueFile, pCliqueFile, pCliqueFile);
-	  
-	  if (pCliqueFile)
-	    pCliqueFile->endOfSegment();
-#if 0
-	  if (cCliqueFile)
-	    cCliqueFile->endOfSegment();
-	  if (eCliqueFile)
-	    eCliqueFile->endOfSegment();
-#endif
-	}
+
 	if (pVitValsFile) {
 	  fprintf(pVitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
 		  segment,numFrames,probe.val());
