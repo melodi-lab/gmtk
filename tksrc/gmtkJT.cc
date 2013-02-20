@@ -419,6 +419,31 @@ main(int argc,char*argv[])
 
     try {
       if (probE) {
+	if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange) {
+	  if (cliqueOutputName && !pCliqueFile) {
+	    unsigned totalNumberPartitions;
+	    // this is just to setup data structures for cliquePosteriorSize and printCliqueOrders
+	    (void) myjt.unroll(1000000000 /* fake value*/,
+			       JunctionTree::ZeroTable,&totalNumberPartitions);
+	    unsigned pSize, cSize, eSize;
+	    myjt.cliquePosteriorSize(pSize, cSize, eSize);
+	    unsigned cliqueSize = (pSize > cSize) ? pSize : cSize;
+	    cliqueSize = (cliqueSize > eSize) ? cliqueSize : eSize;
+	    
+	    if (pPartCliquePrintRange && pSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output\n");
+	    }
+	    if (cPartCliquePrintRange && cSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output\n");
+	    }
+	    if (ePartCliquePrintRange && eSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output\n");
+	    }
+	    myjt.printCliqueOrders(stdout);
+	    pCliqueFile = instantiateWriteFile(cliqueListName, cliqueOutputName, cliquePrintSeparator,
+					       cliquePrintFormat, cliqueSize, 0, cliquePrintSwap);
+	  }
+	}
 	unsigned numUsableFrames;
       
 	// Range* bvrng = NULL;
@@ -428,7 +453,12 @@ main(int argc,char*argv[])
 	// logpr probe = myjt.probEvidence(numFrames,numUsableFrames,bvrng,boostVerbosity);
 
 	infoMsg(IM::Max,"Beginning call to probability of evidence.\n");
-	logpr probe = myjt.probEvidenceFixedUnroll(numFrames,&numUsableFrames);
+	logpr probe = myjt.probEvidenceFixedUnroll(numFrames,&numUsableFrames,
+						   false, NULL, false, 
+						   cliquePosteriorNormalize,
+						   cliquePosteriorUnlog,
+						   filteringInference,
+						   pCliqueFile);
 	printf("Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
 	       segment,
 	       probe.val(),

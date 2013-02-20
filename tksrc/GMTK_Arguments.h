@@ -1554,13 +1554,19 @@ static const char* varCliqueAssignmentPrior = "COT";
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
   static bool probE=false;
+  static bool filteringInference=false;
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   Arg("probE",Arg::Opt,probE,"Run the constant memory prob(evidence) function"),
+  Arg("filteringInference",Arg::Opt,filteringInference,"Compute P(Q_t|X_{0:t}), where Q_t are the hidden variables in modified partiton t and X_{0:t} is the evidence observed up to modified partition t"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
+  if (filteringInference && !probE) {
+    probE = true;
+    infoMsg(IM::SoftWarning,"turning on -probE because -filteringInference requires it\n");
+  }
 #else
 #endif
 #endif // defined(GMTK_ARG_PROB_EVIDENCE)

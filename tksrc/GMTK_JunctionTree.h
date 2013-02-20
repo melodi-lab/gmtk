@@ -1141,13 +1141,20 @@ public:
   logpr probEvidence();
 
   // the same, but don't unroll to length of segment.
+  //   cliquePosteriorNormalize = true normalizes the posterior scores to sum to 1 (in log space)
+  //   cliquePosteriorUnlog = true outputs the posterior score (vs. log(score))
+  //   filtering = true computes posterior P(Q_t | X_{1:t}) where Q_t are the
+  //      hidden variables in the modified partition t, and X_{1:t} is the
+  //      evidence observed up to modified partition t.
   logpr probEvidenceFixedUnroll(const unsigned numFrames,
 				unsigned* numUsableFrames = NULL,
 				bool limitTime=false,
 				unsigned *numPartitionsDone = NULL,
 				const bool noE=false,
 				const bool cliquePosteriorNormalize = true,
-				const bool cliquePosteriorUnlog = true);
+				const bool cliquePosteriorUnlog = true,
+				const bool filtering = false,
+				ObservationFile *posteriorFile = NULL);
 
   // not-quite-right DBN online filtering
   logpr onlineFixedUnroll(StreamSource *globalObservationMatrx,
