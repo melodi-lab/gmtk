@@ -51,6 +51,7 @@ class NGramCPT;
 class FNGramCPT;
 class FNGramImp;
 class VECPT;
+class DeepVECPT;
 class Vocab;
 class LatticeADT;
 class LatticeNodeCPT;
@@ -239,6 +240,10 @@ public:
   ObjectMapType veCptsMap;
   void add(VECPT*);
 
+  vector<DeepVECPT*> deepVECpts;
+  ObjectMapType deepVECptsMap;
+  void add(DeepVECPT*);
+
   /********************************************************************/
   /********************************************************************/
   /********************************************************************/
@@ -356,6 +361,7 @@ public:
   void readFNgramImps(iDataStreamFile& is, bool reset = false);
   void readLatticeAdts(iDataStreamFile& is, bool reset = false);
   void readVECpts(iDataStreamFile& is, bool reset = false);
+  void readDeepVECpts(iDataStreamFile& is, bool reset = false);
   void readDTs(iDataStreamFile& is,bool reset = false);
   void readComponents(iDataStreamFile& is,bool reset = false);
   void readMixtures(iDataStreamFile& is,bool reset = false);

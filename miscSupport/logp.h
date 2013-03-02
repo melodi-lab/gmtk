@@ -245,6 +245,7 @@ public:
       // even bother subtracting off y.
       if (x.v < LSMALL)
 	x.v = LZERO;
+printf("%f - %f = %f\n", x.v, y.v, x.v);
       return x;
     } else {
       // We want z = log(px-py) = 
@@ -256,6 +257,7 @@ public:
 	z.v = LZERO;
       else 
 	z.v = x.v+log(tmp);  // again, could use table lookup here
+printf("%f - %f = %f\n", x.v, y.v, z.v);
       return z;
     }
   }
