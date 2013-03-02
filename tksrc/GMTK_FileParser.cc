@@ -4,15 +4,8 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2001, < fill in later >
- *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
+ * Copyright (C) 2001 Jeff Bilems
+ * Licensed under the Open Software License version 3.0
  *
  */
 
@@ -58,6 +51,7 @@
 #include "GMTK_FNGramCPT.h"
 #include "GMTK_USCPT.h"
 #include "GMTK_VECPT.h"
+#include "GMTK_DeepVECPT.h"
 #include "GMTK_LatticeNodeCPT.h"
 #include "GMTK_LatticeEdgeCPT.h"
 #include "GMTK_Mixture.h"
@@ -472,6 +466,7 @@ FileParser::fillKeywordTable()
     /* 52 */ "logLinear",
     /* 53 */ "emarfNum",
     /* 54 */ "symboltable",
+    /* 55 */ "DeepVirtualEvidenceCPT",
   };
   vector<string> v;
   const unsigned len = sizeof(kw_table)/sizeof(char*);
@@ -2070,7 +2065,7 @@ FileParser::parseDiscreteImplementation()
   ensureNotAtEOF("discrete implementation");
   if (tokenInfo == KW_MDCPT || tokenInfo == KW_MSCPT
       || tokenInfo == KW_MTCPT || tokenInfo == KW_NGRAMCPT || tokenInfo == KW_FNGRAMCPT
-      || tokenInfo == KW_VECPT || tokenInfo == KW_LATTICENODECPT || tokenInfo == KW_LATTICEEDGECPT ) {
+      || tokenInfo == KW_VECPT || tokenInfo == KW_DeepVECPT || tokenInfo == KW_LATTICENODECPT || tokenInfo == KW_LATTICEEDGECPT ) {
 
     if (tokenInfo == KW_MDCPT)
       curRV.discImplementations.push_back(CPT::di_MDCPT);
@@ -2084,6 +2079,8 @@ FileParser::parseDiscreteImplementation()
       curRV.discImplementations.push_back(CPT::di_FNGramCPT);
     else if (tokenInfo == KW_VECPT)
       curRV.discImplementations.push_back(CPT::di_VECPT);
+    else if (tokenInfo == KW_DeepVECPT)
+      curRV.discImplementations.push_back(CPT::di_DeepVECPT);
     else if (tokenInfo == KW_LATTICENODECPT)
 	    curRV.discImplementations.push_back(CPT::di_LatticeNodeCPT);
     else if (tokenInfo == KW_LATTICEEDGECPT)
@@ -3203,6 +3200,38 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		cpts[j] = 
 		  GM_Parms.veCpts[
 				  GM_Parms.veCptsMap[
+						     rvInfoVector[i].listIndices[j].nameIndex
+				  ]
+		  ];
+	      }
+	    } else {
+	      // TODO: need to remove the integer index code.
+	      assert(0);
+	    }
+	} else
+	  if (rvInfoVector[i].discImplementations[j] == CPT::di_DeepVECPT) {
+
+	    /////////////////////////////////////////////////////////
+	    // Once again, same code as above, but using DeepVECPTs.
+
+	    //////////////////////////////////////////////////////
+	    // set the CPT to a DeepVECPT, depending on if a string
+	    // or integer index was used in the file.
+	    if (rvInfoVector[i].listIndices[j].liType
+		== RVInfo::ListIndex::li_String) {
+	      if (GM_Parms.deepVECptsMap.find(
+					  rvInfoVector[i].listIndices[j].nameIndex) ==
+		  GM_Parms.deepVECptsMap.end()) {
+		  error("Error: RV \"%s\" at frame %d (line %d), conditional parent DeepVirtualEvidenceCPT \"%s\" doesn't exist\n",
+			rvInfoVector[i].name.c_str(),
+			rvInfoVector[i].frame,
+			rvInfoVector[i].fileLineNumber,
+			rvInfoVector[i].listIndices[j].nameIndex.c_str());
+	      } else {
+		// otherwise add it
+		cpts[j] = 
+		  GM_Parms.deepVECpts[
+				  GM_Parms.deepVECptsMap[
 						     rvInfoVector[i].listIndices[j].nameIndex
 				  ]
 		  ];
