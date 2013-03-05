@@ -548,8 +548,8 @@ for(unsigned i=0; i < num_inputs; i+=1)
   printf(" %f", input_vector[i]);
 #endif
   float *output_vector[2];
-  output_vector[0] = new float[max_outputs]; // big enough to hold any layer's output (+1 for homogeneous coordinates)
-  output_vector[1] = new float[max_outputs];
+  output_vector[0] = new float[max_outputs+1]; // big enough to hold any layer's output (+1 for homogeneous coordinates)
+  output_vector[1] = new float[max_outputs+1];
 
   mul_mfmf_mf(layer_output_count[0], num_inputs, 1, 
 	      layer_matrix[0]->values.ptr, input_vector, output_vector[0], 
