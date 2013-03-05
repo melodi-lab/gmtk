@@ -95,6 +95,11 @@ class DeepVECPT : public CPT {
   vector<SquashFunction> layer_squash_func;
   vector<RealMatrix *>   layer_matrix;
 
+  // remember the computed CPT so we don't have to recompute it
+  unsigned  cached_segment; 
+  unsigned  cached_frame;
+  float    *cached_CPT;
+
   logpr applyDeepModel(DiscRVType parentValue, DiscRV * drv);
 
 public:
@@ -102,9 +107,13 @@ public:
   ///////////////////////////////////////////////////////////  
   // General constructor, 
   // VECPTs always have one parent, and a binary child.
-  DeepVECPT() : CPT(di_DeepVECPT), num_matrices(0)
-  { _numParents = 1; _card = 2; cardinalities.resize(_numParents); }
-  ~DeepVECPT() { }
+  DeepVECPT() : CPT(di_DeepVECPT), num_matrices(0),
+    cached_segment(0xFFFFFFFF), cached_frame(0xFFFFFFFF)
+  { 
+    _numParents = 1; _card = 2; cardinalities.resize(_numParents); 
+    cached_CPT = new float[parentCardinality(0)];
+  }
+  ~DeepVECPT() { if (cached_CPT) delete[] cached_CPT; }
 
   // a VECPT is considered iterable since its implementation can
   // change not only from segment to segment, but even within a
