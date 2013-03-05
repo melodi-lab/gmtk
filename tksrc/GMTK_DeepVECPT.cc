@@ -199,6 +199,12 @@ DeepVECPT::read(iDataStreamFile& is)
 	  stringprintf(error_message,"Invalid value '%s' for window radius option 'radius'. Must be integer.",option_value.c_str());
 	  throw(error_message);
 	}
+	if (obs->minPastFrames() < window_radius) {
+	  obs->setMinPastFrames(window_radius);
+	}
+	if (obs->minFutureFrames() < window_radius) {
+	  obs->setMinFutureFrames(window_radius);
+	}
       }
       else if(option_name == "matrices") {
 	if (!strIsInt(option_value.c_str(),&num_matrices)) {
@@ -508,15 +514,39 @@ DeepVECPT::applyDeepModel(DiscRVType parentValue, DiscRV * drv) {
 
   logpr p((void*)NULL);
 
+  unsigned frame = drv->frame();
+
+  if (frame == cached_frame && obs->segmentNumber() == cached_segment) {
+    p.valref() = cached_CPT[curParentValue];
+    // The obseved value (1) is the one corresponding
+    // to the value in the file. I.e., the score 
+    // in the file corresponds to Pr(child = 1 | parent = j) = f_t(j), 
+    // and f_t(j) is the value stored in the file.  
+    if (val == 0) {
+      // if the child RV has zero value, then we invert the probability.
+      // see comment 'zero valued child case' elsewhere in this file.
+      p = 1.0 - p;
+    }
+    return p;
+  }
+
+  cached_frame = frame;
+  cached_segment = obs->segmentNumber();
+
   unsigned num_inputs = nfs * ( 2 * window_radius + 1 ) + 1;
   float *input_vector = new float[num_inputs];
   input_vector[num_inputs-1] = 1.0; // homogeneous coordinates
-  unsigned frame = drv->frame();
   float *dest = input_vector;
-  for (unsigned t = frame - window_radius; t <= frame + window_radius; t+=1, dest += nfs) {
-    memcpy(dest, obs->floatVecAtFrame(t), nfs * sizeof(float));
+  // guarantees [frame - window_radius, frame + window_radius] are in cache
+  float *src  = obs->floatVecAtFrame(frame) - window_radius * nfs; 
+  for (unsigned i = 0; i < 1 + 2 * window_radius; i+=1, src += nfs, dest += nfs) {
+    memcpy(dest, src, nfs * sizeof(float));
   }
-
+#if 0
+printf("%02u:", frame);
+for(unsigned i=0; i < num_inputs; i+=1)
+  printf(" %f", input_vector[i]);
+#endif
   float *output_vector[2];
   output_vector[0] = new float[max_outputs]; // big enough to hold any layer's output (+1 for homogeneous coordinates)
   output_vector[1] = new float[max_outputs];
@@ -538,6 +568,13 @@ DeepVECPT::applyDeepModel(DiscRVType parentValue, DiscRV * drv) {
     squash(layer_squash_func[layer], output_vector[cur_output_vector], layer_output_count[layer]);
     output_vector[cur_output_vector][layer_output_count[layer]] = 1.0;
   }
+  memcpy(cached_CPT, output_vector[cur_output_vector], parentCardinality(0) * sizeof(float));
+#if 0
+printf(" ->");
+for (unsigned i=0; i < parentCardinality(0); i+=1)
+  printf(" %f", output_vector[cur_output_vector][i]);
+printf("\n");
+#endif
   p.valref() = output_vector[cur_output_vector][curParentValue];
   // The obseved value (1) is the one corresponding
   // to the value in the file. I.e., the score 
