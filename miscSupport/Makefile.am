@@ -60,9 +60,13 @@ lineqsolve.h lineqsolve.cc \
 debug.h debug.cc \
 fileParser.h fileParser.cc \
 hash_abstract.h hash_abstract.cc \
+phipac.h \
 mul_mdmd_md.c \
 mul_mdmd_md_l0g.c \
 mul_mdmd_md_l0nf.c \
+mul_mfmf_mf.c \
+mul_mfmf_mf_l0g.c \
+mul_mfmf_mf_l0nf.c \
 eig.h eig.c \
 bin_search.cc \
 lms_filter.h lms_filter.cc \

@@ -70,7 +70,6 @@ noinst_LIBRARIES = libXOPT.a libGMTK.a
 
 libGMTK_a_SOURCES = \
 hgstamp.h \
-mul_mfmf_mf.c mul_mfmf_mf_l0g.c mul_mfmf_mf_l0nf.c \
 GMTK_Dense1DPMF.h GMTK_Dense1DPMF.cc \
 GMTK_Sparse1DPMF.h GMTK_Sparse1DPMF.cc \
 GMTK_MeanVector.h GMTK_MeanVector.cc \
