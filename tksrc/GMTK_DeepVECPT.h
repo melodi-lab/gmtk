@@ -93,6 +93,7 @@ class DeepVECPT : public CPT {
   vector<string>         layer_matrix_name;
   vector<string>         layer_squash_name;
   vector<SquashFunction> layer_squash_func;
+  vector<float>          layer_logistic_beta;
   vector<RealMatrix *>   layer_matrix;
 
   // remember the computed CPT so we don't have to recompute it

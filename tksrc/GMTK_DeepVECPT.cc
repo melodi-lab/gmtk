@@ -5,8 +5,12 @@
  *
  * Written by Richard Rogers <rprogers@ee.washington.edu>
  *
+ * Copyright (C) 2013 Jeff Bilmes 
+ * Licensed under the Open Software License version 3.0
+ *
  * An example of how you'd specify DeepVECPTs:
- (in a masterfile:)
+ * (in a masterfile:)
+
 
 REAL_MAT_IN_FILE inline <m>
 0
@@ -50,11 +54,7 @@ nfs:0      % will cause an error if not updated
 f_offset:0 %
 radius:0   % use a single frame as input to the model
 
-
-
  *
- * Copyright (C) 2013 Jeff Bilmes 
- * Licensed under the Open Software License version 3.0
  *
  */
 
@@ -72,6 +72,7 @@ radius:0   % use a single frame as input to the model
 #include "general.h"
 #include "error.h"
 #include "rand.h"
+#include "phipac.h"
 
 #include "GMTK_DeepVECPT.h"
 #include "GMTK_GMParms.h"
@@ -221,6 +222,7 @@ DeepVECPT::read(iDataStreamFile& is)
 	layer_matrix_name.resize(num_matrices);
 	layer_squash_name.resize(num_matrices);
 	layer_squash_func.resize(num_matrices);
+	layer_logistic_beta.resize(num_matrices);
 	layer_matrix.resize(num_matrices);
 
 	if (!is.read(layer_output_count, num_matrices)) {
@@ -282,8 +284,21 @@ DeepVECPT::read(iDataStreamFile& is)
 	  layer_squash_name[layer] = option_value;
 	  if (option_value == "softmax") {
 	    layer_squash_func[layer] = SOFTMAX;
-	  } else if (option_value == "logistic") {
+	  } else if (option_value.compare(0, 8, "logistic") == 0) {
 	    layer_squash_func[layer] = LOGISTIC;
+	    if (option_value[8] == '(') {
+	      string beta_str = option_value.substr(9, option_value.find(')', 9)-9);
+	      int float_len;
+	      if (!strIsFloat(beta_str.c_str(),&(layer_logistic_beta[layer]), &float_len) ||
+		  float_len != (int)beta_str.length()) 
+	      {
+		string error_message;
+		stringprintf(error_message,"Invalid value '%s' for logistic beta. Must be float.", beta_str.c_str());
+		throw(error_message);
+	      }
+	    } else {
+	      layer_logistic_beta[layer] = 1.0;
+	    }
 	  } else if (option_value == "tanh") {
 	    layer_squash_func[layer] = TANH;
 	  } else if (option_value == "ODDROOT") {
@@ -377,17 +392,13 @@ DeepVECPT::read(iDataStreamFile& is)
       throw(error_message);
     }
 
-
   } catch ( string error_message ) {
-    error("ERROR: reading file '%s' line %u, of VirtualEvidenceCPT spec '%s': %s",
+    error("ERROR: reading file '%s' line %u, of DeepVirtualEvidenceCPT spec '%s': %s",
 	  is.fileName(),is.lineNo(),name().c_str(),error_message.c_str());
   } catch( const char * const error_message ) {
-    error("ERROR: reading file '%s' line %u, of VirtualEvidenceCPT spec '%s': %s",
+    error("ERROR: reading file '%s' line %u, of DeepVirtualEvidenceCPT spec '%s': %s",
 	  is.fileName(),is.lineNo(),name().c_str(),error_message);
   }
-
-
-
   setBasicAllocatedBit();
 }
 
@@ -449,10 +460,28 @@ void DeepVECPT::becomeAwareOfParentValues( vector <RV *>& parents,
 
 void
 softmax(float *q, unsigned len) {
-  float k = *q;
+  float k  = *q;
+#if 1
+  unsigned n;
+  if (len % 2) {
+    n = 1;
+  } else {
+    if (*q < q[1]) {
+      k = q[1];
+    }
+    n = 2;
+  }
+  float k2 = k;
+  for (unsigned i=n; i < len; i+=2) {
+    k  = (k  > q[i])   ? k  : q[i];
+    k2 = (k2 > q[i+1]) ? k2 : q[i+1];
+  }
+  k = (k > k2) ? k : k2;
+#else
   for (unsigned i=1; i < len; i+=1)
     if (k < q[i])
       k = q[i];
+#endif
   float sum = 0.0;
   for (unsigned i=0; i < len; i+=1)
     sum += expf(q[i] - k);
@@ -462,9 +491,9 @@ softmax(float *q, unsigned len) {
 }
 
 void
-logistic(float *q, unsigned len) {
+logistic(float *q, unsigned len, float beta=1.0) {
   for (unsigned i=0; i < len; i+=1)
-    q[i] = 1.0 / (1.0 + expf( -q[i] ));
+    q[i] = 1.0 / (1.0 + expf( -beta * q[i] ));
 }
 
 void
@@ -473,6 +502,7 @@ hyptan(float *q, unsigned len) {
     q[i] = tanhf(q[i]);
 }
 
+#if 0
 #define CUBE_ROOT_OF_2 1.25992104989
 void
 oddroot(float *q, unsigned len) {
@@ -481,16 +511,36 @@ oddroot(float *q, unsigned len) {
     q[i] = x / CUBE_ROOT_OF_2 - CUBE_ROOT_OF_2 / x;
   }
 }
+#else
+void
+oddroot(float *q, unsigned len) {
+  for (unsigned i=0; i < len; i+=1) {
+    float y = q[i];
+    bool negate = false;
+    if (y < 0) { negate = true; y = -y; }
+    float x = (y <= 20) ? y : powf(3.0 * y, 1.0/3.0);
+
+    float newX;
+    while (true) {
+      float xSqr = x * x;
+      newX = (0.66666666666666666 * xSqr * x + y) / (xSqr + 1.0);
+      if (newX >= x) break;
+      x = newX;
+    }
+    q[i] = negate ? -newX : newX;
+  }
+}
+#endif
 
 
 void
-squash(DeepVECPT::SquashFunction fn, float *q, unsigned len) {
+squash(DeepVECPT::SquashFunction fn, float *q, unsigned len, float beta=1.0) {
   switch (fn) {
   case DeepVECPT::SOFTMAX:
     softmax(q, len);
     break;
   case DeepVECPT::LOGISTIC:
-    logistic(q, len);
+    logistic(q, len, beta);
     break;
   case DeepVECPT::TANH:
     hyptan(q, len);
@@ -503,10 +553,6 @@ squash(DeepVECPT::SquashFunction fn, float *q, unsigned len) {
   }
 }
 
-
-extern "C" void mul_mfmf_mf(const int M, const int K, const int N, 
-                       const float *const A, const float *const B, float *const C, 
-                       const int Astride, const int Bstride, const int Cstride);
 
 logpr
 DeepVECPT::applyDeepModel(DiscRVType parentValue, DiscRV * drv) {
@@ -555,7 +601,7 @@ for(unsigned i=0; i < num_inputs; i+=1)
 	      layer_matrix[0]->values.ptr, input_vector, output_vector[0], 
 	      num_inputs, 1, 1);
   delete[] input_vector;
-  squash(layer_squash_func[0], output_vector[0], layer_output_count[0]);
+  squash(layer_squash_func[0], output_vector[0], layer_output_count[0], layer_logistic_beta[0]);
   output_vector[0][layer_output_count[0]] = 1.0;
 
   unsigned cur_output_vector = 0;
@@ -565,7 +611,7 @@ for(unsigned i=0; i < num_inputs; i+=1)
     mul_mfmf_mf(layer_output_count[layer], layer_output_count[layer-1]+1, 1, 
 		layer_matrix[layer]->values.ptr, input_vector, output_vector[cur_output_vector], 
 		layer_output_count[layer-1]+1, 1, 1);
-    squash(layer_squash_func[layer], output_vector[cur_output_vector], layer_output_count[layer]);
+    squash(layer_squash_func[layer], output_vector[cur_output_vector], layer_output_count[layer], layer_logistic_beta[0]);
     output_vector[cur_output_vector][layer_output_count[layer]] = 1.0;
   }
   memcpy(cached_CPT, output_vector[cur_output_vector], parentCardinality(0) * sizeof(float));
