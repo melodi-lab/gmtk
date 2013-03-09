@@ -135,7 +135,7 @@ VCID(HGID)
 #define GMTK_ARG_CLIQUE_TABLE_NORMALIZE
 #define GMTK_ARG_CE_SEP_DRIVEN
 #define GMTK_ARG_MIXTURE_CACHE
-#if 0
+#if 1
 #define GMTK_ARG_VITERBI_SCORE
 #endif
 #define GMTK_ARG_CLIQUE_VAR_ITER_ORDERS
@@ -152,6 +152,9 @@ VCID(HGID)
 #endif
 
 /************************            DECODING OPTIONS                  ******************************************/
+
+// gmtkOnline doesn't yet support Viterbi printing by unmodified sections
+#define GMTK_ONLINE_UNSUPPORTED
 #define GMTK_ARG_NEW_DECODING_OPTIONS
 
 #define GMTK_ARGUMENTS_DEFINITION
@@ -414,6 +417,7 @@ main(int argc,char*argv[])
   // the value around the JT::unroll() call in JT::onlineFixedUnroll()
 #endif
 
+#if 0
   // online filtering/smoothing needs to take some Viterbi code
   // paths but not others (particularly it should not allocate O(T)
   // memory for the Viterbi values, but it should call the Viterbi
@@ -422,7 +426,7 @@ main(int argc,char*argv[])
   // true in gmtkOnline so it can take the necessary code paths where
   // viterbiScore needs to be false to avoid the unwanted code paths.
   JunctionTree::onlineViterbi = true;
-  
+#endif
 
   // What is the difference between the pVit* files and the vit*
   // files?  The pVit* files are similar to the vit* files, but the
@@ -443,6 +447,7 @@ main(int argc,char*argv[])
     }
   }
 
+#ifndef GMTK_ONLINE_UNSUPPORTED
   FILE* vitValsFile = NULL;
   if (vitValsFileName) {
     if (vitValsFileName && strcmp("-",vitValsFileName) == 0)
@@ -452,6 +457,8 @@ main(int argc,char*argv[])
 	error("Can't open file '%s' for writing\n",vitValsFileName);
     }
   }
+#endif
+
 #if 0
   if (!pVitValsFile && !vitValsFile) {
     error("Argument Error: Missing REQUIRED argument: -pVitValsFile <str>  OR  -vitValsFile <str>\n");

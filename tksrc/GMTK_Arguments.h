@@ -1298,6 +1298,14 @@ static bool  cliquePrintSwap       = false;
       }
       base = (unsigned) tmp;
     }
+#ifdef GMTK_ARG_DO_DIST_EVIDENCE
+    if (doDistributeEvidence) {
+      infoMsg(IM::SoftWarning,"-doDistributeEvidence T is redundant with -island T\n");
+    }
+#endif
+    if (JunctionTree::sectionDoDist) {
+      error("ERROR: -sectionPartialDoDist T is not compatible with -island T\n");
+    }
   }
 
 
@@ -1513,8 +1521,19 @@ static const char* varCliqueAssignmentPrior = "COT";
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   Arg("doDistributeEvidence",Arg::Opt,doDistributeEvidence,"Also run distribute-evidence"),
+  Arg("sectionPartialDoDist",Arg::Opt,JunctionTree::sectionDoDist,"Compute P(Q_t|X_{0:t}), where Q_t are the hidden variables in modified section t and X_{0:t} is the evidence observed up to modified section t"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+  if (doDistributeEvidence && JunctionTree::sectionDoDist) {
+    error("ERROR: cannot do both -doDistributeEvidence and -sectionDoDist\n");
+  }
+#if defined(GMTK_ARG_ISLAND)
+  if (JunctionTree::sectionDoDist && island) {
+    error("ERROR: -sectionPartialDoDist T is not compatible with -island T\n");
+  }
+#endif
+
 
 #else
 #endif
@@ -1554,19 +1573,17 @@ static const char* varCliqueAssignmentPrior = "COT";
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
   static bool probE=false;
-  static bool filteringInference=false;
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   Arg("probE",Arg::Opt,probE,"Run the constant memory prob(evidence) function"),
-  Arg("filteringInference",Arg::Opt,filteringInference,"Compute P(Q_t|X_{0:t}), where Q_t are the hidden variables in modified partiton t and X_{0:t} is the evidence observed up to modified partition t"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
-  if (filteringInference && !probE) {
-    probE = true;
-    infoMsg(IM::SoftWarning,"turning on -probE because -filteringInference requires it\n");
+  if (probE && doDistributeEvidence) {
+    error("ERROR: -doDistributeEvidence T is not compatible with -probE T\n");
   }
+
 #else
 #endif
 #endif // defined(GMTK_ARG_PROB_EVIDENCE)
@@ -1863,6 +1880,7 @@ static bool writeLogVals = false;
 
   Arg("pVitPrintObservedVariables",Arg::Opt,pVitAlsoPrintObservedVariables,"Partition Vit: also print observed random variables in addtion to hidden"),
 
+#ifndef GMTK_ONLINE_UNSUPPORTED
   // frame based
   Arg("vitValsFile",Arg::Opt,vitValsFileName,"Vit: file to print viterbi values, '-' for stdout"),
   // TODO: not currently used, but should add.
@@ -1875,6 +1893,7 @@ static bool writeLogVals = false;
   Arg("vitFrameRange",Arg::Opt,vitFrameRangeFilter,"Vit: value printing, integer range filter for frames to print."),
 
   Arg("vitPrintObservedVariables",Arg::Opt,vitAlsoPrintObservedVariables,"Vit: also print observed random variables in addtion to hidden"),
+#endif
 
 #if defined(GMTK_ARGUMENTS_REQUIRE_BINARY_VIT_FILE)
   Arg("binaryVitFile",Arg::Req,JunctionTree::binaryViterbiFilename,"File containing binary Viterbi values for printing"),

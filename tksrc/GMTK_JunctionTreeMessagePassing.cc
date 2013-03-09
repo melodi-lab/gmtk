@@ -2055,6 +2055,24 @@ JunctionTree::collectEvidence()
 		   inference_it.cur_message_order(),
 		   inference_it.cur_nm(),
 		   inference_it.pt_i());
+
+  if (sectionDoDist) {
+  // Send messages from the root clique to the rest of the cliques
+  // in this partition so that they are consistant with the observations
+  // in this partition. We originally wanted to send messages only to
+  // the cliques actually being printed, but deScatterToOutgoingSeparators()
+  // sends messages to all of a clique's outgoing separators (rather
+  // than just those on the path to a printing clique) and we decided
+  // not to implement a "subset" scatter. We think that in the common
+  // cases there won't be much extra work from the full scatter.
+    deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
+		       partitionTableArray[inference_it.pt_i()],
+		       inference_it.cur_ri(),
+		       inference_it.cur_message_order(),
+		       inference_it.cur_nm(),
+		       inference_it.pt_i());
+  }
+
   // if the LI separator was turned off, we need to turn it back on.
   if (inference_it.at_first_c() && P1.cliques.size() == 0)
     Co.useLISeparator();
@@ -2097,6 +2115,24 @@ JunctionTree::collectEvidence()
 		     inference_it.cur_message_order(),
 		     inference_it.cur_nm(),
 		     inference_it.pt_i());
+
+    if (sectionDoDist) {
+      // Send messages from the root clique to the rest of the cliques
+      // in this partition so that they are consistant with the observations
+      // in this partition. We originally wanted to send messages only to
+      // the cliques actually being printed, but deScatterToOutgoingSeparators()
+      // sends messages to all of a clique's outgoing separators (rather
+      // than just those on the path to a printing clique) and we decided
+      // not to implement a "subset" scatter. We think that in the common
+      // cases there won't be much extra work from the full scatter.
+      deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
+			 partitionTableArray[inference_it.pt_i()],
+			 inference_it.cur_ri(),
+			 inference_it.cur_message_order(),
+			 inference_it.cur_nm(),
+			 inference_it.pt_i());
+    }
+    
     if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
       E1.useLISeparator();
 
@@ -2902,7 +2938,6 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 				      const bool noE, 
 				      const bool cliquePosteriorNormalize,
 				      const bool cliquePosteriorUnlog,
-				      const bool filtering,
 				      ObservationFile *posteriorFile)
 {
 
@@ -2949,7 +2984,7 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 		   inference_it.cur_message_order(),
 		   inference_it.cur_nm(),
 		   inference_it.pt_i());
-  if (filtering) {
+  if (sectionDoDist) {
     deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
 		       *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
 		       inference_it.cur_ri(),
@@ -3020,7 +3055,7 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 		       inference_it.cur_message_order(),
 		       inference_it.cur_nm(),
 		       inference_it.pt_i());
-      if (filtering) {
+      if (sectionDoDist) {
 	deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
 			   *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
 			   inference_it.cur_ri(),
@@ -3276,17 +3311,6 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
   unsigned M = gm_template.M;
   unsigned S = gm_template.S;
 
-#if 0
-  unsigned numFramesInPprime = fp.numFramesInP() + fp.numFramesInC() * M;
-  unsigned numFramesInCprime = fp.numFramesInC() * (S+M);
-  unsigned numFramesInEprime = fp.numFramesInE() + fp.numFramesInC() * M;
-#endif
-
-#if 0
-  unsigned numPreloadFrames = Dlinks::globalMinLag() + 
-    numFramesInPprime + 2 * numFramesInCprime + numFramesInEprime;
-#else
-  
   if ((unsigned) Dlinks::globalMinLag() > globalObservationMatrix->startSkip()) {
     error("ERROR: -startSkip must be at least %d\n", Dlinks::globalMinLag());
   }
@@ -3321,7 +3345,6 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
     fp.numFramesInE() +
     Dlinks::globalMaxLag();
   // Assume the above won't over-flow with just 5 partitions
-#endif
 
   unsigned numNewFrames = fp.numFramesInC() * S;
 
@@ -3334,6 +3357,7 @@ printf("preaload %u frames\n", numPreloadFrames);
     unsigned T = globalObservationMatrix->numFrames();
     unsigned tmp;
 
+    bool rememberedViterbiScore = viterbiScore;
     viterbiScore = false; // avoid allocating space for O(T) viterbi values in unroll()
 
     if (T > 0) {
@@ -3367,7 +3391,7 @@ printf("preaload %u frames\n", numPreloadFrames);
 printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 
 
-  viterbiScore = true;  // do compute viterbi values in deScatterOutofRoot() (max-product semiring)
+  viterbiScore = rememberedViterbiScore;  // do compute viterbi values in deScatterOutofRoot()? (max-product semiring)
   
   if (numUsableFrames) 
       *numUsableFrames = tmp;
@@ -3421,37 +3445,28 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 		     inference_it.cur_nm(),
 		     inference_it.pt_i());
 
-  // print filter ("Viterbi") values
-
-  fprintf(f,"Ptn-%d P': ", inference_it.pt_i());
-  if (printObserved && ps.allrvs.size() > 0) {
-    printRVSetAndValues(f,ps.allrvs,true,preg);
-  } else if (ps.packer.packedLen() > 0) {
-    printRVSetAndValues(f,ps.hidRVVector,true,preg);
-  }
-
-  if (inference_it.cur_part_clique_print_range() != NULL) {
-    viterbiScore = false; // sum-product semiring
+  if (viterbiScore) {
+    // print filter ("Viterbi") values
     
-    deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
-		       *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
-		       inference_it.cur_ri(),
-		       inference_it.cur_message_order(),
-		       inference_it.cur_nm(),
-		       inference_it.pt_i());
-    
-    // possibly print the P or C partition information
-    printAllCliques(partitionStructureArray[inference_it.ps_i()],
-		    *cur_part_tab,
-		    inference_it.pt_i(),
-		    inference_it.cur_nm(),
-		    inference_it.cur_part_clique_print_range(),
-		    stdout,
-		    cliquePosteriorNormalize, cliquePosteriorUnlog,
-		    false, posteriorFile);
-    viterbiScore = true;  // do compute viterbi values in deScatterOutofRoot() (max-product semiring)
+    fprintf(f,"Ptn-%d P': ", inference_it.pt_i());
+    if (printObserved && ps.allrvs.size() > 0) {
+      printRVSetAndValues(f,ps.allrvs,true,preg);
+    } else if (ps.packer.packedLen() > 0) {
+      printRVSetAndValues(f,ps.hidRVVector,true,preg);
+    }
+  } else {
+    if (inference_it.cur_part_clique_print_range() != NULL) {
+      // possibly print the P or C partition information
+      printAllCliques(partitionStructureArray[inference_it.ps_i()],
+		      *cur_part_tab,
+		      inference_it.pt_i(),
+		      inference_it.cur_nm(),
+		      inference_it.cur_part_clique_print_range(),
+		      stdout,
+		      cliquePosteriorNormalize, cliquePosteriorUnlog,
+		      false, posteriorFile);
+    }
   }
-
 
   // if the LI separator was turned off, we need to turn it back on.
   if (inference_it.at_first_c() && P1.cliques.size() == 0)
@@ -3524,39 +3539,28 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 			 inference_it.cur_nm(),
 			 inference_it.pt_i());
 
-
-      // print filter values
-
-      fprintf(f,"Ptn-%d %c': ",inference_it.pt_i(), inference_it.at_e() ? 'E' : 'C');
-      if (printObserved && ps.allrvs.size() > 0) {
-	printRVSetAndValues(f,ps.allrvs,true,preg);
-      } else if (ps.packer.packedLen() > 0) {
-	printRVSetAndValues(f,ps.hidRVVector,true,preg);
-      }
-
-      // possibly print the P or C partition information
-      if (inference_it.cur_part_clique_print_range() != NULL) {
-	viterbiScore = false; // sum-product semiring
+      if (viterbiScore) {
+	// print filter values
 	
-	deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
-			   *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
-			   inference_it.cur_ri(),
-			   inference_it.cur_message_order(),
-			   inference_it.cur_nm(),
-			   inference_it.pt_i());
-
-	printAllCliques(partitionStructureArray[inference_it.ps_i()],
-			*cur_part_tab,
-			inference_it.pt_i(),
-			inference_it.cur_nm(),
-			inference_it.cur_part_clique_print_range(),
-			stdout,
-			cliquePosteriorNormalize, cliquePosteriorUnlog,
-			false, posteriorFile);			
-	viterbiScore = true;  // do compute viterbi values in deScatterOutofRoot() (max-product semiring)
+	fprintf(f,"Ptn-%d %c': ",inference_it.pt_i(), inference_it.at_e() ? 'E' : 'C');
+	if (printObserved && ps.allrvs.size() > 0) {
+	  printRVSetAndValues(f,ps.allrvs,true,preg);
+	} else if (ps.packer.packedLen() > 0) {
+	  printRVSetAndValues(f,ps.hidRVVector,true,preg);
+	}
+      } else {
+	// possibly print the P or C partition information
+	if (inference_it.cur_part_clique_print_range() != NULL) {
+	  printAllCliques(partitionStructureArray[inference_it.ps_i()],
+			  *cur_part_tab,
+			  inference_it.pt_i(),
+			  inference_it.cur_nm(),
+			  inference_it.cur_part_clique_print_range(),
+			  stdout,
+			  cliquePosteriorNormalize, cliquePosteriorUnlog,
+			  false, posteriorFile);			
+	}
       }
-
-
     }
     if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
       E1.useLISeparator();

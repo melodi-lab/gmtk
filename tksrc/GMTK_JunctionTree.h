@@ -874,6 +874,10 @@ public:
   // if true, use mmap() to allocate memory for C_partition_values,
   // otherwise use new
   static bool mmapViterbi;
+  
+  // if ture, do distribute evidence just within the modified section
+  // to compute P(Q_t | X_{0:t})
+  static bool sectionDoDist;
 
   // For O(1) memory inference, write Viterbi values to this file for
   // later printing by a separate program
@@ -1153,7 +1157,6 @@ public:
 				const bool noE=false,
 				const bool cliquePosteriorNormalize = true,
 				const bool cliquePosteriorUnlog = true,
-				const bool filtering = false,
 				ObservationFile *posteriorFile = NULL);
 
   // not-quite-right DBN online filtering
