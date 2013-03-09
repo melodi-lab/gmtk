@@ -28,6 +28,7 @@ stamp-h1
 ylwrap
 ar-lib
 compile
+typescript
 IEEEFloatingpoint/ieeeFPsetup.h
 IEEEFloatingpoint/ieeeTest
 featureFileIO/unrevisioned
@@ -69,6 +70,7 @@ miscSupport/testVSHashMap
 miscSupport/testcArray
 miscSupport/testsArray
 miscSupport/testmArray
+miscSupport/testQSort
 mitk/bivariate-mi
 mitk/mvnrnd
 mitk/test-matrix-ops

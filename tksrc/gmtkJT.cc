@@ -457,7 +457,6 @@ main(int argc,char*argv[])
 						   false, NULL, false, 
 						   cliquePosteriorNormalize,
 						   cliquePosteriorUnlog,
-						   filteringInference,
 						   pCliqueFile);
 	printf("Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
 	       segment,
