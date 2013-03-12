@@ -211,6 +211,9 @@ main(int argc,char*argv[])
   //  CODE_TO_COMPUTE_ENDIAN;
 
 
+  JunctionTree::viterbiScore = true; // default is true for gmtkOnline
+
+
   ////////////////////////////////////////////
   // parse arguments
   bool parse_was_ok = Arg::parse(argc,(char**)argv,
@@ -417,7 +420,7 @@ main(int argc,char*argv[])
   // the value around the JT::unroll() call in JT::onlineFixedUnroll()
 #endif
 
-#if 0
+#if 1
   // online filtering/smoothing needs to take some Viterbi code
   // paths but not others (particularly it should not allocate O(T)
   // memory for the Viterbi values, but it should call the Viterbi
