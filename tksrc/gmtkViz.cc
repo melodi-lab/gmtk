@@ -2527,7 +2527,7 @@ void GFrame::OnMenuFilePrintEPS(wxCommandEvent &event)
 		ps2eps_cmd.append(" > '");
 
 		//quote single quotes to be safe
-		string temp_path = eps_file_dialog.GetPath().wx_str();
+		string temp_path = eps_file_dialog.GetPath().ToStdString(); //wx_str();
 		size_t match_loc = 0;
 		while(string::npos != (match_loc = temp_path.find("'", match_loc))){
 			temp_path.replace(match_loc,1,"'\"'\"'"); //replace ' with '"'"'
@@ -7586,7 +7586,7 @@ StructPage::RequestClose( void )
 						wxT("Discard the changes."),
 						wxT("Nevermind. Don't close the file.") };
 		wxSingleChoiceDialog dlg( this, msg, wxT("Save file?"), 4, choices,
-					  NULL, wxOK | wxCENTRE, wxDefaultPosition );
+					  (char**)NULL, wxOK | wxCENTRE, wxDefaultPosition );
 		// prompt to save it
 		dlg.ShowModal(); // no need to test for wxOK
 		// if the user chooses to save it
