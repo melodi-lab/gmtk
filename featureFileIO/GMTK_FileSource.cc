@@ -221,7 +221,7 @@ FileSource::justifySegment(unsigned numUsableFrames) {
   }
   infoMsg(IM::ObsFile,IM::Low,"justification mode %u offset = %u\n", 
 	  justificationMode, justificationOffset);
-  _numFrames = numUsableFrames; // - _startSkip - _endSkip;
+  _numFrames = numUsableFrames;
 }
 
 

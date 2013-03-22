@@ -461,6 +461,7 @@ main(int argc,char*argv[])
 	    }
 	  } else {
 	    unsigned numUsableFrames = myjt.unroll(numFrames);
+	    gomFS->justifySegment(numUsableFrames);
 	    total_num_frames += numUsableFrames;
 	    infoMsg(IM::Low,"Collecting Evidence\n");
 	    myjt.collectEvidence();
