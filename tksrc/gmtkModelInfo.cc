@@ -1,24 +1,9 @@
 /*
  * gmtkModelInfo.cc
- * produce a junction tree
  *
  * Written by Richard Rogers <rprogers@ee.washington.edu>
  *
- * Copyright (c) 2011, < fill in later >
- *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
- *
- */
-
-/*
- * This program converts from ascii trainable parameters to binary
- * and vice versa.
- *
+ * Copyright (C) 2011 Jeff Bilmes
  *
  */
 
@@ -192,6 +177,7 @@ ObservationSource *globalObservationMatrix;
     gammaDist_F,
     betaDist_F,
     veCPT_F,
+    dveCPT_F,
     veSep_F,
     format_F,
     unknown_F, // use this for fields you don't know how to compute
@@ -375,6 +361,7 @@ main(int argc,char*argv[])
   bool gammaDist = false;
   bool betaDist = false;
   bool veCPT = GM_Parms.veCpts.size() > 0;
+  bool dveCPT = GM_Parms.deepVECpts.size() > 0;
   bool veSep = false;
 
   for (vector<RV*>::iterator it = unrolled_rvs.begin(); it != unrolled_rvs.end(); ++it) {
@@ -477,6 +464,7 @@ main(int argc,char*argv[])
     "gammaDist",
     "betaDist",
     "veCPT",
+    "deepVECPT",
     "veSep",
     "format",
     "unknown",
@@ -522,6 +510,7 @@ main(int argc,char*argv[])
     "gamma distribution",
     "beta distribution",
     "VE CPTs",
+    "deep VE CPTs",
     "VE separators",
     "data format",
     "unknown field",
@@ -560,6 +549,7 @@ main(int argc,char*argv[])
     l1Reg_F, 
     l2Reg_F, 
     veCPT_F, 
+    dveCPT_F,
     format_F,
 #else
     nRVs_F, 
@@ -715,6 +705,7 @@ switch (mode) {\
     case gammaDist_F:   PB(gammaDist); break;
     case betaDist_F:    PB(betaDist); break;
     case veCPT_F:       PB(veCPT); break;
+    case dveCPT_F:      PB(dveCPT); break;
     case veSep_F:       PB(veSep); break;
     case format_F:      PS(fmts[0]); break;
     case unknown_F:     PS("?"); break;

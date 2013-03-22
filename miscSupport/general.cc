@@ -22,6 +22,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #include <string>
 #include <string.h>
@@ -64,6 +65,25 @@ bool strIsInt(const char*const str, unsigned* i,int* len)
   else {
     if (i != NULL)
       *i = (unsigned)l;
+    if (len != NULL)
+      *len = (p - str);
+    return true;
+  }
+}
+
+bool strIsFloat(const char*const str, float* f,int* len) 
+{
+  char *p;
+  errno = 0;
+  float fl = strtof(str,&p);
+  if (errno == ERANGE) {
+    error("strIsFloat: input string '%s' caused overflow or underflow\n");
+  }
+  if (p == str)
+    return false;
+  else {
+    if (f != NULL)
+      *f = fl;
     if (len != NULL)
       *len = (p - str);
     return true;

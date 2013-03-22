@@ -1,0 +1,14 @@
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/345 is fixed
+
+# Smoke test to exercise Deep VE CPT
+
+AT_SETUP([Deep VE CPT smoke test])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/dvecpt])
+AT_CHECK([(cd $TEST_AND_DEV/dvecpt && \
+          gmtkJT -strF dvecpt.str -inputM dvecpt.mtr \
+          -of1 obs.flat -fmt1 flatascii -nf1 3 -startSkip 1 -endSkip 1)],[],[ignore])
+AT_CHECK([(cd $TEST_AND_DEV/dvecpt && \
+          gmtkViterbi -strF dvecpt.str -inputM dvecpt.mtr \
+          -of1 obs.flat -fmt1 flatascii -nf1 3 -startSkip 1 -endSkip 1 \
+	  -vitValsFile -)],[],[ignore])
+AT_CLEANUP

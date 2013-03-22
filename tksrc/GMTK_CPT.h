@@ -59,11 +59,10 @@ class DiscRV;
  *  |
  *  +-- VECPT - virtual evidence CPT
  *  | 
+ *  +-- DeepVECPT - deep virtual evidence CPT
+ *  |
  *  +-- LatticeEdgeCPT - implementation of an HTK lattice edge as a GMTK CPT
  *  +-- LatticeNodeCPT - implementation of an HTK lattice node as a GMTK CPT
- *
- *  Still TODO:
- *      Neural Network/MLP CPT
  *
  */
 
@@ -119,6 +118,7 @@ public:
     di_NGramCPT, // Ngram "language model" CPT
     di_FNGramCPT, // factored ngram "language model" CPT
     di_VECPT,    // Virtual Evidence CPT
+    di_DeepVECPT, // Deep Virtual Evidence CPT
     di_LatticeNodeCPT,	// lattice node CPT
     di_LatticeEdgeCPT,	// lattice edge CPT
     di_unknown
@@ -180,7 +180,7 @@ public:
     friend class NGramCPT;
     friend class FNGramCPT;
     friend class VECPT;
-
+    friend class DeepVECPT;
 
     // The cpt for this iterator.
     CPT* cpt;

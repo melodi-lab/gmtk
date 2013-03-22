@@ -5,17 +5,8 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2001, < fill in later >
- *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
- *
- *
- * $Header$
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
  *
  */
 
@@ -190,7 +181,8 @@ public:
     KW_Table=51,
     KW_LogLinear=52,
     KW_EmarfNum=53,
-    KW_SymbolTable=54
+    KW_SymbolTable=54,
+    KW_DeepVECPT=55
   };
 
   // list of token keyword strings.
