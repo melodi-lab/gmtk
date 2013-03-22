@@ -3,17 +3,8 @@
  * 
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2001, < fill in later >
- *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
- *
- *
- *  $Header$
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
  *
  */
 
@@ -72,7 +63,7 @@ int_rng {int}:{int}
  * and with kw_table[] in FileParser.cc   
 */
 
-keyword GRAPHICAL_MODEL|frame|variable|factor|type|cardinality|switchingparents|conditionalparents|discrete|continuous|hidden|observed|observation|weight|scale|penalty|shift|value|nil|using|mapping|collection|DenseCPT|SparseCPT|DeterministicCPT|NGramCPT|FNGramCPT|VirtualEvidenceCPT|LatticeNodeCPT|LatticeEdgeCPT|mixture|gausSwitchMixture|logitSwitchMixture|mlpSwitchMixture|chunk|elimination_hint|frameNum|numFrames|segmentNum|numSegments|variables|symmetricConstraint|allVarsEqual|allVarsUnequal|varsNotEqual|varsSumTo|varsMultiplyTo|varsSumMod|varsSatisfy|directionalConstraint|functionOf|softConstraint|table|logLinear|emarfNum|symboltable
+keyword GRAPHICAL_MODEL|frame|variable|factor|type|cardinality|switchingparents|conditionalparents|discrete|continuous|hidden|observed|observation|weight|scale|penalty|shift|value|nil|using|mapping|collection|DenseCPT|SparseCPT|DeterministicCPT|NGramCPT|FNGramCPT|VirtualEvidenceCPT|LatticeNodeCPT|LatticeEdgeCPT|mixture|gausSwitchMixture|logitSwitchMixture|mlpSwitchMixture|chunk|elimination_hint|frameNum|numFrames|segmentNum|numSegments|variables|symmetricConstraint|allVarsEqual|allVarsUnequal|varsNotEqual|varsSumTo|varsMultiplyTo|varsSumMod|varsSatisfy|directionalConstraint|functionOf|softConstraint|table|logLinear|emarfNum|symboltable|DeepVirtualEvidenceCPT
 
 separator ":"|";"|"{"|"}"|"("|")"|"|"|","|"="
 

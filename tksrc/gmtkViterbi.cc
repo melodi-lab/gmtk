@@ -545,6 +545,8 @@ main(int argc,char*argv[])
       } else {
 	// linear space inference
 	unsigned numUsableFrames = myjt.unroll(numFrames);
+	gomFS->justifySegment(numUsableFrames);
+
 	infoMsg(IM::Inference, IM::Med,"Collecting Evidence\n");
 	myjt.collectEvidence();
 	infoMsg(IM::Inference, IM::Med,"Done Collecting Evidence\n");

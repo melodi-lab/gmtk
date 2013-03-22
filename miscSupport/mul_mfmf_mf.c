@@ -44,9 +44,15 @@
 **
 */
 
-extern mul_mfmf_mf_l0g(const int M, const int K, const int N, const float *const A, const float *const B, float *const C, const int Astride, const int Bstride, const int Cstride);
-extern mul_mfmf_mf_l0nf(const int M, const int K, const int N, const float *const A, const float *const B, float *const C, const int Astride, const int Bstride, const int Cstride);
+extern void
+mul_mfmf_mf_l0g(const int M, const int K, const int N, 
+		const float *const A, const float *const B, float *const C, 
+		const int Astride, const int Bstride, const int Cstride);
 
+extern void 
+mul_mfmf_mf_l0nf(const int M, const int K, const int N, 
+		 const float *const A, const float *const B, float *const C, 
+		 const int Astride, const int Bstride, const int Cstride);
 
 void
 mul_mfmf_mf(const int M, const int K, const int N, const float *const A, const float *const B, float *const C, const int Astride, const int Bstride, const int Cstride)
