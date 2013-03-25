@@ -29,6 +29,7 @@ AC_CANONICAL_HOST
 # Turn on automake error checking and turn off whinging about missing
 # some files GNU projects are supposed to have
 AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
+AM_SILENT_RULES([yes])
 
 # Check that we're in the correct directory by verifying the existence 
 # of the file
