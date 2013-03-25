@@ -81,5 +81,9 @@ main(int argc, char *argv[]) {
 
   FileSource *globalObservationMatrix;
   globalObservationMatrix = instantiateFileSource();
+  printf("%u segments;  %u floats;  %u ints\n", 
+	 globalObservationMatrix->numSegments(),
+	 globalObservationMatrix->numContinuous(),
+	 globalObservationMatrix->numContinuous());
   exit(0);
 }

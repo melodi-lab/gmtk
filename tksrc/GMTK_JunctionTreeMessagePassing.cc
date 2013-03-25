@@ -3593,8 +3593,6 @@ printf("learned T=%u at %u %u\n", globalObservationMatrix->numFrames(), part, in
   }
   assert ( inference_it.at_e() );
 
- finished:
-
   logpr rc;
   if (inference_it.at_e()) {
     // then we finished.
