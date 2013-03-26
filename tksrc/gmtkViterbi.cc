@@ -413,7 +413,7 @@ main(int argc,char*argv[])
     }
   }
   if (!pVitValsFile && !vitValsFile && !JunctionTree::binaryViterbiFile) {
-    error("Argument Error: Missing REQUIRED argument: -pVitValsFile <str>  OR  -vitValsFile <str> OR -binaryViterbiFile <str>\n");
+    error("Argument Error: Missing REQUIRED argument: -pVitValsFile <str>  OR  -vitValsFile <str> OR -binaryVitFile <str>\n");
   }
 #endif
 
@@ -458,7 +458,11 @@ main(int argc,char*argv[])
   }
 
   if (JunctionTree::binaryViterbiFile) {
-//printf("Writing %x segments\n", numSegments);
+
+    // Here we write out the binary Viterbi file header. This is the magic
+    // string "GMTKVIT\n" followed by the # of segments (4 bytes) and k
+    // for k-best (4 bytes, always 1 for now...)
+
     if (fputs(GMTK_VITERBI_COOKIE, JunctionTree::binaryViterbiFile) == EOF) {
       char *err = strerror(errno);
       error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
@@ -473,8 +477,25 @@ main(int argc,char*argv[])
       char *err = strerror(errno);
       error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
     }
+
+    // Next we write out dummy values for the index. For each segment, the index
+    // contains the offset in the file where the segment's Viterbi values start
+    // (8 bytes) followed by the segment's score (4 bytes). The values written
+    // here should be over-written as the actual inference results are stored
+    // in the file. The important thing is to end up with the file positioned
+    // at the start of the first segment - this could have been achieved with an
+    // fseek(), but I wrote out the dummy values (0, NaN) so that I could
+    // (manually) verify that they are over-written with the correct values.
+
+    if (sizeof(gmtk_off_t) != 8) {
+      error("ERROR: GMTK requires 64-bit file offsets to support binary Viterbi "
+            "files. The current file offset size appears to be %u bits. The "
+            "configure script used to build GMTK should have arranged to use "
+            "64-bit file offsets if that's possible on this platform.\n",
+            (unsigned)sizeof(gmtk_off_t));
+    }
     gmtk_off_t off = (gmtk_off_t) 0;
-    float score = 0.0/0.0; // initially nan so I can check that the index is written correctly (non-nan)
+    float score = NAN;
     for (unsigned i=0; i < numSegments; i+=1) {
       if (fwrite(&off, sizeof(off), 1, JunctionTree::binaryViterbiFile) != 1) {
 	char *err = strerror(errno);
@@ -485,9 +506,11 @@ main(int argc,char*argv[])
 	error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
       }
     }
+    // The next (in this case, first) segment's Viterbi values start at the current
+    // file position...
     JunctionTree::nextViterbiOffset = gmtk_ftell(JunctionTree::binaryViterbiFile);
   }
-//printf("seg 0 starts @ %llx\n", ftello(JunctionTree::binaryViterbiFile));
+
   while (!dcdrng_it->at_end()) {
     const unsigned segment = (unsigned)(*(*dcdrng_it));
 
@@ -495,17 +518,25 @@ main(int argc,char*argv[])
     gmtk_off_t off;
     float score;
     if (JunctionTree::binaryViterbiFile) {
+
+      // Update the index with the correct starting position of the current segment
       off = JunctionTree::nextViterbiOffset;
+
+      // The file position to write the segment's (offset,score) in the index.
+      // Note that we don't know the segment's score yet, so we're just writing
+      // the offset here. Obviously, we'll update the score later.
       indexOff = (gmtk_off_t) ( GMTK_VITERBI_HEADER_SIZE + segment * (sizeof(gmtk_off_t) + sizeof(float)) );
       if (gmtk_fseek(JunctionTree::binaryViterbiFile, indexOff, SEEK_SET)) {
 	char *err = strerror(errno);
 	error("Error seeking in '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
       }
-//printf("idx seg %03x -> %04llx @ %04llx = %llx\n", segment, off, indexOff, ftello(JunctionTree::binaryViterbiFile));
+
       if (fwrite(&off, sizeof(off), 1, JunctionTree::binaryViterbiFile) != 1) {
 	char *err = strerror(errno);
 	error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
       }
+
+      // Now back to the start of the segment so we can write the Viterbi data
       if (gmtk_fseek(JunctionTree::binaryViterbiFile, off, SEEK_SET)) {
 	char *err = strerror(errno);
 	error("Error seeking in '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
@@ -569,6 +600,7 @@ main(int argc,char*argv[])
       }
 
       if (JunctionTree::binaryViterbiFile) {
+        // Now we know the segment's score, so we can update it in the index
 	indexOff = (gmtk_off_t) ( GMTK_VITERBI_HEADER_SIZE + sizeof(gmtk_off_t) + segment * (sizeof(gmtk_off_t) + sizeof(float)) );
 	if (gmtk_fseek(JunctionTree::binaryViterbiFile, indexOff, SEEK_SET)) {
 	  char *err = strerror(errno);

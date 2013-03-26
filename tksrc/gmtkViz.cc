@@ -7585,8 +7585,13 @@ StructPage::RequestClose( void )
 						wxT("Save the changes to a different file."),
 						wxT("Discard the changes."),
 						wxT("Nevermind. Don't close the file.") };
+#if wxCHECK_VERSION( 2, 9, 4 )
 		wxSingleChoiceDialog dlg( this, msg, wxT("Save file?"), 4, choices,
-					  (char**)NULL, wxOK | wxCENTRE, wxDefaultPosition );
+					  (void**)NULL, wxOK | wxCENTRE, wxDefaultPosition );
+#else
+                wxSingleChoiceDialog dlg( this, msg, wxT("Save file?"), 4, choices,
+                                          (char**)NULL, wxOK | wxCENTRE, wxDefaultPosition );
+#endif
 		// prompt to save it
 		dlg.ShowModal(); // no need to test for wxOK
 		// if the user chooses to save it
