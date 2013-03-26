@@ -2,7 +2,7 @@
  * gmtkPrint.cc
  *
  * A GMTK program to print out Viterbi values from files written
- * by gmtkViterbi with the -binaryViterbiFile option
+ * by gmtkViterbi with the -binaryVitFile option
  *
  *
  * Copyright (c) 2012, < fill in later >
@@ -340,7 +340,7 @@ main(int argc,char*argv[])
   logpr total_data_prob = 1.0;
 
   if (!JunctionTree::binaryViterbiFile) {
-    error("Argument Error: Missing REQUIRED argument: -binaryViterbiFile <str>\n");
+    error("Argument Error: Missing REQUIRED argument: -binaryVitFile <str>\n");
   }
 
   char cookie[GMTK_VITERBI_COOKIE_LENGTH+1];

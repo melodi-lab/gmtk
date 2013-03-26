@@ -13,7 +13,9 @@
 #if HAVE_INTTYPES_H
    // The ISO C99 standard specifies that the macros in inttypes.h must
    //  only be defined if explicitly requested. 
-#  define __STDC_FORMAT_MACROS 1
+#  ifndef __STDC_FORMAT_MACROS
+#    define __STDC_FORMAT_MACROS 1
+#  endif
 #  include <inttypes.h>
 #endif
 #if HAVE_STDINT_H
