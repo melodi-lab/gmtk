@@ -59,6 +59,7 @@
 #include "GMTK_JunctionTree.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_Dlinks.h"
+#include "GMTK_BinaryViterbiFileUtils.h"
 
 #if 0
 #  include "GMTK_ObservationMatrix.h"
@@ -289,12 +290,6 @@ JunctionTree::recordPartitionViterbiValue(ptps_iterator& it)
 	  error("ERROR: seek failed on '%s': %s\n", binaryViterbiFilename, err);
 	}	
 	ps.packer.pack(ps.hrvValuePtrs.ptr,P_partition_values.ptr);
-#if 0
-printf("P     %03u %08x", (unsigned) ftell(binaryViterbiFile), P_partition_values.ptr[0]);
-for (unsigned i=1; i < ps.packer.packedLen(); i+=1)
-  printf(" %08x", P_partition_values.ptr[i]);
-printf("\n");
-#endif
 	if (fwrite(P_partition_values.ptr, sizeof(unsigned), num_to_write, binaryViterbiFile) 
 	    != num_to_write) 
 	{
@@ -311,12 +306,6 @@ printf("\n");
 	  error("ERROR: seek failed on '%s': %s\n", binaryViterbiFilename, err);
 	}	
 	ps.packer.pack(ps.hrvValuePtrs.ptr,E_partition_values.ptr);
-#if 0
-printf("E %03llu %03u %08x", offset, (unsigned)ftell(binaryViterbiFile), E_partition_values.ptr[0]);
-for (unsigned i=1; i < ps.packer.packedLen(); i+=1)
-  printf(" %08x", E_partition_values.ptr[i]);
-printf("\n");
-#endif
 	if (fwrite(E_partition_values.ptr, sizeof(unsigned), num_to_write, binaryViterbiFile) 
 	    != num_to_write) 
 	{
@@ -338,12 +327,6 @@ printf("\n");
 	  error("seek failed on '%s': %s\n", binaryViterbiFilename, err);
 	}	
 	ps.packer.pack(ps.hrvValuePtrs.ptr, C_partition_values.ptr);  // stomp on old values to be O(1) memory
-#if 0
-printf("C %03llu %03u %08x", offset, (unsigned) ftell(binaryViterbiFile), C_partition_values.ptr[0]);
-for (unsigned i=1; i < ps.packer.packedLen(); i+=1)
-  printf(" %08x", C_partition_values.ptr[i]);
-printf("\n");
-#endif
 	if (fwrite(C_partition_values.ptr, sizeof(unsigned), num_to_write, binaryViterbiFile) 
 	    != num_to_write) 
 	{
@@ -525,37 +508,14 @@ JunctionTree::printSavedPartitionViterbiValues(unsigned numFrames,
     setCurrentInferenceShiftTo(part);
     PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
 
-#if 0
-    // obsoleted by N-best support
-    if (inference_it.at_p()) {
-      if (fread(P_partition_values.ptr, sizeof(unsigned), ps.packer.packedLen(), binaryViterbiFile) != ps.packer.packedLen())
-	error("ERROR: faild to read viterbi values from '%s'\n", binaryViterbiFilename);
-    } else if (inference_it.at_e()) {
-      if (fread(E_partition_values.ptr, sizeof(unsigned), ps.packer.packedLen(), binaryViterbiFile) != ps.packer.packedLen())
-	error("ERROR: faild to read viterbi values from '%s'\n", binaryViterbiFilename);
-    } else {
-      if (fread(C_partition_values.ptr, sizeof(unsigned), ps.packer.packedLen(), binaryViterbiFile) != ps.packer.packedLen())
-	error("ERROR: faild to read viterbi values from '%s'\n", binaryViterbiFilename);
-    }
-#endif
-
     unsigned N_best = 1;
     unsigned num_to_read = N_best * ps.packer.packedLen();
     if (inference_it.at_p()) {
-      if (fread(P_partition_values.ptr, sizeof(unsigned), num_to_read, binaryViterbiFile) != num_to_read) {
-	char *err = strerror(errno);
-	error("Error reading '%s': %s\n", binaryViterbiFilename, err);
-      }
+      readVitIntVector(num_to_read, P_partition_values.ptr);
     } else if (inference_it.at_e()) {
-      if (fread(E_partition_values.ptr, sizeof(unsigned), num_to_read, binaryViterbiFile) != num_to_read) {
-	char *err = strerror(errno);
-	error("Error reading '%s': %s\n", binaryViterbiFilename, err);
-      }
+      readVitIntVector(num_to_read, E_partition_values.ptr);
     } else {
-      if (fread(C_partition_values.ptr, sizeof(unsigned), num_to_read, binaryViterbiFile) != num_to_read) {
-	char *err = strerror(errno);
-	error("Error reading '%s': %s\n", binaryViterbiFilename, err);
-      }
+      readVitIntVector(num_to_read, C_partition_values.ptr);
     }
 
     if (inference_it.at_p()) {
@@ -1161,20 +1121,11 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames,
     unsigned N_best = 1;
     unsigned num_to_read = N_best * ps.packer.packedLen();
     if (inference_it.at_p()) {
-      if (fread(P_partition_values.ptr, sizeof(unsigned), num_to_read, binaryViterbiFile) != num_to_read) {
-	char *err = strerror(errno);
-	error("Error reading '%s': %s\n", binaryViterbiFilename, err);
-      }
+      readVitIntVector(num_to_read, P_partition_values.ptr);
     } else if (inference_it.at_e()) {
-      if (fread(E_partition_values.ptr, sizeof(unsigned), num_to_read, binaryViterbiFile) != num_to_read) {
-	char *err = strerror(errno);
-	error("Error reading '%s': %s\n", binaryViterbiFilename, err);
-      }
+      readVitIntVector(num_to_read, E_partition_values.ptr);
     } else {
-      if (fread(C_partition_values.ptr, sizeof(unsigned), num_to_read, binaryViterbiFile) != num_to_read) {
-	char *err = strerror(errno);
-	error("Error reading '%s': %s\n", binaryViterbiFilename, err);
-      }
+      readVitIntVector(num_to_read, C_partition_values.ptr);
     }
 
     if (inference_it.at_p()) {
@@ -1258,11 +1209,8 @@ JunctionTree::readBinaryVitPartition(PartitionStructures& ps, unsigned part) {
     if (gmtk_fseek(binaryViterbiFile, binaryViterbiOffset, SEEK_SET) == (off_t) -1) {
       char *err = strerror(errno);
       error("ERROR: seek failed on '%s': %s\n", binaryViterbiFilename, err);
-    }       
-    if (fread(P_partition_values.ptr, sizeof(unsigned), num_to_read, binaryViterbiFile) != num_to_read) {
-      char *err = strerror(errno);
-      error("Error reading '%s': %s\n", binaryViterbiFilename, err);
     }
+    readVitIntVector(num_to_read, P_partition_values.ptr);
   } else if (inference_it.at_e()) {
     offset = (off_t)  // P' size + (T-2) * C' size
       (   (   N_best * partitionStructureArray[0].packer.packedLen()       
@@ -1272,10 +1220,7 @@ JunctionTree::readBinaryVitPartition(PartitionStructures& ps, unsigned part) {
       char *err = strerror(errno);
       error("ERROR: seek failed on '%s': %s\n", binaryViterbiFilename, err);
     }       
-    if (fread(E_partition_values.ptr, sizeof(unsigned), num_to_read, binaryViterbiFile) != num_to_read) {
-      char *err = strerror(errno);
-      error("Error reading '%s': %s\n", binaryViterbiFilename, err);
-    }
+    readVitIntVector(num_to_read, E_partition_values.ptr);
   } else {
     offset = (off_t)  // P' size + (t-1) * C' size
       (   (   N_best * partitionStructureArray[0].packer.packedLen()
@@ -1285,10 +1230,7 @@ JunctionTree::readBinaryVitPartition(PartitionStructures& ps, unsigned part) {
       char *err = strerror(errno);
       error("seek failed on '%s': %s\n", binaryViterbiFilename, err);
     }       
-    if (fread(C_partition_values.ptr, sizeof(unsigned), num_to_read, binaryViterbiFile) != num_to_read) {
-      char *err = strerror(errno);
-      error("Error reading '%s': %s\n", binaryViterbiFilename, err);
-    }
+    readVitIntVector(num_to_read, C_partition_values.ptr);
   } 
 }
 

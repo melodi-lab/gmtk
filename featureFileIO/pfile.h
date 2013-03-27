@@ -34,8 +34,10 @@
 // a print command for ssize_t similar to what you might find in inttypes.h
 #define PRIsst "zd"
 
-typedef int32_t intv_int32_t;
+typedef int32_t  intv_int32_t;
 typedef uint32_t intv_uint32_t;
+typedef int64_t  intv_int64_t;
+typedef uint64_t intv_uint64_t;
 
 typedef long SegID;
 enum {
