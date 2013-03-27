@@ -10,8 +10,10 @@
 #include "pfile.h"
 
 // basic byte swapping (swapb) routines
+extern intv_int64_t swapb_i64_i64(intv_int64_t val);
 extern intv_int32_t swapb_i32_i32(intv_int32_t val);
 extern short swapb_short_short(short sval);
+extern double swapb_f64_f64(double fval);
 extern float swapb_f32_f32(float fval);
 
 // static intv_int32_t copy_i32_i32(intv_int32_t from) { return from; }

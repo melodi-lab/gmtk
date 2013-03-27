@@ -83,6 +83,7 @@ bool JunctionTree::probEvidenceTimeExpired = false;
 bool JunctionTree::viterbiScore = false;
 bool JunctionTree::onlineViterbi = false;
 bool JunctionTree::mmapViterbi = true;
+bool JunctionTree::binaryViterbiSwap = false;
 FILE * JunctionTree::binaryViterbiFile = NULL;
 char * JunctionTree::binaryViterbiFilename = NULL;
 off_t  JunctionTree::binaryViterbiOffset;

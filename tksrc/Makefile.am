@@ -160,6 +160,7 @@ GMTK_Partition.h GMTK_Partition.cc \
 GMTK_JT_Partition.h GMTK_JT_Partition.cc \
 GMTK_PartitionTables.h GMTK_PartitionTables.cc \
 GMTK_PartitionStructures.h GMTK_PartitionStructures.cc \
+GMTK_BinaryViterbiFileUtils.h GMTK_BinaryViterbiFileUtils.cc \
 GMTK_JunctionTreeMessagePassing.cc \
 GMTK_JunctionTreeIslandMessagePassing.cc \
 version.h

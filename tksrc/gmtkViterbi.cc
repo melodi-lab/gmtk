@@ -467,6 +467,11 @@ main(int argc,char*argv[])
       char *err = strerror(errno);
       error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
     }
+    int byte_order_mark = 0x01020304;
+    if (fwrite(&byte_order_mark, sizeof(byte_order_mark), 1, JunctionTree::binaryViterbiFile) != 1) {
+      char *err = strerror(errno);
+      error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+    }
     unsigned numSegments = gomFS->numSegments();
     if (fwrite(&numSegments, sizeof(numSegments), 1, JunctionTree::binaryViterbiFile) != 1) {
       char *err = strerror(errno);
