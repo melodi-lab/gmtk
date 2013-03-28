@@ -13,7 +13,9 @@
 #if HAVE_INTTYPES_H
    // The ISO C99 standard specifies that the macros in inttypes.h must
    //  only be defined if explicitly requested. 
-#  define __STDC_FORMAT_MACROS 1
+#  ifndef __STDC_FORMAT_MACROS
+#    define __STDC_FORMAT_MACROS 1
+#  endif
 #  include <inttypes.h>
 #endif
 #if HAVE_STDINT_H
@@ -32,8 +34,10 @@
 // a print command for ssize_t similar to what you might find in inttypes.h
 #define PRIsst "zd"
 
-typedef int32_t intv_int32_t;
+typedef int32_t  intv_int32_t;
 typedef uint32_t intv_uint32_t;
+typedef int64_t  intv_int64_t;
+typedef uint64_t intv_uint64_t;
 
 typedef long SegID;
 enum {

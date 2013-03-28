@@ -8,6 +8,7 @@ AC_CONFIG_SRCDIR([mixNormalCollection.cc])
 AC_CONFIG_HEADER([ac_config.h])
 
 AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
+AM_SILENT_RULES([yes])
 
 AC_ARG_ENABLE([assertions],
               [AS_HELP_STRING([--disable-assertions],

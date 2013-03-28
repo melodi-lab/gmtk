@@ -12,6 +12,7 @@ AC_CONFIG_SRCDIR([GMTK_DlinkMatrix.h])
 AC_CONFIG_HEADERS([config.h])
 
 AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
+AM_SILENT_RULES([yes])
 
 AC_ARG_ENABLE([assertions],
               [AS_HELP_STRING([--disable-assertions],

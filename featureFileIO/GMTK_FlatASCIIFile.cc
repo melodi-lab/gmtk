@@ -269,10 +269,15 @@ FlatASCIIFile::writeFeature(Data32 x) {
   if (currFeature == 0) {
     fprintf(writeFile, "%u %u", currSegment, currFrame);
   }
+  union {
+    float  f;
+    UInt32 i;
+  } fea;
+  fea.i = (UInt32) x;
   if (currFeature < _numContinuousFeatures) {
-    fprintf(writeFile, " %.8e", *(float *)&x);
+    fprintf(writeFile, " %.8e", fea.f);
   } else {
-    fprintf(writeFile, " %u", *(unsigned *)&x);
+    fprintf(writeFile, " %u", fea.i);
   }
   currFeature += 1;
   if (currFeature == _numFeatures) {

@@ -166,10 +166,15 @@ PFileFile::writeFrame(Data32 const *frame) {
 
 void 
 PFileFile::writeFeature(Data32 x) {
+  union {
+    float  f;
+    UInt32 i;
+  } fea;
+  fea.i = (UInt32) x;
   if (currentFeature < _numContinuousFeatures) {
-    out_stream->write_ftr(currentFeature, *(float *)&x);
+    out_stream->write_ftr(currentFeature, fea.f);
   } else {
-    out_stream->write_lab(currentFeature, *(UInt32 *)&x);
+    out_stream->write_lab(currentFeature, fea.i);
   }
   currentFeature += 1;
   if (currentFeature == _numFeatures) {

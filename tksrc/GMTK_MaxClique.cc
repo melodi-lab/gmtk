@@ -6519,7 +6519,8 @@ printf("\n");
       x = cliqueValues.ptr[index[0].index].p.valref();
     }
   }
-  f->writeFeature(* (Data32 *)(&x) );
+  Data32 xx = (Data32)x;
+  f->writeFeature(xx);
   unsigned prevIdx = 0;
   for (unsigned cvnIdx=1;cvnIdx<numCliqueValuesUsed;cvnIdx++) {
     unsigned cvn = index[cvnIdx].index;
@@ -6547,7 +6548,8 @@ printf("\n");
 	x = cliqueValues.ptr[cvn].p.valref();
       }
     }
-    f->writeFeature(* (Data32 *)(&x) );
+    xx = (Data32)x;
+    f->writeFeature(xx);
   }
 
   skip = cliqueDomainSize(sharedStructure) - cliqueValueMagnitude(sharedStructure,index[numCliqueValuesUsed-1].index) - 1;

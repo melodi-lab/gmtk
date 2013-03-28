@@ -121,6 +121,7 @@ GMTK_Sw_HidDiscRV.h GMTK_Sw_HidDiscRV.cc \
 GMTK_Sw_ObsContRV.h GMTK_Sw_ObsContRV.cc \
 GMTK_Sw_ObsDiscRV.h GMTK_Sw_ObsDiscRV.cc \
 GMTK_VECPT.h GMTK_VECPT.cc \
+GMTK_DeepVECPT.h GMTK_DeepVECPT.cc \
 GMTK_NetworkFlow.h GMTK_NetworkFlow.cc \
 GMTK_NetworkFlowTriangulate.h GMTK_NetworkFlowTriangulate.cc \
 GMTK_LatticeADT.h GMTK_LatticeADT.cc GMTK_LatticeADT.h GMTK_LatticeNodeCPT.h \
@@ -159,6 +160,7 @@ GMTK_Partition.h GMTK_Partition.cc \
 GMTK_JT_Partition.h GMTK_JT_Partition.cc \
 GMTK_PartitionTables.h GMTK_PartitionTables.cc \
 GMTK_PartitionStructures.h GMTK_PartitionStructures.cc \
+GMTK_BinaryViterbiFileUtils.h GMTK_BinaryViterbiFileUtils.cc \
 GMTK_JunctionTreeMessagePassing.cc \
 GMTK_JunctionTreeIslandMessagePassing.cc \
 version.h

@@ -2,7 +2,7 @@
  * gmtkPrint.cc
  *
  * A GMTK program to print out Viterbi values from files written
- * by gmtkViterbi with the -binaryViterbiFile option
+ * by gmtkViterbi with the -binaryVitFile option
  *
  *
  * Copyright (c) 2012, < fill in later >
@@ -46,6 +46,7 @@
 #include "file_utils.h"
 
 #include "GMTK_WordOrganization.h"
+#include "GMTK_BinaryViterbiFileUtils.h"
 
 VCID(HGID)
 
@@ -281,7 +282,8 @@ main(int argc,char*argv[])
     // do this in scope so that is gets deleted now rather than later.
     iDataStreamFile is(tri_file.c_str());
     if (!fp.readAndVerifyGMId(is,checkTriFileCards))
-      error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",tri_file.c_str(),strFileName);
+      error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",
+	    tri_file.c_str(),strFileName);
     
     gm_template.readPartitions(is);
     gm_template.readMaxCliques(is);
@@ -340,34 +342,54 @@ main(int argc,char*argv[])
   logpr total_data_prob = 1.0;
 
   if (!JunctionTree::binaryViterbiFile) {
-    error("Argument Error: Missing REQUIRED argument: -binaryViterbiFile <str>\n");
+    error("Argument Error: Missing REQUIRED argument: -binaryVitFile <str>\n");
   }
+
+  FILE *binVitFile = JunctionTree::binaryViterbiFile;
 
   char cookie[GMTK_VITERBI_COOKIE_LENGTH+1];
 
-  if (fgets(cookie, GMTK_VITERBI_COOKIE_LENGTH+1, JunctionTree::binaryViterbiFile) != cookie) {
-    error("ERROR: Binary viterbi file '%s' did not begin with %s", 
-	  JunctionTree::binaryViterbiFilename, GMTK_VITERBI_COOKIE);
+  if (fgets(cookie, GMTK_VITERBI_COOKIE_LENGTH+1, binVitFile) != cookie) {
+    error("ERROR: Binary Viterbi file '%s' did not begin with '%s'. It may be corrupt or not a ", 
+	  "Viterbi file.\n", JunctionTree::binaryViterbiFilename, GMTK_VITERBI_COOKIE_NOLF);
   }
   if (strcmp(cookie, GMTK_VITERBI_COOKIE)) {
-    error("ERROR: Binary viterbi file '%s' did not begin with %s", 
-	  JunctionTree::binaryViterbiFilename, GMTK_VITERBI_COOKIE);
+    error("ERROR: Binary Viterbi file '%s' did not begin with '%s'. It may be corrupt or not a ", 
+	  "Viterbi file.\n", JunctionTree::binaryViterbiFilename, GMTK_VITERBI_COOKIE_NOLF);
   }
-  
+
+  int byte_order_mark;
+  if (fread(&byte_order_mark, sizeof(byte_order_mark), 1, binVitFile) != 1) {
+    error("ERROR: Unable to read binary Viterbi file '%s'\n",
+	  JunctionTree::binaryViterbiFilename);
+  }
+  if (byte_order_mark != 0x01020304) {
+    if (byte_order_mark == 0x04030201) {
+      JunctionTree::binaryViterbiSwap = true;
+    } else {
+      error("ERROR: Binary Viterbi file '%s' did not begin with '%s'. It may be corrupt or not a ", 
+	    "Viterbi file.\n", JunctionTree::binaryViterbiFilename, GMTK_VITERBI_COOKIE_NOLF);
+    }
+  }
+
   unsigned num_segments_in_file;
-  if (fread(&num_segments_in_file, sizeof(num_segments_in_file), 1, JunctionTree::binaryViterbiFile) != 1) {
+  readVitZ(num_segments_in_file);
+#if 0
+  if (fread(&num_segments_in_file, sizeof(num_segments_in_file), 1, binVitFile) != 1) {
     error("ERROR: failed to read # of segments from '%s'\n", JunctionTree::binaryViterbiFilename);
   }
+#endif
   if (num_segments_in_file != gomFS->numSegments()) {
     error("ERROR: '%s' contains %u segments, but the current observation files contain %u\n",
 	  JunctionTree::binaryViterbiFilename, num_segments_in_file, gomFS->numSegments());
   }
-
   unsigned N_best;
-  if (fread(&N_best, sizeof(N_best), 1, JunctionTree::binaryViterbiFile) != 1) {
+  readVitZ(N_best);
+#if 0
+  if (fread(&N_best, sizeof(N_best), 1, binVitFile) != 1) {
     error("ERROR: failed to read N (for N-best) from '%s'\n", JunctionTree::binaryViterbiFilename);
   }
-
+#endif
 
   // What is the difference between the pVit* files and the vit*
   // files?  The pVit* files are similar to the vit* files, but the
@@ -449,24 +471,30 @@ main(int argc,char*argv[])
     float score;
 
     indexOff = (gmtk_off_t) ( GMTK_VITERBI_HEADER_SIZE + segment * (sizeof(gmtk_off_t) + sizeof(float)) );
-    if (gmtk_fseek(JunctionTree::binaryViterbiFile, indexOff, SEEK_SET)) {
+    if (gmtk_fseek(binVitFile, indexOff, SEEK_SET)) {
       char *err = strerror(errno);
       error("Error seeking in '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
     }
-    if (fread(&off, sizeof(off), 1, JunctionTree::binaryViterbiFile) != 1) {
+    readVitZ(off);
+#if 0
+    if (fread(&off, sizeof(off), 1, binVitFile) != 1) {
       char *err = strerror(errno);
       error("Error reading from '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
     }
+#endif
     JunctionTree::binaryViterbiOffset = off;
-    if (fread(&score, sizeof(score), 1, JunctionTree::binaryViterbiFile) != 1) {
+    readVitR(score);
+#if 0
+    if (fread(&score, sizeof(score), 1, binVitFile) != 1) {
       char *err = strerror(errno);
       error("Error reading from '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
     }
-    if (gmtk_fseek(JunctionTree::binaryViterbiFile, off, SEEK_SET)) {
+#endif
+    if (gmtk_fseek(binVitFile, off, SEEK_SET)) {
       char *err = strerror(errno);
       error("Error seeking in '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
     }
-//printf("idx seg %03x -> %04llx @ %04llx    %llx\n", segment, off, indexOff, ftello(JunctionTree::binaryViterbiFile));
+//printf("idx seg %03x -> %04llx @ %04llx    %llx\n", segment, off, indexOff, ftello(binVitFile));
 
     if (gomFS->numSegments() < (segment+1)) 
       error("ERROR: only %d segments in file, decode range must be in range [%d,%d] inclusive\n",
@@ -483,7 +511,7 @@ main(int argc,char*argv[])
       fprintf(pVitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
 	      segment, numFrames, probe.val());
       myjt.printSavedPartitionViterbiValues(numFrames,
-					    JunctionTree::binaryViterbiFile,
+					    binVitFile,
 					    pVitValsFile,
 					    pVitAlsoPrintObservedVariables,
 					    pVitPreg,
@@ -498,7 +526,7 @@ main(int argc,char*argv[])
       if (!vitFrameRangeFilter) {
 	myjt.printSavedViterbiValues(numFrames, 
 				     vitValsFile,
-				     JunctionTree::binaryViterbiFile,
+				     binVitFile,
 				     vitAlsoPrintObservedVariables,
 				     vitPreg,
 				     vitPartRangeFilter);

@@ -60,6 +60,7 @@
 #include "GMTK_NGramCPT.h"
 #include "GMTK_FNGramCPT.h"
 #include "GMTK_VECPT.h"
+#include "GMTK_DeepVECPT.h"
 #include "GMTK_Vocab.h"
 #include "GMTK_LatticeADT.h"
 #include "GMTK_LatticeNodeCPT.h"
@@ -139,6 +140,7 @@ GMParms::~GMParms()
   deleteObsInVector(latticeAdts);
   deleteObsInVector(latticeNodeCpts);
   deleteObsInVector(veCpts);
+  deleteObsInVector(deepVECpts);
   deleteObsInVector(mixtures);
   // deleteObsInVector(gausSwitchingMixtures);
   // deleteObsInVector(logitSwitchingMixtures);
@@ -178,6 +180,7 @@ void GMParms::add(LatticeADT* ob) {
 void GMParms::add(LatticeNodeCPT* ob) { add(ob,latticeNodeCpts,latticeNodeCptsMap); }
 void GMParms::add(LatticeEdgeCPT* ob) { add(ob,latticeEdgeCpts,latticeEdgeCptsMap); }
 void GMParms::add(VECPT*ob) { add(ob,veCpts,veCptsMap); }
+void GMParms::add(DeepVECPT*ob) { add(ob,deepVECpts,deepVECptsMap); }
 void GMParms::add(Mixture*ob) { add(ob,mixtures,mixturesMap); }
 void GMParms::add(GausSwitchingMixture*ob) { assert (0); }
 void GMParms::add(LogitSwitchingMixture*ob) { assert (0); }
@@ -859,6 +862,42 @@ void GMParms::readVECpts(iDataStreamFile& is, bool reset)
 }
 
 
+void GMParms::readDeepVECpts(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
+
+  is.read(num, "Can't read num DeepVirtualEvidenceCPTs");
+  if ( num > GMPARMS_MAX_NUM )
+    error("ERROR: number of Deep VE CPTs (%d) exceeds maximum", num);
+  if ( reset ) {
+    start = 0;
+    deepVECpts.resize(num);
+  } else {
+    start = deepVECpts.size();
+    deepVECpts.resize(start + num);
+  }
+  for ( unsigned i = 0; i <num; i++ ) {
+    // first read the count
+    DeepVECPT* ob;
+
+    is.read(cnt, "Can't read DeepVirtualEvidenceCPT num");
+    if ( cnt != i )
+      error("ERROR: DeepVECPT count (%d), out of order in file '%s' line %d, expecting %d", 
+	    cnt, is.fileName(), is.lineNo(),i);
+
+    ob = new DeepVECPT();
+    ob->read(is);
+    if ( deepVECptsMap.find(ob->name()) != deepVECptsMap.end() )
+      error("ERROR: DeepVECPT named '%s' already defined but is specified for a second time in file '%s' line %d",
+	    ob->name().c_str(), is.fileName(),is.lineNo());
+    deepVECpts[i + start] = ob;
+    deepVECptsMap[ob->name()] = i + start;
+  }
+}
+
+
 
 
 void
@@ -1163,7 +1202,7 @@ GMParms::readAll(iDataStreamFile& is)
   readFNgramImps(is);
   readLatticeAdts(is);
   readVECpts(is);
-
+  readDeepVECpts(is);
   // next read definitional items
   readComponents(is);
   readMixtures(is);
@@ -1274,6 +1313,8 @@ GMParms::readNonTrainable(iDataStreamFile& is)
   readFNgramImps(is);
   infoMsg(Low+9,"Reading VirtualEvidenceCPTs\n");
   readVECpts(is);
+  infoMsg(Low+9,"Reading DeepVirtualEvidenceCPTs\n");
+  readDeepVECpts(is);
 }
 
 
@@ -1384,6 +1425,9 @@ GMParms::read(
 
     } else if (keyword == "VE_CPT_IN_FILE") {
       readVECpts(*((*it).second),false);
+
+    } else if (keyword == "DEEP_VE_CPT_IN_FILE") {
+      readDeepVECpts(*((*it).second),false);
 
     } else if (keyword == "DT_IN_FILE") {
       readDTs(*((*it).second),false);
@@ -2734,11 +2778,24 @@ GMParms::setSegment(const unsigned segmentNo)
   }
   for (unsigned i=0; i< veCpts.size(); i++) {
     veCpts[i]->setSegment(segmentNo);
-
+    
     // FIXME - investigate if veCpts work with stream input (where
     //         the number of frames isn't known)
     if (numFrames != 0 && veCpts[i]->numFrames() != numFrames) 
       error("ERROR: number of frames in segment %d for main observation matrix is %d, but VirtualEvidenceCPT '%s' observation matrix has %d frames in that segment",segmentNo,numFrames,veCpts[i]->name().c_str(),veCpts[i]->numFrames());
+  }
+
+  for (unsigned i=0; i< deepVECpts.size(); i++) {
+    deepVECpts[i]->setSegment(segmentNo);
+
+#if 0
+// This is not needed since DeepVECPTs only take input from the
+// global observation matrix
+    // FIXME - investigate if DeepVECpts work with stream input (where
+    //         the number of frames isn't known)
+    if (numFrames != 0 && deepVECpts[i]->numFrames() != numFrames) 
+      error("ERROR: number of frames in segment %d for main observation matrix is %d, but DeepVirtualEvidenceCPT '%s' observation matrix has %d frames in that segment",segmentNo,numFrames,veCpts[i]->name().c_str(),veCpts[i]->numFrames());
+#endif
   }
 
   // FIXME - investigate if lattice CPTs work with stream input (where
@@ -2893,6 +2950,8 @@ unsigned GMParms::totalNumberParameters()
     sum += fngramCpts[i]->totalNumberParameters();
   for (unsigned i=0;i<veCpts.size();i++)
     sum += veCpts[i]->totalNumberParameters();
+  for (unsigned i=0;i<veCpts.size();i++)
+    sum += deepVECpts[i]->totalNumberParameters();
   return sum;
 
 }
