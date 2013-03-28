@@ -293,7 +293,7 @@ class FileSource: public ObservationSource {
       error("ERROR: the model requires a -startSkip of at least %u (currently %u)\n",
 	    n, _startSkip);
     }
-    _minPastFrames = n;
+    _minPastFrames = n > _minPastFrames ? n : _minPastFrames;
   }
 
   void setMinFutureFrames(unsigned n) {
@@ -301,7 +301,7 @@ class FileSource: public ObservationSource {
       error("ERROR: the model requires an -endSkip of at least %u (currently %u)",
 	    n, _endSkip);
     }
-    _minFutureFrames = n;
+    _minFutureFrames = n > _minFutureFrames ? n : _minFutureFrames;
   }
 
   // Note that the following call loadFrames() internally

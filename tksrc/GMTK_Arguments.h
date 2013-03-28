@@ -1853,11 +1853,13 @@ static bool writeLogVals = false;
   static char* vitValsFileName = NULL;
   // TODO: get binary printing working
   // static bool vitValsFileBinp = false;
+#ifndef GMTK_ONLINE_UNSUPPORTED
   static char* vitRegexFilter = NULL;
   static bool vitCaseSensitiveRegexFilter = false;
+  static bool vitAlsoPrintObservedVariables = false;
+#endif
   static char* vitPartRangeFilter = NULL;
   static char* vitFrameRangeFilter = NULL;
-  static bool vitAlsoPrintObservedVariables = false;
 //  static bool vitReverseOrder = false;
 #define MAX_VITERBI_TRIGGERS 3
   const char   *vitTriggerVariables[MAX_VITERBI_TRIGGERS] = { NULL, NULL, NULL };

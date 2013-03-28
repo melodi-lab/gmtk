@@ -272,12 +272,17 @@ ASCIIFile::writeFeature(Data32 x) {
     delete [] current_output_fname;
   }
 
+  union {
+    float  f;
+    UInt32 i;
+  } fea;
+  fea.i = (UInt32) x;
   /// Print continuous part of frame /////////////////////////////
   if (currFeature < _numContinuousFeatures) {
-    fprintf(writeFile, " %.8e", *(float *)&x);
+    fprintf(writeFile, " %.8e", fea.f);
   } else {
     /// Print discrete part of the frame ///////////////////////////
-    fprintf(writeFile, " %u", *(unsigned *)&x);
+    fprintf(writeFile, " %u", fea.i);
   }
   
   currFeature += 1;

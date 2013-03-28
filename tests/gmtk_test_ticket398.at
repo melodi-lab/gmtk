@@ -1,0 +1,11 @@
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/398 is fixed
+
+# Check that the correct number of frames are used for inference
+# Assertion will fail unless the bug is fixed
+
+AT_SETUP([Only apply -{start,end}Skip once])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/dvecpt])
+AT_CHECK([(cd $TEST_AND_DEV/dvecpt && \
+          gmtkJT -strF dvecpt.str -inputM dvecpt.mtr \
+          -of1 obs.flat -fmt1 flatascii -nf1 3 -startSkip 1 -endSkip 1)],[],[ignore])
+AT_CLEANUP

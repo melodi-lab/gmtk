@@ -419,6 +419,7 @@ main(int argc,char*argv[])
 	  data_prob = myjt.curProbEvidenceIsland();
 	} else {
 	  numUsableFrames = myjt.unroll(numFrames);
+	  gomFS->justifySegment(numUsableFrames);
 	  infoMsg(IM::Low,"Collecting Evidence\n");
 	  myjt.collectEvidence();
 	  infoMsg(IM::Low,"Done Collecting Evidence\n");

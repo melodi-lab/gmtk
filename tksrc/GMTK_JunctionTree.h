@@ -881,6 +881,7 @@ public:
 
   // For O(1) memory inference, write Viterbi values to this file for
   // later printing by a separate program
+  static bool  binaryViterbiSwap;
   static FILE *binaryViterbiFile;
   static char *binaryViterbiFilename;
   static gmtk_off_t binaryViterbiOffset;    // offset to start of current segment
@@ -888,9 +889,11 @@ public:
 
   // binary viterbi files should start with the cookie
 #define GMTK_VITERBI_COOKIE        "GMTKVIT\n"
+#define GMTK_VITERBI_COOKIE_NOLF   "GMTKVIT"
 #define GMTK_VITERBI_COOKIE_LENGTH 8
-  // cookie + k (for k-best) + # segements
+  // cookie + BOM + k (for k-best) + # segements
 #define GMTK_VITERBI_HEADER_SIZE (sizeof(unsigned) + \
+                                  sizeof(unsigned) + \
                                   sizeof(unsigned) + \
                                   GMTK_VITERBI_COOKIE_LENGTH)
 
