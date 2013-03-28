@@ -408,8 +408,8 @@ main(int argc,char*argv[])
       error("ERROR: Can not repartition graph when doing a crossover"); 
     }
 
-    printf("itf:%jd  ictf:%jd\n", (intmax_t)fsize(input_tri_file.c_str()),
-	   (intmax_t)fsize(input_crossover_tri_file.c_str()) );
+    printf("itf:%ld  ictf:%ld\n", (long)fsize(input_tri_file.c_str()),
+	   (long)fsize(input_crossover_tri_file.c_str()) );
 
     if ((inputCrossoverTriangulatedFile == NULL) ||
         (fsize(input_tri_file.c_str()) == 0)     ||
