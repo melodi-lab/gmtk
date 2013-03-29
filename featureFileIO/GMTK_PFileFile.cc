@@ -153,6 +153,8 @@ PFileFile::writeSegment(Data32 const *segment, unsigned nFrames) {
 
 void 
 PFileFile::setFrame(unsigned frame) {
+  assert(currentFeature == 0);
+  out_stream->setframe((long)frame);
 }
 
 

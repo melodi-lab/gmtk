@@ -123,7 +123,7 @@ class HTKFile: public ObservationFile {
 	error("Couldn't open output list (%s) for writing.\n", fileName);
       }
     } else {
-      error("ERROR: null HTK list file name\n");
+      error("ERROR: you must specify an HTK list file name\n");
     }
     _numContinuousFeatures = nfloats;
     _numDiscreteFeatures = nints;

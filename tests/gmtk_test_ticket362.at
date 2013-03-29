@@ -1,0 +1,102 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/362 is fixed
+
+# Check that posteriors match when written as binary and pfiles
+
+AT_SETUP([PFile posterior test])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
+
+# island, all partitions
+
+AT_CHECK([cd $TEST_AND_DEV/auroraTutorial && \
+  gmtkJT -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
+         -str PARAMS/aurora_decode.str                 \
+         -triF PARAMS/aurora_decode.str.trifile_w_baby_cliques_too \
+         -inputMasterFile PARAMS/nonTrainable.master   \
+         -inputTrainable PARAMS/highly_trained.gmp     \
+	 -doDistributeEvidence -island T               \
+         -pCliquePrintRange 1 -eCliquePrintRange 1     \
+	 -cCliquePrintRange 1                          \
+         -cliqueOutputFileName posterior.bin           \
+         -cliqueListFileName posterior.bin             \
+         -cliquePrintFormat binary],[],[ignore])
+AT_CHECK([cd $TEST_AND_DEV/auroraTutorial && \
+  gmtkJT -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
+         -str PARAMS/aurora_decode.str                 \
+         -triF PARAMS/aurora_decode.str.trifile_w_baby_cliques_too \
+         -inputMasterFile PARAMS/nonTrainable.master   \
+	 -doDistributeEvidence -island T               \
+         -inputTrainable PARAMS/highly_trained.gmp     \
+         -pCliquePrintRange 1 -eCliquePrintRange 1     \
+	 -cCliquePrintRange 1                          \
+         -cliqueOutputFileName posterior.pfile         \
+         -cliquePrintFormat pfile],[],[ignore])
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
+           obs-print -of1 posterior.bin -fmt1 binary   \
+                     -nf1 2 -iswp1 F) > post.bin],[],[ignore])
+AT_CHECK([obs-print -of1 $TEST_AND_DEV/auroraTutorial/posterior.pfile -iswp1 F \
+                    > post.pfile],[],[ignore])
+AT_CHECK([cmp post.bin post.pfile],[],[ignore])
+
+# linear, all partitons
+AT_CHECK([cd $TEST_AND_DEV/auroraTutorial && \
+  gmtkJT -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
+         -str PARAMS/aurora_decode.str                 \
+         -triF PARAMS/aurora_decode.str.trifile_w_baby_cliques_too \
+         -inputMasterFile PARAMS/nonTrainable.master   \
+         -inputTrainable PARAMS/highly_trained.gmp     \
+	 -doDistributeEvidence -island F               \
+         -pCliquePrintRange 1 -eCliquePrintRange 1     \
+	 -cCliquePrintRange 1                          \
+         -cliqueOutputFileName posterior.bin           \
+         -cliqueListFileName posterior.bin             \
+         -cliquePrintFormat binary],[],[ignore])
+AT_CHECK([cd $TEST_AND_DEV/auroraTutorial && \
+  gmtkJT -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
+         -str PARAMS/aurora_decode.str                 \
+         -triF PARAMS/aurora_decode.str.trifile_w_baby_cliques_too \
+         -inputMasterFile PARAMS/nonTrainable.master   \
+	 -doDistributeEvidence -island F               \
+         -inputTrainable PARAMS/highly_trained.gmp     \
+         -pCliquePrintRange 1 -eCliquePrintRange 1     \
+	 -cCliquePrintRange 1                          \
+         -cliqueOutputFileName posterior.pfile         \
+         -cliquePrintFormat pfile],[],[ignore])
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
+           obs-print -of1 posterior.bin -fmt1 binary   \
+                     -nf1 2 -iswp1 F) > post.bin],[],[ignore])
+AT_CHECK([obs-print -of1 $TEST_AND_DEV/auroraTutorial/posterior.pfile -iswp1 F \
+                    > post.pfile],[],[ignore])
+AT_CHECK([cmp post.bin post.pfile],[],[ignore])
+
+# linear, sparse (P' and E' only)
+
+AT_CHECK([cd $TEST_AND_DEV/auroraTutorial && \
+  gmtkJT -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
+         -str PARAMS/aurora_decode.str                 \
+         -triF PARAMS/aurora_decode.str.trifile_w_baby_cliques_too \
+         -inputMasterFile PARAMS/nonTrainable.master   \
+         -inputTrainable PARAMS/highly_trained.gmp     \
+	 -doDistributeEvidence -island F               \
+         -pCliquePrintRange 1 -eCliquePrintRange 1     \
+         -cliqueOutputFileName posterior.bin           \
+         -cliqueListFileName posterior.bin             \
+         -cliquePrintFormat binary],[],[ignore])
+AT_CHECK([cd $TEST_AND_DEV/auroraTutorial && \
+  gmtkJT -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
+         -str PARAMS/aurora_decode.str                 \
+         -triF PARAMS/aurora_decode.str.trifile_w_baby_cliques_too \
+         -inputMasterFile PARAMS/nonTrainable.master   \
+	 -doDistributeEvidence -island F               \
+         -inputTrainable PARAMS/highly_trained.gmp     \
+         -pCliquePrintRange 1 -eCliquePrintRange 1     \
+         -cliqueOutputFileName posterior.pfile         \
+         -cliquePrintFormat pfile],[],[ignore])
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
+           obs-print -of1 posterior.bin -fmt1 binary   \
+                     -nf1 2 -iswp1 F) > post.bin],[],[ignore])
+AT_CHECK([obs-print -of1 $TEST_AND_DEV/auroraTutorial/posterior.pfile -iswp1 F \
+                    > post.pfile],[],[ignore])
+AT_CHECK([cmp post.bin post.pfile],[],[ignore])
+
+AT_CLEANUP

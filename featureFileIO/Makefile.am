@@ -96,6 +96,7 @@ testFileStream \
 testObsFile \
 testFileSrc \
 testFileWriter \
+testPFileWriter \
 testFilter \
 testStreamSource \
 testMerge

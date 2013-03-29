@@ -511,7 +511,7 @@ extern bool ObservationsAllowNan;
       if (in_fp==NULL) 
 	error("Couldn't open input pfile %s for reading.", ofs[i]);
       bool debug_level=0;
-      InFtrLabStream_PFile* in_streamp = new InFtrLabStream_PFile(debug_level,"",in_fp,1,iswp[i]);
+      InFtrLabStream_PFile* in_streamp = new InFtrLabStream_PFile(debug_level,ofs[i],in_fp,1,iswp[i]);
       unsigned num_labs=in_streamp->num_labs();
       unsigned num_ftrs=in_streamp->num_ftrs();
 

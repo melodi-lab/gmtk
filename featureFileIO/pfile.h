@@ -336,6 +336,10 @@ public:
     // then move on to the next segment.
     void doneseg(SegID segid);
 
+    // KLUDGE by Richard to hack in random access writing. Only write each
+    // frame once or bad things will happen.
+    void setframe(long frame);
+
 private:
     FILE* const file;		// The stream for reading the PFile.
     const char *filename;             // the file name
@@ -347,8 +351,10 @@ private:
     long current_sent;		// The number of the current segment.
     long current_frame;		// The number of the current frame.
     long current_row;		// The number of the current row.
-  
 
+    pfile_off_t current_sent_offset; // The file offset of the start of the current segment
+    long        max_frame;           // highest frame actually written
+    long        seek_count;          // how many calls to setframe() this segment
 
     PFile_Val* buffer;	// A buffer for one frame of PFile data.
     char* header;		// Space for the header data.
