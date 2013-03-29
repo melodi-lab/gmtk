@@ -599,8 +599,8 @@ InFtrLabStream_PFile::read_ftrslabs(size_t frames,
 	current_row++;
       } else {
 	error("Inconsistent frame number in PFile '%s',"
-	      " sentence=%li frame=%li - probably corrupted PFile.",
-	      filename, current_sent, current_frame);
+	      " sentence=%li frame=%li - read frame # %li probably corrupted PFile.",
+	      filename, current_sent, current_frame, pfile_frame);
       }
     } else {
       // Different sentence number - simply return number of frames
@@ -803,6 +803,8 @@ OutFtrLabStream_PFile::OutFtrLabStream_PFile(int a_debug,
     current_sent(0),
     current_frame(0),
     current_row(0),
+    max_frame(-1),
+    seek_count(0),
     index(NULL),
     index_len(0),
     bswap(swap)
@@ -817,6 +819,7 @@ OutFtrLabStream_PFile::OutFtrLabStream_PFile(int a_debug,
 		   "'%s' - cannot write PFiles to streams.",
 		   filename );
     }
+    current_sent_offset = (pfile_off_t) PFILE_HEADER_SIZE; // start of first segment's data
 
     // Allocate a buffer for one frame.
     buffer = new PFile_Val[num_ftr_cols + num_lab_cols + 2];
@@ -998,13 +1001,85 @@ OutFtrLabStream_PFile::write_lab(unsigned currFeature, UInt32 x)
 }
 
 
+// KLUDGY random access write
+void
+OutFtrLabStream_PFile::setframe(long frame) {
+  if (frame > max_frame) {
+    max_frame = frame;
+  }
+  pfile_off_t target_offset = current_sent_offset + 
+    (num_ftr_cols + num_lab_cols + 2) * frame * sizeof(PFile_Val);
+  if (pfile_fseek(file, target_offset, SEEK_SET) < 0) {
+    error("Failed to seek to frame %ld of segment %ld in Pfile '%s'\n",
+	  frame, current_sent, filename);
+  }
+  seek_count += 1;
+}
+
+
 void
 OutFtrLabStream_PFile::doneseg(SegID)
 {
     if (current_frame==0)
 	error("wrote zero length sentence.");
     current_sent++;
+
+    // KLUDGE: the PFile writing methods keep track of the number of
+    // features/frames/segments that have been written so far. In the
+    // sequential writting case (for which this code was originally
+    // written), the number of frames/segments is equal to the current
+    // frame/segment. I'm hacking in the ability to write frames in
+    // arbitrary order. If the client code doesn't write every frame 
+    // in the segment, the number of frames written will be less than
+    // the number of frames in the segment, so I track max_frame within
+    // the segment. The frame count will be hosed if the client code
+    // writes the same frame more than once. seek_count tracks the
+    // number of calls to setframe()
+
+    if (max_frame > current_frame) {
+      current_frame = max_frame + 1; // +1 since max_frame is the last frame #
+    }
+    // current_frame is now total # of frames in segment
+    if (seek_count > 0 && seek_count < current_frame) {
+      int delta = current_frame - seek_count;
+      current_row += delta;                   // count the unwritten rows
+    }
+    if (seek_count > 0) {
+      // write the segment & frame numbers for each frame since it 
+      // might have no or wrong frame #
+      if (bswap) {
+	buffer[0].l = swapb_i32_i32(current_sent-1);
+      } else {
+	buffer[0].l = current_sent-1;
+      }
+      size_t bytes_in_buffer = sizeof(PFile_Val) * 2;
+      for (long i=0; i < current_frame; i+=1) {
+	if (bswap) {
+	  buffer[1].l = swapb_i32_i32(i);
+	} else {
+	  buffer[1].l = i;
+	}  
+	pfile_off_t frame_offset = (num_ftr_cols + num_lab_cols + 2) * i * sizeof(PFile_Val); 
+	if (pfile_fseek(file, current_sent_offset+frame_offset, SEEK_SET) < 0) {
+	  error("Failed to seek to start of segment %u in PFile '%s'\n", current_sent, filename);
+	}
+	size_t ec = fwrite((char*) buffer, bytes_in_buffer, 1, file);
+	if (ec!=1) {
+	  error("Failed to write frame to PFile '%s' - only written %i items",
+		filename,ec); 
+	}
+      }
+    }
+    // where next segment starts
+    current_sent_offset += (num_ftr_cols + num_lab_cols + 2) * current_frame * sizeof(PFile_Val); 
+    if (pfile_fseek(file, current_sent_offset, SEEK_SET) < 0) {
+      error("Failed to seek to start of segment %u in PFile '%s'\n", current_sent, filename);
+    }
+
     current_frame = 0;
+    seek_count = 0;
+    max_frame = -1;
+
     // Update the index if necessary.
     if (indexed)
     {
