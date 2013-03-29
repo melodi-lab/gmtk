@@ -1,5 +1,6 @@
 #include <string.h>
 
+#include <math.h>
 #include "mixNormalCollection.h"
 #include "matrix-ops.h"
 

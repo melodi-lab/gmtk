@@ -17,7 +17,11 @@
 #include "mixNormal.h"
 #include "range.h"
 #include "readRange.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_FileSource.h"
+#endif
 
 /**
  * collection of MixNormal objects
@@ -49,7 +53,7 @@ public:
 
   // interface to EM learning
   void startEpoch();
-  void addToEpoch(ObservationMatrix* obsMat,
+  void addToEpoch(FileSource *obsMat,
 		  size_t featureVecDim,
 		  size_t totalNumFramesInSentence,
 		  size_t numFramesToProcess,
@@ -69,7 +73,7 @@ public:
 
 
   // MI computation using data //////////////////////////////////////////
-  void computeMIUsingData(ObservationMatrix& obsMat,
+  void computeMIUsingData(FileSource *obsMat,
 			  RangeSetCollection rangeSetCol,
 			  Range &sentenceRange, 
 			  const bool quiet,
@@ -79,7 +83,7 @@ public:
 
   void startEpochMI(const RangeSetCollection &rangeCol);
 
-  void addToEpochMI(ObservationMatrix* obsMat, size_t featureSize, 
+  void addToEpochMI(FileSource *obsMat, size_t featureSize, 
 		    size_t numberOfSample, size_t n_samps, unsigned firstFrame, 
 		    const RangeSetCollection &rangeSetCol);
 
@@ -88,7 +92,7 @@ public:
 
 
   // kMeans //////////////////////////////////////////////////////
-  void kmeans(ObservationMatrix* obsMat,
+  void kmeans(FileSource *obsMat,
 	      RangeSetCollection rangeSetCol,
 	      Range &lrrng,
 	      Range &kMeansRange,
@@ -98,7 +102,7 @@ public:
 	      const bool quiet);
 
   void startKMeansEpoch(bool randLabel, bool estCov);
-  void addToKMeansEpoch(ObservationMatrix* obsMat,
+  void addToKMeansEpoch(FileSource *obsMat,
 				  size_t featureVecDim,
 				  size_t totalNumFramesInSentence,
 				  size_t numFramesToProcess,

@@ -5,7 +5,11 @@
 #include "mixNormal.h"
 #include "mixNormalCollection.h"
 #include "readRange.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_FileSource.h"
+#endif
 
 void generateSyntheticDataFromLearnedParams(MixNormalCollection* mg, int numSamples, FILE* pi_fp) {
   
@@ -22,7 +26,7 @@ void generateSyntheticDataFromLearnedParams(MixNormalCollection* mg, int numSamp
 }
 
 void dumpDistribSampleData(FILE* ofp, 
-			   ObservationMatrix * obsMat,
+			   FileSource *obsMat,
 			   RangeSetCollection &tupleCol,
 			   Range &lrrng,
 			   Range &sentRange,
