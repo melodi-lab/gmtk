@@ -165,7 +165,7 @@ void MixNormalCollection::startEpoch() {
  * @param rng the pointer to set of nodes
  * @return true if no componenet dropped
  */
-void MixNormalCollection::addToEpoch(ObservationMatrix* obsMat,
+void MixNormalCollection::addToEpoch(FileSource *obsMat,
 				  size_t featureVecDim,
 				  size_t totalNumFramesInSentence,
 				  size_t numFramesToProcess,

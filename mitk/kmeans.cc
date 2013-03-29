@@ -19,7 +19,7 @@ extern int sentPrintFrequency;
  * statistics.  At the end of each epoch, kMeans parameters are updated.
  * 
  * */
-void MixNormalCollection::kmeans(ObservationMatrix* obs_mat,
+void MixNormalCollection::kmeans(FileSource* obs_mat,
 				 RangeSetCollection rangeSetCol,
 				 Range &lrrng,
 				 Range &kMeansRange,
@@ -91,7 +91,7 @@ void MixNormalCollection::startKMeansEpoch(bool randLabel, bool estCov){
  * 
  *
  */
-void MixNormalCollection::addToKMeansEpoch(ObservationMatrix* obs_mat,
+void MixNormalCollection::addToKMeansEpoch(FileSource* obs_mat,
 				  size_t featureVecDim,
 				  size_t totalNumFramesInSentence,
 				  size_t numFramesToProcess,

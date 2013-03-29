@@ -2,7 +2,10 @@
 #define _DATA_POINTS_
 
 #include "global-parameters.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#endif
 #include "readRange.h"
 
 /**

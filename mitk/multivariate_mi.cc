@@ -43,7 +43,21 @@
 #include "mixNormal.h"
 #include "mixNormalCollection.h"
 #include "readRange.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_ObservationSource.h"
+#  include "GMTK_FileSource.h"
+#  include "GMTK_CreateFileSource.h"
+#  include "GMTK_ASCIIFile.h"
+#  include "GMTK_FlatASCIIFile.h"
+#  include "GMTK_PFileFile.h"
+#  include "GMTK_HTKFile.h"
+#  include "GMTK_HDF5File.h"
+#  include "GMTK_BinaryFile.h"
+#  include "GMTK_Filter.h"
+#  include "pfile.h"
+#endif
 #include "tests.h"
 #include "arguments.h"
 #include "GMTK_WordOrganization.h"
@@ -54,22 +68,25 @@
 /////////////////////////////////////////////////////////////////////////
 
 
+
+#define GMTK_ARG_OBS_FILES
+#define GMTK_ARG_CPP_CMD_OPTS
+#define GMTK_ARG_START_END_SKIP
+#define GMTK_ARG_OBS_MATRIX_OPTIONS
+#define GMTK_ARG_OBS_MATRIX_XFORMATION
+
+#define GMTK_ARGUMENTS_DEFINITION
+#include "ObsArguments.h"
+#undef GMTK_ARGUMENTS_DEFINITION
+
+
+
 ///////////////////  Global variables ///////////////////////////////////
 RAND rnd(false);
 
 static const char* program_name;
-ObservationMatrix  globalObservationMatrix;
-ObservationMatrix  globalLabelMatrix;
-
-
-#define MAX_NUM_OBS_FILES (5)
-
-char       *Input_Fname[MAX_NUM_OBS_FILES] = { NULL,NULL,NULL,NULL,NULL };  // Input file name.
-unsigned    Num_Floats[MAX_NUM_OBS_FILES]  = { 0, 0, 0, 0, 0 };
-unsigned    Num_Ints[MAX_NUM_OBS_FILES] = { 0, 0, 0, 0, 0 };
-const char *Float_Range_Str[MAX_NUM_OBS_FILES] = { "all", "all", "all", "all", "all" };
-const char *Int_Range_Str[MAX_NUM_OBS_FILES]   = { "all", "all", "all", "all", "all" };
-const char *Fmt_Str[MAX_NUM_OBS_FILES]  = { "pfile", "pfile", "pfile", "pfile", "pfile" };
+FileSource *gomFS;
+ObservationSource *globalObservationMatrix;
 
 char       *Output_Fname                = NULL;
 
@@ -82,19 +99,6 @@ double      Clamp_Covariance            = 1e-10;
 
 double      MCVR                        = 20.0;
 
-#ifdef INTV_WORDS_BIGENDIAN
-bool     Swap[MAX_NUM_OBS_FILES] = {true,true,true,true,true};
-#else
-bool     Swap[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
-#endif
-
-const char*    Action_If_Diff_Num_Frames_Str[MAX_NUM_OBS_FILES]={"er","er","er","er","er"};   //
-unsigned Action_If_Diff_Num_Frames[MAX_NUM_OBS_FILES]={FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR};
-const char*    Action_If_Diff_Num_Sents_Str[MAX_NUM_OBS_FILES]={"te","te","te","te","te"};
-unsigned Action_If_Diff_Num_Sents[MAX_NUM_OBS_FILES]={SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END};   //
-
-bool     Cpp_If_Ascii        = true;
-char*    Cpp_Command_Options = NULL;
 
 bool     Seed                = true;
 
@@ -134,15 +138,8 @@ int  Num_Active_To_Inactive_Changes_For_Save = 1;     // number of active->inact
 bool Skip_EM     = false;               // If true, we don't run EM.
 bool Skip_Kmeans = false;           // If true we skip kmeans.  Not implemented yet.  The main issue is to have an alternate way to initialize EM and kmeans (even if for one iteration) seems teh smartest way to go about it.
 
-unsigned  Start_Skip  = 0;
-unsigned  End_Skip    = 0;
 
 
-char    *Per_Stream_Transforms[MAX_NUM_OBS_FILES]={NULL,NULL,NULL,NULL,NULL};   //
-char    *Post_Transforms=NULL;
-
-const char    *Ftr_Combo_Str="none";
-unsigned Ftr_Combo=FTROP_NONE;
 
 int    numSecondsPerPrint       = NUM_SECONDS_PER_PRINT;
 int    numSecondsPerSentPrint   = NUM_SECONDS_PER_SENT_PRINT;
@@ -171,17 +168,7 @@ char* Label_Range_Str=NULL;
 
 bool Marginalize_First_Parent_Out=false;
 
-//////  At some point will be deleted /////
-const char *lofs[]                   = { NULL };
-unsigned    lnfs[]                   = { 0 };
-unsigned    lnis[]                   = { 0 };
-const char *lfrs[]                   = { "all" };
-const char *lirs[]                   = { "all" };
-const char *lfmts[]                  = { "pfile" };
-bool        liswps[]                 = { false };
 bool        gotLabelFile             = false;
-bool        lswap                    = false;       // If true we need to byte swap the label file.
-
 
 const char *label_fname              = NULL;    // Label pfile name (if any).  // This is deprecated.  To specify lables, now, just make sure there is at least an int across all input streams.  The last int by default will be used as the label, unless overriden using the labpos option.
 
@@ -191,14 +178,11 @@ int Num_Active_To_Stop = 0;        // Not used.  Might be useful to implement if
 /////////////////////////////////////////////////////
 
 
-
 Arg Arg::Args[] = {
-  Arg("i",        Arg::Req, Input_Fname,"Input file.  Replace the X with the observation file number.",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("fmt",      Arg::Opt, Fmt_Str ,"Format of input file",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("nf",       Arg::Opt, Num_Floats,"Number of floats in input file",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("ni",       Arg::Opt, Num_Ints,"Number of ints (labels) in input file",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("fr",       Arg::Opt, Float_Range_Str,"Float range to use",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("ir",       Arg::Opt, Int_Range_Str,"Int range to use",Arg::ARRAY,MAX_NUM_OBS_FILES),
+#define GMTK_ARGUMENTS_DOCUMENTATION
+#include "ObsArguments.h"
+#undef GMTK_ARGUMENTS_DOCUMENTATION
+
   Arg("o",        Arg::Opt, Output_Fname,"Output file (- for sdtdout)"),
   Arg("miTupleFile", Arg::Req, MI_Tuple_File, "File specifying the tuples to compute the MI/entropy of"),
 
@@ -234,11 +218,6 @@ Arg Arg::Args[] = {
   Arg("nobak",        Arg::Tog, Dont_Backup_MG_Files, "Do not backup mg files before overwriting them"),
   Arg("activateAll",  Arg::Tog, Activate_All_MGs, "Activate all MGs in input mg file regardless of file status"),
 
-  Arg("iswap",    Arg::Tog, Swap,"Do byte swapping on the input file",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("fdiffact", Arg::Opt, Action_If_Diff_Num_Frames_Str ,"Action if different number of frames in streams: error (er), repeat last frame (rl), first frame (rf), segmentally expand (se), truncate from start (ts), truncate from end (te)",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("sdiffact", Arg::Opt, Action_If_Diff_Num_Sents_Str ,"Action if different number of sentences in streams: error (er), truncate from end (te), repeat last sent (rl), and wrap around (wa).",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("cppifascii",        Arg::Tog, Cpp_If_Ascii,"Pre-process ASCII files using CPP"),
-  Arg("cppCommandOptions", Arg::Opt, Cpp_Command_Options,"Additional CPP command line"),
   Arg("seed",     Arg::Tog, Seed, "Seed the random number generator"),
   //  Arg("detailedOutput", Arg::Tog, Detailed_Output, "For each tuple specification output, in addition to MI, the following statistics the # of data samples used, # of EM iterations, and the entropies of the X, Y and (X,Y) sets respectively."),
   Arg("verbose",  Arg::Tog, Verbose, "Be very verbose"),
@@ -293,20 +272,16 @@ int readFeatures(Range::iterator krit, size_t &n_frames,
   if(frameStart != 0) segAlreadyLoaded = true;
 
   size_t n_labs;
-  n_labs = (gotLabelFile?globalLabelMatrix.numDiscrete():globalObservationMatrix.numDiscrete());
+  n_labs = globalObservationMatrix->numDiscrete();
   const bool stateCondMI = !lrrng.full();
 
   if (stateCondMI && n_labs < 1) {
     error("For conditional MI, number of discrete features per frame in pfile must be at least one.");
   }
 
-  ObservationMatrix* obsMat;
-  if(gotLabelFile)
-    obsMat = &globalLabelMatrix;
-  else
-    obsMat = &globalObservationMatrix;
+  FileSource* obsMat = (FileSource *)globalObservationMatrix;
   if(!segAlreadyLoaded)
-    obsMat->loadSegment((const unsigned)(*krit));
+    obsMat->openSegment((const unsigned)(*krit));
   n_frames = obsMat->numFrames();
 
   if ( n_frames == SIZET_BAD )
@@ -350,9 +325,9 @@ int readFeatures(Range::iterator krit, size_t &n_frames,
     firstFrame = frameStart;
     if(frameno != n_frames) {
       if(!segAlreadyLoaded) {
-	globalObservationMatrix.loadSegment((const unsigned)(*krit));
+	globalObservationMatrix->openSegment((const unsigned)(*krit));
 	if(gotLabelFile) { //check that they have the same number of frames
-	  unsigned obs_n_frames = globalObservationMatrix.numFrames();
+	  unsigned obs_n_frames = globalObservationMatrix->numFrames();
 	  if(obs_n_frames != n_frames)
 	    error("The number of observation frames is different from that of label frames in sentence %d\n",(int)(*krit));
 	}
@@ -362,9 +337,9 @@ int readFeatures(Range::iterator krit, size_t &n_frames,
     }
     else if(numFound > 0) {
       if(!segAlreadyLoaded) {
-	globalObservationMatrix.loadSegment((const unsigned)(*krit));
+	globalObservationMatrix->openSegment((const unsigned)(*krit));
 	if(gotLabelFile) { //check that they have the same number of frames
-	  unsigned obs_n_frames = globalObservationMatrix.numFrames();
+	  unsigned obs_n_frames = globalObservationMatrix->numFrames();
 	  if(obs_n_frames != n_frames)
 	    error("The number of observation frames is different from that of label frames in sentence %d\n",(int)(*krit));
 	}
@@ -432,7 +407,7 @@ static void multivariateMI(FILE *mi_ofp, // where to put output MI values
 			   ) {
 
   size_t n_frames, n_samps;
-  const size_t n_ftrs =  globalObservationMatrix.numFeatures();
+  const size_t n_ftrs =  globalObservationMatrix->numFeatures();
 
   RangeSetCollection rngSetCol(tuple_fname);
   if(rngSetCol.getSize() == 0) {
@@ -490,7 +465,7 @@ static void multivariateMI(FILE *mi_ofp, // where to put output MI values
 
     cout<<"Dumping distribution data for mixture # "<<mixNum<<endl;
     dumpDistribSampleData(ofp,
-			  &globalObservationMatrix,
+			  (FileSource *)globalObservationMatrix,
 			  rngSetCol,
 			  lrrng,
 			  kmeansrng,
@@ -515,7 +490,7 @@ static void multivariateMI(FILE *mi_ofp, // where to put output MI values
     else {
       if(!quiet) cout<<"Running kMeans.\n";
       DBGFPRINTF((stderr,"Parameters passed to kmeans: numMixtures = %d, numIterKmeans = %d, labpos = %d\n",numMixtures, numIterKmeans,labpos));
-      mg.kmeans(&globalObservationMatrix, rngSetCol, lrrng, kmeansrng, numMixtures, numIterKmeans,labpos,quiet);
+      mg.kmeans((FileSource *)globalObservationMatrix, rngSetCol, lrrng, kmeansrng, numMixtures, numIterKmeans,labpos,quiet);
       if(!quiet) cout << "Finished kMeans.\n";
       if(kpo_fp != NULL) {
 	if(!quiet) cout<<"Writing KMeans parameters...\n";
@@ -577,7 +552,7 @@ static void multivariateMI(FILE *mi_ofp, // where to put output MI values
 	    readFeatures(srit, n_frames, n_samps,
 			 lrrng,labpos, frameStart,firstFrame);
 	  if(readStatus == NO_DATA) break;  //no frames were read
-	  mg.addToEpoch(&globalObservationMatrix, n_ftrs, n_frames, n_samps, firstFrame,rngSetCol);
+	  mg.addToEpoch((FileSource *)globalObservationMatrix, n_ftrs, n_frames, n_samps, firstFrame,rngSetCol);
 	} while(readStatus == DATA_LEFT);
 
       } // end of for loop that iterates overs sentences
@@ -648,7 +623,7 @@ static void multivariateMI(FILE *mi_ofp, // where to put output MI values
 
   // Compute MI quantities from the learned densities
   if( data ) // Use the original data (or a subset specfied by mirng) to compute MI
-    mg.computeMIUsingData(globalObservationMatrix,rngSetCol, mirng, quiet, mi_ofp,lrrng,labpos,rangeFileFP);
+    mg.computeMIUsingData((FileSource *)globalObservationMatrix,rngSetCol, mirng, quiet, mi_ofp,lrrng,labpos,rangeFileFP);
   else       // Sample from the learned densities (lll is the number of samples to use)
     mg.computeMI(mi_ofp, lll, rngSetCol,rangeFileFP,marginalizeFirstParentOut);
 
@@ -677,35 +652,8 @@ int main(int argc, const char *argv[]) {
   Range *sr_rng;                     // sentence range
   Range *mi_rng;                     // mi data range
   Range *kmeans_rng;                 // kmeans sentence range
-  unsigned    ifmt[MAX_NUM_OBS_FILES];
-  int num_files=0;
-
   Range *lr_rng;                     // label range
 
-  ////// Figure out the Endian of the machine this is running on and set the swap defaults accordingly /////
-  bool doWeSwap;
-
-  ByteEndian byteEndian = getWordOrganization();
-  switch(byteEndian) {
-  case BYTE_BIG_ENDIAN:
-    doWeSwap=false;
-    break;
-  case BYTE_LITTLE_ENDIAN:
-    doWeSwap=true;
-    break;
-  default:
-    // We weren't able to figure the Endian out.  Leave the swap defaults as they are.
-#ifdef INTV_WORDS_BIGENDIAN
-    doWeSwap=true;
-#else
-    doWeSwap=false;
-#endif
-  }
-
-  for(int i=0; i<MAX_NUM_OBS_FILES; ++i) {
-    Swap[i]=doWeSwap;
-  }
-  ////////////////////////////////////////////////////////////////////////////////////////////////
 
   ///////  Parse Arguments //////
   bool successful_parse = Arg::parse(argc,(char**)argv);
@@ -720,6 +668,9 @@ int main(int argc, const char *argv[]) {
     exit(-1);
   }
 
+#define GMTK_ARGUMENTS_CHECK_ARGS
+#include "ObsArguments.h"
+#undef GMTK_ARGUMENTS_CHECK_ARGS
 
   if(Seed) {
     rnd.seed();
@@ -734,59 +685,12 @@ int main(int argc, const char *argv[]) {
     exit(-1);
   }
 
-  for (int i=0;i<MAX_NUM_OBS_FILES;i++) {
-    num_files += (Input_Fname[i] != NULL);
-    if (strcmp(Fmt_Str[i],"htk") == 0)
-      ifmt[i] = HTK;
-    else if (strcmp(Fmt_Str[i],"binary") == 0)
-      ifmt[i] = RAWBIN;
-    else if (strcmp(Fmt_Str[i],"ascii") == 0)
-      ifmt[i] = RAWASC;
-    else if (strcmp(Fmt_Str[i],"pfile") == 0)
-      ifmt[i] = PFILE;
-    else
-      error("ERROR: Unknown observation file format type: '%s'\n",Fmt_Str[i]);
-  }
-
   for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
-    if(Output_Fname!=NULL && Input_Fname[i] !=NULL && strcmp(Input_Fname[i],Output_Fname)==0) {
+    if(Output_Fname!=NULL && ofs[i] !=NULL && strcmp(ofs[i],Output_Fname)==0) {
       error("Input and output filenames cannot be the same.");
     }
   }
 
-  for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
-   if(Input_Fname[i]!=NULL) {
-     if (strcmp(Action_If_Diff_Num_Frames_Str[i],"er") == 0)
-       Action_If_Diff_Num_Frames[i] = FRAMEMATCH_ERROR;
-     else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"rl") == 0)
-       Action_If_Diff_Num_Frames[i] = FRAMEMATCH_REPEAT_LAST;
-     else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"rf") == 0)
-       Action_If_Diff_Num_Frames[i] = FRAMEMATCH_REPEAT_FIRST;
-     else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"se") == 0)
-       Action_If_Diff_Num_Frames[i] = FRAMEMATCH_EXPAND_SEGMENTALLY;
-     else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"ts") == 0)
-       Action_If_Diff_Num_Frames[i] = FRAMEMATCH_TRUNCATE_FROM_START;
-     else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"te") == 0)
-       Action_If_Diff_Num_Frames[i] = FRAMEMATCH_TRUNCATE_FROM_END;
-     else
-       error("ERROR: Unknown action when diff num of frames: '%s'\n", Action_If_Diff_Num_Frames_Str[i]);
-   }
- }
-
-for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
-   if(Input_Fname[i]!=NULL) {
-     if (strcmp(Action_If_Diff_Num_Sents_Str[i],"er") == 0)
-       Action_If_Diff_Num_Sents[i] = SEGMATCH_ERROR;
-     else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"rl") == 0)
-       Action_If_Diff_Num_Sents[i] = SEGMATCH_REPEAT_LAST;
-     else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"wa") == 0)
-       Action_If_Diff_Num_Sents[i] = SEGMATCH_WRAP_AROUND;
-     else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"te") == 0)
-       Action_If_Diff_Num_Sents[i] = SEGMATCH_TRUNCATE_FROM_END;
-     else
-       error("ERROR: Unknown action when diff num of sentences: '%s'\n",Action_If_Diff_Num_Sents_Str[i]);
-   }
- }
 
  FILE *out_fp=NULL;
  if (Output_Fname==0 || !strcmp(Output_Fname,"-")) {
@@ -798,24 +702,6 @@ for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
      }
  }
 
- // If we have a pfile, we can extract the number if features from the file directly
- for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
-   if(Input_Fname[i]!=NULL) {
-     if(ifmt[i]==PFILE) {
-       FILE *in_fp = fopen(Input_Fname[i], "r");
-       if (in_fp==NULL) error("Couldn't open input pfile for reading.");
-       InFtrLabStream_PFile* in_streamp = new InFtrLabStream_PFile(debug_level,"",in_fp,1,Swap[i]);
-       Num_Ints[i]=in_streamp->num_labs();
-       Num_Floats[i]=in_streamp->num_ftrs();
-       if (fclose(in_fp)) error("Couldn't close input pfile.");
-       delete in_streamp;
-     }
-
-     if(Num_Ints[i]==0 && Num_Floats[i]==0) {
-       error("The number of floats and the number of ints cannot be both zero.");
-     }
-   }
- }
 
   if (Num_Active_To_Inactive_Changes_For_Save < 1) {
       error("nacps (number of active->inactive changes per save must be >= 1");
@@ -831,85 +717,28 @@ for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
     error("Cannot specify a label file when no label range is given\n");
   if (!lr_rng->full()) { //or better yet if lr_str != NULL
     // only bother to open this if the label range isn't full.
-    if (label_fname!=NULL) {
-      gotLabelFile = true;
-
-      lofs[0] = label_fname;
-      //lnfs[0] = 0; lnis[0] = 1;
-      if(lswap == true) liswps[0] = true;
-      if (lofs[0] != NULL && lnis[0] == 0)
-	error("ERROR: command line must specify lni not zero");
-      if(Label_Position < 0 && lnis[0] > 1) {
-	printf("Using the last discrete feature of the label file as the label\n");
-      }
-
-      unsigned lifmts[1];
-      if (strcmp(lfmts[0],"htk") == 0)
-	lifmts[0] = HTK;
-      else if (strcmp(lfmts[0],"binary") == 0)
-	lifmts[0] = RAWBIN;
-      else if (strcmp(lfmts[0],"ascii") == 0)
-	lifmts[0] = RAWASC;
-      else if (strcmp(lfmts[0],"pfile") == 0)
-	lifmts[0] = PFILE;
-      else
-	error("ERROR: Unknown observation file format type: '%s'\n",lfmts[0]);
-
-      globalLabelMatrix.openFiles(1,
-				  (const char**)&lofs,
-				  (const char**)&lfrs,
-				  (const char**)&lirs,
-				  (unsigned*)&lnfs,
-				  (unsigned*)&lnis,
-				  (unsigned*)&lifmts,
-				  (bool*)&liswps);
-
-      unsigned numLabelFeatures = globalLabelMatrix.numFeatures();
-      unsigned numLabelContinuous = globalLabelMatrix.numContinuous();
-      if(Label_Position != -1 &&
-	 (Label_Position < (int)numLabelContinuous || Label_Position >= (int)numLabelFeatures) )
-      error("Label position (%d) out of range (%d - %d): must be within the range of discrete observations of the label file\n",Label_Position,numLabelContinuous,numLabelFeatures-1);
-      }
-      else {
-	gotLabelFile = false;
-	if(Label_Position < 0) { //No label position has been given
-	  printf("Using the last discrete feature of the last input file as the label\n");
-	}
-      }
+    gotLabelFile = false;
+    if(Label_Position < 0) { //No label position has been given
+      printf("Using the last discrete feature of the last input file as the label\n");
     }
+  }
 
-     globalObservationMatrix.openFiles(num_files,  // number of files.
-                                   (const char**)&Input_Fname,
-                                   (const char**)&Float_Range_Str,
-                                   (const char**)&Int_Range_Str,
-                                   (unsigned*)&Num_Floats,
-                                   (unsigned*)&Num_Ints,
-                                   (unsigned*)&ifmt,
-                                   (bool*)&Swap,
-                                   Start_Skip,  // startSkip
-                                   End_Skip,  // endSkip  pr_rng takes care of these two
-                                   Cpp_If_Ascii,
-                                   Cpp_Command_Options,
-                                   (const char**)&Frame_Range_Str,
-                                   Action_If_Diff_Num_Frames,
-                                   Action_If_Diff_Num_Sents,
-                                   Per_Stream_Transforms,
-                                   Post_Transforms,
-                                   Ftr_Combo);
+  gomFS = instantiateFileSource();
+  globalObservationMatrix = gomFS;
 
-    unsigned numFeatures = globalObservationMatrix.numFeatures();
-    unsigned numContinuous = globalObservationMatrix.numContinuous();
+    unsigned numFeatures = globalObservationMatrix->numFeatures();
+    unsigned numContinuous = globalObservationMatrix->numContinuous();
     if(!gotLabelFile && Label_Position != -1 &&
        (Label_Position < (int)numContinuous || Label_Position >= (int)numFeatures) )
       error("labpos (%d) out of range (%d - %d): must be within the range of discrete obsevations\n",Label_Position,numContinuous,numFeatures-1);
 
-  sr_rng = new Range(Sentence_Range_Str,0,globalObservationMatrix.numSegments());
+  sr_rng = new Range(Sentence_Range_Str,0,gomFS->numSegments());
   kmeans_rng = sr_rng;
   if(Kmeans_Sentence_Range_Str != NULL)
-    kmeans_rng = new Range(Kmeans_Sentence_Range_Str,0,globalObservationMatrix.numSegments());
+    kmeans_rng = new Range(Kmeans_Sentence_Range_Str,0,gomFS->numSegments());
   mi_rng = sr_rng;
   if(MI_Sentence_Range_Str != NULL)
-    mi_rng = new Range(MI_Sentence_Range_Str,0,globalObservationMatrix.numSegments());
+    mi_rng = new Range(MI_Sentence_Range_Str,0,gomFS->numSegments());
 
 
   // Open the input/output mixture of Gaussians files
