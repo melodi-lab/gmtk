@@ -42,6 +42,7 @@ featureFileIO/obs-cat
 featureFileIO/obs-stats
 featureFileIO/testASCIIFile
 featureFileIO/testPFileFile
+featureFileIO/testPFileWriter
 featureFileIO/testFileSource
 featureFileIO/testStreamSource
 featureFileIO/testASCIIStream
