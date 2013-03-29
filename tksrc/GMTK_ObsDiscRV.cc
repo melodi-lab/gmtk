@@ -237,7 +237,9 @@ void ObsDiscRV::setToObservedValue()
       // label.c_str(),timeIndex,featureElement);
       unsigned tmp = globalObservationMatrix->unsignedAtFrame(frame(),featureElement());
       if (tmp >= (unsigned)cardinality) 
-	error("ERROR: RV '%s' (file:line '%s:%d') at time index %d has cardinality %d, but feature element position %d in observation file (time %d of segment %d) has value %u.\n",
+	error("ERROR: RV '%s' (file:line '%s:%d') at time index %d has cardinality %d, "
+	      "but feature element position %d in observation file (time %d of segment %d) "
+	      "has value %u = 0x%X.\n",
 	      name().c_str(),
 	      rv_info.rvFileName.c_str(),
 	      rv_info.fileLineNumber,
@@ -246,7 +248,7 @@ void ObsDiscRV::setToObservedValue()
 	      featureElement(),
 	      frame(),
 	      globalObservationMatrix->segmentNumber(),
-	      tmp);
+	      tmp, tmp);
       val = tmp;
     } else {
       // shouldn't happen.
