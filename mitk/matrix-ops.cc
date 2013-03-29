@@ -1,3 +1,5 @@
+#include <math.h>
+#include "error.h"
 #include "matrix-ops.h"
 
 /// transpose ///

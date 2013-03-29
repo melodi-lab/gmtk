@@ -194,6 +194,17 @@ class FileSource: public ObservationSource {
 		  unsigned startSkip=0, unsigned endSkip=0,
 		  int justificationMode = 0, bool constantSpace = false);
 
+  // Returns a pointer to the observed data. This does not support
+  // constant space mode, since the code that uses this method expects
+  // all observations to be available.
+  Data32 *featurePtr() {
+    assert(file);
+    if (constantSpace) {
+      error("ERROR: constant space observations not supported\n");
+    }
+    return cookedBuffer;
+  }
+
   // The number of available segments.
   unsigned numSegments() { 
     assert(file);
