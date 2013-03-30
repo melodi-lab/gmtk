@@ -7,6 +7,9 @@
  *  Created   : 2003-12-15 21:19:59 karim
  *  Author    : Karim Filali (karim@cs.washington.edu)
  *  Time-stamp: <>
+ *
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
 */
 
 #include "GMTK_Kmeans.h"

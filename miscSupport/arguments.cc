@@ -5,6 +5,11 @@
  * 
  *   Jeff Bilmes <bilmes@ee.washington.edu>
 
+// 
+//  Copyright (C) 2001 Jeff Bilmes
+//  Licensed under the Open Software License version 3.0
+//
+
  Modified by Karim Filali (karim@cs.washington.edu) to handle the following:
 
  - "Array type" flags: an example is the input flag -i; before if we

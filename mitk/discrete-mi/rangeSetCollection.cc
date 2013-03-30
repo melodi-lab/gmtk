@@ -1,3 +1,9 @@
+/*
+ *
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ *
+ */
 #include "readRange.h"
 
 #define FILE_NAME_LEN 25

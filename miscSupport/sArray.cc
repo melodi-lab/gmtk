@@ -3,7 +3,10 @@
 // This class is not meant for protection, it is only
 // for convenience.
 //
-// $Header$
+// 
+//  Copyright (C) 2001 Jeff Bilmes
+//  Licensed under the Open Software License version 3.0
+//
 //
 // Written by: Jeff Bilmes
 //             bilmes@icsi.berkeley.edu

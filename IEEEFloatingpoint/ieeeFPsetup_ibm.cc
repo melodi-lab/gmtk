@@ -1,5 +1,9 @@
 //
 //
+// Copyright (C) 2001 Jeff Bilmes
+// Licensed under the Open Software License version 3.0
+//
+//
 // Setup code so that FPE's print out not only that an FPE occured
 // but what kind of FPE occured. This code is very specific to
 // Solaris (and quite possibly very specific to a particular version

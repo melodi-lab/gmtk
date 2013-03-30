@@ -3,6 +3,9 @@
  *
  * Modified by Karim Filali <karim@cs.washington.edu> on 08sep2003:
  *
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ *
  *   - ASCII files are piped through CPP
  *
  *   - Changed the way data is read into memory.  It used to be read
@@ -82,16 +85,7 @@
  *
  * $Header$
  *
- * Copyright (c) 2001
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
- *
- * for any purpose. It is provided "as is" without express or implied warranty.
  * */
 
 #if HAVE_CONFIG_H

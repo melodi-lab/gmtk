@@ -2,6 +2,10 @@
     Simple informational message system
     Jeff Bilmes <bilmes@ee.washington.edu>
     $Header$
+//
+//  Copyright (C) 2003 Jeff Bilmes
+//  Licensed under the Open Software License version 3.0
+//
 */
 
 

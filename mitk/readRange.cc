@@ -1,4 +1,10 @@
 #include "readRange.h"
+/*
+ *
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ *
+ */
 
 #define MAX_QUEUE_SIZE 100
 

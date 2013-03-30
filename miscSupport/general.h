@@ -4,6 +4,10 @@
 // $Header$
 // Written by: Jeff Bilmes
 //             bilmes@ee.washington.edu
+// 
+//  Copyright (C) 2001 Jeff Bilmes
+//  Licensed under the Open Software License version 3.0
+//
 
 
 #ifndef GENERAL_H
