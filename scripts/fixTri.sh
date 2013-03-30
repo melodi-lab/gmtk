@@ -1,5 +1,12 @@
 #! /bin/sh
 
+#
+# Written by Richard Rogers <rprogers@uw.edu>
+#
+# Copyright (C) 2011 Jeff Bilmes
+# Licensed under the Open Software License version 3.0
+#
+
 # This script rewrites the cardinalities of continuous variables
 # to be zero in trifile IDs written by older versions of GMTK that
 # had a bug that caused continuous variables to inherit the 

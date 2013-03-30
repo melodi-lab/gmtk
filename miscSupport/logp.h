@@ -1,4 +1,8 @@
 //
+// 
+//  Copyright (C) 2001 Jeff Bilmes
+//  Licensed under the Open Software License version 3.0
+//
 //
 // Log probability class for single or double precision numbers.  Some
 // initial inspiration for this code was taken from HTK's HMath.c

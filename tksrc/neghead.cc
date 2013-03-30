@@ -5,6 +5,10 @@
 #include <stdlib.h>
 
 /*
+ * Copyright (C) 2011 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ *
+ *
  * This is a test program that provides the funcationality
  * of GNU head's negative arguments: "head -n -3 file" prints
  * all but the last 3 lines of file. Unfortunately, non-GNU

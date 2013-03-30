@@ -1,4 +1,12 @@
 
+#
+# Written by Richard Rogers <rprogers@uw.edu>
+#
+# Copyright (C) 2010 Jeff Bilmes
+# Licensed under the Open Software License version 3.0
+#
+
+
 if HAVE_HG
 # this will keep the Mercurial revision id current if you're building 
 # in a working directory. If you're not, use the distributed hgstamp.h

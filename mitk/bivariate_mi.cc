@@ -10,6 +10,10 @@
 **       Jeff Bilmes <bilmes@ee.washington.edu>
 **
 **
+** Copyright (C) 2004 Jeff Bilmes
+** Licensed under the Open Software License version 3.0
+**
+**
 **    Slight modifications to the interface to read input files using several types of formats besides pfile.  
 **       Karim Filali <karim@cs.washington.edu> 
 */

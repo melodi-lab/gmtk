@@ -1,4 +1,13 @@
 
+/*
+ * Written by Richard Rogers <rprogers@uw.edu>
+ *
+ * Copyright (C) 2012 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ *
+ */
+
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>

@@ -1,4 +1,8 @@
 //
+// 
+//  Copyright (C) 2012 Jeff Bilmes
+//  Licensed under the Open Software License version 3.0
+//
 //
 // mArray: a Simple Array class that is basically a glorified type*.
 //

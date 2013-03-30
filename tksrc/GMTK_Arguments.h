@@ -4,6 +4,9 @@
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *  $Header$
  *
+ * Copyright (C) 2005 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ *
  *
  *   Defines all the arguments for all gmtk programs in one place. Defines all three of:
  *       1) the (static) variable names, if not defined elsewhere in GMTK.

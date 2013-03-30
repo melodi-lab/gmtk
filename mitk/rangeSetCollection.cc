@@ -1,5 +1,11 @@
 #include "readRange.h"
 #include "error.h"
+/*
+ *
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ *
+ */
 
 #define FILE_NAME_LEN 25
 

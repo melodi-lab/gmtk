@@ -1,6 +1,11 @@
 #ifndef GMTK_OBSKLT_H
 #define GMTK_OBSKLT_H
 
+/*
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ */
+
 #include "GMTK_ObsPrint.h"
 
 void readStats(FILE*f, size_t N, bool ascii, double *cor, double *means, double *vecs, double *vals);

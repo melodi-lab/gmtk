@@ -1,6 +1,10 @@
 //
 //  Random Generation support.
 //
+// 
+//  Copyright (C) 2001 Jeff Bilmes
+//  Licensed under the Open Software License version 3.0
+//
 //
 // Written by: Jeff Bilmes
 //             bilmes@icsi.berkeley.edu

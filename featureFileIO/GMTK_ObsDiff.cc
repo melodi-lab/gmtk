@@ -1,5 +1,8 @@
 /*
-    $Header$
+ *
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ *
   
     Finds if two observation files are different.  Written by Jeff
     Bilmes (bilmes@ee.washington.edu) and modified by Karim Filali
