@@ -100,11 +100,18 @@ checkNumFrames(unsigned nFiles, ObservationFile *file[],
       error("ERROR: observation file %u needs an -fdiffact%u that truncates (ts, te) as segment %d "
 	    "has %u frames but %u are required\n", file_no+1, file_no+1, segment, len, min_len);
     }
-    if ( (!fdiffact || fdiffact[file_no] == FRAMEMATCH_ERROR) && min_len != max_len) {
+    if ( (!fdiffact || fdiffact[file_no] == FRAMEMATCH_ERROR) &&      // this file can't change length
+	 min_len != max_len &&                                        // but it *might* need to
+	 ( (got_expand && len < max_len)   ||  // it needs to grow
+           (got_truncate && len > min_len) ||  // it needs to shrink
+           (!got_expand && !got_truncate ) )   // it needs to change (user must pick direction)
+       )
+    {
       error("ERROR: observation file %u needs an -fdiffact%u that truncates (ts, te) or "
-	    "expands (rf, rl, se) as segment %d has %u frames but %u are required "
-	    "(for truncation) or %u frames (for expansion)\n", 
-	    file_no+1, file_no+1, segment, len, min_len, max_len);
+	    "expands (rf, rl, se) because the observation files have different lengths for "
+            "segment %d. All files must be truncated to %u frames or expanded to %u frames.\n", 
+	    file_no+1, file_no+1, 
+	    segment, min_len, max_len);
     }
   }
   
