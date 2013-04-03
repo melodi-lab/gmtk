@@ -116,7 +116,9 @@ class subMatrixDescriptor {
   }
 
   ~subMatrixDescriptor() {
+#if 0
     deallocate();
+#endif
   }
 
 }; 
