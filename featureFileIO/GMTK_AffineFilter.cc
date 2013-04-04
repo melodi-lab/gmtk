@@ -77,8 +77,8 @@ AffineFilter::getRequiredInput(unsigned first, unsigned count,
 						   outputContinuous, outputDiscrete,
 						   outputFrames);
     assert(nextFilterInput);
-    first = nextFilterInput->requestedFirst;
-    count = nextFilterInput->requestedCount;
+    first = nextFilterInput->firstFrame;
+    count = nextFilterInput->numFrames;
   } 
   return subMatrixDescriptor::getSMD(first, count, 0, 0, 
 				     inputContinuous, inputDiscrete, inputTotalFrames, 

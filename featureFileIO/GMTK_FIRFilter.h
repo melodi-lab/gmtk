@@ -47,6 +47,8 @@ class FIRFilter: public Filter {
 
  public:
   
+  char const* name() {return "FIR";}
+
   FIRFilter() {buffer=NULL; buffSize=0;}
 
   // Read B and c from fileName

@@ -75,6 +75,8 @@ class AffineFilter: public Filter {
   unsigned xBuffSize;    // in doubles
 
  public:
+
+  char const* name() {return "Affine";}
   
   AffineFilter() 
     : B(NULL), c(NULL),
