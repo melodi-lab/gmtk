@@ -56,8 +56,8 @@ ARMAFilter::getRequiredInput(unsigned first, unsigned count,
                                                    outputContinuous, outputDiscrete,
                                                    outputFrames);
     assert(nextFilterInput);
-    first = nextFilterInput->requestedFirst;
-    count = nextFilterInput->requestedCount;
+    first = nextFilterInput->firstFrame;
+    count = nextFilterInput->numFrames;
   } 
   unsigned requiredFirst = first;
   unsigned requiredLast  = first + count - 1 + order;

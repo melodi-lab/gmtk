@@ -36,6 +36,8 @@ class UpsampleFilter: public Filter {
 
  public:
 
+  char const* name() {return "Upsample";}
+
   UpsampleFilter(unsigned upsample, Filter *nextFilter = NULL) 
     : buffer(NULL), buffSize(0), upsample(upsample+1)
   {

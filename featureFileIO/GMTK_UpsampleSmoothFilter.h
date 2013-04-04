@@ -36,6 +36,8 @@ class UpsampleSmoothFilter: public Filter {
 
  public:
 
+  char const* name() {return "UpsampleS";}
+
   UpsampleSmoothFilter(unsigned upsample, Filter *nextFilter = NULL) 
     : buffer(NULL), buffSize(0), upsample(upsample+1)
   {

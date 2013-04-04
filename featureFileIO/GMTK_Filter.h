@@ -64,6 +64,10 @@ class Filter {
 
  public:
 
+Filter *getNextFilter() { return nextFilter; }
+
+  virtual char const* name() {return "Filter";}
+
   Filter(Filter *nextFilter = NULL) : nextFilter(nextFilter), frameNum(0) {}
 
   
@@ -147,7 +151,7 @@ class Filter {
     subMatrixDescriptor *nextFilterInput = NULL;
     if (nextFilter) {
       // the client's getting the data from the Filter(s) AFTER me, so
-      // ask it what frames I need to provide it as input (it gets as
+      // ask the following filter what frames I need to provide it as input (it gets as
       // input the # of continuous and discrete features and frames
       // I produce as output).
       unsigned outputContinuous = inputContinuous;  // # floats I produce
@@ -157,8 +161,8 @@ class Filter {
 						     outputContinuous, outputDiscrete,
 						     outputFrames);
       assert(nextFilterInput);
-      first = nextFilterInput->requestedFirst;
-      count = nextFilterInput->requestedCount;
+      first = nextFilterInput->firstFrame;
+      count = nextFilterInput->numFrames;
     }
     return subMatrixDescriptor::getSMD(first, count, 0, 0, inputContinuous, 
 	     inputDiscrete, inputTotalFrames, first, count, nextFilterInput);

@@ -46,6 +46,8 @@ class ARMAFilter: public Filter {
   bool      initialized;           // have I remembered anything yet?
 
  public:
+
+  char const* name() {return "ARMA";}
   
   ARMAFilter(unsigned order, unsigned numFloats, Filter *nextFilter = NULL) 
     : buffer(NULL), buffSize(0), order(order), numFloats(numFloats), numFrames(0),
