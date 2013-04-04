@@ -4,6 +4,15 @@
 
 
 
+/*
+ * Written by Richard Rogers <rprogers@uw.edu>
+ *
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ *
+ */
+
+
 
 #define USAGESTRING "  Usage: iotest   options       \n   options                    defaults \n   -n    number of files        0\n   -ifile list of input files  none\n   -iformat list of input formats none\n   -nf      list of number of floats none\n   -ni      list of number of ints none\n   -ext     list of output extensions  none\n   -icrng   list of input cont ranges  none\n   -idrng   list of input disc. ranges none\n   -ocrng   list of output cont ranges none\n   -odrng   list of output disc ranges none\n   -iswap   list of input bytes swap flags none\n   -oswap  list of output byte swap flags  none \n   -o num output files 0 \n   -oformat list of output formats none\n \n"
 

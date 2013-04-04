@@ -1,3 +1,11 @@
+
+#
+# Written by Richard Rogers <rprogers@uw.edu>
+#
+# Copyright (C) 2011 Jeff Bilmes
+# Licensed under the Open Software License version 3.0
+#
+
 ##### Autotest
 
 # The `:;' works around a Bash 3.2 bug when the output is not writeable.

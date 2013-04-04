@@ -1,5 +1,9 @@
 //
 // General miscellaneous stuff that belongs nowhere else.
+//
+//  Copyright (C) 2001 Jeff Bilmes
+//  Licensed under the Open Software License version 3.0
+//
 // 
 // Written by: Jeff Bilmes
 //             bilmes@ee.wasington.edu

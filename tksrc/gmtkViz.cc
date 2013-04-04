@@ -1,5 +1,10 @@
 // -*- C++ -*-
 
+/*
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ */
+
 // Dots and dashes have been disabled because of the instability they
 // induce. The wxWidgets documentation says that they may only be
 // drawn with width one. I believe the problem is that when you print

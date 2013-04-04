@@ -1,5 +1,11 @@
 #include <iostream>
 
+/*
+ *
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ *
+ */
 #if HAVE_CONFIG_H
 #include <config.h>
 #endif

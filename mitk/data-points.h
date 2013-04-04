@@ -1,6 +1,12 @@
 #ifndef _DATA_POINTS_
 #define _DATA_POINTS_
 
+/*
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ *
+ */
+
 #include "global-parameters.h"
 #if 0
 #  include "GMTK_ObservationMatrix.h"

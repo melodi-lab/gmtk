@@ -2,6 +2,12 @@
 #ifndef GMTK_TEMPORARY_H
 #define GMTK_TEMPORARY_H
 
+/*
+ *
+ * Copyright (C) 2012 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ */
+
 #define INITIAL_NUM_FRAMES_IN_BUFFER 1000
 
 #define NONE_LETTER 'X'

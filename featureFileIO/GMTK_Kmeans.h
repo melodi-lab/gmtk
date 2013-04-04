@@ -1,6 +1,13 @@
 #ifndef GMTK_KMEANS_H
 #define GMTK_KMEANS_H
 
+
+/*
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ */
+
+
 #include <cstdio>
 #include <cstdlib>
 #include "rand.h"

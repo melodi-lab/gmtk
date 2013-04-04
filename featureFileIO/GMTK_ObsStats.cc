@@ -4,6 +4,10 @@
  *  Created   : 2003-12-05 14:26:06 karim
  *  Author    : Karim Filali (karim@cs.washington.edu)
  *  Time-stamp: <>
+ *
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ *
 */
 
 

@@ -1,3 +1,11 @@
+
+#
+# Written by Richard Rogers <rprogers@uw.edu>
+#
+# Copyright (C) 2010 Jeff Bilmes
+# Licensed under the Open Software License version 3.0
+#
+
 EXTRA_DIST = RELEASE contrib 
 
 dist_bin_SCRIPTS = \

@@ -1,4 +1,12 @@
 #                                               -*- Autoconf -*-
+
+#
+# Written by Richard Rogers <rprogers@uw.edu>
+#
+# Copyright (C) 2010 Jeff Bilmes
+# Licensed under the Open Software License version 3.0
+#
+
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.65])

@@ -1,5 +1,9 @@
 /*
     $Header$
+// 
+//  Copyright (C) 2001 Jeff Bilmes
+//  Licensed under the Open Software License version 3.0
+//
   
     Simple fatal error function.
     Jeff Bilmes <bilmes@cs.berkeley.edu>

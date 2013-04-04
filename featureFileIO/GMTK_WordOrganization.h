@@ -5,7 +5,8 @@
  *  Author    : Karim Filali (karim@cs.washington.edu)
  *  Time-stamp: <>
  *
- * $Header$
+ * Copyright (C) 2003 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
  *
 */
 
