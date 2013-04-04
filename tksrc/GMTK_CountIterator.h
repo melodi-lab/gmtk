@@ -2,6 +2,9 @@
 #define GMTK_COUNTITERATOR_H
 
 /*
+ * Copyright (C) 2011 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ *
  * simple count iterator that counts the number
  * of insertions made, but doesn't do anything else.
  */

@@ -1,4 +1,7 @@
 //
+//  Copyright (C) 2001 Jeff Bilmes
+//  Licensed under the Open Software License version 3.0
+//
 //
 // Linear equation solver routines.
 // 

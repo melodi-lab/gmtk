@@ -1,6 +1,12 @@
 #include "matrix-ops.h"
 //#include "data-points.h"
 
+/*
+ *
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ *
+ */
 bool testLDU(double* cov, unsigned dim) {
   //moment to LDU
   double *newCov =new double[dim*dim];

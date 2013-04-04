@@ -1,4 +1,14 @@
 
+/*
+ * GMTK_MergeFile.cc
+ *   GMTK Merge File. Merges multiple ObservationFiles into a single ObservationFile
+ *
+ * Written by Richard Rogers <rprogers@uw.edu>
+ *
+ * Copyright (C) 2012 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ */
+
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif

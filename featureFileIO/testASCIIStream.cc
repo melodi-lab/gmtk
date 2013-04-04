@@ -5,6 +5,16 @@
 
 #include "GMTK_ASCIIStream.h"
 
+
+/*
+ * Written by Richard Rogers <rprogers@uw.edu>
+ *
+ * Copyright (C) 2012 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ *
+ */
+
+
 // testASCIIStream file nf ni
 int
 main(int argc, char *argv[]) {

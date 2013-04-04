@@ -1,6 +1,11 @@
 #ifndef GMTK_OBSPRINT_H
 #define GMTK_OBSPRINT_H
 
+/*
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ */
+
 #include <cstdlib>
 #include "range.h"
 #if 0

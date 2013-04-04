@@ -1,6 +1,11 @@
 #ifndef GMTK_OBSINITMG_H
 #define GMTK_OBSINITMG_H
 
+/*
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ */
+
 #include "GMTK_FileSource.h"
 
 void initmg(FileSource *obs_mat,

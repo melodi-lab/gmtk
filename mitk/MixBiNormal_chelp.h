@@ -1,4 +1,8 @@
 /*
+**
+** Copyright (C) 2004 Jeff Bilmes
+** Licensed under the Open Software License version 3.0
+**
 ** return the value of P(X|l,G) without the normalizing
 ** constant, for each of the pairs 
 ** (x0[0],x1[0]),(x0[s],x1[s]), ... (x0[(n-1)*s],x1[(n-1)*s])
