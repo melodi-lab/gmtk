@@ -58,6 +58,12 @@ radius:0   % use a single frame as input to the model
  *
  */
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
 
 
 #include <math.h>
