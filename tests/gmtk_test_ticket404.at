@@ -1,0 +1,29 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/404 is fixed
+
+# commands should run successfully if it's fixed
+
+
+AT_SETUP([ticket 404])
+AT_DATA([file1],[
+0 0 0.000000 1.100000 2.200000 1 0
+0 1 1.000000 10.100000 23.200001 1 1
+0 2 2.000000 100.099998 19.200001 6 7
+1 0 33.000000 1.100000 -7.000000 10 4
+1 1 -1.000000 -2.100000 23.200001 2 2
+2 0 400.000000 71.099998 98.000000 10 4
+2 1 -1.000000 0.100000 -56.200001 66 100
+2 2 0.040000 0.031000 19.200001 0 9
+])
+AT_DATA([file2],[
+0 0 555.000000 5763.986816 6 7
+0 1 -1.000000 0.100000 334 87
+0 2 -0.003400 17.000000 99 56
+0 3 -986.500000 88.000000 23 8
+1 0 6.000000 100.900002 22 8
+1 1 0.900000 0.100000 8 7
+1 2 10.900000 9.000000 1 8
+])
+AT_CHECK([obs-print -of1 file1 -fmt1 flatascii -nf1 3 -ni1 2 -of2 file2 -fmt2 flatascii -nf2 2 -ni2 2 -fdiffact1 rl -sdiffact1 wa -sdiffact2 wa -prepr1 0:1 -trans2 X_UH2],0,[ignore],[ignore])
+AT_CHECK([obs-print -of1 file1 -fmt1 flatascii -nf1 3 -ni1 2 -of2 file2 -fmt2 flatascii -nf2 2 -ni2 2 -fdiffact1 rl -sdiffact1 wa -sdiffact2 wa -prepr1 0:1 -trans2 X_X],0,[ignore],[ignore])
+AT_CLEANUP       
