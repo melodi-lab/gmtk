@@ -120,6 +120,7 @@ testBinStream_SOURCES = testBinStream.cc
 testFileStream_SOURCES = testFileStream.cc
 testFileSrc_SOURCES = testFileSrc.cc
 testFileWriter_SOURCES = testFileWriter.cc
+testPFileWriter_SOURCES = testPFileWriter.cc
 testFilter_SOURCES = testFilter.cc
 testObsFile_SOURCES = testObsFile.cc
 testStreamSource_SOURCES = testStreamSource.cc
