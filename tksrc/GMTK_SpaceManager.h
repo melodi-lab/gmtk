@@ -61,17 +61,27 @@ class SpaceManager : public IM {
   double sumRequested;
   unsigned numberRequests;
 
+char const *name;
+unsigned advanceCount;
+unsigned maxSize;
+
 public:
 
+static unsigned whoIncrementsMe;
 
-  SpaceManager(const unsigned _startingSize=2,
+void report() { printf("%s -> %u advances   %u max\n", name, advanceCount, maxSize); }
+
+  SpaceManager(
+char const *name,
+	       const unsigned _startingSize=2,
 	       const float _growthRate=2.0,
 	       const unsigned _growthAddition=1,
 	       const float _decayRate=1.0)
     : startingSize(_startingSize),
       growthRate(_growthRate),
       growthAddition(_growthAddition),
-      decayRate(_decayRate)
+      decayRate(_decayRate),
+name(name),advanceCount(0),maxSize(0)
   {
     if (decayRate < 0.0)
       error("ERROR: SpaceManager, decay rate %f must be >= 0", decayRate);
@@ -82,7 +92,12 @@ public:
     if (startingSize < 1)
       error("ERROR: SpaceManager, starting size %d must be >= 1", startingSize);
     reset();
+printf("hello from space manager %s\n", name);
   }
+
+ SpaceManager():name("anonymous"),advanceCount(0),maxSize(0) {printf("hello from anonymous space manager\n");}
+
+ ~SpaceManager() { printf("farewell from %s, cruel user:  %u advances to %u max\n", name, advanceCount, maxSize); }
 
   // Routine to reset the state to right after the constructor was
   // called.
@@ -122,8 +137,12 @@ public:
 
   // Bump up to the next new size
   unsigned advanceToNextSize() {
+advanceCount += 1;
+whoIncrementsMe += 1;
     currentAllocationSize = (int)((double)currentAllocationSize*growthRate) + 
       growthAddition;
+if (currentAllocationSize > maxSize) maxSize = currentAllocationSize;
+printf("%s increments  size %u   max %u   count %u\n", name, currentAllocationSize, maxSize, advanceCount);
     return currentAllocationSize;
   }
 

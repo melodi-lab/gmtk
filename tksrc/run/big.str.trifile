@@ -1,0 +1,149 @@
+% Structure File Identification Information
+0 p0 0 2 D 0 1 0 
+1 p1 0 2 D 0 1 0 
+2 state 0 256 D 0 1 2 p0 0 p1 0 
+3 obs 0 0 C 0 1 1 state 0 
+4 p0 1 2 D 0 1 1 state -1 
+5 p1 1 2 D 0 1 1 p0 -1 
+6 state 1 256 D 0 1 3 state -1 p0 0 p1 0 
+7 obs 1 0 C 0 1 1 state 0 
+1 1 
+@@@!!!TRIFILE_END_OF_ID_STRING!!!@@@ 
+
+% ---
+% GMTK Triangulation File Created: Wednesday August 22 2012, 16:20:08 PDT
+% Options-: triangulationHeuristic: completed, jtWeight: T, jtwUB: F, jtwPUI: 0.000000, jtwMC: F, jtwSNSC: 1.000000, jtwDNSC: 1.000000, pfCobWeight: 0.000000, findBestBoundary: T, traverseFraction: 1.000000, noBoundaryMemoize: F, forceLeftRight: , boundaryHeuristic: S, 
+% ---
+
+
+% ---
+% --- M, number of chunks in which to find interface boundary
+1 
+
+% ---
+% --- S, chunk skip
+1 
+
+% ---
+% --- interface method
+LEFT 
+
+% ---
+% --- boundary method
+Left_interface:Run_Bdry_Alg(T),Bnd_Heurs(S),TravFrac(1.000000),Tri_Heur(completed) 
+
+% ---
+% --- P partition information: variables and their neighbors
+% p0(0) : p1(0), state(0), obs(0), p0(1), p1(1), state(1),
+% p1(0) : p0(0), state(0), obs(0), p0(1), p1(1), state(1),
+% state(0) : p0(0), p1(0), obs(0), p0(1), p1(1), state(1),
+% obs(0) : p0(0), p1(0), state(0), p0(1), p1(1), state(1),
+% p0(1) : p0(0), p1(0), state(0), obs(0), p1(1), state(1),
+% p1(1) : p0(0), p1(0), state(0), obs(0), p0(1), state(1),
+% state(1) : p0(0), p1(0), state(0), obs(0), p0(1), p1(1),
+% --- P partition definition
+P_PARTITION 7 p0 0 p1 0 state 0 obs 0 p0 1 p1 1 state 1 
+
+% ---
+% --- C partition information: variables and their neighbors
+% p0(1) : state(1), obs(1), p0(2), p1(2), state(2),
+% state(1) : p0(1), obs(1), p0(2), p1(2), state(2),
+% obs(1) : p0(1), state(1), p0(2), p1(2), state(2),
+% p0(2) : p0(1), state(1), obs(1), p1(2), state(2),
+% p1(2) : p0(1), state(1), obs(1), p0(2), state(2),
+% state(2) : p0(1), state(1), obs(1), p0(2), p1(2),
+% --- C partition definition
+C_PARTITION 6 p0 1 state 1 obs 1 p0 2 p1 2 state 2 
+
+% ---
+% --- E partition information: variables and their neighbors
+% p0(2) : state(2), obs(2),
+% state(2) : p0(2), obs(2),
+% obs(2) : p0(2), state(2),
+% --- E partition definition
+E_PARTITION 3 p0 2 state 2 obs 2 
+
+% ---
+% --- PC information : variables and their neighbors
+% p0(1) : state(1), obs(1), p0(2), p1(2), state(2),
+% state(1) : p0(1), obs(1), p0(2), p1(2), state(2),
+% --- PC interface definition
+PC_PARTITION 2 p0 1 state 1 
+
+% ---
+% --- CE information : variables and their neighbors
+% p0(2) : p0(1), state(1), obs(1), p1(2), state(2),
+% state(2) : p0(1), state(1), obs(1), p0(2), p1(2),
+% --- CE interface definition
+CE_PARTITION 2 p0 2 state 2 
+
+% ---
+% ---- P Partitions Cliques and their weights
+% ---- 1 total max-cliques 
+% ---- Triangulation came from method: 1-completed
+% 0 : 7  6.020600
+%    p0(0)
+%    p1(0)
+%    state(0)
+%    obs(0)
+%    p0(1)
+%    p1(1)
+%    state(1)
+% Maximum clique state space = 1e6.020600, total state space = 1e6.020600
+1-completed 
+1 
+0 7 p0 0 p1 0 state 0 obs 0 p0 1 p1 1 state 1 
+
+% ---
+% ---- C Partitions Cliques and their weights
+% ---- 1 total max-cliques 
+% ---- Triangulation came from method: 1-completed
+% 0 : 6  5.719570
+%    p0(1)
+%    state(1)
+%    obs(1)
+%    p0(2)
+%    p1(2)
+%    state(2)
+% Maximum clique state space = 1e5.719570, total state space = 1e5.719570
+1-completed 
+1 
+0 6 p0 1 state 1 obs 1 p0 2 p1 2 state 2 
+
+% ---
+% ---- E Partitions Cliques and their weights
+% ---- 1 total max-cliques 
+% ---- Triangulation came from method: 1-completed
+% 0 : 3  2.709270
+%    p0(2)
+%    state(2)
+%    obs(2)
+% Maximum clique state space = 1e2.709270, total state space = 1e2.709270
+1-completed 
+1 
+0 3 p0 2 state 2 obs 2 
+
+
+% ----
+% ----
+% ----
+% ---- Printing final clique set and clique weights---
+%   --- Prologue summary, 1 cliques
+%    --- P curWeight = 6.020600
+%   --- Prologue max clique weight = 6.020600, total weight = 6.020600, jt_weight = 1.000000
+%   --- Chunk summary, 1 cliques
+%    --- C curWeight = 5.719570
+%   --- Chunk max clique weight = 5.719570, total Cx1 weight = 5.719570, per-chunk total C weight = 5.719570, jt_weight = 1.000000
+%   --- Epilogue summary, 1 cliques
+%    --- E curWeight = 2.709270
+%   --- Epilogue max clique weight = 2.709270, total weight = 2.709270, jt_weight = 1.000000
+% --- Final set (P,Cx1,E) has max clique weight = 6.020600, total state space = 6.196832 ---
+% --- Total weight when unrolling 1x = 6.196832 ---
+% --- Total weight when unrolling 2x = 6.321736 ---
+% --- Total weight when unrolling 5x = 6.564728 ---
+% --- Total weight when unrolling 10x = 6.798786 ---
+% --- Total weight when unrolling 20x = 7.062012 ---
+% --- Total weight when unrolling 50x = 7.435581 ---
+% --- Total weight when unrolling 100x = 7.728174 ---
+% --- Total weight when unrolling 500x = 8.420274 ---
+% --- Total weight when unrolling 1000x = 8.720438 ---

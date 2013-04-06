@@ -230,15 +230,15 @@ public:
 // the number of words that can be stored directly as a packed clique
 // value before we resort to using a shared hash table for all
 // instances of this origin clique.
-#define IMC_NWWOH (1)
+#define IMC_NWWOH (0)
 // ConditionalSeparatorTable Number Words WithOut a Hash (ISC_NWWOH):
 // Namely, the number of words that can be stored directly as a packed
 // clique value before we resort to using a shared hash table for all
 // instances of this origin clique.  One for the accumulated
 // Intersection packed values
-#define ISC_NWWOH_AI (1)
+#define ISC_NWWOH_AI (0)
 // And the same for the remainder in a Separator.
-#define ISC_NWWOH_RM (1)
+#define ISC_NWWOH_RM (0)
 // -- 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -362,7 +362,7 @@ class MaxClique : public IM {
   ///////////////////////////////////////////////////////
 
   // basic constructor with a set of nodes
-  MaxClique(set<RV*> arg) {
+  MaxClique(set<RV*> arg) : cliqueValueSpaceManager("cliqueValueSM") {
     nodes = arg;
   }
 
@@ -380,6 +380,7 @@ class MaxClique : public IM {
     //   right now, not deleting these causes a memory leak.
     // if (maxCEValuePredictor != NULL) 
     // delete maxCEValuePredictor; 
+cliqueValueSpaceManager.report();
   }
 
 
@@ -1102,7 +1103,8 @@ public:
 
   // copy constructor 
   SeparatorClique(const SeparatorClique& sep)
-    : veSeparator(sep.veSeparator)
+    : veSeparator(sep.veSeparator),
+separatorValueSpaceManager("sepValSM"),remainderValueSpaceManager("remValSM")
   { 
     // this constructor only copies the non-filled out information
     // (nodes and veSep status and information) since the other stuff
@@ -1119,7 +1121,8 @@ public:
 
   // constructor for VE separators.
   SeparatorClique(const MaxClique::VESepInfo& _veSepInfo)
-    : veSeparator(true)
+    : veSeparator(true),
+separatorValueSpaceManager("sepValSM"),remainderValueSpaceManager("remValSM")
   { 
     veSepInfo = _veSepInfo;
     // need nodes to reflect union, to sort, etc.
@@ -1162,7 +1165,9 @@ public:
   // repeatedly construct one of these objects, so while we might have
   // a bit of lost memory as a result of this, it won't constitute an
   // ever-growing memory leak.
-  SeparatorClique() : veSeparator(false),veSepClique(NULL) {}
+  SeparatorClique() : veSeparator(false),veSepClique(NULL),
+separatorValueSpaceManager("sepValSM"),remainderValueSpaceManager("remValSM")
+  {}
 
   ~SeparatorClique();
 

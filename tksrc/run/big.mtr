@@ -1,0 +1,78 @@
+
+DPMF_IN_FILE inline 1
+
+0
+pmf0 1 % name, cardinality
+1.0
+
+MEAN_IN_FILE inline 2
+
+0
+mean0 5
+0.0 0.0 0.0 0.0 0.0
+
+1
+mean1 5
+1.0 1.0 1.0 1.0 1.0
+
+COVAR_IN_FILE inline 2
+
+0
+covar0 
+5 
+1.0 1.0 1.0 1.0 1.0 
+
+1
+covar1
+5 
+1.0 1.0 1.0 1.0 1.0 
+
+DT_IN_FILE inline 1
+
+0
+split 1
+0 2 0:128 default
+  -1 0
+  -1 1
+
+%DENSE_CPT_IN_FILE inline 2
+%
+%0
+%state0
+%0 % # parents
+%2 % cardinality
+%0.45 0.55
+%
+%1
+%state1
+%1
+%2 2
+%0.33 0.67
+%0.47 0.53
+
+MC_IN_FILE inline 2
+
+0
+5 0 gc0 % dim, type 0=(mean,covar), name
+mean0 covar0
+
+1
+5 0 gc1 % dim, type 0=(mean,covar), name
+mean1 covar1
+
+MX_IN_FILE inline 2
+
+0
+5 mx0 1  % dim, name, # components
+pmf0 gc0 % weights, components
+
+1
+5 mx1 1  % dim, name, # components
+pmf0 gc1 % weights, components
+
+NAME_COLLECTION_IN_FILE inline 1
+
+0
+col
+2
+mx0 mx1

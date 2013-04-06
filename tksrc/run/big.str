@@ -1,0 +1,62 @@
+
+GRAPHICAL_MODEL hmm
+
+frame: 0 {
+
+  variable: p0 {
+    type: discrete hidden cardinality 2;
+    switchingparents: nil;
+    conditionalparents: nil using DenseCPT("p0");
+  }
+
+  variable: p1 {
+    type: discrete hidden cardinality 2;
+    switchingparents: nil;
+    conditionalparents: nil using DenseCPT("p0");
+  }
+
+  variable: state {
+    type: discrete hidden cardinality 256;
+    switchingparents: nil; 
+    conditionalparents: p0(0), p1(0) using DenseCPT("state0");
+  }
+
+  variable: obs {
+    type: continuous observed 0:4;
+    switchingparents: nil;
+    conditionalparents: state(0) using mixture 
+      collection("col") mapping("split");
+  }
+
+}
+
+frame: 1 {
+
+  variable: p0 {
+    type: discrete hidden cardinality 2;
+    switchingparents: nil;
+    conditionalparents: state(-1) using DenseCPT("p1");
+  }
+
+  variable: p1 {
+    type: discrete hidden cardinality 2;
+    switchingparents: nil;
+    conditionalparents: p0(-1) using DenseCPT("p2");
+  }
+
+  variable: state {
+    type: discrete hidden cardinality 256;
+    switchingparents: nil;
+    conditionalparents: state(-1), p0(0), p1(0) using DenseCPT("state1");
+  }
+
+  variable: obs {
+    type: continuous observed 0:4;
+    switchingparents: nil;
+    conditionalparents: state(0) using mixture 
+      collection("col") mapping("split");
+  }
+
+}
+
+chunk 1:1
