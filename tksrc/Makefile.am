@@ -152,6 +152,7 @@ GMTK_ScPnSh_Sw_HidDiscRV.h \
 GMTK_ScPnSh_Sw_ObsContRV.h \
 GMTK_ScPnSh_Sw_ObsDiscRV.h \
 GMTK_SpaceManager.h \
+GMTK_SpaceManager.cc \
 GMTK_SwContRV.h \
 GMTK_UnityScoreMixture.h \
 GMTK_USCPT.h \

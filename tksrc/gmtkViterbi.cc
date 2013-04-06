@@ -734,7 +734,9 @@ main(int argc,char*argv[])
     }
     (*dcdrng_it)++;
   }
-  
+
+  printf("Static SpaceManager advance count %u\n", SpaceManager::whoIncrementsMe);
+
   if (pCliqueFile) delete pCliqueFile;
 #if 0
   if (cCliqueFile) delete cCliqueFile;

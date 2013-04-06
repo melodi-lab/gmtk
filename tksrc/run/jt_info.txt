@@ -1,0 +1,109 @@
+===============================
+   P1 partition information: JT_weight = 1.000000
+=== Clique Information ===
+Number of cliques = 1
+== Clique number: 0, root/right-interface clique, root/right-interface clique, leaf
+Clique information: 20 packed bits, 1 unsigned words (0 splits), weight = 6.020600, jt_weight = 1.000000
+7 Nodes: p1(0)[2],state(0)[256],obs(0),p0(1)[2],p1(1)[2],state(1)[256],p0(0)[2]
+7 Assigned: p1(0),state(0),obs(0),p0(1),p1(1),state(1),p0(0)
+7 Assigned Sorted: p0(0)[2],p1(0)[2],state(0)[256],obs(0),p0(1)[2],p1(1)[2],state(1)[256]
+7 Dispositions: 0 0 0 0 0 0 0
+7 Assigned Prob: p1(0),state(0),obs(0),p0(1),p1(1),state(1),p0(0)
+0 Cum Assigned Prob: 
+0 Union Incomming Seps: 
+0 Unassigned Iterated: 
+0 Cumulative Unassigned: 
+6 Hidden/Hashable: p1(0)[2],state(0)[256],p0(1)[2],p1(1)[2],state(1)[256],p0(0)[2]
+0 Clique Neighbors: 
+0 Clique Children: 
+0 Receive Seps: 
+0 incomming VE Separators
+Send Sep: -1
+
+=== Separator Information ===
+Number of separators = 0
+
+
+===============================
+   Co partition information: JT_weight = 1.000000
+=== Clique Information ===
+Number of cliques = 1
+== Clique number: 0, root/right-interface clique, root/right-interface clique, leaf/left-interface clique
+Clique information: 19 packed bits, 1 unsigned words (0 splits), weight = 5.719570, jt_weight = 1.000000
+6 Nodes: p0(1)[2],state(1)[256],obs(1),p0(2)[2],p1(2)[2],state(2)[256]
+4 Assigned: obs(1),p0(2),p1(2),state(2)
+4 Assigned Sorted: obs(1),p0(2)[2],p1(2)[2],state(2)[256]
+4 Dispositions: 0 0 0 0
+4 Assigned Prob: obs(1),p0(2),p1(2),state(2)
+7 Cum Assigned Prob: p1(0),state(0),obs(0),p0(1),p1(1),state(1),p0(0)
+2 Union Incomming Seps: p0(1),state(1)
+0 Unassigned Iterated: 
+0 Cumulative Unassigned: 
+5 Hidden/Hashable: p0(1)[2],state(1)[256],p0(2)[2],p1(2)[2],state(2)[256]
+0 Clique Neighbors: 
+0 Clique Children: 
+1 Receive Seps: 0,
+0 incomming VE Separators
+Send Sep: -1
+
+=== Separator Information ===
+Number of separators = 1
+== Separator number: 0
+Separator information: 0 acc packed bits (0 words, 0 splits), 9 rem packed bits (1 words, 0 splits)
+2 Nodes: p0(1)[2],state(1)[256]
+0 Acc Inter: 
+0 Hid Acc Inter: 
+2 remainder: p0(1),state(1)
+2 hRemainder: p0(1),state(1)
+
+
+===============================
+   E1 partition information: JT_weight = 1.000000
+=== Clique Information ===
+Number of cliques = 1
+== Clique number: 0, root/right-interface clique, root clique, leaf/left-interface clique
+Clique information: 9 packed bits, 1 unsigned words (0 splits), weight = 2.709270, jt_weight = 1.000000
+3 Nodes: p0(2)[2],state(2)[256],obs(2)
+1 Assigned: obs(2)
+1 Assigned Sorted: obs(2)
+1 Dispositions: 0
+1 Assigned Prob: obs(2)
+11 Cum Assigned Prob: p1(0),state(0),obs(0),p0(1),p1(1),state(1),obs(1),p0(2),p1(2),state(2),p0(0)
+2 Union Incomming Seps: p0(2),state(2)
+0 Unassigned Iterated: 
+0 Cumulative Unassigned: 
+2 Hidden/Hashable: p0(2)[2],state(2)[256]
+0 Clique Neighbors: 
+0 Clique Children: 
+1 Receive Seps: 0,
+0 incomming VE Separators
+Send Sep: -1
+
+=== Separator Information ===
+Number of separators = 1
+== Separator number: 0
+Separator information: 0 acc packed bits (0 words, 0 splits), 9 rem packed bits (1 words, 0 splits)
+2 Nodes: p0(2)[2],state(2)[256]
+0 Acc Inter: 
+0 Hid Acc Inter: 
+2 remainder: p0(2),state(2)
+2 hRemainder: p0(2),state(2)
+
+
+===============================
+
+===============================
+   P1 message order
+Number of messages: 0
+
+
+===============================
+   Co message order
+Number of messages: 0
+
+
+===============================
+   E1 message order
+Number of messages: 0
+
+
