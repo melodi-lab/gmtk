@@ -1679,7 +1679,9 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	menu_file->Append(MENU_FILE_PRINT_EPS, wxT("&Print to "PRINT2FILE_ABBREV" file...\tCtrl+E"), wxT("Print an "PRINT2FILE_FORMAT" file of the current graph"), wxITEM_NORMAL);
 	menu_file->AppendSeparator();
 	menu_file->Append(MENU_FILE_CLOSE, wxT("&Close\tCtrl+W"), wxT("Close current placement file"), wxITEM_NORMAL);
+#ifndef GMTK_WX_OSX
 	menu_file->Append(MENU_FILE_EXIT, wxT("E&xit\tCtrl+Q"), wxT("Close all files and exit"), wxITEM_NORMAL);
+#endif
 	MainVizWindow_menubar->Append(menu_file, wxT("&File"));
 	// These don't make sense until a document is open.
 	MainVizWindow_menubar->Enable(MENU_FILE_SAVE, false);
