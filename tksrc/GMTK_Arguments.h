@@ -1864,10 +1864,16 @@ static bool writeLogVals = false;
   static char* vitPartRangeFilter = NULL;
   static char* vitFrameRangeFilter = NULL;
 //  static bool vitReverseOrder = false;
+
+#if 0
 #define MAX_VITERBI_TRIGGERS 3
   const char   *vitTriggerVariables[MAX_VITERBI_TRIGGERS] = { NULL, NULL, NULL };
   const char   *vitTriggerSets[MAX_VITERBI_TRIGGERS] = { NULL, NULL, NULL };
-
+#else
+  static char *pVitTrigger = NULL;
+  static char *cVitTrigger = NULL;
+  static char *eVitTrigger = NULL;
+#endif
 
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
@@ -1905,6 +1911,11 @@ static bool writeLogVals = false;
 #else
   Arg("binaryVitFile",Arg::Opt,JunctionTree::binaryViterbiFilename,"File to write binary Viterbi values for later printing"),
 #endif
+
+  Arg("pVitTrigger",Arg::Opt,pVitTrigger, "Leaf node expression for Viteribi printing trigger in prolog section"),
+  Arg("cVitTrigger",Arg::Opt,pVitTrigger, "Leaf node expression for Viteribi printing trigger in chunk section"),
+  Arg("eVitTrigger",Arg::Opt,pVitTrigger, "Leaf node expression for Viteribi printing trigger in epilog section"),
+
 #if 0
   // this is not implemented yet.
   Arg("vitReverseOrder",Arg::Opt,vitReverseOrder,"Vit: print values in reverse order."),
@@ -1933,6 +1944,10 @@ static bool writeLogVals = false;
 
   if ( (vitPartRangeFilter || vitFrameRangeFilter) && ! vitValsFileName ) {
     error("%s: -vitPrintRange and -vitFrameRange require -vitValsFile to be specified\n", argerr);
+  }
+
+  if ( (pVitTrigger || cVitTrigger || eVitTrigger) && ! pVitValsFileName ) {
+    error("%s: -{p,c,e}VitTrigger require -pVitValsFile to be specified\n", argerr);
   }
 #else
 #endif
