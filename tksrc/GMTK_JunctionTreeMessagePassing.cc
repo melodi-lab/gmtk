@@ -395,6 +395,11 @@ JunctionTree::printSavedPartitionViterbiValues(FILE* f,
 
   Range::iterator* partRange_it = new Range::iterator(partRange->begin());
 
+
+  if (pVitTrigger) {
+    
+
+
 #if 0
   // unused
   int previous_C = -1;
