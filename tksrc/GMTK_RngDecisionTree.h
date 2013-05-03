@@ -46,6 +46,7 @@
 #include <vector>
 
 class PackCliqueValue;
+class JunctionTree;
 
 /////////////////////////////////////////////////
 // The maximum branching factor on any decision tree node.
@@ -102,6 +103,8 @@ typedef unsigned leafNodeValType;
 
 class RngDecisionTree : public NamedObject, IM {
 
+  friend class JunctionTree;
+
 #ifdef MAIN
   friend int main(int,char**);
 #endif
@@ -123,7 +126,7 @@ protected:
   unsigned         firstDT;    // index of the first decision tree
 
   string getSourceString();
- 
+
   ///////////////////////////////////////////////////////////////////////////   
   // Equation Parsing 
   ///////////////////////////////////////////////////////////////////////////
@@ -613,6 +616,9 @@ public:
   // constructors
   RngDecisionTree() : indexFile(NULL), dtFile(NULL), firstDT(0), root(NULL) {}; 
   ~RngDecisionTree();
+
+  // Create a "decision tree" for Viterbi printing trigger expressions on the command line
+  RngDecisionTree(string exprString) :  indexFile(NULL), dtFile(NULL), dtFileName(exprString), firstDT(0), root(NULL) {};
 
   // Create a "decision tree" that has a single internal C function.
   RngDecisionTree(string name, CFunctionMapperType _func,unsigned numFeatures);
