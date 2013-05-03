@@ -186,6 +186,10 @@ protected:
 
     void write(oDataStreamFile& os); 
 
+
+    // returns true iff name is a key in the function map
+    static bool functionNameCollision(string const &name);
+
   protected:
 
     typedef int stack_element_t;
