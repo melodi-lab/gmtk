@@ -874,6 +874,12 @@ public:
   // to compute P(Q_t | X_{0:t})
   static bool sectionDoDist;
 
+
+  // Viterbi printing triggers
+  static char *pVitTrigger;
+  static char *cVitTrigger;
+  static char *eVitTrigger;
+
   // For O(1) memory inference, write Viterbi values to this file for
   // later printing by a separate program
   static bool  binaryViterbiSwap;
