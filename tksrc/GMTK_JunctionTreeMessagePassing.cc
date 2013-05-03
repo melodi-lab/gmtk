@@ -371,7 +371,7 @@ typedef map<RVKey,unsigned>   RVMap;     // map RV name(offset) to pX in leaf no
 typedef vector<RVKey>         RVVec;     // vector of name(offset) pairs in "parent" order
 
 void
-parseViterbiTrigger(char *triggerExpression, RVVec &rvVec, string &expr) {
+JunctionTree::parseViterbiTrigger(char *triggerExpression, RVVec &rvVec, string &expr) {
 
   RVMap rvMap;
   rvVec.clear();
@@ -396,6 +396,11 @@ parseViterbiTrigger(char *triggerExpression, RVVec &rvVec, string &expr) {
 	  for ( ; *q && ( ('0' <= *q && *q <= '9') ); q+=1)
 	    offsetStr.push_back(*q);
 	  if (*q == ')') {     // read 'name(offset)'
+
+	    if (RngDecisionTree::EquationClass::functionNameCollision(name)) {
+	      warning("WARNING: identifier '%s' in trigger formula '%s' could be either a variable or a single argument function. "
+		      "It will be interpretted as a variable.\n", name.c_str(), triggerExpression);
+	    }
 	    sscanf(offsetStr.c_str(), "%d", &offset);
 	    p = q+1;
 

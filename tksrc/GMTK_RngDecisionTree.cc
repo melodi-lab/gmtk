@@ -1100,6 +1100,12 @@ RngDecisionTree::EquationClass::EquationClass()
 }
 
 
+bool
+RngDecisionTree::EquationClass::functionNameCollision(string const &name) {
+  return function.find(name) != function.end();
+}
+
+
 /*-
  *-----------------------------------------------------------------------
  * RngDecisionTree::EquationClass::evaluateFormula
