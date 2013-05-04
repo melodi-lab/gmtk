@@ -3,14 +3,14 @@
 
 # gmtkViterbi will seg fault unless the bug is fixed
 
-AT_SETUP([ticket 136 (trivial)])
+AT_SETUP([unpack observed cliques (ticket 136 trivial)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/trivial])
 AT_CHECK([(cd $TEST_AND_DEV/trivial && \
           gmtkViterbi -strF test.str -inputM test.mtr -of1 filelist.txt \
           -fmt1 ascii -ni1 1 -pVitValsFile -)],[],[ignore],[ignore])
 AT_CLEANUP
 
-AT_SETUP([ticket 136 (2-stream)])
+AT_SETUP([unpack observed cliques (ticket 136 2-stream)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/2-stream])
 AT_CHECK([(cd $TEST_AND_DEV/2-stream/misc; 
 	   for f in `ls *.bz2`; do

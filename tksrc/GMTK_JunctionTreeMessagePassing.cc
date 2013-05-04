@@ -3760,6 +3760,36 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
   if (numPartitionsDone)
     *numPartitionsDone = 0;
   
+
+  RVVec  pVitTriggerVec;
+  string pVitTriggerExpr;
+  RngDecisionTree::EquationClass pTriggerEqn;
+
+  if (pVitTrigger) {
+    parseViterbiTrigger(pVitTrigger, pVitTriggerVec, pVitTriggerExpr);
+    pTriggerEqn.parseFormula(pVitTriggerExpr);
+  }
+
+  RVVec  cVitTriggerVec;
+  string cVitTriggerExpr;
+  RngDecisionTree::EquationClass cTriggerEqn;
+
+  if (cVitTrigger) {
+    parseViterbiTrigger(cVitTrigger, cVitTriggerVec, cVitTriggerExpr);
+    cTriggerEqn.parseFormula(cVitTriggerExpr);
+  }
+
+  RVVec  eVitTriggerVec;
+  string eVitTriggerExpr;
+  RngDecisionTree::EquationClass eTriggerEqn;
+
+  if (eVitTrigger) {
+    parseViterbiTrigger(eVitTrigger, eVitTriggerVec, eVitTriggerExpr);
+    eTriggerEqn.parseFormula(eVitTriggerExpr);
+  }
+
+  bool trigger = true;
+
   // Set up our iterator, write over the member island iterator since
   // we assume the member does not have any dynamc sub-members.
   new (&inference_it) ptps_iterator(*this,totalNumberPartitions);
@@ -3808,11 +3838,22 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
   if (viterbiScore) {
     // print filter ("Viterbi") values
     
-    fprintf(f,"Ptn-%d P': ", inference_it.pt_i());
-    if (printObserved && ps.allrvs.size() > 0) {
-      printRVSetAndValues(f,ps.allrvs,true,preg);
-    } else if (ps.packer.packedLen() > 0) {
-      printRVSetAndValues(f,ps.hidRVVector,true,preg);
+    if (pVitTrigger) {
+      vector<RV*> pTriggerParents;
+      vector<RV*> allRVs(ps.allrvs.begin(), ps.allrvs.end());
+      RVKey2RVVec(allRVs, pVitTriggerVec, pTriggerParents);
+      RngDecisionTree dt(pVitTriggerExpr);
+      trigger = pTriggerEqn.evaluateFormula(&dt, pTriggerParents) > 0;
+    }
+    if (trigger) {
+      fprintf(f,"Ptn-%d P': ", inference_it.pt_i());
+      if (printObserved && ps.allrvs.size() > 0) {
+	printRVSetAndValues(f,ps.allrvs,true,preg);
+	fflush(f);
+      } else if (ps.packer.packedLen() > 0) {
+	printRVSetAndValues(f,ps.hidRVVector,true,preg);
+	fflush(f);
+      }
     }
   } else {
     if (inference_it.cur_part_clique_print_range() != NULL) {
@@ -3833,6 +3874,7 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
     Co.useLISeparator();
 
   for (unsigned part=1; part < inference_it.pt_len(); part += 1 ) {
+    trigger = true;
     delete prev_part_tab;
     prev_part_tab = cur_part_tab;
 
@@ -3902,11 +3944,35 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
       if (viterbiScore) {
 	// print filter values
 	
-	fprintf(f,"Ptn-%d %c': ",inference_it.pt_i(), inference_it.at_e() ? 'E' : 'C');
-	if (printObserved && ps.allrvs.size() > 0) {
-	  printRVSetAndValues(f,ps.allrvs,true,preg);
-	} else if (ps.packer.packedLen() > 0) {
-	  printRVSetAndValues(f,ps.hidRVVector,true,preg);
+	char partLabel;
+	if (inference_it.at_e()) {
+	  if (eVitTrigger) {
+	    vector<RV*> eTriggerParents;
+	    vector<RV*> allRVs(ps.allrvs.begin(), ps.allrvs.end());
+	    RVKey2RVVec(allRVs, eVitTriggerVec, eTriggerParents);
+	    RngDecisionTree dt(eVitTriggerExpr);
+	    trigger = eTriggerEqn.evaluateFormula(&dt, eTriggerParents) > 0;
+	  }
+	  partLabel = 'E';
+	} else {
+	  if (cVitTrigger) {
+	    vector<RV*> cTriggerParents;
+	    vector<RV*> allRVs(ps.allrvs.begin(), ps.allrvs.end());
+	    RVKey2RVVec(allRVs, cVitTriggerVec, cTriggerParents);
+	    RngDecisionTree dt(cVitTriggerExpr);
+	    trigger = cTriggerEqn.evaluateFormula(&dt, cTriggerParents) > 0;
+	  }
+	  partLabel = 'C';
+	}
+	if (trigger) {
+	  fprintf(f,"Ptn-%d %c': ",inference_it.pt_i(), partLabel);
+	  if (printObserved && ps.allrvs.size() > 0) {
+	    printRVSetAndValues(f,ps.allrvs,true,preg);
+	    fflush(f);
+	  } else if (ps.packer.packedLen() > 0) {
+	    printRVSetAndValues(f,ps.hidRVVector,true,preg);
+	    fflush(f);
+	  }
 	}
       } else {
 	// possibly print the P or C partition information

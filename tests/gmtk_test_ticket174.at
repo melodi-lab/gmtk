@@ -2,7 +2,7 @@
 
 # should include "notfound.pfile" in error message if bug is fixed
 
-AT_SETUP([ticket 174])
+AT_SETUP([missing pfile error message (ticket 174)])
 AT_CHECK([obs-concat -of1 notfound.pfile], [ignore], [ignore],
          [Couldn't open input pfile notfound.pfile for reading.
 ])
