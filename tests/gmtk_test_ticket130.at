@@ -3,7 +3,7 @@
 
 # gmtkViterbi will fail if it can't read the compressed language model
 
-AT_SETUP([ticket 130])
+AT_SETUP([compressed FNGram and NGram CPTs (ticket 130)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/switchboard/lattice_trigram])
 # This seems to use quite a bit of memory. Bluffon doesn't seem to be able
 # to run it, but my MacBook runs it successfully. My Windows box doesn't 

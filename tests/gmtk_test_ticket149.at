@@ -7,7 +7,7 @@
 # frame index, otherwise it only outputs 0 and 50 as frame numbers.
 # Note that the extra LF after [51 is required.
 
-AT_SETUP([ticket 149])
+AT_SETUP([add -xCliquePrintRange (ticket 149)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/mouse4])
 AT_CHECK([(cd $TEST_AND_DEV/mouse4 && \
           gmtkViterbi -strF mouse4.str -inputM mouse4.mtr -of1 inMicePa.lst \
