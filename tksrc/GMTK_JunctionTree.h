@@ -1224,7 +1224,7 @@ public:
 
 
   // helper function for parsing Viterbi printing triggers
-  void parseViterbiTrigger(char *triggerExpression, vector< pair< string,int> > &rvVec, string &expr);
+  void parseViterbiTrigger(set<string> &variableNames, char *triggerExpression, vector< pair< string,int> > &rvVec, string &expr);
 
 
   // void saveViterbiValuesIsland(oDataStreamFile& vfile);
