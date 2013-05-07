@@ -371,7 +371,7 @@ typedef map<RVKey,unsigned>   RVMap;     // map RV name(offset) to pX in leaf no
 typedef vector<RVKey>         RVVec;     // vector of name(offset) pairs in "parent" order
 
 void
-JunctionTree::parseViterbiTrigger(char *triggerExpression, RVVec &rvVec, string &expr) {
+JunctionTree::parseViterbiTrigger(set<string> &variableNames, char *triggerExpression, RVVec &rvVec, string &expr) {
 
   RVMap rvMap;
   rvVec.clear();
@@ -397,25 +397,41 @@ JunctionTree::parseViterbiTrigger(char *triggerExpression, RVVec &rvVec, string 
 	    offsetStr.push_back(*q);
 	  if (*q == ')') {     // read 'name(offset)'
 
-	    if (RngDecisionTree::EquationClass::functionNameCollision(name)) {
-	      warning("WARNING: identifier '%s' in trigger formula '%s' could be either a variable or a single argument function. "
-		      "It will be interpretted as a variable.\n", name.c_str(), triggerExpression);
-	    }
-	    sscanf(offsetStr.c_str(), "%d", &offset);
 	    p = q+1;
 
-	    RVKey k(name,offset);
-	    char parent[16]; // at most 10 digits for a 32-bit uint, plus 'p' and NULL, & round up
-	    if (rvMap.find(k) == rvMap.end()) {  // new variable
-	      rvMap[k] = varCount;
-	      rvVec.push_back(k);
-	      sprintf(parent, "p%u", varCount);
-	      varCount += 1;
-	    } else {                             // already encountered this variable
-	      sprintf(parent, "p%u", rvMap.find(k)->second);
-	    }
-	    expr.append(parent);
+	    if (variableNames.find(name) != variableNames.end()) {
+	      // name matches a variable in the model
 
+	      if (RngDecisionTree::EquationClass::functionNameCollision(name)) {
+		warning("WARNING: identifier '%s' in trigger formula '%s' could be either a variable or a single argument function. "
+			"It will be interpretted as a variable.\n", name.c_str(), triggerExpression);
+	      }
+	      sscanf(offsetStr.c_str(), "%d", &offset);
+	      
+	      RVKey k(name,offset);
+	      char parent[16]; // at most 10 digits for a 32-bit uint, plus 'p' and NULL, & round up
+	      if (rvMap.find(k) == rvMap.end()) {  // new variable
+		rvMap[k] = varCount;
+		rvVec.push_back(k);
+		sprintf(parent, "p%u", varCount);
+		varCount += 1;
+	      } else {                             // already encountered this variable
+		sprintf(parent, "p%u", rvMap.find(k)->second);
+	      }
+	      expr.append(parent);
+	    } else if (RngDecisionTree::EquationClass::functionNameCollision(name)) {
+	      // name does not match any variable in the model, but it is a function name,
+	      // so treat it as an unambiguous single-argument function
+
+	      expr.append(name);
+	      expr.push_back('(');
+	      expr.append(offsetStr);
+	      expr.push_back(')');
+	    } else {
+	      // neither a known variable name, nor a known function name. What is it?
+	      error("ERROR: identifier '%s' in trigger formula '%s' is neither a variable name nor a function name.\n",
+		    name.c_str(), triggerExpression);
+	    }
 	  } else {   // read {alpha}({alpha}|{digit}|_|-)* '(' {digit}+ but no ')'
 	    expr.append(name);
 	    expr.push_back('(');
@@ -522,13 +538,26 @@ JunctionTree::printSavedPartitionViterbiValues(FILE* f,
 
   Range::iterator* partRange_it = new Range::iterator(partRange->begin());
 
+  set<string> variableNames; // names of variables in the model
+  for (unsigned i=0; i < partition_unrolled_rvs.size(); i+=1) {
+    variableNames.insert(partition_unrolled_rvs[i]->name());
+  }
+
   RVVec  pVitTriggerVec;
   string pVitTriggerExpr;
   RngDecisionTree::EquationClass pTriggerEqn;
 
   if (pVitTrigger) {
-    parseViterbiTrigger(pVitTrigger, pVitTriggerVec, pVitTriggerExpr);
-    pTriggerEqn.parseFormula(pVitTriggerExpr);
+    parseViterbiTrigger(variableNames, pVitTrigger, pVitTriggerVec, pVitTriggerExpr);
+    try {
+      pTriggerEqn.parseFormula(pVitTriggerExpr);
+    }
+    catch( string error_message ){
+      error("ERROR: In -pVitTrigger '%s' :  %s", pVitTrigger, error_message.c_str());
+    }
+    catch( const char * const error_message ) {
+      error("ERROR: In -pVitTrigger '%s' :  %s", pVitTrigger, error_message);
+    }
   }
 
   RVVec  cVitTriggerVec;
@@ -536,8 +565,17 @@ JunctionTree::printSavedPartitionViterbiValues(FILE* f,
   RngDecisionTree::EquationClass cTriggerEqn;
 
   if (cVitTrigger) {
-    parseViterbiTrigger(cVitTrigger, cVitTriggerVec, cVitTriggerExpr);
-    cTriggerEqn.parseFormula(cVitTriggerExpr);
+    parseViterbiTrigger(variableNames, cVitTrigger, cVitTriggerVec, cVitTriggerExpr);
+    try {
+      cTriggerEqn.parseFormula(cVitTriggerExpr);
+    }
+    catch( string error_message ){
+      error("ERROR: In -cVitTrigger '%s' :  %s", cVitTrigger, error_message.c_str());
+    }
+    catch( const char * const error_message ) {
+      error("ERROR: In -cVitTrigger '%s' :  %s", cVitTrigger, error_message);
+    }
+
   }
 
   RVVec  eVitTriggerVec;
@@ -545,8 +583,16 @@ JunctionTree::printSavedPartitionViterbiValues(FILE* f,
   RngDecisionTree::EquationClass eTriggerEqn;
 
   if (eVitTrigger) {
-    parseViterbiTrigger(eVitTrigger, eVitTriggerVec, eVitTriggerExpr);
-    eTriggerEqn.parseFormula(eVitTriggerExpr);
+    parseViterbiTrigger(variableNames, eVitTrigger, eVitTriggerVec, eVitTriggerExpr);
+    try {
+      eTriggerEqn.parseFormula(eVitTriggerExpr);
+    }
+    catch( string error_message ){
+      error("ERROR: In -eVitTrigger '%s' :  %s", eVitTrigger, error_message.c_str());
+    }
+    catch( const char * const error_message ) {
+      error("ERROR: In -eVitTrigger '%s' :  %s", eVitTrigger, error_message);
+    }
   }
 
   while (!partRange_it->at_end()) {
@@ -655,13 +701,27 @@ JunctionTree::printSavedPartitionViterbiValues(unsigned numFrames,
 
   Range::iterator* partRange_it = new Range::iterator(partRange->begin());
 
+
+  set<string> variableNames; // names of variables in the model
+  for (unsigned i=0; i < partition_unrolled_rvs.size(); i+=1) {
+    variableNames.insert(partition_unrolled_rvs[i]->name());
+  }
+
   RVVec  pVitTriggerVec;
   string pVitTriggerExpr;
   RngDecisionTree::EquationClass pTriggerEqn;
 
   if (pVitTrigger) {
-    parseViterbiTrigger(pVitTrigger, pVitTriggerVec, pVitTriggerExpr);
-    pTriggerEqn.parseFormula(pVitTriggerExpr);
+    parseViterbiTrigger(variableNames, pVitTrigger, pVitTriggerVec, pVitTriggerExpr);
+    try {
+      pTriggerEqn.parseFormula(pVitTriggerExpr);
+    } 
+    catch( string error_message ){
+      error("ERROR: In -pVitTrigger '%s' :  %s", pVitTrigger, error_message.c_str());
+    }
+    catch( const char * const error_message ) {
+      error("ERROR: In -pVitTrigger '%s' :  %s", pVitTrigger, error_message);
+    }
   }
 
   RVVec  cVitTriggerVec;
@@ -669,8 +729,16 @@ JunctionTree::printSavedPartitionViterbiValues(unsigned numFrames,
   RngDecisionTree::EquationClass cTriggerEqn;
 
   if (cVitTrigger) {
-    parseViterbiTrigger(cVitTrigger, cVitTriggerVec, cVitTriggerExpr);
-    cTriggerEqn.parseFormula(cVitTriggerExpr);
+    parseViterbiTrigger(variableNames, cVitTrigger, cVitTriggerVec, cVitTriggerExpr);
+    try {
+      cTriggerEqn.parseFormula(cVitTriggerExpr);
+    } 
+    catch( string error_message ){
+      error("ERROR: In -cVitTrigger '%s' :  %s", cVitTrigger, error_message.c_str());
+    }
+    catch( const char * const error_message ) {
+      error("ERROR: In -cVitTrigger '%s' :  %s", cVitTrigger, error_message);
+    }
   }
 
   RVVec  eVitTriggerVec;
@@ -678,8 +746,16 @@ JunctionTree::printSavedPartitionViterbiValues(unsigned numFrames,
   RngDecisionTree::EquationClass eTriggerEqn;
 
   if (eVitTrigger) {
-    parseViterbiTrigger(eVitTrigger, eVitTriggerVec, eVitTriggerExpr);
-    eTriggerEqn.parseFormula(eVitTriggerExpr);
+    parseViterbiTrigger(variableNames, eVitTrigger, eVitTriggerVec, eVitTriggerExpr);
+    try {
+      eTriggerEqn.parseFormula(eVitTriggerExpr);
+    }
+    catch( string error_message ){
+      error("ERROR: In -eVitTrigger '%s' :  %s", eVitTrigger, error_message.c_str());
+    }
+    catch( const char * const error_message ) {
+      error("ERROR: In -eVitTrigger '%s' :  %s", eVitTrigger, error_message);
+    }
   }
 
   while (!partRange_it->at_end()) {
@@ -1151,13 +1227,26 @@ JunctionTree::printSavedViterbiValues(FILE* f,
   int Epos = fp.numFramesInP() + C_rvs.size() * fp.numFramesInC();
 
 
+  set<string> variableNames; // names of variables in the model
+  for (unsigned i=0; i < partition_unrolled_rvs.size(); i+=1) {
+    variableNames.insert(partition_unrolled_rvs[i]->name());
+  }
+
   RVVec  pVitTriggerVec;
   string pVitTriggerExpr;
   RngDecisionTree::EquationClass pTriggerEqn;
 
   if (pVitTrigger) {
-    parseViterbiTrigger(pVitTrigger, pVitTriggerVec, pVitTriggerExpr);
-    pTriggerEqn.parseFormula(pVitTriggerExpr);
+    parseViterbiTrigger(variableNames, pVitTrigger, pVitTriggerVec, pVitTriggerExpr);
+    try {
+      pTriggerEqn.parseFormula(pVitTriggerExpr);
+    }
+    catch( string error_message ){
+      error("ERROR: In -pVitTrigger '%s' :  %s", pVitTrigger, error_message.c_str());
+    }
+    catch( const char * const error_message ) {
+      error("ERROR: In -pVitTrigger '%s' :  %s", pVitTrigger, error_message);
+    }
   }
 
   RVVec  cVitTriggerVec;
@@ -1165,8 +1254,16 @@ JunctionTree::printSavedViterbiValues(FILE* f,
   RngDecisionTree::EquationClass cTriggerEqn;
 
   if (cVitTrigger) {
-    parseViterbiTrigger(cVitTrigger, cVitTriggerVec, cVitTriggerExpr);
-    cTriggerEqn.parseFormula(cVitTriggerExpr);
+    parseViterbiTrigger(variableNames, cVitTrigger, cVitTriggerVec, cVitTriggerExpr);
+    try {
+      cTriggerEqn.parseFormula(cVitTriggerExpr);
+    }
+    catch( string error_message ){
+      error("ERROR: In -cVitTrigger '%s' :  %s", cVitTrigger, error_message.c_str());
+    }
+    catch( const char * const error_message ) {
+      error("ERROR: In -cVitTrigger '%s' :  %s", cVitTrigger, error_message);
+    }
   }
 
   RVVec  eVitTriggerVec;
@@ -1174,8 +1271,16 @@ JunctionTree::printSavedViterbiValues(FILE* f,
   RngDecisionTree::EquationClass eTriggerEqn;
 
   if (eVitTrigger) {
-    parseViterbiTrigger(eVitTrigger, eVitTriggerVec, eVitTriggerExpr);
-    eTriggerEqn.parseFormula(eVitTriggerExpr);
+    parseViterbiTrigger(variableNames, eVitTrigger, eVitTriggerVec, eVitTriggerExpr);
+    try {
+      eTriggerEqn.parseFormula(eVitTriggerExpr);
+    }
+    catch( string error_message ){
+      error("ERROR: In -eVitTrigger '%s' :  %s", eVitTrigger, error_message.c_str());
+    }
+    catch( const char * const error_message ) {
+      error("ERROR: In -eVitTrigger '%s' :  %s", eVitTrigger, error_message);
+    }
   }
 
   unsigned primeIndex = 0;
@@ -1366,13 +1471,26 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames,
   int Epos = fp.numFramesInP() + C_rvs.size() * fp.numFramesInC();
 
 
+  set<string> variableNames; // names of variables in the model
+  for (unsigned i=0; i < partition_unrolled_rvs.size(); i+=1) {
+    variableNames.insert(partition_unrolled_rvs[i]->name());
+  }
+
   RVVec  pVitTriggerVec;
   string pVitTriggerExpr;
   RngDecisionTree::EquationClass pTriggerEqn;
 
   if (pVitTrigger) {
-    parseViterbiTrigger(pVitTrigger, pVitTriggerVec, pVitTriggerExpr);
-    pTriggerEqn.parseFormula(pVitTriggerExpr);
+    parseViterbiTrigger(variableNames, pVitTrigger, pVitTriggerVec, pVitTriggerExpr);
+    try {
+      pTriggerEqn.parseFormula(pVitTriggerExpr);
+    }
+    catch( string error_message ){
+      error("ERROR: In -pVitTrigger '%s' :  %s", pVitTrigger, error_message.c_str());
+    }
+    catch( const char * const error_message ) {
+      error("ERROR: In -pVitTrigger '%s' :  %s", pVitTrigger, error_message);
+    }
   }
 
   RVVec  cVitTriggerVec;
@@ -1380,8 +1498,16 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames,
   RngDecisionTree::EquationClass cTriggerEqn;
 
   if (cVitTrigger) {
-    parseViterbiTrigger(cVitTrigger, cVitTriggerVec, cVitTriggerExpr);
-    cTriggerEqn.parseFormula(cVitTriggerExpr);
+    parseViterbiTrigger(variableNames, cVitTrigger, cVitTriggerVec, cVitTriggerExpr);
+    try {
+      cTriggerEqn.parseFormula(cVitTriggerExpr);
+    }
+    catch( string error_message ){
+      error("ERROR: In -cVitTrigger '%s' :  %s", cVitTrigger, error_message.c_str());
+    }
+    catch( const char * const error_message ) {
+      error("ERROR: In -cVitTrigger '%s' :  %s", cVitTrigger, error_message);
+    }
   }
 
   RVVec  eVitTriggerVec;
@@ -1389,8 +1515,16 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames,
   RngDecisionTree::EquationClass eTriggerEqn;
 
   if (eVitTrigger) {
-    parseViterbiTrigger(eVitTrigger, eVitTriggerVec, eVitTriggerExpr);
-    eTriggerEqn.parseFormula(eVitTriggerExpr);
+    parseViterbiTrigger(variableNames, eVitTrigger, eVitTriggerVec, eVitTriggerExpr);
+    try {
+      eTriggerEqn.parseFormula(eVitTriggerExpr);
+    }
+    catch( string error_message ){
+      error("ERROR: In -eVitTrigger '%s' :  %s", eVitTrigger, error_message.c_str());
+    }
+    catch( const char * const error_message ) {
+      error("ERROR: In -eVitTrigger '%s' :  %s", eVitTrigger, error_message);
+    }
   }
 
   unsigned primeIndex = 0;
@@ -1637,13 +1771,26 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames, FILE* f,
   int Epos = fp.numFramesInP() + C_rvs.size() * fp.numFramesInC();
   
 
+  set<string> variableNames; // names of variables in the model
+  for (unsigned i=0; i < partition_unrolled_rvs.size(); i+=1) {
+    variableNames.insert(partition_unrolled_rvs[i]->name());
+  }
+
   RVVec  pVitTriggerVec;
   string pVitTriggerExpr;
   RngDecisionTree::EquationClass pTriggerEqn;
 
   if (pVitTrigger) {
-    parseViterbiTrigger(pVitTrigger, pVitTriggerVec, pVitTriggerExpr);
-    pTriggerEqn.parseFormula(pVitTriggerExpr);
+    parseViterbiTrigger(variableNames, pVitTrigger, pVitTriggerVec, pVitTriggerExpr);
+    try {
+      pTriggerEqn.parseFormula(pVitTriggerExpr);
+    }
+    catch( string error_message ){
+      error("ERROR: In -pVitTrigger '%s' :  %s", pVitTrigger, error_message.c_str());
+    }
+    catch( const char * const error_message ) {
+      error("ERROR: In -pVitTrigger '%s' :  %s", pVitTrigger, error_message);
+    }
   }
 
   RVVec  cVitTriggerVec;
@@ -1651,8 +1798,16 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames, FILE* f,
   RngDecisionTree::EquationClass cTriggerEqn;
 
   if (cVitTrigger) {
-    parseViterbiTrigger(cVitTrigger, cVitTriggerVec, cVitTriggerExpr);
-    cTriggerEqn.parseFormula(cVitTriggerExpr);
+    parseViterbiTrigger(variableNames, cVitTrigger, cVitTriggerVec, cVitTriggerExpr);
+    try {
+      cTriggerEqn.parseFormula(cVitTriggerExpr);
+    }
+    catch( string error_message ){
+      error("ERROR: In -cVitTrigger '%s' :  %s", cVitTrigger, error_message.c_str());
+    }
+    catch( const char * const error_message ) {
+      error("ERROR: In -cVitTrigger '%s' :  %s", cVitTrigger, error_message);
+    }
   }
 
   RVVec  eVitTriggerVec;
@@ -1660,8 +1815,16 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames, FILE* f,
   RngDecisionTree::EquationClass eTriggerEqn;
 
   if (eVitTrigger) {
-    parseViterbiTrigger(eVitTrigger, eVitTriggerVec, eVitTriggerExpr);
-    eTriggerEqn.parseFormula(eVitTriggerExpr);
+    parseViterbiTrigger(variableNames, eVitTrigger, eVitTriggerVec, eVitTriggerExpr);
+    try {
+      eTriggerEqn.parseFormula(eVitTriggerExpr);
+    }
+    catch( string error_message ){
+      error("ERROR: In -eVitTrigger '%s' :  %s", eVitTrigger, error_message.c_str());
+    }
+    catch( const char * const error_message ) {
+      error("ERROR: In -eVitTrigger '%s' :  %s", eVitTrigger, error_message);
+    }
   }
 
  
@@ -1871,13 +2034,26 @@ JunctionTree::printSavedViterbiFrames(unsigned numFrames, FILE* f,
   int Epos = fp.numFramesInP() + C_rvs.size() * fp.numFramesInC();
   
 
+  set<string> variableNames; // names of variables in the model
+  for (unsigned i=0; i < partition_unrolled_rvs.size(); i+=1) {
+    variableNames.insert(partition_unrolled_rvs[i]->name());
+  }
+
   RVVec  pVitTriggerVec;
   string pVitTriggerExpr;
   RngDecisionTree::EquationClass pTriggerEqn;
 
   if (pVitTrigger) {
-    parseViterbiTrigger(pVitTrigger, pVitTriggerVec, pVitTriggerExpr);
-    pTriggerEqn.parseFormula(pVitTriggerExpr);
+    parseViterbiTrigger(variableNames, pVitTrigger, pVitTriggerVec, pVitTriggerExpr);
+    try {
+      pTriggerEqn.parseFormula(pVitTriggerExpr);
+    }
+    catch( string error_message ){
+      error("ERROR: In -pVitTrigger '%s' :  %s", pVitTrigger, error_message.c_str());
+    }
+    catch( const char * const error_message ) {
+      error("ERROR: In -pVitTrigger '%s' :  %s", pVitTrigger, error_message);
+    }
   }
 
   RVVec  cVitTriggerVec;
@@ -1885,8 +2061,16 @@ JunctionTree::printSavedViterbiFrames(unsigned numFrames, FILE* f,
   RngDecisionTree::EquationClass cTriggerEqn;
 
   if (cVitTrigger) {
-    parseViterbiTrigger(cVitTrigger, cVitTriggerVec, cVitTriggerExpr);
-    cTriggerEqn.parseFormula(cVitTriggerExpr);
+    parseViterbiTrigger(variableNames, cVitTrigger, cVitTriggerVec, cVitTriggerExpr);
+    try {
+      cTriggerEqn.parseFormula(cVitTriggerExpr);
+    }
+    catch( string error_message ){
+      error("ERROR: In -cVitTrigger '%s' :  %s", cVitTrigger, error_message.c_str());
+    }
+    catch( const char * const error_message ) {
+      error("ERROR: In -cVitTrigger '%s' :  %s", cVitTrigger, error_message);
+    }
   }
 
   RVVec  eVitTriggerVec;
@@ -1894,8 +2078,16 @@ JunctionTree::printSavedViterbiFrames(unsigned numFrames, FILE* f,
   RngDecisionTree::EquationClass eTriggerEqn;
 
   if (eVitTrigger) {
-    parseViterbiTrigger(eVitTrigger, eVitTriggerVec, eVitTriggerExpr);
-    eTriggerEqn.parseFormula(eVitTriggerExpr);
+    parseViterbiTrigger(variableNames, eVitTrigger, eVitTriggerVec, eVitTriggerExpr);
+    try {
+      eTriggerEqn.parseFormula(eVitTriggerExpr);
+    }
+    catch( string error_message ){
+      error("ERROR: In -eVitTrigger '%s' :  %s", eVitTrigger, error_message.c_str());
+    }
+    catch( const char * const error_message ) {
+      error("ERROR: In -eVitTrigger '%s' :  %s", eVitTrigger, error_message);
+    }
   }
 
  
@@ -3761,13 +3953,26 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
     *numPartitionsDone = 0;
   
 
+  set<string> variableNames; // names of variables in the model
+  for (unsigned i=0; i < partition_unrolled_rvs.size(); i+=1) {
+    variableNames.insert(partition_unrolled_rvs[i]->name());
+  }
+
   RVVec  pVitTriggerVec;
   string pVitTriggerExpr;
   RngDecisionTree::EquationClass pTriggerEqn;
 
   if (pVitTrigger) {
-    parseViterbiTrigger(pVitTrigger, pVitTriggerVec, pVitTriggerExpr);
-    pTriggerEqn.parseFormula(pVitTriggerExpr);
+    parseViterbiTrigger(variableNames, pVitTrigger, pVitTriggerVec, pVitTriggerExpr);
+    try {
+      pTriggerEqn.parseFormula(pVitTriggerExpr);
+    }
+    catch( string error_message ){
+      error("ERROR: In -pVitTrigger '%s' :  %s", pVitTrigger, error_message.c_str());
+    }
+    catch( const char * const error_message ) {
+      error("ERROR: In -pVitTrigger '%s' :  %s", pVitTrigger, error_message);
+    }
   }
 
   RVVec  cVitTriggerVec;
@@ -3775,8 +3980,16 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
   RngDecisionTree::EquationClass cTriggerEqn;
 
   if (cVitTrigger) {
-    parseViterbiTrigger(cVitTrigger, cVitTriggerVec, cVitTriggerExpr);
-    cTriggerEqn.parseFormula(cVitTriggerExpr);
+    parseViterbiTrigger(variableNames, cVitTrigger, cVitTriggerVec, cVitTriggerExpr);
+    try {
+      cTriggerEqn.parseFormula(cVitTriggerExpr);
+    }
+    catch( string error_message ){
+      error("ERROR: In -cVitTrigger '%s' :  %s", cVitTrigger, error_message.c_str());
+    }
+    catch( const char * const error_message ) {
+      error("ERROR: In -cVitTrigger '%s' :  %s", cVitTrigger, error_message);
+    }
   }
 
   RVVec  eVitTriggerVec;
@@ -3784,8 +3997,16 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
   RngDecisionTree::EquationClass eTriggerEqn;
 
   if (eVitTrigger) {
-    parseViterbiTrigger(eVitTrigger, eVitTriggerVec, eVitTriggerExpr);
-    eTriggerEqn.parseFormula(eVitTriggerExpr);
+    parseViterbiTrigger(variableNames, eVitTrigger, eVitTriggerVec, eVitTriggerExpr);
+    try {
+      eTriggerEqn.parseFormula(eVitTriggerExpr);
+    }
+    catch( string error_message ){
+      error("ERROR: In -eVitTrigger '%s' :  %s", eVitTrigger, error_message.c_str());
+    }
+    catch( const char * const error_message ) {
+      error("ERROR: In -eVitTrigger '%s' :  %s", eVitTrigger, error_message);
+    }
   }
 
   bool trigger = true;

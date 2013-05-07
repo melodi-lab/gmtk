@@ -4,7 +4,7 @@
 # checks that grepping full Viterbi output for trigger values 
 # matches -?VitTrigger output
 
-AT_SETUP([Vitterbi triggers: modified sections])
+AT_SETUP([Triggers: modified sections (ticket 406)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
 AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
            gmtkViterbi -iswp1 -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
@@ -22,7 +22,7 @@ AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
                -eVitTrigger "wordTransition(0)==1||wordTransition(1)==1") | \
            egrep "^Ptn-@<:@0-9@:>@+" | diff - vit.tru], [], [ignore])
 AT_CLEANUP
-AT_SETUP([Vitterbi triggers: original sections])
+AT_SETUP([Triggers: original sections (ticket 406)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
 AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
            gmtkViterbi -iswp1 -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
@@ -40,7 +40,7 @@ AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
                -eVitTrigger "wordTransition(0)==1") |                       \
            egrep "^Ptn-@<:@0-9@:>@+" | diff - vit.tru], [], [ignore])
 AT_CLEANUP
-AT_SETUP([Vitterbi triggers: frame range])
+AT_SETUP([Triggers: frame range (ticket 406)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
 AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
            gmtkViterbi -iswp1 -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
@@ -60,7 +60,7 @@ AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
                -eVitTrigger "wordTransition(0)==1") |                       \
            egrep "^Ptn-@<:@0-9@:>@+" | diff - vit.tru], [], [ignore])
 AT_CLEANUP
-AT_SETUP([Vitterbi triggers: section range])
+AT_SETUP([Triggers: section range (ticket 406)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
 AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
            gmtkViterbi -iswp1 -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
@@ -83,7 +83,7 @@ AT_CLEANUP
 
 
 
-AT_SETUP([Vitterbi triggers: binary modified sections])
+AT_SETUP([Triggers: binary modified sections (ticket 406)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
 AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial && \
            gmtkViterbi -iswp1 -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
@@ -111,7 +111,7 @@ AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
            egrep "^Ptn-@<:@0-9@:>@+" | diff - vit.tru], [], [ignore])
 AT_CLEANUP
 
-AT_SETUP([Vitterbi triggers: binary original sections])
+AT_SETUP([Triggers: binary original sections (ticket 406)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
 AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial && \
            gmtkViterbi -iswp1 -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
