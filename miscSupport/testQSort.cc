@@ -6,6 +6,8 @@
 
 #define testSize 20
 
+RAND rnd(true);
+
 int
 main(int argc, char *argv[]) {
   RAND r;
