@@ -190,3 +190,37 @@ readFof(FILE * &f, char const *fofName, unsigned &numFileNames, char **&dataName
   return n_lines;
 }
 
+
+/**
+ * parseSentenceSpec -- parse filename:startFrame:endFrame into separate components
+ *
+ */
+
+void
+parseSentenceSpec(char const *sentLoc, int &startFrame, int &endFrame, string &fnameStr) {
+  size_t fNameLen;
+  string ssentLoc(sentLoc);
+  startFrame=0, endFrame=-1; //these are the right values if the frame range is not specified
+  if(ssentLoc[ssentLoc.length()-1]==']'){
+    //have a subrange spec
+    fNameLen=ssentLoc.find_last_of('[');
+    if (fNameLen==string::npos){
+      error("ERROR: parseSentenceSpec: '%s' is an invalid sentence location.  "
+	    "Must be of the form 'filename[startFrame:endFrame]'",ssentLoc.c_str());		  
+    }
+    
+    string range= ssentLoc.substr(fNameLen+1,ssentLoc.length()-2-fNameLen);
+    if (sscanf(range.c_str(),"%d:%d",&startFrame,&endFrame) != 2)
+      error("ERROR: parseSentenceSpec: '%s' is an invalid sentence location.  "
+	    "Must be of the form 'filename[startFrame:endFrame]'",ssentLoc.c_str());
+    if(endFrame < startFrame)
+      error("ERROR: parseSentenceSpec: '%s' has the last frame smaller than first frame.\n",
+	    ssentLoc.c_str());
+    if (startFrame < 0) 
+      error("ERROR: parseSentenceSpec: '%s' frame numbers cannot be negative\n", ssentLoc.c_str());
+  } else{
+    fNameLen = ssentLoc.length();
+  }
+  fnameStr = ssentLoc.substr(0,fNameLen);
+}
+
