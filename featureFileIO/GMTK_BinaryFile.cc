@@ -243,9 +243,14 @@ BinaryFile::openSegment(unsigned seg) {
     }
     curDataFile = NULL;
   }
-  curDataFile = fopen(dataNames[seg], "rb");
+
+  string fnameStr;
+  parseSentenceSpec((char const *) dataNames[seg], startFrame, endFrame, fnameStr);
+
+  curDataFile = fopen(fnameStr.c_str(), "rb");
   if (curDataFile == NULL) {
-    warning("BinaryFile::openSegment: Can't open '%s' for input\n",fname);
+    warning("BinaryFile::openSegment: Can't open '%s' (in binary file '%s') for input\n",
+	    fnameStr.c_str(), fofName);
     return false;
   }
 
@@ -260,7 +265,15 @@ BinaryFile::openSegment(unsigned seg) {
       error("BinaryFile::openSegment: wrong number of bytes in file '%s'\n",dataNames[seg]);
 
   nFrames = fsize / sizeof(Data32) / numFeatures();
-
+  if (endFrame > -1) { // [startFrame:endFrame] specified
+    if ((unsigned)startFrame > nFrames || (unsigned)endFrame > nFrames) {
+      error("BinaryFile::openSegment: requested frames [%d,%d] in file '%s' in "
+	    "binary file '%s', but it only contains frames [0,%u]\n", startFrame, endFrame,
+	    dataNames[seg], fofName, nFrames);
+    }
+    nFrames = endFrame - startFrame + 1;
+  }
+  
   if (preFrameRange) 
     delete preFrameRange;
   if (preFrameRangeStr) {
@@ -282,6 +295,7 @@ BinaryFile::getFrames(unsigned first, unsigned count) {
     assert(buffer);
     buffSize = needed;
   }
+  first += (unsigned) startFrame;
   if (gmtk_fseek(curDataFile,(gmtk_off_t)(first * sizeof(Data32) * numFeatures()),SEEK_SET) == -1) {
     warning("BinaryFile::getFrames: Can't seek to frame %u in '%s'\n", first, dataNames[curSegment]);
     return NULL;
