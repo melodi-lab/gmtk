@@ -44,6 +44,15 @@
 
 
 /**
+ * parseSentenceSpec -- parse filename:startFrame:endFrame into separate components
+ *
+ */
+
+void
+parseSentenceSpec(char const *sentLoc, int &startFrame, int &endFrame, string &fnameStr);
+
+
+/**
  * openCPPableFile -- open an ASCII file that may need to be preprocessed by CPP
  *
  */
