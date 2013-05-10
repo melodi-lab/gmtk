@@ -25,6 +25,9 @@ AT_CHECK([(cd $TEST_AND_DEV/toyFisher/triphone &&                       \
          -D wordTransition_OBS_RANGE=40:40 -D END_OF_WORD_MARKER=47     \
          -D PHONE_CARD=48 -D WORD_ALIGNED_TRAINING=1                    \
          -D DATA_DIR=../fisherData -D RIGHT_CONTEXT_CROSS_WORD=1        \
-         -D PHONE_COUNTER_CARD=22 -D STATE_CARD=315648 ')], [], 
-  [ignore], [ignore])
+         -D PHONE_COUNTER_CARD=22 -D STATE_CARD=315648 ')], [1], 
+  [ignore], 
+[ERROR: ZERO CLIQUE: clique with no entries. Final probability will be zero.
+
+])
 AT_CLEANUP
