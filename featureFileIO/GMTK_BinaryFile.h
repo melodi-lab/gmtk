@@ -38,6 +38,8 @@ class BinaryFile: public ObservationFile {
   FILE      *fofFile;                   // this file (list of file names)
   FILE      *curDataFile;               // currently open segment
 
+  int        startFrame;                // only use frames [startFrame:endFrame]
+  int        endFrame;                  
   unsigned   nFrames;                   // # frames in current segment before -preprX
 
   unsigned   curSegment;                // current segment #
