@@ -1911,7 +1911,7 @@ static bool writeLogVals = false;
   Arg("pVitTrigger",Arg::Opt,JunctionTree::pVitTrigger, "Leaf node expression for Viteribi printing trigger in prolog section"),
   Arg("cVitTrigger",Arg::Opt,JunctionTree::cVitTrigger, "Leaf node expression for Viteribi printing trigger in chunk section"),
   Arg("eVitTrigger",Arg::Opt,JunctionTree::eVitTrigger, "Leaf node expression for Viteribi printing trigger in epilog section"),
-
+  Arg("vitRunLengthCompress",Arg::Opt,JunctionTree::vitRunLength, "Only print a chunk when its Viterbi values differ from the previous chunk"),
 #if 0
   // this is not implemented yet.
   Arg("vitReverseOrder",Arg::Opt,vitReverseOrder,"Vit: print values in reverse order."),

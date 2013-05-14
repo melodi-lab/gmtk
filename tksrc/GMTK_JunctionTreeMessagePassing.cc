@@ -12,6 +12,24 @@
  */
 
 
+/* The ISO C99 standard specifies that in C++ implementations these
+   macros should only be defined if explicitly requested.  */
+#define __STDC_LIMIT_MACROS 1
+   // The ISO C99 standard specifies that the macros in inttypes.h must
+   //  only be defined if explicitly requested. 
+#define __STDC_FORMAT_MACROS 1
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_INTTYPES_H
+#  include <inttypes.h>
+#endif
+#if HAVE_STDINT_H
+#  include <stdint.h>
+#endif
+
+
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -27,19 +45,6 @@
 #include <algorithm>
 #include <new>
 #include <typeinfo>
-
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-#if HAVE_INTTYPES_H
-   // The ISO C99 standard specifies that the macros in inttypes.h must
-   //  only be defined if explicitly requested. 
-#  define __STDC_FORMAT_MACROS 1
-#  include <inttypes.h>
-#endif
-#if HAVE_STDINT_H
-#  include <stdint.h>
-#endif
 
 #include "general.h"
 #include "error.h"
@@ -491,6 +496,15 @@ RVKey2RVVec(vector<RV*>rvs, RVVec keyVec, vector<RV*> &rvVec) {
 }
 
 
+bool
+differentValues(unsigned size, unsigned *a, unsigned *b) {
+  for (unsigned i=0; i < size; i+=1) {
+    if (a[i] != b[i]) return true;
+  }
+  return false;
+}
+
+
 /*
  *
  * This routine saves the viterbi values computed by the most recent
@@ -595,6 +609,10 @@ JunctionTree::printSavedPartitionViterbiValues(FILE* f,
     }
   }
 
+  bool first_C = true;
+  unsigned C_size = 0;
+  sArray<unsigned> previous_C_values;
+
   while (!partRange_it->at_end()) {
     bool trigger = true;
     unsigned part = (*partRange_it);
@@ -652,6 +670,26 @@ JunctionTree::printSavedPartitionViterbiValues(FILE* f,
 	RVKey2RVVec(allRVs, cVitTriggerVec, cTriggerParents);
 	RngDecisionTree dt(cVitTriggerExpr);
 	trigger = cTriggerEqn.evaluateFormula(&dt, cTriggerParents) > 0;
+      }
+      if (vitRunLength) {
+	if (first_C) {
+	  first_C = false;
+	  if (printObserved) {
+	    C_size = ps.allrvs.size();
+	  } else {
+	    C_size = ps.hidRVVector.size();
+	  }
+	  previous_C_values.resize(C_size);
+	  for (unsigned i=0; i < C_size; i+=1) 
+	    previous_C_values[i] = UINT32_MAX;
+	}
+	sArray<unsigned> current_C_values(C_size);
+	for (unsigned i=0; i < C_size; i+=1) {
+	  current_C_values[i] = printObserved ? ((DiscRV *)ps.allrvs_vec[i])->val : 
+	                                        ((DiscRV *)ps.hidRVVector[i])->val;
+	}
+	trigger =  trigger && differentValues(C_size, current_C_values.ptr, previous_C_values.ptr);
+        memcpy(previous_C_values.ptr, current_C_values.ptr, C_size * sizeof(unsigned));
       }
       if (trigger && printObserved && ps.allrvs.size() > 0) {
 	fprintf(f,"Ptn-%d C': ",part);
@@ -758,6 +796,10 @@ JunctionTree::printSavedPartitionViterbiValues(unsigned numFrames,
     }
   }
 
+  bool first_C = true;
+  unsigned C_size = 0;
+  sArray<unsigned> previous_C_values;
+
   while (!partRange_it->at_end()) {
     bool trigger = true;
     unsigned part = (*partRange_it);
@@ -821,6 +863,26 @@ JunctionTree::printSavedPartitionViterbiValues(unsigned numFrames,
 	RVKey2RVVec(allRVs, cVitTriggerVec, cTriggerParents);
 	RngDecisionTree dt(cVitTriggerExpr);
 	trigger = cTriggerEqn.evaluateFormula(&dt, cTriggerParents) > 0;
+      }
+      if (vitRunLength) {
+	if (first_C) {
+	  first_C = false;
+	  if (printObserved) {
+	    C_size = ps.allrvs.size();
+	  } else {
+	    C_size = ps.hidRVVector.size();
+	  }
+	  previous_C_values.resize(C_size);
+	  for (unsigned i=0; i < C_size; i+=1) 
+	    previous_C_values[i] = UINT32_MAX;
+	}
+	sArray<unsigned> current_C_values(C_size);
+	for (unsigned i=0; i < C_size; i+=1) {
+	  current_C_values[i] = printObserved ? ((DiscRV *)ps.allrvs_vec[i])->val : 
+	                                        ((DiscRV *)ps.hidRVVector[i])->val;
+	}
+	trigger =  trigger && differentValues(C_size, current_C_values.ptr, previous_C_values.ptr);
+        memcpy(previous_C_values.ptr, current_C_values.ptr, C_size * sizeof(unsigned));
       }
       if (trigger && printObserved && ps.allrvs.size() > 0) {
 	fprintf(f,"Ptn-%d C': ",part);
@@ -1283,6 +1345,10 @@ JunctionTree::printSavedViterbiValues(FILE* f,
     }
   }
 
+  bool first_C = true;
+  unsigned C_size = 0;
+  sArray<unsigned> previous_C_values;
+
   unsigned primeIndex = 0;
   unsigned originalIndex = 0;
   unsigned Ccount = 1;
@@ -1345,6 +1411,26 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 	  RngDecisionTree dt(cVitTriggerExpr);
 	  trigger = cTriggerEqn.evaluateFormula(&dt, cTriggerParents) > 0;
 	}
+	if (vitRunLength) {
+	  if (first_C) {
+	    first_C = false;
+	    if (printObserved) {
+	      C_size = C_rvs[0].size();
+	    } else {
+	      C_size = hidC_rvs[0].size();
+	    }
+	    previous_C_values.resize(C_size);
+	    for (unsigned i=0; i < C_size; i+=1) 
+	      previous_C_values[i] = UINT32_MAX;
+	  }
+	  sArray<unsigned> current_C_values(C_size);
+	  for (unsigned i=0; i < C_size; i+=1) {
+	    current_C_values[i] = printObserved ? ((DiscRV *)C_rvs[originalIndex][i])->val : 
+	                                          ((DiscRV *)hidC_rvs[originalIndex][i])->val;
+	  }
+	  trigger =  trigger && differentValues(C_size, current_C_values.ptr, previous_C_values.ptr);
+	  memcpy(previous_C_values.ptr, current_C_values.ptr, C_size * sizeof(unsigned));
+	}
 
 	if (  trigger && ( hidC_rvs[originalIndex].size() > 0 || (printObserved && C_rvs[originalIndex].size() > 0) )  ) {
 	  fprintf(f,"Ptn-%u C: ", Ccount);
@@ -1392,6 +1478,26 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 	    RVKey2RVVec(C_rvs[originalIndex], cVitTriggerVec, cTriggerParents);
 	    RngDecisionTree dt(cVitTriggerExpr);
 	    trigger = cTriggerEqn.evaluateFormula(&dt, cTriggerParents) > 0;
+	  }
+	  if (vitRunLength) {
+	    if (first_C) {
+	      first_C = false;
+	      if (printObserved) {
+		C_size = C_rvs[0].size();
+	      } else {
+		C_size = hidC_rvs[0].size();
+	      }
+	      previous_C_values.resize(C_size);
+	      for (unsigned i=0; i < C_size; i+=1) 
+		previous_C_values[i] = UINT32_MAX;
+	    }
+	    sArray<unsigned> current_C_values(C_size);
+	    for (unsigned i=0; i < C_size; i+=1) {
+	      current_C_values[i] = printObserved ? ((DiscRV *)C_rvs[originalIndex][i])->val : 
+		((DiscRV *)hidC_rvs[originalIndex][i])->val;
+	    }
+	    trigger =  trigger && differentValues(C_size, current_C_values.ptr, previous_C_values.ptr);
+	    memcpy(previous_C_values.ptr, current_C_values.ptr, C_size * sizeof(unsigned));
 	  }
 
 	  if (  trigger && ( (hidC_rvs[originalIndex].size() > 0)  || (printObserved && C_rvs[originalIndex].size() > 0) )  ) {
@@ -1527,6 +1633,10 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames,
     }
   }
 
+  bool first_C = true;
+  unsigned C_size = 0;
+  sArray<unsigned> previous_C_values;
+
   unsigned primeIndex = 0;
   unsigned originalIndex = 0;
   unsigned Ccount = 1;
@@ -1581,7 +1691,27 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames,
 	  RngDecisionTree dt(cVitTriggerExpr);
 	  trigger = cTriggerEqn.evaluateFormula(&dt, cTriggerParents) > 0;
 	}
-
+	if (vitRunLength) {
+	  if (first_C) {
+	    first_C = false;
+	    if (printObserved) {
+	      C_size = C_rvs[0].size();
+	    } else {
+	      C_size = hidC_rvs[0].size();
+	    }
+	    previous_C_values.resize(C_size);
+	    for (unsigned i=0; i < C_size; i+=1) 
+	      previous_C_values[i] = UINT32_MAX;
+	  }
+	  sArray<unsigned> current_C_values(C_size);
+	  for (unsigned i=0; i < C_size; i+=1) {
+	    current_C_values[i] = printObserved ? ((DiscRV *)C_rvs[originalIndex][i])->val : 
+	      ((DiscRV *)hidC_rvs[originalIndex][i])->val;
+	  }
+	  trigger =  trigger && differentValues(C_size, current_C_values.ptr, previous_C_values.ptr);
+	  memcpy(previous_C_values.ptr, current_C_values.ptr, C_size * sizeof(unsigned));
+	}
+	
 	if (  trigger && ( hidC_rvs[originalIndex].size() > 0 || (printObserved && C_rvs[originalIndex].size() > 0) )  ) {
 	  fprintf(f,"Ptn-%u C: ", Ccount);
 	  if (printObserved) 
@@ -1625,6 +1755,26 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames,
 	    RVKey2RVVec(C_rvs[originalIndex], cVitTriggerVec, cTriggerParents);
 	    RngDecisionTree dt(cVitTriggerExpr);
 	    trigger = cTriggerEqn.evaluateFormula(&dt, cTriggerParents) > 0;
+	  }
+	  if (vitRunLength) {
+	    if (first_C) {
+	      first_C = false;
+	      if (printObserved) {
+		C_size = C_rvs[0].size();
+	      } else {
+		C_size = hidC_rvs[0].size();
+	      }
+	      previous_C_values.resize(C_size);
+	      for (unsigned i=0; i < C_size; i+=1) 
+		previous_C_values[i] = UINT32_MAX;
+	    }
+	    sArray<unsigned> current_C_values(C_size);
+	    for (unsigned i=0; i < C_size; i+=1) {
+	      current_C_values[i] = printObserved ? ((DiscRV *)C_rvs[originalIndex][i])->val : 
+		((DiscRV *)hidC_rvs[originalIndex][i])->val;
+	    }
+	    trigger =  trigger && differentValues(C_size, current_C_values.ptr, previous_C_values.ptr);
+	    memcpy(previous_C_values.ptr, current_C_values.ptr, C_size * sizeof(unsigned));
 	  }
 
 	  if (  trigger && ( (hidC_rvs[originalIndex].size() > 0)  || (printObserved && C_rvs[originalIndex].size() > 0) )  ) {
@@ -4094,6 +4244,10 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
   if (inference_it.at_first_c() && P1.cliques.size() == 0)
     Co.useLISeparator();
 
+  bool first_C = true;
+  unsigned C_size = 0;
+  sArray<unsigned> previous_C_values;
+
   for (unsigned part=1; part < inference_it.pt_len(); part += 1 ) {
     trigger = true;
     delete prev_part_tab;
@@ -4182,6 +4336,26 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 	    RVKey2RVVec(allRVs, cVitTriggerVec, cTriggerParents);
 	    RngDecisionTree dt(cVitTriggerExpr);
 	    trigger = cTriggerEqn.evaluateFormula(&dt, cTriggerParents) > 0;
+	  }
+	  if (vitRunLength) {
+	    if (first_C) {
+	      first_C = false;
+	      if (printObserved) {
+		C_size = ps.allrvs.size();
+	      } else {
+		C_size = ps.hidRVVector.size();
+	      }
+	      previous_C_values.resize(C_size);
+	      for (unsigned i=0; i < C_size; i+=1) 
+		previous_C_values[i] = UINT32_MAX;
+	    }
+	    sArray<unsigned> current_C_values(C_size);
+	    for (unsigned i=0; i < C_size; i+=1) {
+	      current_C_values[i] = printObserved ? ((DiscRV *)ps.allrvs_vec[i])->val : 
+		                                    ((DiscRV *)ps.hidRVVector[i])->val;
+	    }
+	    trigger =  trigger && differentValues(C_size, current_C_values.ptr, previous_C_values.ptr);
+	    memcpy(previous_C_values.ptr, current_C_values.ptr, C_size * sizeof(unsigned));
 	  }
 	  partLabel = 'C';
 	}
