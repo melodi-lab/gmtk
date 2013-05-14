@@ -1942,6 +1942,10 @@ static bool writeLogVals = false;
     error("%s: -vitPrintRange and -vitFrameRange require -vitValsFile to be specified\n", argerr);
   }
 
+  if (JunctionTree::vitRunLength && (vitPartRangeFilter || vitFrameRangeFilter) ) {
+    error("%s: Can't use -vitRunLengthCompress with -vitPrintRange or -vitFrameRange\n", argerr);
+  }
+
 #else
 #endif
 #endif // defined(GMTK_ARG_NEW_DECODING_OPTIONS)
