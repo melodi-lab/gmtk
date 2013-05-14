@@ -83,6 +83,7 @@ bool JunctionTree::binaryViterbiSwap = false;
 char * JunctionTree::pVitTrigger = NULL;
 char * JunctionTree::cVitTrigger = NULL;
 char * JunctionTree::eVitTrigger = NULL;
+bool   JunctionTree::vitRunLength = false;
 
 FILE * JunctionTree::binaryViterbiFile = NULL;
 char * JunctionTree::binaryViterbiFilename = NULL;

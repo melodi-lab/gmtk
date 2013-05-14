@@ -880,6 +880,8 @@ public:
   static char *cVitTrigger;
   static char *eVitTrigger;
 
+  static bool vitRunLength;
+
   // For O(1) memory inference, write Viterbi values to this file for
   // later printing by a separate program
   static bool  binaryViterbiSwap;
