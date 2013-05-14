@@ -1015,7 +1015,7 @@ END_EVENT_TABLE()
 
 
 
-/* Hack to work around https://lungs.ee.washington.edu/trac/gmtk/ticket/71
+/* Hack to work around https://j.ee.washington.edu/trac/gmtk/ticket/71
  */
 class wxTicket71Dialog : public wxDialog {
 	public:
