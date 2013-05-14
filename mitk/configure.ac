@@ -11,7 +11,7 @@
 
 AC_PREREQ([2.65])
 AC_INIT([GMTK], m4_esyscmd(printf %s `head -n 1 ../RELEASE`),
-        [https://lungs.ee.washington.edu/trac/gmtk/newticket])
+        [https://j.ee.washington.edu/trac/gmtk/newticket])
 : ${CXXFLAGS=""}
 : ${CFLAGS=""}
 AC_CANONICAL_HOST

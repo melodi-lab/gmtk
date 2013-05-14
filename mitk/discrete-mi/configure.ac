@@ -10,7 +10,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT(GMTK, 0.0, https://lungs.ee.washington.edu/trac/gmtk/newticket)
+AC_INIT(GMTK, 0.0, https://j.ee.washington.edu/trac/gmtk/newticket)
 : ${CXXFLAGS=""}
 AC_CONFIG_SRCDIR([mixNormalCollection.cc])
 AC_CONFIG_HEADER([ac_config.h])
