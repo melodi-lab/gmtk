@@ -83,7 +83,7 @@ AT_CLEANUP
 
 
 
-AT_SETUP([Triggers: binary modified sections (ticket 406)])
+AT_SETUP([Triggers: bin modified sections (ticket 406)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
 AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial && \
            gmtkViterbi -iswp1 -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
@@ -111,7 +111,7 @@ AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
            egrep "^Ptn-@<:@0-9@:>@+" | diff - vit.tru], [], [ignore])
 AT_CLEANUP
 
-AT_SETUP([Triggers: binary original sections (ticket 406)])
+AT_SETUP([Triggers: bin original sections (ticket 406)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
 AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial && \
            gmtkViterbi -iswp1 -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
@@ -137,4 +137,158 @@ AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
                -eVitTrigger "wordTransition(0)==1"                            \
                -binaryVitFile $GMTK_TEST_DIR/vit.bin -vitValsFile -)   |      \
            egrep "^Ptn-@<:@0-9@:>@+" | diff - vit.tru], [], [ignore])
+AT_CLEANUP
+
+
+
+# Verify that -vitRunLengthCompress works by comparing against
+# the canonicallized full Viterbi output run-length compressed 
+# via shell commands
+
+# grep -E "Ptn-([[:digit:]])+ C" pulls out only C sections (original or modified)
+# sed 's/([0-9][0-9]*)//g' gets rid of the frame numbers from the variables
+# uniq -f 2  does the run-length compression
+
+AT_SETUP([Run-length: modified sections (ticket 406)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&                               \
+           gmtkViterbi -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0        \
+                       -inputMasterFile PARAMS/nonTrainable.master          \
+                       -inputTrainable PARAMS/highly_trained.gmp            \
+                       -str PARAMS/aurora_decode.str -pVitValsFile -) |     \
+           grep -E "Ptn-([[:digit:]])+ C" |                                 \
+           sed 's/([0-9][0-9]*)//g' |                                       \
+           uniq -f 2 > vit.tru], [], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&                               \
+           gmtkViterbi -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0        \
+                       -inputMasterFile PARAMS/nonTrainable.master          \
+                       -inputTrainable PARAMS/highly_trained.gmp            \
+                       -str PARAMS/aurora_decode.str -pVitValsFile -        \
+                       -vitRunLengthCompress) |                             \
+           grep -E "Ptn-([[:digit:]])+ C" |                                 \
+           sed 's/([0-9][0-9]*)//g' |                                       \
+         diff - vit.tru], [], [ignore])
+AT_CLEANUP
+
+AT_SETUP([Run-length: original sections (ticket 406)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&                               \
+           gmtkViterbi -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0        \
+                       -inputMasterFile PARAMS/nonTrainable.master          \
+                       -inputTrainable PARAMS/highly_trained.gmp            \
+                       -str PARAMS/aurora_decode.str -vitValsFile -) |      \
+           grep -E "Ptn-([[:digit:]])+ C" |                                 \
+           sed 's/([0-9][0-9]*)//g' |                                       \
+           uniq -f 2 > vit.tru], [], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
+           gmtkViterbi -iswp1 -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
+                       -inputMasterFile PARAMS/nonTrainable.master          \
+                       -inputTrainable PARAMS/highly_trained.gmp            \
+                       -str PARAMS/aurora_decode.str -vitValsFile -         \
+                       -vitRunLengthCompress) |                             \
+           grep -E "Ptn-([[:digit:]])+ C" |                                 \
+           sed 's/([0-9][0-9]*)//g' |                                       \
+         diff - vit.tru], [], [ignore])
+AT_CLEANUP
+
+AT_SETUP([Run-length: frame range (ticket 406)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&                               \
+           gmtkViterbi -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0        \
+                       -inputMasterFile PARAMS/nonTrainable.master          \
+                       -inputTrainable PARAMS/highly_trained.gmp            \
+                       -str PARAMS/aurora_decode.str -vitFrameRange all     \
+		       -vitValsFile -) |                                    \
+           grep -E "Ptn-([[:digit:]])+ C" |                                 \
+           sed 's/([0-9][0-9]*)//g' |                                       \
+           uniq -f 2 > vit.tru], [], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&                               \
+           gmtkViterbi -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0        \
+                       -inputMasterFile PARAMS/nonTrainable.master          \
+                       -inputTrainable PARAMS/highly_trained.gmp            \
+                       -str PARAMS/aurora_decode.str -vitFrameRange all     \
+                       -vitValsFile - -vitRunLengthCompress) |              \
+           grep -E "Ptn-([[:digit:]])+ C" |                                 \
+           sed 's/([0-9][0-9]*)//g' |                                       \
+         diff - vit.tru], [], [ignore])
+AT_CLEANUP
+
+AT_SETUP([Run-length: section range (ticket 406)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&                               \
+           gmtkViterbi -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0        \
+                       -inputMasterFile PARAMS/nonTrainable.master          \
+                       -inputTrainable PARAMS/highly_trained.gmp            \
+                       -str PARAMS/aurora_decode.str -vitPrintRange all     \
+		       -vitValsFile -) |                                    \
+           grep -E "Ptn-([[:digit:]])+ C" |                                 \
+           sed 's/([0-9][0-9]*)//g' |                                       \
+           uniq -f 2 > vit.tru], [], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&                               \
+           gmtkViterbi -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0        \
+                       -inputMasterFile PARAMS/nonTrainable.master          \
+                       -inputTrainable PARAMS/highly_trained.gmp            \
+                       -str PARAMS/aurora_decode.str -vitPrintRange all     \
+                       -vitValsFile - -vitRunLengthCompress) |              \
+           grep -E "Ptn-([[:digit:]])+ C" |                                 \
+           sed 's/([0-9][0-9]*)//g' |                                       \
+         diff - vit.tru], [], [ignore])
+AT_CLEANUP
+
+AT_SETUP([Run-length: bin modified sections (ticket 406)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
+AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial && \
+           gmtkViterbi -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0        \
+                       -inputMasterFile PARAMS/nonTrainable.master          \
+                       -inputTrainable PARAMS/highly_trained.gmp            \
+                       -str PARAMS/aurora_decode.str                        \
+                       -binaryVitFile $GMTK_TEST_DIR/vit.bin)], [], [ignore])
+
+AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
+           gmtkPrint -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0            \
+                     -inputMasterFile PARAMS/nonTrainable.master              \
+                     -inputTrainable PARAMS/highly_trained.gmp                \
+                     -str PARAMS/aurora_decode.str                            \
+                     -binaryVitFile $GMTK_TEST_DIR/vit.bin -pVitValsFile -) | \
+           grep -E "Ptn-([[:digit:]])+ C" |                                   \
+           sed 's/([0-9][0-9]*)//g' |                                         \
+           uniq -f 2 > vit.tru], [], [ignore])
+AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
+           gmtkPrint -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0            \
+                     -inputMasterFile PARAMS/nonTrainable.master              \
+                     -inputTrainable PARAMS/highly_trained.gmp                \
+                     -str PARAMS/aurora_decode.str -vitRunLengthCompress      \
+               -binaryVitFile $GMTK_TEST_DIR/vit.bin -pVitValsFile -)   |     \
+           grep -E "Ptn-([[:digit:]])+ C" |                                   \
+           sed 's/([0-9][0-9]*)//g' |                                         \
+         diff - vit.tru], [], [ignore])
+AT_CLEANUP
+
+AT_SETUP([Run-length: bin original sections (ticket 406)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
+AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial && \
+           gmtkViterbi -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0        \
+                       -inputMasterFile PARAMS/nonTrainable.master          \
+                       -inputTrainable PARAMS/highly_trained.gmp            \
+                       -str PARAMS/aurora_decode.str                        \
+                       -binaryVitFile $GMTK_TEST_DIR/vit.bin)], [], [ignore])
+
+AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
+           gmtkPrint -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0            \
+                     -inputMasterFile PARAMS/nonTrainable.master              \
+                     -inputTrainable PARAMS/highly_trained.gmp                \
+                     -str PARAMS/aurora_decode.str                            \
+                     -binaryVitFile $GMTK_TEST_DIR/vit.bin -vitValsFile -) |  \
+           grep -E "Ptn-([[:digit:]])+ C" |                                   \
+           sed 's/([0-9][0-9]*)//g' |                                         \
+           uniq -f 2 > vit.tru], [], [ignore])
+AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
+           gmtkPrint -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0            \
+                     -inputMasterFile PARAMS/nonTrainable.master              \
+                     -inputTrainable PARAMS/highly_trained.gmp                \
+                     -str PARAMS/aurora_decode.str -vitRunLengthCompress      \
+               -binaryVitFile $GMTK_TEST_DIR/vit.bin -vitValsFile -)   |      \
+           grep -E "Ptn-([[:digit:]])+ C" |                                   \
+           sed 's/([0-9][0-9]*)//g' |                                         \
+         diff - vit.tru], [], [ignore])
 AT_CLEANUP
