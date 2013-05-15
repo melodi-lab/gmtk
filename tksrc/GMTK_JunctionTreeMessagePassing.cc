@@ -1977,6 +1977,9 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames, FILE* f,
     }
   }
 
+  bool first_C = true;
+  unsigned C_size = 0;
+  sArray<unsigned> previous_C_values;
  
   int primeIndex = 0;     // which of the Cprime_rvs or Eprime_rvs to unpack to
   int originalIndex = 0;  // which of the C_rvs to print from
@@ -2084,6 +2087,27 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames, FILE* f,
 	RVKey2RVVec(C_rvs[originalIndex], cVitTriggerVec, cTriggerParents);
 	RngDecisionTree dt(cVitTriggerExpr);
 	trigger = cTriggerEqn.evaluateFormula(&dt, cTriggerParents) > 0;
+      }
+
+      if (vitRunLength) {
+	if (first_C) {
+	  first_C = false;
+	  if (printObserved) {
+	    C_size = C_rvs[0].size();
+	  } else {
+	    C_size = hidC_rvs[0].size();
+	  }
+	  previous_C_values.resize(C_size);
+	  for (unsigned i=0; i < C_size; i+=1) 
+	    previous_C_values[i] = UINT32_MAX;
+	}
+	sArray<unsigned> current_C_values(C_size);
+	for (unsigned i=0; i < C_size; i+=1) {
+	  current_C_values[i] = printObserved ? ((DiscRV *)C_rvs[originalIndex][i])->val : 
+	                                        ((DiscRV *)hidC_rvs[originalIndex][i])->val;
+	}
+	trigger =  trigger && differentValues(C_size, current_C_values.ptr, previous_C_values.ptr);
+        memcpy(previous_C_values.ptr, current_C_values.ptr, C_size * sizeof(unsigned));
       }
 
       if (  trigger && ( (hidC_rvs[originalIndex].size() > 0)  || (printObserved && C_rvs[originalIndex].size() > 0) )  ) {
@@ -2240,6 +2264,9 @@ JunctionTree::printSavedViterbiFrames(unsigned numFrames, FILE* f,
     }
   }
 
+  bool first_C = true;
+  unsigned C_size = 0;
+  sArray<unsigned> previous_C_values;
  
   int primeIndex = 0;     // which of the Cprime_rvs or Eprime_rvs to unpack to
   int originalIndex = 0;  // which of the C_rvs to print from
@@ -2309,6 +2336,28 @@ JunctionTree::printSavedViterbiFrames(unsigned numFrames, FILE* f,
 	  RngDecisionTree dt(cVitTriggerExpr);
 	  trigger = cTriggerEqn.evaluateFormula(&dt, cTriggerParents) > 0;
 	}
+
+	if (vitRunLength) {
+	  if (first_C) {
+	    first_C = false;
+	    if (printObserved) {
+	      C_size = C_rvs[0].size();
+	    } else {
+	      C_size = hidC_rvs[0].size();
+	    }
+	    previous_C_values.resize(C_size);
+	    for (unsigned i=0; i < C_size; i+=1) 
+	      previous_C_values[i] = UINT32_MAX;
+	  }
+	  sArray<unsigned> current_C_values(C_size);
+	  for (unsigned i=0; i < C_size; i+=1) {
+	    current_C_values[i] = printObserved ? ((DiscRV *)C_rvs[originalIndex][i])->val : 
+	                                          ((DiscRV *)hidC_rvs[originalIndex][i])->val;
+	  }
+	  trigger =  trigger && differentValues(C_size, current_C_values.ptr, previous_C_values.ptr);
+	  memcpy(previous_C_values.ptr, current_C_values.ptr, C_size * sizeof(unsigned));
+	}
+
 	if (  trigger && ( (hidC_rvs[originalIndex].size() > 0)  || (printObserved && C_rvs[originalIndex].size() > 0) )  ) {
 	  fprintf(f,"Ptn-%u C: ", part);
 	  if (printObserved) 
