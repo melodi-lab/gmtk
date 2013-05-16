@@ -39,7 +39,7 @@
 #include "GMTK_PartitionTables.h"
 #include "GMTK_StreamSource.h"
 #include "GMTK_ObservationFile.h"
-
+#include "GMTK_RngDecisionTree.h"
 #include "debug.h"
 
 // class mention for forward references.
@@ -880,6 +880,8 @@ public:
   static char *cVitTrigger;
   static char *eVitTrigger;
 
+  static bool vitRunLength;
+
   // For O(1) memory inference, write Viterbi values to this file for
   // later printing by a separate program
   static bool  binaryViterbiSwap;
@@ -1223,9 +1225,53 @@ public:
 			  const bool cliquePosteriorUnlog = true);
 
 
+ private:
   // helper function for parsing Viterbi printing triggers
   void parseViterbiTrigger(set<string> &variableNames, char *triggerExpression, vector< pair< string,int> > &rvVec, string &expr);
 
+  // setup data structures needed to evaluate a Viterbi printing trigger
+  void initializeViterbiTrigger(char *vitTrigger, set<string> &variableNames, 
+				vector< pair< string,int> > &vitTriggerVec, string &vitTriggerExpr,
+				RngDecisionTree::EquationClass &triggerEqn,
+				char arg);
+
+  // evaluate a Viterbi printing trigger
+  bool evaluateTrigger(vector<RV *> &allrvs, vector< pair< string,int> > &vitTriggerVec, string &vitTriggerExpr, 
+		       RngDecisionTree::EquationClass &triggerEqn);
+
+  void printModifiedSection(PartitionStructures &ps,
+			    unsigned *packed_values,
+			    bool useVitTrigger,
+			    vector< pair< string,int> > &vitTriggerVec,
+			    string &vitRiggerExpr,
+			    RngDecisionTree::EquationClass &vitTriggerEqn,
+			    bool printObserved,
+			    unsigned part,
+			    char sectionLabel,
+			    FILE *f,
+			    regex_t *preg,
+			    bool &first_C,
+			    unsigned &C_size,
+			    sArray<unsigned> &previous_values,
+			    bool runLengthCompress = false,
+			    unsigned pt_i = 1);
+
+  void printOriginalSection(vector<RV *> sectionRVs,
+			    vector<RV *> hiddenRVs,
+			    bool useVitTrigger,
+			    vector< pair< string,int> > &vitTriggerVec,
+			    string &vitRiggerExpr,
+			    RngDecisionTree::EquationClass &vitTriggerEqn,
+			    bool printObserved,
+			    unsigned part,
+			    char sectionLabel,
+			    FILE *f,
+			    regex_t *preg,
+			    bool &first_C,
+			    unsigned &C_size,
+			    sArray<unsigned> &previous_values,
+			    bool runLengthCompress = false);
+ public:
 
   // void saveViterbiValuesIsland(oDataStreamFile& vfile);
   // void saveViterbiValuesLinear(oDataStreamFile& vfile);
