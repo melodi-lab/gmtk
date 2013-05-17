@@ -121,6 +121,8 @@ gmtk_test_ticket387-1.at \
 gmtk_test_ticket387-2.at \
 gmtk_test_ticket398.at \
 gmtk_test_ticket404.at \
+gmtk_test_ticket406-2.at \
+gmtk_test_ticket406.at \
 gmtk_test_ticket42.at \
 gmtk_test_ticket52.at \
 gmtk_tests.at

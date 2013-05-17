@@ -3,7 +3,7 @@
 # Check that the correct number of frames are used for inference
 # Assertion will fail unless the bug is fixed
 
-AT_SETUP([Only apply -{start,end}Skip once])
+AT_SETUP([Only apply -{start,end}Skip once (ticket 398)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/dvecpt])
 AT_CHECK([(cd $TEST_AND_DEV/dvecpt && \
           gmtkJT -strF dvecpt.str -inputM dvecpt.mtr \

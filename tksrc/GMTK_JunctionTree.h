@@ -874,6 +874,12 @@ public:
   // to compute P(Q_t | X_{0:t})
   static bool sectionDoDist;
 
+
+  // Viterbi printing triggers
+  static char *pVitTrigger;
+  static char *cVitTrigger;
+  static char *eVitTrigger;
+
   // For O(1) memory inference, write Viterbi values to this file for
   // later printing by a separate program
   static bool  binaryViterbiSwap;
@@ -1215,6 +1221,10 @@ public:
 			  ObservationFile *posteriorFile = NULL,
 			  const bool cliquePosteriorNormalization = true,
 			  const bool cliquePosteriorUnlog = true);
+
+
+  // helper function for parsing Viterbi printing triggers
+  void parseViterbiTrigger(set<string> &variableNames, char *triggerExpression, vector< pair< string,int> > &rvVec, string &expr);
 
 
   // void saveViterbiValuesIsland(oDataStreamFile& vfile);

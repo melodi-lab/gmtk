@@ -20,7 +20,7 @@ EOF
 
 AT_SETUP([${d}: ${com}command])
 AT_SKIP_IF([test ! -x \$TEST_AND_DEV/${d}/${com}command])
-AT_CHECK([(cd \$TEST_AND_DEV/${d} && ./${com}command)], [], [ignore])
+AT_CHECK([(cd \$TEST_AND_DEV/${d} && ulimit -v 8000000 && ulimit -t 120 && ./${com}command)], [], [ignore], [ignore])
 AT_CLEANUP
 EOF
       fi
