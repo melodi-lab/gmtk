@@ -2944,7 +2944,7 @@ unsigned GMParms::totalNumberParameters()
     sum += fngramCpts[i]->totalNumberParameters();
   for (unsigned i=0;i<veCpts.size();i++)
     sum += veCpts[i]->totalNumberParameters();
-  for (unsigned i=0;i<veCpts.size();i++)
+  for (unsigned i=0;i<deepVECpts.size();i++)
     sum += deepVECpts[i]->totalNumberParameters();
   return sum;
 

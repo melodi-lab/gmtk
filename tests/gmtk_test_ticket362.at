@@ -3,7 +3,7 @@
 
 # Check that posteriors match when written as binary and pfiles
 
-AT_SETUP([PFile posterior test])
+AT_SETUP([PFile posterior test (ticket 362)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
 
 # island, all partitions

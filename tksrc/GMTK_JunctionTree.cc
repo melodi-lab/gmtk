@@ -79,6 +79,11 @@ bool JunctionTree::onlineViterbi = false;
 bool JunctionTree::mmapViterbi = true;
 bool JunctionTree::sectionDoDist = false;
 bool JunctionTree::binaryViterbiSwap = false;
+
+char * JunctionTree::pVitTrigger = NULL;
+char * JunctionTree::cVitTrigger = NULL;
+char * JunctionTree::eVitTrigger = NULL;
+
 FILE * JunctionTree::binaryViterbiFile = NULL;
 char * JunctionTree::binaryViterbiFilename = NULL;
 off_t  JunctionTree::binaryViterbiOffset;

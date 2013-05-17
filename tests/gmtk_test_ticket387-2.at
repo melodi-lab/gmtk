@@ -3,7 +3,7 @@
 
 # See $TEST_AND_DEV/scripts/at_test.sh for test details
 
-AT_SETUP([new Viterbi printing single-partiton mouse4])
+AT_SETUP([printing single-partiton mouse4 (ticket 387)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/mouse4])
 AT_CHECK([(cd $TEST_AND_DEV/mouse4 &&
 	   gmtkViterbi -strF mouse4.str -inputM mouse4.mtr -dcdrng 0:0 \

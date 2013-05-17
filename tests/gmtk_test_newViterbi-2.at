@@ -6,7 +6,7 @@
 # testViterbi and sort to put it in a canonical form so that
 # the two printing implementations can be diffed.
 
-AT_SETUP([new Viterbi printing auroraTutorial])
+AT_SETUP([new Viterbi printing auroraTutorial (ticket 85)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
 AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
           gmtkViterbi -of1 DATA/small.pfile \

@@ -1,7 +1,7 @@
 
 # Verify that https://j.ee.washington.edu/trac/gmtk/ticket/164 is fixed
 
-AT_SETUP([ticket 164])
+AT_SETUP([print fully observed partitions (ticket 164)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/trivial])
 
 # partitioned Viterbi printing
