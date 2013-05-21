@@ -25,7 +25,11 @@ AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
 # platform
 AT_SKIP_IF([test `uname` = "CYGWIN_NT-6.1"])
 
-AT_SKIP_IF([true])
+# There is new debugging output from new features, so
+# exactly matching the previous debugging output is no
+# longer possible.
+AT_XFAIL_IF([true])
+
 AT_CHECK([
 for (( verb=0 ; $verb < 101 ; verb+=5 )); do
   (cd $TEST_AND_DEV/auroraTutorial && \
