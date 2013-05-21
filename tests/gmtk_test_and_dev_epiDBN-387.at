@@ -1,0 +1,23 @@
+
+# test and dev model epiDBN-387
+
+
+AT_SETUP([epiDBN-387: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/epiDBN-387/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/epiDBN-387 && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([epiDBN-387: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/epiDBN-387/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/epiDBN-387 && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([epiDBN-387: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/epiDBN-387/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/epiDBN-387 && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([epiDBN-387: vitcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/epiDBN-387/vitcommand])
+AT_CHECK([(cd $TEST_AND_DEV/epiDBN-387 && ulimit -v 8000000 && ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP

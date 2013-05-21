@@ -1,0 +1,20 @@
+
+# test and dev model kjaerulff
+
+
+AT_SETUP([kjaerulff: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/kjaerulff/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/kjaerulff && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([kjaerulff: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/kjaerulff/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/kjaerulff && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([kjaerulff: jtcommand])
+# not a valid model
+AT_SKIP_IF([true])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/kjaerulff/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/kjaerulff && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

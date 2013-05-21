@@ -1,0 +1,23 @@
+
+# test and dev model karim
+
+
+AT_SETUP([karim: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/karim/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/karim && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([karim: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/karim/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/karim && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([karim: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/karim/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/karim && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([karim: vitcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/karim/vitcommand])
+AT_CHECK([(cd $TEST_AND_DEV/karim && ulimit -v 8000000 && ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP
