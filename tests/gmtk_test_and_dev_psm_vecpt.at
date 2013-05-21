@@ -1,0 +1,27 @@
+
+# test and dev model psm_vecpt
+
+
+AT_SETUP([psm_vecpt: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/psm_vecpt/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/psm_vecpt && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([psm_vecpt: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/psm_vecpt/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/psm_vecpt && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([psm_vecpt: jtcommand])
+# bug?
+AT_XFAIL_IF([true])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/psm_vecpt/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/psm_vecpt && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([psm_vecpt: vitcommand])
+# bug?
+AT_XFAIL_IF([true])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/psm_vecpt/vitcommand])
+AT_CHECK([(cd $TEST_AND_DEV/psm_vecpt && ulimit -v 8000000 && ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP

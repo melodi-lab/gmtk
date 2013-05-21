@@ -1,0 +1,23 @@
+
+# test and dev model testLMs
+
+
+AT_SETUP([testLMs: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/testLMs/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/testLMs && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([testLMs: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/testLMs/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/testLMs && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([testLMs: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/testLMs/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/testLMs && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([testLMs: vitcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/testLMs/vitcommand])
+AT_CHECK([(cd $TEST_AND_DEV/testLMs && ulimit -v 8000000 && ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP

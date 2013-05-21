@@ -1,0 +1,23 @@
+
+# test and dev model simple_hmm_all_observed
+
+
+AT_SETUP([simple_hmm_all_observed: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/simple_hmm_all_observed/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/simple_hmm_all_observed && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([simple_hmm_all_observed: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/simple_hmm_all_observed/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/simple_hmm_all_observed && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([simple_hmm_all_observed: traincommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/simple_hmm_all_observed/traincommand])
+AT_CHECK([(cd $TEST_AND_DEV/simple_hmm_all_observed && ulimit -v 8000000 && ulimit -t 120 && ./traincommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([simple_hmm_all_observed: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/simple_hmm_all_observed/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/simple_hmm_all_observed && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

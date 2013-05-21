@@ -1,0 +1,28 @@
+
+# test and dev model auroraTutorial
+
+
+AT_SETUP([auroraTutorial: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/auroraTutorial/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([auroraTutorial: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/auroraTutorial/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([auroraTutorial: traincommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/auroraTutorial/traincommand])
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && ulimit -v 8000000 && ulimit -t 120 && ./traincommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([auroraTutorial: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/auroraTutorial/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([auroraTutorial: vitcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/auroraTutorial/vitcommand])
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && ulimit -v 8000000 && ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP

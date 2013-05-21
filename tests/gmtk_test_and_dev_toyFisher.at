@@ -1,0 +1,27 @@
+
+# test and dev model toyFisher
+
+
+AT_SETUP([toyFisher: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/toyFisher/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/toyFisher && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([toyFisher: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/toyFisher/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/toyFisher && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([toyFisher: traincommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/toyFisher/traincommand])
+# 0-cliques
+AT_SKIP_IF([true])
+AT_CHECK([(cd $TEST_AND_DEV/toyFisher && ulimit -v 8000000 && ulimit -t 120 && ./traincommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([toyFisher: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/toyFisher/jtcommand])
+# 0-cliques
+AT_SKIP_IF([true])
+AT_CHECK([(cd $TEST_AND_DEV/toyFisher && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

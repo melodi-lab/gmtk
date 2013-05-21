@@ -1,0 +1,13 @@
+
+# test and dev model no_time_parent
+
+
+AT_SETUP([no_time_parent: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/no_time_parent/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/no_time_parent && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([no_time_parent: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/no_time_parent/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/no_time_parent && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
