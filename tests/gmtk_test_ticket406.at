@@ -292,3 +292,64 @@ AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
            sed 's/([0-9][0-9]*)//g' |                                         \
          diff - vit.tru], [], [ignore])
 AT_CLEANUP
+
+
+
+# Run-length compression with regex. Use -pVitRegex to select a single
+# variable for output, then grep to get just the chunks, and finally
+# AWK to ensure each value differs.
+
+
+AT_SETUP([RLC+Regex: modified sections (ticket 406)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&                               \
+           gmtkViterbi -of1 DATA/small.pfile -iswp1 T -nf1 42 -dcdrng 0     \
+                       -inputMasterFile PARAMS/nonTrainable.master          \
+                       -inputTrainable PARAMS/highly_trained.gmp            \
+                       -str PARAMS/aurora_decode.str -pVitValsFile -        \
+                       -pVitTrig 0 -eVitTrig 0 -pVitRegex phone -vitRunLen) \
+         | grep -E "Ptn-([[:digit:]])+ C" |                                 \
+           awk -F = 'BEGIN{prev=-1}{if ($2 == prev) exit 1 at $1; prev=$2}'], 
+         [], [ignore])
+AT_CLEANUP
+
+AT_SETUP([RLC+Regex: original sections (ticket 406)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&                               \
+           gmtkViterbi -of1 DATA/small.pfile -iswp1 T -nf1 42 -dcdrng 0     \
+                       -inputMasterFile PARAMS/nonTrainable.master          \
+                       -inputTrainable PARAMS/highly_trained.gmp            \
+                       -str PARAMS/aurora_decode.str -vitValsFile -         \
+                       -pVitTrig 0 -eVitTrig 0 -vitRegex phone -vitRunLen)  \
+         | grep -E "Ptn-([[:digit:]])+ C" |                                 \
+           awk -F = 'BEGIN{prev=-1}{if ($2 == prev) exit 1 at $1; prev=$2}'], 
+         [], [ignore])
+AT_CLEANUP
+
+AT_SETUP([RLC+Regex: frame range (ticket 406)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&                               \
+           gmtkViterbi -of1 DATA/small.pfile -iswp1 T -nf1 42 -dcdrng 0     \
+                       -inputMasterFile PARAMS/nonTrainable.master          \
+                       -inputTrainable PARAMS/highly_trained.gmp            \
+                       -str PARAMS/aurora_decode.str -vitValsFile -         \
+                       -pVitTrig 0 -eVitTrig 0 -vitRegex phone -vitRunLen   \
+                       -vitFrameRange all)  \
+         | grep -E "Ptn-([[:digit:]])+ C" |                                 \
+           awk -F = 'BEGIN{prev=-1}{if ($2 == prev) exit 1 at $1; prev=$2}'], 
+         [], [ignore])
+AT_CLEANUP
+
+AT_SETUP([RLC+Regex: section range (ticket 406)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&                               \
+           gmtkViterbi -of1 DATA/small.pfile -iswp1 T -nf1 42 -dcdrng 0     \
+                       -inputMasterFile PARAMS/nonTrainable.master          \
+                       -inputTrainable PARAMS/highly_trained.gmp            \
+                       -str PARAMS/aurora_decode.str -vitValsFile -         \
+                       -pVitTrig 0 -eVitTrig 0 -vitRegex phone -vitRunLen   \
+                       -vitPrintRange all)  \
+         | grep -E "Ptn-([[:digit:]])+ C" |                                 \
+           awk -F = 'BEGIN{prev=-1}{if ($2 == prev) exit 1 at $1; prev=$2}'], 
+         [], [ignore])
+AT_CLEANUP
