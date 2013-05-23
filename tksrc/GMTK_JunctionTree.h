@@ -1272,7 +1272,8 @@ public:
 			    bool &first_C,
 			    unsigned &C_size,
 			    sArray<unsigned> &previous_values,
-			    bool runLengthCompress = false);
+			    bool runLengthCompress = false,
+			    int frame = -1);
  public:
 
   // void saveViterbiValuesIsland(oDataStreamFile& vfile);
