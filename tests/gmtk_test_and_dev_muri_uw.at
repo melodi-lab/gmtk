@@ -4,7 +4,7 @@
 
 AT_SETUP([muri_uw: tricommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/muri_uw/tricommand])
-AT_CHECK([(cd $TEST_AND_DEV/muri_uw && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/muri_uw && ulimit -v 8000000 && ulimit -t 120 && ./tricommand -rePart)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([muri_uw: infocommand])
