@@ -11,6 +11,9 @@ AT_CLEANUP
 
 AT_SETUP([2-stream: infocommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/2-stream/infocommand])
+AT_CHECK([for f in `ls $TEST_AND_DEV/2-stream/misc/*.bz2`; do \
+            if test ! -f ${f%.bz2}; then bunzip2 $f; fi \
+          done], [],[ignore],[ignore])
 AT_CHECK([(cd $TEST_AND_DEV/2-stream && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
