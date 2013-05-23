@@ -65,6 +65,7 @@ gmtk_test_ticket387-2.at  \
 gmtk_test_ticket398.at    \
 gmtk_test_ticket404.at    \
 gmtk_test_ticket42.at     \
+gmtk_test_ticket425.at    \
 gmtk_test_ticket52.at     
 
 EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE) atlocal.in \
