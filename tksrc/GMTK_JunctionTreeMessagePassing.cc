@@ -1688,22 +1688,14 @@ JunctionTree::printSavedViterbiFrames(unsigned numFrames, FILE* f,
       if (part == 0) { // print P partition
 	printOriginalSection(P_rvs, hidP_rvs, pVitTrigger != NULL,  pVitTriggerVec, 
 			     pVitTriggerExpr, pTriggerEqn, printObserved, part, 'P', f, 
-<<<<<<< local
-			     preg, pregex_mask, first_P, P_size, previous_P_values, vitRunLength);
-=======
-			     preg, regex_mask, first_C, C_size, previous_C_values, false, (*frameRange_it));
->>>>>>> other
+			     preg, pregex_mask, first_P, P_size, previous_P_values, vitRunLength, (*frameRange_it));
       } else if (part == totalOriginalPartitions-1) { // print E partition
 	if ( (hidE_rvs.size() > 0)  || (printObserved && E_rvs.size() > 0) ) {
 	  int targetFrame = fp.numFramesInP() + (int)(part-1) * fp.numFramesInC();
 	  shiftOriginalVarstoPosition(E_rvs, targetFrame, Epos);
 	  printOriginalSection(E_rvs, hidE_rvs, eVitTrigger != NULL,  eVitTriggerVec, 
 			       eVitTriggerExpr, eTriggerEqn, printObserved, part, 'E', f, 
-<<<<<<< local
-			       ereg, eregex_mask, first_E, E_size, previous_E_values, vitRunLength);
-=======
-			       preg, regex_mask, first_C, C_size, previous_C_values, false, (*frameRange_it));
->>>>>>> other
+			       ereg, eregex_mask, first_E, E_size, previous_E_values, vitRunLength, (*frameRange_it));
 	}
       } else {      // print C partition
 	int targetFrame = fp.numFramesInP() + (int)(part-1) * fp.numFramesInC();
@@ -1711,11 +1703,7 @@ JunctionTree::printSavedViterbiFrames(unsigned numFrames, FILE* f,
 	shiftOriginalVarstoPosition(C_rvs[originalIndex], targetFrame, Cpos[originalIndex]);
 	printOriginalSection(C_rvs[originalIndex], hidC_rvs[originalIndex], cVitTrigger != NULL, cVitTriggerVec,
 			     cVitTriggerExpr, cTriggerEqn, printObserved, part, 'C', f, 
-<<<<<<< local
-			     creg, cregex_mask, first_C, C_size, previous_C_values, vitRunLength);
-=======
-			     preg, regex_mask, first_C, C_size, previous_C_values, vitRunLength, (*frameRange_it));
->>>>>>> other
+			     creg, cregex_mask, first_C, C_size, previous_C_values, vitRunLength, (*frameRange_it));
       }
       (*frameRange_it)++;  // move on to next frame
       continue;
