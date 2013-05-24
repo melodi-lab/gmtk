@@ -15,7 +15,7 @@ AT_CHECK([(cd $TEST_AND_DEV/7-word && \
             -inputMasterFile params/master.3t3c7W \
 	    -of1 params/augFiles.list \
             -fmt1 ascii -nf1 0 -ni1 27 -dcdrng 0:8 \
-            -cbeam 5 -cpbeam 5 -vcap I -pVitValsFile - | \
+            -cbeam 5 -cpbeam 5 -vcap I -mVitValsFile - | \
            testViterbi | sort)],[],[stdout])
 AT_CHECK([(cd $TEST_AND_DEV/7-word && \
            gmtkViterbi -strFile params/model_3t3c7Wa.str \
