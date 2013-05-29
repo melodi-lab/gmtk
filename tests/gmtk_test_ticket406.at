@@ -10,13 +10,13 @@ AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
            gmtkViterbi -iswp1 -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
                        -inputMasterFile PARAMS/nonTrainable.master          \
                        -inputTrainable PARAMS/highly_trained.gmp            \
-                       -str PARAMS/aurora_decode.str -pVitValsFile -) |     \
+                       -str PARAMS/aurora_decode.str -mVitValsFile -) |     \
            egrep "wordTransition\(@<:@0-9@:>@+\)=1" > vit.tru], [], [ignore])
 AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
            gmtkViterbi -iswp1 -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
                        -inputMasterFile PARAMS/nonTrainable.master          \
                        -inputTrainable PARAMS/highly_trained.gmp            \
-                       -str PARAMS/aurora_decode.str -pVitValsFile -        \
+                       -str PARAMS/aurora_decode.str -mVitValsFile -        \
                        -pVitTrigger "wordTransition(0)==1"                  \
                        -cVitTrigger "wordTransition(0)==1"                  \
                -eVitTrigger "wordTransition(0)==1||wordTransition(1)==1") | \
@@ -66,14 +66,14 @@ AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
            gmtkViterbi -iswp1 -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
                        -inputMasterFile PARAMS/nonTrainable.master          \
                        -inputTrainable PARAMS/highly_trained.gmp            \
-                       -str PARAMS/aurora_decode.str -vitPrintRange all     \
+                       -str PARAMS/aurora_decode.str -vitSectionRange all     \
 		       -vitValsFile -) |      \
            egrep "wordTransition\(@<:@0-9@:>@+\)=1" > vit.tru], [], [ignore])
 AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
            gmtkViterbi -iswp1 -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
                        -inputMasterFile PARAMS/nonTrainable.master          \
                        -inputTrainable PARAMS/highly_trained.gmp            \
-                       -str PARAMS/aurora_decode.str -vitPrintRange all     \
+                       -str PARAMS/aurora_decode.str -vitSectionRange all     \
                        -vitValsFile -                                       \
                        -pVitTrigger "wordTransition(0)==1"                  \
                        -cVitTrigger "wordTransition(0)==1"                  \
@@ -97,7 +97,7 @@ AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
                      -inputMasterFile PARAMS/nonTrainable.master              \
                      -inputTrainable PARAMS/highly_trained.gmp                \
                      -str PARAMS/aurora_decode.str                            \
-                     -binaryVitFile $GMTK_TEST_DIR/vit.bin -pVitValsFile -) | \
+                     -binaryVitFile $GMTK_TEST_DIR/vit.bin -mVitValsFile -) | \
            egrep "wordTransition\(@<:@0-9@:>@+\)=1" > vit.tru], [], [ignore])
 AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
            gmtkPrint -iswp1 -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0     \
@@ -107,7 +107,7 @@ AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
                      -pVitTrigger "wordTransition(0)==1"                      \
                      -cVitTrigger "wordTransition(0)==1"                      \
                -eVitTrigger "wordTransition(0)==1||wordTransition(1)==1"      \
-               -binaryVitFile $GMTK_TEST_DIR/vit.bin -pVitValsFile -)   |     \
+               -binaryVitFile $GMTK_TEST_DIR/vit.bin -mVitValsFile -)   |     \
            egrep "^Ptn-@<:@0-9@:>@+" | diff - vit.tru], [], [ignore])
 AT_CLEANUP
 
@@ -155,7 +155,7 @@ AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&                               \
            gmtkViterbi -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0        \
                        -inputMasterFile PARAMS/nonTrainable.master          \
                        -inputTrainable PARAMS/highly_trained.gmp            \
-                       -str PARAMS/aurora_decode.str -pVitValsFile -) |     \
+                       -str PARAMS/aurora_decode.str -mVitValsFile -) |     \
            grep -E "Ptn-([[:digit:]])+ C" |                                 \
            sed 's/([0-9][0-9]*)//g' |                                       \
            uniq -f 2 > vit.tru], [], [ignore])
@@ -163,7 +163,7 @@ AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&                               \
            gmtkViterbi -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0        \
                        -inputMasterFile PARAMS/nonTrainable.master          \
                        -inputTrainable PARAMS/highly_trained.gmp            \
-                       -str PARAMS/aurora_decode.str -pVitValsFile -        \
+                       -str PARAMS/aurora_decode.str -mVitValsFile -        \
                        -vitRunLengthCompress) |                             \
            grep -E "Ptn-([[:digit:]])+ C" |                                 \
            sed 's/([0-9][0-9]*)//g' |                                       \
@@ -219,7 +219,7 @@ AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&                               \
            gmtkViterbi -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0        \
                        -inputMasterFile PARAMS/nonTrainable.master          \
                        -inputTrainable PARAMS/highly_trained.gmp            \
-                       -str PARAMS/aurora_decode.str -vitPrintRange all     \
+                       -str PARAMS/aurora_decode.str -vitSectionRange all     \
 		       -vitValsFile -) |                                    \
            grep -E "Ptn-([[:digit:]])+ C" |                                 \
            sed 's/([0-9][0-9]*)//g' |                                       \
@@ -228,7 +228,7 @@ AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&                               \
            gmtkViterbi -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0        \
                        -inputMasterFile PARAMS/nonTrainable.master          \
                        -inputTrainable PARAMS/highly_trained.gmp            \
-                       -str PARAMS/aurora_decode.str -vitPrintRange all     \
+                       -str PARAMS/aurora_decode.str -vitSectionRange all     \
                        -vitValsFile - -vitRunLengthCompress) |              \
            grep -E "Ptn-([[:digit:]])+ C" |                                 \
            sed 's/([0-9][0-9]*)//g' |                                       \
@@ -249,7 +249,7 @@ AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
                      -inputMasterFile PARAMS/nonTrainable.master              \
                      -inputTrainable PARAMS/highly_trained.gmp                \
                      -str PARAMS/aurora_decode.str                            \
-                     -binaryVitFile $GMTK_TEST_DIR/vit.bin -pVitValsFile -) | \
+                     -binaryVitFile $GMTK_TEST_DIR/vit.bin -mVitValsFile -) | \
            grep -E "Ptn-([[:digit:]])+ C" |                                   \
            sed 's/([0-9][0-9]*)//g' |                                         \
            uniq -f 2 > vit.tru], [], [ignore])
@@ -258,7 +258,7 @@ AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
                      -inputMasterFile PARAMS/nonTrainable.master              \
                      -inputTrainable PARAMS/highly_trained.gmp                \
                      -str PARAMS/aurora_decode.str -vitRunLengthCompress      \
-               -binaryVitFile $GMTK_TEST_DIR/vit.bin -pVitValsFile -)   |     \
+               -binaryVitFile $GMTK_TEST_DIR/vit.bin -mVitValsFile -)   |     \
            grep -E "Ptn-([[:digit:]])+ C" |                                   \
            sed 's/([0-9][0-9]*)//g' |                                         \
          diff - vit.tru], [], [ignore])
@@ -306,7 +306,7 @@ AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&                               \
            gmtkViterbi -of1 DATA/small.pfile -iswp1 T -nf1 42 -dcdrng 0     \
                        -inputMasterFile PARAMS/nonTrainable.master          \
                        -inputTrainable PARAMS/highly_trained.gmp            \
-                       -str PARAMS/aurora_decode.str -pVitValsFile -        \
+                       -str PARAMS/aurora_decode.str -mVitValsFile -        \
                        -pVitTrig 0 -eVitTrig 0 -pVitRegex phone -vitRunLen) \
          | grep -E "Ptn-([[:digit:]])+ C" |                                 \
            awk -F = 'BEGIN{prev=-1}{if ($2 == prev) exit 1 at $1; prev=$2}'], 
@@ -320,7 +320,7 @@ AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&                               \
                        -inputMasterFile PARAMS/nonTrainable.master          \
                        -inputTrainable PARAMS/highly_trained.gmp            \
                        -str PARAMS/aurora_decode.str -vitValsFile -         \
-                       -pVitTrig 0 -eVitTrig 0 -vitRegex phone -vitRunLen)  \
+                       -pVitTrig 0 -eVitTrig 0 -pVitRegex phone -cVitReg phone -eVitReg phone -vitRunLen)  \
          | grep -E "Ptn-([[:digit:]])+ C" |                                 \
            awk -F = 'BEGIN{prev=-1}{if ($2 == prev) exit 1 at $1; prev=$2}'], 
          [], [ignore])
@@ -333,7 +333,7 @@ AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&                               \
                        -inputMasterFile PARAMS/nonTrainable.master          \
                        -inputTrainable PARAMS/highly_trained.gmp            \
                        -str PARAMS/aurora_decode.str -vitValsFile -         \
-                       -pVitTrig 0 -eVitTrig 0 -vitRegex phone -vitRunLen   \
+                       -pVitTrig 0 -eVitTrig 0 -pVitRegex phone -cVitReg phone -eVitReg phone -vitRunLen   \
                        -vitFrameRange all)  \
          | grep -E "Ptn-([[:digit:]])+ C" |                                 \
            awk -F = 'BEGIN{prev=-1}{if ($2 == prev) exit 1 at $1; prev=$2}'], 
@@ -347,8 +347,8 @@ AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&                               \
                        -inputMasterFile PARAMS/nonTrainable.master          \
                        -inputTrainable PARAMS/highly_trained.gmp            \
                        -str PARAMS/aurora_decode.str -vitValsFile -         \
-                       -pVitTrig 0 -eVitTrig 0 -vitRegex phone -vitRunLen   \
-                       -vitPrintRange all)  \
+                       -pVitTrig 0 -eVitTrig 0 -pVitRegex phone -cVitReg phone -eVitReg phone -vitRunLen   \
+                       -vitSectionRange all)  \
          | grep -E "Ptn-([[:digit:]])+ C" |                                 \
            awk -F = 'BEGIN{prev=-1}{if ($2 == prev) exit 1 at $1; prev=$2}'], 
          [], [ignore])

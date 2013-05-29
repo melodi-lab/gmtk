@@ -1194,9 +1194,9 @@ static bool  cliquePrintSwap       = false;
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
   Arg("\n*** Clique posterior output options ***\n"),
 
-  Arg("pCliquePrintRange",Arg::Opt,pPartCliquePrintRange,"With CE/DE, print range cliques from P partition."),
-  Arg("cCliquePrintRange",Arg::Opt,cPartCliquePrintRange,"With CE/DE, print range cliques from C partition."),
-  Arg("eCliquePrintRange",Arg::Opt,ePartCliquePrintRange,"With CE/DE, print range cliques from E partition."),
+  Arg("pCliquePrintRange",Arg::Opt,pPartCliquePrintRange,"With CE/DE, print range cliques from P section."),
+  Arg("cCliquePrintRange",Arg::Opt,cPartCliquePrintRange,"With CE/DE, print range cliques from C section."),
+  Arg("eCliquePrintRange",Arg::Opt,ePartCliquePrintRange,"With CE/DE, print range cliques from E section."),
   Arg("cliquePrintOnlyEntropy",Arg::Opt,cliquePrintOnlyEntropy,"With CE/DE, print only clique entropies."),
   Arg("cliquePosteriorNormalize",Arg::Opt,cliquePosteriorNormalize,"Normalize posterior probabilities to sum to 1."),
   Arg("cliquePosteriorUnlog",Arg::Opt,cliquePosteriorUnlog,"Output probabilities instead of log probabilities."),
@@ -1329,7 +1329,7 @@ static bool  cliquePrintSwap       = false;
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("debugPartitions",Arg::Opt,pdbrng_str,"Partition range to generate debug output"),
+  Arg("debugSections",Arg::Opt,pdbrng_str,"Section range to generate debug output"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
@@ -1425,7 +1425,7 @@ static const char* varCliqueAssignmentPrior = "COT";
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("vpap",Arg::Opt,varPartitionAssignmentPrior,"Variable partition assignment priority. Sequence of chars in set [C,D,O,B,S,I,A,F,N]"),  
+  Arg("vsap",Arg::Opt,varPartitionAssignmentPrior,"Variable section assignment priority. Sequence of chars in set [C,D,O,B,S,I,A,F,N]"),  
   Arg("vcap",Arg::Opt,varCliqueAssignmentPrior,"Variable clique sorting priority. Sequence of chars in set [C,D,O,B,S,I,A,F,N,T,M,+,.]"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
@@ -1843,81 +1843,87 @@ static bool writeLogVals = false;
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
 
-  // arguments for partition based Viterbi printing.
-  static char* pVitValsFileName = NULL;
-  // TODO: get binary printing working
-  // static bool pVitValsFileBinp = false;
-  static char* pVitRegexFilter = NULL;
-  static bool pVitCaseSensitiveRegexFilter = false;
-  static char* pVitPartRangeFilter = NULL;
-  static bool pVitAlsoPrintObservedVariables = false;
+  // arguments for modified section based Viterbi printing.
+  static char* mVitValsFileName = NULL;
 
-  // arguments for frame-based Viterbi printing.
+  // arguments for original section based Viterbi printing
   static char* vitValsFileName = NULL;
-  // TODO: get binary printing working
-  // static bool vitValsFileBinp = false;
-#ifndef GMTK_ONLINE_UNSUPPORTED
-  static char* vitRegexFilter = NULL;
-  static bool vitCaseSensitiveRegexFilter = false;
-  static bool vitAlsoPrintObservedVariables = false;
-#endif
-  static char* vitPartRangeFilter = NULL;
+
+  // filters & options that apply to modified/original Viterbi printing
+  static char* pVitRegexFilter = NULL;
+  static char* cVitRegexFilter = NULL;
+  static char* eVitRegexFilter = NULL;
+  static bool  vitCaseSensitiveRegexFilter = false;
+
   static char* vitFrameRangeFilter = NULL;
+  static char* vitPartRangeFilter = NULL;
+  static bool  vitAlsoPrintObservedVariables = false;
+
+
+#ifndef GMTK_ONLINE_UNSUPPORTED
+//  static char* vitRegexFilter = NULL;
+//static bool vitCaseSensitiveRegexFilter = false;
+//  static bool vitAlsoPrintObservedVariables = false;
+#endif
+
 //  static bool vitReverseOrder = false;
 
-#if 0
-#define MAX_VITERBI_TRIGGERS 3
-  const char   *vitTriggerVariables[MAX_VITERBI_TRIGGERS] = { NULL, NULL, NULL };
-  const char   *vitTriggerSets[MAX_VITERBI_TRIGGERS] = { NULL, NULL, NULL };
-#endif
 
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   Arg("\n*** Decoding options ***\n"),
-  // partition based 
-  Arg("pVitValsFile",Arg::Opt,pVitValsFileName,"Partition Vit: file to print viterbi values, '-' for stdout"),
-  // TODO: not currently used, but should add.
-  // Arg("pVitBinVitValsFile",Arg::Opt,pVitValsFileBinp,"Partition Vit: Should file to print viterbi values be binary? (T/F) "),
 
-  Arg("pVitRegexFilter",Arg::Opt,pVitRegexFilter,"Partition Vit: Regular expression to filter variable names."),
-  Arg("pVitCaseSensitiveRegexFilter",Arg::Opt,pVitCaseSensitiveRegexFilter,"Partition Vit: Case sensitivity of the rv regular expression filter."),
-
-  Arg("pVitPrintRange",Arg::Opt,pVitPartRangeFilter,"Partition Vit: value printing, integer range filter for modified partitions (e.g., frames, slices) to print."),
-
-  Arg("pVitPrintObservedVariables",Arg::Opt,pVitAlsoPrintObservedVariables,"Partition Vit: also print observed random variables in addtion to hidden"),
-
+  Arg("mVitValsFile",Arg::Opt,mVitValsFileName,"Modified Section Vit: file to print viterbi values in ASCII, '-' for stdout"),
 #ifndef GMTK_ONLINE_UNSUPPORTED
-  // frame based
-  Arg("vitValsFile",Arg::Opt,vitValsFileName,"Vit: file to print viterbi values, '-' for stdout"),
-  // TODO: not currently used, but should add.
-  // Arg("vitBinVitValsFile",Arg::Opt,vitValsFileBinp,"Vit: Should file to print viterbi values be binary? (T/F) "),
-
-  Arg("vitRegexFilter",Arg::Opt,vitRegexFilter,"Vit: Regular expression to filter variable names."),
-  Arg("vitCaseSensitiveRegexFilter",Arg::Opt,vitCaseSensitiveRegexFilter,"Vit: Case sensitivity of the rv regular expression filter."),
-
-  Arg("vitPrintRange",Arg::Opt,vitPartRangeFilter,"Vit: value printing, integer range filter for original partitions (e.g., frames, slices) to print."),
-  Arg("vitFrameRange",Arg::Opt,vitFrameRangeFilter,"Vit: value printing, integer range filter for frames to print."),
-
-  Arg("vitPrintObservedVariables",Arg::Opt,vitAlsoPrintObservedVariables,"Vit: also print observed random variables in addtion to hidden"),
+  Arg("vitValsFile",Arg::Opt,vitValsFileName,"Original Section Vit: file to print viterbi values in ASCII, '-' for stdout"),
 #endif
 
 #if defined(GMTK_ARGUMENTS_REQUIRE_BINARY_VIT_FILE)
   Arg("binaryVitFile",Arg::Req,JunctionTree::binaryViterbiFilename,"File containing binary Viterbi values for printing"),
 #else
-  Arg("binaryVitFile",Arg::Opt,JunctionTree::binaryViterbiFilename,"File to write binary Viterbi values for later printing"),
+  Arg("binaryVitFile",Arg::Opt,JunctionTree::binaryViterbiFilename,"File to write binary Viterbi values for later printing. Note that all values are stored in the file, not just those selected by the filter, trigger, and compression options below"),
 #endif
 
-  Arg("pVitTrigger",Arg::Opt,JunctionTree::pVitTrigger, "Leaf node expression for Viteribi printing trigger in prolog section"),
-  Arg("cVitTrigger",Arg::Opt,JunctionTree::cVitTrigger, "Leaf node expression for Viteribi printing trigger in chunk section"),
-  Arg("eVitTrigger",Arg::Opt,JunctionTree::eVitTrigger, "Leaf node expression for Viteribi printing trigger in epilog section"),
+  Arg("pVitRegexFilter",Arg::Opt,pVitRegexFilter,"Regular expression to filter variable names in prolog"),
+  Arg("cVitRegexFilter",Arg::Opt,cVitRegexFilter,"Regular expression to filter variable names in chunk"),
+  Arg("eVitRegexFilter",Arg::Opt,eVitRegexFilter,"Regular expression to filter variable names in epilog"),
+  Arg("vitCaseSensitiveRegexFilter",Arg::Opt,vitCaseSensitiveRegexFilter,"Case sensitivity of the rv regular expression filter"),
+
+
+  Arg("pVitTrigger",Arg::Opt,JunctionTree::pVitTrigger, "Leaf node expression for Viteribi printing trigger in prolog"),
+  Arg("cVitTrigger",Arg::Opt,JunctionTree::cVitTrigger, "Leaf node expression for Viteribi printing trigger in chunk"),
+  Arg("eVitTrigger",Arg::Opt,JunctionTree::eVitTrigger, "Leaf node expression for Viteribi printing trigger in epilog"),
+
   Arg("vitRunLengthCompress",Arg::Opt,JunctionTree::vitRunLength, "Only print a chunk when its Viterbi values differ from the previous chunk"),
+
+#ifndef GMTK_ONLINE_UNSUPPORTED
+  Arg("vitSectionRange",Arg::Opt,vitPartRangeFilter,"Value printing, integer range filter for sections (e.g., frames, slices) to print."),
+  Arg("vitFrameRange",Arg::Opt,vitFrameRangeFilter,"Value printing, integer range filter for frames to print."),
+#endif
+
+  Arg("vitPrintObservedVariables",Arg::Opt,vitAlsoPrintObservedVariables,"Also print observed random variables in addtion to hidden"),
+
+#if 0
+#ifndef GMTK_ONLINE_UNSUPPORTED
+  // frame based
+  Arg("vitValsFile",Arg::Opt,vitValsFileName,"Original Section Vit: file to print viterbi values in ASCII, '-' for stdout"),
+  // TODO: not currently used, but should add.
+  // Arg("vitBinVitValsFile",Arg::Opt,vitValsFileBinp,"Vit: Should file to print viterbi values be binary? (T/F) "),
+
+  //  Arg("vitRegexFilter",Arg::Opt,vitRegexFilter,"Vit: Regular expression to filter variable names."),
+  //  Arg("vitCaseSensitiveRegexFilter",Arg::Opt,vitCaseSensitiveRegexFilter,"Vit: Case sensitivity of the rv regular expression filter."),
+
+  //  Arg("vitPrintRange",Arg::Opt,vitPartRangeFilter,"Vit: value printing, integer range filter for original partitions (e.g., frames, slices) to print."),
+  Arg("vitFrameRange",Arg::Opt,vitFrameRangeFilter,"Value printing, integer range filter for frames to print."),
+
+  //Arg("vitPrintObservedVariables",Arg::Opt,vitAlsoPrintObservedVariables,"Vit: also print observed random variables in addtion to hidden"),
+#endif
+#endif
+
 #if 0
   // this is not implemented yet.
   Arg("vitReverseOrder",Arg::Opt,vitReverseOrder,"Vit: print values in reverse order."),
-
-  Arg("vitTriggerVar", Arg::Opt,vitTriggerVariables,"Viterbi: Trigger variable. Replace X with trigger variable number",Arg::ARRAY,MAX_VITERBI_TRIGGERS),
-  Arg("vitTriggerSet", Arg::Opt,vitTriggerSets,"Viterbi: Trigger value set. Replace X with trigger set number",Arg::ARRAY,MAX_VITERBI_TRIGGERS),
 #endif
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
@@ -1939,7 +1945,7 @@ static bool writeLogVals = false;
   }
 
   if ( (vitPartRangeFilter || vitFrameRangeFilter) && ! vitValsFileName ) {
-    error("%s: -vitPrintRange and -vitFrameRange require -vitValsFile to be specified\n", argerr);
+    error("%s: -vitSectionRange and -vitFrameRange require -vitValsFile to be specified\n", argerr);
   }
 
 #else
@@ -1986,7 +1992,7 @@ static bool writeLogVals = false;
   Arg("times",Arg::Opt,numTimes,"Number of times to run program seconds seconds long (not multitest mode)."),
   Arg("multiTest",Arg::Opt,multiTest,"Run gmtkTime in multi-test mode, taking triangulation file names from command line."),
   Arg("slop",Arg::Opt,rlimitSlop,"In multiTest mode, number of additional seconds before fail-terminate is forced."),
-  Arg("noEPartition",Arg::Opt,noEPartition,"If true, do not run E partition (only [P C C ... C] skipping E)"),
+  Arg("noESection",Arg::Opt,noEPartition,"If true, do not run E section (only [P C C ... C] skipping E)"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
@@ -2122,13 +2128,13 @@ static bool writeLogVals = false;
       Arg::Opt,timeLimit,
       "Do not run for longer than the given amount of time."),
 
-  Arg("rePartition",
+  Arg("reSection",
       Arg::Opt,rePartition,
-      "Re-Run the boundary algorithm even if .str.trifile exists to produce new partition and new triangulation."),
+      "Re-Run the boundary algorithm even if .str.trifile exists to produce new section and new triangulation."),
 
   Arg("reTriangulate",
       Arg::Opt,reTriangulate,
-      "Re-Run only triangluation using existing partition given in .trifile."),
+      "Re-Run only triangluation using existing section given in .trifile."),
 
   Arg("continueTriangulating",
       Arg::Opt,continueTriangulating,
