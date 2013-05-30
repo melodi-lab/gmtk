@@ -135,8 +135,10 @@ FileSource::openSegment(unsigned seg) {
   }
 
   this->segment = seg;
-  bool success = file->openLogicalSegment(seg);
-
+  if (!file->openLogicalSegment(seg)) {
+    error("ERROR: FileSource::openSegment: failed to open segment %u.\n", seg);
+  }
+  
   _numCacheableFrames = file->numLogicalFrames();  // the file handles -gpr, so this is what's left after that
   if (_numCacheableFrames < _startSkip + _endSkip) {
     error("ERROR: segment %u has only %u frames, but -startSkip %u and -endSkip %u requires at least %u frames\n", 
@@ -190,7 +192,7 @@ FileSource::openSegment(unsigned seg) {
       numBufferedFrames += framesPerGulp;
     }
   }
-  return success;
+  return true;
 }
 
 
