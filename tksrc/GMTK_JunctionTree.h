@@ -1298,6 +1298,14 @@ public:
 					regex_t* ereg,
 					char* partRangeFilter);
 
+  void printInterleavedPartitionViterbiValues(unsigned,
+					      FILE*, FILE*,
+					      bool printObserved,
+					      regex_t *preg,
+					      regex_t* creg,
+					      regex_t* ereg,
+					      char* partRangeFilter);
+
 #if 0
   void printSavedViterbiValues(FILE*,
 			       bool printObserved = false,

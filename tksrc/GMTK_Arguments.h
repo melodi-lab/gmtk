@@ -1858,6 +1858,7 @@ static bool writeLogVals = false;
   static char* vitFrameRangeFilter = NULL;
   static char* vitPartRangeFilter = NULL;
   static bool  vitAlsoPrintObservedVariables = false;
+  static bool  vitInterleavedKBest = false;
 
 
 #ifndef GMTK_ONLINE_UNSUPPORTED
@@ -1903,6 +1904,8 @@ static bool writeLogVals = false;
 #endif
 
   Arg("vitPrintObservedVariables",Arg::Opt,vitAlsoPrintObservedVariables,"Also print observed random variables in addtion to hidden"),
+
+  Arg("vitInterleavedKBest",Arg::Opt,vitInterleavedKBest,"Print all K sections together instead of complete hypothesis"),
 
 #if 0
 #ifndef GMTK_ONLINE_UNSUPPORTED
