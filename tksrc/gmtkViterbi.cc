@@ -711,10 +711,17 @@ main(int argc,char*argv[])
 	if (mVitValsFile) {
 	  fprintf(mVitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
 		  segment,numFrames,probe.val());
-	  myjt.printSavedPartitionViterbiValues(mVitValsFile,
-						vitAlsoPrintObservedVariables,
-						vitPreg, vitCreg, vitEreg,
-						vitPartRangeFilter);
+	  if (vitInterleavedKBest) {
+	    myjt.printInterleavedPartitionViterbiValues(0, NULL, mVitValsFile,
+							vitAlsoPrintObservedVariables,
+							vitPreg, vitCreg, vitEreg,
+							vitPartRangeFilter);
+	  } else {
+	    myjt.printSavedPartitionViterbiValues(mVitValsFile,
+						  vitAlsoPrintObservedVariables,
+						  vitPreg, vitCreg, vitEreg,
+						  vitPartRangeFilter);
+	  }
 	}
 
 #if 1     
