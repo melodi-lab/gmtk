@@ -1944,8 +1944,8 @@ static bool writeLogVals = false;
     error("%s: Can't use both -vitPrintRange and -vitFrameRange\n", argerr);
   }
 
-  if ( (vitPartRangeFilter || vitFrameRangeFilter) && ! vitValsFileName ) {
-    error("%s: -vitSectionRange and -vitFrameRange require -vitValsFile to be specified\n", argerr);
+  if ( vitFrameRangeFilter && ! vitValsFileName ) {
+    error("%s: -vitFrameRange requires -vitValsFile to be specified\n", argerr);
   }
 
 #else
