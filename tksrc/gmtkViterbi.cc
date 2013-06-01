@@ -464,14 +464,14 @@ main(int argc,char*argv[])
   if (JunctionTree::binaryViterbiFile) {
 
     // Here we write out the binary Viterbi file header. This is the magic
-    // string "GMTKVIT\n" followed by the # of segments (4 bytes) and k
-    // for k-best (4 bytes, always 1 for now...)
+    // string "GMTKVIT\n" followed by a BOM (4 bytes), the # of segments (4 bytes),
+    // and k for k-best (4 bytes, always 1 for now...)
 
     if (fputs(GMTK_VITERBI_COOKIE, JunctionTree::binaryViterbiFile) == EOF) {
       char *err = strerror(errno);
       error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
     }
-    int byte_order_mark = 0x01020304;
+    int byte_order_mark = 0x01020304; assert(sizeof(byte_order_mark) == 4);
     if (fwrite(&byte_order_mark, sizeof(byte_order_mark), 1, JunctionTree::binaryViterbiFile) != 1) {
       char *err = strerror(errno);
       error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
@@ -501,7 +501,7 @@ main(int argc,char*argv[])
             "files. The current file offset size appears to be %u bits. The "
             "configure script used to build GMTK should have arranged to use "
             "64-bit file offsets if that's possible on this platform.\n",
-            (unsigned)sizeof(gmtk_off_t));
+            (unsigned)(sizeof(gmtk_off_t)*8));
     }
     gmtk_off_t off = (gmtk_off_t) 0;
     float score = NAN;

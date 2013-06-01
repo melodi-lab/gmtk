@@ -353,7 +353,7 @@ main(int argc,char*argv[])
 	  "Viterbi file.\n", JunctionTree::binaryViterbiFilename, GMTK_VITERBI_COOKIE_NOLF);
   }
 
-  int byte_order_mark;
+  int byte_order_mark; assert(sizeof(byte_order_mark) == 4);
   if (fread(&byte_order_mark, sizeof(byte_order_mark), 1, binVitFile) != 1) {
     error("ERROR: Unable to read binary Viterbi file '%s'\n",
 	  JunctionTree::binaryViterbiFilename);
@@ -386,6 +386,14 @@ main(int argc,char*argv[])
   }
 #endif
 
+  if (sizeof(gmtk_off_t) != 8) {
+    error("ERROR: GMTK requires 64-bit file offsets to support binary Viterbi "
+	  "files. The current file offset size appears to be %u bits. The "
+	  "configure script used to build GMTK should have arranged to use "
+	  "64-bit file offsets if that's possible on this platform.\n",
+	  (unsigned)(sizeof(gmtk_off_t)*8));
+  }
+ 
   // What is the difference between the pVit* files and the vit*
   // files?  The pVit* files are similar to the vit* files, but the
   // pVit print via partitions, while the vit* does a bunch more
