@@ -790,21 +790,8 @@ JunctionTree::printSavedPartitionViterbiValues(unsigned numFrames,
     PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
 
     if (vitFile) {
-#if 0
-      unsigned N_best = 1;
-      unsigned num_to_read = N_best * ps.packer.packedLen();
-      if (inference_it.at_p()) {
-	readVitIntVector(num_to_read, P_partition_values.ptr);
-      } else if (inference_it.at_e()) {
-	readVitIntVector(num_to_read, E_partition_values.ptr);
-      } else {
-	readVitIntVector(num_to_read, C_partition_values.ptr);
-      }
-#else
       readBinaryVitPartition(ps, part);
-#endif
     }
-
     if (inference_it.at_p()) {
       printModifiedSection(ps, P_partition_values.ptr, pVitTrigger!=NULL,
 			   pVitTriggerVec, pVitTriggerExpr, pTriggerEqn,
