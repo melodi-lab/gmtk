@@ -72,6 +72,8 @@ public:
   //  (log(penalty) + scale*log(p)) ++ log(shift)
   // where ++ is the log_add operator.
   inline void modifyProbability(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
+    // printf("ScPnShRV:modifyProbability: modifying probability of *0x%lX = %f\n",(unsigned long)&(p.valref()),p.valref());
+
     if (wi.penalty.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Constant) {
       p.valref() += wi.penalty.weight_value;
     } else if (wi.penalty.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Observation) {

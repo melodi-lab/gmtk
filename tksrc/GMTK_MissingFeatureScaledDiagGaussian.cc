@@ -386,6 +386,167 @@ MissingFeatureScaledDiagGaussian::emStartIteration()
 }
 
 
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * log_p()
+ *      Computes the probability of this Gaussian, but in this case any value
+ *      of the observation that is a NaN is treated as a missing feature (i.e.,
+ *      the Gaussian integrates that feature out. Note that another option
+ *      might be to use the mean value of the missing feature rather than
+ *      integrating it out. It should still produce valid values, however, to
+ *      do integration since any ratios or sums we do will always involve
+ *      the same quantities (i.e., if we do \sum_i x p(x| i), then each of the 
+ *      p(x|i) will always have the same element of x integrated out).
+ * 
+ * Preconditions:
+ *      preCompute() must have been called on covariance matrix before this.
+ *
+ * Postconditions:
+ *      nil
+ *
+ * Side Effects:
+ *      nil, other than possible FPEs if the values are garbage
+ *
+ * Results:
+ *      Returns the probability.
+ *
+ *-----------------------------------------------------------------------
+ */
+
+logpr
+MissingFeatureScaledDiagGaussian::log_p(const float *const x,
+		    const Data32* const base,
+		    const int stride)
+{
+
+#if 0
+  // check for normal Gaussian evaluation, 
+  // TODO ultimately remove the code for this case.
+
+  assert ( basicAllocatedBitIsSet() );
+  //////////////////////////////////////////////////////////////////
+  // The local accumulator type in this routine.
+  // This can be changed from 'float' to 'double' to
+  // provide extra range for temporary accumulators. Alternatively,
+  // decreasing the program's mixCoeffVanishRatio at the beginning
+  // of training should eliminate any component that produces
+  // such low scores.
+#define DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE double
+
+  ////////////////////
+  // note: 
+  // covariances must have been precomputed for this
+  // to work.
+  const float *xp = x;
+  const float *mean_p = mean->basePtr();
+  const float *var_inv_p = covar->baseVarInvPtr();
+
+  // do the non-unrolled version only.
+  const float *const x_endp = x + _dim;
+  DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE d=0.0;
+  do {
+    const DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE tmp
+      = (*xp - *mean_p);
+    d += (tmp*(*var_inv_p))*tmp;
+
+    xp++;
+    mean_p++;
+    var_inv_p++;
+  } while (xp != x_endp);
+
+
+  d *= -0.5;
+  return logpr(0,(covar->log_inv_normConst() + d));
+
+
+#else 
+
+  assert ( basicAllocatedBitIsSet() );
+
+  //////////////////////////////////////////////////////////////////
+  // The local accumulator type in this routine.
+  // This can be changed from 'float' to 'double' to
+  // provide extra range for temporary accumulators. Alternatively,
+  // decreasing the program's mixCoeffVanishRatio at the beginning
+  // of training should eliminate any component that produces
+  // such low scores.
+#define DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE double
+
+  // the number of features that are present (i.e., that do
+  // not have a NaN value).
+  unsigned numPresentFeatures = 0;
+  // local computation of the partial determinant of the covariance
+  // matrix for those features that are present.
+  DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE det = 1.0;
+
+  ////////////////////
+  // note: 
+  // covariances must have been precomputed for this
+  // to work.
+  const float *xp = x;
+  const float *mean_p = mean->basePtr();
+  const float *var_inv_p = covar->baseVarInvPtr();
+  const float* scale_p = scale->values.ptr;
+
+
+  // do the non-unrolled version only.
+  const float *const x_endp = x + _dim;
+  DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE d=0.0;
+  do {
+    if (!isnan(*xp)) {    
+
+      const DIAG_GAUSSIAN_TMP_ACCUMULATOR_TYPE tmp
+	= (*xp - *mean_p);
+      d += (tmp*(*var_inv_p))*tmp*(*scale_p);
+
+      // now we need to udpate the normalization constant specific for this
+      // instance of not missing data. 
+      numPresentFeatures ++;
+      det *= covar->covariances[xp-x];
+
+    } else {
+      // now we need to udpate the normalization constant specific for this
+      // instance of missing data. The assumption here is that
+      // NAN indicates that the value is missing, so we should not
+      // accumulate for this component. Also
+    }
+
+    xp++;
+    mean_p++;
+    var_inv_p++;
+    scale_p++;
+  } while (xp != x_endp);
+
+
+  // now compute the local normalization score for this case.
+  if (det <= DBL_MIN) {
+    error("ERROR: determinant of missing feature diagonal covariance matrix '%s' has hit minimum and is not above threshold of %e. Possible causes include: 1) not enough training segments, or 2) data that is inappropriately scaled, or 3) too much pruning, or 4) impossible or infrequent state configurations, or 5) not large enough varFloor & floor on read command line args.",
+	  DBL_MIN,
+	  name().c_str());
+  }
+  const double tmp = (::pow(2*M_PI,numPresentFeatures/2.0)*::sqrt(det));
+  if (tmp <= DBL_MIN)
+    coredump("ERROR: norm const has hit maximum of diagonal covariance matrix '%s'",name().c_str());
+
+  // some debugging printing.
+  // if ((float)(-0.5*(numPresentFeatures*::log(2*M_PI) + ::log(det))) != covar->log_inv_normConst() ) {
+  //   printf("not equal, log(2*M_PI) = %1.10e\n",::log(2*M_PI));
+  //   printf("covar->log_inv_normConst() = %f\n",covar->log_inv_normConst());
+  //   printf("-0.5*(numPresentFeatures*::log(2*M_PI) + ::log(det)) = %f\n",-0.5*(numPresentFeatures*::log(2*M_PI) + ::log(det)));
+  //   assert( -0.5*(numPresentFeatures*::log(2*M_PI) + ::log(det)) == covar->log_inv_normConst() );
+  // }
+
+
+  d *= -0.5;
+  return logpr(0, -0.5*(numPresentFeatures*::log(2*M_PI) + ::log(det)) + d);
+
+#endif
+}
+
+
 void
 MissingFeatureScaledDiagGaussian::emIncrement(logpr prob,
 			  const float*f,
@@ -472,7 +633,6 @@ MissingFeatureScaledDiagGaussian::emIncrementMeanDiagCovar(
   logpr* acp = elementAccumulatedProbability.ptr;
 
   do {
-
     // a version of the above code that avoids aliasing of f_p and
     // meanAccumulator_p so the compiler can probably optimize better.
     
@@ -484,12 +644,14 @@ MissingFeatureScaledDiagGaussian::emIncrementMeanDiagCovar(
       *diagCovarAccumulator_p += tmp2;
 
       *acp += prob;
-
     } else {
-      // we've got a nan, in this case we don't accumulate at all, nor do we
-      // increment the denominator 'acp' for this element.
+      // we've got a nan in the observation stream, and we use that as
+      // a special flag to indicate that we should not accumulate at
+      // all, nor do we increment the denominator 'acp' for this
+      // element.
     }
 
+    // update pointers to go to next element.
     acp++;
     meanAccumulator_p++;
     diagCovarAccumulator_p++;
@@ -612,10 +774,10 @@ MissingFeatureScaledDiagGaussian::emEndIteration()
   // conditions that are not yet implemented.
 
   if (covar->emSharedBitIsSet()) {
-    assert(0);
+    assert(0); // not implemented (yet) for this class.
     // covariance is shared
     if (mean->emSharedBitIsSet()) {
-      assert(0);
+      assert(0);  // not implemented (yet) for this class.
       // mean and covariance are both shared
       mean->emEndIterationSharedMeansCovars
 	(accumulatedProbability,nextMeans.ptr,covar);
@@ -625,7 +787,7 @@ MissingFeatureScaledDiagGaussian::emEndIteration()
 	 nextDiagCovars.ptr,
 	 mean);
     } else {
-      assert(0);
+      assert(0);  // not implemented (yet) for this class.
       // Mean is not shared, but covariance is shared
       // can still use normal EM
       mean->emEndIterationNoSharing(nextMeans.ptr);
@@ -634,7 +796,8 @@ MissingFeatureScaledDiagGaussian::emEndIteration()
   } else {
     // covariance is not shared
     if (mean->emSharedBitIsSet()) {
-      assert(0);
+      assert(0);  // not implemented (yet) for this class.
+
       // covariance is not shared, mean is shared,
       // but use the "all shared" versions since we don't
       // have the new mean at this point.
@@ -646,6 +809,7 @@ MissingFeatureScaledDiagGaussian::emEndIteration()
 	 nextDiagCovars.ptr,
 	 mean);
     } else {
+
       // nothing is shared, use EM
       mean->emEndIterationNoSharingElementProbabilities(nextMeans.ptr,
 							elementAccumulatedProbability.ptr);

@@ -140,7 +140,7 @@ public:
 		   const Data32* const base,
 		   const int stride);
   void emIncrementMeanDiagCovar(logpr prob,
-				const float prob,
+				const float fprob,
 				const float *const f,
 				const unsigned len,
 				float *meanAccumulator,
