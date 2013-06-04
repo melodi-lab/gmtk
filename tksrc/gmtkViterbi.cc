@@ -481,7 +481,7 @@ main(int argc,char*argv[])
       char *err = strerror(errno);
       error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
     }
-    unsigned N_best = 1;
+    unsigned N_best = 3;
     if (fwrite(&N_best, sizeof(N_best), 1, JunctionTree::binaryViterbiFile) != 1) {
       char *err = strerror(errno);
       error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
@@ -711,10 +711,17 @@ main(int argc,char*argv[])
 	if (mVitValsFile) {
 	  fprintf(mVitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
 		  segment,numFrames,probe.val());
-	  myjt.printSavedPartitionViterbiValues(mVitValsFile,
-						vitAlsoPrintObservedVariables,
-						vitPreg, vitCreg, vitEreg,
-						vitPartRangeFilter);
+	  if (vitInterleavedKBest) {
+	    myjt.printInterleavedPartitionViterbiValues(0, NULL, mVitValsFile,
+							vitAlsoPrintObservedVariables,
+							vitPreg, vitCreg, vitEreg,
+							vitPartRangeFilter);
+	  } else {
+	    myjt.printSavedPartitionViterbiValues(mVitValsFile,
+						  vitAlsoPrintObservedVariables,
+						  vitPreg, vitCreg, vitEreg,
+						  vitPartRangeFilter);
+	  }
 	}
 
 #if 1     

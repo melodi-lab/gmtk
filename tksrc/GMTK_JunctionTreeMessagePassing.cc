@@ -274,7 +274,7 @@ JunctionTree::recordPartitionViterbiValue(ptps_iterator& it)
 {
   PartitionStructures& ps = partitionStructureArray[it.ps_i()];
   unsigned partitionLength = ps.packer.packedLen();
-  unsigned N_best = 1;
+  unsigned N_best = 3;
   unsigned num_to_write = N_best * partitionLength;
   if (partitionLength > 0)  {
     // if it is not greater than zero, then the partition has
@@ -341,13 +341,46 @@ JunctionTree::recordPartitionViterbiValue(ptps_iterator& it)
 
       if (it.at_p()) {
 	ps.packer.pack(ps.hrvValuePtrs.ptr,P_partition_values.ptr);
+	for (int i=0; i < ps.hrvValuePtrs.len(); i+=1) {
+	  *(ps.hrvValuePtrs.ptr[i]) = 0;// (unsigned)((rand() < RAND_MAX/4) ? 0:1);
+	}
+	ps.packer.pack(ps.hrvValuePtrs.ptr,P_partition_values.ptr+partitionLength);
+	for (int i=0; i < ps.hrvValuePtrs.len(); i+=1) {
+	  *(ps.hrvValuePtrs.ptr[i]) = 1;//(unsigned)((rand() < RAND_MAX/4) ? 1:0);
+	}
+	ps.packer.pack(ps.hrvValuePtrs.ptr,P_partition_values.ptr+2*partitionLength);
+
       } else if (it.at_e()) {
 	ps.packer.pack(ps.hrvValuePtrs.ptr,E_partition_values.ptr);
+	for (int i=0; i < ps.hrvValuePtrs.len(); i+=1) {
+	  *(ps.hrvValuePtrs.ptr[i]) = 0; //(unsigned)((rand() < RAND_MAX/4) ? 0:1);
+	}
+	ps.packer.pack(ps.hrvValuePtrs.ptr,E_partition_values.ptr+partitionLength);
+	for (int i=0; i < ps.hrvValuePtrs.len(); i+=1) {
+	  *(ps.hrvValuePtrs.ptr[i]) = 1; //(unsigned)((rand() < RAND_MAX/4) ? 1:0);
+	}
+	ps.packer.pack(ps.hrvValuePtrs.ptr,E_partition_values.ptr+2*partitionLength);
       } else {
 	ps.packer.pack(ps.hrvValuePtrs.ptr,
 		       C_partition_values.ptr
 		       + 
-		       (it.pt_i()-1)*partitionLength);
+		       (it.pt_i()-1)*partitionLength*N_best);
+	for (int i=0; i < ps.hrvValuePtrs.len(); i+=1) {
+	  *(ps.hrvValuePtrs.ptr[i]) = 0; //(unsigned)((rand() < RAND_MAX/4) ? 0:1);
+	}
+	ps.packer.pack(ps.hrvValuePtrs.ptr,
+		       C_partition_values.ptr
+		       + 
+		       (it.pt_i()-1)*partitionLength*N_best + partitionLength);
+
+	for (int i=0; i < ps.hrvValuePtrs.len(); i+=1) {
+	  *(ps.hrvValuePtrs.ptr[i]) = 1; //(unsigned)((rand() < RAND_MAX/4) ? 1:0);
+	}
+	ps.packer.pack(ps.hrvValuePtrs.ptr,
+		       C_partition_values.ptr
+		       + 
+		       (it.pt_i()-1)*partitionLength*N_best + 2*partitionLength);
+
       }
     }
   }
@@ -620,6 +653,7 @@ JunctionTree::printModifiedSection(PartitionStructures &ps,
 				   bool printObserved,
 				   unsigned part,
 				   char sectionLabel,
+				   unsigned k,
 				   FILE *f,
 				   regex_t *preg,
 				   vector<bool> &regex_mask,
@@ -629,10 +663,11 @@ JunctionTree::printModifiedSection(PartitionStructures &ps,
 				   bool runLengthCompress,
 				   unsigned pt_i)
 {
+  unsigned N_best = 3;
   if (ps.packer.packedLen() > 0)
     ps.packer.unpack(packed_values
 		     + 
-		     (pt_i-1)*ps.packer.packedLen(),
+		     (pt_i-1)*ps.packer.packedLen()*N_best + k * ps.packer.packedLen(),
 		     ps.hrvValuePtrs.ptr);
   bool trigger = true;
   if (useVitTrigger) 
@@ -641,10 +676,10 @@ JunctionTree::printModifiedSection(PartitionStructures &ps,
     trigger = trigger && newViterbiValues(first_C, C_size, printObserved, ps.allrvs_vec, 
 					  ps.hidRVVector, previous_values, regex_mask, preg);
   if (trigger && printObserved && ps.allrvs.size() > 0) {
-    fprintf(f,"Ptn-%d %c': ",part, sectionLabel);
+    fprintf(f,"Ptn-%d %c'[%u]: ",part, sectionLabel, k);
     printRVSetAndValues(f,ps.allrvs,true,preg);
   } else if (trigger && !printObserved && ps.packer.packedLen() > 0) {
-    fprintf(f,"Ptn-%d %c': ",part, sectionLabel);
+    fprintf(f,"Ptn-%d %c'[%u]: ",part, sectionLabel, k);
     printRVSetAndValues(f,ps.hidRVVector,true,preg);
   }
 }
@@ -660,6 +695,7 @@ JunctionTree::printOriginalSection(vector<RV *> sectionRVs,
 				   bool printObserved,
 				   unsigned part,
 				   char sectionLabel,
+				   unsigned k,
 				   FILE *f,
 				   regex_t *preg,
 				   vector<bool> &regex_mask,
@@ -676,14 +712,14 @@ JunctionTree::printOriginalSection(vector<RV *> sectionRVs,
     trigger = trigger && newViterbiValues(first_C, C_size, printObserved, sectionRVs, 
 					  hiddenRVs, previous_values, regex_mask, preg);
   if (trigger && printObserved && sectionRVs.size() > 0) {
-    fprintf(f,"Ptn-%d %c: ",part, sectionLabel);
+    fprintf(f,"Ptn-%d %c[%u]: ",part, sectionLabel, k);
     if (frame > -1) {
       printRVSetAndValues(f,sectionRVs,true,preg, frame);
     } else {
       printRVSetAndValues(f,sectionRVs,true,preg);
     }
   } else if (trigger && !printObserved && hiddenRVs.size() > 0) {
-    fprintf(f,"Ptn-%d %c: ",part, sectionLabel);
+    fprintf(f,"Ptn-%d %c[%u]: ",part, sectionLabel, k);
     if (frame > -1) {
       printRVSetAndValues(f,hiddenRVs,true,preg, frame);
     } else {
@@ -714,15 +750,17 @@ JunctionTree::printOriginalSection(vector<RV *> sectionRVs,
  *
  */
 void
-JunctionTree::printSavedPartitionViterbiValues(unsigned numFrames,
-					       FILE* vitFile,
-					       FILE* f,
-					       bool printObserved,
-					       regex_t* preg,
-					       regex_t* creg,
-					       regex_t* ereg,
-					       char* partRangeFilter)
+JunctionTree::printInterleavedPartitionViterbiValues(unsigned numFrames,
+						     FILE* vitFile,
+						     FILE* f,
+						     bool printObserved,
+						     regex_t* preg,
+						     regex_t* creg,
+						     regex_t* ereg,
+						     char* partRangeFilter)
 {
+  unsigned N_best = 3;
+
   fprintf(f,"Printing random variables from (P,C,E)=(%d,%d,%d) partitions\n",
 	  P_partition_values.size(),
 	  C_partition_values.size(),
@@ -771,6 +809,146 @@ JunctionTree::printSavedPartitionViterbiValues(unsigned numFrames,
   RngDecisionTree::EquationClass eTriggerEqn;
   initializeViterbiTrigger(eVitTrigger, variableNames, eVitTriggerVec, eVitTriggerExpr, eTriggerEqn, 'e');
 
+  bool first_P[3] = {true,true,true};
+  bool first_C[3] = {true,true,true};
+  bool first_E[3] = {true,true,true};
+  unsigned P_size = 0;
+  unsigned C_size = 0;
+  unsigned E_size = 0;
+  sArray<unsigned> *previous_P_values = new sArray<unsigned>[N_best];
+  sArray<unsigned> *previous_C_values = new sArray<unsigned>[N_best];
+  sArray<unsigned> *previous_E_values = new sArray<unsigned>[N_best];
+  vector<bool> pregex_mask;
+  vector<bool> cregex_mask;
+  vector<bool> eregex_mask;
+
+  while (!partRange_it->at_end()) {
+    unsigned part = (*partRange_it);
+    setCurrentInferenceShiftTo(part);
+    PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+
+    if (vitFile) {
+      unsigned N_best = 3;
+      unsigned num_to_read = N_best * ps.packer.packedLen();
+      if (inference_it.at_p()) {
+	readVitIntVector(num_to_read, P_partition_values.ptr);
+      } else if (inference_it.at_e()) {
+	readVitIntVector(num_to_read, E_partition_values.ptr);
+      } else {
+	readVitIntVector(num_to_read, C_partition_values.ptr);
+      }
+    }
+
+    if (inference_it.at_p()) {
+      for (unsigned k = 0; k < N_best; k+=1) {
+	printModifiedSection(ps, P_partition_values.ptr, pVitTrigger!=NULL,
+			     pVitTriggerVec, pVitTriggerExpr, pTriggerEqn,
+			     printObserved, part, 'P', k, f, preg, pregex_mask,
+			     first_P[k], P_size, previous_P_values[k]);
+      }
+    } else if (inference_it.at_e()) {
+      for (unsigned k = 0; k < N_best; k+=1) {
+	printModifiedSection(ps, E_partition_values.ptr, eVitTrigger!=NULL,
+			     eVitTriggerVec, eVitTriggerExpr, eTriggerEqn,
+			     printObserved, part, 'E', k, f, ereg, eregex_mask,
+			     first_E[k], E_size, previous_E_values[k]);
+      }
+    } else {
+      assert ( inference_it.at_c() );
+      for (unsigned k = 0; k < N_best; k+=1) {
+	printModifiedSection(ps, C_partition_values.ptr, cVitTrigger!=NULL,
+			     cVitTriggerVec, cVitTriggerExpr, cTriggerEqn,
+			     printObserved, part, 'C', k, f, creg, cregex_mask,
+			     first_C[k], C_size, previous_C_values[k],
+			     vitRunLength, 
+			     vitFile ? 1 : inference_it.pt_i());
+      }
+    }
+    (*partRange_it)++;
+  }
+  delete partRange;
+  delete[] previous_P_values;
+  delete[] previous_C_values;
+  delete[] previous_E_values;
+  //clearAfterUnroll();  ???
+}
+
+
+void
+JunctionTree::printSavedPartitionViterbiValues(FILE* f,
+					       bool printObserved,
+					       regex_t* preg,
+					       regex_t* creg,
+					       regex_t* ereg,
+					       char* partRangeFilter)
+{
+  printSavedPartitionViterbiValues(0, NULL, f, printObserved, preg, creg, ereg, partRangeFilter);
+}
+
+
+
+void
+JunctionTree::printSavedPartitionViterbiValues(unsigned numFrames,
+					       FILE* vitFile,
+					       FILE* f,
+					       bool printObserved,
+					       regex_t* preg,
+					       regex_t* creg,
+					       regex_t* ereg,
+					       char* partRangeFilter)
+{
+  unsigned N_best = 3;
+  fprintf(f,"Printing random variables from (P,C,E)=(%d,%d,%d) partitions\n",
+	  P_partition_values.size(),
+	  C_partition_values.size(),
+	  E_partition_values.size());
+
+  if (vitFile) {
+    unsigned totalNumberPartitions;
+    (void) unroll(numFrames,ZeroTable,&totalNumberPartitions);
+    new (&inference_it) ptps_iterator(*this,totalNumberPartitions);
+    init_CC_CE_rvs(inference_it);
+  }
+
+  Range* partRange = NULL;
+  if (partRangeFilter != NULL) {
+    partRange = new Range(partRangeFilter,0,inference_it.pt_len());
+    if (partRange->length() == 0) { 
+      warning("WARNING: Part range filter must specify a valid non-zero "
+	      "length range within [0:%d]. Range given is %s\n",
+	      inference_it.pt_len(), partRangeFilter);
+      delete partRange;
+      partRange = NULL;
+    }
+  }
+  if (partRange == NULL)
+    partRange = new Range("all",0,inference_it.pt_len());
+
+  Range::iterator* partRange_it = new Range::iterator(partRange->begin());
+
+  set<string> variableNames; // names of variables in the model
+  for (unsigned i=0; i < partition_unrolled_rvs.size(); i+=1) {
+    variableNames.insert(partition_unrolled_rvs[i]->name());
+  }
+
+  RVVec  pVitTriggerVec;
+  string pVitTriggerExpr;
+  RngDecisionTree::EquationClass pTriggerEqn;
+  initializeViterbiTrigger(pVitTrigger, variableNames, pVitTriggerVec, pVitTriggerExpr, pTriggerEqn, 'p');
+
+  RVVec  cVitTriggerVec;
+  string cVitTriggerExpr;
+  RngDecisionTree::EquationClass cTriggerEqn;
+  initializeViterbiTrigger(cVitTrigger, variableNames, cVitTriggerVec, cVitTriggerExpr, cTriggerEqn, 'c');
+
+  RVVec  eVitTriggerVec;
+  string eVitTriggerExpr;
+  RngDecisionTree::EquationClass eTriggerEqn;
+  initializeViterbiTrigger(eVitTrigger, variableNames, eVitTriggerVec, eVitTriggerExpr, eTriggerEqn, 'e');
+
+  for (unsigned k=0; k < N_best; k+=1) {
+    partRange_it->reset();
+
   bool first_P = true;
   bool first_C = true;
   bool first_E = true;
@@ -795,39 +973,33 @@ JunctionTree::printSavedPartitionViterbiValues(unsigned numFrames,
     if (inference_it.at_p()) {
       printModifiedSection(ps, P_partition_values.ptr, pVitTrigger!=NULL,
 			   pVitTriggerVec, pVitTriggerExpr, pTriggerEqn,
-			   printObserved, part, 'P', f, preg, pregex_mask,
+			   printObserved, part, 'P', k, f, preg, pregex_mask,
 			   first_P, P_size, previous_P_values);
     } else if (inference_it.at_e()) {
       printModifiedSection(ps, E_partition_values.ptr, eVitTrigger!=NULL,
 			   eVitTriggerVec, eVitTriggerExpr, eTriggerEqn,
-			   printObserved, part, 'E', f, ereg, eregex_mask,
+			   printObserved, part, 'E', k, f, ereg, eregex_mask,
 			   first_E, E_size, previous_E_values);
     } else {
       assert ( inference_it.at_c() );      
       printModifiedSection(ps, C_partition_values.ptr, cVitTrigger!=NULL,
 			   cVitTriggerVec, cVitTriggerExpr, cTriggerEqn,
-			   printObserved, part, 'C', f, creg, cregex_mask,
+			   printObserved, part, 'C', k, f, creg, cregex_mask,
 			   first_C, C_size, previous_C_values,
 			   vitRunLength, 
 			   vitFile ? 1 : inference_it.pt_i());
     }
     (*partRange_it)++;
   }
+  }
   delete partRange;
   //clearAfterUnroll();  ???
 }
 
 
-void
-JunctionTree::printSavedPartitionViterbiValues(FILE* f,
-					       bool printObserved,
-					       regex_t* preg,
-					       regex_t* creg,
-					       regex_t* ereg,
-					       char* partRangeFilter)
-{
-  printSavedPartitionViterbiValues(0, NULL, f, printObserved, preg, creg, ereg, partRangeFilter);
-}
+
+
+
 
 
 
@@ -1132,6 +1304,8 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames,
 				      bool printObserved,
 				      regex_t* preg, regex_t* creg, regex_t* ereg)
 {
+  unsigned N_best = 3;
+
   if (binVitFile) {
     unsigned totalNumberPartitions;
     (void) unroll(numFrames,ZeroTable,&totalNumberPartitions);
@@ -1201,6 +1375,9 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames,
   RngDecisionTree::EquationClass eTriggerEqn;
   initializeViterbiTrigger(eVitTrigger, variableNames, eVitTriggerVec, eVitTriggerExpr, eTriggerEqn, 'e');
 
+  for (unsigned k=0; k < N_best; k+=1) {
+    partRange_it->reset();
+
   bool first_P = true;
   bool first_C = true;
   bool first_E = true;
@@ -1225,7 +1402,6 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames,
     PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
 
     if (binVitFile) {
-      unsigned N_best = 1;
       unsigned num_to_read = N_best * ps.packer.packedLen();
       if (inference_it.at_p()) {
 	readVitIntVector(num_to_read, P_partition_values.ptr);
@@ -1237,20 +1413,20 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames,
     }
     if (inference_it.at_p()) {
       if (ps.packer.packedLen() > 0) 
-        ps.packer.unpack(P_partition_values.ptr,PprimeValuePtrs.ptr);
+        ps.packer.unpack(P_partition_values.ptr + k * ps.packer.packedLen(), PprimeValuePtrs.ptr);
       printOriginalSection(P_rvs, hidP_rvs, pVitTrigger != NULL,  pVitTriggerVec, 
-			   pVitTriggerExpr, pTriggerEqn, printObserved, part, 'P', 
+			   pVitTriggerExpr, pTriggerEqn, printObserved, part, 'P', k,
 			   f, preg, pregex_mask, first_P, P_size, previous_P_values, false);
     } else if (inference_it.at_e()) {
       primeIndex = (primeIndex + Eprime_rvs.size() - 1) % Eprime_rvs.size(); // primeIndex -= 1 mod nCprimes
       if (ps.packer.packedLen() > 0) 
-	ps.packer.unpack(E_partition_values.ptr,EprimeValuePtrs[primeIndex].ptr);
+	ps.packer.unpack(E_partition_values.ptr + k * ps.packer.packedLen(), EprimeValuePtrs[primeIndex].ptr);
       // print completed C partitions
       int targetFrame = fp.numFramesInP() + (int)(part-1) * gm_template.S * fp.numFramesInC();
       for (unsigned i=0; i < gm_template.M; i+=1) { // unpacking E' completes the last M Cs
 	shiftOriginalVarstoPosition(C_rvs[originalIndex], targetFrame, Cpos[originalIndex]);
 	printOriginalSection(C_rvs[originalIndex], hidC_rvs[originalIndex], cVitTrigger != NULL, cVitTriggerVec,
-			     cVitTriggerExpr, cTriggerEqn, printObserved, part,'C', f, 
+			     cVitTriggerExpr, cTriggerEqn, printObserved, part,'C', k, f, 
 			     creg, cregex_mask, first_C, C_size, previous_C_values, vitRunLength);
 	Ccount += 1;
 	originalIndex = (originalIndex + 1) % C_rvs.size();
@@ -1260,21 +1436,21 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames,
       if ( (hidE_rvs.size() > 0)  || (printObserved && E_rvs.size() > 0) ) {
 	shiftOriginalVarstoPosition(E_rvs, targetFrame, Epos);
 	printOriginalSection(E_rvs, hidE_rvs, eVitTrigger != NULL,  eVitTriggerVec, 
-			     eVitTriggerExpr, eTriggerEqn, printObserved, part, 'E', f, 
+			     eVitTriggerExpr, eTriggerEqn, printObserved, part, 'E', k, f, 
 			     ereg, eregex_mask, first_E, E_size, previous_E_values, false);
       }
     } else {
       assert ( inference_it.at_c() );
       // print C partition
       {
-	unsigned long offset = binVitFile ? 0 : (inference_it.pt_i()-1) * ps.packer.packedLen();
+	unsigned long offset = binVitFile ? 0 : (inference_it.pt_i()-1) * ps.packer.packedLen() * N_best;
         if (ps.packer.packedLen() > 0) 
-	  ps.packer.unpack(C_partition_values.ptr + offset, CprimeValuePtrs[primeIndex].ptr);
+	  ps.packer.unpack(C_partition_values.ptr + offset + k * ps.packer.packedLen(), CprimeValuePtrs[primeIndex].ptr);
 	int targetFrame = fp.numFramesInP() + (int)(part-1) * gm_template.S * fp.numFramesInC();
 	for (unsigned i=0; i < gm_template.S; i+=1) { // unpacking a C' completes S Cs
 	  shiftOriginalVarstoPosition(C_rvs[originalIndex], targetFrame, Cpos[originalIndex]);
 	  printOriginalSection(C_rvs[originalIndex], hidC_rvs[originalIndex], cVitTrigger != NULL, cVitTriggerVec,
-			       cVitTriggerExpr, cTriggerEqn, printObserved, part, 'C', f, 
+			       cVitTriggerExpr, cTriggerEqn, printObserved, part, 'C', k, f, 
 			       creg, cregex_mask, first_C, C_size, previous_C_values, vitRunLength);
 	  Ccount += 1;
 	  originalIndex = (originalIndex + 1) % C_rvs.size();
@@ -1286,7 +1462,7 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames,
     }
     (*partRange_it)++;
   }
-
+  }
   delete partRange;
   //clearAfterUnroll();
 }
@@ -1295,7 +1471,7 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames,
 void
 JunctionTree::readBinaryVitPartition(PartitionStructures& ps, unsigned part) {
   assert(part == inference_it.pt_i());
-  unsigned N_best = 1;
+  unsigned N_best = 3;
   unsigned num_to_read = N_best * ps.packer.packedLen();
   off_t offset;
   if (inference_it.at_p()) {
@@ -1335,7 +1511,7 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames, FILE* f,
 				      regex_t* preg, regex_t* creg, regex_t* ereg,
 				      char *partRangeFilter)
 {
-
+  unsigned N_best = 3;
   if (partRangeFilter == NULL) {
     if (binaryViterbiFile) 
       printSavedViterbiValues(numFrames, f, binaryViterbiFile, printObserved, preg, creg, ereg);
@@ -1433,6 +1609,9 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames, FILE* f,
   RngDecisionTree::EquationClass eTriggerEqn;
   initializeViterbiTrigger(eVitTrigger, variableNames, eVitTriggerVec, eVitTriggerExpr, eTriggerEqn, 'e');
 
+  for (unsigned k=0; k < N_best; k+=1) {
+    partRange_it->reset();
+
   bool first_P = true;
   bool first_C = true;
   bool first_E = true;
@@ -1493,32 +1672,33 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames, FILE* f,
       
       if (inference_it.at_p()) { // P'
 	if (ps.packer.packedLen() > 0) 
-	  ps.packer.unpack(P_partition_values.ptr,PprimeValuePtrs.ptr);
+	  ps.packer.unpack(P_partition_values.ptr + k * ps.packer.packedLen(), PprimeValuePtrs.ptr);
       } else if (inference_it.at_e()) { // E'
 	// -1 to get the preceding C', -1 to account for C'_{-1} = P'
 	primeIndex = ((int)i - 2) % (int)Eprime_rvs.size(); 
 	if (ps.packer.packedLen() > 0) 
-	  ps.packer.unpack(E_partition_values.ptr,EprimeValuePtrs[primeIndex].ptr);
+	  ps.packer.unpack(E_partition_values.ptr + k * ps.packer.packedLen(), EprimeValuePtrs[primeIndex].ptr);
       } else { // C'
 	assert ( inference_it.at_c() );
 	primeIndex = ((int)i - 1) % (int)Cprime_rvs.size();
 	if (ps.packer.packedLen() > 0) 
 	  ps.packer.unpack(C_partition_values.ptr  + 
-			   ( binaryViterbiFile ? 0 : (inference_it.pt_i()-1)*ps.packer.packedLen() ),
+			   ( binaryViterbiFile ? 0 : (inference_it.pt_i()-1) * ps.packer.packedLen() * N_best) +
+			   k * ps.packer.packedLen(),
 			   CprimeValuePtrs[primeIndex].ptr);
       }
     }
 
     if (part == 0) { // print P partition
       printOriginalSection(P_rvs, hidP_rvs, pVitTrigger != NULL,  pVitTriggerVec, 
-			   pVitTriggerExpr, pTriggerEqn, printObserved, part, 'P', f, 
+			   pVitTriggerExpr, pTriggerEqn, printObserved, part, 'P', k, f, 
 			   preg, pregex_mask, first_P, P_size, previous_P_values, false);
     } else if (part == totalOriginalPartitions-1) { // print E partition
       if ( (hidE_rvs.size() > 0)  || (printObserved && E_rvs.size() > 0) ) {
 	int targetFrame = fp.numFramesInP() + (int)(part-1) * fp.numFramesInC();
 	shiftOriginalVarstoPosition(E_rvs, targetFrame, Epos);
 	printOriginalSection(E_rvs, hidE_rvs, eVitTrigger != NULL,  eVitTriggerVec, 
-			     eVitTriggerExpr, eTriggerEqn, printObserved, part, 'E', f, 
+			     eVitTriggerExpr, eTriggerEqn, printObserved, part, 'E', k, f, 
 			     ereg, eregex_mask, first_E, E_size, previous_E_values, false);
       }
     } else {      // print C partition
@@ -1526,12 +1706,12 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames, FILE* f,
       originalIndex = ((int)part - 1) % (int) C_rvs.size();
       shiftOriginalVarstoPosition(C_rvs[originalIndex], targetFrame, Cpos[originalIndex]);
       printOriginalSection(C_rvs[originalIndex], hidC_rvs[originalIndex], cVitTrigger != NULL, cVitTriggerVec,
-			   cVitTriggerExpr, cTriggerEqn, printObserved, part, 'C', f, 
+			   cVitTriggerExpr, cTriggerEqn, printObserved, part, 'C', k, f, 
 			   creg, cregex_mask, first_C, C_size, previous_C_values, vitRunLength);
     }
     (*partRange_it)++;
   }
-  
+  }
   delete partRange;
 }
 
@@ -1543,6 +1723,7 @@ JunctionTree::printSavedViterbiFrames(unsigned numFrames, FILE* f,
 				      regex_t* preg, regex_t* creg, regex_t* ereg, 
 				      char *frameRangeFilter)
 {
+  unsigned N_best = 3;
   unsigned numUsableFrames;
   if (binaryViterbiFile) {
     unsigned totalNumberPartitions;
@@ -1639,6 +1820,9 @@ JunctionTree::printSavedViterbiFrames(unsigned numFrames, FILE* f,
   RngDecisionTree::EquationClass eTriggerEqn;
   initializeViterbiTrigger(eVitTrigger, variableNames, eVitTriggerVec, eVitTriggerExpr, eTriggerEqn, 'e');
 
+  for (unsigned k=0; k < N_best; k+=1) {
+    frameRange_it->reset();
+
   bool first_P = true;
   bool first_C = true;
   bool first_E = true;
@@ -1678,14 +1862,14 @@ JunctionTree::printSavedViterbiFrames(unsigned numFrames, FILE* f,
       infoMsg(IM::Printing,IM::High,"is available to print:\n");
       if (part == 0) { // print P partition
 	printOriginalSection(P_rvs, hidP_rvs, pVitTrigger != NULL,  pVitTriggerVec, 
-			     pVitTriggerExpr, pTriggerEqn, printObserved, part, 'P', f, 
+			     pVitTriggerExpr, pTriggerEqn, printObserved, part, 'P', k, f, 
 			     preg, pregex_mask, first_P, P_size, previous_P_values, vitRunLength, (*frameRange_it));
       } else if (part == totalOriginalPartitions-1) { // print E partition
 	if ( (hidE_rvs.size() > 0)  || (printObserved && E_rvs.size() > 0) ) {
 	  int targetFrame = fp.numFramesInP() + (int)(part-1) * fp.numFramesInC();
 	  shiftOriginalVarstoPosition(E_rvs, targetFrame, Epos);
 	  printOriginalSection(E_rvs, hidE_rvs, eVitTrigger != NULL,  eVitTriggerVec, 
-			       eVitTriggerExpr, eTriggerEqn, printObserved, part, 'E', f, 
+			       eVitTriggerExpr, eTriggerEqn, printObserved, part, 'E', k, f, 
 			       ereg, eregex_mask, first_E, E_size, previous_E_values, vitRunLength, (*frameRange_it));
 	}
       } else {      // print C partition
@@ -1693,7 +1877,7 @@ JunctionTree::printSavedViterbiFrames(unsigned numFrames, FILE* f,
 	originalIndex = ((int)part - 1) % (int) C_rvs.size();
 	shiftOriginalVarstoPosition(C_rvs[originalIndex], targetFrame, Cpos[originalIndex]);
 	printOriginalSection(C_rvs[originalIndex], hidC_rvs[originalIndex], cVitTrigger != NULL, cVitTriggerVec,
-			     cVitTriggerExpr, cTriggerEqn, printObserved, part, 'C', f, 
+			     cVitTriggerExpr, cTriggerEqn, printObserved, part, 'C', k, f, 
 			     creg, cregex_mask, first_C, C_size, previous_C_values, vitRunLength, (*frameRange_it));
       }
       (*frameRange_it)++;  // move on to next frame
@@ -1741,18 +1925,19 @@ JunctionTree::printSavedViterbiFrames(unsigned numFrames, FILE* f,
       // unpack
       if (inference_it.at_p()) { // P'
 	if (ps.packer.packedLen() > 0) 
-	  ps.packer.unpack(P_partition_values.ptr,PprimeValuePtrs.ptr);
+	  ps.packer.unpack(P_partition_values.ptr + k * ps.packer.packedLen(), PprimeValuePtrs.ptr);
       } else if (inference_it.at_e()) { // E'
 	// -1 to get the preceding C', -1 to account for C'_{-1} = P'
 	primeIndex = ((int)i - 2) % (int)Eprime_rvs.size(); 
 	if (ps.packer.packedLen() > 0) 
-	  ps.packer.unpack(E_partition_values.ptr,EprimeValuePtrs[primeIndex].ptr);
+	  ps.packer.unpack(E_partition_values.ptr + k * ps.packer.packedLen(), EprimeValuePtrs[primeIndex].ptr);
       } else { // C'
 	assert ( inference_it.at_c() );
 	primeIndex = ((int)i - 1) % (int)Cprime_rvs.size();
 	if (ps.packer.packedLen() > 0) 
 	  ps.packer.unpack(C_partition_values.ptr  + 
-			   ( binaryViterbiFile ? 0 : (inference_it.pt_i()-1)*ps.packer.packedLen() ),
+			   ( binaryViterbiFile ? 0 : (inference_it.pt_i()-1)*ps.packer.packedLen() * N_best) +
+			   k * ps.packer.packedLen(),
 			   CprimeValuePtrs[primeIndex].ptr);
       }
     }
@@ -1771,7 +1956,7 @@ JunctionTree::printSavedViterbiFrames(unsigned numFrames, FILE* f,
     }
     infoMsg(IM::Printing,IM::High,"  available frames %u to %u\n", minAvailableFrame, maxAvailableFrame);
   }
-  
+  }
   delete frameRange;
 }
 

@@ -3968,7 +3968,7 @@ JunctionTree::unroll(const unsigned int numFrames,
 
     // Once we include N-best list, then this is how it will effect these
     // data structures.
-    const unsigned N_best = 1;
+    const unsigned N_best = 3;
 
     // First do P
     P_partition_values.resize(N_best*partitionStructureArray[0].packer.packedLen());
