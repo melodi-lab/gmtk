@@ -1250,6 +1250,7 @@ public:
 			    bool printObserved,
 			    unsigned part,
 			    char sectionLabel,
+			    unsigned k,
 			    FILE *f,
 			    regex_t *preg,
 			    vector<bool> &regex_mask,
@@ -1268,6 +1269,7 @@ public:
 			    bool printObserved,
 			    unsigned part,
 			    char sectionLabel,
+			    unsigned k,
 			    FILE *f,
 			    regex_t *preg,
 			    vector<bool> &regex_mask,
@@ -1295,6 +1297,14 @@ public:
 					regex_t* creg,
 					regex_t* ereg,
 					char* partRangeFilter);
+
+  void printInterleavedPartitionViterbiValues(unsigned,
+					      FILE*, FILE*,
+					      bool printObserved,
+					      regex_t *preg,
+					      regex_t* creg,
+					      regex_t* ereg,
+					      char* partRangeFilter);
 
 #if 0
   void printSavedViterbiValues(FILE*,
