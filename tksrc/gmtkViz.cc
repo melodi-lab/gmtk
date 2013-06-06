@@ -24,6 +24,8 @@
 #include "hgstamp.h"
 #endif
 
+#include "version.h"
+
 // the only parts of gmtk that gmtkViz needs to concern itself with
 #include "GMTK_FileParser.h"
 #include "GMTK_RVInfo.h"
@@ -1344,6 +1346,7 @@ Arg Arg::Args[] = {
 	Arg( "cppCommandOptions", Arg::Opt, cppCommandOptions,
 	 "Additional CPP command line" ),
 	Arg("\n*** General options ***\n"),
+	Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
 	Arg("verbosity",Arg::Opt,verbosity,"Verbosity (0 <= v <= 100) of informational/debugging msgs"),
 	Arg( "help", Arg::Tog, help, "print this message" ),
 	Arg()
@@ -1367,6 +1370,14 @@ bool GMTKStructVizApp::OnInit()
 	if(help || !parse_was_ok) {
 		Arg::usage();
 		return false;
+	}
+	if (print_version_and_exit) {
+#ifdef HAVE_CONFIG_H
+	  printf("%s (Mercurial id: %s)\n",gmtk_version_id,HGID);
+#else
+	  printf("%s\n", gmtk_version_id);
+#endif
+	  exit(0);
 	}
 
 	//init the global Style Maps
