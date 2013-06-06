@@ -1875,6 +1875,9 @@ static bool writeLogVals = false;
 
   Arg("\n*** Decoding options ***\n"),
 
+  Arg("KBest",Arg::Opt,JunctionTree::N_best,"Number of MPE hypothesis to print"),
+  Arg("vitInterleavedKBest",Arg::Opt,vitInterleavedKBest,"Print all K sections together instead of complete hypothesis"),
+
   Arg("mVitValsFile",Arg::Opt,mVitValsFileName,"Modified Section Vit: file to print viterbi values in ASCII, '-' for stdout"),
 #ifndef GMTK_ONLINE_UNSUPPORTED
   Arg("vitValsFile",Arg::Opt,vitValsFileName,"Original Section Vit: file to print viterbi values in ASCII, '-' for stdout"),
@@ -1896,7 +1899,8 @@ static bool writeLogVals = false;
   Arg("cVitTrigger",Arg::Opt,JunctionTree::cVitTrigger, "Leaf node expression for Viteribi printing trigger in chunk"),
   Arg("eVitTrigger",Arg::Opt,JunctionTree::eVitTrigger, "Leaf node expression for Viteribi printing trigger in epilog"),
 
-  Arg("vitRunLengthCompress",Arg::Opt,JunctionTree::vitRunLength, "Only print a chunk when its Viterbi values differ from the previous chunk"),
+  Arg("vitRunLengthCompress",Arg::Opt,JunctionTree::vitRunLength, "Only print a section when its Viterbi values differ from the previous section"),
+  Arg("vitKCompress",Arg::Opt,JunctionTree::vitKCompress, "Only print a section when its Viterbi values differ from the next better hypothesis"),
 
 #ifndef GMTK_ONLINE_UNSUPPORTED
   Arg("vitSectionRange",Arg::Opt,vitPartRangeFilter,"Value printing, integer range filter for sections (e.g., frames, slices) to print."),
@@ -1904,8 +1908,6 @@ static bool writeLogVals = false;
 #endif
 
   Arg("vitPrintObservedVariables",Arg::Opt,vitAlsoPrintObservedVariables,"Also print observed random variables in addtion to hidden"),
-
-  Arg("vitInterleavedKBest",Arg::Opt,vitInterleavedKBest,"Print all K sections together instead of complete hypothesis"),
 
 #if 0
 #ifndef GMTK_ONLINE_UNSUPPORTED
@@ -1949,6 +1951,10 @@ static bool writeLogVals = false;
 
   if ( vitFrameRangeFilter && ! vitValsFileName ) {
     error("%s: -vitFrameRange requires -vitValsFile to be specified\n", argerr);
+  }
+
+  if ( JunctionTree::vitKCompress && !vitInterleavedKBest ) {
+    error("%s: -vitKCompress requires -vitInterleavedKBest\n", argerr);
   }
 
 #else

@@ -481,8 +481,7 @@ main(int argc,char*argv[])
       char *err = strerror(errno);
       error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
     }
-    unsigned N_best = 3;
-    if (fwrite(&N_best, sizeof(N_best), 1, JunctionTree::binaryViterbiFile) != 1) {
+    if (fwrite(&JunctionTree::N_best, sizeof(JunctionTree::N_best), 1, JunctionTree::binaryViterbiFile) != 1) {
       char *err = strerror(errno);
       error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
     }
