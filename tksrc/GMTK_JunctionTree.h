@@ -874,13 +874,16 @@ public:
   // to compute P(Q_t | X_{0:t})
   static bool sectionDoDist;
 
-
+  // # of MPE hypothesis to produce
+  static unsigned N_best;
+ 
   // Viterbi printing triggers
   static char *pVitTrigger;
   static char *cVitTrigger;
   static char *eVitTrigger;
 
   static bool vitRunLength;
+  static bool vitKCompress;
 
   // For O(1) memory inference, write Viterbi values to this file for
   // later printing by a separate program
@@ -1256,8 +1259,9 @@ public:
 			    vector<bool> &regex_mask,
 			    bool &first_C,
 			    unsigned &C_size,
-			    sArray<unsigned> &previous_values,
+			    sArray<unsigned> *previous_values,
 			    bool runLengthCompress = false,
+			    bool kCompress = false,
 			    unsigned pt_i = 1);
 
   void printOriginalSection(vector<RV *> sectionRVs,
@@ -1275,8 +1279,9 @@ public:
 			    vector<bool> &regex_mask,
 			    bool &first_C,
 			    unsigned &C_size,
-			    sArray<unsigned> &previous_values,
+			    sArray<unsigned> *previous_values,
 			    bool runLengthCompress = false,
+			    bool kCompress = false,
 			    int frame = -1);
  public:
 
