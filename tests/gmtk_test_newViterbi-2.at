@@ -14,7 +14,7 @@ AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
 	  -inputMasterFile PARAMS/nonTrainable.master \
 	  -inputTrainable PARAMS/highly_trained.gmp \
 	  -str PARAMS/aurora_decode.str \
-	  -pVitValsFile - | testViterbi | sort)],[],[stdout])
+	  -mVitValsFile - | testViterbi | sort)],[],[stdout])
 AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
           gmtkViterbi -of1 DATA/small.pfile \
           -iswp1 T -nf1 42 -ni1 0 \

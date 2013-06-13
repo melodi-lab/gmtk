@@ -1,0 +1,23 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/332 is fixed
+
+AT_SETUP([write counts as unsigned int (ticket 332)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/timit/system])
+
+# gmtkEMtrain will succeed if the bug is fixed
+
+AT_CHECK([(cd $TEST_AND_DEV/timit/system && \
+gmtkEMtrain \
+  -of1 ./LISTS/train_mfcc.scp -nf1 39 -fmt1 htk -iswp1 T  \
+  -of2 ./LISTS/train_labs.scp -ni2 1 -fmt2 ascii -iswp2 F \
+  -inputMasterFile ./PARAMS/masterFileTrain.params        \
+  -binInputTrainable true    -binOutputTrainable true     \
+  -strF ./PARAMS/timit_phone_train.str -maxE 1 -random F  \
+  -checkTriFileCards F -componentCache T                  \
+  -varFloor 1e-5 -floorVarOnRead T -meanCloneSTDfrac 0.25 \
+  -covarCloneSTDfrac 0.0                                  \
+  -cppComm '-I./PARAMS -DROOT_DIR='                       \
+  -inputTrainable work/1comp/learned_params/learned_params1.gmp \
+  -storeAccFile work/1comp/acc_files/acc_file_1.data)],
+         [],[ignore],[ignore])
+AT_CLEANUP

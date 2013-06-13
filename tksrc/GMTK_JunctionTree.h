@@ -1173,6 +1173,8 @@ public:
 			  FILE *f=stdout,
 			  const bool printObserved=false,
 			  regex_t *preg=NULL,
+			  regex_t *creg=NULL,
+			  regex_t *ereg=NULL,
 			  char *partRangeFilter=NULL,
 			  ObservationFile *posteriorFile = NULL,
 			  const bool cliquePosteriorNormalize = true,
@@ -1250,6 +1252,7 @@ public:
 			    char sectionLabel,
 			    FILE *f,
 			    regex_t *preg,
+			    vector<bool> &regex_mask,
 			    bool &first_C,
 			    unsigned &C_size,
 			    sArray<unsigned> &previous_values,
@@ -1267,10 +1270,12 @@ public:
 			    char sectionLabel,
 			    FILE *f,
 			    regex_t *preg,
+			    vector<bool> &regex_mask,
 			    bool &first_C,
 			    unsigned &C_size,
 			    sArray<unsigned> &previous_values,
-			    bool runLengthCompress = false);
+			    bool runLengthCompress = false,
+			    int frame = -1);
  public:
 
   // void saveViterbiValuesIsland(oDataStreamFile& vfile);
@@ -1279,12 +1284,16 @@ public:
   void printSavedPartitionViterbiValues(FILE*,
 					bool printObserved,
 					regex_t *preg,
+					regex_t* creg,
+					regex_t* ereg,
 					char* partRangeFilter);
 
   void printSavedPartitionViterbiValues(unsigned,
 					FILE*, FILE*,
 					bool printObserved,
 					regex_t *preg,
+					regex_t* creg,
+					regex_t* ereg,
 					char* partRangeFilter);
 
 #if 0
@@ -1322,25 +1331,33 @@ public:
 
   void printSavedViterbiValues(FILE *f,
 			       bool printObserved,
-			       regex_t *preg);
+			       regex_t *preg,
+			       regex_t* creg,
+			       regex_t* ereg);
 
   void printSavedViterbiValues(unsigned numFrames,
 			       FILE *f, FILE *binVitFile,
 			       bool printObserved,
 			       regex_t *preg,
+			       regex_t* creg,
+			       regex_t* ereg,
 			       char* partRangeFilter);
 
 #if 1
   void printSavedViterbiValues(unsigned numFrames,
 			       FILE *f, FILE* binVitFile,
 			       bool printObserved,
-			       regex_t *preg);
+			       regex_t *preg,
+			       regex_t* creg,
+			       regex_t* ereg);
 #endif
 
   void printSavedViterbiFrames(unsigned numFrames,
 			       FILE *f, FILE *binVitFile,
 			       bool printObserved,
 			       regex_t *preg,
+			       regex_t* creg,
+			       regex_t* ereg,
 			       char* frameRangeFilter);
 
   // actuall message routines.

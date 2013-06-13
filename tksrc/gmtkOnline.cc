@@ -256,6 +256,40 @@ main(int argc,char*argv[])
     gomSS = new StreamSource(1, &stream, streamBufferSize);
     globalObservationMatrix = gomSS;
 
+  const unsigned case_ignore = (vitCaseSensitiveRegexFilter? 0 : REG_ICASE);
+  regex_t *vitPreg = NULL;
+  if (pVitRegexFilter != NULL) {
+    vitPreg = (regex_t*) malloc(sizeof(regex_t));
+    if (regcomp(vitPreg,pVitRegexFilter,
+		REG_EXTENDED
+		| case_ignore
+		| REG_NOSUB
+		)) {
+      error("ERROR: problem with prolog regular expression filter string '%s'\n",pVitRegexFilter);
+    }
+  }
+  regex_t *vitCreg = NULL;
+  if (cVitRegexFilter != NULL) {
+    vitCreg = (regex_t*) malloc(sizeof(regex_t));
+    if (regcomp(vitCreg,cVitRegexFilter,
+		REG_EXTENDED
+		| case_ignore
+		| REG_NOSUB
+		)) {
+      error("ERROR: problem with chunk regular expression filter string '%s'\n",cVitRegexFilter);
+    }
+  }
+  regex_t *vitEreg = NULL;
+  if (eVitRegexFilter != NULL) {
+    vitEreg = (regex_t*) malloc(sizeof(regex_t));
+    if (regcomp(vitEreg,eVitRegexFilter,
+		REG_EXTENDED
+		| case_ignore
+		| REG_NOSUB
+		)) {
+      error("ERROR: problem with epilog regular expression filter string '%s'\n",pVitRegexFilter);
+    }
+  }
 
   /////////////////////////////////////////////
   // read in all the parameters
@@ -439,13 +473,13 @@ main(int argc,char*argv[])
   // for users, while the pVit files are more meant for algorithm
   // writters/debugging which is the reason that we have both of them
   // here.
-  FILE* pVitValsFile = NULL;
-  if (pVitValsFileName) {
-    if (strcmp("-",pVitValsFileName) == 0)
-      pVitValsFile = stdout;
+  FILE* mVitValsFile = NULL;
+  if (mVitValsFileName) {
+    if (strcmp("-",mVitValsFileName) == 0)
+      mVitValsFile = stdout;
     else {
-      if ((pVitValsFile = fopen(pVitValsFileName, "w")) == NULL)
-	error("Can't open file '%s' for writing\n",pVitValsFileName);
+      if ((mVitValsFile = fopen(mVitValsFileName, "w")) == NULL)
+	error("Can't open file '%s' for writing\n",mVitValsFileName);
     }
   }
 
@@ -462,12 +496,12 @@ main(int argc,char*argv[])
 #endif
 
 #if 0
-  if (!pVitValsFile && !vitValsFile) {
-    error("Argument Error: Missing REQUIRED argument: -pVitValsFile <str>  OR  -vitValsFile <str>\n");
+  if (!mVitValsFile && !vitValsFile) {
+    error("Argument Error: Missing REQUIRED argument: -mVitValsFile <str>  OR  -vitValsFile <str>\n");
   }
 #else
-  if (!pVitValsFile) {
-    error("Argument Error: Missing REQUIRED argument: -pVitValsFile <str>\n");
+  if (!mVitValsFile) {
+    error("Argument Error: Missing REQUIRED argument: -mVitValsFile <str>\n");
   }
 #endif
 
@@ -510,8 +544,8 @@ main(int argc,char*argv[])
   for (; !gomSS->EOS(); ) {
     unsigned numUsableFrames;
     (void) myjt.onlineFixedUnroll(gomSS, &numUsableFrames, NULL, false, 
-				  pVitValsFile,pVitAlsoPrintObservedVariables, 
-				  NULL, NULL, pCliqueFile, 
+				  mVitValsFile,vitAlsoPrintObservedVariables, 
+				  vitPreg, vitCreg, vitEreg, NULL, pCliqueFile, 
 				  cliquePosteriorNormalize, cliquePosteriorUnlog);
     printf("Segment %d, after Filtering: %u usable frames\n",
 	   gomSS->segmentNumber(),
@@ -523,8 +557,22 @@ main(int argc,char*argv[])
     double userTime,sysTime;
     reportTiming(rus,rue,userTime,sysTime,stdout);
   }
+
+  if (vitPreg != NULL) {
+    regfree(vitPreg);
+    free(vitPreg);
+  }
+  if (vitCreg != NULL) {
+    regfree(vitCreg);
+    free(vitCreg);
+  }
+  if (vitEreg != NULL) {
+    regfree(vitEreg);
+    free(vitEreg);
+  }
   
   } // close brace to cause a destruct on valid end of program.
+
   exit_program_with_status(0); 
 }
 
