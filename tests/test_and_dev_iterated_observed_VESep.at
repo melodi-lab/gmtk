@@ -1,0 +1,21 @@
+
+# test and dev model iterated_observed_VESep
+
+
+AT_SETUP([iterated_observed_VESep: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/iterated_observed_VESep/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/iterated_observed_VESep && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([iterated_observed_VESep: infocommand])
+AT_SKIP_IF([test ! -f $TEST_AND_DEV/iterated_observed_VESep/didea_dts.so])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/iterated_observed_VESep/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/iterated_observed_VESep && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([iterated_observed_VESep: jtcommand])
+# https://j.ee.washington.edu/trac/gmtk/ticket/359
+AT_XFAIL_IF([true])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/iterated_observed_VESep/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/iterated_observed_VESep && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

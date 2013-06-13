@@ -1,0 +1,18 @@
+
+# test and dev model rws_example
+
+
+AT_SETUP([rws_example: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/rws_example/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/rws_example && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([rws_example: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/rws_example/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/rws_example && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([rws_example: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/rws_example/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/rws_example && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

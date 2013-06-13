@@ -1,0 +1,27 @@
+
+# test and dev model muri_uw
+
+
+AT_SETUP([muri_uw: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/muri_uw/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/muri_uw && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([muri_uw: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/muri_uw/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/muri_uw && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([muri_uw: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/muri_uw/jtcommand])
+# https://j.ee.washington.edu/trac/gmtk/ticket/323
+AT_XFAIL_IF([true])
+AT_CHECK([(cd $TEST_AND_DEV/muri_uw && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([muri_uw: vitcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/muri_uw/vitcommand])
+# https://j.ee.washington.edu/trac/gmtk/ticket/323
+AT_XFAIL_IF([true])
+AT_CHECK([(cd $TEST_AND_DEV/muri_uw && ulimit -v 8000000 && ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP

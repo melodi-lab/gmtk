@@ -1,0 +1,30 @@
+
+# test and dev model brock_problem
+
+
+AT_SETUP([brock_problem: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/brock_problem/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/brock_problem && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([brock_problem: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/brock_problem/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/brock_problem && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([brock_problem: traincommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/brock_problem/traincommand])
+AT_CHECK([(cd $TEST_AND_DEV/brock_problem && ulimit -v 8000000 && ulimit -t 120 && ./traincommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([brock_problem: jtcommand])
+# https://j.ee.washington.edu/trac/gmtk/ticket/250
+AT_XFAIL_IF([true])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/brock_problem/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/brock_problem && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([brock_problem: vitcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/brock_problem/vitcommand])
+AT_CHECK([(cd $TEST_AND_DEV/brock_problem && ulimit -v 8000000 && ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP

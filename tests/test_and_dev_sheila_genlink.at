@@ -1,0 +1,25 @@
+
+# test and dev model sheila_genlink
+
+
+AT_SETUP([sheila_genlink: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/sheila_genlink/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/sheila_genlink && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([sheila_genlink: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/sheila_genlink/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/sheila_genlink && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([sheila_genlink: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/sheila_genlink/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/sheila_genlink && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([sheila_genlink: vitcommand])
+# too slow
+AT_SKIP_IF([true])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/sheila_genlink/vitcommand])
+AT_CHECK([(cd $TEST_AND_DEV/sheila_genlink && ulimit -v 8000000 && ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP
