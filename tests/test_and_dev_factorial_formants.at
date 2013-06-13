@@ -1,0 +1,27 @@
+
+# test and dev model factorial_formants
+
+
+AT_SETUP([factorial_formants: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/factorial_formants/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/factorial_formants && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([factorial_formants: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/factorial_formants/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/factorial_formants && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([factorial_formants: jtcommand])
+# too slow
+AT_SKIP_IF([true])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/factorial_formants/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/factorial_formants && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([factorial_formants: vitcommand])
+# too slow
+AT_SKIP_IF([true])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/factorial_formants/vitcommand])
+AT_CHECK([(cd $TEST_AND_DEV/factorial_formants && ulimit -v 8000000 && ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP

@@ -1,0 +1,21 @@
+
+# test and dev model brock_test
+
+
+AT_SETUP([brock_test: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/brock_test/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/brock_test && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([brock_test: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/brock_test/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/brock_test && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([brock_test: jtcommand])
+# looks like the model is buggy
+# https://j.ee.washington.edu/trac/gmtk/ticket/251
+AT_SKIP_IF([true])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/brock_test/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/brock_test && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
