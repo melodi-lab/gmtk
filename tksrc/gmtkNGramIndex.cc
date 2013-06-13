@@ -59,7 +59,18 @@ static char* vocabFile = NULL;
 static bool outBin = false;
 
 
+#define GMTK_ARG_VERSION
+#define GMTK_ARG_HELP
+
+#define GMTK_ARGUMENTS_DEFINITION
+#include "GMTK_ObservationArguments.h"
+#undef GMTK_ARGUMENTS_DEFINITION
+
 Arg Arg::Args[] = {
+
+#define GMTK_ARGUMENTS_DOCUMENTATION
+#include "GMTK_ObservationArguments.h"
+#undef GMTK_ARGUMENTS_DOCUMENTATION
 
 	/////////////////////////////////////////////////////////////
 	// input parameter/structure file handling
@@ -106,6 +117,9 @@ int main(int argc, char *argv[]) {
 	  Arg::usage(); exit(-1);
 	}
 
+#define GMTK_ARGUMENTS_CHECK_ARGS
+#include "GMTK_ObservationArguments.h"
+#undef GMTK_ARGUMENTS_CHECK_ARGS
 
 	// figure out how many words in the vocab file
 	unsigned card = 0;

@@ -31,15 +31,38 @@ TESTSUITE = testsuite
 include autoconf_tests
 
 autoconf_tests:
-	(cd $(srcdir); ls gmtk_test_*.at) | $(AWK) 'BEGIN{print "LOCAL_GMTK_AT = \\"} {print $$0 " \\"} END{print "gmtk_tests.at"}'     > $@
+	(cd $(srcdir); ls gmtk_test_*.at) |        \
+	 $(AWK) 'BEGIN{print "LOCAL_GMTK_AT = \\"} \
+                      {print $$0 " \\"}            \
+                   END{print "gmtk_tests.at"}' > $@
+	(cd $(srcdir); ls test_and_dev_*.at) |          \
+	 $(AWK) 'BEGIN{print "LOCAL_TEST_AND_DEV = \\"} \
+                      {print $$0 " \\"}                 \
+                   END{print "testanddev.at"}' >> $@
 
-EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE) atlocal.in $(LOCAL_GMTK_AT) autoconf_tests
+EXTRA_DIST =          \
+testsuite.at          \
+testanddev.at         \
+$(srcdir)/package.m4  \
+$(TESTSUITE)          \
+testanddev            \
+atlocal.in            \
+$(LOCAL_GMTK_AT)      \
+$(LOCAL_TEST_AND_DEV) \
+autoconf_tests
 
 
 gmtk_tests.at:
 	touch $@
 	find $(srcdir) -type f -name gmtk_test_\*.at | \
 	  $(AWK) '{print "m4_include(["$$1"])"}' > $@
+
+testanddev.at:
+	echo "AT_COPYRIGHT([Copyright (C) 2013 Jeff Bilmes])" > $@
+	echo "AT_INIT([GMTK Test And Dev Suite])" >> $@
+	echo "AT_COLOR_TESTS" >> $@
+	find $(srcdir) -type f -name test_and_dev_\*.at | \
+	  $(AWK) '{print "m4_include(["$$1"])"}' >> $@
 
 check-local: atconfig atlocal $(TESTSUITE) gmtk_tests.at
 	$(SHELL) '$(srcdir)/$(TESTSUITE)' $(TESTSUITEFLAGS)
@@ -50,18 +73,26 @@ installcheck-local: atconfig atlocal $(TESTSUITE) gmtk_tests.at
 	$(TESTSUITEFLAGS)
 
 clean-local:
-	test ! -f '$(TESTSUITE)' || \
-	$(SHELL) '$(TESTSUITE)' --clean
+	test ! -f '$(TESTSUITE)'  || $(SHELL) '$(TESTSUITE)' --clean
 	test ! -f test_and_dev.at || rm test_and_dev.at
-	test ! -f gmtk_tests.at || rm gmtk_tests.at
-	test ! -f $(TESTSUITE) || rm $(TESTSUITE)
+	test ! -f gmtk_tests.at   || rm gmtk_tests.at
+	test ! -f $(TESTSUITE)    || rm $(TESTSUITE)
+	test ! -f 'testanddev'    || $(SHELL) 'testanddev' --clean
+	test ! -f testanddev.at   || rm testanddev.at
+	test ! -f testanddev      || rm testanddev
+	test ! -f autoconf_tests  || rm autoconf_tests
 
 distclean-local:
 	test ! -f atconfig || rm atconfig
 	test ! -f $(TESTSUITE).log || rm $(TESTSUITE).log 
+	test ! -f testanddev.log   || rm testanddev.log 
 
 AUTOM4TE = $(SHELL) $(top_srcdir)/missing --run autom4te
 AUTOTEST = $(AUTOM4TE) --language=autotest
 $(TESTSUITE): $(srcdir)/testsuite.at $(srcdir)/gmtk_tests.at $(srcdir)/package.m4
+	$(AUTOTEST) -I '$(srcdir)' -o $@.tmp $@.at
+	mv $@.tmp $@
+
+testanddev: $(srcdir)/testanddev.at $(srcdir)/package.m4
 	$(AUTOTEST) -I '$(srcdir)' -o $@.tmp $@.at
 	mv $@.tmp $@

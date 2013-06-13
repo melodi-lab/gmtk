@@ -376,8 +376,8 @@ main(int argc,char*argv[])
 
   logpr total_data_prob = 1.0;
 
-  if (JunctionTree::binaryViterbiFile && (pVitValsFileName || vitValsFileName)) {
-    error("Can't do both binary Viterbi output and -pVitValsFileName or -vitValsFileName");
+  if (JunctionTree::binaryViterbiFile && (mVitValsFileName || vitValsFileName)) {
+    error("Can't do both binary Viterbi output and -mVitValsFileName or -vitValsFileName");
   }
   // What is the difference between the pVit* files and the vit*
   // files?  The pVit* files are similar to the vit* files, but the
@@ -388,13 +388,13 @@ main(int argc,char*argv[])
   // for users, while the pVit files are more meant for algorithm
   // writters/debugging which is the reason that we have both of them
   // here.
-  FILE* pVitValsFile = NULL;
-  if (pVitValsFileName) {
-    if (strcmp("-",pVitValsFileName) == 0)
-      pVitValsFile = stdout;
+  FILE* mVitValsFile = NULL;
+  if (mVitValsFileName) {
+    if (strcmp("-",mVitValsFileName) == 0)
+      mVitValsFile = stdout;
     else {
-      if ((pVitValsFile = fopen(pVitValsFileName, "w")) == NULL)
-	error("Can't open file '%s' for writing\n",pVitValsFileName);
+      if ((mVitValsFile = fopen(mVitValsFileName, "w")) == NULL)
+	error("Can't open file '%s' for writing\n",mVitValsFileName);
     }
   }
 #if 1
@@ -407,8 +407,8 @@ main(int argc,char*argv[])
 	error("Can't open file '%s' for writing\n",vitValsFileName);
     }
   }
-  if (!pVitValsFile && !vitValsFile && !JunctionTree::binaryViterbiFile) {
-    error("Argument Error: Missing REQUIRED argument: -pVitValsFile <str>  OR  -vitValsFile <str> OR -binaryVitFile <str>\n");
+  if (!mVitValsFile && !vitValsFile && !JunctionTree::binaryViterbiFile) {
+    error("Argument Error: Missing REQUIRED argument: -mVitValsFile <str>  OR  -vitValsFile <str> OR -binaryVitFile <str>\n");
   }
 #endif
 
@@ -426,43 +426,52 @@ main(int argc,char*argv[])
   total_data_prob = 1.0;
   Range::iterator* dcdrng_it = new Range::iterator(dcdrng->begin());
     
-  regex_t *pVitPreg = NULL;
+  const unsigned case_ignore = (vitCaseSensitiveRegexFilter? 0 : REG_ICASE);
+  regex_t *vitPreg = NULL;
   if (pVitRegexFilter != NULL) {
-    pVitPreg = (regex_t*) malloc(sizeof(regex_t));
-    const unsigned case_ignore = (pVitCaseSensitiveRegexFilter? 0 : REG_ICASE);
-    if (regcomp(pVitPreg,pVitRegexFilter,
+    vitPreg = (regex_t*) malloc(sizeof(regex_t));
+    if (regcomp(vitPreg,pVitRegexFilter,
 		REG_EXTENDED
 		| case_ignore
 		| REG_NOSUB
 		)) {
-      error("ERROR: problem with regular expression filter string '%s'\n",pVitRegexFilter);
+      error("ERROR: problem with prolog regular expression filter string '%s'\n",pVitRegexFilter);
     }
   }
-
-  regex_t *vitPreg = NULL;
-  if (vitRegexFilter != NULL) {
-    vitPreg = (regex_t*) malloc(sizeof(regex_t));
-    const unsigned case_ignore = (vitCaseSensitiveRegexFilter? 0 : REG_ICASE);
-    if (regcomp(vitPreg,vitRegexFilter,
+  regex_t *vitCreg = NULL;
+  if (cVitRegexFilter != NULL) {
+    vitCreg = (regex_t*) malloc(sizeof(regex_t));
+    if (regcomp(vitCreg,cVitRegexFilter,
 		REG_EXTENDED
 		| case_ignore
 		| REG_NOSUB
 		)) {
-      error("ERROR: problem with regular expression filter string '%s'\n",vitRegexFilter);
+      error("ERROR: problem with chunk regular expression filter string '%s'\n",cVitRegexFilter);
+    }
+  }
+  regex_t *vitEreg = NULL;
+  if (eVitRegexFilter != NULL) {
+    vitEreg = (regex_t*) malloc(sizeof(regex_t));
+    if (regcomp(vitEreg,eVitRegexFilter,
+		REG_EXTENDED
+		| case_ignore
+		| REG_NOSUB
+		)) {
+      error("ERROR: problem with epilog regular expression filter string '%s'\n",pVitRegexFilter);
     }
   }
 
   if (JunctionTree::binaryViterbiFile) {
 
     // Here we write out the binary Viterbi file header. This is the magic
-    // string "GMTKVIT\n" followed by the # of segments (4 bytes) and k
-    // for k-best (4 bytes, always 1 for now...)
+    // string "GMTKVIT\n" followed by a BOM (4 bytes), the # of segments (4 bytes),
+    // and k for k-best (4 bytes, always 1 for now...)
 
     if (fputs(GMTK_VITERBI_COOKIE, JunctionTree::binaryViterbiFile) == EOF) {
       char *err = strerror(errno);
       error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
     }
-    int byte_order_mark = 0x01020304;
+    int byte_order_mark = 0x01020304; assert(sizeof(byte_order_mark) == 4);
     if (fwrite(&byte_order_mark, sizeof(byte_order_mark), 1, JunctionTree::binaryViterbiFile) != 1) {
       char *err = strerror(errno);
       error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
@@ -492,7 +501,7 @@ main(int argc,char*argv[])
             "files. The current file offset size appears to be %u bits. The "
             "configure script used to build GMTK should have arranged to use "
             "64-bit file offsets if that's possible on this platform.\n",
-            (unsigned)sizeof(gmtk_off_t));
+            (unsigned)(sizeof(gmtk_off_t)*8));
     }
     gmtk_off_t off = (gmtk_off_t) 0;
     float score = NAN;
@@ -699,17 +708,17 @@ main(int argc,char*argv[])
 		segment);
       else {
 
-	if (pVitValsFile) {
-	  fprintf(pVitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
+	if (mVitValsFile) {
+	  fprintf(mVitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
 		  segment,numFrames,probe.val());
-	  myjt.printSavedPartitionViterbiValues(pVitValsFile,
-						pVitAlsoPrintObservedVariables,
-						pVitPreg,
-						pVitPartRangeFilter);
+	  myjt.printSavedPartitionViterbiValues(mVitValsFile,
+						vitAlsoPrintObservedVariables,
+						vitPreg, vitCreg, vitEreg,
+						vitPartRangeFilter);
 	}
 
 #if 1     
-	if (pVitValsFile || pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange)
+	if (mVitValsFile || pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange)
 	  myjt.resetViterbiPrinting();
 	if (vitValsFile) {
 	  fprintf(vitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
@@ -717,12 +726,12 @@ main(int argc,char*argv[])
 	  if (!vitFrameRangeFilter) {
 	    myjt.printSavedViterbiValues(numFrames, vitValsFile, NULL,
 					 vitAlsoPrintObservedVariables,
-					 vitPreg,
+					 vitPreg, vitCreg, vitEreg,
 					 vitPartRangeFilter);
 	  } else {
 	    myjt.printSavedViterbiFrames(numFrames, vitValsFile, NULL,
 					 vitAlsoPrintObservedVariables,
-					 vitPreg,
+					 vitPreg, vitCreg, vitEreg,
 					 vitFrameRangeFilter);
 	  }
 	}
@@ -741,9 +750,17 @@ main(int argc,char*argv[])
   if (eCliqueFile) delete eCliqueFile;
 #endif
 
-  if (pVitPreg != NULL) {
-    regfree(pVitPreg);
-    free(pVitPreg);
+  if (vitPreg != NULL) {
+    regfree(vitPreg);
+    free(vitPreg);
+  }
+  if (vitCreg != NULL) {
+    regfree(vitCreg);
+    free(vitCreg);
+  }
+  if (vitEreg != NULL) {
+    regfree(vitEreg);
+    free(vitEreg);
   }
 
   infoMsg(IM::Default,"Total data log prob for all segments is: %1.9e\n",
@@ -756,8 +773,8 @@ main(int argc,char*argv[])
     reportTiming(rus,rue,userTime,sysTime,stdout);
   }
 
-  if (pVitValsFile && pVitValsFile != stdout)
-    fclose(pVitValsFile);
+  if (mVitValsFile && mVitValsFile != stdout)
+    fclose(mVitValsFile);
 #if 1
   if (vitValsFile && vitValsFile != stdout)
     fclose(vitValsFile);
