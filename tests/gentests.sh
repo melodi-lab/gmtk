@@ -8,15 +8,15 @@ if [ $# != 1 ]; then
 fi
 
 for d in `ls $1`; do
-  if test -x $1/$d/tricommand -a ! -f gmtk_test_and_dev_${d}.at; then
-    cat <<EOF >gmtk_test_and_dev_${d}.at
+  if test -x $1/$d/tricommand -a ! -f test_and_dev_${d}.at; then
+    cat <<EOF >test_and_dev_${d}.at
 
 # test and dev model $d
 
 EOF
     for com in tri info train jt vit; do
       if test -x $1/$d/${com}command; then
-	cat <<EOF >>gmtk_test_and_dev_${d}.at
+	cat <<EOF >>test_and_dev_${d}.at
 
 AT_SETUP([${d}: ${com}command])
 AT_SKIP_IF([test ! -x \$TEST_AND_DEV/${d}/${com}command])
