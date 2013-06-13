@@ -15,6 +15,6 @@ AT_CLEANUP
 AT_SETUP([random_10: jtcommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/random_10/jtcommand])
 # missing files
-AT_SKIP_IF([true])
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
 AT_CHECK([(cd $TEST_AND_DEV/random_10 && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
 AT_CLEANUP

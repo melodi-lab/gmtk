@@ -14,7 +14,7 @@ AT_CLEANUP
 
 AT_SETUP([zafer_abort: traincommand])
 # https://j.ee.washington.edu/trac/gmtk/ticket/306
-AT_XFAIL_IF([true])
+AT_XFAIL_IF([test x"$GMTK_NOXFAIL" = x""])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/zafer_abort/traincommand])
 AT_CHECK([(cd $TEST_AND_DEV/zafer_abort && ulimit -v 8000000 && ulimit -t 120 && ./traincommand)], [], [ignore], [ignore])
 AT_CLEANUP

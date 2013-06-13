@@ -23,7 +23,7 @@ AT_CLEANUP
 
 AT_SETUP([xwrd.n: vitcommand])
 # too slow
-AT_SKIP_IF([true])
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/xwrd.n/vitcommand])
 AT_CHECK([(cd $TEST_AND_DEV/xwrd.n && ulimit -v 8000000 && ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
 AT_CLEANUP

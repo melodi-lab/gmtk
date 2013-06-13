@@ -14,7 +14,7 @@ AT_CLEANUP
 
 AT_SETUP([dcd: jtcommand])
 # requires too much memory
-AT_SKIP_IF([true])
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/dcd/jtcommand])
 AT_CHECK([(cd $TEST_AND_DEV/dcd && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
 AT_CLEANUP

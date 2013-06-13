@@ -19,7 +19,7 @@ AT_CLEANUP
 
 AT_SETUP([brock_problem: jtcommand])
 # https://j.ee.washington.edu/trac/gmtk/ticket/250
-AT_XFAIL_IF([true])
+AT_XFAIL_IF([test x"$GMTK_NOXFAIL" = x""])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/brock_problem/jtcommand])
 AT_CHECK([(cd $TEST_AND_DEV/brock_problem && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
 AT_CLEANUP
