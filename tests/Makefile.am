@@ -35,7 +35,7 @@ autoconf_tests:
 	 $(AWK) 'BEGIN{print "LOCAL_GMTK_AT = \\"} \
                       {print $$0 " \\"}            \
                    END{print "gmtk_tests.at"}' > $@
-	(cd $(srcdir); ls test_and_dev_*.at) |          \
+	(cd $(srcdir); ls test_and_dev_scripts/test_and_dev_*.at) | \
 	 $(AWK) 'BEGIN{print "LOCAL_TEST_AND_DEV = \\"} \
                       {print $$0 " \\"}                 \
                    END{print "testanddev.at"}' >> $@
