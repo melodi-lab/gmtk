@@ -14,7 +14,7 @@ AT_CLEANUP
 
 AT_SETUP([test-trigram.1: traincommand])
 # https://j.ee.washington.edu/trac/gmtk/ticket/423
-AT_XFAIL_IF([true])
+AT_XFAIL_IF([test x"$GMTK_NOXFAIL" = x""])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/test-trigram.1/traincommand])
 AT_CHECK([(cd $TEST_AND_DEV/test-trigram.1 && ulimit -v 8000000 && ulimit -t 120 && ./traincommand)], [], [ignore], [ignore])
 AT_CLEANUP
@@ -22,13 +22,13 @@ AT_CLEANUP
 AT_SETUP([test-trigram.1: jtcommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/test-trigram.1/jtcommand])
 # 0-cliques
-AT_SKIP_IF([true])
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
 AT_CHECK([(cd $TEST_AND_DEV/test-trigram.1 && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([test-trigram.1: vitcommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/test-trigram.1/vitcommand])
 # 0-cliques
-AT_SKIP_IF([true])
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
 AT_CHECK([(cd $TEST_AND_DEV/test-trigram.1 && ulimit -v 8000000 && ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
 AT_CLEANUP

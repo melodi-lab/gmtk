@@ -14,14 +14,14 @@ AT_CLEANUP
 
 AT_SETUP([CMM: jtcommand])
 # takes too long & too much memory
-AT_SKIP_IF([true])
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/CMM/jtcommand])
 AT_CHECK([(cd $TEST_AND_DEV/CMM && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand left-model.str)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([CMM: vitcommand])
 # takes too long & too much memory
-AT_SKIP_IF([true])
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/CMM/vitcommand2])
 AT_CHECK([(cd $TEST_AND_DEV/CMM && ulimit -v 8000000 && ulimit -t 120 && ./vitcommand2 model.str)], [], [ignore], [ignore])
 AT_CLEANUP

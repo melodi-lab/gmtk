@@ -15,7 +15,7 @@ AT_CLEANUP
 AT_SETUP([dual_accumulator_shift.assert: traincommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/dual_accumulator_shift.assert/traincommand])
 # https://j.ee.washington.edu/trac/gmtk/ticket/68
-AT_XFAIL_IF([true])
+AT_XFAIL_IF([test x"$GMTK_NOXFAIL" = x""])
 AT_CHECK([(cd $TEST_AND_DEV/dual_accumulator_shift.assert && ulimit -v 8000000 && ulimit -t 120 && ./traincommand)], [], [ignore], [ignore])
 AT_CLEANUP
 

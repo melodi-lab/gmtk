@@ -14,14 +14,14 @@ AT_CLEANUP
 
 AT_SETUP([ajit-0clique: jtcommand])
 # https://j.ee.washington.edu/trac/gmtk/ticket/152
-AT_XFAIL_IF([true])
+AT_XFAIL_IF([test x"$GMTK_NOXFAIL" = x""])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/ajit-0clique/jtcommand])
 AT_CHECK([(cd $TEST_AND_DEV/ajit-0clique && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([ajit-0clique: vitcommand])
 # https://j.ee.washington.edu/trac/gmtk/ticket/152
-AT_XFAIL_IF([true])
+AT_XFAIL_IF([test x"$GMTK_NOXFAIL" = x""])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/ajit-0clique/vitcommand])
 AT_CHECK([(cd $TEST_AND_DEV/ajit-0clique && ulimit -v 8000000 && ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
 AT_CLEANUP
