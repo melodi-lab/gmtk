@@ -52,8 +52,11 @@ test_and_dev_scripts/test_and_dev_Aug31_3.at \
 test_and_dev_scripts/test_and_dev_CMM.at \
 test_and_dev_scripts/test_and_dev_Dec28_18_2004.at \
 test_and_dev_scripts/test_and_dev_SVM_to_DBN_exp.at \
+test_and_dev_scripts/test_and_dev_abhishek_protein_2nd_structure.at \
 test_and_dev_scripts/test_and_dev_abhishek_protein_broken.at \
 test_and_dev_scripts/test_and_dev_ajit-0clique.at \
+test_and_dev_scripts/test_and_dev_assist_discrete_heirarchial_model_MSBGPS_withMap.at \
+test_and_dev_scripts/test_and_dev_assist_discrete_model_MSBGPS.at \
 test_and_dev_scripts/test_and_dev_auroraTutorial.at \
 test_and_dev_scripts/test_and_dev_bat.at \
 test_and_dev_scripts/test_and_dev_beta_test_1.at \
@@ -79,6 +82,8 @@ test_and_dev_scripts/test_and_dev_gmseg-pilot.at \
 test_and_dev_scripts/test_and_dev_grass.at \
 test_and_dev_scripts/test_and_dev_hoffman_gamma_bug.at \
 test_and_dev_scripts/test_and_dev_hui-lattice-align.at \
+test_and_dev_scripts/test_and_dev_hui_lattice_keyword_exp_phone_durations.at \
+test_and_dev_scripts/test_and_dev_hui_lattice_keyword_phone_durations.at \
 test_and_dev_scripts/test_and_dev_iterated_observed_VESep.at \
 test_and_dev_scripts/test_and_dev_john.at \
 test_and_dev_scripts/test_and_dev_karim.at \
@@ -97,6 +102,10 @@ test_and_dev_scripts/test_and_dev_no_time_parent.at \
 test_and_dev_scripts/test_and_dev_parity.at \
 test_and_dev_scripts/test_and_dev_peshkin_hmm.at \
 test_and_dev_scripts/test_and_dev_phone_free_model.at \
+test_and_dev_scripts/test_and_dev_polyphase_10.2phase.at \
+test_and_dev_scripts/test_and_dev_polyphase_10.3phase.at \
+test_and_dev_scripts/test_and_dev_polyphase_500.2phase.at \
+test_and_dev_scripts/test_and_dev_polyphase_500.3phase.at \
 test_and_dev_scripts/test_and_dev_predictive_pruning.at \
 test_and_dev_scripts/test_and_dev_psm_vecpt.at \
 test_and_dev_scripts/test_and_dev_random_10.at \
@@ -114,6 +123,10 @@ test_and_dev_scripts/test_and_dev_simple_hmm_2frame_chunk.at \
 test_and_dev_scripts/test_and_dev_simple_hmm_all_observed.at \
 test_and_dev_scripts/test_and_dev_simple_mixtures.at \
 test_and_dev_scripts/test_and_dev_snake.at \
+test_and_dev_scripts/test_and_dev_staka_gmtk.at \
+test_and_dev_scripts/test_and_dev_staka_hmm.at \
+test_and_dev_scripts/test_and_dev_staka_test1.at \
+test_and_dev_scripts/test_and_dev_staka_test2.at \
 test_and_dev_scripts/test_and_dev_static_example.at \
 test_and_dev_scripts/test_and_dev_tagger.at \
 test_and_dev_scripts/test_and_dev_test-trigram.1.at \
@@ -122,6 +135,8 @@ test_and_dev_scripts/test_and_dev_thad_july.at \
 test_and_dev_scripts/test_and_dev_thad_june.at \
 test_and_dev_scripts/test_and_dev_ticket137.at \
 test_and_dev_scripts/test_and_dev_ticket144.at \
+test_and_dev_scripts/test_and_dev_ticket425.at \
+test_and_dev_scripts/test_and_dev_timit_system.at \
 test_and_dev_scripts/test_and_dev_toyFisher.at \
 test_and_dev_scripts/test_and_dev_trigger.at \
 test_and_dev_scripts/test_and_dev_triphone_hmm.at \
