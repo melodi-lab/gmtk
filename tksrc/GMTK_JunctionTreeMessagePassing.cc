@@ -863,9 +863,12 @@ JunctionTree::printInterleavedPartitionViterbiValues(unsigned numFrames,
   RngDecisionTree::EquationClass eTriggerEqn;
   initializeViterbiTrigger(eVitTrigger, variableNames, eVitTriggerVec, eVitTriggerExpr, eTriggerEqn, 'e');
 
-  bool first_P[3] = {true,true,true};
-  bool first_C[3] = {true,true,true};
-  bool first_E[3] = {true,true,true};
+  bool *first_P = new bool[N_best];
+  bool *first_C = new bool[N_best];
+  bool *first_E = new bool[N_best];
+  for (unsigned i=0; i < N_best; i+=1) {
+    first_P[i] = first_C[i] = first_E[i] = true;
+  }
   unsigned P_size = 0;
   unsigned C_size = 0;
   unsigned E_size = 0;
@@ -926,6 +929,9 @@ JunctionTree::printInterleavedPartitionViterbiValues(unsigned numFrames,
   delete[] previous_P_values;
   delete[] previous_C_values;
   delete[] previous_E_values;
+  delete[] first_P;
+  delete[] first_C;
+  delete[] first_E;
   //clearAfterUnroll();  ???
 }
 
