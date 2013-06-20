@@ -1,0 +1,20 @@
+
+# test and dev model random_10
+
+
+AT_SETUP([random_10: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/random_10/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/random_10 && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([random_10: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/random_10/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/random_10 && ulimit -v 8000000 && ulimit -t 120 && ./infocommand -alloc 2)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([random_10: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/random_10/jtcommand])
+# missing files
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
+AT_CHECK([(cd $TEST_AND_DEV/random_10 && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

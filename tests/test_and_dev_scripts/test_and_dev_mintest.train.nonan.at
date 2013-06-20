@@ -1,0 +1,36 @@
+
+# test and dev model mintest.train.nonan
+
+
+AT_SETUP([mintest.train.nonan: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/mintest.train.nonan/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/mintest.train.nonan && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([mintest.train.nonan: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/mintest.train.nonan/infocommand])
+# https://j.ee.washington.edu/trac/gmtk/ticket/161
+AT_XFAIL_IF([test x"$GMTK_NOXFAIL" = x""])
+AT_CHECK([(cd $TEST_AND_DEV/mintest.train.nonan && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([mintest.train.nonan: traincommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/mintest.train.nonan/traincommand])
+# https://j.ee.washington.edu/trac/gmtk/ticket/161
+AT_XFAIL_IF([test x"$GMTK_NOXFAIL" = x""])
+AT_CHECK([(cd $TEST_AND_DEV/mintest.train.nonan && ulimit -v 8000000 && ulimit -t 120 && ./traincommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([mintest.train.nonan: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/mintest.train.nonan/jtcommand])
+# https://j.ee.washington.edu/trac/gmtk/ticket/161
+AT_XFAIL_IF([test x"$GMTK_NOXFAIL" = x""])
+AT_CHECK([(cd $TEST_AND_DEV/mintest.train.nonan && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([mintest.train.nonan: vitcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/mintest.train.nonan/vitcommand])
+# https://j.ee.washington.edu/trac/gmtk/ticket/161
+AT_XFAIL_IF([test x"$GMTK_NOXFAIL" = x""])
+AT_CHECK([(cd $TEST_AND_DEV/mintest.train.nonan && ulimit -v 8000000 && ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP
