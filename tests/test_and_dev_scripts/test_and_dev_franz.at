@@ -1,0 +1,20 @@
+
+# test and dev model franz
+
+
+AT_SETUP([franz: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/franz/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/franz && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([franz: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/franz/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/franz && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([franz: jtcommand])
+# too big
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/franz/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/franz && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

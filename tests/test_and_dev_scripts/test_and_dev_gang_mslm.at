@@ -1,0 +1,27 @@
+
+# test and dev model gang_mslm
+
+
+AT_SETUP([gang_mslm: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/gang_mslm/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/gang_mslm && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([gang_mslm: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/gang_mslm/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/gang_mslm && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([gang_mslm: jtcommand])
+# 0-cliques
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/gang_mslm/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/gang_mslm && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([gang_mslm: vitcommand])
+# 0-cliques
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/gang_mslm/vitcommand])
+AT_CHECK([(cd $TEST_AND_DEV/gang_mslm && ulimit -v 8000000 && ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP
