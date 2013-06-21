@@ -352,6 +352,7 @@ void
 MissingFeatureScaledDiagGaussian::emStartIteration()
 {
   assert ( basicAllocatedBitIsSet() );
+  assert ( emEmAllocatedBitIsSet() );
   if (!emAmTrainingBitIsSet())
     return;
 
@@ -554,6 +555,7 @@ MissingFeatureScaledDiagGaussian::emIncrement(logpr prob,
 			  const int stride)
 {
   assert ( basicAllocatedBitIsSet() );
+  assert ( emEmAllocatedBitIsSet() );
   if (!emAmTrainingBitIsSet())
     return;
 
@@ -626,6 +628,8 @@ MissingFeatureScaledDiagGaussian::emIncrementMeanDiagCovar(
 				       float *meanAccumulator,
 				       float *diagCovarAccumulator)
 {
+  assert ( emEmAllocatedBitIsSet() );
+
   register const float * f_p = f;
   register const float *const f_p_endp = f + len;
   register float *meanAccumulator_p = meanAccumulator;
@@ -699,6 +703,8 @@ MissingFeatureScaledDiagGaussian::fkIncrementMeanDiagCovar(
 				       float *meanAccumulator,
 				       float *diagCovarAccumulator)
 {
+  assert ( emEmAllocatedBitIsSet() );
+
   register const float * f_p = f;
   register const float *const f_p_endp = f + len;
 
@@ -744,6 +750,8 @@ void
 MissingFeatureScaledDiagGaussian::emEndIteration()
 {
   assert ( basicAllocatedBitIsSet() );
+  assert ( emEmAllocatedBitIsSet() );
+
   if (!emAmTrainingBitIsSet())
     return;
 
@@ -850,6 +858,8 @@ MissingFeatureScaledDiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& of
 					 bool writeLogVals,
 					 bool writeZeros)
 {
+  assert ( emEmAllocatedBitIsSet() );
+
   // since this is a Gaussian, we ignore the writeLogVals
   // argument since it doesn't make sense to take log of
   // these values since they are continuous, could be negative, etc.
@@ -878,6 +888,7 @@ MissingFeatureScaledDiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& of
 void
 MissingFeatureScaledDiagGaussian::emLoadObjectsDummyAccumulators(iDataStreamFile& ifile)
 {
+  assert ( emEmAllocatedBitIsSet() );
   //
   // ASSUME MEANS AND COVARIANCES ARE OF TYPE FLOAT
   // See the MeanVector.h and DiagcovarVector.h for specifics.
@@ -898,6 +909,7 @@ MissingFeatureScaledDiagGaussian::emLoadObjectsDummyAccumulators(iDataStreamFile
 void
 MissingFeatureScaledDiagGaussian::emZeroOutObjectsAccumulators()
 {
+  assert ( emEmAllocatedBitIsSet() );
   for (int i=0;i<trMembers->nextMeans.len();i++) {
     trMembers->nextMeans[i] = 0.0;
   }
@@ -912,6 +924,7 @@ MissingFeatureScaledDiagGaussian::emZeroOutObjectsAccumulators()
 void
 MissingFeatureScaledDiagGaussian::emLoadObjectsAccumulators(iDataStreamFile& ifile)
 {
+  assert ( emEmAllocatedBitIsSet() );
   for (int i=0;i<trMembers->nextMeans.len();i++) {
     ifile.read(trMembers->nextMeans[i],"MissingFeatureScaledDiagGaussian load accums nm.");
   }
@@ -928,6 +941,7 @@ MissingFeatureScaledDiagGaussian::emLoadObjectsAccumulators(iDataStreamFile& ifi
 void
 MissingFeatureScaledDiagGaussian::emAccumulateObjectsAccumulators(iDataStreamFile& ifile)
 {
+  assert ( emEmAllocatedBitIsSet() );
   //
   // ASSUME MEANS AND COVARIANCES ARE OF TYPE FLOAT
   // See the MeanVector.h and DiagcovarVector.h for specifics.

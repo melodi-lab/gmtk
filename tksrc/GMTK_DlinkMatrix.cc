@@ -404,6 +404,7 @@ DlinkMatrix::emStartIteration(sArray<float>& xzAccumulators,
 
   if (emOnGoingBitIsSet()) {
     // EM already on going.
+    assert ( emEmAllocatedBitIsSet() );
     // Increment the count of number of Gaussian Components using this mean.
     trMembers->refCount++;
     // this object therefore is shared, set the bit saying so.
@@ -916,6 +917,7 @@ void
 DlinkMatrix::emSwapCurAndNew()
 {
   assert ( basicAllocatedBitIsSet() );
+  assert ( emEmAllocatedBitIsSet() );
   if (!emAmTrainingBitIsSet())
     return;
 
@@ -947,7 +949,6 @@ void
 DlinkMatrix::emStoreAccumulators(oDataStreamFile& ofile)
 {
   assert ( basicAllocatedBitIsSet() );   
-  assert ( emEmAllocatedBitIsSet() );
 
   if (numTimesShared == 1 && !emAmTrainingBitIsSet()) {
     // then we are not training, because
