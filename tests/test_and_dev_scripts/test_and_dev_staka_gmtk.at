@@ -14,10 +14,14 @@ AT_CLEANUP
 
 AT_SETUP([staka/gmtk: jtcommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/staka/gmtk/jtcommand])
+# too slow
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
 AT_CHECK([(cd $TEST_AND_DEV/staka/gmtk && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([staka/gmtk: vitcommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/staka/gmtk/vitcommand])
+# too slow
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
 AT_CHECK([(cd $TEST_AND_DEV/staka/gmtk && ulimit -v 8000000 &&            ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
 AT_CLEANUP
