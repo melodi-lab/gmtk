@@ -166,7 +166,7 @@ DlinkMatrix::read(iDataStreamFile& is)
   }
   setBasicAllocatedBit();
   numTimesShared = 0;
-  refCount = 0;
+
 }
 
 
@@ -316,7 +316,7 @@ DlinkMatrix::noisyClone()
       clone->_name = _name + string("_cl") + buff;
       cloneNo++;
     } while (GM_Parms.dLinkMatsMap.find(clone->_name) != GM_Parms.dLinkMatsMap.end());
-    clone->refCount = 0;
+
     clone->numTimesShared = 0;
     clone->dLinks = dLinks;
 
@@ -367,7 +367,7 @@ DlinkMatrix*
 DlinkMatrix::identicalIndependentClone()
 {
   DlinkMatrix* newDLM = new DlinkMatrix();
-  newDLM->refCount = 0;
+
   newDLM->numTimesShared = 0;
 
 
@@ -405,7 +405,7 @@ DlinkMatrix::emStartIteration(sArray<float>& xzAccumulators,
   if (emOnGoingBitIsSet()) {
     // EM already on going.
     // Increment the count of number of Gaussian Components using this mean.
-    refCount++;
+    trMembers->refCount++;
     // this object therefore is shared, set the bit saying so.
     emSetSharedBit();
 
@@ -440,6 +440,7 @@ DlinkMatrix::emStartIteration(sArray<float>& xzAccumulators,
 
   if (!emEmAllocatedBitIsSet()) {
     // this is presumably the first time
+    trMembers.allocateIfNeeded();
     emSetEmAllocatedBit();
   }
 
@@ -450,7 +451,7 @@ DlinkMatrix::emStartIteration(sArray<float>& xzAccumulators,
   emClearAccInitializedBit();
 
   accumulatedProbability = 0.0;
-  refCount = 1;
+  trMembers->refCount = 1;
   emClearSharedBit();
 
   /////////////////////////////////////////////
@@ -683,6 +684,7 @@ DlinkMatrix::emEndIterationSharedMeansCovarsDlinks(const float*const xzAccumulat
 						   const DiagCovarVector* covar)
 {
   assert ( basicAllocatedBitIsSet() );
+  assert ( emEmAllocatedBitIsSet() );
 
   // we return if both 1) the not training bit is set
   // and 2) there is no chance that this object will be shared.
@@ -696,18 +698,18 @@ DlinkMatrix::emEndIterationSharedMeansCovarsDlinks(const float*const xzAccumulat
   // return;
   
   if (!emAccInitializedBitIsSet()) {
-    nextArr.growIfNeeded(dLinks->totalNumberLinks());
-    for (int i=0;i<nextArr.len();i++) {
-      nextArr[i] = 0.0;
+    trMembers->nextArr.growIfNeeded(dLinks->totalNumberLinks());
+    for (int i=0;i<trMembers->nextArr.len();i++) {
+      trMembers->nextArr[i] = 0.0;
     }
-    sharedZZDenominator.growIfNeeded(dLinks->zzAccumulatorLength());
-    for (int i=0;i<sharedZZDenominator.len();i++) {
-      sharedZZDenominator[i] = 0.0;
+    trMembers->sharedZZDenominator.growIfNeeded(dLinks->zzAccumulatorLength());
+    for (int i=0;i<trMembers->sharedZZDenominator.len();i++) {
+      trMembers->sharedZZDenominator[i] = 0.0;
     }
     emSetAccInitializedBit();
   }
 
-  if (refCount > 0) {
+  if (trMembers->refCount > 0) {
     // if this isn't the case, something is wrong.
     assert ( emOnGoingBitIsSet() );
 
@@ -721,9 +723,9 @@ DlinkMatrix::emEndIterationSharedMeansCovarsDlinks(const float*const xzAccumulat
     const float* zAccumulators_ptr = zAccumulators;
     const float* zzAccumulators_ptr = zzAccumulators;    
 
-    float *nextArr_ptr = nextArr.ptr;
+    float *nextArr_ptr = trMembers->nextArr.ptr;
 
-    double *sharedZZDenominator_ptr = sharedZZDenominator.ptr;
+    double *sharedZZDenominator_ptr = trMembers->sharedZZDenominator.ptr;
 
     for (int i=0;i<dim();i++) {
       
@@ -751,14 +753,14 @@ DlinkMatrix::emEndIterationSharedMeansCovarsDlinks(const float*const xzAccumulat
       }
     }
 
-    refCount--;
+    trMembers->refCount--;
   }
 
   /////////////////////////////////////////////
   // if there is still someone who
   // has not given us his/her accumulators
   // then we return w/o finishing.
-  if (refCount > 0)
+  if (trMembers->refCount > 0)
     return;
 
   // accumulatedProbability.floor();
@@ -766,12 +768,12 @@ DlinkMatrix::emEndIterationSharedMeansCovarsDlinks(const float*const xzAccumulat
     infoMsg(IM::Warning,"WARNING: shared dLink matrix '%s' received only %e accumulated log probability in EM iteration, using previous matrix",
 	    name().c_str(),
 	    accumulatedProbability.val());
-    for (int i=0;i<nextArr.len();i++)
-      nextArr[i] = arr[i];
+    for (int i=0;i<trMembers->nextArr.len();i++)
+      trMembers->nextArr[i] = arr[i];
   } else {
 
-    double *sharedZZDenominator_ptr = sharedZZDenominator.ptr;
-    float *nextArr_ptr = nextArr.ptr;
+    double *sharedZZDenominator_ptr = trMembers->sharedZZDenominator.ptr;
+    float *nextArr_ptr = trMembers->nextArr.ptr;
 
     sArray<double> nextDlinkMat;
     sArray <double> expSharedZZDen;
@@ -856,6 +858,7 @@ void
 DlinkMatrix::emEndIterationNoSharingAlreadyNormalized(const float*const xzAccumulators)
 {
   assert ( basicAllocatedBitIsSet() );
+  assert ( emEmAllocatedBitIsSet() );
 
   // we return if both 1) the not training bit is set
   // and 2) there is no chance that this object will be shared.
@@ -873,31 +876,31 @@ DlinkMatrix::emEndIterationNoSharingAlreadyNormalized(const float*const xzAccumu
   assert ( emOnGoingBitIsSet() );
 
   // shouldn't be called when sharing occurs, ensure this.
-  assert ( refCount == 1 );
+  assert ( trMembers->refCount == 1 );
   assert (!emSharedBitIsSet());
 
 
   if (!emAccInitializedBitIsSet()) {
-    nextArr.growIfNeeded(dLinks->totalNumberLinks());
-    for (int i=0;i<nextArr.len();i++) {
-      nextArr[i] = 0.0;
+    trMembers->nextArr.growIfNeeded(dLinks->totalNumberLinks());
+    for (int i=0;i<trMembers->nextArr.len();i++) {
+      trMembers->nextArr[i] = 0.0;
     }
     emSetAccInitializedBit();
   }
 
-  refCount = 0;
+  trMembers->refCount = 0;
 
   // accumulatedProbability.floor();
   if (accumulatedProbability < minContAccumulatedProbability()) {
     infoMsg(IM::Warning,"WARNING: dLink matrx '%s' received only %e accumulated log probability in EM iteration, using previous matrix",
 	    name().c_str(),
 	    accumulatedProbability.val());
-    for (int i=0;i<nextArr.len();i++)
-      nextArr[i] = arr[i];
+    for (int i=0;i<trMembers->nextArr.len();i++)
+      trMembers->nextArr[i] = arr[i];
   } else {
     // finish computing the next means.
-    for (int i=0;i<nextArr.len();i++) {
-      nextArr[i] = xzAccumulators[i];
+    for (int i=0;i<trMembers->nextArr.len();i++) {
+      trMembers->nextArr[i] = xzAccumulators[i];
     }
   }
 
@@ -919,12 +922,12 @@ DlinkMatrix::emSwapCurAndNew()
   // we should have that the number of calls
   // to emStartIteration and emEndIteration are
   // the same.
-  assert ( refCount == 0 );
+  assert ( trMembers->refCount == 0 );
 
   if (!emSwappableBitIsSet())
     return;
   for (int i=0;i<arr.len();i++) {
-    genSwap(arr[i],nextArr[i]);
+    genSwap(arr[i],trMembers->nextArr[i]);
   }
   // make no longer swappable
   emClearSwappableBit();
@@ -943,7 +946,9 @@ DlinkMatrix::emSwapCurAndNew()
 void
 DlinkMatrix::emStoreAccumulators(oDataStreamFile& ofile)
 {
-  assert ( basicAllocatedBitIsSet() );
+  assert ( basicAllocatedBitIsSet() );   
+  assert ( emEmAllocatedBitIsSet() );
+
   if (numTimesShared == 1 && !emAmTrainingBitIsSet()) {
     // then we are not training, because
     // we have turned off training of this object.

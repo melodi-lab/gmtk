@@ -348,7 +348,6 @@ MissingFeatureScaledDiagGaussian::identicalIndependentClone()
 /////////////////
 
 
-
 void
 MissingFeatureScaledDiagGaussian::emStartIteration()
 {
@@ -361,6 +360,7 @@ MissingFeatureScaledDiagGaussian::emStartIteration()
 
   if (!emEmAllocatedBitIsSet()) {
     // this is presumably the first time
+    trMembers.allocateIfNeeded();
     emSetEmAllocatedBit();
   }
 
@@ -369,8 +369,8 @@ MissingFeatureScaledDiagGaussian::emStartIteration()
   emSetSwappableBit();
 
   accumulatedProbability = 0.0;
-  mean->emStartIteration(nextMeans);
-  covar->emStartIteration(nextDiagCovars);
+  mean->emStartIteration(trMembers->nextMeans);
+  covar->emStartIteration(trMembers->nextDiagCovars);
 
   if (covar->emSharedBitIsSet() || mean->emSharedBitIsSet()) {
       error("ERROR: MissingFeatureScaledDiagGaussian Component '%s' has shared either its mean '%s' or covariance '%s' during EM training, but shared traning is not (yet) implemented.",name().c_str(),mean->name().c_str(),covar->name().c_str());
@@ -378,9 +378,9 @@ MissingFeatureScaledDiagGaussian::emStartIteration()
 
   // for this object, we need our own vector of accumulators, one for
   // each element of the Gaussian.
-  elementAccumulatedProbability.growIfNeeded(_dim);
+  trMembers->elementAccumulatedProbability.growIfNeeded(_dim);
   for (unsigned i =0;i<_dim;i++) {
-    elementAccumulatedProbability[i].set_to_zero();
+    trMembers->elementAccumulatedProbability[i].set_to_zero();
   }
 
 }
@@ -574,21 +574,21 @@ MissingFeatureScaledDiagGaussian::emIncrement(logpr prob,
   const float fprob = prob.unlog();
 
   // these next calls are presumed to be valid for both EM and FK (fisher kernel accumulation).
-  mean->emIncrement(prob,fprob,f,base,stride,nextMeans.ptr);
-  covar->emIncrement(prob,fprob,f,base,stride,nextDiagCovars.ptr);
+  mean->emIncrement(prob,fprob,f,base,stride,trMembers->nextMeans.ptr);
+  covar->emIncrement(prob,fprob,f,base,stride,trMembers->nextDiagCovars.ptr);
 
   if (!fisherKernelMode) {
     // do normal EM increment
     // this call is optimized to do the 1st and 2nd moment stats simultaneously
-    emIncrementMeanDiagCovar(prob,fprob,f,nextMeans.size(),nextMeans.ptr,nextDiagCovars.ptr);
+    emIncrementMeanDiagCovar(prob,fprob,f,trMembers->nextMeans.size(),trMembers->nextMeans.ptr,trMembers->nextDiagCovars.ptr);
   } else {
     // do a fisher score increment
     fkIncrementMeanDiagCovar(prob,
-			     fprob,f,nextMeans.size(),
+			     fprob,f,trMembers->nextMeans.size(),
 			     mean->means.ptr,
 			     covar->covariances.ptr,
-			     nextMeans.ptr,
-			     nextDiagCovars.ptr);
+			     trMembers->nextMeans.ptr,
+			     trMembers->nextDiagCovars.ptr);
   }
 }
 
@@ -630,7 +630,7 @@ MissingFeatureScaledDiagGaussian::emIncrementMeanDiagCovar(
   register const float *const f_p_endp = f + len;
   register float *meanAccumulator_p = meanAccumulator;
   register float *diagCovarAccumulator_p = diagCovarAccumulator;
-  logpr* acp = elementAccumulatedProbability.ptr;
+  logpr* acp = trMembers->elementAccumulatedProbability.ptr;
 
   do {
     // a version of the above code that avoids aliasing of f_p and
@@ -708,7 +708,7 @@ MissingFeatureScaledDiagGaussian::fkIncrementMeanDiagCovar(
   register float *meanAccumulator_p = meanAccumulator;
   register float *diagCovarAccumulator_p = diagCovarAccumulator;
 
-  logpr* acp = elementAccumulatedProbability.ptr;
+  logpr* acp = trMembers->elementAccumulatedProbability.ptr;
 
   do {
     if (!isnan(*f_p)) {
@@ -780,18 +780,18 @@ MissingFeatureScaledDiagGaussian::emEndIteration()
       assert(0);  // not implemented (yet) for this class.
       // mean and covariance are both shared
       mean->emEndIterationSharedMeansCovars
-	(accumulatedProbability,nextMeans.ptr,covar);
+	(accumulatedProbability,trMembers->nextMeans.ptr,covar);
       covar->emEndIterationSharedMeansCovars
 	(accumulatedProbability,
-	 nextMeans.ptr,
-	 nextDiagCovars.ptr,
+	 trMembers->nextMeans.ptr,
+	 trMembers->nextDiagCovars.ptr,
 	 mean);
     } else {
       assert(0);  // not implemented (yet) for this class.
       // Mean is not shared, but covariance is shared
       // can still use normal EM
-      mean->emEndIterationNoSharing(nextMeans.ptr);
-      covar->emEndIterationSharedCovars(accumulatedProbability,nextMeans.ptr,nextDiagCovars.ptr);
+      mean->emEndIterationNoSharing(trMembers->nextMeans.ptr);
+      covar->emEndIterationSharedCovars(accumulatedProbability,trMembers->nextMeans.ptr,trMembers->nextDiagCovars.ptr);
     }
   } else {
     // covariance is not shared
@@ -802,20 +802,20 @@ MissingFeatureScaledDiagGaussian::emEndIteration()
       // but use the "all shared" versions since we don't
       // have the new mean at this point.
       mean->emEndIterationSharedMeansCovars
-	(accumulatedProbability,nextMeans.ptr,covar);
+	(accumulatedProbability,trMembers->nextMeans.ptr,covar);
       covar->emEndIterationSharedMeansCovars
 	(accumulatedProbability,
-	 nextMeans.ptr,
-	 nextDiagCovars.ptr,
+	 trMembers->nextMeans.ptr,
+	 trMembers->nextDiagCovars.ptr,
 	 mean);
     } else {
 
       // nothing is shared, use EM
-      mean->emEndIterationNoSharingElementProbabilities(nextMeans.ptr,
-							elementAccumulatedProbability.ptr);
-      covar->emEndIterationNoSharingElementProbabilities(nextMeans.ptr,
-							 nextDiagCovars.ptr,
-							 elementAccumulatedProbability.ptr);
+      mean->emEndIterationNoSharingElementProbabilities(trMembers->nextMeans.ptr,
+							trMembers->elementAccumulatedProbability.ptr);
+      covar->emEndIterationNoSharingElementProbabilities(trMembers->nextMeans.ptr,
+							 trMembers->nextDiagCovars.ptr,
+							 trMembers->elementAccumulatedProbability.ptr);
     }
   }
 
@@ -854,22 +854,22 @@ MissingFeatureScaledDiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& of
   // argument since it doesn't make sense to take log of
   // these values since they are continuous, could be negative, etc.
   if (writeZeros) {
-    const unsigned totalLen = nextMeans.len() + nextDiagCovars.len();
+    const unsigned totalLen = trMembers->nextMeans.len() + trMembers->nextDiagCovars.len();
     for (unsigned i=0;i<totalLen;i++) {
       ofile.write(0.0,"MissingFeatureScaledDiagGaussian store accums nm + nc.");
     }
-    for (int i=0;i<elementAccumulatedProbability.len();i++) {
-      ofile.write(elementAccumulatedProbability[0].valref()*0.0,"El Acc Prob 0.0");
+    for (int i=0;i<trMembers->elementAccumulatedProbability.len();i++) {
+      ofile.write(trMembers->elementAccumulatedProbability[0].valref()*0.0,"El Acc Prob 0.0");
     }
   } else {
-    for (int i=0;i<nextMeans.len();i++) {
-      ofile.write(nextMeans[i],"MissingFeatureScaledDiagGaussian store accums nm.");
+    for (int i=0;i<trMembers->nextMeans.len();i++) {
+      ofile.write(trMembers->nextMeans[i],"MissingFeatureScaledDiagGaussian store accums nm.");
     }
-    for (int i=0;i<nextDiagCovars.len();i++) {
-      ofile.write(nextDiagCovars[i],"MissingFeatureScaledDiagGaussian store accums nc.");
+    for (int i=0;i<trMembers->nextDiagCovars.len();i++) {
+      ofile.write(trMembers->nextDiagCovars[i],"MissingFeatureScaledDiagGaussian store accums nc.");
     }
-    for (int i=0;i<elementAccumulatedProbability.len();i++) {
-      ofile.write(elementAccumulatedProbability[i].valref(),"El Acc Prob i");
+    for (int i=0;i<trMembers->elementAccumulatedProbability.len();i++) {
+      ofile.write(trMembers->elementAccumulatedProbability[i].valref(),"El Acc Prob i");
     }
   }
 }
@@ -889,7 +889,7 @@ MissingFeatureScaledDiagGaussian::emLoadObjectsDummyAccumulators(iDataStreamFile
     ifile.read(tmp,"MissingFeatureScaledDiagGaussian load accums nc.");
   }
   logpr tmp2;
-  for (int i=0;i<elementAccumulatedProbability.len();i++) {
+  for (int i=0;i<trMembers->elementAccumulatedProbability.len();i++) {
     ifile.read(tmp2.valref(),"MissingFeatureScaledDiagGaussian load el ac prob.");
   }
 }
@@ -898,28 +898,28 @@ MissingFeatureScaledDiagGaussian::emLoadObjectsDummyAccumulators(iDataStreamFile
 void
 MissingFeatureScaledDiagGaussian::emZeroOutObjectsAccumulators()
 {
-  for (int i=0;i<nextMeans.len();i++) {
-    nextMeans[i] = 0.0;
+  for (int i=0;i<trMembers->nextMeans.len();i++) {
+    trMembers->nextMeans[i] = 0.0;
   }
-  for (int i=0;i<nextDiagCovars.len();i++) {
-    nextDiagCovars[i] = 0.0;
+  for (int i=0;i<trMembers->nextDiagCovars.len();i++) {
+    trMembers->nextDiagCovars[i] = 0.0;
   }
-  for (int i=0;i<elementAccumulatedProbability.len();i++) {
-    elementAccumulatedProbability[i].set_to_zero();
+  for (int i=0;i<trMembers->elementAccumulatedProbability.len();i++) {
+    trMembers->elementAccumulatedProbability[i].set_to_zero();
   }
 }
 
 void
 MissingFeatureScaledDiagGaussian::emLoadObjectsAccumulators(iDataStreamFile& ifile)
 {
-  for (int i=0;i<nextMeans.len();i++) {
-    ifile.read(nextMeans[i],"MissingFeatureScaledDiagGaussian load accums nm.");
+  for (int i=0;i<trMembers->nextMeans.len();i++) {
+    ifile.read(trMembers->nextMeans[i],"MissingFeatureScaledDiagGaussian load accums nm.");
   }
-  for (int i=0;i<nextDiagCovars.len();i++) {
-    ifile.read(nextDiagCovars[i],"MissingFeatureScaledDiagGaussian load accums nc.");
+  for (int i=0;i<trMembers->nextDiagCovars.len();i++) {
+    ifile.read(trMembers->nextDiagCovars[i],"MissingFeatureScaledDiagGaussian load accums nc.");
   }
-  for (int i=0;i<elementAccumulatedProbability.len();i++) {
-    ifile.read(elementAccumulatedProbability[i].valref(),"MissingFeatureScaledDiagGaussian el ac pr.");
+  for (int i=0;i<trMembers->elementAccumulatedProbability.len();i++) {
+    ifile.read(trMembers->elementAccumulatedProbability[i].valref(),"MissingFeatureScaledDiagGaussian el ac pr.");
   }
 
 }
@@ -931,21 +931,21 @@ MissingFeatureScaledDiagGaussian::emAccumulateObjectsAccumulators(iDataStreamFil
   //
   // ASSUME MEANS AND COVARIANCES ARE OF TYPE FLOAT
   // See the MeanVector.h and DiagcovarVector.h for specifics.
-  for (int i=0;i<nextMeans.len();i++) {
+  for (int i=0;i<trMembers->nextMeans.len();i++) {
     float tmp;
     ifile.read(tmp,"MissingFeatureScaledDiagGaussian accumulate accums nm.");
-    nextMeans[i] += tmp;
+    trMembers->nextMeans[i] += tmp;
   }
-  for (int i=0;i<nextDiagCovars.len();i++) {
+  for (int i=0;i<trMembers->nextDiagCovars.len();i++) {
     float tmp;
     ifile.read(tmp,"MissingFeatureScaledDiagGaussian accumulate accums nc.");
-    nextDiagCovars[i] += tmp;
+    trMembers->nextDiagCovars[i] += tmp;
   }
 
-  for (int i=0;i<elementAccumulatedProbability.len();i++) {
+  for (int i=0;i<trMembers->elementAccumulatedProbability.len();i++) {
     logpr tmp2;
     ifile.read(tmp2.valref(),"MissingFeatureScaledDiagGaussian load el ac prob.");
-    elementAccumulatedProbability[i] += tmp2;
+    trMembers->elementAccumulatedProbability[i] += tmp2;
   }
 }
 

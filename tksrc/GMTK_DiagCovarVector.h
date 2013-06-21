@@ -43,23 +43,6 @@ class DiagCovarVector : public EMable {
   // The actual covariance "matrix"
   sArray<float> covariances;
 
-  //////////////////////////////////
-  // Data structures support for EM
-  // NOTE: if we change from type float, to type double,
-  //   we will need to check the load/store accumulator code
-  //   for subclasses of GaussianComponent.
-  sArray<float> nextCovariances;
-
-  ///////////////////////////////////////////////////////
-  // Precomputed values for efficiency (computed at the
-  // top of every EM epoch).
-  //    Precomputed inverse variances.
-  sArray<float> variances_inv;
-  //    precomputed logged normalization constant.
-  float _log_inv_normConst;
-  ///////////////////////////////////////////////////////
-
-
   /////////////////////////////////////////////////
   // counts the number of gaussian components
   // that are sharing this mean at all. This is a static
@@ -68,19 +51,48 @@ class DiagCovarVector : public EMable {
   // is read in.
   unsigned numTimesShared;
 
-  /////////////////////////////////////////////////
-  // counts the number of gaussian components
-  // that are sharing this covariance at EM training time. This is a dynamic
-  // count, and is computed as EM training is run. This
-  // value does not necessarily equal the number of
-  // objects that have specified this object in
-  // the object files.
-  unsigned refCount;
+  // Precomputed values for efficiency (computed at the
+  // top of every training EM epoch, or during a read-in).
+  // Precomputed inverse variances.
+  sArray<float> variances_inv;
+  // precomputed logged normalization constant.
+  float _log_inv_normConst;
+  ///////////////////////////////////////////////////////
 
-  /////////////////////////////////////////////////////////////
-  // used by EM to count the number of times variances 
-  // became very small.
-  static unsigned numFlooredVariances;
+
+  ////////////////////////////////////////////////////////////////////
+  // Data structures support for EM
+  ////////////////////////////////////////////////////////////////////
+  struct Training_Members {
+    // NOTE: if we change from type float, to type double,
+    //   we will need to check the load/store accumulator code
+    //   for subclasses of GaussianComponent.
+    sArray<float> nextCovariances;
+
+    ///////////////////////////////////////////////////////
+
+    /////////////////////////////////////////////////
+    // counts the number of gaussian components
+    // that are sharing this covariance at EM training time. This is a dynamic
+    // count, and is computed as EM training is run. This
+    // value does not necessarily equal the number of
+    // objects that have specified this object in
+    // the object files.
+    unsigned refCount;
+
+    /////////////////////////////////////////////////////////////
+    // used by EM to count the number of times variances 
+    // became very small.
+    unsigned numFlooredVariances;
+
+    // default constructor
+    Training_Members() : refCount(0),numFlooredVariances(0) {}  
+  };
+  auto_deleting_ptr<struct Training_Members> trMembers;
+  ////////////////////////////////////////////////////////////////////
+  // End of data structures support for EM
+  ////////////////////////////////////////////////////////////////////
+
 
 
 public:

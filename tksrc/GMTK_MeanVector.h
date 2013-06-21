@@ -47,17 +47,6 @@ private:
   // The actual mean vector
   sArray<float> means;
 
-  //////////////////////////////////
-  // Data structures support for EM
-  // NOTE: if we change from type float, to type double,
-  //   we will need to check the load/store accumulator code
-  //   for subclasses of GaussianComponent.
-  sArray<float> nextMeans;
-
-  /////////////////////////////////////////////////////////
-  // the denominator used in the case of shared means.
-  sArray<double> sharedMeansDenominator;
-
   /////////////////////////////////////////////////
   // counts the number of gaussian components
   // that are sharing this mean at all. This is a static
@@ -66,20 +55,42 @@ private:
   // is read in.
   unsigned numTimesShared;
 
-  /////////////////////////////////////////////////
-  // counts the number of gaussian components
-  // that are sharing this mean at EM training time. This is a dynamic
-  // count, and is computed as EM training is run. This
-  // value does not necessarily equal the number of
-  // objects that have specified this object in
-  // the object files.
-  unsigned refCount;
+  ////////////////////////////////////////////////////////////////////
+  // Data structures support for parameter training (EM and potentially other forms)
+  ////////////////////////////////////////////////////////////////////
+  struct Training_Members {
+    // NOTE: if we change from type float, to type double,
+    //   we will need to check the load/store accumulator code
+    //   for subclasses of GaussianComponent.
+    sArray<float> nextMeans;
+
+    /////////////////////////////////////////////////////////
+    // the denominator used in the case of shared means.
+    sArray<double> sharedMeansDenominator;
+
+    /////////////////////////////////////////////////
+    // counts the number of gaussian components
+    // that are sharing this mean at EM training time. This is a dynamic
+    // count, and is computed as EM training is run. This
+    // value does not necessarily equal the number of
+    // objects that have specified this object in
+    // the object files.
+    unsigned refCount;
+
+    // default constructor
+    Training_Members() : refCount(0) {}  
+  };
+  auto_deleting_ptr<struct Training_Members> trMembers;
+  ////////////////////////////////////////////////////////////////////
+  // End of data structures support for EM
+  ////////////////////////////////////////////////////////////////////
+
 
   /////////////////////////////////////////////////
   // allow access to internal accumulator pointer for
   // shared covariance object to use to add to its
   // accumulation.
-  const float* const accumulatorPtr() { return nextMeans.ptr; }
+  const float* const accumulatorPtr() { return trMembers->nextMeans.ptr; }
 
 public:
 

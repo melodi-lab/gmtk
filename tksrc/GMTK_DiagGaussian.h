@@ -37,15 +37,25 @@ class DiagGaussian : public GaussianComponent {
   // This might be tied with multiple other distributions.
   MeanVector* mean;
 
-  // For EM Training: Local copy of mean & diagCov accumulators for this DiagGaussian,
-  // which is needed for sharing.
-  sArray<float> nextMeans;
-  sArray<float> nextDiagCovars;
-
   ///////////////////////////////////////////////////////
   // The diagonal of the covariance matrix
   // This might be tied with multiple other distributions.
   DiagCovarVector* covar;
+
+  ////////////////////////////////////////////////////////////////////
+  // Data structures support for parameter training (EM and potentially other forms)
+  ////////////////////////////////////////////////////////////////////
+  struct Training_Members {
+    // For EM Training: Local copy of mean & diagCov accumulators for this DiagGaussian,
+    // which is needed for sharing.
+    sArray<float> nextMeans;
+    sArray<float> nextDiagCovars;
+  };
+  auto_deleting_ptr<struct Training_Members> trMembers;
+  ////////////////////////////////////////////////////////////////////
+  // End of data structures support for EM
+  ////////////////////////////////////////////////////////////////////
+    
 
   /////////////////////////////////////////////////
   // modify the usage counts of any members that use them; typically
