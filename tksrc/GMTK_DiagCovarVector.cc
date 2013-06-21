@@ -50,8 +50,6 @@ VCID(HGID)
 //        Static members
 ////////////////////////////////////////////////////////////////////
 
-unsigned DiagCovarVector::numFlooredVariances = 0;
-
 bool DiagCovarVector::floorVariancesWhenReadIn = false;
 
 double DiagCovarVector::cloneSTDfrac = 0.1;
@@ -137,7 +135,7 @@ DiagCovarVector::read(iDataStreamFile& is)
   setBasicAllocatedBit();
   preCompute();
   numTimesShared = 0;
-  refCount = 0;
+
 }
 
 
@@ -269,7 +267,7 @@ DiagCovarVector::noisyClone()
       clone->_name = _name + string("_cl") + buff;
       cloneNo++;
     } while (GM_Parms.covarsMap.find(clone->_name) != GM_Parms.covarsMap.end());
-    clone->refCount = 0;
+
     clone->numTimesShared = 0;
     clone->covariances.resize(covariances.len());
     for (int i=0;i<covariances.len();i++) {
@@ -330,7 +328,7 @@ DiagCovarVector*
 DiagCovarVector::identicalIndependentClone()
 {
   DiagCovarVector* newCV = new DiagCovarVector;
-  newCV->refCount = 0;
+
   newCV->numTimesShared = 0;
 
   newCV->covariances.resize(covariances.len());
@@ -437,7 +435,7 @@ DiagCovarVector::emStartIteration(sArray<float>& componentsNextCovars)
   if(emOnGoingBitIsSet()) {
     // EM already on going.
     // Increment the count of number of Gaussian Components using this mean.
-    refCount++; 
+    trMembers->refCount++; 
     // this object therefore is shared, set the bit saying so.
     emSetSharedBit();
 
@@ -465,6 +463,7 @@ DiagCovarVector::emStartIteration(sArray<float>& componentsNextCovars)
 
   if (!emEmAllocatedBitIsSet()) {
     // this is presumably the first time
+    trMembers.allocateIfNeeded();
     emSetEmAllocatedBit();
   }
   // EM iteration is now going.
@@ -474,8 +473,8 @@ DiagCovarVector::emStartIteration(sArray<float>& componentsNextCovars)
   emClearAccInitializedBit();
 
   accumulatedProbability = 0.0;
-  numFlooredVariances = 0;
-  refCount=1;
+  trMembers->numFlooredVariances = 0;
+  trMembers->refCount=1;
   emClearSharedBit();
 
   /////////////////////////////////////////////
@@ -605,6 +604,7 @@ void
 DiagCovarVector::emEndIterationNoSharingAlreadyNormalized(const float *const parentsAccumulatedNextCovar)
 {
   assert ( basicAllocatedBitIsSet() );
+  assert ( emEmAllocatedBitIsSet() );
 
   // we return if both 1) the not training bit is set
   // and 2) there is no chance that this object will be shared.
@@ -622,18 +622,18 @@ DiagCovarVector::emEndIterationNoSharingAlreadyNormalized(const float *const par
   assert ( emOnGoingBitIsSet() );
 
   // shouldn't be called when sharing occurs.
-  assert ( refCount == 1 );
+  assert ( trMembers->refCount == 1 );
   assert (!emSharedBitIsSet());
 
   if (!emAccInitializedBitIsSet()) {
-    nextCovariances.growIfNeeded(covariances.len());
+    trMembers->nextCovariances.growIfNeeded(covariances.len());
     for (int i=0;i<covariances.len();i++) {
-      nextCovariances[i] = 0.0;
+      trMembers->nextCovariances[i] = 0.0;
     }
     emSetAccInitializedBit();
   }
 
-  refCount = 0;
+  trMembers->refCount = 0;
 
   accumulatedProbability.floor();
   if (accumulatedProbability < minContAccumulatedProbability()) {
@@ -642,19 +642,19 @@ DiagCovarVector::emEndIterationNoSharingAlreadyNormalized(const float *const par
 	    accumulatedProbability.val());
     
     for (int i=0;i<covariances.len();i++)
-      nextCovariances[i] = covariances[i];
+      trMembers->nextCovariances[i] = covariances[i];
   } else {
 
     // Finally, divide by N (see the equation above)
     // here computing the final variances.
-    unsigned prevNumFlooredVariances = numFlooredVariances;
+    unsigned prevNumFlooredVariances = trMembers->numFlooredVariances;
     double minVar = 0.0;
     for (int i=0;i<covariances.len();i++) {
       // "compute" the next variance
-      nextCovariances[i] = parentsAccumulatedNextCovar[i];
+      trMembers->nextCovariances[i] = parentsAccumulatedNextCovar[i];
 
-      if (i == 0 || nextCovariances[i] < minVar)
-	minVar = nextCovariances[i];
+      if (i == 0 || trMembers->nextCovariances[i] < minVar)
+	minVar = trMembers->nextCovariances[i];
 
       /////////////////////////////////////////////////////
       // When variances hit zero or their floor:
@@ -674,9 +674,9 @@ DiagCovarVector::emEndIterationNoSharingAlreadyNormalized(const float *const par
       //      however, if this happens, the variance will be floored like
       //      in case 1.
 
-      if (nextCovariances[i] < (float)GaussianComponent::varianceFloor()) {
+      if (trMembers->nextCovariances[i] < (float)GaussianComponent::varianceFloor()) {
 
-	numFlooredVariances++;
+	trMembers->numFlooredVariances++;
 
 	// Don't let variances go less than variance floor. 
 
@@ -686,16 +686,16 @@ DiagCovarVector::emEndIterationNoSharingAlreadyNormalized(const float *const par
 	// either A or B but not both should be uncommented below.
 
 	// A: keep old variance
-	nextCovariances[i] = covariances[i];
+	trMembers->nextCovariances[i] = covariances[i];
 
 	// B: hard limit the variances
 	// nextCovariances[i] = GaussianComponent::varianceFloor();
       }
     }
-    if (prevNumFlooredVariances < numFlooredVariances) {
+    if (prevNumFlooredVariances < trMembers->numFlooredVariances) {
       infoMsg(IM::Warning,"WARNING: covariance vector named '%s' had %d variances floored, minimum variance found was %e.\n",
 	      name().c_str(),
-	      numFlooredVariances-prevNumFlooredVariances,
+	      trMembers->numFlooredVariances-prevNumFlooredVariances,
 	      minVar);
     }
   }
@@ -746,7 +746,7 @@ DiagCovarVector::emEndIterationSharedMeansCovars(const logpr parentsAccumulatedP
 						 const MeanVector* mean)
 {
   assert ( basicAllocatedBitIsSet() );
-
+  assert ( emEmAllocatedBitIsSet() );
 
   // we return if both 1) the not training bit is set
   // and 2) there is no chance that this object will be shared.
@@ -762,14 +762,14 @@ DiagCovarVector::emEndIterationSharedMeansCovars(const logpr parentsAccumulatedP
 
 
   if (!emAccInitializedBitIsSet()) {
-    nextCovariances.growIfNeeded(covariances.len());
+    trMembers->nextCovariances.growIfNeeded(covariances.len());
     for (int i=0;i<covariances.len();i++) {
-      nextCovariances[i] = 0.0;
+      trMembers->nextCovariances[i] = 0.0;
     }
     emSetAccInitializedBit();
   }
 
-  if (refCount > 0) {
+  if (trMembers->refCount > 0) {
     // if this isn't the case, something is wrong.
     assert ( emOnGoingBitIsSet() );
 
@@ -791,11 +791,11 @@ DiagCovarVector::emEndIterationSharedMeansCovars(const logpr parentsAccumulatedP
 			    - 2.0*(double)partialAccumulatedNextMeans[i]*(double)prev_mean_ptr[i]
 			    + (double)prev_mean_ptr[i]*(double)prev_mean_ptr[i]*(double)realAccumulatedProbability);
 	// convert and accumulate
-	nextCovariances[i] += tmp;
+	trMembers->nextCovariances[i] += tmp;
       }
     }
 
-    refCount--;
+    trMembers->refCount--;
   }
 
 
@@ -803,7 +803,7 @@ DiagCovarVector::emEndIterationSharedMeansCovars(const logpr parentsAccumulatedP
   // if there is still someone who
   // has not given us his/her 1st order stats,
   // then we return w/o finishing.
-  if (refCount > 0)
+  if (trMembers->refCount > 0)
     return;
 
   // otherwise, we're ready to finish and
@@ -815,7 +815,7 @@ DiagCovarVector::emEndIterationSharedMeansCovars(const logpr parentsAccumulatedP
 	    accumulatedProbability.val(),
 	    minContAccumulatedProbability().val());
     for (int i=0;i<covariances.len();i++) 
-      nextCovariances[i] = covariances[i];
+      trMembers->nextCovariances[i] = covariances[i];
   } else {
 
     // TODO: should check for possible overflow here of 
@@ -826,14 +826,14 @@ DiagCovarVector::emEndIterationSharedMeansCovars(const logpr parentsAccumulatedP
 
     // Finally, divide by N (see the equation above)
     // here computing the final variances.
-    unsigned prevNumFlooredVariances = numFlooredVariances;
+    unsigned prevNumFlooredVariances = trMembers->numFlooredVariances;
     double minVar = 0.0;
     for (int i=0;i<covariances.len();i++) {
-      nextCovariances[i] *= invRealAccumulatedProbability;
+      trMembers->nextCovariances[i] *= invRealAccumulatedProbability;
 
 
-      if (i == 0 || nextCovariances[i] < minVar)
-	minVar = nextCovariances[i];
+      if (i == 0 || trMembers->nextCovariances[i] < minVar)
+	minVar = trMembers->nextCovariances[i];
     
       /////////////////////////////////////////////////////
       // When variances hit zero or their floor:
@@ -853,9 +853,9 @@ DiagCovarVector::emEndIterationSharedMeansCovars(const logpr parentsAccumulatedP
       //      however, if this happens, the variance will be floored like
       //      in case 1.
 
-      if (nextCovariances[i] < (float)GaussianComponent::varianceFloor()) {
+      if (trMembers->nextCovariances[i] < (float)GaussianComponent::varianceFloor()) {
 
-	numFlooredVariances++;
+	trMembers->numFlooredVariances++;
 
 	// Don't let variances go less than variance floor. 
 
@@ -865,16 +865,16 @@ DiagCovarVector::emEndIterationSharedMeansCovars(const logpr parentsAccumulatedP
 	// either A or B but not both should be uncommented below.
 
 	// A: keep old variance
-	nextCovariances[i] = covariances[i];
+	trMembers->nextCovariances[i] = covariances[i];
 
 	// B: hard limit the variances
 	// nextCovariances[i] = GaussianComponent::varianceFloor();
       }
     }
-    if (prevNumFlooredVariances < numFlooredVariances) {
+    if (prevNumFlooredVariances < trMembers->numFlooredVariances) {
       infoMsg(IM::Warning,"WARNING: shared covariance vector named '%s' had %d variances floored, minimum variance found was %e.\n",
 	      name().c_str(),
-	      numFlooredVariances-prevNumFlooredVariances,
+	      trMembers->numFlooredVariances-prevNumFlooredVariances,
 	      minVar);
     }
 
@@ -926,6 +926,7 @@ void
 DiagCovarVector::emEndIterationSharedCovars(const float *const parentsAccumulatedNextCovar)
 {
   assert ( basicAllocatedBitIsSet() );
+  assert ( emEmAllocatedBitIsSet() );
 
   // we return if both 1) the not training bit is set
   // and 2) there is no chance that this object will be shared.
@@ -941,24 +942,24 @@ DiagCovarVector::emEndIterationSharedCovars(const float *const parentsAccumulate
 
 
   if (!emAccInitializedBitIsSet()) {
-    nextCovariances.growIfNeeded(covariances.len());
+    trMembers->nextCovariances.growIfNeeded(covariances.len());
     for (int i=0;i<covariances.len();i++) {
-      nextCovariances[i] = 0.0;
+      trMembers->nextCovariances[i] = 0.0;
     }
     emSetAccInitializedBit();
   }
 
 
-  if (refCount > 0) {
+  if (trMembers->refCount > 0) {
     // if this isn't the case, something is wrong.
     assert ( emOnGoingBitIsSet() );
 
     // we just accumulate in the covariance
     // shared by the parent.
     for (int i=0;i<covariances.len();i++)
-      nextCovariances[i] += parentsAccumulatedNextCovar[i];
+      trMembers->nextCovariances[i] += parentsAccumulatedNextCovar[i];
 
-    refCount--;
+    trMembers->refCount--;
   }
 
 
@@ -966,7 +967,7 @@ DiagCovarVector::emEndIterationSharedCovars(const float *const parentsAccumulate
   // if there is still someone who
   // has not given us his/her 1st order stats,
   // then we return w/o finishing.
-  if (refCount > 0)
+  if (trMembers->refCount > 0)
     return;
 
   // otherwise, we're ready to finish and
@@ -979,7 +980,7 @@ DiagCovarVector::emEndIterationSharedCovars(const float *const parentsAccumulate
 	    accumulatedProbability.val());
     
     for (int i=0;i<covariances.len();i++)
-      nextCovariances[i] = covariances[i];
+      trMembers->nextCovariances[i] = covariances[i];
   } else {
 
     // TODO: should check for possible overflow here of 
@@ -990,13 +991,13 @@ DiagCovarVector::emEndIterationSharedCovars(const float *const parentsAccumulate
 
     // Finally, divide by N (see the equation above)
     // here computing the final variances.
-    unsigned prevNumFlooredVariances = numFlooredVariances;
+    unsigned prevNumFlooredVariances = trMembers->numFlooredVariances;
     double minVar = 0.0;
     for (int i=0;i<covariances.len();i++) {
-      nextCovariances[i] *= invRealAccumulatedProbability;
+      trMembers->nextCovariances[i] *= invRealAccumulatedProbability;
 
-      if (i == 0 || nextCovariances[i] < minVar)
-	minVar = nextCovariances[i];
+      if (i == 0 || trMembers->nextCovariances[i] < minVar)
+	minVar = trMembers->nextCovariances[i];
 
       /////////////////////////////////////////////////////
       // When variances hit zero or their floor:
@@ -1016,9 +1017,9 @@ DiagCovarVector::emEndIterationSharedCovars(const float *const parentsAccumulate
       //      however, if this happens, the variance will be floored like
       //      in case 1.
 
-      if (nextCovariances[i] < (float)GaussianComponent::varianceFloor()) {
+      if (trMembers->nextCovariances[i] < (float)GaussianComponent::varianceFloor()) {
 
-	numFlooredVariances++;
+	trMembers->numFlooredVariances++;
 
 	// Don't let variances go less than variance floor. 
 
@@ -1028,16 +1029,16 @@ DiagCovarVector::emEndIterationSharedCovars(const float *const parentsAccumulate
 	// either A or B but not both should be uncommented below.
 
 	// A: keep old variance
-	nextCovariances[i] = covariances[i];
+	trMembers->nextCovariances[i] = covariances[i];
 
 	// B: hard limit the variances
 	// nextCovariances[i] = GaussianComponent::varianceFloor();
       }
     }
-    if (prevNumFlooredVariances < numFlooredVariances) {
+    if (prevNumFlooredVariances < trMembers->numFlooredVariances) {
       infoMsg(IM::Warning,"WARNING: covariance vector named '%s' had %d variances floored, minimum variance found was %e.\n",
 	      name().c_str(),
-	      numFlooredVariances-prevNumFlooredVariances,
+	      trMembers->numFlooredVariances-prevNumFlooredVariances,
 	      minVar);
     }
   }
@@ -1094,6 +1095,7 @@ DiagCovarVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumu
 						       const DlinkMatrix* dLinkMat)
 {
   assert ( basicAllocatedBitIsSet() );
+  assert ( emEmAllocatedBitIsSet() );
 
   // we return if both 1) the not training bit is set
   // and 2) there is no chance that this object will be shared.
@@ -1108,14 +1110,14 @@ DiagCovarVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumu
 
 
   if (!emAccInitializedBitIsSet()) {
-    nextCovariances.growIfNeeded(covariances.len());
+    trMembers->nextCovariances.growIfNeeded(covariances.len());
     for (int i=0;i<covariances.len();i++) {
-      nextCovariances[i] = 0.0;
+      trMembers->nextCovariances[i] = 0.0;
     }
     emSetAccInitializedBit();
   }
 
-  if (refCount > 0) {
+  if (trMembers->refCount > 0) {
     // if this isn't the case, something is wrong.
     assert ( emOnGoingBitIsSet() );
 
@@ -1201,11 +1203,11 @@ DiagCovarVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumu
 	// convert and accumulate
 	const double final_accumulator = 
 	  (xx - 2.0*(x_u + xz_B - u_z_B) + B_zz_B + u_u);
-	nextCovariances[i] += final_accumulator;
+	trMembers->nextCovariances[i] += final_accumulator;
       }
     }
 
-    refCount--;
+    trMembers->refCount--;
   }
 
 
@@ -1213,7 +1215,7 @@ DiagCovarVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumu
   // if there is still someone who
   // has not given us his/her 1st order stats,
   // then we return w/o finishing.
-  if (refCount > 0)
+  if (trMembers->refCount > 0)
     return;
 
   // otherwise, we're ready to finish and
@@ -1225,7 +1227,7 @@ DiagCovarVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumu
 	    accumulatedProbability.val(),
 	    minContAccumulatedProbability().val());
     for (int i=0;i<covariances.len();i++) 
-      nextCovariances[i] = covariances[i];
+      trMembers->nextCovariances[i] = covariances[i];
   } else {
 
     // TODO: should check for possible overflow here of 
@@ -1236,14 +1238,14 @@ DiagCovarVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumu
 
     // Finally, divide by N (see the equation above)
     // here computing the final variances.
-    unsigned prevNumFlooredVariances = numFlooredVariances;
+    unsigned prevNumFlooredVariances = trMembers->numFlooredVariances;
     double minVar = 0.0;
     for (int i=0;i<covariances.len();i++) {
-      nextCovariances[i] *= invRealAccumulatedProbability;
+      trMembers->nextCovariances[i] *= invRealAccumulatedProbability;
 
 
-      if (i == 0 || nextCovariances[i] < minVar)
-	minVar = nextCovariances[i];
+      if (i == 0 || trMembers->nextCovariances[i] < minVar)
+	minVar = trMembers->nextCovariances[i];
     
       /////////////////////////////////////////////////////
       // When variances hit zero or their floor:
@@ -1263,9 +1265,9 @@ DiagCovarVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumu
       //      however, if this happens, the variance will be floored like
       //      in case 1.
 
-      if (nextCovariances[i] < (float)GaussianComponent::varianceFloor()) {
+      if (trMembers->nextCovariances[i] < (float)GaussianComponent::varianceFloor()) {
 
-	numFlooredVariances++;
+	trMembers->numFlooredVariances++;
 
 	// Don't let variances go less than variance floor. 
 
@@ -1275,16 +1277,16 @@ DiagCovarVector::emEndIterationSharedMeansCovarsDlinks(const logpr parentsAccumu
 	// either A or B but not both should be uncommented below.
 
 	// A: keep old variance
-	nextCovariances[i] = covariances[i];
+	trMembers->nextCovariances[i] = covariances[i];
 
 	// B: hard limit the variances
 	// nextCovariances[i] = GaussianComponent::varianceFloor();
       }
     }
-    if (prevNumFlooredVariances < numFlooredVariances) {
+    if (prevNumFlooredVariances < trMembers->numFlooredVariances) {
       infoMsg(IM::Warning,"WARNING: shared covariance vector named '%s' had %d variances floored, minimum variance found was %e.\n",
 	      name().c_str(),
-	      numFlooredVariances-prevNumFlooredVariances,
+	      trMembers->numFlooredVariances-prevNumFlooredVariances,
 	      minVar);
     }
 
@@ -1330,7 +1332,7 @@ DiagCovarVector::emEndIterationSharedCovars(const logpr parentsAccumulatedProbab
 					    const float *const partialAccumulatedNextCovar)
 {
   assert ( basicAllocatedBitIsSet() );
-
+  assert ( emEmAllocatedBitIsSet() );
 
   // we return if both 1) the not training bit is set
   // and 2) there is no chance that this object will be shared.
@@ -1345,14 +1347,14 @@ DiagCovarVector::emEndIterationSharedCovars(const logpr parentsAccumulatedProbab
 
 
   if (!emAccInitializedBitIsSet()) {
-    nextCovariances.growIfNeeded(covariances.len());
+    trMembers->nextCovariances.growIfNeeded(covariances.len());
     for (int i=0;i<covariances.len();i++) {
-      nextCovariances[i] = 0.0;
+      trMembers->nextCovariances[i] = 0.0;
     }
     emSetAccInitializedBit();
   }
 
-  if (refCount > 0) {
+  if (trMembers->refCount > 0) {
     // if this isn't the case, something is wrong.
     assert ( emOnGoingBitIsSet() );
 
@@ -1372,11 +1374,11 @@ DiagCovarVector::emEndIterationSharedCovars(const logpr parentsAccumulatedProbab
 	   (double)partialAccumulatedNextMeans[i]*
 	   (double)partialAccumulatedNextMeans[i]*
 	   (double)invRealAccumulatedProbability);
-	nextCovariances[i] += tmp;
+	trMembers->nextCovariances[i] += tmp;
       }
     }
 
-    refCount--;
+    trMembers->refCount--;
   }
 
 
@@ -1384,7 +1386,7 @@ DiagCovarVector::emEndIterationSharedCovars(const logpr parentsAccumulatedProbab
   // if there is still someone who
   // has not given us his/her 1st order stats,
   // then we return w/o finishing.
-  if (refCount > 0)
+  if (trMembers->refCount > 0)
     return;
 
   // otherwise, we're ready to finish and
@@ -1396,7 +1398,7 @@ DiagCovarVector::emEndIterationSharedCovars(const logpr parentsAccumulatedProbab
 	    accumulatedProbability.val(),
 	    minContAccumulatedProbability().val());
     for (int i=0;i<covariances.len();i++) 
-      nextCovariances[i] = covariances[i];
+      trMembers->nextCovariances[i] = covariances[i];
   } else {
 
     // TODO: should check for possible overflow here of 
@@ -1407,14 +1409,14 @@ DiagCovarVector::emEndIterationSharedCovars(const logpr parentsAccumulatedProbab
 
     // Finally, divide by N (see the equation above)
     // here computing the final variances.
-    unsigned prevNumFlooredVariances = numFlooredVariances;
+    unsigned prevNumFlooredVariances = trMembers->numFlooredVariances;
     double minVar = 0.0;
     for (int i=0;i<covariances.len();i++) {
-      nextCovariances[i] *= invRealAccumulatedProbability;
+      trMembers->nextCovariances[i] *= invRealAccumulatedProbability;
 
 
-      if (i == 0 || nextCovariances[i] < minVar)
-	minVar = nextCovariances[i];
+      if (i == 0 || trMembers->nextCovariances[i] < minVar)
+	minVar = trMembers->nextCovariances[i];
     
       /////////////////////////////////////////////////////
       // When variances hit zero or their floor:
@@ -1434,9 +1436,9 @@ DiagCovarVector::emEndIterationSharedCovars(const logpr parentsAccumulatedProbab
       //      however, if this happens, the variance will be floored like
       //      in case 1.
 
-      if (nextCovariances[i] < (float)GaussianComponent::varianceFloor()) {
+      if (trMembers->nextCovariances[i] < (float)GaussianComponent::varianceFloor()) {
 
-	numFlooredVariances++;
+	trMembers->numFlooredVariances++;
 
 	// Don't let variances go less than variance floor. 
 
@@ -1446,16 +1448,16 @@ DiagCovarVector::emEndIterationSharedCovars(const logpr parentsAccumulatedProbab
 	// either A or B but not both should be uncommented below.
 
 	// A: keep old variance
-	nextCovariances[i] = covariances[i];
+	trMembers->nextCovariances[i] = covariances[i];
 
 	// B: hard limit the variances
 	// nextCovariances[i] = GaussianComponent::varianceFloor();
       }
     }
-    if (prevNumFlooredVariances < numFlooredVariances) {
+    if (prevNumFlooredVariances < trMembers->numFlooredVariances) {
       infoMsg(IM::Warning,"WARNING: covariance vector named '%s' had %d variances floored, minimum variance found was %e.\n",
 	      name().c_str(),
-	      numFlooredVariances-prevNumFlooredVariances,
+	      trMembers->numFlooredVariances-prevNumFlooredVariances,
 	      minVar);
     }
 
@@ -1495,6 +1497,7 @@ DiagCovarVector::emEndIterationNoSharing(const float*const partialAccumulatedNex
 					 const float *const partialAccumulatedNextCovar)
 {
   assert ( basicAllocatedBitIsSet() );
+  assert ( emEmAllocatedBitIsSet() );
 
   // we return if both 1) the not training bit is set
   // and 2) there is no chance that this object will be shared.
@@ -1512,18 +1515,18 @@ DiagCovarVector::emEndIterationNoSharing(const float*const partialAccumulatedNex
   assert ( emOnGoingBitIsSet() );
 
   // shouldn't be called when sharing occurs.
-  assert ( refCount == 1 );
+  assert ( trMembers->refCount == 1 );
   assert (!emSharedBitIsSet());
 
   if (!emAccInitializedBitIsSet()) {
-    nextCovariances.growIfNeeded(covariances.len());
+    trMembers->nextCovariances.growIfNeeded(covariances.len());
     for (int i=0;i<covariances.len();i++) {
-      nextCovariances[i] = 0.0;
+      trMembers->nextCovariances[i] = 0.0;
     }
     emSetAccInitializedBit();
   }
 
-  refCount = 0;
+  trMembers->refCount = 0;
   // we're ready to finish and compute the next covariances.
 
   if (accumulatedProbability < minContAccumulatedProbability()) {
@@ -1532,7 +1535,7 @@ DiagCovarVector::emEndIterationNoSharing(const float*const partialAccumulatedNex
 	    accumulatedProbability.val(),
 	    minContAccumulatedProbability().val());
     for (int i=0;i<covariances.len();i++) 
-      nextCovariances[i] = covariances[i];
+      trMembers->nextCovariances[i] = covariances[i];
   } else {
 
     // TODO: should check for possible overflow here of 
@@ -1543,7 +1546,7 @@ DiagCovarVector::emEndIterationNoSharing(const float*const partialAccumulatedNex
 
     // Finally, divide by N (see the equation above)
     // here computing the final variances.
-    unsigned prevNumFlooredVariances = numFlooredVariances;
+    unsigned prevNumFlooredVariances = trMembers->numFlooredVariances;
     double minVar = 0.0;
 
     for (int i=0;i<covariances.len();i++) {
@@ -1552,10 +1555,10 @@ DiagCovarVector::emEndIterationNoSharing(const float*const partialAccumulatedNex
           	 (double)partialAccumulatedNextMeans[i]*
 	         (double)partialAccumulatedNextMeans[i]*(double)invRealAccumulatedProbability)
 	*(double)invRealAccumulatedProbability;
-      nextCovariances[i] = tmp;
+      trMembers->nextCovariances[i] = tmp;
 
-      if (i == 0 || nextCovariances[i] < minVar)
-	minVar = nextCovariances[i];
+      if (i == 0 || trMembers->nextCovariances[i] < minVar)
+	minVar = trMembers->nextCovariances[i];
     
       /////////////////////////////////////////////////////
       // When variances hit zero or their floor:
@@ -1575,9 +1578,9 @@ DiagCovarVector::emEndIterationNoSharing(const float*const partialAccumulatedNex
       //      however, if this happens, the variance will be floored like
       //      in case 1.
 
-      if (nextCovariances[i] < (float)GaussianComponent::varianceFloor()) {
+      if (trMembers->nextCovariances[i] < (float)GaussianComponent::varianceFloor()) {
 
-	numFlooredVariances++;
+	trMembers->numFlooredVariances++;
 
 	// Don't let variances go less than variance floor. 
 
@@ -1587,16 +1590,16 @@ DiagCovarVector::emEndIterationNoSharing(const float*const partialAccumulatedNex
 	// either A or B but not both should be uncommented below.
 
 	// A: keep old variance
-	nextCovariances[i] = covariances[i];
+	trMembers->nextCovariances[i] = covariances[i];
 
 	// B: hard limit the variances
 	// nextCovariances[i] = GaussianComponent::varianceFloor();
       }
     }
-    if (prevNumFlooredVariances < numFlooredVariances) {
+    if (prevNumFlooredVariances < trMembers->numFlooredVariances) {
       infoMsg(IM::Warning,"WARNING: covariance vector named '%s' had %d variances floored, minimum variance found was %e.\n",
 	      name().c_str(),
-	      numFlooredVariances-prevNumFlooredVariances,
+	      trMembers->numFlooredVariances-prevNumFlooredVariances,
 	      minVar);
     }
 
@@ -1642,6 +1645,7 @@ DiagCovarVector::emEndIterationNoSharingElementProbabilities(
 			   const logpr *const elementAccumulatedProbabilities)
 {
   assert ( basicAllocatedBitIsSet() );
+  assert ( emEmAllocatedBitIsSet() );
 
   // we return if both 1) the not training bit is set
   // and 2) there is no chance that this object will be shared.
@@ -1659,18 +1663,18 @@ DiagCovarVector::emEndIterationNoSharingElementProbabilities(
   assert ( emOnGoingBitIsSet() );
 
   // shouldn't be called when sharing occurs.
-  assert ( refCount == 1 );
+  assert ( trMembers->refCount == 1 );
   assert (!emSharedBitIsSet());
 
   if (!emAccInitializedBitIsSet()) {
-    nextCovariances.growIfNeeded(covariances.len());
+    trMembers->nextCovariances.growIfNeeded(covariances.len());
     for (int i=0;i<covariances.len();i++) {
-      nextCovariances[i] = 0.0;
+      trMembers->nextCovariances[i] = 0.0;
     }
     emSetAccInitializedBit();
   }
 
-  refCount = 0;
+  trMembers->refCount = 0;
   // we're ready to finish and compute the next covariances.
 
 
@@ -1687,13 +1691,13 @@ DiagCovarVector::emEndIterationNoSharingElementProbabilities(
 	    accumulatedProbability.val(),
 	    minContAccumulatedProbability().val());
     for (int i=0;i<covariances.len();i++) 
-      nextCovariances[i] = covariances[i];
+      trMembers->nextCovariances[i] = covariances[i];
   } else {
 
 
     // Finally, divide by N (see the equation above)
     // here computing the final variances.
-    unsigned prevNumFlooredVariances = numFlooredVariances;
+    unsigned prevNumFlooredVariances = trMembers->numFlooredVariances;
     double minVar = DBL_MAX;
 
     for (int i=0;i<covariances.len();i++) {
@@ -1715,11 +1719,11 @@ DiagCovarVector::emEndIterationNoSharingElementProbabilities(
 	   (double)partialAccumulatedNextMeans[i]*
 	   (double)partialAccumulatedNextMeans[i]*(double)invRealAccumulatedProbability)
 	  *(double)invRealAccumulatedProbability;
-	nextCovariances[i] = tmp;
+	trMembers->nextCovariances[i] = tmp;
 
-	if (nextCovariances[i] < minVar)
-	  minVar = nextCovariances[i];
-	if (nextCovariances[i] < (float)GaussianComponent::varianceFloor())
+	if (trMembers->nextCovariances[i] < minVar)
+	  minVar = trMembers->nextCovariances[i];
+	if (trMembers->nextCovariances[i] < (float)GaussianComponent::varianceFloor())
 	  floored_variance = true;
       } else {
 	floored_variance = true;
@@ -1744,7 +1748,7 @@ DiagCovarVector::emEndIterationNoSharingElementProbabilities(
 	//      however, if this happens, the variance will be floored like
 	//      in case 1.
 
-	numFlooredVariances++;
+	trMembers->numFlooredVariances++;
 
 	// Don't let variances go less than variance floor. 
 
@@ -1754,17 +1758,17 @@ DiagCovarVector::emEndIterationNoSharingElementProbabilities(
 	// either A or B but not both should be uncommented below.
 
 	// A: keep old variance
-	nextCovariances[i] = covariances[i];
+	trMembers->nextCovariances[i] = covariances[i];
 
 	// B: hard limit the variances
 	// nextCovariances[i] = GaussianComponent::varianceFloor();
       }
     }
 
-    if (prevNumFlooredVariances < numFlooredVariances) {
+    if (prevNumFlooredVariances < trMembers->numFlooredVariances) {
       infoMsg(IM::Warning,"WARNING: covariance vector named '%s' had %d variances floored, minimum variance found was %e.\n",
 	      name().c_str(),
-	      numFlooredVariances-prevNumFlooredVariances,
+	      trMembers->numFlooredVariances-prevNumFlooredVariances,
 	      minVar);
     }
 
@@ -1793,13 +1797,13 @@ DiagCovarVector::emSwapCurAndNew()
   // we should have that the number of calls
   // to emStartIteration and emEndIteration are
   // the same.
-  assert ( refCount == 0 );
+  assert ( trMembers->refCount == 0 );
 
   if (!emSwappableBitIsSet())
     return;
 
   for (int i=0;i<covariances.len();i++) {
-    genSwap(covariances[i],nextCovariances[i]);
+    genSwap(covariances[i],trMembers->nextCovariances[i]);
   }
   // set up new parameters for their potential next use.
   preCompute();

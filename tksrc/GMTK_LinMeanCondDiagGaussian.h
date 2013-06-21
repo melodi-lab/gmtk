@@ -45,35 +45,48 @@ class LinMeanCondDiagGaussian : public GaussianComponent {
   DlinkMatrix* dLinkMat;
 
   // For regularized adaptation, we have another (mean,dlinkMat) that
-  // we may adapt towards.
+  // we may adapt towards. Note that while these are
+  // used only during training, they are specified when
+  // read in so we need to store pointers to them here in
+  // case they exist when reading this object.
   MeanVector* adaptToMean;
   DlinkMatrix* adaptToDLinkMat;
 
   /////////////////////////////////////////////////
   // modify the usage counts of any members that use them; typically
   // called with amount=1 or -1
-  void adjustNumTimesShared(int amount){
+  void adjustNumTimesShared(int amount) {
     mean->numTimesShared += amount;
     covar->numTimesShared += amount;
     dLinkMat->numTimesShared += amount;
   };
 
-  // Accumulators for EM training: First, a local mean & diagCov
-  // accumulator, needed for sharing.
-  // WARNING: If changed from float -> double, accumulator
-  // writing routines will also need to change.
-  // EX 
-  sArray<float> xAccumulators;
-  // E[x^2] accumulators
-  sArray<float> xxAccumulators;
-  // Next, an array containing the accumulators for
-  // the feature vector 'x' times the conditioning variables 'z'
-  // i.e., this is E[XZ'].
-  sArray<float> xzAccumulators;
-  // next, E[Z]
-  sArray<float> zAccumulators;
-  //  E[ZZ']
-  sArray<float> zzAccumulators;
+  ////////////////////////////////////////////////////////////////////
+  // Data structures support for parameter training (EM and potentially other forms)
+  ////////////////////////////////////////////////////////////////////
+  struct Training_Members {
+    // Accumulators for EM training: First, a local mean & diagCov
+    // accumulator, needed for sharing.
+    // WARNING: If changed from float -> double, accumulator
+    // writing routines will also need to change.
+    // EX 
+    sArray<float> xAccumulators;
+    // E[x^2] accumulators
+    sArray<float> xxAccumulators;
+    // Next, an array containing the accumulators for
+    // the feature vector 'x' times the conditioning variables 'z'
+    // i.e., this is E[XZ'].
+    sArray<float> xzAccumulators;
+    // next, E[Z]
+    sArray<float> zAccumulators;
+    //  E[ZZ']
+    sArray<float> zzAccumulators;
+  };
+  auto_deleting_ptr<struct Training_Members> trMembers;
+  ////////////////////////////////////////////////////////////////////
+  // End of data structures support for EM
+  ////////////////////////////////////////////////////////////////////
+
 
 public:
 

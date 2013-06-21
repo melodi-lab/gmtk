@@ -40,11 +40,6 @@ class MissingFeatureScaledDiagGaussian : public GaussianComponent {
   // This might be tied with multiple other distributions.
   MeanVector* mean;
 
-  // For EM Training: Local copy of mean & diagCov accumulators for this MissingFeatureScaledDiagGaussian,
-  // which is needed for sharing.
-  sArray<float> nextMeans;
-  sArray<float> nextDiagCovars;
-
   ///////////////////////////////////////////////////////
   // The diagonal of the covariance matrix
   // This might be tied with multiple other distributions.
@@ -53,10 +48,27 @@ class MissingFeatureScaledDiagGaussian : public GaussianComponent {
   // The exponential scale vector
   RealMatrix* scale;
 
-  ////////////////////////////////////////////////
-  // the local accumulated probability needed for
-  // each element of the vector.
-  sArray<logpr> elementAccumulatedProbability;
+  ////////////////////////////////////////////////////////////////////
+  // Data structures support for parameter training (EM and potentially other forms)
+  ////////////////////////////////////////////////////////////////////
+  struct Training_Members {
+    // For EM Training: Local copy of mean & diagCov accumulators for
+    // this MissingFeatureScaledDiagGaussian, which is needed for
+    // sharing.
+    sArray<float> nextMeans;
+    sArray<float> nextDiagCovars;
+
+    ////////////////////////////////////////////////
+    // the local accumulated probability needed for each element of
+    // the vector in a missing feature scaled gaussian.
+    sArray<logpr> elementAccumulatedProbability;
+  };
+  auto_deleting_ptr<struct Training_Members> trMembers;
+  ////////////////////////////////////////////////////////////////////
+  // End of data structures support for EM
+  ////////////////////////////////////////////////////////////////////
+
+
 
   /////////////////////////////////////////////////
   // modify the usage counts of any members that use them; typically

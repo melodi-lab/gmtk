@@ -97,6 +97,36 @@ void deleteObsInVector(vector < T* >& v) {
 }
 
 
+/////////////////////////////////////////////////
+// a very simple automatic deleting pointer,
+// this maintains no reference counts, ownership, etc.
+// it just gives a class an easy way to allow users to
+// create a pointer if needed, and have it cleaned up automatically
+// if ever used.
+template <class T> class auto_deleting_ptr
+{
+  T* ptr;
+public:
+  auto_deleting_ptr(T* p = 0) : ptr(p) {}
+  ~auto_deleting_ptr()        { delete ptr;}
+
+  void reset() { delete ptr; ptr = 0;}
+
+  // allocate for those T's that have default constructor.
+  T* allocate() { reset(); ptr = new T; return ptr; }
+  T* allocateIfNeeded() { if (ptr == NULL) allocate(); return ptr; }
+
+  T* operator=(T* new_ptr) { reset(); ptr = new_ptr; return ptr; }
+
+  // access routines, to syntactically act like a pointer.
+  // TODO: is there a way to have differnet versions for lvalues and rvalues?
+  T& operator*()   const {return *ptr;}
+  T* operator->()  const {return  ptr;}
+};
+
+
+
+
 #define CSWT_EMPTY_TAG (~0)
 // Copies input over to result and if 
 // input has any occurence of '%d' in it, replace it with
