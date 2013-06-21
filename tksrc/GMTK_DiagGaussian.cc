@@ -215,6 +215,9 @@ DiagGaussian::noisyClone()
 	     != GM_Parms.componentsMap.end());
 
     if (cloneShareMeans && cloneShareCovars) {
+      // the issue here is that if the user wants to clone a gaussian that shares
+      // both mean and covar, it would be identical and no reason to clone in the first
+      // place.
       warning("WARNING: Diagonal Gaussian component '%s' is cloning, and was asked to share both means and covariances. No sharing is occuring instead.",name().c_str());
       clone->mean = mean->noisyClone();
       clone->covar = covar->noisyClone();

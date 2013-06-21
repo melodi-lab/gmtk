@@ -68,6 +68,13 @@ private:
     // the denominator used in the case of shared means.
     sArray<double> sharedMeansDenominator;
 
+    ////////////////////////////////////////////////
+    // the local accumulated probability needed for each element of
+    // the mean vector in a missing feature scaled gaussian. This 
+    // is currently (as of 6/21/2013) used only by MissingFeatureScaledDiagGaussian,
+    // for other uses this array remains empty.
+    sArray<logpr> elementAccumulatedProbability;
+
     /////////////////////////////////////////////////
     // counts the number of gaussian components
     // that are sharing this mean at EM training time. This is a dynamic
@@ -132,7 +139,13 @@ public:
   void recursivelyClearUsedBit() {  emClearUsedBit();  }
   void recursivelySetUsedBit() { emSetUsedBit();  }
 
-
+  void initElementAccumulatedProbability() {
+    assert ( emEmAllocatedBitIsSet() );
+    trMembers->elementAccumulatedProbability.growIfNeeded(means.len());
+    for (int i=0 ; i<means.len() ; i++) {
+      trMembers->elementAccumulatedProbability[i].set_to_zero();
+    }
+  }
 
   //////////////////////////////////
   // Public interface support for EM
@@ -146,10 +159,15 @@ public:
 		   float *const partialAccumulatedNextMeans);
   void emEndIteration(const float *const partialAccumulatedNextMeans);
   void emEndIterationSharedMeansCovars(const logpr parentsAccumulatedProbability,
-					     const float*const partialAccumulatedNextMeans,
-					     const DiagCovarVector* covar);
-  void emEndIterationNoSharing(const float *const partialAccumulatedNextMeans);
+				       const float*const partialAccumulatedNextMeans,
+				       const DiagCovarVector* covar);
+  void emEndIterationSharedMeansCovarsElementProbabilities(
+				       const logpr parentsAccumulatedProbability,
+				       const float*const partialAccumulatedNextMeans,
+				       const DiagCovarVector* covar,
+				       const logpr *const elementAccumulatedProbabilities);
 
+  void emEndIterationNoSharing(const float *const partialAccumulatedNextMeans);
   void emEndIterationNoSharingElementProbabilities(const float *const partialAccumulatedNextMeans,
 						   const logpr *const elementAccumulatedProbabilities);
 
