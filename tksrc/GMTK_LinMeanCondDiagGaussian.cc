@@ -399,6 +399,7 @@ void
 LinMeanCondDiagGaussian::emStartIteration()
 {
   assert ( basicAllocatedBitIsSet() );
+  assert ( emEmAllocatedBitIsSet() );
   if (!emAmTrainingBitIsSet())
     return;
 
@@ -429,6 +430,8 @@ LinMeanCondDiagGaussian::emIncrement(logpr prob,
 				     const int stride)
 {
   assert ( basicAllocatedBitIsSet() );
+  assert ( emEmAllocatedBitIsSet() );
+
   if (!emAmTrainingBitIsSet())
     return;
 
@@ -569,6 +572,8 @@ LinMeanCondDiagGaussian::emEndIteration()
 void
 LinMeanCondDiagGaussian::emEndIterationNoSharing()
 {
+  assert ( emEmAllocatedBitIsSet() );
+
   // accumulatedProbability.floor();
   if (accumulatedProbability < minContAccumulatedProbability()) {
     warning("WARNING: Lin Mean-Cond Diag Gaussian Component named '%s' received only %e accumulated log probability (min is %e) in EM iteration, Global missed increment count is %d. Also check child mean '%s', covar '%s', and dlink matrix '%s'",
@@ -853,6 +858,7 @@ LinMeanCondDiagGaussian::emEndIterationNoSharing()
 void
 LinMeanCondDiagGaussian::emEndIterationSharedCovars()
 {
+  assert ( emEmAllocatedBitIsSet() );
   // accumulatedProbability.floor();
   if (accumulatedProbability < minContAccumulatedProbability()) {
     warning("WARNING: Lin Mean-Cond Diag Gaussian Component named '%s' received only %e accumulated log probability (min is %e) in EM iteration, Global missed increment count is %d. Also check child mean '%s', covar '%s', and dlink matrix '%s'",
@@ -1082,6 +1088,7 @@ void
 LinMeanCondDiagGaussian::emEndIterationSharedAll()
 {
 
+  assert ( emEmAllocatedBitIsSet() );
   // accumulatedProbability.floor();
   if (accumulatedProbability < minContAccumulatedProbability()) {
     warning("WARNING: Lin Mean-Cond Diag Gaussian Component named '%s' received only %e accumulated log probability (min is %e) in EM iteration, Global missed increment count is %d. Also check child mean '%s', covar '%s', and dlink matrix '%s'",
@@ -1164,6 +1171,8 @@ LinMeanCondDiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& ofile,
 						    bool writeLogVals,
 						    bool writeZeros)
 {
+
+  assert ( emEmAllocatedBitIsSet() );
   // since this is a Gaussian, we ignore the writeLogVals
   // argument since it doesn't make sense to take log of
   // these values since they are continuous, could be negative, etc.
@@ -1224,6 +1233,7 @@ LinMeanCondDiagGaussian::emLoadObjectsDummyAccumulators(iDataStreamFile& ifile)
 void
 LinMeanCondDiagGaussian::emZeroOutObjectsAccumulators()
 {
+  assert ( emEmAllocatedBitIsSet() );
   for (int i=0;i<trMembers->xAccumulators.len();i++) {
     trMembers->xAccumulators[i] = 0.0;
   }
@@ -1245,6 +1255,7 @@ LinMeanCondDiagGaussian::emZeroOutObjectsAccumulators()
 void
 LinMeanCondDiagGaussian::emLoadObjectsAccumulators(iDataStreamFile& ifile)
 {
+  assert ( emEmAllocatedBitIsSet() );
   for (int i=0;i<trMembers->xAccumulators.len();i++) {
     ifile.read(trMembers->xAccumulators[i],"LMDG load accums x.");
   }
@@ -1266,6 +1277,7 @@ LinMeanCondDiagGaussian::emLoadObjectsAccumulators(iDataStreamFile& ifile)
 void
 LinMeanCondDiagGaussian::emAccumulateObjectsAccumulators(iDataStreamFile& ifile)
 {
+  assert ( emEmAllocatedBitIsSet() );
   // ASSUME ACCUMULATOR TYPE IS 'float'
   for (int i=0;i<trMembers->xAccumulators.len();i++) {
     float tmp;
