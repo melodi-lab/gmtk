@@ -85,6 +85,14 @@ class DiagCovarVector : public EMable {
     // became very small.
     unsigned numFlooredVariances;
 
+
+    ////////////////////////////////////////////////
+    // the local accumulated probability needed for each element of
+    // the mean vector in a missing feature scaled gaussian. This 
+    // is currently (as of 6/21/2013) used only by MissingFeatureScaledDiagGaussian,
+    // for other uses this array remains empty.
+    sArray<logpr> elementAccumulatedProbability;
+
     // default constructor
     Training_Members() : refCount(0),numFlooredVariances(0) {}  
   };
@@ -120,6 +128,15 @@ public:
   unsigned totalNumberParameters() { return covariances.len(); }
   void recursivelyClearUsedBit() {  emClearUsedBit();  }
   void recursivelySetUsedBit() { emSetUsedBit();  }
+
+  void initElementAccumulatedProbability() {
+    assert ( emEmAllocatedBitIsSet() );
+    trMembers->elementAccumulatedProbability.growIfNeeded(covariances.len());
+    for (int i=0 ; i<covariances.len() ; i++) {
+      trMembers->elementAccumulatedProbability[i].set_to_zero();
+    }
+  }
+
 
 
   ///////////////////////////////////////
@@ -166,10 +183,18 @@ public:
 						   const logpr *const elementAccumulatedProbabilities);
 
   void emEndIterationNoSharingAlreadyNormalized(const float*const c);
+
   void emEndIterationSharedMeansCovars(const logpr parentsAccumulatedProbability,
-					     const float*const partialAccumulatedNextMeans,
-					     const float *const partialAccumulatedNextCovar,
-					     const MeanVector* mean);
+				       const float*const partialAccumulatedNextMeans,
+				       const float *const partialAccumulatedNextCovar,
+				       const MeanVector* mean);
+  void emEndIterationSharedMeansCovarsElementProbabilities(const logpr parentsAccumulatedProbability,
+				       const float*const partialAccumulatedNextMeans,
+				       const float *const partialAccumulatedNextCovar,
+				       const MeanVector* mean,
+				       const logpr *const elementAccumulatedProbabilities);
+
+
   void emEndIterationSharedMeansCovarsDlinks(const logpr accumulatedProbability,
 					     const float* const xAccumulators,
 					     const float* const xxAccumulators,
@@ -178,9 +203,17 @@ public:
 					     const float* const zzAccumulators,
 					     const MeanVector* mean,
 					     const DlinkMatrix* dLinkMat);
+
   void emEndIterationSharedCovars(const logpr parentsAccumulatedProbability,
 				  const float*const partialAccumulatedNextMeans,
 				  const float *const partialAccumulatedNextCovar);
+  void emEndIterationSharedCovarsElementProbabilities(
+		  const logpr parentsAccumulatedProbability,
+		  const float*const partialAccumulatedNextMeans,
+		  const float *const partialAccumulatedNextCovar,
+		  const logpr *const elementAccumulatedProbabilities);
+
+
   void emEndIterationSharedCovars(const float*const c);
   void emSwapCurAndNew();
 

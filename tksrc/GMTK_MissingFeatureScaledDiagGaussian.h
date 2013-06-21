@@ -157,6 +157,13 @@ public:
 				const unsigned len,
 				float *meanAccumulator,
 				float *diagCovarAccumulator);
+  void emIncrementMeanDiagCovar(logpr prob,
+				const float fprob,
+				const float *const f,
+				const unsigned len,
+				float *meanAccumulator,
+				float *diagCovarAccumulator,
+				logpr*, logpr*);
 
   void emEndIteration();
   void emSwapCurAndNew();
@@ -169,6 +176,16 @@ public:
 				float *curDiagCovars,
 				float *meanAccumulator,
 				float *diagCovarAccumulator);
+  
+  void fkIncrementMeanDiagCovar(logpr prob,
+				const float fprob,
+				const float *const f,
+				const unsigned len,
+				float *curMeans,
+				float *curDiagCovars,
+				float *meanAccumulator,
+				float *diagCovarAccumulator,
+				logpr*,logpr*);
   
 
   // parallel training
