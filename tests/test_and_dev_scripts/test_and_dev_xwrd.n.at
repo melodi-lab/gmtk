@@ -11,7 +11,7 @@ AT_SETUP([xwrd.n: infocommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/xwrd.n/infocommand])
 AT_CHECK([if test -f $TEST_AND_DEV/xwrd.n/misc/learnedParams.phoneT.32M.exp0.bin.bz2 \
              -a ! -f $TEST_AND_DEV/xwrd.n/misc/learnedParams.phoneT.32M.exp0.bin;    \
-          then (cd $TEST_AND_DEV/xwrd.n/misc && bunzip2 *.bz2); fi],
+          then (cd $TEST_AND_DEV/xwrd.n/misc && bunzip2 -k *.bz2); fi],
           [],[ignore],[ignore])
 AT_CHECK([(cd $TEST_AND_DEV/xwrd.n && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
 AT_CLEANUP

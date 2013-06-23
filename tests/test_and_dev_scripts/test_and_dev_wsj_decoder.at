@@ -11,7 +11,7 @@ AT_SETUP([wsj_decoder: infocommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/wsj_decoder/infocommand])
 AT_CHECK([if test -f $TEST_AND_DEV/wsj_decoder/newbigram.lm.idx.bz2 \
              -a ! -f $TEST_AND_DEV/wsj_decoder/newbigram.lm.idx;    \
-          then bunzip2 $TEST_AND_DEV/wsj_decoder/newbigram.lm.idx.bz2; fi],
+          then bunzip2 -k $TEST_AND_DEV/wsj_decoder/newbigram.lm.idx.bz2; fi],
           [],[ignore],[ignore])
 AT_CHECK([(cd $TEST_AND_DEV/wsj_decoder && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
 AT_CLEANUP
