@@ -64,10 +64,10 @@ testanddev.at:
 	find $(srcdir) -type f -name test_and_dev_\*.at | \
 	  $(AWK) '{print "m4_include(["$$1"])"}' >> $@
 
-check-local: atconfig atlocal $(TESTSUITE) gmtk_tests.at
+check-local: atconfig atlocal $(TESTSUITE) testanddev gmtk_tests.at
 	$(SHELL) '$(srcdir)/$(TESTSUITE)' $(TESTSUITEFLAGS)
 
-installcheck-local: atconfig atlocal $(TESTSUITE) gmtk_tests.at
+installcheck-local: atconfig atlocal $(TESTSUITE) testanddev gmtk_tests.at
 	$(SHELL) '$(srcdir)/$(TESTSUITE)' \
 	AUTOTEST_PATH='$(bindir):$(abs_top_builddir)/tksrc:$(abs_top_builddir)/miscSupport' \
 	$(TESTSUITEFLAGS)
