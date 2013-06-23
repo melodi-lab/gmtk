@@ -17,7 +17,7 @@ AT_SETUP([gmseg-pilot: jtcommand])
 AT_CHECK([for f in 0000 0002 0006 0011; do
   if test   -f $TEST_AND_DEV/gmseg-pilot/chunk${f}.obs.bz2 -a \
           ! -f $TEST_AND_DEV/gmseg-pilot/chunk${f}.obs; then
-     bunzip2 $TEST_AND_DEV/gmseg-pilot/chunk${f}.obs.bz2
+     bunzip2 -k $TEST_AND_DEV/gmseg-pilot/chunk${f}.obs.bz2
   fi
 done],[],[ignore],[ignore])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/gmseg-pilot/jtcommand])

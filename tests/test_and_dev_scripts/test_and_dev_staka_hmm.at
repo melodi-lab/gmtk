@@ -9,6 +9,9 @@ AT_CLEANUP
 
 AT_SETUP([staka/hmm: infocommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/staka/hmm/infocommand])
+AT_CHECK([if test -f $TEST_AND_DEV/staka/hmm/learned_parms.bin.bz2 -a \
+                ! -f $TEST_AND_DEV/staka/hmm/learned_parms.bin; \
+          then bunzip2 -k $TEST_AND_DEV/staka/hmm/learned_parms.bin.bz2; fi])
 AT_CHECK([(cd $TEST_AND_DEV/staka/hmm && ulimit -v 8000000 &&            ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
 AT_CLEANUP
 

@@ -14,10 +14,14 @@ AT_CLEANUP
 
 AT_SETUP([hui_lattice_keyword/phone_durations: jtcommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/hui_lattice_keyword/phone_durations/jtcommand])
+# takes too long
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
 AT_CHECK([(cd $TEST_AND_DEV/hui_lattice_keyword/phone_durations && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([hui_lattice_keyword/phone_durations: vitcommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/hui_lattice_keyword/phone_durations/vitcommand])
+# takes too long
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
 AT_CHECK([(cd $TEST_AND_DEV/hui_lattice_keyword/phone_durations && ulimit -v 8000000 &&            ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
 AT_CLEANUP

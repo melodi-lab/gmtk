@@ -11,7 +11,7 @@ AT_SETUP([no_time_parent: infocommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/no_time_parent/infocommand])
 AT_CHECK([if test -f $TEST_AND_DEV/no_time_parent/params/word3gram.lm.idx.bz2 -a \
                 ! -f $TEST_AND_DEV/no_time_parent/params/word3gram.lm.idx;       \
-          then bunzip2 $TEST_AND_DEV/no_time_parent/params/word3gram.lm.idx.bz2; fi],
+          then bunzip2 -k $TEST_AND_DEV/no_time_parent/params/word3gram.lm.idx.bz2; fi],
   [],[ignore],[ignore])
 AT_CHECK([(cd $TEST_AND_DEV/no_time_parent && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
 AT_CLEANUP
