@@ -1,0 +1,28 @@
+
+# test and dev model ticket425
+
+
+AT_SETUP([ticket425: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/ticket425/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/ticket425 && ulimit -v 8000000 &&            ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([ticket425: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/ticket425/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/ticket425 && ulimit -v 8000000 &&            ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([ticket425: traincommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/ticket425/traincommand])
+AT_CHECK([(cd $TEST_AND_DEV/ticket425 && ulimit -v 8000000 &&            ulimit -t 120 && ./traincommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([ticket425: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/ticket425/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/ticket425 && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([ticket425: vitcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/ticket425/vitcommand])
+AT_CHECK([(cd $TEST_AND_DEV/ticket425 && ulimit -v 8000000 &&            ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP

@@ -1,0 +1,23 @@
+
+# test and dev model debug_accumulator
+
+
+AT_SETUP([debug_accumulator: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/debug_accumulator/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/debug_accumulator && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([debug_accumulator: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/debug_accumulator/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/debug_accumulator && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([debug_accumulator: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/debug_accumulator/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/debug_accumulator && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([debug_accumulator: vitcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/debug_accumulator/vitcommand])
+AT_CHECK([(cd $TEST_AND_DEV/debug_accumulator && ulimit -v 8000000 && ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP

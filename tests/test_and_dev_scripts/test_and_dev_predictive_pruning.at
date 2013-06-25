@@ -1,0 +1,27 @@
+
+# test and dev model predictive_pruning
+
+
+AT_SETUP([predictive_pruning: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/predictive_pruning/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/predictive_pruning && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([predictive_pruning: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/predictive_pruning/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/predictive_pruning && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([predictive_pruning: jtcommand])
+# too slow
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/predictive_pruning/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/predictive_pruning && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([predictive_pruning: vitcommand])
+# too slow
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/predictive_pruning/vitcommand])
+AT_CHECK([(cd $TEST_AND_DEV/predictive_pruning && ulimit -v 8000000 && ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP
