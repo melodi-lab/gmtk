@@ -1,0 +1,28 @@
+
+# test and dev model staka/gmtk
+
+
+AT_SETUP([staka/gmtk: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/staka/gmtk/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/staka/gmtk && ulimit -v 8000000 &&            ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([staka/gmtk: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/staka/gmtk/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/staka/gmtk && ulimit -v 8000000 &&            ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([staka/gmtk: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/staka/gmtk/jtcommand])
+
+# too much memory & too slow
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
+AT_CHECK([(cd $TEST_AND_DEV/staka/gmtk && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([staka/gmtk: vitcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/staka/gmtk/vitcommand])
+# too much memory & too slow
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
+AT_CHECK([(cd $TEST_AND_DEV/staka/gmtk && ulimit -v 8000000 &&            ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP

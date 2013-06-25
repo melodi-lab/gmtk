@@ -1,0 +1,27 @@
+
+# test and dev model hui-lattice-align
+
+
+AT_SETUP([hui-lattice-align: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/hui-lattice-align/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/hui-lattice-align && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([hui-lattice-align: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/hui-lattice-align/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/hui-lattice-align && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([hui-lattice-align: jtcommand])
+# too big
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/hui-lattice-align/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/hui-lattice-align && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([hui-lattice-align: vitcommand])
+# too big
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/hui-lattice-align/vitcommand])
+AT_CHECK([(cd $TEST_AND_DEV/hui-lattice-align && ulimit -v 8000000 && ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP

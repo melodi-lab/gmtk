@@ -1,0 +1,23 @@
+
+# test and dev model sheila_bug
+
+
+AT_SETUP([sheila_bug: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/sheila_bug/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/sheila_bug && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([sheila_bug: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/sheila_bug/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/sheila_bug && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([sheila_bug: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/sheila_bug/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/sheila_bug && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([sheila_bug: vitcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/sheila_bug/vitcommand])
+AT_CHECK([(cd $TEST_AND_DEV/sheila_bug && ulimit -v 8000000 && ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP

@@ -1,0 +1,34 @@
+
+# test and dev model toyFisher
+
+
+AT_SETUP([toyFisher: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/toyFisher/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/toyFisher && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([toyFisher: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/toyFisher/infocommand])
+AT_CHECK([if test -f $TEST_AND_DEV/toyFisher/triphone/debugTpModel/config2/DT/phoneIndex_word_2_phone.dt.bz2 -a \
+                ! -f $TEST_AND_DEV/toyFisher/triphone/debugTpModel/config2/DT/phoneIndex_word_2_phone.dt; \
+          then bunzip2 -k $TEST_AND_DEV/toyFisher/triphone/debugTpModel/config2/DT/phoneIndex_word_2_phone.dt.bz2; fi; \ 
+          for f in `ls $TEST_AND_DEV/toyFisher/triphone/debugTpModel/config2/tie/*.bz2`; do \
+            if test ! -f ${f%.bz2}; then bunzip2 -k $f; fi \
+          done],
+  [],[ignore],[ignore])
+AT_CHECK([(cd $TEST_AND_DEV/toyFisher && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([toyFisher: traincommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/toyFisher/traincommand])
+# 0-cliques
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
+AT_CHECK([(cd $TEST_AND_DEV/toyFisher && ulimit -v 8000000 && ulimit -t 120 && ./traincommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([toyFisher: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/toyFisher/jtcommand])
+# 0-cliques
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
+AT_CHECK([(cd $TEST_AND_DEV/toyFisher && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

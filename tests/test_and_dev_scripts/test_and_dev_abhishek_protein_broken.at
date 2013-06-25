@@ -1,0 +1,31 @@
+
+# test and dev model abhishek_protein_broken
+
+
+AT_SETUP([abhishek_protein_broken: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/abhishek_protein_broken/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/abhishek_protein_broken && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([abhishek_protein_broken: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/abhishek_protein_broken/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/abhishek_protein_broken && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([abhishek_protein_broken: traincommand])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/abhishek_protein_broken/data])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/abhishek_protein_broken/traincommand])
+AT_CHECK([(cd $TEST_AND_DEV/abhishek_protein_broken && ulimit -v 8000000 && ulimit -t 120 && ./traincommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([abhishek_protein_broken: jtcommand])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/abhishek_protein_broken/data])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/abhishek_protein_broken/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/abhishek_protein_broken && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([abhishek_protein_broken: vitcommand])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/abhishek_protein_broken/data])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/abhishek_protein_broken/vitcommand])
+AT_CHECK([(cd $TEST_AND_DEV/abhishek_protein_broken && ulimit -v 8000000 && ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP

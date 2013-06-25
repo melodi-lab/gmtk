@@ -1,0 +1,31 @@
+
+# test and dev model 20091118.60
+
+
+AT_SETUP([20091118.60: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/20091118.60/tricommand])
+AT_CHECK([for f in `ls $TEST_AND_DEV/20091118.60/params/*.bz2`; do \
+            if test ! -f ${f%.bz2}; then bunzip2 -k $f; fi \
+          done],[],[ignore],[ignore])
+AT_CHECK([(cd $TEST_AND_DEV/20091118.60 && ulimit -v 8000000 &&            ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([20091118.60: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/20091118.60/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/20091118.60 && ulimit -v 8000000 &&            ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([20091118.60: traincommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/20091118.60/traincommand])
+AT_CHECK([(cd $TEST_AND_DEV/20091118.60 && ulimit -v 8000000 &&            ulimit -t 120 && ./traincommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([20091118.60: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/20091118.60/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/20091118.60 && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([20091118.60: vitcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/20091118.60/vitcommand])
+AT_CHECK([(cd $TEST_AND_DEV/20091118.60 && ulimit -v 8000000 &&            ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP

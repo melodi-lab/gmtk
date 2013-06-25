@@ -88,6 +88,10 @@ tests/test_and_dev.at
 tests/testsuite
 tests/testsuite.dir
 tests/testsuite.log
+tests/testanddev
+tests/testanddev.at
+tests/testanddev.dir
+tests/testanddev.log
 tksrc/unrevisioned
 tksrc/gmtkDTindex
 tksrc/gmtkEMtrain
