@@ -4,7 +4,7 @@
 
 AT_SETUP([staka/Jan2005: tricommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/staka/Jan2005/tricommand])
-AT_CHECK([(cd $TEST_AND_DEV/staka/Jan2005 && ulimit -v 8000000 &&            ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/staka/Jan2005 && ulimit -v ${GMTK_MEMLIMT-8000000} &&            ulimit -t ${GMTK_TIMELIMIT-120} && ./tricommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([staka/Jan2005: infocommand])
@@ -12,19 +12,19 @@ AT_SKIP_IF([test ! -x $TEST_AND_DEV/staka/Jan2005/infocommand])
 AT_CHECK([if test -f $TEST_AND_DEV/staka/Jan2005/trainable.bin.bz2 -a \
                 ! -f $TEST_AND_DEV/staka/Jan2005/trainable.bin; \
           then bunzip2 -k $TEST_AND_DEV/staka/Jan2005/trainable.bin.bz2; fi])
-AT_CHECK([(cd $TEST_AND_DEV/staka/Jan2005 && ulimit -v 8000000 &&            ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/staka/Jan2005 && ulimit -v ${GMTK_MEMLIMT-8000000} &&            ulimit -t ${GMTK_TIMELIMIT-120} && ./infocommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([staka/Jan2005: traincommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/staka/Jan2005/traincommand])
 # test & dev version of the model isn't working yet
 AT_XFAIL_IF([test x"$GMTK_NOXFAIL" = x""])
-AT_CHECK([(cd $TEST_AND_DEV/staka/Jan2005 && ulimit -v 8000000 &&            ulimit -t 120 && ./traincommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/staka/Jan2005 && ulimit -v ${GMTK_MEMLIMT-8000000} &&            ulimit -t ${GMTK_TIMELIMIT-120} && ./traincommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([staka/Jan2005: jtcommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/staka/Jan2005/jtcommand])
 # test & dev version of the model isn't working yet
 AT_XFAIL_IF([test x"$GMTK_NOXFAIL" = x""])
-AT_CHECK([(cd $TEST_AND_DEV/staka/Jan2005 && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/staka/Jan2005 && ulimit -v ${GMTK_MEMLIMT-8000000} &&            ulimit -t ${GMTK_TIMELIMIT-120} && ./jtcommand)], [], [ignore], [ignore])
 AT_CLEANUP

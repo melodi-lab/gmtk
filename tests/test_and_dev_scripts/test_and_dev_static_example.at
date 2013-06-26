@@ -4,20 +4,20 @@
 
 AT_SETUP([static_example: tricommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/static_example/tricommand])
-AT_CHECK([(cd $TEST_AND_DEV/static_example && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/static_example && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./tricommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([static_example: infocommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/static_example/infocommand])
-AT_CHECK([(cd $TEST_AND_DEV/static_example && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/static_example && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./infocommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([static_example: jtcommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/static_example/jtcommand])
-AT_CHECK([(cd $TEST_AND_DEV/static_example && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/static_example && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./jtcommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([static_example: vitcommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/static_example/vitcommand])
-AT_CHECK([(cd $TEST_AND_DEV/static_example && ulimit -v 8000000 && ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/static_example && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./vitcommand)], [], [ignore], [ignore])
 AT_CLEANUP

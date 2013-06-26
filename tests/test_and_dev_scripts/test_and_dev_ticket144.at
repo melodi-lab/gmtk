@@ -4,20 +4,20 @@
 
 AT_SETUP([ticket144: tricommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/ticket144/tricommand])
-AT_CHECK([(cd $TEST_AND_DEV/ticket144 && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/ticket144 && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./tricommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([ticket144: infocommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/ticket144/infocommand])
-AT_CHECK([(cd $TEST_AND_DEV/ticket144 && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/ticket144 && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./infocommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([ticket144: jtcommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/ticket144/jtcommand])
-AT_CHECK([(cd $TEST_AND_DEV/ticket144 && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/ticket144 && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./jtcommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([ticket144: vitcommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/ticket144/vitcommand])
-AT_CHECK([(cd $TEST_AND_DEV/ticket144 && ulimit -v 8000000 && ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/ticket144 && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./vitcommand)], [], [ignore], [ignore])
 AT_CLEANUP

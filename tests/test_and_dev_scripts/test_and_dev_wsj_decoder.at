@@ -4,7 +4,7 @@
 
 AT_SETUP([wsj_decoder: tricommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/wsj_decoder/tricommand])
-AT_CHECK([(cd $TEST_AND_DEV/wsj_decoder && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/wsj_decoder && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./tricommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([wsj_decoder: infocommand])
@@ -13,19 +13,19 @@ AT_CHECK([if test -f $TEST_AND_DEV/wsj_decoder/newbigram.lm.idx.bz2 \
              -a ! -f $TEST_AND_DEV/wsj_decoder/newbigram.lm.idx;    \
           then bunzip2 -k $TEST_AND_DEV/wsj_decoder/newbigram.lm.idx.bz2; fi],
           [],[ignore],[ignore])
-AT_CHECK([(cd $TEST_AND_DEV/wsj_decoder && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/wsj_decoder && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./infocommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([wsj_decoder: jtcommand])
 # to slow
 AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/wsj_decoder/jtcommand])
-AT_CHECK([(cd $TEST_AND_DEV/wsj_decoder && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/wsj_decoder && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./jtcommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([wsj_decoder: vitcommand])
 # to slow
 AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/wsj_decoder/vitcommand])
-AT_CHECK([(cd $TEST_AND_DEV/wsj_decoder && ulimit -v 8000000 && ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/wsj_decoder && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./vitcommand)], [], [ignore], [ignore])
 AT_CLEANUP
