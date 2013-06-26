@@ -54,14 +54,14 @@ autoconf_tests
 
 gmtk_tests.at:
 	touch $@
-	find $(srcdir) -type f -name gmtk_test_\*.at | \
+	find $(srcdir) -type f -name gmtk_test_\*.at | sort \
 	  $(AWK) '{print "m4_include(["$$1"])"}' > $@
 
 testanddev.at:
 	echo "AT_COPYRIGHT([Copyright (C) 2013 Jeff Bilmes])" > $@
 	echo "AT_INIT([GMTK Test And Dev Suite])" >> $@
 	echo "AT_COLOR_TESTS" >> $@
-	find $(srcdir) -type f -name test_and_dev_\*.at | \
+	find $(srcdir) -type f -name test_and_dev_\*.at | sort \
 	  $(AWK) '{print "m4_include(["$$1"])"}' >> $@
 
 check-local: atconfig atlocal $(TESTSUITE) testanddev gmtk_tests.at
