@@ -91,9 +91,9 @@ VCID(HGID)
 #define GMTK_ARG_ALLOC_DENSE_CPTS
 #define GMTK_ARG_CHECK_TRI_FILE_CARD
 
-static char* Ptrifile = false;
-static char* Ctrifile = false;
-static char* Etrifile = false;
+static char* Ptrifile = NULL;
+static char* Ctrifile = NULL;
+static char* Etrifile = NULL;
 
 
 #define GMTK_ARGUMENTS_DEFINITION
