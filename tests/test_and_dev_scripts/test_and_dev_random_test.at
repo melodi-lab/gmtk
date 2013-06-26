@@ -4,15 +4,15 @@
 
 AT_SETUP([random_test: tricommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/random_test/tricommand])
-AT_CHECK([(cd $TEST_AND_DEV/random_test && ulimit -v 8000000 &&            ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/random_test && ulimit -v ${GMTK_MEMLIMT-8000000} &&            ulimit -t ${GMTK_TIMELIMIT-120} && ./tricommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([random_test: infocommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/random_test/infocommand])
-AT_CHECK([(cd $TEST_AND_DEV/random_test && ulimit -v 8000000 &&            ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/random_test && ulimit -v ${GMTK_MEMLIMT-8000000} &&            ulimit -t ${GMTK_TIMELIMIT-120} && ./infocommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([random_test: jtcommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/random_test/jtcommand])
-AT_CHECK([(cd $TEST_AND_DEV/random_test && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/random_test && ulimit -v ${GMTK_MEMLIMT-8000000} &&            ulimit -t ${GMTK_TIMELIMIT-120} && ./jtcommand)], [], [ignore], [ignore])
 AT_CLEANUP

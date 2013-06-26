@@ -4,24 +4,24 @@
 
 AT_SETUP([thad_july: tricommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/thad_july/tricommand])
-AT_CHECK([(cd $TEST_AND_DEV/thad_july && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/thad_july && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./tricommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([thad_july: infocommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/thad_july/infocommand])
-AT_CHECK([(cd $TEST_AND_DEV/thad_july && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/thad_july && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./infocommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([thad_july: jtcommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/thad_july/jtcommand])
 # https://j.ee.washington.edu/trac/gmtk/ticket/185
 AT_XFAIL_IF([test x"$GMTK_NOXFAIL" = x""])
-AT_CHECK([(cd $TEST_AND_DEV/thad_july && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/thad_july && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./jtcommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([thad_july: vitcommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/thad_july/vitcommand])
 # https://j.ee.washington.edu/trac/gmtk/ticket/185
 AT_XFAIL_IF([test x"$GMTK_NOXFAIL" = x""])
-AT_CHECK([(cd $TEST_AND_DEV/thad_july && ulimit -v 8000000 && ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/thad_july && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./vitcommand)], [], [ignore], [ignore])
 AT_CLEANUP

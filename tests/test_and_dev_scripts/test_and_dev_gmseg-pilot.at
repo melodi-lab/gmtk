@@ -4,12 +4,12 @@
 
 AT_SETUP([gmseg-pilot: tricommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/gmseg-pilot/tricommand])
-AT_CHECK([(cd $TEST_AND_DEV/gmseg-pilot && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/gmseg-pilot && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./tricommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([gmseg-pilot: infocommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/gmseg-pilot/infocommand])
-AT_CHECK([(cd $TEST_AND_DEV/gmseg-pilot && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/gmseg-pilot && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./infocommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 
@@ -21,10 +21,10 @@ AT_CHECK([for f in 0000 0002 0006 0011; do
   fi
 done],[],[ignore],[ignore])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/gmseg-pilot/jtcommand])
-AT_CHECK([(cd $TEST_AND_DEV/gmseg-pilot && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/gmseg-pilot && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./jtcommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([gmseg-pilot: vitcommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/gmseg-pilot/vitcommand])
-AT_CHECK([(cd $TEST_AND_DEV/gmseg-pilot && ulimit -v 8000000 && ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/gmseg-pilot && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./vitcommand)], [], [ignore], [ignore])
 AT_CLEANUP

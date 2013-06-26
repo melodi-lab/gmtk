@@ -4,7 +4,7 @@
 
 AT_SETUP([hoffman_switching_weight_issue: tricommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/hoffman_switching_weight_issue/tricommand])
-AT_CHECK([(cd $TEST_AND_DEV/hoffman_switching_weight_issue && ulimit -v 8000000 &&            ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/hoffman_switching_weight_issue && ulimit -v ${GMTK_MEMLIMT-8000000} &&            ulimit -t ${GMTK_TIMELIMIT-120} && ./tricommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([hoffman_switching_weight_issue: infocommand])
@@ -12,19 +12,19 @@ AT_SKIP_IF([test ! -x $TEST_AND_DEV/hoffman_switching_weight_issue/infocommand])
 AT_CHECK([for f in `ls $TEST_AND_DEV/hoffman_switching_weight_issue/params/*.bz2`; do \
             if test ! -f ${f%.bz2}; then bunzip2 -k $f; fi \
           done], [],[ignore],[ignore])
-AT_CHECK([(cd $TEST_AND_DEV/hoffman_switching_weight_issue && ulimit -v 8000000 &&            ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/hoffman_switching_weight_issue && ulimit -v ${GMTK_MEMLIMT-8000000} &&            ulimit -t ${GMTK_TIMELIMIT-120} && ./infocommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([hoffman_switching_weight_issue: traincommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/hoffman_switching_weight_issue/traincommand])
 # https://j.ee.washington.edu/trac/gmtk/ticket/6
 AT_XFAIL_IF([test x"$GMTK_NOXFAIL" = x""])
-AT_CHECK([(cd $TEST_AND_DEV/hoffman_switching_weight_issue && ulimit -v 8000000 &&            ulimit -t 120 && ./traincommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/hoffman_switching_weight_issue && ulimit -v ${GMTK_MEMLIMT-8000000} &&            ulimit -t ${GMTK_TIMELIMIT-120} && ./traincommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([hoffman_switching_weight_issue: jtcommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/hoffman_switching_weight_issue/jtcommand])
 # https://j.ee.washington.edu/trac/gmtk/ticket/6
 AT_XFAIL_IF([test x"$GMTK_NOXFAIL" = x""])
-AT_CHECK([(cd $TEST_AND_DEV/hoffman_switching_weight_issue && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/hoffman_switching_weight_issue && ulimit -v ${GMTK_MEMLIMT-8000000} &&            ulimit -t ${GMTK_TIMELIMIT-120} && ./jtcommand)], [], [ignore], [ignore])
 AT_CLEANUP

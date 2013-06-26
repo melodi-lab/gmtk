@@ -4,24 +4,24 @@
 
 AT_SETUP([water: tricommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/water/tricommand])
-AT_CHECK([(cd $TEST_AND_DEV/water && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/water && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./tricommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([water: infocommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/water/infocommand])
-AT_CHECK([(cd $TEST_AND_DEV/water && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/water && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./infocommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([water: jtcommand])
 # not a valid model
 AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/water/jtcommand])
-AT_CHECK([(cd $TEST_AND_DEV/water && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/water && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./jtcommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([water: vitcommand])
 # not a valid model
 AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/water/vitcommand])
-AT_CHECK([(cd $TEST_AND_DEV/water && ulimit -v 8000000 && ulimit -t 120 && ./vitcommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/water && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./vitcommand)], [], [ignore], [ignore])
 AT_CLEANUP

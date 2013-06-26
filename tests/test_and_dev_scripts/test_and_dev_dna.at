@@ -6,17 +6,17 @@ AT_SETUP([dna: tricommand])
 # too slow
 AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/dna/tricommand])
-AT_CHECK([(cd $TEST_AND_DEV/dna && ulimit -v 8000000 && ulimit -t 120 && ./tricommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/dna && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./tricommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([dna: infocommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/dna/infocommand])
-AT_CHECK([(cd $TEST_AND_DEV/dna && ulimit -v 8000000 && ulimit -t 120 && ./infocommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/dna && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./infocommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([dna: jtcommand])
 # not a valid model
 AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/dna/jtcommand])
-AT_CHECK([(cd $TEST_AND_DEV/dna && ulimit -v 8000000 && ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CHECK([(cd $TEST_AND_DEV/dna && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./jtcommand)], [], [ignore], [ignore])
 AT_CLEANUP
