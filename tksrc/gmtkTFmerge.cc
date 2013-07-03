@@ -71,6 +71,7 @@ VCID(HGID)
 #define GMTK_ARG_STR_FILE
 
 #define GMTK_ARG_GENERAL_OPTIONS
+#define GMTK_ARG_VERSION
 #define GMTK_ARG_VERB
 #define GMTK_ARG_HELP
 #define GMTK_ARG_SKIP_STARTUP_CHECKS
@@ -90,9 +91,9 @@ VCID(HGID)
 #define GMTK_ARG_ALLOC_DENSE_CPTS
 #define GMTK_ARG_CHECK_TRI_FILE_CARD
 
-static char* Ptrifile = false;
-static char* Ctrifile = false;
-static char* Etrifile = false;
+static char* Ptrifile = NULL;
+static char* Ctrifile = NULL;
+static char* Etrifile = NULL;
 
 
 #define GMTK_ARGUMENTS_DEFINITION

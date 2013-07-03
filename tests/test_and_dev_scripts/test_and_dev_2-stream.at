@@ -1,0 +1,28 @@
+
+# test and dev model 2-stream
+
+
+AT_SETUP([2-stream: tricommand])
+# too slow
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/2-stream/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/2-stream && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([2-stream: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/2-stream/infocommand])
+AT_CHECK([for f in `ls $TEST_AND_DEV/2-stream/misc/*.bz2`; do \
+            if test ! -f ${f%.bz2}; then bunzip2 -k $f; fi \
+          done], [],[ignore],[ignore])
+AT_CHECK([(cd $TEST_AND_DEV/2-stream && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([2-stream: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/2-stream/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/2-stream && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([2-stream: vitcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/2-stream/vitcommand])
+AT_CHECK([(cd $TEST_AND_DEV/2-stream && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP

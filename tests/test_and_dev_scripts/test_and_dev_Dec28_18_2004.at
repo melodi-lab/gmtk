@@ -1,0 +1,23 @@
+
+# test and dev model Dec28_18_2004
+
+
+AT_SETUP([Dec28_18_2004: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/Dec28_18_2004/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/Dec28_18_2004 && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([Dec28_18_2004: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/Dec28_18_2004/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/Dec28_18_2004 && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([Dec28_18_2004: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/Dec28_18_2004/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/Dec28_18_2004 && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([Dec28_18_2004: vitcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/Dec28_18_2004/vitcommand])
+AT_CHECK([(cd $TEST_AND_DEV/Dec28_18_2004 && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP

@@ -196,7 +196,6 @@ parseTransform(char*& trans_str, int& magic_int, double& magic_double, char *&fi
 
 Filter *
 instantiateFilters(char *filterStr, unsigned numContinuous, unsigned numDiscrete) {
-  char *err_str = filterStr;
   int magicInt;
   double magicDouble;
   char * filterFileName;

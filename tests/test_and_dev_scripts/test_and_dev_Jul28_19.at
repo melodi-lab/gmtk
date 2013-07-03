@@ -1,0 +1,27 @@
+
+# test and dev model Jul28_19
+
+
+AT_SETUP([Jul28_19: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/Jul28_19/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/Jul28_19 && ulimit -v ${GMTK_MEMLIMT-8000000} &&            ulimit -t ${GMTK_TIMELIMIT-120} && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([Jul28_19: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/Jul28_19/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/Jul28_19 && ulimit -v ${GMTK_MEMLIMT-8000000} &&            ulimit -t ${GMTK_TIMELIMIT-120} && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([Jul28_19: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/Jul28_19/jtcommand])
+# https://j.ee.washington.edu/trac/gmtk/ticket/437
+AT_XFAIL_IF([test x"$GMTK_NOXFAIL" = x""])
+AT_CHECK([(cd $TEST_AND_DEV/Jul28_19 && ulimit -v ${GMTK_MEMLIMT-8000000} &&            ulimit -t ${GMTK_TIMELIMIT-120} && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([Jul28_19: vitcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/Jul28_19/vitcommand])
+# https://j.ee.washington.edu/trac/gmtk/ticket/437
+AT_XFAIL_IF([test x"$GMTK_NOXFAIL" = x""])
+AT_CHECK([(cd $TEST_AND_DEV/Jul28_19 && ulimit -v ${GMTK_MEMLIMT-8000000} &&            ulimit -t ${GMTK_TIMELIMIT-120} && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP
