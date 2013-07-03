@@ -354,7 +354,7 @@ void
 MissingFeatureScaledDiagGaussian::emStartIteration()
 {
   assert ( basicAllocatedBitIsSet() );
-  assert ( emEmAllocatedBitIsSet() );
+
   if (!emAmTrainingBitIsSet())
     return;
 
