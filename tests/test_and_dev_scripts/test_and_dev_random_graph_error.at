@@ -1,0 +1,23 @@
+
+# test and dev model random_graph_error
+
+
+AT_SETUP([random_graph_error: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/random_graph_error/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/random_graph_error && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([random_graph_error: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/random_graph_error/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/random_graph_error && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([random_graph_error: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/random_graph_error/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/random_graph_error && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([random_graph_error: vitcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/random_graph_error/vitcommand])
+AT_CHECK([(cd $TEST_AND_DEV/random_graph_error && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP
