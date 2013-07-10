@@ -27,7 +27,7 @@ LIBS += -lboost_thread -lboost_filesystem -lboost_system $(BLAS_LIBS)
 # -lpthread
 
 noinst_LIBRARIES = libDMLP.a
-noinst_bin_PROGRAMS = dmlp
+noinst_PROGRAMS = dmlp
 
 dmlp_SOURCES = dmlp.cc
 

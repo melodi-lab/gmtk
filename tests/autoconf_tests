@@ -42,6 +42,7 @@ gmtk_test_ticket407.at \
 gmtk_test_ticket42.at \
 gmtk_test_ticket425.at \
 gmtk_test_ticket428.at \
+gmtk_test_ticket436.at \
 gmtk_test_ticket52.at \
 gmtk_tests.at
 LOCAL_TEST_AND_DEV = \

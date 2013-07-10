@@ -14,7 +14,6 @@
 #  endif /* __cplusplus */
 
 #  include <cblas.h>
-#  include <clapack.h>
 
 #  ifdef __cplusplus
      }
