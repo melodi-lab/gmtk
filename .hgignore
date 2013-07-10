@@ -92,6 +92,7 @@ tests/testanddev
 tests/testanddev.at
 tests/testanddev.dir
 tests/testanddev.log
+deepMLP/dmlp
 tksrc/unrevisioned
 tksrc/gmtkDTindex
 tksrc/gmtkEMtrain
