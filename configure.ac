@@ -135,5 +135,6 @@ AC_CONFIG_SUBDIRS([IEEEFloatingpoint
                    miscSupport
                    featureFileIO
                    mitk
+		   deepMLP
                    tksrc])
 AC_OUTPUT
