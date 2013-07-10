@@ -15,7 +15,7 @@ scripts/triangulateGA \
 scripts/triangulateParallel \
 scripts/triangulateTimings
 
-SUBDIRS = IEEEFloatingpoint miscSupport featureFileIO mitk tksrc tests
+SUBDIRS = IEEEFloatingpoint miscSupport featureFileIO mitk deepMLP tksrc tests
 
 .PHONY: revdist datedist hgdatedist autoclean
 revdist:
