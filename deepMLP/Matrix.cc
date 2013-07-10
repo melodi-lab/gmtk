@@ -23,6 +23,7 @@ extern "C" {            /* Assume C declarations for C++ */
 #endif
 
 #include "Matrix.h"
+#include "matrix.h"
 
 Matrix Vector::AsMatrix(int numR, int numC) const {
   assert(numR * numC == _len && _inc == 1);
@@ -104,6 +105,13 @@ const MutableMatrix & MutableMatrix::operator=(const MatScal & expr) const {
 #if HAVE_MKL
   MKL_Domatcopy('c', trans ? 't' : 'n', expr.A.DeepNumR(), expr.A.DeepNumC(), expr.a, expr.A.Start(), expr.A.Ld(), Start(), Ld());
 #else
+  // probably need assert(Ld() == 1 && expr.A.Ld() == 1) here... can that fail?
+  if (trans) 
+    mTranspose(expr.A.Start(), expr.A.DeepNumR(), expr.A.DeepNumC(), Start());
+  else
+    cblas_dcopy(expr.A.VecLen(), expr.A.Start(), expr.A.Ld(), Start(), Ld());
+
+  if (scale != 1.0) cblas_dscal(VecLen(), expr.a, Start(), Ld());
 #endif
   return *this;
 }
@@ -142,6 +150,8 @@ const MutableVector & MutableVector::operator=(const VecScal & expr) const {
 #if HAVE_MKL
   MKL_Domatcopy('c', 'n', 1, Len(), expr.a, expr.v.Start(), expr.v.Inc(), Start(), Inc());
 #else
+  cblas_dcopy(Len(), expr.v.Start(), expr.v.Inc(), Start(), Inc());
+  if (expr.a != 1.0) cblas_dscal(Len(), expr.a, Start(), Inc());
 #endif
   return *this;
 }
@@ -229,9 +239,16 @@ VecScaledSum operator*(const VecScaledSum & vss, double c) {
 void MutableMatrix::CopyFrom(const Matrix & mat, double scale) const {
   assert (NumR() == mat.NumR() && NumC() == mat.NumC());
 
-  char trans = (IsTrans() ^ mat.IsTrans()) ? 't' : 'n';
 #if HAVE_MKL
+  char trans = (IsTrans() ^ mat.IsTrans()) ? 't' : 'n';
   mkl_domatcopy('c', trans, mat.DeepNumR(), mat.DeepNumC(), scale, mat.Start(), mat.Ld(), Start(), _ld);
 #else
+  bool trans = IsTrans() ^ mat.IsTrans();
+  if (trans) 
+    mTranspose(mat.Start(), mat.DeepNumR(), mat.DeepNumC(), Start());
+  else
+    cblas_dcopy(mat.VecLen(), mat.Start(), 1, Start(), 1);
+
+  if (scale != 1.0) cblas_dscal(Len(), scale, Start(), 1);
 #endif
 }
