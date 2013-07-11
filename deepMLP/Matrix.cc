@@ -22,6 +22,23 @@ extern "C" {            /* Assume C declarations for C++ */
 #  endif    /* __cplusplus */
 #endif
 
+#if defined (USE_PHIPAC)
+#  ifdef __cplusplus
+extern "C" {            /* Assume C declarations for C++ */
+#  endif /* __cplusplus */
+void
+dgemm(char* transA, char* transB,
+      int* M, int* N, int* K,
+      double* alpha,
+      double* A, int* Astride,
+      double* B, int* Bstride,
+      double* beta,
+      double* C, int* Cstride);
+#  ifdef __cplusplus
+}
+#  endif    /* __cplusplus */
+#endif
+
 #include "Matrix.h"
 #include "matrix.h"
 
@@ -72,10 +89,22 @@ const MutableMatrix & MutableMatrix::Dgemm(double a, const Matrix & A, const Mat
   }
 
   assert(_numR == A.NumR() && _numC == B.NumC() && A.NumC() == B.NumR());
+#if USE_PHIPAC
+  int numR   = _numR;
+  int numC   = _numC;
+  int ANumC  = A.NumC();
+  int ALd    = A.Ld();
+  int BLd    = B.Ld();
+  int thisLd = Ld();
 
+  dgemm(A.IsTrans() ? const_cast<char *>("T") : const_cast<char *>("N"), 
+	B.IsTrans() ? const_cast<char *>("T") : const_cast<char *>("N"),
+	&numR, &numC, &ANumC, &a, const_cast<double *>(A.Start()), &ALd, 
+	const_cast<double *>(B.Start()), &BLd, &b, Start(), &thisLd);
+#else
   cblas_dgemm(CblasColMajor, A.IsTrans() ? CblasTrans : CblasNoTrans, B.IsTrans() ? CblasTrans : CblasNoTrans,
 	      _numR, _numC, A.NumC(), a, A.Start(), A.Ld(), B.Start(), B.Ld(), b, Start(), Ld());
-
+#endif
   return *this;
 }
 
@@ -111,7 +140,7 @@ const MutableMatrix & MutableMatrix::operator=(const MatScal & expr) const {
   else
     cblas_dcopy(expr.A.VecLen(), expr.A.Start(), expr.A.Ld(), Start(), Ld());
 
-  if (scale != 1.0) cblas_dscal(VecLen(), expr.a, Start(), Ld());
+  if (expr.a != 1.0) cblas_dscal(VecLen(), expr.a, Start(), Ld());
 #endif
   return *this;
 }
@@ -249,6 +278,6 @@ void MutableMatrix::CopyFrom(const Matrix & mat, double scale) const {
   else
     cblas_dcopy(mat.VecLen(), mat.Start(), 1, Start(), 1);
 
-  if (scale != 1.0) cblas_dscal(Len(), scale, Start(), 1);
+  if (scale != 1.0) cblas_dscal(VecLen(), scale, Start(), 1);
 #endif
 }
