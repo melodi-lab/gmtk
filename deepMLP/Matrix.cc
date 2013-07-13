@@ -19,7 +19,7 @@ extern "C" {            /* Assume C declarations for C++ */
 #if defined (USE_PHIPAC)
 extern "C" {            /* Assume C declarations for C++ */
 void
-dgemm(char* transA, char* transB,
+phipac_dgemm(char* transA, char* transB,
       int* M, int* N, int* K,
       double* alpha,
       double* A, int* Astride,
@@ -179,7 +179,7 @@ const MutableMatrix & MutableMatrix::Dgemm(double a, const Matrix & A, const Mat
   int thisLd = Ld();
   char Aop   = A.IsTrans() ? 'T' : 'N';
   char Bop   = B.IsTrans() ? 'T' : 'N';
-  dgemm(&Aop, &Bop, 
+  phipac_dgemm(&Aop, &Bop, 
 	&numR, &numC, &ANumC, 
 	&a, 
 	const_cast<double *>(A.Start()), &ALd, 

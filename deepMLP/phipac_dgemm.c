@@ -97,7 +97,7 @@ xerbla(char* srname, int* info)
 
 
 void
-dgemm(char* transA, char* transB,
+phipac_dgemm(char* transA, char* transB,
       int* M, int* N, int* K,
       double* alpha,
       double* A, int* Astride,
