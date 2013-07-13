@@ -14,7 +14,7 @@ ANSI = -std=c++0x
 #PEDANTIC = -pedantic
 #WARNING = -Wall
 
-AM_CPPFLAGS = $(BLAS_CPPFLAGS) $(BOOST_CPPFLAGS) -I$(srcdir)/../miscSupport -D__LINUX
+AM_CPPFLAGS = $(BLAS_CPPFLAGS) $(BOOST_CPPFLAGS) -I$(srcdir)/../miscSupport
 
 AM_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(PEDANTIC) $(WARNING) $(ANSI)
 
