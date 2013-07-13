@@ -518,9 +518,9 @@ class AllocatingMatrix : public MutableMatrix {
     MutableMatrix::Assign(val);
   }
 
-  void CopyFrom(const Matrix & mat) {
+  void CopyFrom(const Matrix & mat, double scale = 1.0) {
     Resize(mat);
-    MutableMatrix::CopyFrom(mat);
+    MutableMatrix::CopyFrom(mat, scale);
   }
 	
   void Swap(AllocatingMatrix & other) {		

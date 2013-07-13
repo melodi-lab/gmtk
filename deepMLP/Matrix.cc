@@ -11,21 +11,13 @@
 #  include "mkl_spblas.h"
 #  include "mkl_trans.h"
 #elif defined(HAVE_BLAS)
-#  ifdef __cplusplus
 extern "C" {            /* Assume C declarations for C++ */
-#  endif /* __cplusplus */
-
 #  include <cblas.h>
-
-#  ifdef __cplusplus
 }
-#  endif    /* __cplusplus */
 #endif
 
 #if defined (USE_PHIPAC)
-#  ifdef __cplusplus
 extern "C" {            /* Assume C declarations for C++ */
-#  endif /* __cplusplus */
 void
 dgemm(char* transA, char* transB,
       int* M, int* N, int* K,
@@ -34,13 +26,98 @@ dgemm(char* transA, char* transB,
       double* B, int* Bstride,
       double* beta,
       double* C, int* Cstride);
-#  ifdef __cplusplus
 }
-#  endif    /* __cplusplus */
 #endif
 
 #include "Matrix.h"
-#include "matrix.h"
+
+#if !defined(HAVE_MKL)
+void 
+my_Domatcopy(char trans, int rows, int cols, 
+	      const double alpha, double const *A, int lda, 
+	      double * B, int ldb)
+{
+  assert(trans == 'n' || trans == 't');
+  if (trans == 'n') {
+    double const *Acol = A; 
+    double *Bcol = B;
+    int j=0;
+    do {
+      double const *Ap = Acol;
+      double const *colEnd = Ap + rows;
+      double *Bp = Bcol;
+      do {
+	*Bp++ = alpha * *Ap++;
+      } while (Ap != colEnd);
+      j += 1;
+      Acol += lda;
+      Bcol += ldb;
+    } while (j < cols);
+  } else if (trans == 't') {
+    double const *Arow = A; 
+    double *Bcol = B;
+    int i=0;
+    double const *rowEnd = A + cols * lda;
+    do {
+      double const *Ap = Arow;
+      double *Bp = Bcol;
+      do {
+	*Bp++ = alpha * *Ap;
+	Ap += lda;
+      } while (Ap != rowEnd);
+      i += 1;
+      Arow += 1;
+      Bcol += ldb;
+      rowEnd += 1;
+    } while (i < rows);
+  } 
+}
+
+void
+my_Domatadd(char aTrans, char bTrans,
+	     int M, int N, 
+	     const double alpha, double const *A, int lda,
+	     const double beta,  double const *B, int ldb,
+	     double *C, int ldc)
+{
+  assert(aTrans == 'n' || aTrans == 't');
+  assert(bTrans == 'n' || bTrans == 't');
+  my_Domatcopy(bTrans, M, N, beta, B, ldb, C, ldc);
+  if (aTrans == 'n') {
+    double const *Acol = A; 
+    double *Ccol = C;
+    int j=0;
+    do {
+      double const *Ap = Acol;
+      double const *colEnd = Ap + M;
+      double *Cp = Ccol;
+      do {
+	*Cp++ += alpha * *Ap++;
+      } while (Ap != colEnd);
+      j += 1;
+      Acol += lda;
+      Ccol += ldc;
+    } while (j < N);
+  } else {
+    double const *Arow = A; 
+    double *Ccol = C;
+    int i=0;
+    double const *rowEnd = A + N * lda;
+    do {
+      double const *Ap = Arow;
+      double *Cp = Ccol;
+      do {
+	*Cp++ = alpha * *Ap;
+	Ap += lda;
+      } while (Ap != rowEnd);
+      i += 1;
+      Arow += 1;
+      Ccol += ldc;
+      rowEnd += 1;
+    } while (i < M);
+  } 
+}
+#endif
 
 Matrix Vector::AsMatrix(int numR, int numC) const {
   assert(numR * numC == _len && _inc == 1);
@@ -90,17 +167,25 @@ const MutableMatrix & MutableMatrix::Dgemm(double a, const Matrix & A, const Mat
 
   assert(_numR == A.NumR() && _numC == B.NumC() && A.NumC() == B.NumR());
 #if USE_PHIPAC
+
+  // I _think_ PHiPAC assumes row-major (C) order, but Galen's code
+  // seems to be column-major.
+
   int numR   = _numR;
   int numC   = _numC;
   int ANumC  = A.NumC();
   int ALd    = A.Ld();
   int BLd    = B.Ld();
   int thisLd = Ld();
-
-  dgemm(A.IsTrans() ? const_cast<char *>("T") : const_cast<char *>("N"), 
-	B.IsTrans() ? const_cast<char *>("T") : const_cast<char *>("N"),
-	&numR, &numC, &ANumC, &a, const_cast<double *>(A.Start()), &ALd, 
-	const_cast<double *>(B.Start()), &BLd, &b, Start(), &thisLd);
+  char Aop   = A.IsTrans() ? 'T' : 'N';
+  char Bop   = B.IsTrans() ? 'T' : 'N';
+  dgemm(&Aop, &Bop, 
+	&numR, &numC, &ANumC, 
+	&a, 
+	const_cast<double *>(A.Start()), &ALd, 
+	const_cast<double *>(B.Start()), &BLd, 
+	&b, 
+	Start(), &thisLd);
 #else
   cblas_dgemm(CblasColMajor, A.IsTrans() ? CblasTrans : CblasNoTrans, B.IsTrans() ? CblasTrans : CblasNoTrans,
 	      _numR, _numC, A.NumC(), a, A.Start(), A.Ld(), B.Start(), B.Ld(), b, Start(), Ld());
@@ -118,6 +203,9 @@ const MutableMatrix & MutableMatrix::operator=(const MatScaledSum & expr) const 
 		_numR, _numC, expr.a, expr.A.Start(), expr.A.Ld(),
 		expr.b, expr.B.Start(), expr.B.Ld(), Start(), _ld);
 #else
+  my_Domatadd (aTrans ? 't' : 'n', bTrans ? 't' : 'n',
+		_numR, _numC, expr.a, expr.A.Start(), expr.A.Ld(),
+		expr.b, expr.B.Start(), expr.B.Ld(), Start(), _ld);  
 #endif
   return *this;
 }
@@ -134,13 +222,7 @@ const MutableMatrix & MutableMatrix::operator=(const MatScal & expr) const {
 #if HAVE_MKL
   MKL_Domatcopy('c', trans ? 't' : 'n', expr.A.DeepNumR(), expr.A.DeepNumC(), expr.a, expr.A.Start(), expr.A.Ld(), Start(), Ld());
 #else
-  // probably need assert(Ld() == 1 && expr.A.Ld() == 1) here... can that fail?
-  if (trans) 
-    mTranspose(expr.A.Start(), expr.A.DeepNumR(), expr.A.DeepNumC(), Start());
-  else
-    cblas_dcopy(expr.A.VecLen(), expr.A.Start(), expr.A.Ld(), Start(), Ld());
-
-  if (expr.a != 1.0) cblas_dscal(VecLen(), expr.a, Start(), Ld());
+  my_Domatcopy(trans ? 't' : 'n', expr.A.DeepNumR(), expr.A.DeepNumC(), expr.a, expr.A.Start(), expr.A.Ld(), Start(), Ld());
 #endif
   return *this;
 }
@@ -170,6 +252,7 @@ const MutableVector & MutableVector::operator=(const VecScaledSum & expr) const 
 #if HAVE_MKL
   MKL_Domatadd('c', 'n', 'n', 1, Len(), expr.a, expr.x.Start(), expr.x.Inc(), expr.b, expr.y.Start(), expr.y.Inc(), Start(), Inc());
 #else
+  my_Domatadd('n', 'n', 1, Len(), expr.a, expr.x.Start(), expr.x.Inc(), expr.b, expr.y.Start(), expr.y.Inc(), Start(), Inc());
 #endif
   return *this;
 }
@@ -179,8 +262,7 @@ const MutableVector & MutableVector::operator=(const VecScal & expr) const {
 #if HAVE_MKL
   MKL_Domatcopy('c', 'n', 1, Len(), expr.a, expr.v.Start(), expr.v.Inc(), Start(), Inc());
 #else
-  cblas_dcopy(Len(), expr.v.Start(), expr.v.Inc(), Start(), Inc());
-  if (expr.a != 1.0) cblas_dscal(Len(), expr.a, Start(), Inc());
+  my_Domatcopy('n', 1, Len(), expr.a, expr.v.Start(), expr.v.Inc(), Start(), Inc());
 #endif
   return *this;
 }
@@ -268,16 +350,10 @@ VecScaledSum operator*(const VecScaledSum & vss, double c) {
 void MutableMatrix::CopyFrom(const Matrix & mat, double scale) const {
   assert (NumR() == mat.NumR() && NumC() == mat.NumC());
 
-#if HAVE_MKL
   char trans = (IsTrans() ^ mat.IsTrans()) ? 't' : 'n';
+#if HAVE_MKL
   mkl_domatcopy('c', trans, mat.DeepNumR(), mat.DeepNumC(), scale, mat.Start(), mat.Ld(), Start(), _ld);
 #else
-  bool trans = IsTrans() ^ mat.IsTrans();
-  if (trans) 
-    mTranspose(mat.Start(), mat.DeepNumR(), mat.DeepNumC(), Start());
-  else
-    cblas_dcopy(mat.VecLen(), mat.Start(), 1, Start(), 1);
-
-  if (scale != 1.0) cblas_dscal(VecLen(), scale, Start(), 1);
+  my_Domatcopy(trans, mat.DeepNumR(), mat.DeepNumC(), scale, mat.Start(), mat.Ld(), Start(), _ld);
 #endif
 }

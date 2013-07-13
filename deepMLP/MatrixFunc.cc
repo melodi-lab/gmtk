@@ -9,15 +9,9 @@
 #  include "mkl_spblas.h"
 #  include "mkl_trans.h"
 #elif defined(HAVE_BLAS)
-#  ifdef __cplusplus
-     extern "C" {            /* Assume C declarations for C++ */
-#  endif /* __cplusplus */
-
+extern "C" {            /* Assume C declarations for C++ */
 #  include <cblas.h>
-
-#  ifdef __cplusplus
-     }
-#  endif    /* __cplusplus */
+}
 #endif
 
 #include "MatrixFunc.h"
@@ -54,8 +48,8 @@ double LogSumFastDestroy(MutableVector & vec) {
 #if HAVE_MKL
 	vdExp(nT, s, s);
 #else
-	auto func = [](double x) {return exp(x);};
-	vec.Apply(func);
+	MutableVector temp(s, nT);
+	temp.Apply([](double x)->double {return exp(x);});
 #endif
 	double sumExp = cblas_dasum(nT, s, 1);
 
@@ -75,20 +69,16 @@ void LogSumWithNeg(MutableVector & vec, MutableVector & temp) {
 	cblas_daxpby(len, -2.0, vec.Start(), 1, 0, temp.Start(), 1);
 #else
 	cblas_dscal(len, 0, temp.Start(), 1);
-	cblas_daxpy(len, -2.0, vec.Start(), 1, temp.Start(), temp.Inc());
+	cblas_daxpy(len, -2.0, vec.Start(), 1, temp.Start(), 1);
 #endif
 #if HAVE_MKL
 	temp.ApplyVML(vdExp, temp);
 	temp.ApplyVML(vdLog1p, temp); // note: might be faster to increment and log!
 	vdAdd(len, temp.Start(), vec.Start(), vec.Start());
 #else
-#if 0
-	auto lambdaExp = [](double x) {return exp(x);};
-	temp.Apply(lambdaExp, temp);
-	auto lambdaLog1p = [](double x) {return log1p(x);};
-	temp.Apply(lambdaLog1p, temp);
+	temp.Apply([](double x)->double {return exp(x);});
+	temp.Apply([](double x)->double {return log1p(x);});
 	cblas_daxpy(len, 1.0, temp.Start(), 1, vec.Start(), 1);
-#endif
 #endif
 }
 

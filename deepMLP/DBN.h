@@ -6,15 +6,9 @@
 #  include "mkl_spblas.h"
 #  include "mkl_trans.h"
 #elif defined(HAVE_BLAS)
-#  ifdef __cplusplus
 extern "C" {            /* Assume C declarations for C++ */
-#  endif /* __cplusplus */
-
 #  include <cblas.h>
-
-#  ifdef __cplusplus
 }
-#  endif    /* __cplusplus */
 #endif
 
 #include <vector>
