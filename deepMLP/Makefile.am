@@ -26,10 +26,18 @@ LDADD = libDMLP.a libPHiPAC.a
 LIBS += -lboost_thread -lboost_filesystem -lboost_system $(BLAS_LIBS)
 # -lpthread
 
-noinst_LIBRARIES = libDMLP.a libPHiPAC.a
+noinst_LIBRARIES = libDMLP.a $(PHiPAC_LIB)
+EXTRA_LIBRARIES = libPHiPAC.a
+
 noinst_PROGRAMS = dmlp
 
 dmlp_SOURCES = dmlp.cc
+
+check_PROGRAMS = dmlpTest orderTest
+
+dmlpTest_SOURCES = dmlpTest.cc
+orderTest_SOURCES = orderTest.cc
+
 
 libDMLP_a_SOURCES =           \
   Globals.h                   \

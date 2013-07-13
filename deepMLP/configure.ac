@@ -1,4 +1,12 @@
 
+#
+# Written by Richard Rogers <rprogers@uw.edu>
+#
+# Copyright (C) 2013 Jeff Bilmes
+# Licensed under the Open Software License version 3.0
+#
+
+
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.65])
@@ -24,7 +32,9 @@ AC_ARG_ENABLE([phipac],
    [AS_HELP_STRING([--disable-phipac], [use BLAS or MKL matrix multiply instead of PHiPAC])],
    [AS_IF([test x$enable_phipac == xyes], 
       [AC_DEFINE([USE_PHIPAC],1,[prefer PHiPAC dGEMM over MKL/BLAS])])],
-   [AC_DEFINE([USE_PHIPAC],1,[prefer PHiPAC dGEMM over MKL/BLAS])])
+   [AC_DEFINE([USE_PHIPAC],1,[prefer PHiPAC dGEMM over MKL/BLAS])
+    PHiPAC_LIB=libPHiPAC.a
+    AC_SUBST(PHiPAC_LIB)])
 
 # We need a BLAS. ATLAS or Goto are nice. MKL also provides BLAS.
 # By default, we'll try to use a BLAS located either by pkg-config
