@@ -261,13 +261,13 @@ AC_MSG_CHECKING([for cblas_daxpby])
 
   if test "x$use_mkl" = xyes; then
     AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include "mkl.h"]],
-         [[double x[3]; double y[3]; double alpha; double beta; cblas_daxpy(3, alpha, x, 1, beta, y, 1);]])],
+         [[double x[3]; double y[3]; double alpha; double beta; cblas_daxpby(3, alpha, x, 1, beta, y, 1);]])],
       [AC_MSG_RESULT([yes])
        AC_DEFINE([HAVE_CBLAS_DAXPBY],1,[Define if CBLAS has cblas_daxpby])], 
       [AC_MSG_RESULT([no])])
   else
     AC_LINK_IFELSE([AC_LANG_PROGRAM([[include <cblas.h>]],
-         [[double x[3]; double y[3]; double alpha; double beta; cblas_daxpy(3, alpha, x, 1, beta, y, 1);]])],
+         [[double x[3]; double y[3]; double alpha; double beta; cblas_daxpby(3, alpha, x, 1, beta, y, 1);]])],
       [AC_MSG_RESULT([yes])
        AC_DEFINE([HAVE_CBLAS_DAXPBY],1,[Define if CBLAS has cblas_daxpby])], 
       [AC_MSG_RESULT([no])])
