@@ -4,8 +4,8 @@
 
 int
 main(int argc, char *argv[]) {
-  double data10[10] = {0,1,2,3,4,5,6,7,8,9};
-  Matrix m10(data10, 5, 2, 5, false);
+  double data10[14] = {0,1,2,3,4, 0, 0, 5,6,7,8,9, 0, 0};
+  Matrix m10(data10, 5, 2, 7, false);
 
   printf("m10 %d x %d:\n", m10.NumR(), m10.NumC());
   m10.Print();
@@ -49,8 +49,12 @@ main(int argc, char *argv[]) {
   mm.Print();
   printf("\n\n");
 
-  double mx_data[10] = {4,5,3,6,8,2,1,2,2,2};
-  MutableMatrix mx(mx_data, 2, 5, 2, false);
+  double mx_data[20] = {4,5, 1,1, 3,6, 2,2, 8,2, 3,3, 1,2, 4,4, 2,2, 5,5};
+  MutableMatrix mx(mx_data, 2, 5, 4, false);
+  printf("mx 2.4 x 5:\n");
+  mx.Print();
+  printf("\n\n");
+
   mm = m10 * mx;
   printf("Dgemm: %d x %d:\n", mm.NumR(), mm.NumC());
   mm.Print();
