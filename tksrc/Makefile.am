@@ -64,10 +64,13 @@ AM_CPPFLAGS = \
 -I$(srcdir)/../miscSupport \
 -I$(builddir)/../IEEEFloatingpoint \
 -I$(srcdir)/../featureFileIO \
+-I$(srcdir)/../deepMLP \
 -DBINDIR="\"$(bindir)\""
 # make BINDIR available for warning message in GMTK_FileParser.cc for ticket 320
 
 LDADD = libGMTK.a libXOPT.a \
+$(builddir)/../deepMLP/libDMLP.a \
+$(builddir)/../deepMLP/$(PHiPAC_LIB) \
 $(builddir)/../featureFileIO/libgmtkio.a \
 $(builddir)/../miscSupport/libmiscSupport.a \
 $(builddir)/../IEEEFloatingpoint/libIEEEsupport.a
@@ -197,6 +200,7 @@ bin_PROGRAMS = \
 gmtkTime \
 gmtkJT \
 gmtkEMtrain \
+gmtkDMLPtrain \
 gmtkKernel \
 gmtkViterbi \
 gmtkTriangulate \
@@ -212,18 +216,33 @@ $(GMTKVIZ) $(OSXBUNDLE)
 EXTRA_PROGRAMS = gmtkViz gmtkViz.app
 
 gmtkTie_SOURCES = gmtkTie.cc
+
 gmtkJT_SOURCES = gmtkJT.cc
+
 gmtkTime_SOURCES = gmtkTime.cc
+
 gmtkEMtrain_SOURCES = gmtkEMtrain.cc
+
+gmtkDMLPtrain_SOURCES = gmtkDMLPtrain.cc
+
 gmtkKernel_SOURCES = gmtkKernel.cc
+
 gmtkViterbi_SOURCES = gmtkViterbi.cc
+
 gmtkPrint_SOURCES = gmtkPrint.cc
+
 gmtkTriangulate_SOURCES = gmtkTriangulate.cc
+
 gmtkParmConvert_SOURCES = gmtkParmConvert.cc
+
 gmtkModelInfo_SOURCES = gmtkModelInfo.cc
+
 gmtkTFmerge_SOURCES = gmtkTFmerge.cc
+
 gmtkDTindex_SOURCES = gmtkDTindex.cc
+
 gmtkNGramIndex_SOURCES = gmtkNGramIndex.cc
+
 gmtkOnline_SOURCES = gmtkOnline.cc
 
 #gmtkUnroll_SOURCES = gmtkUnroll.o  libGMTK.a ../miscSupport/libmiscSupport.a .NOEXPORT
