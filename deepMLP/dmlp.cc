@@ -8,7 +8,7 @@ main(int argc, char *argv[]) {
   int inputSize = mnist.NumFeatures(), outputSize = 10, hiddenSize = 200, numInstances = mnist.NumImages();
   int layers = 5;
 
-  DBN dbn(layers, inputSize, hiddenSize, outputSize, Layer::ActFunc(Layer::ActFunc::TANH), Layer::ActFunc(Layer::ActFunc::CUBIC), Layer::ActFunc(Layer::ActFunc::LINEAR));
+  DBN dbn(layers, inputSize, hiddenSize, outputSize, Layer::ActFunc(Layer::ActFunc::TANH), Layer::ActFunc(Layer::ActFunc::TANH));
 
   AllocatingMatrix output(outputSize, numInstances);
   DBN::ObjectiveType objType = DBN::SOFT_MAX;
@@ -28,6 +28,7 @@ main(int argc, char *argv[]) {
   DBN::HyperParams bpHyperParams;
   bpHyperParams.numUpdates = 200000;
   bpHyperParams.numAnnealUpdates = 20000;
+//  bpHyperParams.dropout = true;
 
   Random rand(2);
   dbn.Train(mnist.GetImages(), output, objType, rand, false, pretrainHyperParams, bpHyperParams);

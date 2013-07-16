@@ -226,6 +226,13 @@ class Layer {
     return _a;
   }
 	
+  const Matrix & ActivateUpDropout(const Matrix & weights, const Vector & biases, const Matrix & lowerValues, ActFunc actFunc, Random & rand) {
+    ComputeInputs(weights, biases, lowerValues, true);
+    actFunc.Apply(_a.Vec());
+	 _a.Vec().Apply([&] (double a) { return rand.Uniform() < 0.5 ? a : 0; });
+    return _a;
+  }
+	
   double ActivateDownAndGetNegLL(const Matrix & weights, const Vector & biases, const Matrix & upperValues, const Matrix & lowerValues, ActFunc actFunc) {
     ComputeInputs(weights, biases, upperValues, false);
     return actFunc.ApplyAndGetNegLL(_a.Vec(), lowerValues.Vec());
