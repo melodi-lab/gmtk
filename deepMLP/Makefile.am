@@ -33,10 +33,11 @@ noinst_PROGRAMS = dmlp
 
 dmlp_SOURCES = dmlp.cc
 
-check_PROGRAMS = dmlpTest orderTest
+check_PROGRAMS = dmlpTest orderTest phipacTest
 
 dmlpTest_SOURCES = dmlpTest.cc
 orderTest_SOURCES = orderTest.cc
+phipacTest_SOURCES = phipacTest.cc
 
 
 libDMLP_a_SOURCES =           \
