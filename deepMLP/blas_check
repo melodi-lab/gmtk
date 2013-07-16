@@ -1,0 +1,99 @@
+if test x"$use_mkl" = xyes; then     # --with-mkl=<dir>
+  if test x"$use_blas" = xyes; then
+    AC_MSG_ERROR([Cannot use both MKL and BLAS])  # configure script logic should make this impossible
+  fi
+  BLAS_LIBS="-Wl,--start-group -lmkl_intel_${mkl_interface} -lmkl_${with_mkl_thread} -lmkl_core -Wl,--end-group"
+  BLAS_CPPFLAGS=-I${MKLROOT}/include
+  BLAS_LDFLAGS=-L${MKLROOT}/lib/${mkl_arch}
+
+  AC_MSG_CHECKING([for MKL under $MKLROOT])
+  AC_LANG_PUSH([C++])
+  mkl_save_CXXFLAGS=$CXXFLAGS
+  CXXFLAGS=$BLAS_CPPFLAGS
+  mkl_save_LIBS=$LIBS
+  LIBS="$BLAS_LDFLAGS $BLAS_LIBS"
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include "mkl.h"]],
+                                  [[double x[3]; double y[3]; double alpha; cblas_daxpy(3, alpha, x, 1, y, 1);]])],
+    [AC_MSG_RESULT([yes])
+     AC_DEFINE([HAVE_MKL],1,[Define if you have intel MKL])], 
+    [AC_MSG_RESULT([no])
+     AC_MSG_ERROR([MKL not found under $MKLROOT])])
+  LIBS=$mkl_save_LIBS
+  CXXFLAGS=$mkl_save_CXXFLAGS
+  AC_LANG_POP([C++])
+else
+  # if any --with-blas-* check @ user specified location
+  if test x$BLAS_REQUEST == xyes; then
+     AC_MSG_CHECKING([for BLAS])
+     AC_LANG_PUSH([C])
+     blas_save_CFLAGS=${CFLAGS}
+     CFLAGS=$BLAS_INCLUDE
+     blas_save_LIBS=${LIBS}
+     LIBS="$BLAS_LIBDIR $BLAS_LIBS"
+     AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <cblas.h>]],
+                       [[double x[3]; double y[3]; double alpha; cblas_daxpy(3, alpha, x, 1, y, 1);]])],
+       [AC_MSG_RESULT([yes])
+        AC_DEFINE([HAVE_BLAS],1,[Define if you have a (non-MKL) BLAS installation])
+        BLAS_CPPFLAGS=$BLAS_INCLUDE
+        BLAS_LIBS=$BLAS_LIBS
+        BLAS_LDFLAGS=$BLAS_LIBDIR
+        BLAS_FOUND=yes],
+       [AC_MSG_RESULT([no])
+        AC_MSG_ERROR([no BLAS found])])
+     LIBS=${blas_save_LIBS}
+     CFLAGS=${blas_save_CFLAGS}
+     AC_LANG_POP([C])
+
+else # no --with-blas-* specified, so try pkg-config
+
+  AC_CHECK_PROG([HAVE_PKG_CONFIG],[pkg-config],[yes])
+  if test "x$HAVE_PKG_CONFIG" = xyes; then
+     AC_MSG_CHECKING([for BLAS via pkg-config])
+     cblas_module=`pkg-config --list-all | $AWK '$1=="cblas" {print $1}'`
+     AS_IF([test "x$cblas_module" == "xcblas"],
+           [
+     AC_LANG_PUSH([C])
+     blas_save_CFLAGS=${CFLAGS}
+     CFLAGS=`pkg-config --cflags cblas`
+     blas_save_LIBS=${LIBS}
+     LIBS=`pkg-config --libs cblas`
+     AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <cblas.h>]],
+                       [[double x[3]; double y[3]; double alpha; cblas_daxpy(3, alpha, x, 1, y, 1);]])],
+       [AC_MSG_RESULT([yes])
+        AC_DEFINE([HAVE_BLAS],1,[Define if you have a (non-MKL) BLAS installation])
+        BLAS_CPPFLAGS=`pkg-config --cflags cblas`
+        BLAS_LIBS=`pkg-config --libs-only-l cblas`
+        BLAS_LDFLAGS=`pkg-config --libs-only-L cblas`
+        BLAS_FOUND=yes],
+       [AC_MSG_RESULT([no])])
+     LIBS=${blas_save_LIBS}
+     CFLAGS=${blas_save_CFLAGS}
+     AC_LANG_POP([C])
+           ], [
+      AC_MSG_RESULT([no])
+])
+  fi
+fi
+  if test "x$BLAS_FOUND" != "xyes"; then   # still not found? try last resort guess
+    AC_MSG_CHECKING([for BLAS in default locations])
+     AC_LANG_PUSH([C])
+     blas_save_LIBS=${LIBS}
+     LIBS=-lcblas
+     AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <cblas.h>]],
+                       [[double x[3]; double y[3]; double alpha; cblas_daxpy(3, alpha, x, 1, y, 1);]])],
+       [AC_MSG_RESULT([yes])
+        AC_DEFINE([HAVE_BLAS],1,[Define if you have a (non-MKL) BLAS installation])
+        BLAS_CPPFLAGS=""
+        BLAS_LIBS="-lcblas"
+        BLAS_LDFLAGS=""],
+       [AC_MSG_RESULT([no])
+        AC_MSG_ERROR([No BLAS available])])
+     LIBS=${blas_save_LIBS}
+     CFLAGS=${blas_save_CFLAGS}
+     AC_LANG_POP([C])
+  fi
+fi
+
+AC_SUBST(BLAS_LIBS)
+AC_SUBST(BLAS_CPPFLAGS)
+AC_SUBST(BLAS_LDFLAGS)

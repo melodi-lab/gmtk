@@ -84,6 +84,9 @@ if test x"$badLZERO" = x"bad"; then
 fi 
 AC_DEFINE_UNQUOTED([LZERO], [(${with_LZERO})], [smallest log value that we represent])
 
+
+m4_include([../deepMLP/blas_args])
+
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
@@ -224,6 +227,8 @@ dnl libdl on GLIBC-based systems
 AC_SEARCH_LIBS([dlopen], [dl dld], [], [
   AC_MSG_ERROR([unable to find the dlopen() function])
 ])
+
+m4_include([../deepMLP/blas_check])
 
 # Checks for header files.
 AC_PATH_XTRA
