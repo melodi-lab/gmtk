@@ -9,7 +9,7 @@ AC_ARG_ENABLE([phipac],
    [AS_IF([test x$enable_phipac == xyes], 
       [AC_DEFINE([USE_PHIPAC],1,[prefer PHiPAC dGEMM over MKL/BLAS])])],
    [AC_DEFINE([USE_PHIPAC],1,[prefer PHiPAC dGEMM over MKL/BLAS])
-    PHiPAC_LIB=$(builddir)/../deepMLP/libPHiPAC.a])
+    PHiPAC_LIB="\$(builddir)/../deepMLP/libPHiPAC.a"])
 AC_SUBST(PHiPAC_LIB)
 
 # We need a BLAS. ATLAS or Goto are nice. MKL also provides BLAS.
