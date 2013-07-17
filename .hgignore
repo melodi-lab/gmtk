@@ -96,6 +96,7 @@ deepMLP/dmlp
 tksrc/unrevisioned
 tksrc/gmtkDTindex
 tksrc/gmtkEMtrain
+tksrc/gmtkDMLPtrain
 tksrc/gmtkJT
 tksrc/gmtkKernel
 tksrc/gmtkModelInfo

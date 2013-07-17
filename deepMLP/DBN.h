@@ -36,6 +36,8 @@ class DBN {
 
     int numUpdates, numAnnealUpdates, miniBatchSize, checkInterval;
 
+	 bool dropout;
+
     PretrainType pretrainType;
 
   HyperParams() :
@@ -47,6 +49,7 @@ class DBN {
       numAnnealUpdates(2000),
       miniBatchSize(10),
       checkInterval(2000),
+		dropout(false),
       pretrainType(CD)
     { }
   };
@@ -54,7 +57,7 @@ class DBN {
  private:
   // width of input, all hidden, and output layers
   int _iSize, _hSize, _oSize;
-  Layer::ActFunc _iActFunc, _hActFunc, _oActFunc;
+  Layer::ActFunc _iActFunc, _hActFunc;
 
   // number of layers (not including input)
   int _numLayers;
@@ -76,7 +79,7 @@ class DBN {
   mutable AllocatingMatrix _tempTopSample, _tempBottomSample;
 
   // temporary storage used in several places
-  mutable AllocatingMatrix _tempMat;
+  mutable AllocatingMatrix _tempMat, _tempDropoutInput;
   mutable AllocatingVector _tempVec;
   mutable Layer _tempTopLayer, _tempBottomLayer;
 
@@ -230,39 +233,41 @@ class DBN {
 
   class BPTrainingFunction : public TrainingFunction {
     AllocatingMatrix _errors;
+    Random & _rand;
 
   private:
     ObjectiveType _objectiveType;
 
   protected:
     virtual double PrivateEval(Matrix inputMiniBatch, Matrix outputMiniBatch, double stepSize) {
-      return _dbn.UpdateBackProp(inputMiniBatch, outputMiniBatch, _objectiveType, false, stepSize);
+      return _dbn.UpdateBackProp(inputMiniBatch, outputMiniBatch, _objectiveType, false, _hyperParams.dropout, _rand, stepSize);
     }
 
   public:
-  BPTrainingFunction(const Matrix & input, const Matrix & output, DBN & dbn, HyperParams hyperParams, ObjectiveType objectiveType)
+  BPTrainingFunction(const Matrix & input, const Matrix & output, DBN & dbn, HyperParams hyperParams, ObjectiveType objectiveType, Random & rand)
     :
     TrainingFunction(dbn, input, output, hyperParams, dbn._params, dbn._deltaParams, dbn._savedParams),
-      _objectiveType(objectiveType)
+      _objectiveType(objectiveType), _rand(rand)
       { }
   };
 
   class OutputLayerTrainingFunction : public TrainingFunction {
     AllocatingMatrix _errors;
+    Random & _rand;
 
   private:
     ObjectiveType _objectiveType;
 
   protected:
     virtual double PrivateEval(Matrix inputMiniBatch, Matrix outputMiniBatch, double stepSize) {
-      return _dbn.UpdateBackProp(inputMiniBatch, outputMiniBatch, _objectiveType, true, stepSize);
+      return _dbn.UpdateBackProp(inputMiniBatch, outputMiniBatch, _objectiveType, true, false, _rand, stepSize);
     }
 
   public:
-  OutputLayerTrainingFunction(const Matrix & input, const Matrix & output, DBN & dbn, HyperParams hyperParams, ObjectiveType objectiveType)
+  OutputLayerTrainingFunction(const Matrix & input, const Matrix & output, DBN & dbn, HyperParams hyperParams, ObjectiveType objectiveType, Random & rand)
     :
     TrainingFunction(dbn, input, output, hyperParams, dbn._layerParams.back(), dbn._layerDeltaParams.back(), dbn._layerSavedParams.back()),
-      _objectiveType(objectiveType)
+      _objectiveType(objectiveType), _rand(rand)
       { }
 
     virtual void Init(Random & rand) {
@@ -358,11 +363,19 @@ class DBN {
 
   }
 
-  double UpdateBackProp(const Matrix & input, const Matrix & output, ObjectiveType _objType, bool lastLayerOnly, double stepSize) {
+  double UpdateBackProp(const Matrix & input, const Matrix & output, ObjectiveType _objType, bool lastLayerOnly, bool dropout, Random & rand, double stepSize) {
     int startLayer = lastLayerOnly ? _numLayers - 1 : 0;
 
-    Matrix mappedInput = MapUp(input, startLayer);
-    double loss = 0;
+	 Matrix mappedInput;
+	 if (dropout) {
+		 _tempDropoutInput.CopyFrom(input);
+		 _tempDropoutInput.Vec().Apply([&] (double x) { return (rand.Uniform() < 0.5) ? x : 0; });
+		 mappedInput = MapUpDropout(_tempDropoutInput, rand, startLayer);
+	 } else {
+		 mappedInput = MapUp(input, startLayer);
+	 }
+
+	 double loss = 0;
 
     // _tempMat is used to store the gradient w.r.t. the outputs at each layer
 
@@ -402,11 +415,11 @@ class DBN {
     }
 
     if (stepSize > 0) {
-      Matrix mappedError = _layers.back().ComputeErrors(_tempMat, _oActFunc);
+      Matrix mappedError = _layers.back().ComputeErrors(_tempMat, Layer::ActFunc::LINEAR);
       for (int l = _numLayers - 1; ; --l) {
 	for (int i = 0; i < input.NumC(); ++i) _deltaB[l] += mappedError.GetCol(i) * stepSize;
 
-	const Matrix & lowerProbs = l > startLayer ? _layers[l - 1].Activations() : input;
+	const Matrix & lowerProbs = l > startLayer ? _layers[l - 1].Activations() : dropout ? _tempDropoutInput : input;
 
 	_deltaW[l] += stepSize * lowerProbs * mappedError.Trans();
 
@@ -497,12 +510,12 @@ class DBN {
   }
 
  public:
-  DBN(int numLayers, int iSize, int hSize, int oSize, Layer::ActFunc iActFunc, Layer::ActFunc hActFunc, Layer::ActFunc oActFunc) 
+  DBN(int numLayers, int iSize, int hSize, int oSize, Layer::ActFunc iActFunc, Layer::ActFunc hActFunc) 
     {
-      Initialize(numLayers, iSize, hSize, oSize, iActFunc, hActFunc, oActFunc);
+      Initialize(numLayers, iSize, hSize, oSize, iActFunc, hActFunc);
     }
 
-  void Initialize(int numLayers, int iSize, int hSize, int oSize, Layer::ActFunc iActFunc, Layer::ActFunc hActFunc, Layer::ActFunc oActFunc)
+  void Initialize(int numLayers, int iSize, int hSize, int oSize, Layer::ActFunc iActFunc, Layer::ActFunc hActFunc)
   {
     _numLayers = numLayers;
     _iSize = iSize;
@@ -511,7 +524,6 @@ class DBN {
 
     _iActFunc = iActFunc;
     _hActFunc = hActFunc;
-    _oActFunc = oActFunc;
 
     _layers.resize(numLayers);
     _layerParams.resize(numLayers);
@@ -562,9 +574,8 @@ class DBN {
     inStream.read((char *) &_oSize, sizeof(int));
     inStream.read((char *) &_iActFunc, sizeof(Layer::ActFunc));
     inStream.read((char *) &_hActFunc, sizeof(Layer::ActFunc));
-    inStream.read((char *) &_oActFunc, sizeof(Layer::ActFunc));
 
-    Initialize(_numLayers, _iSize, _hSize, _oSize, _iActFunc, _hActFunc, _oActFunc);
+    Initialize(_numLayers, _iSize, _hSize, _oSize, _iActFunc, _hActFunc);
 
     inStream.read((char *) _params.Start(), sizeof(double) * _params.Len());
   }
@@ -576,7 +587,6 @@ class DBN {
     outStream.write((const char *) &_oSize, sizeof(int));
     outStream.write((const char *) &_iActFunc, sizeof(Layer::ActFunc));
     outStream.write((const char *) &_hActFunc, sizeof(Layer::ActFunc));
-    outStream.write((const char *) &_oActFunc, sizeof(Layer::ActFunc));
     outStream.write((const char *) _params.Start(), sizeof(double) * _params.Len());
   }
 
@@ -612,8 +622,8 @@ class DBN {
   }
 
   Matrix MapLayer(const Matrix & input, int layer) const {
-    Layer::ActFunc actFunc = (layer == _numLayers - 1) ? _oActFunc : _hActFunc;
-    return _layers[layer].ActivateUp(_W[layer], _B[layer], input, actFunc);
+    Layer::ActFunc actFunc = (layer == _numLayers - 1) ? Layer::ActFunc::LINEAR : _hActFunc;
+	 return _layers[layer].ActivateUp(_W[layer], _B[layer], input, actFunc);
   }
 
   Matrix MapUp(const Matrix & input, int startLayer = -1, int endLayer = -1) const {
@@ -623,6 +633,22 @@ class DBN {
     Matrix mappedInput = input;
 
     for (int layer = startLayer; layer < endLayer; ++layer) mappedInput = MapLayer(mappedInput, layer);
+
+    return mappedInput;
+  }
+
+  Matrix MapLayerDropout(const Matrix & input, int layer, Random & rand) const {
+    Layer::ActFunc actFunc = (layer == _numLayers - 1) ? Layer::ActFunc::LINEAR : _hActFunc;
+	 return _layers[layer].ActivateUpDropout(_W[layer], _B[layer], input, actFunc, rand);
+  }
+
+  Matrix MapUpDropout(const Matrix & input, Random & rand, int startLayer = -1, int endLayer = -1) const {
+    if (startLayer == -1) startLayer = 0;
+    if (endLayer == -1) endLayer = _numLayers;
+
+    Matrix mappedInput = input;
+
+    for (int layer = startLayer; layer < endLayer; ++layer) mappedInput = MapLayerDropout(mappedInput, layer, rand);
 
     return mappedInput;
   }
@@ -668,13 +694,15 @@ class DBN {
       if (layer > 0) _layers[layer - 1].Clear(); // save some memory
     }
 
+    InitLayer(_layers.size() - 1, rand);
+
     if (hyperParams_pt.back().pretrainType != NONE) {
       // pretrain output layer
       if (!quiet) {
 	cout << "Pretraining output layer" << endl;
       }
 
-      OutputLayerTrainingFunction outputFunc(mappedInput, output, *this, hyperParams_pt.back(), objectiveType);
+      OutputLayerTrainingFunction outputFunc(mappedInput, output, *this, hyperParams_pt.back(), objectiveType, rand);
       TrainSGD(outputFunc, rand, hyperParams_pt.back());
     }
 
@@ -684,7 +712,13 @@ class DBN {
       cout << "Fine tuning" << endl;
     }
 
-    BPTrainingFunction bpFunc(input, output, *this, hyperParams_bp, objectiveType);
+    BPTrainingFunction bpFunc(input, output, *this, hyperParams_bp, objectiveType, rand);
     TrainSGD(bpFunc, rand, hyperParams_bp);
+
+	 if (hyperParams_bp.dropout) {
+		 for (int l = 0; l < _W.size(); ++l) {
+			 _W[l] *= 2;
+		 }
+	 }
   }
 };
