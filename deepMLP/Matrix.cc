@@ -16,7 +16,7 @@ extern "C" {            /* Assume C declarations for C++ */
 }
 #endif
 
-#if defined (USE_PHIPAC)
+#if defined(USE_PHIPAC)
 extern "C" {            /* Assume C declarations for C++ */
 void
 phipac_dgemm(char* transA, char* transB,
@@ -38,39 +38,23 @@ my_Domatcopy(char trans, int rows, int cols,
 	      double * B, int ldb)
 {
   assert(trans == 'n' || trans == 't');
-  if (trans == 'n') {
-    double const *Acol = A; 
-    double *Bcol = B;
-    int j=0;
+  unsigned Ainc1 = (trans == 'n' || trans == 'N') ? 1   : lda;
+  unsigned Ainc2 = (trans == 'n' || trans == 'N') ? lda : 1;
+
+  double       *Bcol = B;
+  double       *pastB = B + cols * ldb;
+  double const *Apos = A;
+  do {
+    double       *Bp = Bcol;
+    double       *colEnd = Bp + rows;
+    double const *Ap = Apos;
     do {
-      double const *Ap = Acol;
-      double const *colEnd = Ap + rows;
-      double *Bp = Bcol;
-      do {
-	*Bp++ = alpha * *Ap++;
-      } while (Ap != colEnd);
-      j += 1;
-      Acol += lda;
-      Bcol += ldb;
-    } while (j < cols);
-  } else if (trans == 't') {
-    double const *Arow = A; 
-    double *Bcol = B;
-    int i=0;
-    double const *rowEnd = A + cols * lda;
-    do {
-      double const *Ap = Arow;
-      double *Bp = Bcol;
-      do {
-	*Bp++ = alpha * *Ap;
-	Ap += lda;
-      } while (Ap != rowEnd);
-      i += 1;
-      Arow += 1;
-      Bcol += ldb;
-      rowEnd += 1;
-    } while (i < rows);
-  } 
+      *(Bp++) = alpha * *Ap;
+      Ap += Ainc1;
+    } while (Bp != colEnd);
+    Bcol += lda;
+    Apos += Ainc2;
+  } while (Bcol != pastB);
 }
 
 void
@@ -82,40 +66,33 @@ my_Domatadd(char aTrans, char bTrans,
 {
   assert(aTrans == 'n' || aTrans == 't');
   assert(bTrans == 'n' || bTrans == 't');
-  my_Domatcopy(bTrans, M, N, beta, B, ldb, C, ldc);
-  if (aTrans == 'n') {
-    double const *Acol = A; 
-    double *Ccol = C;
-    int j=0;
+  // MKL docs say A, B, C must not overlap, but it appears to work
+  // even when one of the sourc matrices is also the destination.
+  // The training code will call this with A=C or B=C.
+
+  unsigned Ainc1 = (aTrans == 'n' || aTrans == 'N') ? 1   : lda;
+  unsigned Ainc2 = (aTrans == 'n' || aTrans == 'N') ? lda : 1;
+  unsigned Binc1 = (bTrans == 'n' || bTrans == 'N') ? 1   : ldb;
+  unsigned Binc2 = (bTrans == 'n' || bTrans == 'N') ? ldb : 1;
+  
+  double       *Ccol = C;
+  double       *pastC = C + N * ldc;
+  double const *Bpos = B;
+  double const *Apos = A;
+  do {
+    double       *Cp = Ccol;
+    double       *colEnd = Cp + M;
+    double const *Bp = Bpos;
+    double const *Ap = Apos;
     do {
-      double const *Ap = Acol;
-      double const *colEnd = Ap + M;
-      double *Cp = Ccol;
-      do {
-	*Cp++ += alpha * *Ap++;
-      } while (Ap != colEnd);
-      j += 1;
-      Acol += lda;
-      Ccol += ldc;
-    } while (j < N);
-  } else {
-    double const *Arow = A; 
-    double *Ccol = C;
-    int i=0;
-    double const *rowEnd = A + N * lda;
-    do {
-      double const *Ap = Arow;
-      double *Cp = Ccol;
-      do {
-	*Cp++ = alpha * *Ap;
-	Ap += lda;
-      } while (Ap != rowEnd);
-      i += 1;
-      Arow += 1;
-      Ccol += ldc;
-      rowEnd += 1;
-    } while (i < M);
-  } 
+      *(Cp++) = alpha * *Ap + beta * *Bp;
+      Bp += Binc1;
+      Ap += Ainc1;
+    } while (Cp != colEnd);
+    Ccol += ldc;
+    Bpos += Binc2;
+    Apos += Ainc2;
+  } while (Ccol != pastC);
 }
 #endif
 
