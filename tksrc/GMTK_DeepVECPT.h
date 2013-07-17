@@ -121,6 +121,10 @@ public:
   // segment.
   bool iterable() { return true; }
 
+  unsigned numInputs() { return nfs * ( 2 * window_radius + 1 ); } // +1 additional for bias
+
+  unsigned numLayers() { return num_matrices; }
+
   ///////////////////////////////////////////////////////////    
   // Semi-constructors: useful for debugging.
   // See parent class for further documention.
