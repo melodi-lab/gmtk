@@ -18,14 +18,14 @@ extern "C" {            /* Assume C declarations for C++ */
 
 #if defined(USE_PHIPAC)
 extern "C" {            /* Assume C declarations for C++ */
-void
-phipac_dgemm(char* transA, char* transB,
-      int* M, int* N, int* K,
-      double* alpha,
-      double* A, int* Astride,
-      double* B, int* Bstride,
-      double* beta,
-      double* C, int* Cstride);
+  void
+    phipac_dgemm(char* transA, char* transB,
+    int* M, int* N, int* K,
+    double* alpha,
+    double* A, int* Astride,
+    double* B, int* Bstride,
+    double* beta,
+    double* C, int* Cstride);
 }
 #endif
 
@@ -33,9 +33,9 @@ phipac_dgemm(char* transA, char* transB,
 
 #if !defined(HAVE_MKL)
 void 
-my_Domatcopy(char trans, int rows, int cols, 
-	      const double alpha, double const *A, int lda, 
-	      double * B, int ldb)
+  my_Domatcopy(char trans, int rows, int cols, 
+  const double alpha, double const *A, int lda, 
+  double * B, int ldb)
 {
   assert(trans == 'n' || trans == 't');
   unsigned Ainc1 = (trans == 'n' || trans == 'N') ? 1   : lda;
@@ -58,11 +58,11 @@ my_Domatcopy(char trans, int rows, int cols,
 }
 
 void
-my_Domatadd(char aTrans, char bTrans,
-	     int M, int N, 
-	     const double alpha, double const *A, int lda,
-	     const double beta,  double const *B, int ldb,
-	     double *C, int ldc)
+  my_Domatadd(char aTrans, char bTrans,
+  int M, int N, 
+  const double alpha, double const *A, int lda,
+  const double beta,  double const *B, int ldb,
+  double *C, int ldc)
 {
   assert(aTrans == 'n' || aTrans == 't');
   assert(bTrans == 'n' || bTrans == 't');
@@ -74,7 +74,7 @@ my_Domatadd(char aTrans, char bTrans,
   unsigned Ainc2 = (aTrans == 'n' || aTrans == 'N') ? lda : 1;
   unsigned Binc1 = (bTrans == 'n' || bTrans == 'N') ? 1   : ldb;
   unsigned Binc2 = (bTrans == 'n' || bTrans == 'N') ? ldb : 1;
-  
+
   double       *Ccol = C;
   double       *pastC = C + N * ldc;
   double const *Bpos = B;
@@ -157,15 +157,15 @@ const MutableMatrix & MutableMatrix::Dgemm(double a, const Matrix & A, const Mat
   char Aop   = A.IsTrans() ? 'T' : 'N';
   char Bop   = B.IsTrans() ? 'T' : 'N';
   phipac_dgemm(&Aop, &Bop, 
-	&numR, &numC, &ANumC, 
-	&a, 
-	const_cast<double *>(A.Start()), &ALd, 
-	const_cast<double *>(B.Start()), &BLd, 
-	&b, 
-	Start(), &thisLd);
+    &numR, &numC, &ANumC, 
+    &a, 
+    const_cast<double *>(A.Start()), &ALd, 
+    const_cast<double *>(B.Start()), &BLd, 
+    &b, 
+    Start(), &thisLd);
 #else
   cblas_dgemm(CblasColMajor, A.IsTrans() ? CblasTrans : CblasNoTrans, B.IsTrans() ? CblasTrans : CblasNoTrans,
-	      _numR, _numC, A.NumC(), a, A.Start(), A.Ld(), B.Start(), B.Ld(), b, Start(), Ld());
+    _numR, _numC, A.NumC(), a, A.Start(), A.Ld(), B.Start(), B.Ld(), b, Start(), Ld());
 #endif
   return *this;
 }
@@ -177,12 +177,12 @@ const MutableMatrix & MutableMatrix::operator=(const MatScaledSum & expr) const 
   bool aTrans = expr.A.IsTrans() ^ IsTrans(), bTrans = expr.B.IsTrans() ^ IsTrans();
 #if HAVE_MKL
   MKL_Domatadd ('c', aTrans ? 't' : 'n', bTrans ? 't' : 'n',
-		_numR, _numC, expr.a, expr.A.Start(), expr.A.Ld(),
-		expr.b, expr.B.Start(), expr.B.Ld(), Start(), _ld);
+    _numR, _numC, expr.a, expr.A.Start(), expr.A.Ld(),
+    expr.b, expr.B.Start(), expr.B.Ld(), Start(), _ld);
 #else
   my_Domatadd (aTrans ? 't' : 'n', bTrans ? 't' : 'n',
-		_numR, _numC, expr.a, expr.A.Start(), expr.A.Ld(),
-		expr.b, expr.B.Start(), expr.B.Ld(), Start(), _ld);  
+    _numR, _numC, expr.a, expr.A.Start(), expr.A.Ld(),
+    expr.b, expr.B.Start(), expr.B.Ld(), Start(), _ld);  
 #endif
   return *this;
 }
@@ -233,7 +233,7 @@ const MutableVector & MutableVector::operator=(const VecScaledSum & expr) const 
 #endif
   return *this;
 }
-	
+
 const MutableVector & MutableVector::operator=(const VecScal & expr) const {
   assert (Len() == expr.Len());
 #if HAVE_MKL

@@ -20,6 +20,7 @@ void Print(const Vector & vec);
 int ArgMax(const Vector & vec);
 
 double NormL1(const Vector & vec);
+
 double Sum(const Vector & vec);
 
 double Decay(MutableVector vec, double stepSize, double decayRate, int decayType = 2);

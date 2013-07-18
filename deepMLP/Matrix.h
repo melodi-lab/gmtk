@@ -24,18 +24,18 @@ struct VecScal;
 struct VecScaledSum;
 
 class Vector {
- protected:
+protected:
   const double *_start;
   int _len, _inc, _ld;
 
- public:
- Vector() : _start(NULL), _len(0), _inc(1), _ld(0) { }
+public:
+  Vector() : _start(NULL), _len(0), _inc(1), _ld(0) { }
 
- Vector(const double * start, int len, int inc = 1, int ld = 0)
-   :
+  Vector(const double * start, int len, int inc = 1, int ld = 0)
+    :
   _start(start), _len(len), _inc(inc), _ld(ld) { }
 
- Vector(const std::vector<double> & vec) : _start(&vec[0]), _len(vec.size()), _inc(1), _ld(0) { }
+  Vector(const std::vector<double> & vec) : _start(&vec[0]), _len(vec.size()), _inc(1), _ld(0) { }
 
   const double *Start() const { return _start; }
   int Len() const { return _len; }
@@ -66,20 +66,20 @@ class Vector {
   }
 
   Matrix AsMatrix(int numR, int numC) const;
-	
+
   Matrix AsMatrix(int numR) const;
-	
+
   template <class Visitor>
-    void Visit(Visitor visitor) const {
+  void Visit(Visitor visitor) const {
     const double *p = _start;
     while (p != End()) {
       visitor(*p);
       p += _inc;
     }
   }
-	
+
   template <class Visitor>
-    void Visit(Visitor visitor, const Vector & arg) const {
+  void Visit(Visitor visitor, const Vector & arg) const {
     assert (arg.Len() == Len());
     const double *p = _start;
     const double *pA = arg.Start();
@@ -89,7 +89,7 @@ class Vector {
       pA += arg.Inc();
     }
   }
-	
+
   void Print(int prec = 3) const {
     if (prec < 0) prec = 0;
     else if (prec > 5) prec = 5;
@@ -105,18 +105,18 @@ class Vector {
 };
 
 class Matrix {
- protected:
+protected:
   const double *_start;
   int _numR, _numC, _ld;
   bool _trans;
 
- public:
- Matrix() : _start(NULL), _numR(0), _numC(0), _ld(0), _trans(false) { }
+public:
+  Matrix() : _start(NULL), _numR(0), _numC(0), _ld(0), _trans(false) { }
 
- Matrix(const double *start, int numR, int numC, int ld, bool trans)
-   :
+  Matrix(const double *start, int numR, int numC, int ld, bool trans)
+    :
   _start(start), _numR(numR), _numC(numC), _ld(ld), _trans(trans) { }
-	
+
   const double *Start() const { return _start; }
   const double *End() const { return Start() + (_numC * _ld); }
   int DeepNumR() const { return _numR; }
@@ -150,12 +150,12 @@ class Matrix {
     s[4] = '0' + prec;
     for (int r = 0; r < NumR(); ++r) {
       for (int c = 0; c < NumC(); ++c) {
-	printf(s.c_str(), At(r,c));
+        printf(s.c_str(), At(r,c));
       }
       printf("\n");
     }
   }
-	
+
   Vector GetCol(int c) const {
     if (_trans) return Trans().GetRow(c);
 
@@ -173,7 +173,7 @@ class Matrix {
 
     return Vector(Start() + r, _numC, _ld, 1);
   }
-	
+
   Matrix GetCols(int beginCol, int endCol) const {
     return SubMatrix(0, -1, beginCol, endCol);
   }
@@ -204,19 +204,19 @@ class Matrix {
 
 class MutableVector : public Vector {
   friend class MutableMatrix;
- MutableVector(const Vector & vec) : Vector(vec) { }
+  MutableVector(const Vector & vec) : Vector(vec) { }
 
- public:
- MutableVector() : Vector() { }
+public:
+  MutableVector() : Vector() { }
 
- MutableVector(double * start, int len, int inc = 1, int ld = 0) : Vector(start, len, inc, ld) { }
+  MutableVector(double * start, int len, int inc = 1, int ld = 0) : Vector(start, len, inc, ld) { }
 
- MutableVector(std::vector<double> & vec) : Vector(vec) { }
+  MutableVector(std::vector<double> & vec) : Vector(vec) { }
 
   MutableVector(const MutableMatrix & m);
 
   double *Start() const { return const_cast<double*>(Vector::Start()); }
-	
+
   double & operator[](int i) const {
     return const_cast<double &>(Vector::operator[](i));
   }
@@ -228,32 +228,32 @@ class MutableVector : public Vector {
   MutableMatrix AsMatrix(int numR, int numC) const;
 
   MutableMatrix AsMatrix(int numR) const;
-	
+
   const MutableVector & operator=(const VecScaledSum & expr) const;
-	
+
   const MutableVector & operator=(const VecScal & expr) const;
-	
+
   const MutableVector & operator+=(const VecScal & expr) const;
-	
+
   const MutableVector & operator-=(const VecScal & expr) const;
-	
+
   const MutableVector & operator*=(double a) const;
-	
+
   const MutableVector & operator/=(double a) const { return operator*=(1.0 / a); }
 
   void CopyFrom(const Vector & vec) const;
-	
+
   template <class Mutator>
-    void Apply(Mutator mut) const {
+  void Apply(Mutator mut) const {
     double *p = Start();
     while (p != End()) {
       *p = mut(*p);
       p += _inc;
     }
   }
-	
+
   template <class Mutator>
-    void Apply(Mutator mut, const Vector & arg) const {
+  void Apply(Mutator mut, const Vector & arg) const {
     assert (arg.Len() == Len());
     double *p = Start();
     const double *pA = arg.Start();
@@ -263,18 +263,18 @@ class MutableVector : public Vector {
       pA += arg.Inc();
     }
   }
-	
+
   template <class Func>
-    void Replace(Func trans) const {
+  void Replace(Func trans) const {
     double *p = Start();
     while (p != End()) {
       *p = trans();
       p += _inc;
     }
   }
-	
+
   template <class Func>
-    void Replace(Func trans, const Vector & arg) const {
+  void Replace(Func trans, const Vector & arg) const {
     assert (arg.Len() == Len());
     double *p = Start();
     const double *pA = arg.Start();
@@ -284,9 +284,9 @@ class MutableVector : public Vector {
       pA += arg.Inc();
     }
   }
-	
+
   template <class Func>
-    void Replace(Func trans, const Vector & arg, const Vector & arg2) const {
+  void Replace(Func trans, const Vector & arg, const Vector & arg2) const {
     assert (arg.Len() == Len());
     double *p = Start();
     const double *pA = arg.Start(), *pA2 = arg2.Start();
@@ -301,21 +301,21 @@ class MutableVector : public Vector {
   void Assign(double val) const {
     Replace([val] () { return val; });
   }
-	
+
   template <class VMLFunc>
-    void ApplyVML(VMLFunc Func, const Vector & arg) const {
+  void ApplyVML(VMLFunc Func, const Vector & arg) const {
     assert (_inc == 1 && arg.Inc() == 1);
     Func(_len, arg.Start(), Start());
   }
 
   template <class VMLFunc>
-    void ApplyVML(VMLFunc Func, const Vector & arg1, const Vector & arg2) const {
+  void ApplyVML(VMLFunc Func, const Vector & arg1, const Vector & arg2) const {
     assert (_inc == 1 && arg1.Inc() == 1 && arg2.Inc() == 1);
     Func(_len, arg1.Start(), arg2.Start(), Start());
   }
 
   template <class VMLFunc>
-    void ApplyVML(VMLFunc Func) const {
+  void ApplyVML(VMLFunc Func) const {
     assert (_inc == 1);
     Func(_len, Start(), Start());
   }
@@ -325,28 +325,28 @@ class MutableVector : public Vector {
 
 class MutableMatrix : public Matrix {
   friend class MutableVector;
- MutableMatrix(const Matrix & mat) : Matrix(mat) { }
+  MutableMatrix(const Matrix & mat) : Matrix(mat) { }
 
- public:
- MutableMatrix() : Matrix() { }
+public:
+  MutableMatrix() : Matrix() { }
 
- MutableMatrix(double *start, int numR, int numC, int ld, bool trans) : Matrix(start, numR, numC, ld, trans) { }
+  MutableMatrix(double *start, int numR, int numC, int ld, bool trans) : Matrix(start, numR, numC, ld, trans) { }
 
   MutableMatrix Trans() const { return MutableMatrix(Start(), _numR, _numC, _ld, !_trans); }
 
   double *Start() const { return const_cast<double*>(_start); }
   double *End() const { return Start() + (_numC * _ld); }
-	
+
   double & At(int r, int c) const {
     return const_cast<double &>(Matrix::At(r,c));
   }
-	
+
   MutableVector Vec() const {
     return MutableVector(Start(), VecLen(), 1, 0);
   }
 
   void CopyFrom(const Matrix & mat, double scale = 1.0) const;
-	
+
   MutableVector GetRow(int r) const {
     return Matrix::GetRow(r);
   }
@@ -354,7 +354,7 @@ class MutableMatrix : public Matrix {
   MutableVector GetCol(int c) const {
     return Matrix::GetCol(c);
   }
-	
+
   MutableMatrix GetCols(int beginCol, int endCol) const {
     return SubMatrix(0, -1, beginCol, endCol);
   }
@@ -366,21 +366,21 @@ class MutableMatrix : public Matrix {
   MutableMatrix SubMatrix(int beginRow, int endRow, int beginCol, int endCol) const {
     return Matrix::SubMatrix(beginRow, endRow, beginCol, endCol);
   }
-	
+
   const MutableMatrix & operator=(const MatMatMult & expr) const;
 
   const MutableMatrix & operator=(const MatScaledSum & expr) const;
-	
+
   const MutableMatrix & operator=(const MatScal & expr) const;
-	
+
   const MutableMatrix & operator+=(const MatScal & expr) const;
 
   const MutableMatrix & operator+=(const MatMatMult & expr) const;
-	
+
   const MutableMatrix & operator-=(const MatScal & expr) const;
 
   const MutableMatrix & operator-=(const MatMatMult & expr) const;
-	
+
   const MutableMatrix & operator*=(double a) const;
 
   const MutableMatrix & operator/=(double a) const { return operator*=(1.0 / a); }
@@ -391,8 +391,8 @@ class MutableMatrix : public Matrix {
     if (IsVec()) Vec().Assign(val);
     else if (_trans) Trans().Assign(val);
     else for (int c = 0; c < _numC; ++c) {
-	GetCol(c).Assign(val);
-      }
+      GetCol(c).Assign(val);
+    }
   }
 };
 
@@ -402,24 +402,24 @@ class AllocatingVector : public MutableVector {
     _start = (_arr.size() > 0) ? &_arr[0] : NULL;
   }
 
- public:
- AllocatingVector() : MutableVector() { }
+public:
+  AllocatingVector() : MutableVector() { }
 
- AllocatingVector(int len, double val = 0) : MutableVector(NULL, len), _arr(len, val) {
+  AllocatingVector(int len, double val = 0) : MutableVector(NULL, len), _arr(len, val) {
     ResetStart();
   }
-	
- AllocatingVector(const Vector & vec) : MutableVector(NULL, vec.Len()), _arr(vec.Len()) {
-    ResetStart();
-    MutableVector::CopyFrom(vec);
-  }
 
- AllocatingVector(const MutableVector & vec) : MutableVector(NULL, vec.Len()), _arr(vec.Len()) {
+  AllocatingVector(const Vector & vec) : MutableVector(NULL, vec.Len()), _arr(vec.Len()) {
     ResetStart();
     MutableVector::CopyFrom(vec);
   }
 
- AllocatingVector(const AllocatingVector & vec) : MutableVector(vec), _arr(vec._arr) {
+  AllocatingVector(const MutableVector & vec) : MutableVector(NULL, vec.Len()), _arr(vec.Len()) {
+    ResetStart();
+    MutableVector::CopyFrom(vec);
+  }
+
+  AllocatingVector(const AllocatingVector & vec) : MutableVector(vec), _arr(vec._arr) {
     ResetStart();
   }
 
@@ -433,7 +433,7 @@ class AllocatingVector : public MutableVector {
     Resize(vec.Len());
     MutableVector::CopyFrom(vec);
   }
-	
+
   void Assign(int len, double val) {
     Resize(len);
     MutableVector::Assign(val);
@@ -448,7 +448,7 @@ class AllocatingVector : public MutableVector {
     std::swap(_start, other._start);
     _arr.swap(other._arr);
   }
-	
+
   const Vector & operator=(const Vector & other) {
     CopyFrom(other);
     return *this;
@@ -465,7 +465,7 @@ class AllocatingVector : public MutableVector {
   }
 
   template <class Expr>
-    const Vector & operator=(const Expr & expr) {
+  const Vector & operator=(const Expr & expr) {
     Resize(expr.Len());
     return MutableVector::operator=(expr);
   }
@@ -477,24 +477,24 @@ class AllocatingMatrix : public MutableMatrix {
     _start = (_arr.size() > 0) ? &_arr[0] : NULL;
   }
 
- public:
- AllocatingMatrix() : MutableMatrix() { }
-	
- AllocatingMatrix(int numR, int numC, double val = 0) : MutableMatrix(NULL, numR, numC, numR, false), _arr(_numR * _numC, val) {
+public:
+  AllocatingMatrix() : MutableMatrix() { }
+
+  AllocatingMatrix(int numR, int numC, double val = 0) : MutableMatrix(NULL, numR, numC, numR, false), _arr(_numR * _numC, val) {
     ResetStart();
   }
-	
- AllocatingMatrix(const Matrix & mat) : MutableMatrix(NULL, mat.NumR(), mat.NumC(), mat.NumR(), false), _arr(_numR * _numC) {
+
+  AllocatingMatrix(const Matrix & mat) : MutableMatrix(NULL, mat.NumR(), mat.NumC(), mat.NumR(), false), _arr(_numR * _numC) {
     ResetStart();
     MutableMatrix::CopyFrom(mat);
   }
 
- AllocatingMatrix(const MutableMatrix & mat) : MutableMatrix(NULL, mat.NumR(), mat.NumC(), mat.NumR(), false), _arr(_numR * _numC) {
+  AllocatingMatrix(const MutableMatrix & mat) : MutableMatrix(NULL, mat.NumR(), mat.NumC(), mat.NumR(), false), _arr(_numR * _numC) {
     ResetStart();
     MutableMatrix::CopyFrom(mat);
   }
 
- AllocatingMatrix(const AllocatingMatrix & mat) : MutableMatrix(mat), _arr(mat._arr) {
+  AllocatingMatrix(const AllocatingMatrix & mat) : MutableMatrix(mat), _arr(mat._arr) {
     ResetStart();
   }
 
@@ -522,7 +522,7 @@ class AllocatingMatrix : public MutableMatrix {
     Resize(mat);
     MutableMatrix::CopyFrom(mat, scale);
   }
-	
+
   void Swap(AllocatingMatrix & other) {		
     std::swap(_numR, other._numR);
     std::swap(_numC, other._numC);
@@ -531,7 +531,7 @@ class AllocatingMatrix : public MutableMatrix {
     std::swap(_ld, other._ld);
     _arr.swap(other._arr);
   }
-	
+
   const Matrix & operator=(const Matrix & other) {
     CopyFrom(other);
     return *this;
@@ -548,7 +548,7 @@ class AllocatingMatrix : public MutableMatrix {
   }
 
   template <class Expr>
-    const Matrix & operator=(const Expr & expr) {
+  const Matrix & operator=(const Expr & expr) {
     Resize(expr.NumR(), expr.NumC());
     return MutableMatrix::operator=(expr);
   }
@@ -558,7 +558,7 @@ struct MatScal {
   const Matrix A;
   const double a;
 
-MatScal(const Matrix & A, const double a = 1.0) : A(A), a(a) { }
+  MatScal(const Matrix & A, const double a = 1.0) : A(A), a(a) { }
   MatScal operator-() const { return MatScal(A, -a); }
 
   int NumR() const { return A.NumR(); }
@@ -572,9 +572,9 @@ struct MatScaledSum {
   const Matrix A, B;
   const double a, b;
 
-MatScaledSum(const MatScal & ax, const MatScal & by) : A(ax.A), a(ax.a), B(by.A), b(by.a) {
-  assert (A.NumC() == B.NumC() && A.NumR() == B.NumR());
-}
+  MatScaledSum(const MatScal & ax, const MatScal & by) : A(ax.A), a(ax.a), B(by.A), b(by.a) {
+    assert (A.NumC() == B.NumC() && A.NumR() == B.NumR());
+  }
 
   int NumR() const { return A.NumR(); }
   int NumC() const { return A.NumC(); }
@@ -590,9 +590,9 @@ struct MatMatMult {
   const Matrix B;
   const double a;
 
-MatMatMult(const Matrix & A, const Matrix & B, double a) : A(A), B(B), a(a) { 
-  assert (A.NumC() == B.NumR());
-}
+  MatMatMult(const Matrix & A, const Matrix & B, double a) : A(A), B(B), a(a) { 
+    assert (A.NumC() == B.NumR());
+  }
 
   int NumR() const { return A.NumR(); }
   int NumC() const { return B.NumC(); }
@@ -606,7 +606,7 @@ struct VecScal {
   const Vector v;
   const double a;
 
-VecScal(const Vector & v, const double a = 1.0) : v(v), a(a) { }
+  VecScal(const Vector & v, const double a = 1.0) : v(v), a(a) { }
   VecScal operator-() const { return VecScal(v, -a); }
 
   int Len() const { return v.Len(); }
@@ -620,9 +620,9 @@ struct VecScaledSum {
   const Vector x, y;
   const double a, b;
 
-VecScaledSum(const VecScal & ax, const VecScal & by) : x(ax.v), a(ax.a), y(by.v), b(by.a) {
-  assert(x.Len() == y.Len());
-}
+  VecScaledSum(const VecScal & ax, const VecScal & by) : x(ax.v), a(ax.a), y(by.v), b(by.a) {
+    assert(x.Len() == y.Len());
+  }
 
   int Len() const { return x.Len(); }
 };
