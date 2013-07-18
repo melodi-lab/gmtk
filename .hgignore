@@ -93,6 +93,7 @@ tests/testanddev.at
 tests/testanddev.dir
 tests/testanddev.log
 deepMLP/dmlp
+deepMLP/mnist
 deepMLP/dmlpTest
 deepMLP/orderTest
 deepMLP/phipacTest
