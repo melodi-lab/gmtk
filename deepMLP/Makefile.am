@@ -21,17 +21,23 @@ AM_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(PEDANTIC) $(WARNING) $(ANSI)
 #AM_LDFLAGS = -static -fwhole-program -L. 
 AM_LDFLAGS = -L. $(BOOST_LDFLAGS) $(BLAS_LDFLAGS)
 
+if USE_PHIPAC
 LDADD = libDMLP.a libPHiPAC.a
+else
+LDADD = libDMLP.a
+endif
 
 LIBS += -lboost_thread -lboost_filesystem -lboost_system $(BLAS_LIBS)
 # -lpthread
 
-noinst_LIBRARIES = libDMLP.a $(PHiPAC_LIB)
+noinst_LIBRARIES = libDMLP.a
 EXTRA_LIBRARIES = libPHiPAC.a
 
-noinst_PROGRAMS = dmlp
+noinst_PROGRAMS = dmlp mnist
 
 dmlp_SOURCES = dmlp.cc
+
+mnist_SOURCES = mnist.cc
 
 check_PROGRAMS = dmlpTest orderTest phipacTest
 

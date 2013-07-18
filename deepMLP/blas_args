@@ -8,9 +8,8 @@ AC_ARG_ENABLE([phipac],
    [AS_HELP_STRING([--disable-phipac], [use BLAS or MKL matrix multiply instead of PHiPAC])],
    [AS_IF([test x$enable_phipac == xyes], 
       [AC_DEFINE([USE_PHIPAC],1,[prefer PHiPAC dGEMM over MKL/BLAS])])],
-   [AC_DEFINE([USE_PHIPAC],1,[prefer PHiPAC dGEMM over MKL/BLAS])
-    PHiPAC_LIB="\$(builddir)/../deepMLP/libPHiPAC.a"])
-AC_SUBST(PHiPAC_LIB)
+   [AC_DEFINE([USE_PHIPAC],1,[prefer PHiPAC dGEMM over MKL/BLAS])])
+AM_CONDITIONAL([USE_PHIPAC],[test x$enable_phipac != xno])
 
 # We need a BLAS. ATLAS or Goto are nice. MKL also provides BLAS.
 # By default, we'll try to use a BLAS located either by pkg-config
