@@ -14,13 +14,13 @@ class Random {
   RandGen _rand;
   NormGen _norm;
 
- public:
- Random(unsigned int seed = -1) 
-   : _base((seed == -1) ? (unsigned int)microsec_clock::local_time().time_of_day().fractional_seconds() : seed),
+public:
+  Random(unsigned int seed = -1) 
+    : _base((seed == -1) ? (unsigned int)microsec_clock::local_time().time_of_day().fractional_seconds() : seed),
     _rand(_base, boost::uniform_real<double>(0, 1.0)),
     _norm(_base, boost::normal_distribution<double>(0, 1.0))
-      {
-      }
+  {
+  }
 
   double Normal() {
     return _norm();

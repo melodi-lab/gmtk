@@ -22,7 +22,7 @@ extern "C" {            /* Assume C declarations for C++ */
 using namespace std;
 
 class DBN {
- public:
+public:
   enum PretrainType {
     NONE, // no pretraining
     AE, // denoising autoencoder
@@ -40,7 +40,7 @@ class DBN {
 
     PretrainType pretrainType;
 
-  HyperParams() :
+    HyperParams() :
     initStepSize(1e-2),
       maxMomentum(0.99),
       maxUpdate(0.1),
@@ -54,7 +54,7 @@ class DBN {
     { }
   };
 
- private:
+private:
   // width of input, all hidden, and output layers
   int _iSize, _hSize, _oSize;
   Layer::ActFunc _iActFunc, _hActFunc;
@@ -98,7 +98,7 @@ class DBN {
       MutableVector col = W.GetCol(c);
       // sampling with replacement, but it doesn't really matter
       for (int i = 0; i < 15; ++i) {
-	col[rand.Rand(col.Len())] = rand.Normal() * 0.01;
+        col[rand.Rand(col.Len())] = rand.Normal() * 0.01;
       }
     }
   }
@@ -115,12 +115,12 @@ class DBN {
 
     const HyperParams & _hyperParams;
 
-  TrainingFunction(DBN & dbn, const Matrix & input, const Matrix & output, const HyperParams & hyperParams, MutableVector & params, MutableVector & deltaParams, MutableVector & savedParams)
-    :
+    TrainingFunction(DBN & dbn, const Matrix & input, const Matrix & output, const HyperParams & hyperParams, MutableVector & params, MutableVector & deltaParams, MutableVector & savedParams)
+      :
     _dbn(dbn), _hyperParams(hyperParams), _input(input), _output(output), _params(params), _deltaParams(deltaParams), _savedParams(savedParams) { }
 
-  TrainingFunction(DBN & dbn, const Matrix & output, const HyperParams & hyperParams, MutableVector & params, MutableVector & deltaParams, MutableVector & savedParams)
-    :
+    TrainingFunction(DBN & dbn, const Matrix & output, const HyperParams & hyperParams, MutableVector & params, MutableVector & deltaParams, MutableVector & savedParams)
+      :
     _dbn(dbn), _hyperParams(hyperParams), _output(output), _params(params), _deltaParams(deltaParams), _savedParams(savedParams) { }
 
     virtual double PrivateEval(Matrix inputMiniBatch, Matrix outputMiniBatch, double stepSize) = 0;
@@ -140,20 +140,20 @@ class DBN {
       Matrix inputMiniBatch, outputMiniBatch;
       int end = start + miniBatchSize;
       if (end <= numIns) {
-	inputMiniBatch = (_input.NumC() > 0) ? _input.GetCols(start, end) : _input;
-	outputMiniBatch = _output.GetCols(start, end);
+        inputMiniBatch = (_input.NumC() > 0) ? _input.GetCols(start, end) : _input;
+        outputMiniBatch = _output.GetCols(start, end);
       } else {
-	if (_input.NumC() > 0) {
-	  _tempInput.Resize(_input.NumR(), miniBatchSize);
-	  _tempInput.GetCols(0, numIns - start).CopyFrom(_input.GetCols(start, -1));
-	  _tempInput.GetCols(numIns - start, -1).CopyFrom(_input.GetCols(0, end - numIns));
-	  inputMiniBatch = _tempInput;
-	} else inputMiniBatch = _input;
+        if (_input.NumC() > 0) {
+          _tempInput.Resize(_input.NumR(), miniBatchSize);
+          _tempInput.GetCols(0, numIns - start).CopyFrom(_input.GetCols(start, -1));
+          _tempInput.GetCols(numIns - start, -1).CopyFrom(_input.GetCols(0, end - numIns));
+          inputMiniBatch = _tempInput;
+        } else inputMiniBatch = _input;
 
-	_tempOutput.Resize(_output.NumR(), miniBatchSize);
-	_tempOutput.GetCols(0, numIns - start).CopyFrom(_output.GetCols(start, -1));
-	_tempOutput.GetCols(numIns - start, -1).CopyFrom(_output.GetCols(0, end - numIns));
-	outputMiniBatch = _tempOutput;
+        _tempOutput.Resize(_output.NumR(), miniBatchSize);
+        _tempOutput.GetCols(0, numIns - start).CopyFrom(_output.GetCols(start, -1));
+        _tempOutput.GetCols(numIns - start, -1).CopyFrom(_output.GetCols(0, end - numIns));
+        outputMiniBatch = _tempOutput;
       }
 
       _deltaParams *= momentum;
@@ -184,13 +184,13 @@ class DBN {
     AllocatingVector _inputBiases;
 
   public:
-  LayerTrainingFunction(DBN & dbn, int layer, const Matrix & trainData, const HyperParams & hyperParams)
-    :
+    LayerTrainingFunction(DBN & dbn, int layer, const Matrix & trainData, const HyperParams & hyperParams)
+      :
     TrainingFunction(dbn, trainData, hyperParams, dbn._layerParams[layer], dbn._layerDeltaParams[layer], dbn._layerSavedParams[layer]),
       _layer(layer)
-      {
-	DBN::InitializeInputBiases(trainData, _inputBiases, 1e-3);
-      }
+    {
+      DBN::InitializeInputBiases(trainData, _inputBiases, 1e-3);
+    }
   };
 
   class CDTrainingFunction : public LayerTrainingFunction {
@@ -203,8 +203,8 @@ class DBN {
     }
 
   public:
-  CDTrainingFunction(DBN & dbn, int layer, const Matrix & trainData, Random & rand, const HyperParams & hyperParams)
-    :
+    CDTrainingFunction(DBN & dbn, int layer, const Matrix & trainData, Random & rand, const HyperParams & hyperParams)
+      :
     LayerTrainingFunction(dbn, layer, trainData, hyperParams), _rand(rand)
     {
     }
@@ -220,13 +220,13 @@ class DBN {
     }
 
   public:		
-  AETrainingFunction(DBN & dbn, int layer, const Matrix & trainData, Random & rand, const HyperParams & hyperParams, Layer::ActFunc lowerActFunc, bool fixTrainDistortion)
-    : LayerTrainingFunction(dbn, layer, trainData, hyperParams), _rand(rand)
+    AETrainingFunction(DBN & dbn, int layer, const Matrix & trainData, Random & rand, const HyperParams & hyperParams, Layer::ActFunc lowerActFunc, bool fixTrainDistortion)
+      : LayerTrainingFunction(dbn, layer, trainData, hyperParams), _rand(rand)
     {
       if (fixTrainDistortion) {
-	_distortedInput.Resize(trainData);
-	lowerActFunc.Sample(trainData.Vec(), _distortedInput.Vec(), _rand);
-	_input = _distortedInput;
+        _distortedInput.Resize(trainData);
+        lowerActFunc.Sample(trainData.Vec(), _distortedInput.Vec(), _rand);
+        _input = _distortedInput;
       }
     }
   };
@@ -244,8 +244,8 @@ class DBN {
     }
 
   public:
-  BPTrainingFunction(const Matrix & input, const Matrix & output, DBN & dbn, HyperParams hyperParams, ObjectiveType objectiveType, Random & rand)
-    :
+    BPTrainingFunction(const Matrix & input, const Matrix & output, DBN & dbn, HyperParams hyperParams, ObjectiveType objectiveType, Random & rand)
+      :
     TrainingFunction(dbn, input, output, hyperParams, dbn._params, dbn._deltaParams, dbn._savedParams),
       _objectiveType(objectiveType), _rand(rand)
     { }
@@ -264,8 +264,8 @@ class DBN {
     }
 
   public:
-  OutputLayerTrainingFunction(const Matrix & input, const Matrix & output, DBN & dbn, HyperParams hyperParams, ObjectiveType objectiveType, Random & rand)
-    :
+    OutputLayerTrainingFunction(const Matrix & input, const Matrix & output, DBN & dbn, HyperParams hyperParams, ObjectiveType objectiveType, Random & rand)
+      :
     TrainingFunction(dbn, input, output, hyperParams, dbn._layerParams.back(), dbn._layerDeltaParams.back(), dbn._layerSavedParams.back()),
       _objectiveType(objectiveType), _rand(rand)
     { }
@@ -276,11 +276,11 @@ class DBN {
       MutableMatrix W = _dbn._W.back();
       W *= 0;
       for (int c = 0; c < W.NumC(); ++c) {
-	MutableVector col = W.GetCol(c);
-	// sampling with replacement, but it doesn't really matter
-	for (int i = 0; i < 15; ++i) {
-	  col[rand.Rand(col.Len())] = rand.Normal() * 0.01;
-	}
+        MutableVector col = W.GetCol(c);
+        // sampling with replacement, but it doesn't really matter
+        for (int i = 0; i < 15; ++i) {
+          col[rand.Rand(col.Len())] = rand.Normal() * 0.01;
+        }
       }
 
       TrainingFunction::Init(rand);
@@ -308,16 +308,16 @@ class DBN {
 
       double totalScore = 0;
       for (int t = 0; t < hyperParams.checkInterval; ++t) {
-	totalScore += trainer.Update(startInstance, stepSize, hyperParams.maxUpdate, 0);
-	startInstance += hyperParams.miniBatchSize;
+        totalScore += trainer.Update(startInstance, stepSize, hyperParams.maxUpdate, 0);
+        startInstance += hyperParams.miniBatchSize;
       }
 
       double score = totalScore / hyperParams.checkInterval;
 
       if (!quiet) cout << "Improvement check score: " << score << endl;
       if (score < bestTrainScore) {
-	if (!quiet) cout << "Keeping step size of " << stepSize << endl;
-	break;
+        if (!quiet) cout << "Keeping step size of " << stepSize << endl;
+        break;
       }
 
       stepSize /= 2;
@@ -336,11 +336,11 @@ class DBN {
       startInstance += hyperParams.miniBatchSize;
 
       if (!quiet && t % hyperParams.checkInterval == 0) {
-	double score = totalScore / hyperParams.checkInterval;
-	cout << "Step: " << t << endl;
-	cout << "Momentum: " << momentum << endl;
-	cout << "New score: " << score << endl << endl;
-	totalScore = 0;
+        double score = totalScore / hyperParams.checkInterval;
+        cout << "Step: " << t << endl;
+        cout << "Momentum: " << momentum << endl;
+        cout << "New score: " << score << endl << endl;
+        totalScore = 0;
       }
     }
 
@@ -391,10 +391,10 @@ class DBN {
     case SOFT_MAX:
       _tempMat.CopyFrom(mappedInput);
       for (int i = 0; i < input.NumC(); ++i) {
-	MutableVector errCol = _tempMat.GetCol(i);
-	double max = Max(errCol);
-	errCol.Apply([max] (double x) { return x - max; });
-	loss += max;
+        MutableVector errCol = _tempMat.GetCol(i);
+        double max = Max(errCol);
+        errCol.Apply([max] (double x) { return x - max; });
+        loss += max;
       }
 #if HAVE_MKL
       _tempMat.Vec().ApplyVML(vdExp);
@@ -403,13 +403,13 @@ class DBN {
 #endif
 
       for (int i = 0; i < input.NumC(); ++i) {
-	MutableVector errCol = _tempMat.GetCol(i);
-	Vector labelCol = output.GetCol(i);
-	Vector predictionCol = mappedInput.GetCol(i);
-	double sum = Sum(errCol);
-	errCol /= sum;
-	errCol -= labelCol;
-	loss += log(sum) - predictionCol * labelCol;
+        MutableVector errCol = _tempMat.GetCol(i);
+        Vector labelCol = output.GetCol(i);
+        Vector predictionCol = mappedInput.GetCol(i);
+        double sum = Sum(errCol);
+        errCol /= sum;
+        errCol -= labelCol;
+        loss += log(sum) - predictionCol * labelCol;
       }
       break;
     }
@@ -417,16 +417,16 @@ class DBN {
     if (stepSize > 0) {
       Matrix mappedError = _layers.back().ComputeErrors(_tempMat, Layer::ActFunc::LINEAR);
       for (int l = _numLayers - 1; ; --l) {
-	for (int i = 0; i < input.NumC(); ++i) _deltaB[l] += mappedError.GetCol(i) * stepSize;
+        for (int i = 0; i < input.NumC(); ++i) _deltaB[l] += mappedError.GetCol(i) * stepSize;
 
-	const Matrix & lowerProbs = l > startLayer ? _layers[l - 1].Activations() : dropout ? _tempDropoutInput : input;
+        const Matrix & lowerProbs = l > startLayer ? _layers[l - 1].Activations() : dropout ? _tempDropoutInput : input;
 
-	_deltaW[l] += stepSize * lowerProbs * mappedError.Trans();
+        _deltaW[l] += stepSize * lowerProbs * mappedError.Trans();
 
-	if (lastLayerOnly || l == 0) break;
+        if (lastLayerOnly || l == 0) break;
 
-	_tempMat = _W[l] * mappedError;
-	mappedError = _layers[l-1].ComputeErrors(_tempMat, _hActFunc);
+        _tempMat = _W[l] * mappedError;
+        mappedError = _layers[l-1].ComputeErrors(_tempMat, _hActFunc);
       }
     }
 
@@ -467,8 +467,8 @@ class DBN {
       _deltaW[layer] += stepSize * _tempBottomSample * topProbsN.Trans();
 
       for (int i = 0; i < input.NumC(); ++i) {
-	_deltaB[layer] -= stepSize * topProbsP.GetCol(i);
-	_deltaB[layer] += stepSize * topProbsN.GetCol(i);
+        _deltaB[layer] -= stepSize * topProbsP.GetCol(i);
+        _deltaB[layer] += stepSize * topProbsN.GetCol(i);
       }
     }
 
@@ -502,18 +502,18 @@ class DBN {
       _deltaW[layer] += stepSize * input * topError.Trans();
 
       for (int i = 0; i < input.NumC(); ++i) {
-	_deltaB[layer] += stepSize * topError.GetCol(i);
+        _deltaB[layer] += stepSize * topError.GetCol(i);
       }
     }
 
     return negll;
   }
 
- public:
+public:
   DBN(int numLayers, int iSize, int hSize, int oSize, Layer::ActFunc iActFunc, Layer::ActFunc hActFunc) 
-    {
-      Initialize(numLayers, iSize, hSize, oSize, iActFunc, hActFunc);
-    }
+  {
+    Initialize(numLayers, iSize, hSize, oSize, iActFunc, hActFunc);
+  }
 
   void Initialize(int numLayers, int iSize, int hSize, int oSize, Layer::ActFunc iActFunc, Layer::ActFunc hActFunc)
   {
@@ -663,31 +663,31 @@ class DBN {
 
       switch (hyperParams.pretrainType) {
       case CD:
-	{
-	  if (!quiet) {
-	    cout << "Pretraining layer " << layer << " of size " << LayerInSize(layer) << "x" << LayerOutSize(layer) << " with CD" << endl;
-	  }
-	  CDTrainingFunction cdFunc(*this, layer, mappedInput, rand, hyperParams);
-	  TrainSGD(cdFunc, rand, hyperParams);
-	}
-	break;
+        {
+          if (!quiet) {
+            cout << "Pretraining layer " << layer << " of size " << LayerInSize(layer) << "x" << LayerOutSize(layer) << " with CD" << endl;
+          }
+          CDTrainingFunction cdFunc(*this, layer, mappedInput, rand, hyperParams);
+          TrainSGD(cdFunc, rand, hyperParams);
+        }
+        break;
 
       case AE:
-	{
-	  if (!quiet) {
-	    cout << "Pretraining layer " << layer << " of size " << LayerInSize(layer) << "x" << LayerOutSize(layer) << " with AE" << endl;
-	  }
-	  Layer::ActFunc lowerActFunc = (layer == 0) ? _iActFunc : _hActFunc;
-	  AETrainingFunction aeFunc(*this, layer, mappedInput, rand, hyperParams, lowerActFunc, true);
-	  TrainSGD(aeFunc, rand, hyperParams);
-	}
-	break;
+        {
+          if (!quiet) {
+            cout << "Pretraining layer " << layer << " of size " << LayerInSize(layer) << "x" << LayerOutSize(layer) << " with AE" << endl;
+          }
+          Layer::ActFunc lowerActFunc = (layer == 0) ? _iActFunc : _hActFunc;
+          AETrainingFunction aeFunc(*this, layer, mappedInput, rand, hyperParams, lowerActFunc, true);
+          TrainSGD(aeFunc, rand, hyperParams);
+        }
+        break;
 
       case NONE:
-	break;
+        break;
 
       default:
-	abort();
+        abort();
       }
 
       mappedInput = MapLayer(mappedInput, layer);
@@ -699,7 +699,7 @@ class DBN {
     if (hyperParams_pt.back().pretrainType != NONE) {
       // pretrain output layer
       if (!quiet) {
-	cout << "Pretraining output layer" << endl;
+        cout << "Pretraining output layer" << endl;
       }
 
       OutputLayerTrainingFunction outputFunc(mappedInput, output, *this, hyperParams_pt.back(), objectiveType, rand);
@@ -717,7 +717,7 @@ class DBN {
 
     if (hyperParams_bp.dropout) {
       for (int l = 0; l < _W.size(); ++l) {
-	_W[l] *= 2;
+        _W[l] /= 2;
       }
     }
   }
