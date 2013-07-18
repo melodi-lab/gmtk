@@ -717,7 +717,7 @@ class DBN {
 
 	 if (hyperParams_bp.dropout) {
 		 for (int l = 0; l < _W.size(); ++l) {
-			 _W[l] *= 2;
+			 _W[l] /= 2;
 		 }
 	 }
   }
