@@ -33,9 +33,37 @@ main(int argc, char *argv[]) {
   double m10s_d[10];
   MutableMatrix m10s(m10s_d, 5, 2, 5, false);
   m10s = 1.0 * m10 + 2.0 * m10c;
-  printf("my_Domatadd T %d x %d:\n", m10s.NumR(), m10s.NumC());
+  printf("my_Domatadd %d x %d:\n", m10s.NumR(), m10s.NumC());
   m10s.Print();
   printf("\n\n");
+
+
+
+  double m10T_add_data[20]={0,10,0,0, 2,12,0,0, 4,14,0,0, 6,16,0,0, 8,18,0,0};
+  MutableMatrix m10T_add(m10T_add_data, 2,5,4, false);
+  //  m10T_add = m10c.Trans();
+  printf("m10T_add %d x %d:\n", m10T_add.NumR(), m10T_add.NumC());
+  m10T_add.Print();
+
+  // double add_data[20] = {0,5,0,0, 1,6,0,0, 2,7,0,0, 3,8,0,0, 4,9,0,0};
+  //MutableMatrix add(add_data, 2,5,4, false);
+  double add_data[14] = {0,1,2,3,4, 20,30, 5,6,7,8,9, 40,50};
+  MutableMatrix add(add_data, 5,2,7, false);
+  printf("add %d x %d:\n", add.NumR(), add.NumC());
+  add.Print();
+
+  //  add = add.Trans();
+  printf("add T %d x %d:\n", add.NumC(), add.NumR());
+  add.Trans().Print();
+
+  double sum_data[20];
+  MutableMatrix sum(sum_data, 2,5,2, false);
+  sum = /*1.0 * */ m10T_add + 2.0 * add.Trans();
+  printf("m10T_add + 2 * add:\n");
+  sum.Print();
+  printf("\n\n\n");
+
+
 
   double mm_d[25];
   MutableMatrix mm(mm_d, 5, 5, 5, false);

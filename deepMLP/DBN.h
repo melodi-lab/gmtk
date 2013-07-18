@@ -36,7 +36,7 @@ class DBN {
 
     int numUpdates, numAnnealUpdates, miniBatchSize, checkInterval;
 
-	 bool dropout;
+    bool dropout;
 
     PretrainType pretrainType;
 
@@ -49,7 +49,7 @@ class DBN {
       numAnnealUpdates(2000),
       miniBatchSize(10),
       checkInterval(2000),
-		dropout(false),
+      dropout(false),
       pretrainType(CD)
     { }
   };
@@ -248,7 +248,7 @@ class DBN {
     :
     TrainingFunction(dbn, input, output, hyperParams, dbn._params, dbn._deltaParams, dbn._savedParams),
       _objectiveType(objectiveType), _rand(rand)
-      { }
+    { }
   };
 
   class OutputLayerTrainingFunction : public TrainingFunction {
@@ -268,7 +268,7 @@ class DBN {
     :
     TrainingFunction(dbn, input, output, hyperParams, dbn._layerParams.back(), dbn._layerDeltaParams.back(), dbn._layerSavedParams.back()),
       _objectiveType(objectiveType), _rand(rand)
-      { }
+    { }
 
     virtual void Init(Random & rand) {
       // sparse initialization strategy from Martens, 2010
@@ -366,16 +366,16 @@ class DBN {
   double UpdateBackProp(const Matrix & input, const Matrix & output, ObjectiveType _objType, bool lastLayerOnly, bool dropout, Random & rand, double stepSize) {
     int startLayer = lastLayerOnly ? _numLayers - 1 : 0;
 
-	 Matrix mappedInput;
-	 if (dropout) {
-		 _tempDropoutInput.CopyFrom(input);
-		 _tempDropoutInput.Vec().Apply([&] (double x) { return (rand.Uniform() < 0.5) ? x : 0; });
-		 mappedInput = MapUpDropout(_tempDropoutInput, rand, startLayer);
-	 } else {
-		 mappedInput = MapUp(input, startLayer);
-	 }
+    Matrix mappedInput;
+    if (dropout) {
+      _tempDropoutInput.CopyFrom(input);
+      _tempDropoutInput.Vec().Apply([&] (double x) { return (rand.Uniform() < 0.5) ? x : 0; });
+      mappedInput = MapUpDropout(_tempDropoutInput, rand, startLayer);
+    } else {
+      mappedInput = MapUp(input, startLayer);
+    }
 
-	 double loss = 0;
+    double loss = 0;
 
     // _tempMat is used to store the gradient w.r.t. the outputs at each layer
 
@@ -623,7 +623,7 @@ class DBN {
 
   Matrix MapLayer(const Matrix & input, int layer) const {
     Layer::ActFunc actFunc = (layer == _numLayers - 1) ? Layer::ActFunc::LINEAR : _hActFunc;
-	 return _layers[layer].ActivateUp(_W[layer], _B[layer], input, actFunc);
+    return _layers[layer].ActivateUp(_W[layer], _B[layer], input, actFunc);
   }
 
   Matrix MapUp(const Matrix & input, int startLayer = -1, int endLayer = -1) const {
@@ -639,7 +639,7 @@ class DBN {
 
   Matrix MapLayerDropout(const Matrix & input, int layer, Random & rand) const {
     Layer::ActFunc actFunc = (layer == _numLayers - 1) ? Layer::ActFunc::LINEAR : _hActFunc;
-	 return _layers[layer].ActivateUpDropout(_W[layer], _B[layer], input, actFunc, rand);
+    return _layers[layer].ActivateUpDropout(_W[layer], _B[layer], input, actFunc, rand);
   }
 
   Matrix MapUpDropout(const Matrix & input, Random & rand, int startLayer = -1, int endLayer = -1) const {
@@ -715,10 +715,10 @@ class DBN {
     BPTrainingFunction bpFunc(input, output, *this, hyperParams_bp, objectiveType, rand);
     TrainSGD(bpFunc, rand, hyperParams_bp);
 
-	 if (hyperParams_bp.dropout) {
-		 for (int l = 0; l < _W.size(); ++l) {
-			 _W[l] /= 2;
-		 }
-	 }
+    if (hyperParams_bp.dropout) {
+      for (int l = 0; l < _W.size(); ++l) {
+	_W[l] /= 2;
+      }
+    }
   }
 };
