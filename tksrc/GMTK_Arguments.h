@@ -1724,6 +1724,74 @@ static float normalizeScoreEachClique = MaxClique::normalizeScoreEachClique;
 
 
 
+
+
+/*==============================================================================================================*/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+/****************************                                     ***********************************************/
+/****************************         DMLP TRAINING OPTIONS       ***********************************************/
+/****************************                                     ***********************************************/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+
+#if defined(GMTK_ARG_DMLP_TRAINING_OPTIONS)
+#if defined(GMTK_ARGUMENTS_DOCUMENTATION)
+  Arg("\n*** DMLP training options ***\n"),
+#endif
+#endif
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
+#if defined(GMTK_ARG_DMLP_TRAINING_PARAMS)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+static double initStepSize = 1e-2;
+static double maxMomentum = 0.99;
+static double maxUpdate = 0.1;
+static double l2 = 1e-3;
+static unsigned numUpdates = 25000;
+static unsigned numAnnealUpdates = 10000;
+static unsigned miniBatchSize = 10;
+static unsigned checkInterval = 2000;
+static unsigned labelOffset = 0;
+static bool dropout = false;
+static char const *pretrainType = "CD";
+static char const *DVECPTName = NULL;
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+Arg("deepVECPTName", Arg::Req, DVECPTName, "Name of Deep VE CPT to train"),
+Arg("labelOffset", Arg::Req, labelOffset, "Position in observation file where label vectors start"),
+Arg("initStepSize", Arg::Opt, initStepSize, "Initial step size hyperparameter"),
+Arg("maxMomentum", Arg::Opt, maxMomentum, "Maximum momentum hyperparameter"),
+Arg("maxUpdate", Arg::Opt, maxUpdate, "Maximum update hyperparameter"),
+Arg("l2", Arg::Opt, l2, "l2 hyperparameter"),
+Arg("numUpdates", Arg::Opt, numUpdates, "Number of updates hyperparameter"),
+Arg("numAnnealUpdates", Arg::Opt, numAnnealUpdates, "Number of anneal updates hyperparameter"),
+Arg("miniBatchSize", Arg::Opt, miniBatchSize, "Mini-batch size hyperparameter"),
+Arg("checkInterval", Arg::Opt, checkInterval, "Check interval hyperparameter"),
+Arg("dropout", Arg::Opt, dropout, "Dropout hyperparameter"),
+Arg("pretrainType", Arg::Opt, pretrainType, "Pretraining type (none, AE, CD)"),
+
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+// error checks
+
+#else
+#endif
+#endif // defined(GMTK_ARG_EM_TRAINING_PARAMS)
+
+
+
+
+
 /*==============================================================================================================*/
 /****************************************************************************************************************/
 /****************************************************************************************************************/

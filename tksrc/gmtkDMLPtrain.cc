@@ -4,6 +4,7 @@
  * Written by Richard Rogers <rprogers@ee.washington.edu>
  *
  * Copyright (C) 2013 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
  *
  */
 
@@ -15,6 +16,9 @@
 #include <string.h>
 #include <float.h>
 #include <assert.h>
+
+
+#include "DBN.h"
 
 #include "general.h"
 #include "error.h"
@@ -65,10 +69,12 @@ VCID(HGID)
 
 #include "GMTK_DeepVECPT.h"
 
+
+
 #define GMTK_ARG_OBS_FILES
 /****************************      FILE RANGE OPTIONS             ***********************************************/
 #define GMTK_ARG_FILE_RANGE_OPTIONS
-#define GMTK_ARG_DCDRNG
+#define GMTK_ARG_TRRNG
 #define GMTK_ARG_START_END_SKIP
 /************************  OBSERVATION MATRIX TRANSFORMATION OPTIONS   ******************************************/
 #define GMTK_ARG_OBS_MATRIX_OPTIONS
@@ -93,14 +99,20 @@ VCID(HGID)
 #define GMTK_ARG_VAR_FLOOR_ON_READ
 
 
+/*************************   DEEP MLP TRAINING OPTIONS                *******************************************/
+
+#define GMTK_ARG_DMLP_TRAINING_OPTIONS
+#define GMTK_ARG_DMLP_TRAINING_PARAMS
+
+
+/*************************   GENERAL OPTIONS                          *******************************************/
+
 #define GMTK_ARG_GENERAL_OPTIONS
 #define GMTK_ARG_SEED
 #define GMTK_ARG_VERB
 #define GMTK_ARG_VERSION
 #define GMTK_ARG_HELP
 
-#define GMTK_ARG_INFOSEPARATOR
-#define GMTK_ARG_INFOFIELDFILE
 
 #define GMTK_ARGUMENTS_DEFINITION
 #include "GMTK_Arguments.h"
@@ -212,13 +224,57 @@ main(int argc,char*argv[])
   printf("Total number of trainable parameters in input files = %u\n",
 	 GM_Parms.totalNumberParameters());
 
+  Random rand(2);
+  gomFS->openSegment(0);
 
   for (unsigned i=0; i < GM_Parms.deepVECpts.size(); i+=1) {
     DeepVECPT *cpt = GM_Parms.deepVECpts[i];
-    printf("Processing %s\n", cpt->name().c_str());
-    int inputSize = (int)cpt->numInputs();
-    int numLayers = (int)cpt->numLayers();
-    printf("  %d inputs  %d layers\n\n", inputSize, numLayers);
+    if (cpt->name().compare(DVECPTName) == 0) {
+      int inputSize = (int)cpt->numInputs();
+      int numLayers = (int)cpt->numLayers();
+      int outputSize = (int)cpt->numOutputs();
+      int hiddenSize = (int)cpt->layerOutputs(0); // for now assume all the same size
+
+      // add iActFunc argument; hAct from cpt
+      Layer::ActFunc iActFunc = Layer::ActFunc(Layer::ActFunc::TANH);
+      Layer::ActFunc hActFunc = Layer::ActFunc(Layer::ActFunc::TANH);
+      DBN dbn(numLayers, inputSize, hiddenSize, outputSize, iActFunc, hActFunc);
+
+      // make separate pre and bp arguments
+      vector<DBN::HyperParams> pretrainHyperParams(numLayers);
+      for (int j = 0; j < numLayers; j+=1) {
+	pretrainHyperParams[j].pretrainType = DBN::AE;
+	pretrainHyperParams[j].numUpdates = 25000;
+	pretrainHyperParams[j].numAnnealUpdates = 10000;
+      }
+
+      DBN::HyperParams bpHyperParams;
+      bpHyperParams.numUpdates = 200000;
+      bpHyperParams.numAnnealUpdates = 20000;
+
+      unsigned numInstances = gomFS->numFrames();
+      unsigned stride = gomFS->stride();
+      double *doubleObsData = new double[inputSize * numInstances];
+      double *p = doubleObsData;
+      double *doubleObsLabel = new double[outputSize * numInstances];
+      double *q = doubleObsLabel;
+      unsigned obsOffset = cpt->obsOffset();
+      for (unsigned i = 0; i < numInstances; i+=1) {
+	Data32 const *obsData = gomFS->loadFrames(i, 1);
+	for (unsigned j=0; j < inputSize; j+=1) {
+	  *(p++) = (double)( (float)obsData[obsOffset+j] );
+	}
+	for (unsigned j=0; j < outputSize; j+=1) {
+	  *(q++) = (double)( (float)obsData[labelOffset+j] );
+	}
+      }
+      Matrix   trainData(doubleObsData,  inputSize,  numInstances, inputSize,  false);
+      Matrix trainLabels(doubleObsLabel, outputSize, numInstances, outputSize, false);   
+      DBN::ObjectiveType objType = DBN::SOFT_MAX;
+      dbn.Train(trainData, trainLabels, objType, rand, false, pretrainHyperParams, bpHyperParams);
+      delete[] doubleObsLabel;
+      delete[] doubleObsData;
+    }
   }
   exit_program_with_status(0);
 }

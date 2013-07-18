@@ -123,8 +123,14 @@ public:
 
   unsigned numInputs() { return nfs * ( 2 * window_radius + 1 ); } // +1 additional for bias
 
+  unsigned numOutputs() { return layer_output_count[num_matrices-1]; }
+
+  unsigned layerOutputs(unsigned layer) { return layer_output_count[layer]; }
+
   unsigned numLayers() { return num_matrices; }
 
+  unsigned obsOffset() { return obs_file_foffset; }
+ 
   ///////////////////////////////////////////////////////////    
   // Semi-constructors: useful for debugging.
   // See parent class for further documention.
