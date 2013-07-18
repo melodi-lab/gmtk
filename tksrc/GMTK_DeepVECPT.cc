@@ -284,7 +284,7 @@ DeepVECPT::read(iDataStreamFile& is)
 	  if (option_name != squashNum) {
 	    string error_message;
 	    stringprintf(error_message, "Expected 'squash%u:function but got '%s'",
-			 layer, layer, str.c_str());
+			 layer, str.c_str());
 	    throw(error_message);
 	  }
 	  layer_squash_name[layer] = option_value;
