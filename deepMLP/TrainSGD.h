@@ -32,11 +32,11 @@ void TrainSGD(Func & func, MutableVector & params, int miniBatchSize, int checkI
   if (!quiet) printf("Setting initial step size to %8.4e\n", stepSize);
 
   bool _useOnlineEval = true;
-	
- RESTART:
+
+RESTART:
   double bestValLastStepSizeChange = INFTY;
   int numStepSizeChanges = 0;
-			
+
   double bestVal = func.Eval(params);
   if (!quiet) printf("\nbaseline score: %-8.4f\n", bestVal);
 
@@ -48,7 +48,7 @@ void TrainSGD(Func & func, MutableVector & params, int miniBatchSize, int checkI
   for (int step = 1; step != maxSteps; ++step) {
     if (uniformSamples) {
       for (int i = 0; i < miniBatchSize; ++i) {
-	updateIndices[i] = rand.Rand(count);
+        updateIndices[i] = rand.Rand(count);
       }
       totalVal += func.Eval(params, writeParams, updateIndices);
     } else {
@@ -74,41 +74,41 @@ void TrainSGD(Func & func, MutableVector & params, int miniBatchSize, int checkI
 
       double val;
       if (_useOnlineEval) {
-	val = totalVal / numEvals;
-	totalVal = 0;
-	numEvals = 0;
+        val = totalVal / numEvals;
+        totalVal = 0;
+        numEvals = 0;
 
-	if (miniBatchSize > count / 2 && epoch == 1) continue;
+        if (miniBatchSize > count / 2 && epoch == 1) continue;
       } else {
-	val = func.Eval(params);
+        val = func.Eval(params);
       }
 
       if (!quiet) {
-	printf("%-5d", epoch);
-	printf("norm: %8.4f", params.Norm());
-	printf("  val: %8.4f\n", val);
+        printf("%-5d", epoch);
+        printf("norm: %8.4f", params.Norm());
+        printf("  val: %8.4f\n", val);
       }
-		
+
       if (val >= bestVal * (1.0 - minImprovement) || IsDangerous(val)) {
-	if (numStepSizeChanges >= minStepSizeChanges && bestVal > (1.0 - minImprovement) * bestValLastStepSizeChange) break;
-	bestValLastStepSizeChange = bestVal;
-	numStepSizeChanges++;
+        if (numStepSizeChanges >= minStepSizeChanges && bestVal > (1.0 - minImprovement) * bestValLastStepSizeChange) break;
+        bestValLastStepSizeChange = bestVal;
+        numStepSizeChanges++;
 
-	stepSize /= 2;
-	if (epoch == 1) stepSize /= 5;
-	if (val > bestVal) params.CopyFrom(savedParams);
-	if (!quiet)
-	  printf("stepSize reduced to %8.4e\n", stepSize);
+        stepSize /= 2;
+        if (epoch == 1) stepSize /= 5;
+        if (val > bestVal) params.CopyFrom(savedParams);
+        if (!quiet)
+          printf("stepSize reduced to %8.4e\n", stepSize);
 
-	if (epoch == 1 && (val >= bestVal || IsDangerous(val))) {
-	  if (!quiet) printf("Resetting.\n");
-	  goto RESTART;
-	}
+        if (epoch == 1 && (val >= bestVal || IsDangerous(val))) {
+          if (!quiet) printf("Resetting.\n");
+          goto RESTART;
+        }
       }
 
       if (!IsDangerous(val) && val < bestVal) {
-	savedParams.CopyFrom(params);
-	bestVal = val;
+        savedParams.CopyFrom(params);
+        bestVal = val;
       }
     }
   }
