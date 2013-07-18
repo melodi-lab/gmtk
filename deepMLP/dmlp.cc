@@ -1,8 +1,7 @@
 #include "DBN.h"
 #include "MNIST.h"
 
-int
-main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
 
   //   MNISTData mnist("C:\\svn\\data\\mnist\\train-images.idx3-ubyte", "C:\\svn\\data\\mnist\\train-labels.idx1-ubyte");
   //   MNISTData testMnist("C:\\svn\\data\\mnist\\t10k-images.idx3-ubyte", "C:\\svn\\data\\mnist\\t10k-labels.idx1-ubyte");
@@ -40,7 +39,7 @@ main(int argc, char *argv[]) {
   DBN::HyperParams bpHyperParams;
   bpHyperParams.numUpdates = 200000;
   bpHyperParams.numAnnealUpdates = 20000;
-//  bpHyperParams.dropout = true;
+  //  bpHyperParams.dropout = true;
 
   Random rand(2);
   dbn.Train(mnist.GetImages(), output, objType, rand, false, pretrainHyperParams, bpHyperParams);

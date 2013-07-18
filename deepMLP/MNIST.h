@@ -32,8 +32,8 @@ class MNISTData {
     br[3] = b[0];
     return ret;
   }
-	
- public:
+
+public:
   int NumRows() const { return _numRows; }
   int NumCols() const { return _numCols; }
 
@@ -48,7 +48,7 @@ class MNISTData {
 
     unsigned int header[4];
     imageStream.read((char*)header, 16);
-		
+
     int magic = SwapEndian(header[0]);
     int numImages = SwapEndian(header[1]);
     _numRows = SwapEndian(header[2]);
@@ -63,8 +63,8 @@ class MNISTData {
       imageStream.read((char*)&charImage[0], _numPixels);
       MutableVector image = _images.GetCol(i);
       for (int j = 0; j < _numPixels; ++j) {
-	double val01 = (double)charImage[j] / MAX_PIXEL;
-	image[j] = 2 * val01 - 1.0;
+        double val01 = (double)charImage[j] / MAX_PIXEL;
+        image[j] = 2 * val01 - 1.0;
       }
     }
 
@@ -82,35 +82,35 @@ class MNISTData {
       int newNumPixels = newNumRows * newNumCols;
       AllocatingMatrix newImages(newNumPixels, numImages);
       for (int i = 0; i < numImages; ++i) {
-	MutableVector newImage = newImages.GetCol(i);
-	Vector oldImage = _images.GetCol(i);
-	for (int r = 0; r < newNumRows; ++r) {
-	  for (int c = 0; c < newNumCols; ++c) {
-	    double newVal = 0;
-	    for (int oR = r * reductionFactor; oR < (r+1) * reductionFactor; ++oR) {
-	      for (int oC = c * reductionFactor; oC < (c+1) * reductionFactor; ++oC) {
-		int idx = oR * _numRows + oC;
-		newVal += oldImage[idx];
-	      }
-	    }
-	    newVal /= (reductionFactor * reductionFactor);
-	    int newIdx = r * newNumRows + c;
-	    newImage[newIdx] = newVal;
-	  }
-	}
+        MutableVector newImage = newImages.GetCol(i);
+        Vector oldImage = _images.GetCol(i);
+        for (int r = 0; r < newNumRows; ++r) {
+          for (int c = 0; c < newNumCols; ++c) {
+            double newVal = 0;
+            for (int oR = r * reductionFactor; oR < (r+1) * reductionFactor; ++oR) {
+              for (int oC = c * reductionFactor; oC < (c+1) * reductionFactor; ++oC) {
+                int idx = oR * _numRows + oC;
+                newVal += oldImage[idx];
+              }
+            }
+            newVal /= (reductionFactor * reductionFactor);
+            int newIdx = r * newNumRows + c;
+            newImage[newIdx] = newVal;
+          }
+        }
       }
       _numRows = newNumRows;
       _numCols = newNumCols;
       _numPixels = newNumPixels;
       _images.Swap(newImages);
     }
-		
+
     ifstream labStream(labels, ios::in|ios::binary);
     if (!labStream.is_open()) {
       cout << "Couldn't open feature file " << labels.c_str() << endl;
       abort();
     }
-		
+
     labStream.read((char*)header, 8);
     assert (SwapEndian(header[1]) == numImages);
 
@@ -140,7 +140,7 @@ class MNISTData {
   int NumImages() const { return _labels.size(); }
 
   Vector GetImage(int i) const { return _images.GetCol(i); }
-	
+
   Matrix GetImages(int start = 0, int end = -1) const { return _images.GetCols(start, end); }
 
   vector<unsigned char> GetLabels(int start = 0, int end = -1) const {
@@ -152,10 +152,10 @@ class MNISTData {
     char chars[] = {' ', '.', '+', '*', '#'};
     for (int r = 0; r < rows; ++r) {
       for (int c = 0; c < cols; ++c) {
-	double x = digit[r * cols + c];
-	int val = (int)(5 * x);
-	if (val < 0) val = 0; if (val >= 5) val = 4;
-	cout << chars[val];
+        double x = digit[r * cols + c];
+        int val = (int)(5 * x);
+        if (val < 0) val = 0; if (val >= 5) val = 4;
+        cout << chars[val];
       }
       cout << endl;
     }
@@ -165,17 +165,17 @@ class MNISTData {
     char chars[] = {' ', '.', '+', '*', '#'};
     for (int r = 0; r < rows; ++r) {
       for (int c = 0; c < cols; ++c) {
-	double x = imageL[r * cols + c];
-	int val = (int)(5 * x);
-	if (val < 0) val = 0; if (val >= 5) val = 4;
-	cout << chars[val];
+        double x = imageL[r * cols + c];
+        int val = (int)(5 * x);
+        if (val < 0) val = 0; if (val >= 5) val = 4;
+        cout << chars[val];
       }
       cout << '|';
       for (int c = 0; c < cols; ++c) {
-	double x = imageR[r * cols + c];
-	int val = (int)(5 * x);
-	if (val < 0) val = 0; if (val >= 5) val = 4;
-	cout << chars[val];
+        double x = imageR[r * cols + c];
+        int val = (int)(5 * x);
+        if (val < 0) val = 0; if (val >= 5) val = 4;
+        cout << chars[val];
       }
       cout << endl;
     }
@@ -183,7 +183,7 @@ class MNISTData {
 
   void Print(int digitIdx) {
     Vector digit = _images.GetCol(digitIdx);
-		
+
     Print(digit, _numRows, _numCols);
   }
 };
