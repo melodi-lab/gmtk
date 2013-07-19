@@ -143,11 +143,11 @@ const MutableMatrix & MutableMatrix::Dgemm(double a, const Matrix & A, const Mat
   }
 
   assert(_numR == A.NumR() && _numC == B.NumC() && A.NumC() == B.NumR());
+
 #if USE_PHIPAC
-
-  // I _think_ PHiPAC assumes row-major (C) order, but Galen's code
-  // seems to be column-major.
-
+  // The low-level PHiPAC routines assume the matrices are in row-major order,
+  // but the phipac_dgemm BLAS interface assumes they're in column-major order
+  // and does the necessary transposes implicitly.
   int numR   = _numR;
   int numC   = _numC;
   int ANumC  = A.NumC();
