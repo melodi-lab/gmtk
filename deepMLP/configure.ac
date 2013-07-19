@@ -23,17 +23,7 @@ AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
 AM_SILENT_RULES([yes])
 
 m4_include([blas_args])
-
-AC_ARG_WITH([boost-include],
-  [AS_HELP_STRING([--with-boost-include=<dir>], [use Boost headers in <dir> @<:@/usr/include@:>@])],
-  [AS_IF([test x$with_boot_include != xno],[BOOST_CPPFLAGS=-I$with_boost_include])])
-
-AC_ARG_WITH([boost-libdir],
-  [AS_HELP_STRING([--with-boost-libdir=<dir>], [use Boost libraries in <dir> @<:@/usr/lib@:>@])],
-  [AS_IF([test x$with_boot_libdir != xno],[BOOST_LDFLAGS=-L$with_boost_libdir])])
-
-AC_SUBST([BOOST_CPPFLAGS])
-AC_SUBST([BOOST_LDFLAGS])
+m4_include([boost_args])
 
 # Checks for programs.
 
