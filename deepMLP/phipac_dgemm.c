@@ -29,6 +29,13 @@
 **
 **/
 
+/*
+** The lower-level PHiPAC mm_double_??_? assume the matrices are
+** in row-major order. However, the phipac_dgemm BLAS interface
+** code assume the matrices are in column-major order and implicitly
+** transpose them as needed.
+*/
+
 #include <stdio.h>
 
 #define max(a,b)     (((a) > (b)) ? (a) : (b))
