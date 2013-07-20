@@ -33,11 +33,13 @@ LIBS += -lboost_thread -lboost_filesystem -lboost_system $(BLAS_LIBS)
 noinst_LIBRARIES = libDMLP.a
 EXTRA_LIBRARIES = libPHiPAC.a
 
-noinst_PROGRAMS = dmlp mnist
+noinst_PROGRAMS = dmlp mnist label
 
 dmlp_SOURCES = dmlp.cc
 
 mnist_SOURCES = mnist.cc
+
+label_SOURCES = label.cc
 
 check_PROGRAMS = dmlpTest orderTest phipacTest
 
