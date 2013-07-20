@@ -142,7 +142,7 @@ DeepVECPT::read(iDataStreamFile& is)
   cardinalities.resize(_numParents);
   // read the parent cardinality
   is.read(cardinalities[0],"Can't read DeepVirtualEvidenceCPT's parent cardinality");
-  
+  cached_CPT = new float[cardinalities[0]];
   // read the self cardinality, must be binary
   is.read(_card,"Can't read DeepVirtualEvidenceCPT's self cardinality");
   if (_card != 2)

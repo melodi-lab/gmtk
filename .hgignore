@@ -94,6 +94,7 @@ tests/testanddev.dir
 tests/testanddev.log
 deepMLP/dmlp
 deepMLP/mnist
+deepMLP/label
 deepMLP/dmlpTest
 deepMLP/orderTest
 deepMLP/phipacTest

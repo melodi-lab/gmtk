@@ -567,6 +567,16 @@ public:
     assert (start == numParams);
   }
 
+  Matrix const &getWeights(int layer) {
+    assert(layer < _numLayers);
+    return _W[layer];
+  }
+
+  Vector const &getBias(int layer) {
+    assert(layer < _numLayers);
+    return _B[layer];
+  }
+
   void Deserialize(istream & inStream) {
     inStream.read((char *) &_numLayers, sizeof(int));
     inStream.read((char *) &_iSize, sizeof(int));

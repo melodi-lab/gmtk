@@ -109,10 +109,9 @@ public:
   // General constructor, 
   // VECPTs always have one parent, and a binary child.
   DeepVECPT() : CPT(di_DeepVECPT), num_matrices(0),
-    cached_segment(0xFFFFFFFF), cached_frame(0xFFFFFFFF)
+    cached_segment(0xFFFFFFFF), cached_frame(0xFFFFFFFF), cached_CPT(NULL)
   { 
     _numParents = 1; _card = 2; cardinalities.resize(_numParents); 
-    cached_CPT = new float[parentCardinality(0)];
   }
   ~DeepVECPT() { if (cached_CPT) delete[] cached_CPT; }
 
@@ -125,12 +124,37 @@ public:
 
   unsigned numOutputs() { return layer_output_count[num_matrices-1]; }
 
-  unsigned layerOutputs(unsigned layer) { return layer_output_count[layer]; }
+  unsigned layerOutputs(unsigned layer) { 
+    assert(layer < layer_output_count.size());
+    return layer_output_count[layer]; 
+  }
+
+  SquashFunction getSquashFn(unsigned layer) {
+    assert(layer < layer_squash_func.size());
+    return layer_squash_func[layer];
+  }
+
+  void setParams(unsigned layer, double const *weights, double const *bias) {
+    assert(layer < layer_matrix.size());
+    RealMatrix *w = layer_matrix[layer];
+    unsigned rows = w->_rows;
+    unsigned cols = w->_cols;
+    for (unsigned r=0; r < rows; r+=1) {
+      unsigned c;
+      for (c=0; c < cols - 1; c+=1) {
+	// weights come in column-major order; store them in row-major
+	w->values[ r * cols + c ] = (float) weights[ r + rows * c ];
+      }
+      w->values[ r  * cols + c ] = (float) bias[r];
+    }
+  }
 
   unsigned numLayers() { return num_matrices; }
 
   unsigned obsOffset() { return obs_file_foffset; }
- 
+  
+  vector<RealMatrix *> &getMatrices() { return layer_matrix; }
+
   ///////////////////////////////////////////////////////////    
   // Semi-constructors: useful for debugging.
   // See parent class for further documention.

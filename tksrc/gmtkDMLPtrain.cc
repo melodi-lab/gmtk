@@ -69,7 +69,7 @@ VCID(HGID)
 
 #include "GMTK_DeepVECPT.h"
 
-
+#include "MNIST.h"
 
 #define GMTK_ARG_OBS_FILES
 /****************************      FILE RANGE OPTIONS             ***********************************************/
@@ -227,55 +227,135 @@ main(int argc,char*argv[])
   Random rand(2);
   gomFS->openSegment(0);
 
+  DeepVECPT *cpt = NULL;
   for (unsigned i=0; i < GM_Parms.deepVECpts.size(); i+=1) {
-    DeepVECPT *cpt = GM_Parms.deepVECpts[i];
-    if (cpt->name().compare(DVECPTName) == 0) {
-      int inputSize = (int)cpt->numInputs();
-      int numLayers = (int)cpt->numLayers();
-      int outputSize = (int)cpt->numOutputs();
-      int hiddenSize = (int)cpt->layerOutputs(0); // for now assume all the same size
+    cpt = GM_Parms.deepVECpts[i];
+    if (cpt->name().compare(DVECPTName) == 0) break;
+  }
 
-      // add iActFunc argument; hAct from cpt
-      Layer::ActFunc iActFunc = Layer::ActFunc(Layer::ActFunc::TANH);
-      Layer::ActFunc hActFunc = Layer::ActFunc(Layer::ActFunc::TANH);
-      DBN dbn(numLayers, inputSize, hiddenSize, outputSize, iActFunc, hActFunc);
+  if (!cpt) {
+    error("Error: No Deep VE CPT named '%s' found\n", DVECPTName);
+  }
 
-      // make separate pre and bp arguments
-      vector<DBN::HyperParams> pretrainHyperParams(numLayers);
-      for (int j = 0; j < numLayers; j+=1) {
-	pretrainHyperParams[j].pretrainType = DBN::AE;
-	pretrainHyperParams[j].numUpdates = 25000;
-	pretrainHyperParams[j].numAnnealUpdates = 10000;
+  struct rusage rus; /* starting time */
+  struct rusage rue; /* ending time */
+  getrusage(RUSAGE_SELF,&rus);
+
+  int inputSize = (int)cpt->numInputs();
+  int numLayers = (int)cpt->numLayers();
+  int outputSize = (int)cpt->numOutputs();
+  int hiddenSize = (int)cpt->layerOutputs(0); // for now assume all the same size
+
+  // TODO: DVECPT supports a different activation function per level
+  Layer::ActFunc hActFunc;
+  switch (cpt->getSquashFn(0)) {
+  case DeepVECPT::SOFTMAX: 
+    error("Error: unsupported activation function softmax\n"); 
+    break;
+  case DeepVECPT::LOGISTIC: 
+    hActFunc = Layer::ActFunc(Layer::ActFunc::LOG_SIG); 
+    break;
+  case DeepVECPT::TANH: 
+    hActFunc = Layer::ActFunc(Layer::ActFunc::TANH); 
+    break;
+  case DeepVECPT::ODDROOT: 
+    hActFunc = Layer::ActFunc(Layer::ActFunc::CUBIC); 
+    break;
+  default: 
+    error("Error: unknown activation function\n");
+  }
+  DBN dbn(numLayers, inputSize, hiddenSize, outputSize, iActFunc, hActFunc);
+
+  vector<DBN::HyperParams> pretrainHyperParams(numLayers);
+  for (int j = 0; j < numLayers; j+=1) {
+    pretrainHyperParams[j].initStepSize     = ptInitStepSize;
+    pretrainHyperParams[j].maxMomentum      = ptMaxMomentum;
+    pretrainHyperParams[j].maxUpdate        = ptMaxUpdate;
+    pretrainHyperParams[j].l2               = ptL2;
+    pretrainHyperParams[j].numUpdates       = ptNumUpdates;
+    pretrainHyperParams[j].numAnnealUpdates = ptNumAnnealUpdates;
+    pretrainHyperParams[j].miniBatchSize    = ptMiniBatchSize;
+    pretrainHyperParams[j].checkInterval    = ptCheckInterval;
+    pretrainHyperParams[j].dropout          = ptDropout;
+    pretrainHyperParams[j].pretrainType     = pretrainMode;
+  }
+
+  DBN::HyperParams bpHyperParams;
+  bpHyperParams.initStepSize     = bpInitStepSize;
+  bpHyperParams.maxMomentum      = bpMaxMomentum;
+  bpHyperParams.maxUpdate        = bpMaxUpdate;
+  bpHyperParams.l2               = bpL2;
+  bpHyperParams.numUpdates       = bpNumUpdates;
+  bpHyperParams.numAnnealUpdates = bpNumAnnealUpdates;
+  bpHyperParams.miniBatchSize    = bpMiniBatchSize;
+  bpHyperParams.checkInterval    = bpCheckInterval;
+  bpHyperParams.dropout          = bpDropout;
+  
+  Range* trrng = new Range(trrng_str,0,gomFS->numSegments());
+  if (trrng->length() <= 0) {
+    error("Error: training range '%s' specifies empty set. Exiting...\n", trrng_str);
+  }
+
+  Range::iterator* trrng_it = new Range::iterator(trrng->begin());
+  while (!trrng_it->at_end()) {
+    const unsigned segment = (unsigned)(*(*trrng_it));
+    if (gomFS->numSegments() < (segment+1)) 
+      error("ERROR: only %d segments in file, segment must be in range [%d,%d]\n",
+	    gomFS->numSegments(),
+	    0,gomFS->numSegments()-1);
+
+    infoMsg(IM::Max,"Loading segment %d ...\n",segment);
+    unsigned numInstances = GM_Parms.setSegment(segment);
+    infoMsg(IM::Max,"Finished loading segment %d with %d frames.\n",segment,numInstances);
+
+    unsigned stride = gomFS->stride();
+    double *doubleObsData = new double[inputSize * numInstances];
+    double *p = doubleObsData;
+    double *doubleObsLabel = new double[outputSize * numInstances];
+    double *q = doubleObsLabel;
+    unsigned obsOffset = cpt->obsOffset();
+    for (unsigned i = 0; i < numInstances; i+=1) {
+      Data32 const *obsData = gomFS->loadFrames(i, 1);
+      for (unsigned j=0; j < inputSize; j+=1) {
+	*(p++) = (double)( *((float *)obsData + obsOffset + j) );
       }
-
-      DBN::HyperParams bpHyperParams;
-      bpHyperParams.numUpdates = 200000;
-      bpHyperParams.numAnnealUpdates = 20000;
-
-      unsigned numInstances = gomFS->numFrames();
-      unsigned stride = gomFS->stride();
-      double *doubleObsData = new double[inputSize * numInstances];
-      double *p = doubleObsData;
-      double *doubleObsLabel = new double[outputSize * numInstances];
-      double *q = doubleObsLabel;
-      unsigned obsOffset = cpt->obsOffset();
-      for (unsigned i = 0; i < numInstances; i+=1) {
-	Data32 const *obsData = gomFS->loadFrames(i, 1);
-	for (unsigned j=0; j < inputSize; j+=1) {
-	  *(p++) = (double)( (float)obsData[obsOffset+j] );
-	}
-	for (unsigned j=0; j < outputSize; j+=1) {
-	  *(q++) = (double)( (float)obsData[labelOffset+j] );
-	}
+      for (unsigned j=0; j < outputSize; j+=1) {
+	*(q++) = (double)( *((float *)obsData + labelOffset + j) );
       }
-      Matrix   trainData(doubleObsData,  inputSize,  numInstances, inputSize,  false);
-      Matrix trainLabels(doubleObsLabel, outputSize, numInstances, outputSize, false);   
-      DBN::ObjectiveType objType = DBN::SOFT_MAX;
-      dbn.Train(trainData, trainLabels, objType, rand, false, pretrainHyperParams, bpHyperParams);
-      delete[] doubleObsLabel;
-      delete[] doubleObsData;
+    }
+    Matrix   trainData(doubleObsData,  inputSize,  numInstances, inputSize,  false);
+    Matrix trainLabels(doubleObsLabel, outputSize, numInstances, outputSize, false);
+
+    DBN::ObjectiveType objType = objectiveFn;
+    dbn.Train(trainData, trainLabels, objType, rand, false, pretrainHyperParams, bpHyperParams);
+    delete[] doubleObsLabel;
+    delete[] doubleObsData;
+
+    vector<RealMatrix *> layerMatrix = cpt->getMatrices();
+    assert(layerMatrix.size() == numLayers);
+    for (unsigned layer=0; layer < numLayers; layer+=1) {
+      cpt->setParams(layer, dbn.getWeights(layer).Start(), dbn.getBias(layer).Start());
     }
   }
+
+  if (outputTrainableParameters != NULL) {
+    char buff[2048];
+    copyStringWithTag(buff,outputTrainableParameters,
+		      CSWT_EMPTY_TAG,2048);
+    oDataStreamFile of(buff,binOutputTrainableParameters);
+    GM_Parms.writeTrainable(of);
+  }
+
+  // also write according to output master
+  GM_Parms.write(outputMasterFile,cppCommandOptions);  
+
+  getrusage(RUSAGE_SELF,&rue);
+  if (IM::messageGlb(IM::Default)) { 
+    infoMsg(IM::Default,"### Final time (seconds) just for DMLP training stage: ");
+    double userTime,sysTime;
+    reportTiming(rus,rue,userTime,sysTime,stdout);
+  }
+
   exit_program_with_status(0);
 }
 

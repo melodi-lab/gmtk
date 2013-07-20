@@ -18,24 +18,10 @@ main(int argc, char *argv[]) {
   int inputSize = mnist.NumFeatures(), outputSize = 10, 
       numInstances = mnist.NumImages();
 
-  AllocatingMatrix output(outputSize, numInstances);
-
   vector<unsigned char> labels = mnist.GetLabels();
-  for (int i = 0; i < numInstances; ++i) {
-    output.At(labels[i], i) = 1;
-  }
 
   for (int i=0; i < numInstances; i+=1) {
-    printf("0 %d", i);
-    Vector image = mnist.GetImage(i);
-    for (int j=0; j < image.Len(); j+=1) {
-      printf(" %f", image[j]);
-    }
-    Vector label = output.GetCol(i);
-    for (int j=0; j < label.Len(); j+=1) {
-      printf(" %f", label[j]);
-    }
-    printf("\n");
+    printf("0 %d %d\n", i, (int)labels[i]);
   }
   return 0;
 }

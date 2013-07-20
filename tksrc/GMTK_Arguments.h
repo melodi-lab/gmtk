@@ -1751,38 +1751,106 @@ static float normalizeScoreEachClique = MaxClique::normalizeScoreEachClique;
 #if defined(GMTK_ARG_DMLP_TRAINING_PARAMS)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
-static double initStepSize = 1e-2;
-static double maxMomentum = 0.99;
-static double maxUpdate = 0.1;
-static double l2 = 1e-3;
-static unsigned numUpdates = 25000;
-static unsigned numAnnealUpdates = 10000;
-static unsigned miniBatchSize = 10;
-static unsigned checkInterval = 2000;
-static unsigned labelOffset = 0;
-static bool dropout = false;
+static char const *DVECPTName         = NULL;
+static unsigned    labelOffset        = 0;
+static char const *objectiveFnStr     = "softmax";
+static DBN::ObjectiveType objectiveFn = DBN::SOFT_MAX;
+
+  // backprop hyperparameters
+
+static double   bpInitStepSize = 1e-2;
+static double   bpMaxMomentum = 0.99;
+static double   bpMaxUpdate = 0.1;
+static double   bpL2 = 1e-3;
+static unsigned bpNumUpdates = 25000;
+static unsigned bpNumAnnealUpdates = 10000;
+static unsigned bpMiniBatchSize = 10;
+static unsigned bpCheckInterval = 2000;
+static bool     bpDropout = false;
+
+  // pretraining hyperparameters
+
+static double   ptInitStepSize = 1e-2;
+static double   ptMaxMomentum = 0.99;
+static double   ptMaxUpdate = 0.1;
+static double   ptL2 = 1e-3;
+static unsigned ptNumUpdates = 25000;
+static unsigned ptNumAnnealUpdates = 10000;
+static unsigned ptMiniBatchSize = 10;
+static unsigned ptCheckInterval = 2000;
+static bool     ptDropout = false;
+
 static char const *pretrainType = "CD";
-static char const *DVECPTName = NULL;
+static DBN::PretrainType pretrainMode;
+static char const *pretrainActFuncStr = "TANH";
+static Layer::ActFunc iActFunc;
+
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
 Arg("deepVECPTName", Arg::Req, DVECPTName, "Name of Deep VE CPT to train"),
 Arg("labelOffset", Arg::Req, labelOffset, "Position in observation file where label vectors start"),
-Arg("initStepSize", Arg::Opt, initStepSize, "Initial step size hyperparameter"),
-Arg("maxMomentum", Arg::Opt, maxMomentum, "Maximum momentum hyperparameter"),
-Arg("maxUpdate", Arg::Opt, maxUpdate, "Maximum update hyperparameter"),
-Arg("l2", Arg::Opt, l2, "l2 hyperparameter"),
-Arg("numUpdates", Arg::Opt, numUpdates, "Number of updates hyperparameter"),
-Arg("numAnnealUpdates", Arg::Opt, numAnnealUpdates, "Number of anneal updates hyperparameter"),
-Arg("miniBatchSize", Arg::Opt, miniBatchSize, "Mini-batch size hyperparameter"),
-Arg("checkInterval", Arg::Opt, checkInterval, "Check interval hyperparameter"),
-Arg("dropout", Arg::Opt, dropout, "Dropout hyperparameter"),
-Arg("pretrainType", Arg::Opt, pretrainType, "Pretraining type (none, AE, CD)"),
+Arg("objectiveFn", Arg::Opt, objectiveFnStr, "Training objective function (sqerr, softmax)"),
 
+Arg("bpInitStepSize", Arg::Opt, bpInitStepSize, "Backprop: Initial step size hyperparameter"),
+Arg("bpMaxMomentum", Arg::Opt, bpMaxMomentum, "Backprop: Maximum momentum hyperparameter"),
+Arg("bpMaxUpdate", Arg::Opt, bpMaxUpdate, "Backprop: Maximum update hyperparameter"),
+Arg("bpL2", Arg::Opt, bpL2, "Backprop: l2 hyperparameter"),
+Arg("bpNumUpdates", Arg::Opt, bpNumUpdates, "Backprop: Number of updates hyperparameter"),
+Arg("bpNumAnnealUpdates", Arg::Opt, bpNumAnnealUpdates, "Backprop: Number of anneal updates hyperparameter"),
+Arg("bpMiniBatchSize", Arg::Opt, bpMiniBatchSize, "Backprop: Mini-batch size hyperparameter"),
+Arg("bpCheckInterval", Arg::Opt, bpCheckInterval, "Backprop: Check interval hyperparameter"),
+Arg("bpDropout", Arg::Opt, bpDropout, "Backprop: Dropout hyperparameter"),
+
+Arg("ptInitStepSize", Arg::Opt, ptInitStepSize, "Pretrain: Initial step size hyperparameter"),
+Arg("ptMaxMomentum", Arg::Opt, ptMaxMomentum, "Pretrain: Maximum momentum hyperparameter"),
+Arg("ptMaxUpdate", Arg::Opt, ptMaxUpdate, "Pretrain: Maximum update hyperparameter"),
+Arg("ptL2", Arg::Opt, ptL2, "Pretrain: l2 hyperparameter"),
+Arg("ptNumUpdates", Arg::Opt, ptNumUpdates, "Pretrain: Number of updates hyperparameter"),
+Arg("ptNumAnnealUpdates", Arg::Opt, ptNumAnnealUpdates, "Pretrain: Number of anneal updates hyperparameter"),
+Arg("ptMiniBatchSize", Arg::Opt, ptMiniBatchSize, "Pretrain: Mini-batch size hyperparameter"),
+Arg("ptCheckInterval", Arg::Opt, ptCheckInterval, "Pretrain: Check interval hyperparameter"),
+Arg("ptDropout", Arg::Opt, ptDropout, "Pretrain: Dropout hyperparameter"),
+
+Arg("pretrainType", Arg::Opt, pretrainType, "Pretraining type (none, AE, CD)"),
+Arg("pretrainActFunc", Arg::Opt, pretrainActFuncStr, "Pretraining input activation function (sig, tanh, cubic, linear, rect)"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
 // error checks
+
+  if (strcasecmp(objectiveFnStr, "softmax") == 0) {
+    objectiveFn = DBN::SOFT_MAX;
+  } else if (strcasecmp(objectiveFnStr, "sqerr") == 0) {
+    objectiveFn = DBN::SQ_ERR;
+  } else {
+    error("%s: unknown objective function '%s', must be 'sqerr' or 'softmax'\n", objectiveFnStr);
+  }
+
+  if (strcasecmp(pretrainType, "AE") == 0) {
+    pretrainMode = DBN::AE;
+  } else if (strcasecmp(pretrainType, "CD") == 0) {
+    pretrainMode = DBN::CD;
+  } else if (strcasecmp(pretrainType, "none") == 0) {
+    pretrainMode = DBN::NONE;
+  } else {
+    error("%s: Unknown pretraining type '%s', must be 'AE' 'CD' or 'none'\n", argerr, pretrainType);
+  }
+
+  if (strcasecmp(pretrainActFuncStr, "sig") == 0) {
+    iActFunc = Layer::ActFunc::LOG_SIG;
+  } else if (strcasecmp(pretrainActFuncStr, "tanh") == 0) {
+    iActFunc = Layer::ActFunc::TANH;
+  } else if (strcasecmp(pretrainActFuncStr, "cubic") == 0) {
+    iActFunc = Layer::ActFunc::CUBIC;
+  } else if (strcasecmp(pretrainActFuncStr, "linear") == 0) {
+    iActFunc = Layer::ActFunc::LINEAR;
+  } else if (strcasecmp(pretrainActFuncStr, "rect") == 0) {
+    iActFunc = Layer::ActFunc::RECT_LIN;
+  } else {
+    error("%s: Unknown pretraining input activation function '%s', must be 'sig', 'tanh', 'cubic', 'linear', or 'rect'\n",
+	  argerr, pretrainActFuncStr);
+  }
 
 #else
 #endif
