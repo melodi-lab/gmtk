@@ -1,0 +1,28 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/441 is fixed
+
+AT_SETUP([infinite loop in posterior output (ticket 441)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/didea_vesep_testCliquePrint])
+
+AT_CHECK([
+  g++ -O3 -DHAVE_CONFIG_H -fPIC -c -o dlopen_cfunc_dts.o            \
+      -I$srcdir/../miscSupport -I$srcdir/../featureFileIO           \
+      -I$srcdir/../IEEEFloatingpoint -I$srcdir/../tksrc             \
+      $TEST_AND_DEV/didea_vesep_testCliquePrint/dlopen_cfunc_dts.cc
+  g++ -O3 -shared -o dlopen_cfunc_dts.so dlopen_cfunc_dts.o])
+
+# gmtkJT will succeed if the bug is fixed
+
+AT_CHECK([mapdir=`pwd` && (cd $TEST_AND_DEV/didea_vesep_testCliquePrint && \
+  ulimit -t 10 && gmtkJT \
+  -of1 spectrum-shard-0.pfile -nf1 2000 -ni1 1 -fmt1 pfile -fdiffact1 rl \
+  -of2 peptides-shard-0.pfile -nf2 0    -ni2 1 -fmt2 pfile \
+  -strF model.str -inputM model.mtr -triFile model.str.trifile \
+  -inputTrainableParameters trained.params \
+  -veSepWhere 0x07 -veSepLog 12 -veSepFile veSeparatorFile.dat -useVE 0x01 \
+  -pCliquePrintRange 2 -cCliquePrintRange 1 -eCliquePrintRange 2 \
+  -doDistributeEvidence T -componentCache T -cliquePosteriorUnlog F \
+  -cliqueOutputFileName /dev/null -cliquePrintFormat flatascii -dcdrng 0 \
+  -map1 $mapdir/dlopen_cfunc_dts.so)],
+         [],[ignore],[ignore])
+AT_CLEANUP
