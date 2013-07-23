@@ -14,9 +14,7 @@ AT_CHECK([
 # gmtkJT will succeed if the bug is fixed
 
 AT_CHECK([mapdir=`pwd` && (cd $TEST_AND_DEV/didea_vesep_testCliquePrint && \
-  ulimit -t 10 && gmtkJT \
-  -of1 spectrum-shard-0.pfile -nf1 2000 -ni1 1 -fmt1 pfile -fdiffact1 rl \
-  -of2 peptides-shard-0.pfile -nf2 0    -ni2 1 -fmt2 pfile \
+  ulimit -t 10 && gmtkJT -of1 small.pfile \
   -strF model.str -inputM model.mtr -triFile model.str.trifile \
   -inputTrainableParameters trained.params \
   -veSepWhere 0x07 -veSepLog 12 -veSepFile veSeparatorFile.dat -useVE 0x01 \
