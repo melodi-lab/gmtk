@@ -129,6 +129,8 @@ public:
     return layer_output_count[layer]; 
   }
 
+  unsigned windowRadius() { return window_radius; }
+
   SquashFunction getSquashFn(unsigned layer) {
     assert(layer < layer_squash_func.size());
     return layer_squash_func[layer];
