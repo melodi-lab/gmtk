@@ -290,54 +290,76 @@ main(int argc,char*argv[])
   bpHyperParams.miniBatchSize    = bpMiniBatchSize;
   bpHyperParams.checkInterval    = bpCheckInterval;
   bpHyperParams.dropout          = bpDropout;
+
+  unsigned radius = cpt->windowRadius();
+  gomFS->setMinPastFrames( radius );
+  gomFS->setMinFutureFrames( radius );
   
   Range* trrng = new Range(trrng_str,0,gomFS->numSegments());
   if (trrng->length() <= 0) {
     error("Error: training range '%s' specifies empty set. Exiting...\n", trrng_str);
   }
 
+  unsigned stride = gomFS->stride();
+  unsigned numInstances = 0;
   Range::iterator* trrng_it = new Range::iterator(trrng->begin());
   while (!trrng_it->at_end()) {
     const unsigned segment = (unsigned)(*(*trrng_it));
     if (gomFS->numSegments() < (segment+1)) 
-      error("ERROR: only %d segments in file, segment must be in range [%d,%d]\n",
+      error("ERROR: only %u segments in file, segment must be in range [%u,%u]\n",
 	    gomFS->numSegments(),
 	    0,gomFS->numSegments()-1);
+    if (!gomFS->openSegment(segment))
+      error("ERROR: unable to open segment %u\n", segment);
 
-    infoMsg(IM::Max,"Loading segment %d ...\n",segment);
-    unsigned numInstances = GM_Parms.setSegment(segment);
-    infoMsg(IM::Max,"Finished loading segment %d with %d frames.\n",segment,numInstances);
+    numInstances += gomFS->numFrames();
+    (*trrng_it)++;
+  }
+  delete trrng_it;
 
-    unsigned stride = gomFS->stride();
-    double *doubleObsData = new double[inputSize * numInstances];
-    double *p = doubleObsData;
-    double *doubleObsLabel = new double[outputSize * numInstances];
-    double *q = doubleObsLabel;
-    unsigned obsOffset = cpt->obsOffset();
-    for (unsigned i = 0; i < numInstances; i+=1) {
-      Data32 const *obsData = gomFS->loadFrames(i, 1);
-      for (unsigned j=0; j < inputSize; j+=1) {
-	*(p++) = (double)( *((float *)obsData + obsOffset + j) );
+  double *doubleObsData = new double[inputSize * numInstances];
+  double *p = doubleObsData;
+  double *doubleObsLabel = new double[outputSize * numInstances];
+  double *q = doubleObsLabel;
+  unsigned obsOffset = cpt->obsOffset();
+
+  trrng_it = new Range::iterator(trrng->begin());
+  while (!trrng_it->at_end()) {
+    const unsigned segment = (unsigned)(*(*trrng_it));
+    infoMsg(IM::Max,"Loading segment %u ...\n",segment);
+    if (!gomFS->openSegment(segment))
+      error("ERROR: unable to open segment %u\n", segment);
+    unsigned numFrames = gomFS->numFrames();
+
+    for (unsigned i = 0; i < numFrames; i+=1) {
+      Data32 const *obsData = gomFS->loadFrames(i, 1) - radius * stride;
+      for (int w = -radius; w < radius + 1; w+=1) {
+	for (unsigned j=0; j < inputSize; j+=1) {
+	  *(p++) = (double)( *((float *)(obsData + w * stride) + obsOffset + j) );
+	}
       }
       for (unsigned j=0; j < outputSize; j+=1) {
 	*(q++) = (double)( *((float *)obsData + labelOffset + j) );
       }
+      infoMsg(IM::Max,"Finished loading segment %u with %u frames.\n",segment,numFrames);
     }
-    Matrix   trainData(doubleObsData,  inputSize,  numInstances, inputSize,  false);
-    Matrix trainLabels(doubleObsLabel, outputSize, numInstances, outputSize, false);
-
-    DBN::ObjectiveType objType = objectiveFn;
-    dbn.Train(trainData, trainLabels, objType, rand, false, pretrainHyperParams, bpHyperParams);
-    delete[] doubleObsLabel;
-    delete[] doubleObsData;
-
-    vector<RealMatrix *> layerMatrix = cpt->getMatrices();
-    assert(layerMatrix.size() == numLayers);
-    for (unsigned layer=0; layer < numLayers; layer+=1) {
-      cpt->setParams(layer, dbn.getWeights(layer).Start(), dbn.getBias(layer).Start());
-    }
+    (*trrng_it)++;
   }
 
+  Matrix   trainData(doubleObsData,  inputSize,  numInstances, inputSize,  false);
+  Matrix trainLabels(doubleObsLabel, outputSize, numInstances, outputSize, false);
+  
+  DBN::ObjectiveType objType = objectiveFn;
+  dbn.Train(trainData, trainLabels, objType, rand, false, pretrainHyperParams, bpHyperParams);
+  delete[] doubleObsLabel;
+  delete[] doubleObsData;
+  
+  vector<RealMatrix *> layerMatrix = cpt->getMatrices();
+  assert(layerMatrix.size() == numLayers);
+  for (unsigned layer=0; layer < numLayers; layer+=1) {
+    cpt->setParams(layer, dbn.getWeights(layer).Start(), dbn.getBias(layer).Start());
+  }
+  
   if (outputTrainableParameters != NULL) {
     char buff[2048];
     copyStringWithTag(buff,outputTrainableParameters,
