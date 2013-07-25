@@ -52,6 +52,21 @@ public:
       dropout(false),
       pretrainType(CD)
     { }
+
+    void print() const {
+      printf("initStepSize     %f\n"
+             "maxMomentum      %f\n"
+             "maxUpdate        %f\n"
+             "l2               %f\n"
+             "numUpdates       %d\n"
+             "numAnnealUpdates %d\n"
+	     "miniBatchSize    %d\n"
+	     "checkInterval    %d\n"
+	     "dropout          %s\n",
+	     initStepSize, maxMomentum, maxUpdate, l2,
+	     numUpdates, numAnnealUpdates, miniBatchSize, checkInterval,
+	     dropout ? "true" : "false");
+    }
   };
 
 private:
@@ -665,6 +680,15 @@ public:
 
   void Train(const Matrix & input, const Matrix & output, ObjectiveType objectiveType, Random & rand, bool quiet, const vector<HyperParams> & hyperParams_pt, const HyperParams & hyperParams_bp) {
     Matrix mappedInput = input;
+
+    if (!quiet) {
+      for (int layer = 0; layer < _layers.size() - 1; ++layer) {
+	printf("Layer %d pretrain hyperparams:\n", layer);
+	hyperParams_pt[layer].print();
+      }
+      printf("Backprop hyperparams:\n");
+      hyperParams_bp.print();
+    }
 
     // pretrain hidden layers
     for (int layer = 0; layer < _layers.size() - 1; ++layer) {
