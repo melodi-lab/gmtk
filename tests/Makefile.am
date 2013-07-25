@@ -30,15 +30,15 @@ TESTSUITE = testsuite
 
 include autoconf_tests
 
-autoconf_tests:
-	(cd $(srcdir); ls gmtk_test_*.at) |        \
-	 $(AWK) 'BEGIN{print "LOCAL_GMTK_AT = \\"} \
-                      {print $$0 " \\"}            \
-                   END{print "gmtk_tests.at"}' > $@
+update-tests:
+	(cd $(srcdir); ls gmtk_test_*.at) |                         \
+	 $(AWK) 'BEGIN{print "LOCAL_GMTK_AT = \\"}                  \
+	              {print $$0 " \\"}                             \
+	           END{print "gmtk_tests.at"}' > autoconf_tests
 	(cd $(srcdir); ls test_and_dev_scripts/test_and_dev_*.at) | \
-	 $(AWK) 'BEGIN{print "LOCAL_TEST_AND_DEV = \\"} \
-                      {print $$0 " \\"}                 \
-                   END{print "testanddev.at"}' >> $@
+	 $(AWK) 'BEGIN{print "LOCAL_TEST_AND_DEV = \\"}             \
+	              {print $$0 " \\"}                             \
+	           END{print "testanddev.at"}' >> autoconf_tests
 
 EXTRA_DIST =          \
 testsuite.at          \
@@ -67,6 +67,14 @@ testanddev.at:
 check-local: atconfig atlocal $(TESTSUITE) testanddev gmtk_tests.at
 	$(SHELL) '$(srcdir)/$(TESTSUITE)' $(TESTSUITEFLAGS)
 
+
+# The installcheck target is meant to test the installed build products
+# rather than those sitting in the build tree. But the test suite uses
+# some check_PROGRAMS that are not installed, so the test suite won't
+# pass without the build tree in the AUTOTEST_PATH. We could create a
+# separate test suite for the installed programs that doesn't require
+# the extra test programs...
+
 installcheck-local: atconfig atlocal $(TESTSUITE) testanddev gmtk_tests.at
 	$(SHELL) '$(srcdir)/$(TESTSUITE)' \
 	AUTOTEST_PATH='$(bindir):$(abs_top_builddir)/tksrc:$(abs_top_builddir)/miscSupport' \
@@ -80,7 +88,6 @@ clean-local:
 	test ! -f 'testanddev'    || $(SHELL) 'testanddev' --clean
 	test ! -f testanddev.at   || rm testanddev.at
 	test ! -f testanddev      || rm testanddev
-	test ! -f autoconf_tests  || rm autoconf_tests
 
 distclean-local:
 	test ! -f atconfig || rm atconfig
