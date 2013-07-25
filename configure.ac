@@ -127,6 +127,7 @@ AC_PROG_AWK
 
 
 # Autotest suite
+
 AC_CONFIG_TESTDIR([tests],[tksrc:featureFileIO:miscSupport])
 AC_CONFIG_FILES([tests/Makefile tests/atlocal])
 
