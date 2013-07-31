@@ -590,8 +590,9 @@ DeepVECPT::applyDeepModel(DiscRVType parentValue, DiscRV * drv) {
   input_vector[num_inputs-1] = 1.0; // homogeneous coordinates
   float *dest = input_vector;
   // guarantees [frame - window_radius, frame + window_radius] are in cache
-  float *src  = obs->floatVecAtFrame(frame) - window_radius * nfs; 
-  for (unsigned i = 0; i < 1 + 2 * window_radius; i+=1, src += nfs, dest += nfs) {
+  unsigned stride = obs->stride();
+  float *src  = obs->floatVecAtFrame(frame) - window_radius * stride + obs_file_foffset; 
+  for (unsigned i = 0; i < 1 + 2 * window_radius; i+=1, src += stride, dest += nfs) {
     memcpy(dest, src, nfs * sizeof(float));
   }
 #if 0
