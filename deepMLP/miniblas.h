@@ -17,7 +17,7 @@ cblas_dcopy(int n, double const* x, int incx, double *y, int incy) {
 }
 
 void
-cblas_dscal(int n double alpha, double *x, int incx) {
+cblas_dscal(int n, double alpha, double *x, int incx) {
   double *end = x + n * incx;
   do {
     *x = alpha * *x;
