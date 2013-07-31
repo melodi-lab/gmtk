@@ -30,14 +30,13 @@ endif
 LIBS += -lboost_thread -lboost_filesystem -lboost_system $(BLAS_LIBS)
 # -lpthread
 
-noinst_LIBRARIES = libDMLP.a
-EXTRA_LIBRARIES = libPHiPAC.a
+noinst_LIBRARIES = libDMLP.a libPHiPAC.a
 
 noinst_PROGRAMS = dmlp mnist label
 
-dmlp_SOURCES = dmlp.cc
+dmlp_SOURCES = dmlp.cc MNIST.h
 
-mnist_SOURCES = mnist.cc
+mnist_SOURCES = mnist.cc MNIST.h
 
 label_SOURCES = label.cc
 
@@ -51,7 +50,7 @@ phipacTest_SOURCES = phipacTest.cc
 libDMLP_a_SOURCES =           \
   Globals.h miniblas.h        \
   DBN.h Layer.h TrainSGD.h    \
-  Matrix.h Matrix.cpp         \
+  Matrix.h Matrix.cc          \
   MatrixFunc.h MatrixFunc.cc  \
   Random.h Random.cc
 
