@@ -221,8 +221,6 @@ main(int argc,char*argv[])
   
   
   printf("Finished reading in all parameters and structures\n");
-  printf("Total number of trainable parameters in input files = %u\n",
-	 GM_Parms.totalNumberParameters());
 
   Random rand(2);
   gomFS->openSegment(0);
@@ -233,9 +231,12 @@ main(int argc,char*argv[])
     if (cpt->name().compare(DVECPTName) == 0) break;
   }
 
-  if (!cpt) {
+  if (!cpt || cpt->name().compare(DVECPTName) != 0) {
     error("Error: No Deep VE CPT named '%s' found\n", DVECPTName);
   }
+
+  printf("Total number of trainable parameters in input files = %u\n",
+	 cpt->totalNumberDMLPParameters());
 
   struct rusage rus; /* starting time */
   struct rusage rue; /* ending time */
@@ -332,7 +333,7 @@ main(int argc,char*argv[])
     unsigned numFrames = gomFS->numFrames();
 
     for (unsigned i = 0; i < numFrames; i+=1) {
-      Data32 const *obsData = gomFS->loadFrames(i, 1) - radius * stride;
+      Data32 const *obsData = gomFS->loadFrames(i, 1);
       for (int w = -radius; w < radius + 1; w+=1) {
 	for (unsigned j=0; j < inputSize; j+=1) {
 	  *(p++) = (double)( *((float *)(obsData + w * stride) + obsOffset + j) );
@@ -357,7 +358,8 @@ main(int argc,char*argv[])
   vector<RealMatrix *> layerMatrix = cpt->getMatrices();
   assert(layerMatrix.size() == numLayers);
   for (unsigned layer=0; layer < numLayers; layer+=1) {
-    cpt->setParams(layer, dbn.getWeights(layer).Start(), dbn.getBias(layer).Start());
+    Matrix const W = dbn.getWeights(layer);
+    cpt->setParams(layer, W.Start(), W.Ld(), dbn.getBias(layer).Start());
   }
   
   if (outputTrainableParameters != NULL) {
