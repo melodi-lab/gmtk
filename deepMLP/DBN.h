@@ -583,12 +583,12 @@ public:
   }
 
   Matrix const &getWeights(int layer) {
-    assert(layer < _numLayers);
+    assert(0 <= layer && layer < _numLayers);
     return _W[layer];
   }
 
   Vector const &getBias(int layer) {
-    assert(layer < _numLayers);
+    assert(0 <= layer && layer < _numLayers);
     return _B[layer];
   }
 
@@ -682,12 +682,11 @@ public:
     Matrix mappedInput = input;
 
     if (!quiet) {
-      for (int layer = 0; layer < _layers.size() - 1; ++layer) {
-	printf("Layer %d pretrain hyperparams:\n", layer);
-	hyperParams_pt[layer].print();
-      }
-      printf("Backprop hyperparams:\n");
+      printf("\nPretrain hyperparams:\n\n");
+      hyperParams_pt[0].print();
+      printf("\nBackprop hyperparams:\n\n");
       hyperParams_bp.print();
+      printf("\n");
     }
 
     // pretrain hidden layers
