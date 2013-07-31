@@ -27,7 +27,7 @@ static const double NaN = std::numeric_limits<double>::quiet_NaN();
 static const double TOL = pow(std::numeric_limits<double>::epsilon(), (double)1.0 / 3);
 
 static bool IsClose(double a, double b) {
-  return abs(a - b) < TOL;
+  return fabs(a - b) < TOL;
 }
 
 static bool IsNaN(double x) { return boost::math::isnan(x); }

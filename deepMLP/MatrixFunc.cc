@@ -12,6 +12,8 @@
 extern "C" {            /* Assume C declarations for C++ */
 #  include <cblas.h>
 }
+#else
+#  include "miniblas.h"
 #endif
 
 #include "MatrixFunc.h"
@@ -63,7 +65,7 @@ void LogSumWithNeg(MutableVector & vec, MutableVector & temp) {
 #if HAVE_MKL	
   vdAbs(len, vec.Start(), vec.Start());
 #else
-  vec.Apply([](double x)->double {return abs(x);});
+  vec.Apply([](double x)->double {return fabs(x);});
 #endif
 #if HAVE_CBLAS_DAXPBY
   cblas_daxpby(len, -2.0, vec.Start(), 1, 0, temp.Start(), 1);
