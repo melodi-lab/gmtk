@@ -49,7 +49,7 @@ phipacTest_SOURCES = phipacTest.cc
 
 
 libDMLP_a_SOURCES =           \
-  Globals.h                   \
+  Globals.h miniblas.h        \
   DBN.h Layer.h TrainSGD.h    \
   Matrix.h Matrix.cpp         \
   MatrixFunc.h MatrixFunc.cc  \

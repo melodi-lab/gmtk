@@ -14,6 +14,8 @@
 extern "C" {            /* Assume C declarations for C++ */
 #  include <cblas.h>
 }
+#else
+#  include "miniblas.h"
 #endif
 
 #if defined(USE_PHIPAC)
