@@ -307,12 +307,16 @@ DeepVECPT::read(iDataStreamFile& is)
 	    }
 	  } else if (option_value == "tanh") {
 	    layer_squash_func[layer] = TANH;
-	  } else if (option_value == "ODDROOT") {
+	  } else if (option_value == "oddroot") {
 	    layer_squash_func[layer] = ODDROOT;
+	  } else if (option_value == "linear") {
+	    layer_squash_func[layer] = LINEAR;
+	  } else if (option_value == "rectlin") {
+	    layer_squash_func[layer] = RECTLIN;
 	  } else {
 	    string error_message;
-	    stringprintf(error_message, "Invalid squash function '%s', must be one of 'softmax', 'logistic', 'tanh', or 'oddroot'", 
-			 option_value.c_str());
+	    stringprintf(error_message, "Invalid squash function '%s', must be one of 'softmax', 'logistic', 'tanh', "
+			 " 'oddroot', 'linear', or 'rectlin'", option_value.c_str());
 	    throw(error_message);
 	  }
 	}
@@ -463,6 +467,11 @@ void DeepVECPT::becomeAwareOfParentValues( vector <RV *>& parents,
   curParentValue = RV2DRV(parents[0])->val;
 }
 
+void
+rectlin(float *q, unsigned len) {
+  for (unsigned i=0; i < len; i+=1)
+    if (q[i] < 0.0) q[i] = 0.0;
+}
 
 void
 softmax(float *q, unsigned len) {
@@ -553,6 +562,12 @@ squash(DeepVECPT::SquashFunction fn, float *q, unsigned len, float beta=1.0) {
     break;
   case DeepVECPT::ODDROOT:
     oddroot(q, len);
+    break;
+  case DeepVECPT::LINEAR:
+    // q = q
+    break;
+  case DeepVECPT::RECTLIN:
+    rectlin(q, len);
     break;
   default:
     assert(0); // impossible

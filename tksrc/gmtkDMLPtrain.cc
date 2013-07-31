@@ -262,6 +262,12 @@ main(int argc,char*argv[])
   case DeepVECPT::ODDROOT: 
     hActFunc = Layer::ActFunc(Layer::ActFunc::CUBIC); 
     break;
+  case DeepVECPT::LINEAR:
+    hActFunc = Layer::ActFunc(Layer::ActFunc::LINEAR);
+    break;
+  case DeepVECPT::RECTLIN:
+    hActFunc = Layer::ActFunc(Layer::ActFunc::RECT_LIN);
+    break;
   default: 
     error("Error: unknown activation function\n");
   }
