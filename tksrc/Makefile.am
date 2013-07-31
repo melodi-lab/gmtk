@@ -70,7 +70,6 @@ AM_CPPFLAGS = \
 
 LDADD = libGMTK.a libXOPT.a \
 $(builddir)/../deepMLP/libDMLP.a \
-$(builddir)/../deepMLP/libPHiPAC.a \
 $(builddir)/../featureFileIO/libgmtkio.a \
 $(builddir)/../miscSupport/libmiscSupport.a \
 $(builddir)/../IEEEFloatingpoint/libIEEEsupport.a
