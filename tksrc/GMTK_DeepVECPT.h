@@ -136,7 +136,7 @@ public:
     return layer_squash_func[layer];
   }
 
-  void setParams(unsigned layer, double const *weights, double const *bias) {
+  void setParams(unsigned layer, double const *weights, unsigned ld, double const *bias) {
     assert(layer < layer_matrix.size());
     RealMatrix *w = layer_matrix[layer];
     unsigned rows = w->_rows;
@@ -144,10 +144,10 @@ public:
     for (unsigned r=0; r < rows; r+=1) {
       unsigned c;
       for (c=0; c < cols - 1; c+=1) {
-	// weights come in column-major order; store them in row-major
-	w->values[ r * cols + c ] = (float) weights[ r + rows * c ];
+	// weights come in column-major order but transposed; store them in row-major
+	w->values[ r * cols + c ] = (float) weights[ r * ld + c ];
       }
-      w->values[ r  * cols + c ] = (float) bias[r];
+      w->values[ r * cols + c ] = (float) bias[r];
     }
   }
 
@@ -205,6 +205,15 @@ public:
   // virtual evidence does not constitute parameters in the normal
   // sense.
   unsigned totalNumberParameters() { return 0; }
+
+  // The above is true for EM training, but gmtkDMLPtrain actually
+  // learns the deep VE CPT parameters, so count them
+  unsigned totalNumberDMLPParameters() {
+    unsigned total = 0;
+    for (unsigned i=0; i < num_matrices; i+=1) 
+      total += (unsigned)(layer_matrix[i]->rows() * layer_matrix[i]->cols());
+    return total;
+  }
 
   ///////////////////////////////////////////////////////////  
   // These routines are no-ops in this case since all
