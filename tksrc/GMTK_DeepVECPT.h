@@ -82,7 +82,9 @@ class DeepVECPT : public CPT {
     SOFTMAX,
     LOGISTIC,
     TANH,
-    ODDROOT
+    ODDROOT,
+    LINEAR,
+    RECTLIN
   };
 
  private:
@@ -237,7 +239,7 @@ public:
   void emEndIteration() {}
   void emSwapCurAndNew() {}
 
-  // parallel training (DeepVECPTs are never trained)
+  // parallel training (DeepVECPTs are never EM trained)
   void emStoreObjectsAccumulators(oDataStreamFile& ofile,
 				  bool writeLogVals = true,
 				  bool writeZeros = false) {}

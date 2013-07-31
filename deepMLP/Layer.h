@@ -11,11 +11,38 @@ using namespace std;
 class Layer {
 public:
   struct ActFunc {
-    enum ActType { LOG_SIG, TANH, CUBIC, LINEAR, RECT_LIN } actType;
+    enum ActType { SOFTMAX, LOG_SIG, TANH, CUBIC, LINEAR, RECT_LIN } actType;
 
-    ActFunc() : actType(LINEAR) { }
+    double beta;
 
-    ActFunc(ActType actType) : actType(actType) { }
+    ActFunc() : actType(LINEAR), beta(1.0) { }
+
+    ActFunc(ActType actType, double beta=1.0) : actType(actType), beta(beta) { }
+
+    static void Softmax(double *q, unsigned len) {
+      double k  = *q;
+      unsigned n;
+      if (len % 2) {
+	n = 1;
+      } else {
+	if (*q < q[1]) {
+	  k = q[1];
+	}
+	n = 2;
+      }
+      float k2 = k;
+      for (unsigned i=n; i < len; i+=2) {
+	k  = (k  > q[i])   ? k  : q[i];
+	k2 = (k2 > q[i+1]) ? k2 : q[i+1];
+      }
+      k = (k > k2) ? k : k2;
+      double sum = 0.0;
+      for (unsigned i=0; i < len; i+=1)
+	sum += exp(q[i] - k);
+      sum = log(sum);
+      for (unsigned i=0; i < len; i+=1)
+	q[i] = exp ( q[i] - k - sum );
+    }
 
     static double CubicSigmoid(double y) {
       // I have a vectorized implementation of this using SSE but
@@ -37,12 +64,15 @@ public:
 
     void Apply(const MutableVector & inputs) {
       switch (actType) {
+      case SOFTMAX:
+	Softmax(inputs.Start(), inputs.Len());
+	break;
       case LOG_SIG:
         {
-          auto func = [] (double x)->double {
+          auto func = [beta] (double x)->double {
             if (x < -30) return 0;
             else if (x > 30) return 1;
-            else return 1.0 / (1 + exp(-x));
+            else return 1.0 / (1 + exp(-beta * x));
           };
           inputs.Apply(func);
         }

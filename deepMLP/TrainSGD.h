@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include "Matrix.h"
+#include "MatrixFunc.h"
 #include "Random.h"
 
 using namespace std;
