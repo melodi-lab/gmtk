@@ -42,7 +42,7 @@ AC_ARG_WITH([blas-libs],
    [AS_HELP_STRING([--with-blas-libs=<libraries>], [-l flags for non-MKL BLAS library @<:@-lcblas@:>@])],
    [AS_IF([test "x$with_blas_libs" != "xno"], [BLAS_LIBS=$with_blas_libs], [BLAS_LIBS=""])
     BLAS_REQUEST=yes],
-   [BLAS_LIBS=-lcblas])
+   [BLAS_LIBS=""])
 # assume libcblas.* is what we want
 
 
