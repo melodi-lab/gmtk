@@ -1753,6 +1753,7 @@ static float normalizeScoreEachClique = MaxClique::normalizeScoreEachClique;
 
 static char const *DVECPTName         = NULL;
 static unsigned    labelOffset        = 0;
+static bool        oneHot             = true;
 
   // backprop hyperparameters
 
@@ -1787,7 +1788,9 @@ static Layer::ActFunc iActFunc;
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
 Arg("deepVECPTName", Arg::Req, DVECPTName, "Name of Deep VE CPT to train"),
-Arg("labelOffset", Arg::Req, labelOffset, "Position in observation file where label vectors start"),
+Arg("labelOffset", Arg::Req, labelOffset, "Position in observation file where output labels start"),
+Arg("oneHot", Arg::Opt, oneHot, "If true, labelOffset is the single discrete correct parent value, "
+                                "else the parent distribution starts ate labelOffset"),
 
 Arg("bpInitStepSize", Arg::Opt, bpInitStepSize, "Backprop: Initial step size hyperparameter"),
 Arg("bpMaxMomentum", Arg::Opt, bpMaxMomentum, "Backprop: Maximum momentum hyperparameter"),

@@ -343,7 +343,7 @@ DeepVECPT::read(iDataStreamFile& is)
     // check that it works with the current global observation matrix.
     if (nfs + obs_file_foffset > globalObservationMatrix->numContinuous()) {
       string error_message;
-      stringprintf(error_message,"specifies %d floats and offset %d, but global observation matrix only has %d",
+      stringprintf(error_message,"specifies %d floats at offset %d, but global observation matrix only has %d",
 		   nfs,obs_file_foffset,globalObservationMatrix->numContinuous());
       throw(error_message);
     }
