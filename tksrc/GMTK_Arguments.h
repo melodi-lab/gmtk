@@ -1753,8 +1753,6 @@ static float normalizeScoreEachClique = MaxClique::normalizeScoreEachClique;
 
 static char const *DVECPTName         = NULL;
 static unsigned    labelOffset        = 0;
-static char const *objectiveFnStr     = "softmax";
-static DBN::ObjectiveType objectiveFn = DBN::SOFT_MAX;
 
   // backprop hyperparameters
 
@@ -1790,7 +1788,6 @@ static Layer::ActFunc iActFunc;
 
 Arg("deepVECPTName", Arg::Req, DVECPTName, "Name of Deep VE CPT to train"),
 Arg("labelOffset", Arg::Req, labelOffset, "Position in observation file where label vectors start"),
-Arg("objectiveFn", Arg::Opt, objectiveFnStr, "Training objective function (sqerr, softmax)"),
 
 Arg("bpInitStepSize", Arg::Opt, bpInitStepSize, "Backprop: Initial step size hyperparameter"),
 Arg("bpMaxMomentum", Arg::Opt, bpMaxMomentum, "Backprop: Maximum momentum hyperparameter"),
@@ -1818,14 +1815,6 @@ Arg("pretrainActFunc", Arg::Opt, pretrainActFuncStr, "Pretraining input activati
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
 // error checks
-
-  if (strcasecmp(objectiveFnStr, "softmax") == 0) {
-    objectiveFn = DBN::SOFT_MAX;
-  } else if (strcasecmp(objectiveFnStr, "sqerr") == 0) {
-    objectiveFn = DBN::SQ_ERR;
-  } else {
-    error("%s: unknown objective function '%s', must be 'sqerr' or 'softmax'\n", objectiveFnStr);
-  }
 
   if (strcasecmp(pretrainType, "AE") == 0) {
     pretrainMode = DBN::AE;
