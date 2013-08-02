@@ -37,6 +37,7 @@ class DiagCovarVector;
 class DlinkMatrix;
 class Dlinks;
 class RealMatrix;
+class DoubleMatrix;
 class DirichletTable;
 class MDCPT;
 class MSCPT;
@@ -149,6 +150,10 @@ public:
   vector< RealMatrix* > realMats;
   ObjectMapType realMatsMap;
   void add(RealMatrix*ob);
+
+  vector< DoubleMatrix* > doubleMats;
+  ObjectMapType doubleMatsMap;
+  void add(DoubleMatrix*ob);
 
 
   ////////////////////////////////
@@ -346,6 +351,7 @@ public:
   void readDLinkMats(iDataStreamFile& is,bool reset = false);
   void readDLinks(iDataStreamFile& is,bool reset = false);
   void readRealMats(iDataStreamFile& is,bool reset = false);
+  void readDoubleMats(iDataStreamFile& is,bool reset = false);
   void readDirichletTabs(iDataStreamFile& is,bool reset = false);
   void readMdCpts(iDataStreamFile& is,bool reset = false);
   void readMsCpts(iDataStreamFile& is,bool reset = false);
@@ -372,6 +378,7 @@ public:
   void writeDLinkMats(oDataStreamFile& os);
   void writeDLinks(oDataStreamFile& os);
   void writeRealMats(oDataStreamFile& os);
+  void writeDoubleMats(oDataStreamFile& os);
   void writeDirichletTabs(oDataStreamFile& os);
   void writeMdCpts(oDataStreamFile& os);
   void writeMsCpts(oDataStreamFile& os);
