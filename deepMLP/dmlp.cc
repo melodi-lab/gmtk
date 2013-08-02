@@ -16,10 +16,13 @@ int main(int argc, char *argv[]) {
 
   MNISTData mnist(trainImageFile, trainLabelFile);
 
-  int inputSize = mnist.NumFeatures(), outputSize = 10, hiddenSize = 200, numInstances = mnist.NumImages();
+  int inputSize = mnist.NumFeatures(), outputSize = 10, numInstances = mnist.NumImages();
   int layers = 5;
+  vector<int> hiddenSize(layers, 200);
+  vector<Layer::ActFunc> hActFunc(layers, Layer::ActFunc::TANH);
+  hActFunc[layers-1] = Layer::ActFunc::LINEAR;
 
-  DBN dbn(layers, inputSize, hiddenSize, outputSize, Layer::ActFunc(Layer::ActFunc::TANH), Layer::ActFunc(Layer::ActFunc::TANH));
+  DBN dbn(layers, inputSize, hiddenSize, outputSize, Layer::ActFunc(Layer::ActFunc::TANH), hActFunc);
 
   AllocatingMatrix output(outputSize, numInstances);
   DBN::ObjectiveType objType = DBN::SOFT_MAX;

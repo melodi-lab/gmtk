@@ -159,6 +159,12 @@ public:
   
   vector<RealMatrix *> &getMatrices() { return layer_matrix; }
 
+  float getBeta(unsigned layer) {
+    assert(layer < layer_logistic_beta.size());
+    assert(layer_squash_func[layer] == LOGISTIC);
+    return layer_logistic_beta[layer];
+  }
+
   ///////////////////////////////////////////////////////////    
   // Semi-constructors: useful for debugging.
   // See parent class for further documention.

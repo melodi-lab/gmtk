@@ -11,38 +11,13 @@ using namespace std;
 class Layer {
 public:
   struct ActFunc {
-    enum ActType { SOFTMAX, LOG_SIG, TANH, CUBIC, LINEAR, RECT_LIN } actType;
+    enum ActType { LOG_SIG, TANH, CUBIC, LINEAR, RECT_LIN } actType;
 
     double beta;
 
     ActFunc() : actType(LINEAR), beta(1.0) { }
 
     ActFunc(ActType actType, double beta=1.0) : actType(actType), beta(beta) { }
-
-    static void Softmax(double *q, unsigned len) {
-      double k  = *q;
-      unsigned n;
-      if (len % 2) {
-	n = 1;
-      } else {
-	if (*q < q[1]) {
-	  k = q[1];
-	}
-	n = 2;
-      }
-      float k2 = k;
-      for (unsigned i=n; i < len; i+=2) {
-	k  = (k  > q[i])   ? k  : q[i];
-	k2 = (k2 > q[i+1]) ? k2 : q[i+1];
-      }
-      k = (k > k2) ? k : k2;
-      double sum = 0.0;
-      for (unsigned i=0; i < len; i+=1)
-	sum += exp(q[i] - k);
-      sum = log(sum);
-      for (unsigned i=0; i < len; i+=1)
-	q[i] = exp ( q[i] - k - sum );
-    }
 
     static double CubicSigmoid(double y) {
       // I have a vectorized implementation of this using SSE but
@@ -64,14 +39,12 @@ public:
 
     void Apply(const MutableVector & inputs) {
       switch (actType) {
-      case SOFTMAX:
-	Softmax(inputs.Start(), inputs.Len());
-	break;
+
       case LOG_SIG:
         {
           auto func = [beta] (double x)->double {
-            if (x < -30) return 0;
-            else if (x > 30) return 1;
+            if (beta * x < -30) return 0;
+            else if (beta * x > 30) return 1;
             else return 1.0 / (1 + exp(-beta * x));
           };
           inputs.Apply(func);
@@ -144,14 +117,14 @@ public:
       case LOG_SIG:
         {
           auto func = [&](double aVal, double xVal)->double {
-            if (aVal < -30) {
-              negll -= xVal * aVal;
+            if (beta * aVal < -30) {
+              negll -= xVal * beta * aVal;
               return 0;
-            } else if (aVal > 30) {
-              negll += (1 - xVal) * aVal;
+            } else if (beta * aVal > 30) {
+              negll += (1 - xVal) * beta * aVal;
               return 1;
             } else {
-              double p = 1.0 / (1.0 + exp(-aVal));
+              double p = 1.0 / (1.0 + exp(-beta * aVal));
               negll -= xVal * log(p) + (1 - xVal) * log (1.0 - p);
               return p;
             }
@@ -172,7 +145,7 @@ public:
 
       case LOG_SIG:
         {
-          auto func = [](double aVal, double eVal) { return (1.0 - aVal) * aVal * eVal; };
+          auto func = [beta](double aVal, double eVal) { return (1.0 - beta * aVal) * beta * aVal * eVal; };
           activations.Apply(func, inError);
         }
         break;
@@ -210,7 +183,7 @@ public:
       switch (actType) {
       case LOG_SIG:
         {
-          auto func = [&](double aVal) { return (rand.Uniform() < aVal) ? 1.0 : 0.0; };
+          auto func = [&](double aVal) { return (rand.Uniform() < beta * aVal) ? 1.0 : 0.0; };
           sample.Replace(func, activations);
         }
         break;

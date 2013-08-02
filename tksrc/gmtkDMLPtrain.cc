@@ -245,31 +245,53 @@ main(int argc,char*argv[])
   int inputSize = (int)cpt->numInputs();
   int numLayers = (int)cpt->numLayers();
   int outputSize = (int)cpt->numOutputs();
-  int hiddenSize = (int)cpt->layerOutputs(0); // for now assume all the same size
+  
+  vector<int> hiddenSize(numLayers);
+  for (unsigned i=0; i < numLayers; i+=1)
+    hiddenSize[i] = (int)cpt->layerOutputs(i);
 
-  // TODO: DVECPT supports a different activation function per level
-  Layer::ActFunc hActFunc;
-  switch (cpt->getSquashFn(0)) {
-  case DeepVECPT::SOFTMAX: 
-    error("Error: unsupported activation function softmax\n"); 
-    break;
-  case DeepVECPT::LOGISTIC: 
-    hActFunc = Layer::ActFunc(Layer::ActFunc::LOG_SIG); 
-    break;
-  case DeepVECPT::TANH: 
-    hActFunc = Layer::ActFunc(Layer::ActFunc::TANH); 
-    break;
-  case DeepVECPT::ODDROOT: 
-    hActFunc = Layer::ActFunc(Layer::ActFunc::CUBIC); 
-    break;
-  case DeepVECPT::LINEAR:
-    hActFunc = Layer::ActFunc(Layer::ActFunc::LINEAR);
-    break;
-  case DeepVECPT::RECTLIN:
-    hActFunc = Layer::ActFunc(Layer::ActFunc::RECT_LIN);
-    break;
-  default: 
-    error("Error: unknown activation function\n");
+  vector<Layer::ActFunc> hActFunc(numLayers);
+  for (unsigned i=0; i < numLayers; i+=1) {
+    switch (cpt->getSquashFn(i)) {
+    case DeepVECPT::SOFTMAX: 
+      if (i != numLayers - 1) {
+	error("ERROR: gmtkDMLPtrain only supports softmax for the output layer\n");
+      }
+      hActFunc[i] = Layer::ActFunc(Layer::ActFunc::LINEAR);
+      break;
+    case DeepVECPT::LOGISTIC: 
+      if (i == numLayers - 1) {
+	error("ERROR: gmtkDMLPtrain only supports linear or softmax for the output layer\n");
+      }
+      hActFunc[i] = Layer::ActFunc(Layer::ActFunc::LOG_SIG, cpt->getBeta(i)); 
+      break;
+    case DeepVECPT::TANH: 
+      if (i == numLayers - 1) {
+	error("ERROR: gmtkDMLPtrain only supports linear or softmax for the output layer\n");
+      }
+      hActFunc[i] = Layer::ActFunc(Layer::ActFunc::TANH); 
+      break;
+    case DeepVECPT::ODDROOT: 
+      if (i == numLayers - 1) {
+	error("ERROR: gmtkDMLPtrain only supports linear or softmax for the output layer\n");
+      }
+      hActFunc[i] = Layer::ActFunc(Layer::ActFunc::CUBIC); 
+      break;
+    case DeepVECPT::LINEAR:
+      hActFunc[i] = Layer::ActFunc(Layer::ActFunc::LINEAR);
+      break;
+    case DeepVECPT::RECTLIN:
+      if (i == numLayers - 1) {
+	error("ERROR: gmtkDMLPtrain only supports linear or softmax for the output layer\n");
+      }
+      if (pretrainMode != DBN::NONE) {
+	error("ERROR: gmtkDMLPtrain only supports rectified linear activation functions with -pretrainType none\n");
+      }
+      hActFunc[i] = Layer::ActFunc(Layer::ActFunc::RECT_LIN);
+      break;
+    default: 
+      error("Error: unknown activation function\n");
+    }
   }
   DBN dbn(numLayers, inputSize, hiddenSize, outputSize, iActFunc, hActFunc);
 
@@ -356,7 +378,7 @@ main(int argc,char*argv[])
   Matrix   trainData(doubleObsData,  inputSize,  numInstances, inputSize,  false);
   Matrix trainLabels(doubleObsLabel, outputSize, numInstances, outputSize, false);
   
-  DBN::ObjectiveType objType = objectiveFn;
+  DBN::ObjectiveType objType = ( cpt->getSquashFn(numLayers-1) == DeepVECPT::SOFTMAX ) ? DBN::SOFT_MAX : DBN::SQ_ERR;
   dbn.Train(trainData, trainLabels, objType, rand, false, pretrainHyperParams, bpHyperParams);
   delete[] doubleObsLabel;
   delete[] doubleObsData;

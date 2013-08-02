@@ -71,9 +71,12 @@ public:
 
 private:
   // width of input, all hidden, and output layers
-  int _iSize, _hSize, _oSize;
-  Layer::ActFunc _iActFunc, _hActFunc;
+  int _iSize, _oSize;
+  vector<int> _hSize;
 
+  Layer::ActFunc _iActFunc;
+  vector<Layer::ActFunc> _hActFunc;
+  
   // number of layers (not including input)
   int _numLayers;
 
@@ -441,7 +444,7 @@ private:
         if (lastLayerOnly || l == 0) break;
 
         _tempMat = _W[l] * mappedError;
-        mappedError = _layers[l-1].ComputeErrors(_tempMat, _hActFunc);
+        mappedError = _layers[l-1].ComputeErrors(_tempMat, _hActFunc[l-1]);
       }
     }
 
@@ -459,7 +462,7 @@ private:
   }
 
   double UpdateCD(const Matrix & input, const Vector & inputBiases, int layer, Random & rand, double stepSize) {
-    Layer::ActFunc lowerActFunc = (layer == 0) ? _iActFunc : _hActFunc;
+    Layer::ActFunc lowerActFunc = (layer == 0) ? _iActFunc : _hActFunc[layer-1];
 
     Matrix weights = _W[layer];
     Vector topBiases = _B[layer];
@@ -467,13 +470,13 @@ private:
 
     _tempBottomSample.Resize(input);
 
-    topLayer.ActivateUp(weights, topBiases, input, _hActFunc);
+    topLayer.ActivateUp(weights, topBiases, input, _hActFunc[layer]);
     _tempTopSample.Resize(topLayer.Size(), input.NumC());
-    topLayer.Sample(_tempTopSample, rand, _hActFunc);
+    topLayer.Sample(_tempTopSample, rand, _hActFunc[layer]);
 
     _tempBottomLayer.ActivateDown(weights, inputBiases, _tempTopSample, lowerActFunc);
     _tempBottomLayer.Sample(_tempBottomSample, rand, lowerActFunc);
-    _tempTopLayer.ActivateUp(weights, topBiases, _tempBottomSample, _hActFunc);
+    _tempTopLayer.ActivateUp(weights, topBiases, _tempBottomSample, _hActFunc[layer]);
 
     if (stepSize > 0) {
       Matrix topProbsP = topLayer.Activations(), topProbsN = _tempTopLayer.Activations();
@@ -494,13 +497,13 @@ private:
   }
 
   double UpdateAE(const Matrix & input, const Vector & inputBiases, const Matrix & targetInput, int layer, double stepSize) {
-    Layer::ActFunc lowerActFunc = (layer == 0) ? _iActFunc : _hActFunc;
+    Layer::ActFunc lowerActFunc = (layer == 0) ? _iActFunc : _hActFunc[layer-1];
 
     Matrix weights = _W[layer];
     Vector topBiases = _B[layer];
 
     Layer & topLayer = _layers[layer];
-    Matrix topProbs = topLayer.ActivateUp(weights, topBiases, input, _hActFunc);
+    Matrix topProbs = topLayer.ActivateUp(weights, topBiases, input, _hActFunc[layer]);
 
     double negll = _tempBottomLayer.ActivateDownAndGetNegLL(weights, inputBiases, topProbs, targetInput, lowerActFunc);
 
@@ -512,7 +515,7 @@ private:
       _deltaW[layer] += stepSize * bottomProbs * topProbs.Trans();
 
       _tempMat = weights.Trans() * bottomProbs;
-      Matrix topError = topLayer.ComputeErrors(_tempMat, _hActFunc);
+      Matrix topError = topLayer.ComputeErrors(_tempMat, _hActFunc[layer]);
 
       _deltaW[layer] += stepSize * input * topError.Trans();
 
@@ -525,12 +528,12 @@ private:
   }
 
 public:
-  DBN(int numLayers, int iSize, int hSize, int oSize, Layer::ActFunc iActFunc, Layer::ActFunc hActFunc) 
+  DBN(int numLayers, int iSize, vector<int> &hSize, int oSize, Layer::ActFunc iActFunc, vector<Layer::ActFunc> &hActFunc) 
   {
     Initialize(numLayers, iSize, hSize, oSize, iActFunc, hActFunc);
   }
 
-  void Initialize(int numLayers, int iSize, int hSize, int oSize, Layer::ActFunc iActFunc, Layer::ActFunc hActFunc)
+  void Initialize(int numLayers, int iSize, vector<int> &hSize, int oSize, Layer::ActFunc iActFunc, vector<Layer::ActFunc> &hActFunc)
   {
     _numLayers = numLayers;
     _iSize = iSize;
@@ -539,6 +542,7 @@ public:
 
     _iActFunc = iActFunc;
     _hActFunc = hActFunc;
+    assert(_hActFunc[_numLayers-1].actType == Layer::ActFunc::LINEAR);
 
     _layers.resize(numLayers);
     _layerParams.resize(numLayers);
@@ -560,7 +564,7 @@ public:
     int bSize = _iSize;
     int start = 0;
     for (int i = 0; i < _numLayers; ++i) {
-      int tSize = (i == _numLayers - 1) ? _oSize : _hSize;
+      int tSize = (i == _numLayers - 1) ? _oSize : _hSize[i];
       int endW = start + bSize * tSize;
       _W[i] = _params.SubVector(start, endW).AsMatrix(bSize, tSize);
       _deltaW[i] = _deltaParams.SubVector(start, endW).AsMatrix(bSize, tSize);
@@ -595,10 +599,10 @@ public:
   void Deserialize(istream & inStream) {
     inStream.read((char *) &_numLayers, sizeof(int));
     inStream.read((char *) &_iSize, sizeof(int));
-    inStream.read((char *) &_hSize, sizeof(int));
+    inStream.read((char *) &_hSize[0], sizeof(int) * _numLayers);
     inStream.read((char *) &_oSize, sizeof(int));
     inStream.read((char *) &_iActFunc, sizeof(Layer::ActFunc));
-    inStream.read((char *) &_hActFunc, sizeof(Layer::ActFunc));
+    inStream.read((char *) &_hActFunc[0], sizeof(Layer::ActFunc) * _numLayers);
 
     Initialize(_numLayers, _iSize, _hSize, _oSize, _iActFunc, _hActFunc);
 
@@ -608,10 +612,10 @@ public:
   void Serialize(ostream & outStream) const {
     outStream.write((const char *) &_numLayers, sizeof(int));
     outStream.write((const char *) &_iSize, sizeof(int));
-    outStream.write((const char *) &_hSize, sizeof(int));
+    outStream.write((const char *) &_hSize[0], sizeof(int) * _numLayers);
     outStream.write((const char *) &_oSize, sizeof(int));
     outStream.write((const char *) &_iActFunc, sizeof(Layer::ActFunc));
-    outStream.write((const char *) &_hActFunc, sizeof(Layer::ActFunc));
+    outStream.write((const char *) &_hActFunc[0], sizeof(Layer::ActFunc) * _numLayers);
     outStream.write((const char *) _params.Start(), sizeof(double) * _params.Len());
   }
 
@@ -629,26 +633,25 @@ public:
   }
 
   int NumParamsInLayer(int layer) const {
-    assert (layer < _numLayers);
+    assert (0 <= layer && layer < _numLayers);
     if (_numLayers == 1) return (_iSize + 1) * _oSize;
-    else if (layer == 0) return (_iSize + 1) * _hSize;
-    else if (layer == _numLayers - 1) return (_hSize + 1) * _oSize;
-    else return (_hSize + 1) * _hSize;
+    else if (layer == 0) return (_iSize + 1) * _hSize[layer];
+    else if (layer == _numLayers - 1) return (_hSize[layer-1] + 1) * _oSize;
+    else return (_hSize[layer-1] + 1) * _hSize[layer];
   }
 
   int LayerOutSize(int layer) const {
-    assert (layer < _numLayers);
-    return (layer < _numLayers - 1) ? _hSize : _oSize;
+    assert (0 <= layer && layer < _numLayers);
+    return (layer < _numLayers - 1) ? _hSize[layer] : _oSize;
   }
 
   int LayerInSize(int layer) const {
-    assert (layer < _numLayers);
-    return (layer == 0) ? _iSize : _hSize;
+    assert (0 <= layer && layer < _numLayers);
+    return (layer == 0) ? _iSize : _hSize[layer-1];
   }
 
   Matrix MapLayer(const Matrix & input, int layer) const {
-    Layer::ActFunc actFunc = (layer == _numLayers - 1) ? Layer::ActFunc::LINEAR : _hActFunc;
-    return _layers[layer].ActivateUp(_W[layer], _B[layer], input, actFunc);
+    return _layers[layer].ActivateUp(_W[layer], _B[layer], input, _hActFunc[layer]);
   }
 
   Matrix MapUp(const Matrix & input, int startLayer = -1, int endLayer = -1) const {
@@ -663,8 +666,7 @@ public:
   }
 
   Matrix MapLayerDropout(const Matrix & input, int layer, Random & rand) const {
-    Layer::ActFunc actFunc = (layer == _numLayers - 1) ? Layer::ActFunc::LINEAR : _hActFunc;
-    return _layers[layer].ActivateUpDropout(_W[layer], _B[layer], input, actFunc, rand);
+    return _layers[layer].ActivateUpDropout(_W[layer], _B[layer], input, _hActFunc[layer], rand);
   }
 
   Matrix MapUpDropout(const Matrix & input, Random & rand, int startLayer = -1, int endLayer = -1) const {
@@ -710,7 +712,7 @@ public:
           if (!quiet) {
             cout << "Pretraining layer " << layer << " of size " << LayerInSize(layer) << "x" << LayerOutSize(layer) << " with AE" << endl;
           }
-          Layer::ActFunc lowerActFunc = (layer == 0) ? _iActFunc : _hActFunc;
+          Layer::ActFunc lowerActFunc = (layer == 0) ? _iActFunc : _hActFunc[layer-1];
           AETrainingFunction aeFunc(*this, layer, mappedInput, rand, hyperParams, lowerActFunc, true);
           TrainSGD(aeFunc, rand, hyperParams);
         }
