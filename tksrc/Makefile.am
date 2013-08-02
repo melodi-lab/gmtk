@@ -83,6 +83,7 @@ GMTK_Sparse1DPMF.h GMTK_Sparse1DPMF.cc \
 GMTK_MeanVector.h GMTK_MeanVector.cc \
 GMTK_DiagCovarVector.h GMTK_DiagCovarVector.cc \
 GMTK_RealMatrix.h GMTK_RealMatrix.cc \
+GMTK_DoubleMatrix.h GMTK_DoubleMatrix.cc \
 GMTK_DlinkMatrix.h GMTK_DlinkMatrix.cc \
 GMTK_DirichletTable.h GMTK_DirichletTable.cc \
 GMTK_DirichletPrior.h GMTK_DirichletPrior.cc \
