@@ -11,6 +11,8 @@ gmtk_test_ticket136.at \
 gmtk_test_ticket143.at \
 gmtk_test_ticket149.at \
 gmtk_test_ticket150.at \
+gmtk_test_ticket161-2.at \
+gmtk_test_ticket161.at \
 gmtk_test_ticket162.at \
 gmtk_test_ticket164.at \
 gmtk_test_ticket166.at \
@@ -42,6 +44,7 @@ gmtk_test_ticket407.at \
 gmtk_test_ticket42.at \
 gmtk_test_ticket425.at \
 gmtk_test_ticket428.at \
+gmtk_test_ticket436.at \
 gmtk_test_ticket52.at \
 gmtk_tests.at
 LOCAL_TEST_AND_DEV = \
