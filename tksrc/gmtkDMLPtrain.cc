@@ -263,7 +263,7 @@ main(int argc,char*argv[])
       if (i == numLayers - 1) {
 	error("ERROR: gmtkDMLPtrain only supports linear or softmax for the output layer\n");
       }
-      hActFunc[i] = Layer::ActFunc(Layer::ActFunc::LOG_SIG, cpt->getBeta(i)); 
+      hActFunc[i] = Layer::ActFunc(Layer::ActFunc::LOG_SIG, (float)cpt->getBeta(i)); 
       break;
     case DeepVECPT::TANH: 
       if (i == numLayers - 1) {
@@ -352,6 +352,25 @@ main(int argc,char*argv[])
   double *q = doubleObsLabel;
   unsigned obsOffset = cpt->obsOffset();
 
+  if (oneHot) {
+    if (labelOffset < gomFS->numContinuous()) {
+      error("ERROR: labelOffset (%u) must refer to a discrete feature (the first %u are continuous)\n", 
+	    labelOffset, gomFS->numContinuous());
+    }
+    if (labelOffset >= gomFS->numFeatures()) {
+      error("ERROR: labelOffset (%u) is too large for the number of available features (%u)\n",
+	    labelOffset, gomFS->numFeatures());
+    }
+  } else {
+    if (labelOffset >= gomFS->numContinuous()) {
+      error("ERROR: labelOffset (%u) is too large for the number of continuous features (%u)\n",
+	    labelOffset, gomFS->numContinuous());
+    }
+    if (labelOffset + outputSize > gomFS->numContinuous()) {
+      error("ERROR: labelOffset (%u) + number of outputs (%u) is too large for the number of continuous features (%u)\n", 
+	    labelOffset, outputSize, gomFS->numContinuous());
+    }
+  }
   trrng_it = new Range::iterator(trrng->begin());
   while (!trrng_it->at_end()) {
     const unsigned segment = (unsigned)(*(*trrng_it));
@@ -367,8 +386,19 @@ main(int argc,char*argv[])
 	  *(p++) = (double)( *((float *)(obsData + w * stride) + obsOffset + j) );
 	}
       }
-      for (unsigned j=0; j < outputSize; j+=1) {
-	*(q++) = (double)( *((float *)obsData + labelOffset + j) );
+      if (oneHot) {
+	for (unsigned j=0; j < outputSize; j+=1) {
+	  unsigned label = *((unsigned *)obsData + labelOffset);
+	  if ( label >= outputSize ) {
+	    error("ERROR: oneHot label %u is too large for output size %u at frame %u in segment %u\n",
+		  label, outputSize, i, segment);
+	  }
+	  *(q++) = (j == label)  ?  1.0 : 0.0;
+	}
+      } else {
+	for (unsigned j=0; j < outputSize; j+=1) {
+	  *(q++) = (double)( *((float *)obsData + labelOffset + j) );
+	}
       }
       infoMsg(IM::Max,"Finished loading segment %u with %u frames.\n",segment,numFrames);
     }
