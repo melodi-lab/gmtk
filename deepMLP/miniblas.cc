@@ -3,7 +3,7 @@
 #  include <config.h>
 #endif
 
-#if !defined(HAVE_BLAS)
+#if !defined(HAVE_BLAS) && !defined(HAVE_MKL)
 #  include <math.h>
 #  include "miniblas.h"
 
