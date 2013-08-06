@@ -5,7 +5,6 @@
 #endif
 
 #if !defined(HAVE_BLAS) && !defined(HAVE_MKL)
-#  include <math.h>
 
 void cblas_dcopy(int n, double const* x, int incx, double *y, int incy);
 
