@@ -610,6 +610,161 @@ newViterbiValues(bool &first_C, unsigned &C_size, bool printObserved,
 
 
 
+
+/*
+ *
+ * This routine saves the viterbi values computed by the most recent
+ * linear inference run (assuming its data structures are still valid)
+ * to an observation file.
+ *
+ * Preconditions: 
+ *
+ *    Assumes that distributeEvidence has just been run and all data
+ *    structures (such as the compressed viterbi value array) are set
+ *    up appropriately. 
+ *
+ *    Assumes that inference_it is currently set for the current
+ *    segment.
+ *  
+ *    Assumes that the CC and CE partition pair random variables
+ *    have been properly set up.
+ * 
+ *
+ */
+void
+JunctionTree::viterbiValuesToObsFile(unsigned numFrames,
+				     FILE* vitFile,
+				     regex_t* preg,
+				     regex_t* creg,
+				     regex_t* ereg,
+				     char* partRangeFilter)
+{
+  if (vitFile) {
+    unsigned totalNumberPartitions;
+    (void) unroll(numFrames,ZeroTable,&totalNumberPartitions);
+    new (&inference_it) ptps_iterator(*this,totalNumberPartitions);
+    init_CC_CE_rvs(inference_it);
+  }
+
+  Range* partRange = NULL;
+  if (partRangeFilter != NULL) {
+    partRange = new Range(partRangeFilter,0,inference_it.pt_len());
+    if (partRange->length() == 0) { 
+      warning("WARNING: Part range filter must specify a valid non-zero "
+	      "length range within [0:%d]. Range given is %s\n",
+	      inference_it.pt_len(), partRangeFilter);
+      delete partRange;
+      partRange = NULL;
+    }
+  }
+  if (partRange == NULL)
+    partRange = new Range("all",0,inference_it.pt_len());
+
+  Range::iterator* partRange_it = new Range::iterator(partRange->begin());
+
+  while (!partRange_it->at_end()) {
+    unsigned part = (*partRange_it);
+    setCurrentInferenceShiftTo(part);
+    PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+
+    if (vitFile) {
+      readBinaryVitPartition(ps, part);
+    }
+    if (inference_it.at_p()) {
+      storeToObsFile(ps, P_partition_values.ptr, part, preg);
+    } else if (inference_it.at_e()) {
+      storeToObsFile(ps, E_partition_values.ptr, part, ereg);
+    } else {
+      assert ( inference_it.at_c() );      
+      storeToObsFile(ps, C_partition_values.ptr, part, creg);
+    }
+    (*partRange_it)++;
+  }
+  delete partRange;
+  //clearAfterUnroll();  ???
+}
+
+#define DO_IF_REGEX_MATCH(preg,rv,pcommand)             \
+    if (preg) { \
+      if (!regexec(preg,rv->name().c_str(),0,0,0)) {	\
+        pcommand; \
+      } \
+    } else { \
+        pcommand; \
+    }
+
+
+// THIS IS BROKEN! Have to base name list on complete original frame
+void
+computeVarOrder(vector<RV *> &sectionRVs, regex_t *preg, vector<string> &names) {
+  set<string> nameSet;
+  // collect the names selected by preg
+  for (unsigned i=0; i < sectionRVs.size(); i+=1) {
+    string name = sectionRVs[i]->name();
+    if (!preg || !regexec(preg, name.c_str(), 0,0,0)) {
+      if (!sectionRVs[i]->discrete()) 
+	error("ERROR: variable '%s' selected for Viterbi output to observation file is not discrete\n", name.c_str()); 
+      else 
+	nameSet.insert(name);
+    }
+  }
+  names.resize(0); // empty it
+  names.resize(nameSet.size());
+  // now add the selected names to the vector in output order
+  for (unsigned i=0; i < sectionRVs.size(); i+=1) {
+    if (names.size() == nameSet.size()) return; // got all the allowed names
+    string name = sectionRVs[i]->name();
+    if (nameSet.find(name) != nameSet.end()) {
+      names.push_back(name);
+    }
+  }
+  assert(names.size() == nameSet.size());
+}
+
+
+void
+JunctionTree::storeToObsFile(PartitionStructures &ps,
+			     unsigned *packed_values,
+			     unsigned part,
+			     regex_t *preg)
+{
+  if (ps.packer.packedLen() > 0)
+    ps.packer.unpack(packed_values
+		     + 
+		     (pt_i-1)*ps.packer.packedLen(),
+		     ps.hrvValuePtrs.ptr);
+  if (ps.packer.packedLen() > 0) {
+    vector<RV *> rvVector = ps.hidRVVector;
+
+    // check to see if we need to instantiate the output observation file
+    if (vitObsFile == NULL) {
+      // we need to get the names of the variables to output in order
+      computeVarOrder(rvVector, preg, vitObsVariableNames);
+      // we need to inform the user of the variable order in the output file
+      printf("Viterbi values will be stored in the observation file in the order:");
+      for (unsigned i=0; i < vitObsVariableNames.size(); i+=1) {
+	printf(" %s", vitObsVariableNames[i].c_str());
+      }
+      printf("\n");
+      // Now we can instantiate the file. This is Viterbi output, so there are no continuous features.
+      // The number of discrete features is the # of variables to output
+      vitObsFile = instantiateWriteFile(vitObsListName, vitObsFileName, vitObsNameSeparator, vitOBsFileFmt, 
+					0, vitObsVariableNames.size(), vitObsFileSwap);
+    }
+    // actual output. number written must be a multiple of vitObsVariableNames.size()
+    unsigned writtenCount = 0;
+    for (unsigned i=0; i < rvVector.size(); i+=1) {
+      DO_IF_REGEX_MATCH(preg,rvVector[i],{dynamic_cast<DiscRV *>(rvVector[i])->valueToObsFile(vitObsFile); writtenCount+=1;});
+    }
+    if (writtenCount % vitObsVariableNames.size() != 0) {
+      error("ERROR: All modified sections must output the same number of variables to the Viterbi observation file\n");
+    }
+  }
+}
+
+
+
+
 void
 JunctionTree::printModifiedSection(PartitionStructures &ps,
 				   unsigned *packed_values,
