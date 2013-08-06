@@ -1276,7 +1276,29 @@ public:
 			    sArray<unsigned> &previous_values,
 			    bool runLengthCompress = false,
 			    int frame = -1);
+
+  ObservationFile *vitObsFile;
+  char *vitObsFileName;
+  char *vitObsListName;
+  char *vitObsNameSeparator;
+  char *vitObsFileFmt;
+  bool  vitObsFileSwap;
+  vector<string> vitObsVariableNames;
+
+  void storeToObsFile(PartitionStructures &ps,
+		      unsigned *packed_values,
+		      unsigned part,
+		      regex_t *preg);
  public:
+
+  // this is like the printSavedPartitionViterbiValues(), but output
+  // goes to an ObservationFile
+  void viterbiValuesToObsFile(unsigned numFrames,
+			      FILE* vitFile,
+			      regex_t* preg,
+			      regex_t* creg,
+			      regex_t* ereg,
+			      char* partRangeFilter);
 
   // void saveViterbiValuesIsland(oDataStreamFile& vfile);
   // void saveViterbiValuesLinear(oDataStreamFile& vfile);

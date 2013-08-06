@@ -15,9 +15,9 @@ public:
 
     double beta;
 
-    ActFunc() : actType(LINEAR), beta(1.0) { }
+    ActFunc() : actType(LINEAR), beta(1.0) { assert(beta==1.0); }
 
-    ActFunc(ActType actType, double beta=1.0) : actType(actType), beta(beta) { }
+    ActFunc(ActType actType, double beta=1.0) : actType(actType), beta(beta) { assert(beta==1.0);}
 
     static double CubicSigmoid(double y) {
       // I have a vectorized implementation of this using SSE but
@@ -118,10 +118,10 @@ public:
         {
           auto func = [&](double aVal, double xVal)->double {
             if (beta * aVal < -30) {
-              negll -= xVal * beta * aVal;
+              negll -= xVal * aVal;
               return 0;
             } else if (beta * aVal > 30) {
-              negll += (1 - xVal) * beta * aVal;
+              negll += (1 - xVal) * aVal;
               return 1;
             } else {
               double p = 1.0 / (1.0 + exp(-beta * aVal));
@@ -145,7 +145,7 @@ public:
 
       case LOG_SIG:
         {
-          auto func = [beta](double aVal, double eVal) { return (1.0 - beta * aVal) * beta * aVal * eVal; };
+          auto func = [](double aVal, double eVal) { return (1.0 - aVal) * aVal * eVal; };
           activations.Apply(func, inError);
         }
         break;
@@ -183,7 +183,7 @@ public:
       switch (actType) {
       case LOG_SIG:
         {
-          auto func = [&](double aVal) { return (rand.Uniform() < beta * aVal) ? 1.0 : 0.0; };
+          auto func = [&](double aVal) { return (rand.Uniform() < aVal) ? 1.0 : 0.0; };
           sample.Replace(func, activations);
         }
         break;
