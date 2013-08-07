@@ -40,7 +40,7 @@ mnist_SOURCES = mnist.cc MNIST.h
 
 label_SOURCES = label.cc
 
-check_PROGRAMS = dmlpTest orderTest phipacTest
+check_PROGRAMS = dmlpTest orderTest phipacTest flat2vit
 
 dmlpTest_SOURCES = dmlpTest.cc
 orderTest_SOURCES = orderTest.cc
