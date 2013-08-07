@@ -1277,28 +1277,32 @@ public:
 			    bool runLengthCompress = false,
 			    int frame = -1);
 
-  ObservationFile *vitObsFile;
-  char *vitObsFileName;
-  char *vitObsListName;
-  char *vitObsNameSeparator;
-  char *vitObsFileFmt;
-  bool  vitObsFileSwap;
-  vector<string> vitObsVariableNames;
-
+#if 0
   void storeToObsFile(PartitionStructures &ps,
 		      unsigned *packed_values,
-		      unsigned part,
 		      regex_t *preg);
+#else
+  void storeToObsFile(int frame, vector<RV *> &rvs, regex_t *reg);
+#endif
+
  public:
 
-  // this is like the printSavedPartitionViterbiValues(), but output
+  static ObservationFile *vitObsFile;
+  static char *vitObsFileName;
+  static char *vitObsListName;
+  static const char *vitObsNameSeparator;
+  static const char *vitObsFileFmt;
+  static bool  vitObsFileSwap;
+  vector<string> vitObsVariableNames;
+
+  // this is like the printSavedViterbiFrames(), but output
   // goes to an ObservationFile
   void viterbiValuesToObsFile(unsigned numFrames,
-			      FILE* vitFile,
+			      FILE   * binVitFile,
 			      regex_t* preg,
 			      regex_t* creg,
 			      regex_t* ereg,
-			      char* partRangeFilter);
+			      char   * frameRangeFilter);
 
   // void saveViterbiValuesIsland(oDataStreamFile& vfile);
   // void saveViterbiValuesLinear(oDataStreamFile& vfile);

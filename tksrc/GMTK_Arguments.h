@@ -2002,6 +2002,12 @@ static bool writeLogVals = false;
 
   Arg("\n*** Decoding options ***\n"),
 
+  Arg("vitObsFileName", Arg::Opt, JunctionTree::vitObsFileName, "Output filename for Viterbi observation file"),
+  Arg("vitObsListFileName", Arg::Opt, JunctionTree::vitObsListName, "Output list filename for Viterbi observation file (HTK, ASCII, Binary)"),
+  Arg("vitObsNameSeparator", Arg::Opt, JunctionTree::vitObsNameSeparator, "String to use as separator when outputting HTK, ASCII, or binary Viterbi observation file"),
+  Arg("vitObsFileFormat", Arg::Opt, JunctionTree::vitObsFileFmt, "Output Viterbi observation file format (htk,binary,ascii,flatascii,pfile)"),
+  Arg("vitObsFileSwap", Arg::Opt, JunctionTree::vitObsFileSwap, "Do byte swapping when outputting PFile, HTK, or binary Viterbi observation file"),
+
   Arg("mVitValsFile",Arg::Opt,mVitValsFileName,"Modified Section Vit: file to print viterbi values in ASCII, '-' for stdout"),
 #ifndef GMTK_ONLINE_UNSUPPORTED
   Arg("vitValsFile",Arg::Opt,vitValsFileName,"Original Section Vit: file to print viterbi values in ASCII, '-' for stdout"),
@@ -2072,10 +2078,13 @@ static bool writeLogVals = false;
     error("%s: Can't use both -vitPrintRange and -vitFrameRange\n", argerr);
   }
 
-  if ( vitFrameRangeFilter && ! vitValsFileName ) {
-    error("%s: -vitFrameRange requires -vitValsFile to be specified\n", argerr);
+  if ( vitFrameRangeFilter && ! (vitValsFileName || JunctionTree::vitObsFileName)) {
+    error("%s: -vitFrameRange requires -vitValsFile or -vitObsFileName to be specified\n", argerr);
   }
 
+  if (JunctionTree::vitObsFileName && (vitValsFileName || mVitValsFileName) ) {
+    error("%s: -vitValsFileName cannot be used with -vitValsFileName or -mVitValsFileName\n", argerr);
+  }
 #else
 #endif
 #endif // defined(GMTK_ARG_NEW_DECODING_OPTIONS)
