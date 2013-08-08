@@ -1,6 +1,10 @@
+#if defined(HAVE_CONFIG_H)
+#  include <config.h>
+#endif
 
 #include <stdio.h>
 
+#if defined(USE_PHIPAC)
 extern "C" {
 void
 phipac_dgemm(char* transA, char* transB,
@@ -11,6 +15,7 @@ phipac_dgemm(char* transA, char* transB,
       double* beta,
       double* C, int* Cstride);
 }
+#endif
 
 void
 rowMajPrint(double *A, int M, int N, int stride) {
@@ -56,6 +61,7 @@ main(int argc, char *argv[]) {
 
   int Xstride = 3, Ystride = 3, Zstride = 3;
 
+#if defined(USE_PHIPAC)
   phipac_dgemm(&op, &op, 
 	       &M, &N, &K, 
 	       &alpha, 
@@ -63,6 +69,7 @@ main(int argc, char *argv[]) {
 	       Y, &Ystride, 
 	       &beta, 
 	       Z, &Zstride);
+#endif
 
   printf("Row Major Order:\n\n");
   rowMajPrint(X, 3,3,3);
