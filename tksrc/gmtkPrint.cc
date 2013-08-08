@@ -422,8 +422,8 @@ main(int argc,char*argv[])
 	error("Can't open file '%s' for writing\n",vitValsFileName);
     }
   }
-  if (!mVitValsFile && !vitValsFile) {
-    error("Argument Error: Missing REQUIRED argument: -mVitValsFile <str>  OR  -vitValsFile <str>\n");
+  if (!mVitValsFile && !vitValsFile && !JunctionTree::vitObsFileName) {
+    error("Argument Error: Missing REQUIRED argument: -mVitValsFile <str>  OR  -vitValsFile <str> OR -vitObsFileName <str>\n");
   }
 #endif
 
@@ -518,6 +518,10 @@ main(int argc,char*argv[])
     logpr probe(NULL, score);
 
     total_data_prob *= probe;
+
+    if (myjt.vitObsFileName) {
+      myjt.viterbiValuesToObsFile(numFrames, vitValsFile, vitPreg, vitCreg, vitEreg, vitFrameRangeFilter);
+    }
 
     if (mVitValsFile) {
       fprintf(mVitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",

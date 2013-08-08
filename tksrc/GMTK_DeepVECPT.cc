@@ -142,7 +142,7 @@ DeepVECPT::read(iDataStreamFile& is)
   cardinalities.resize(_numParents);
   // read the parent cardinality
   is.read(cardinalities[0],"Can't read DeepVirtualEvidenceCPT's parent cardinality");
-  
+  cached_CPT = new float[cardinalities[0]];
   // read the self cardinality, must be binary
   is.read(_card,"Can't read DeepVirtualEvidenceCPT's self cardinality");
   if (_card != 2)
@@ -284,7 +284,7 @@ DeepVECPT::read(iDataStreamFile& is)
 	  if (option_name != squashNum) {
 	    string error_message;
 	    stringprintf(error_message, "Expected 'squash%u:function but got '%s'",
-			 layer, layer, str.c_str());
+			 layer, str.c_str());
 	    throw(error_message);
 	  }
 	  layer_squash_name[layer] = option_value;
@@ -307,12 +307,16 @@ DeepVECPT::read(iDataStreamFile& is)
 	    }
 	  } else if (option_value == "tanh") {
 	    layer_squash_func[layer] = TANH;
-	  } else if (option_value == "ODDROOT") {
+	  } else if (option_value == "oddroot") {
 	    layer_squash_func[layer] = ODDROOT;
+	  } else if (option_value == "linear") {
+	    layer_squash_func[layer] = LINEAR;
+	  } else if (option_value == "rectlin") {
+	    layer_squash_func[layer] = RECTLIN;
 	  } else {
 	    string error_message;
-	    stringprintf(error_message, "Invalid squash function '%s', must be one of 'softmax', 'logistic', 'tanh', or 'oddroot'", 
-			 option_value.c_str());
+	    stringprintf(error_message, "Invalid squash function '%s', must be one of 'softmax', 'logistic', 'tanh', "
+			 " 'oddroot', 'linear', or 'rectlin'", option_value.c_str());
 	    throw(error_message);
 	  }
 	}
@@ -339,7 +343,7 @@ DeepVECPT::read(iDataStreamFile& is)
     // check that it works with the current global observation matrix.
     if (nfs + obs_file_foffset > globalObservationMatrix->numContinuous()) {
       string error_message;
-      stringprintf(error_message,"specifies %d floats and offset %d, but global observation matrix only has %d",
+      stringprintf(error_message,"specifies %d floats at offset %d, but global observation matrix only has %d",
 		   nfs,obs_file_foffset,globalObservationMatrix->numContinuous());
       throw(error_message);
     }
@@ -463,6 +467,11 @@ void DeepVECPT::becomeAwareOfParentValues( vector <RV *>& parents,
   curParentValue = RV2DRV(parents[0])->val;
 }
 
+void
+rectlin(float *q, unsigned len) {
+  for (unsigned i=0; i < len; i+=1)
+    if (q[i] < 0.0) q[i] = 0.0;
+}
 
 void
 softmax(float *q, unsigned len) {
@@ -554,6 +563,12 @@ squash(DeepVECPT::SquashFunction fn, float *q, unsigned len, float beta=1.0) {
   case DeepVECPT::ODDROOT:
     oddroot(q, len);
     break;
+  case DeepVECPT::LINEAR:
+    // q = q
+    break;
+  case DeepVECPT::RECTLIN:
+    rectlin(q, len);
+    break;
   default:
     assert(0); // impossible
   }
@@ -590,8 +605,9 @@ DeepVECPT::applyDeepModel(DiscRVType parentValue, DiscRV * drv) {
   input_vector[num_inputs-1] = 1.0; // homogeneous coordinates
   float *dest = input_vector;
   // guarantees [frame - window_radius, frame + window_radius] are in cache
-  float *src  = obs->floatVecAtFrame(frame) - window_radius * nfs; 
-  for (unsigned i = 0; i < 1 + 2 * window_radius; i+=1, src += nfs, dest += nfs) {
+  unsigned stride = obs->stride();
+  float *src  = obs->floatVecAtFrame(frame) - window_radius * stride + obs_file_foffset; 
+  for (unsigned i = 0; i < 1 + 2 * window_radius; i+=1, src += stride, dest += nfs) {
     memcpy(dest, src, nfs * sizeof(float));
   }
 #if 0

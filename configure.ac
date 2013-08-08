@@ -128,7 +128,7 @@ AC_PROG_AWK
 
 # Autotest suite
 
-AC_CONFIG_TESTDIR([tests],[tksrc:featureFileIO:miscSupport])
+AC_CONFIG_TESTDIR([tests],[tksrc:featureFileIO:miscSupport:deepMLP])
 AC_CONFIG_FILES([tests/Makefile tests/atlocal])
 
 AC_CONFIG_FILES([Makefile])
@@ -136,5 +136,6 @@ AC_CONFIG_SUBDIRS([IEEEFloatingpoint
                    miscSupport
                    featureFileIO
                    mitk
+		   deepMLP
                    tksrc])
 AC_OUTPUT

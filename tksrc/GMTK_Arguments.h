@@ -1724,6 +1724,134 @@ static float normalizeScoreEachClique = MaxClique::normalizeScoreEachClique;
 
 
 
+
+
+/*==============================================================================================================*/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+/****************************                                     ***********************************************/
+/****************************         DMLP TRAINING OPTIONS       ***********************************************/
+/****************************                                     ***********************************************/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+
+#if defined(GMTK_ARG_DMLP_TRAINING_OPTIONS)
+#if defined(GMTK_ARGUMENTS_DOCUMENTATION)
+  Arg("\n*** DMLP training options ***\n"),
+#endif
+#endif
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
+#if defined(GMTK_ARG_DMLP_TRAINING_PARAMS)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+static char const *DVECPTName         = NULL;
+static unsigned    labelOffset        = 0;
+static bool        oneHot             = true;
+
+  // backprop hyperparameters
+
+static double   bpInitStepSize = 1e-2;
+static double   bpMaxMomentum = 0.99;
+static double   bpMaxUpdate = 0.1;
+static double   bpL2 = 1e-3;
+static unsigned bpNumUpdates = 25000;
+static unsigned bpNumAnnealUpdates = 10000;
+static unsigned bpMiniBatchSize = 10;
+static unsigned bpCheckInterval = 2000;
+static bool     bpDropout = false;
+
+  // pretraining hyperparameters
+
+static double   ptInitStepSize = 1e-2;
+static double   ptMaxMomentum = 0.99;
+static double   ptMaxUpdate = 0.1;
+static double   ptL2 = 1e-3;
+static unsigned ptNumUpdates = 25000;
+static unsigned ptNumAnnealUpdates = 10000;
+static unsigned ptMiniBatchSize = 10;
+static unsigned ptCheckInterval = 2000;
+static bool     ptDropout = false;
+
+static char const *pretrainType = "CD";
+static DBN::PretrainType pretrainMode;
+static char const *pretrainActFuncStr = "TANH";
+static Layer::ActFunc iActFunc;
+
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+Arg("deepVECPTName", Arg::Req, DVECPTName, "Name of Deep VE CPT to train"),
+Arg("labelOffset", Arg::Req, labelOffset, "Position in observation file where output labels start"),
+Arg("oneHot", Arg::Opt, oneHot, "If true, labelOffset is the single discrete correct parent value, "
+                                "else the parent distribution starts ate labelOffset"),
+
+Arg("bpInitStepSize", Arg::Opt, bpInitStepSize, "Backprop: Initial step size hyperparameter"),
+Arg("bpMaxMomentum", Arg::Opt, bpMaxMomentum, "Backprop: Maximum momentum hyperparameter"),
+Arg("bpMaxUpdate", Arg::Opt, bpMaxUpdate, "Backprop: Maximum update hyperparameter"),
+Arg("bpL2", Arg::Opt, bpL2, "Backprop: l2 hyperparameter"),
+Arg("bpNumUpdates", Arg::Opt, bpNumUpdates, "Backprop: Number of updates hyperparameter"),
+Arg("bpNumAnnealUpdates", Arg::Opt, bpNumAnnealUpdates, "Backprop: Number of anneal updates hyperparameter"),
+Arg("bpMiniBatchSize", Arg::Opt, bpMiniBatchSize, "Backprop: Mini-batch size hyperparameter"),
+Arg("bpCheckInterval", Arg::Opt, bpCheckInterval, "Backprop: Check interval hyperparameter"),
+Arg("bpDropout", Arg::Opt, bpDropout, "Backprop: Dropout hyperparameter"),
+
+Arg("ptInitStepSize", Arg::Opt, ptInitStepSize, "Pretrain: Initial step size hyperparameter"),
+Arg("ptMaxMomentum", Arg::Opt, ptMaxMomentum, "Pretrain: Maximum momentum hyperparameter"),
+Arg("ptMaxUpdate", Arg::Opt, ptMaxUpdate, "Pretrain: Maximum update hyperparameter"),
+Arg("ptL2", Arg::Opt, ptL2, "Pretrain: l2 hyperparameter"),
+Arg("ptNumUpdates", Arg::Opt, ptNumUpdates, "Pretrain: Number of updates hyperparameter"),
+Arg("ptNumAnnealUpdates", Arg::Opt, ptNumAnnealUpdates, "Pretrain: Number of anneal updates hyperparameter"),
+Arg("ptMiniBatchSize", Arg::Opt, ptMiniBatchSize, "Pretrain: Mini-batch size hyperparameter"),
+Arg("ptCheckInterval", Arg::Opt, ptCheckInterval, "Pretrain: Check interval hyperparameter"),
+Arg("ptDropout", Arg::Opt, ptDropout, "Pretrain: Dropout hyperparameter"),
+
+Arg("pretrainType", Arg::Opt, pretrainType, "Pretraining type (none, AE, CD)"),
+Arg("pretrainActFunc", Arg::Opt, pretrainActFuncStr, "Pretraining input activation function (sig, tanh, cubic, linear, rect)"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+// error checks
+
+  if (strcasecmp(pretrainType, "AE") == 0) {
+    pretrainMode = DBN::AE;
+  } else if (strcasecmp(pretrainType, "CD") == 0) {
+    pretrainMode = DBN::CD;
+  } else if (strcasecmp(pretrainType, "none") == 0) {
+    pretrainMode = DBN::NONE;
+  } else {
+    error("%s: Unknown pretraining type '%s', must be 'AE' 'CD' or 'none'\n", argerr, pretrainType);
+  }
+
+  if (strcasecmp(pretrainActFuncStr, "sig") == 0) {
+    iActFunc = Layer::ActFunc::LOG_SIG;
+  } else if (strcasecmp(pretrainActFuncStr, "tanh") == 0) {
+    iActFunc = Layer::ActFunc::TANH;
+  } else if (strcasecmp(pretrainActFuncStr, "cubic") == 0) {
+    iActFunc = Layer::ActFunc::CUBIC;
+  } else if (strcasecmp(pretrainActFuncStr, "linear") == 0) {
+    iActFunc = Layer::ActFunc::LINEAR;
+  } else if (strcasecmp(pretrainActFuncStr, "rect") == 0) {
+    iActFunc = Layer::ActFunc::RECT_LIN;
+  } else {
+    error("%s: Unknown pretraining input activation function '%s', must be 'sig', 'tanh', 'cubic', 'linear', or 'rect'\n",
+	  argerr, pretrainActFuncStr);
+  }
+
+#else
+#endif
+#endif // defined(GMTK_ARG_EM_TRAINING_PARAMS)
+
+
+
+
+
 /*==============================================================================================================*/
 /****************************************************************************************************************/
 /****************************************************************************************************************/
@@ -1874,6 +2002,12 @@ static bool writeLogVals = false;
 
   Arg("\n*** Decoding options ***\n"),
 
+  Arg("vitObsFileName", Arg::Opt, JunctionTree::vitObsFileName, "Output filename for Viterbi observation file"),
+  Arg("vitObsListFileName", Arg::Opt, JunctionTree::vitObsListName, "Output list filename for Viterbi observation file (HTK, ASCII, Binary)"),
+  Arg("vitObsNameSeparator", Arg::Opt, JunctionTree::vitObsNameSeparator, "String to use as separator when outputting HTK, ASCII, or binary Viterbi observation file"),
+  Arg("vitObsFileFormat", Arg::Opt, JunctionTree::vitObsFileFmt, "Output Viterbi observation file format (htk,binary,ascii,flatascii,pfile)"),
+  Arg("vitObsFileSwap", Arg::Opt, JunctionTree::vitObsFileSwap, "Do byte swapping when outputting PFile, HTK, or binary Viterbi observation file"),
+
   Arg("mVitValsFile",Arg::Opt,mVitValsFileName,"Modified Section Vit: file to print viterbi values in ASCII, '-' for stdout"),
 #ifndef GMTK_ONLINE_UNSUPPORTED
   Arg("vitValsFile",Arg::Opt,vitValsFileName,"Original Section Vit: file to print viterbi values in ASCII, '-' for stdout"),
@@ -1944,10 +2078,13 @@ static bool writeLogVals = false;
     error("%s: Can't use both -vitPrintRange and -vitFrameRange\n", argerr);
   }
 
-  if ( vitFrameRangeFilter && ! vitValsFileName ) {
-    error("%s: -vitFrameRange requires -vitValsFile to be specified\n", argerr);
+  if ( vitFrameRangeFilter && ! (vitValsFileName || JunctionTree::vitObsFileName)) {
+    error("%s: -vitFrameRange requires -vitValsFile or -vitObsFileName to be specified\n", argerr);
   }
 
+  if (JunctionTree::vitObsFileName && (vitValsFileName || mVitValsFileName) ) {
+    error("%s: -vitValsFileName cannot be used with -vitValsFileName or -mVitValsFileName\n", argerr);
+  }
 #else
 #endif
 #endif // defined(GMTK_ARG_NEW_DECODING_OPTIONS)

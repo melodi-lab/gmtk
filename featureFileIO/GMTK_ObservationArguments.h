@@ -617,7 +617,7 @@ extern bool ObservationsAllowNan;
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("trrng",Arg::Opt,trrng_str,"Range to decode over segment file"),
+  Arg("trrng",Arg::Opt,trrng_str,"Range to train over segment file"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
