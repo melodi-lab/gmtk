@@ -77,7 +77,7 @@ check-local: atconfig atlocal $(TESTSUITE) testanddev gmtk_tests.at
 
 installcheck-local: atconfig atlocal $(TESTSUITE) testanddev gmtk_tests.at
 	$(SHELL) '$(srcdir)/$(TESTSUITE)' \
-	AUTOTEST_PATH='$(bindir):$(abs_top_builddir)/tksrc:$(abs_top_builddir)/miscSupport' \
+	AUTOTEST_PATH='$(bindir):$(abs_top_builddir)/tksrc:$(abs_top_builddir)/miscSupport:$(abs_top_builddir)/deepMLP' \
 	$(TESTSUITEFLAGS)
 
 clean-local:
