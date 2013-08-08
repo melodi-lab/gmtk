@@ -54,6 +54,7 @@
 #include "GMTK_FileParser.h"
 #include "GMTK_RV.h"
 #include "GMTK_DiscRV.h"
+#include "GMTK_ObsDiscRV.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_JunctionTree.h"
 #include "GMTK_GMParms.h"
@@ -676,6 +677,7 @@ JunctionTree::printOriginalSection(vector<RV *> sectionRVs,
     trigger = trigger && newViterbiValues(first_C, C_size, printObserved, sectionRVs, 
 					  hiddenRVs, previous_values, regex_mask, preg);
   if (trigger && printObserved && sectionRVs.size() > 0) {
+    setObservedRVs(sectionRVs);
     fprintf(f,"Ptn-%d %c: ",part, sectionLabel);
     if (frame > -1) {
       printRVSetAndValues(f,sectionRVs,true,preg, frame);
