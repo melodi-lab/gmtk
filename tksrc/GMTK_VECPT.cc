@@ -145,6 +145,8 @@ VECPT::read(iDataStreamFile& is)
   sentRange=NULL;
   preTransforms=NULL;
   postTransforms=NULL;
+  leftPad=0;
+  rightPad=0;
 
   string str;
   string option_name;
@@ -251,6 +253,20 @@ VECPT::read(iDataStreamFile& is)
 	    throw(error_message);
 	  }
 	}  
+	else if(option_name == "leftPad") {
+	  if (!strIsInt(option_value.c_str(), &leftPad)) {
+	    string error_message;
+	    stringprintf(error_message,"Invalid value '%s' for left padding option 'leftPad'. Must be integer.", option_value.c_str());
+	    throw(error_message);
+	  }
+	}
+	else if(option_name == "rightPad") {
+	  if (!strIsInt(option_value.c_str(), &rightPad)) {
+	    string error_message;
+	    stringprintf(error_message,"Invalid value '%s' for right padding option 'rightPad'. Must be integer.", option_value.c_str());
+	    throw(error_message);
+	  }
+	}
 	else {
 	  string error_message;
 	  stringprintf(error_message,"Unknown option:value pair '%s'",str.c_str());
@@ -473,7 +489,7 @@ VECPT::read(iDataStreamFile& is)
       }
       ObservationFile *obsFile = 
 	instantiateFile((unsigned)ifmt, (char *)obsFileName.c_str(), nfs, nis,
-			0, iswp, false, NULL, NULL, NULL, NULL,	sentRange, fmt.c_str());
+			0, iswp, false, NULL, NULL, NULL, NULL,	sentRange, fmt.c_str(), leftPad, rightPad);
 
       Filter *preFilt = instantiateFilters(preTransforms, obsFile->numLogicalContinuous(),
                                                           obsFile->numLogicalDiscrete());

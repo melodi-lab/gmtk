@@ -51,7 +51,7 @@
  *            |       ...      |                                
  *            |                |                                
  *         HDF5File        BinaryFile     -ofX -fmtX -niX -nfX -iswpX -srX 
- *                                        -prefrX -preirX -preprX
+ *                                        -prefrX -preirX -preprX -leftPad -rightPad
  *
  *
  */
