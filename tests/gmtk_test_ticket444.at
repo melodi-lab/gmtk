@@ -1,0 +1,22 @@
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/444 is fixed
+
+# If it's fixed, the Viterbi output should match the values observed in
+# the structure file
+
+AT_SETUP([Original section observed values (ticket 444)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/ticket444])
+AT_CHECK([(cd $TEST_AND_DEV/ticket444 &&
+  gmtkViterbi -of1 data.flat -ni1 1 -fmt1 flatascii -strF 444.str \
+    -inputM 444.mtr -allocateDenseCpts 2 -vitVals - -vitPrintObs) | grep Ptn],
+         [],[Ptn-0 P: foo(0)=2
+Ptn-1 C: foo(1)=1
+Ptn-2 C: foo(2)=1
+Ptn-3 C: foo(3)=1
+Ptn-4 C: foo(4)=1
+Ptn-5 C: foo(5)=1
+Ptn-6 C: foo(6)=1
+Ptn-7 C: foo(7)=1
+Ptn-8 C: foo(8)=1
+Ptn-8 E: foo(9)=0
+])
+AT_CLEANUP
