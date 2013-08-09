@@ -59,7 +59,8 @@ class PFileFile: public ObservationFile {
 	    char const *contFeatureRangeStr_=NULL, 
 	    char const *discFeatureRangeStr_=NULL, 
 	    char const *preFrameRangeStr_=NULL, 
-	    char const *segRangeStr_=NULL);
+	    char const *segRangeStr_=NULL,
+	    unsigned leftPad=0, unsigned rightPad=0);
 
   PFileFile(const char *name, unsigned nfloats, unsigned nints, bool swap, int debug_level=0) 
     : fileName((char *)name)
