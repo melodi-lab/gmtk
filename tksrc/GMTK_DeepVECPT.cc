@@ -12,7 +12,7 @@
  * (in a masterfile:)
 
 
-REAL_MAT_IN_FILE inline <m>
+DOUBLE_MAT_IN_FILE inline <m>
 0
 matrixName0
 <rows>              % # of outputs
@@ -142,7 +142,7 @@ DeepVECPT::read(iDataStreamFile& is)
   cardinalities.resize(_numParents);
   // read the parent cardinality
   is.read(cardinalities[0],"Can't read DeepVirtualEvidenceCPT's parent cardinality");
-  
+  cached_CPT = new double[cardinalities[0]];
   // read the self cardinality, must be binary
   is.read(_card,"Can't read DeepVirtualEvidenceCPT's self cardinality");
   if (_card != 2)
@@ -243,7 +243,7 @@ DeepVECPT::read(iDataStreamFile& is)
 	  string::size_type pos=str.find(":",0);
 	  if (pos == string::npos || len < 7 || pos == 0) {
 	    string error_message;
-	    stringprintf(error_message,"Invalid format '%s' which should be of form 'matrix%u:name' where 'name' is the name of a real matrix.",
+	    stringprintf(error_message,"Invalid format '%s' which should be of form 'matrix%u:name' where 'name' is the name of a double matrix.",
 			 str.c_str(), layer);
 	    throw(error_message);
 	  }
@@ -258,14 +258,14 @@ DeepVECPT::read(iDataStreamFile& is)
 	    throw(error_message);
 	  }
 	  layer_matrix_name[layer] = option_value;
-	  if (GM_Parms.realMatsMap.find(option_value) == GM_Parms.realMatsMap.end()) {
+	  if (GM_Parms.doubleMatsMap.find(option_value) == GM_Parms.doubleMatsMap.end()) {
 	    string error_message;
-	    stringprintf(error_message,"DeepVirtualEvidenceCPT '%s' specifies real matrix name '%s' that does not exist",
+	    stringprintf(error_message,"DeepVirtualEvidenceCPT '%s' specifies double matrix name '%s' that does not exist",
 			 _name.c_str(), option_value.c_str());
 	    throw(error_message);
 	  }
-	  unsigned matrix_index = GM_Parms.realMatsMap[option_value];
-	  layer_matrix[layer] = GM_Parms.realMats[matrix_index];
+	  unsigned matrix_index = GM_Parms.doubleMatsMap[option_value];
+	  layer_matrix[layer] = GM_Parms.doubleMats[matrix_index];
 
 	  is.read(str);
 	  // parse the string we have just read
@@ -273,7 +273,7 @@ DeepVECPT::read(iDataStreamFile& is)
 	  pos=str.find(":",0);
 	  if (pos == string::npos || len < 7 || pos == 0) {
 	    string error_message;
-	    stringprintf(error_message,"Invalid format '%s' which should be of form 'matrix%u:name' where 'name' is the name of a real matrix.", 
+	    stringprintf(error_message,"Invalid format '%s' which should be of form 'matrix%u:name' where 'name' is the name of a double matrix.", 
 			 str.c_str(), layer);
 	    throw(error_message);
 	  }
@@ -284,7 +284,7 @@ DeepVECPT::read(iDataStreamFile& is)
 	  if (option_name != squashNum) {
 	    string error_message;
 	    stringprintf(error_message, "Expected 'squash%u:function but got '%s'",
-			 layer, layer, str.c_str());
+			 layer, str.c_str());
 	    throw(error_message);
 	  }
 	  layer_squash_name[layer] = option_value;
@@ -307,12 +307,16 @@ DeepVECPT::read(iDataStreamFile& is)
 	    }
 	  } else if (option_value == "tanh") {
 	    layer_squash_func[layer] = TANH;
-	  } else if (option_value == "ODDROOT") {
+	  } else if (option_value == "oddroot") {
 	    layer_squash_func[layer] = ODDROOT;
+	  } else if (option_value == "linear") {
+	    layer_squash_func[layer] = LINEAR;
+	  } else if (option_value == "rectlin") {
+	    layer_squash_func[layer] = RECTLIN;
 	  } else {
 	    string error_message;
-	    stringprintf(error_message, "Invalid squash function '%s', must be one of 'softmax', 'logistic', 'tanh', or 'oddroot'", 
-			 option_value.c_str());
+	    stringprintf(error_message, "Invalid squash function '%s', must be one of 'softmax', 'logistic', 'tanh', "
+			 " 'oddroot', 'linear', or 'rectlin'", option_value.c_str());
 	    throw(error_message);
 	  }
 	}
@@ -339,7 +343,7 @@ DeepVECPT::read(iDataStreamFile& is)
     // check that it works with the current global observation matrix.
     if (nfs + obs_file_foffset > globalObservationMatrix->numContinuous()) {
       string error_message;
-      stringprintf(error_message,"specifies %d floats and offset %d, but global observation matrix only has %d",
+      stringprintf(error_message,"specifies %d floats at offset %d, but global observation matrix only has %d",
 		   nfs,obs_file_foffset,globalObservationMatrix->numContinuous());
       throw(error_message);
     }
@@ -361,7 +365,7 @@ DeepVECPT::read(iDataStreamFile& is)
     // check that layer 0 matches the input vector size (+1 for bias element)
     if (layer_matrix[0]->cols() != (int)((1 + 2 * window_radius) * nfs + 1)) {
       string error_message;
-      stringprintf(error_message, "DeepVirtualEvidenceCPT '%s' requires matrix0 to have %u columns, but real matrix '%s' has %d columns", 
+      stringprintf(error_message, "DeepVirtualEvidenceCPT '%s' requires matrix0 to have %u columns, but double matrix '%s' has %d columns", 
 		   _name.c_str(), (1+2*window_radius)*nfs + 1, layer_matrix_name[0].c_str(), layer_matrix[0]->cols());
       throw(error_message);
     }
@@ -372,7 +376,7 @@ DeepVECPT::read(iDataStreamFile& is)
     for (unsigned i=0; i < num_matrices; i+=1) {
       if (layer_matrix[i]->rows() != (int)layer_output_count[i]) {
 	string error_message;
-	stringprintf(error_message,"DeepVirtualEvicenceCPT '%s' expects real matrix '%s' to have %u rows, but it has %d",
+	stringprintf(error_message,"DeepVirtualEvicenceCPT '%s' expects double matrix '%s' to have %u rows, but it has %d",
 		     _name.c_str(), layer_matrix_name[i].c_str(), layer_output_count[i], layer_matrix[i]->rows());
 	throw(error_message);
       }
@@ -385,7 +389,7 @@ DeepVECPT::read(iDataStreamFile& is)
     for (unsigned i=1; i < num_matrices; i+=1) {
       if (layer_matrix[i]->cols() != (int)layer_output_count[i-1] + 1) {
 	string error_message;
-	stringprintf(error_message,"DeepVirtualEvidenceCPT '%s' expects real matrix '%s' to have %u cols, but it has %d",
+	stringprintf(error_message,"DeepVirtualEvidenceCPT '%s' expects double matrix '%s' to have %u cols, but it has %d",
 		     _name.c_str(), layer_matrix_name[i].c_str(), layer_output_count[i-1]+1, layer_matrix[i]->cols());
 	throw(error_message);
       }
@@ -463,10 +467,15 @@ void DeepVECPT::becomeAwareOfParentValues( vector <RV *>& parents,
   curParentValue = RV2DRV(parents[0])->val;
 }
 
+void
+rectlin(double *q, unsigned len) {
+  for (unsigned i=0; i < len; i+=1)
+    if (q[i] < 0.0) q[i] = 0.0;
+}
 
 void
-softmax(float *q, unsigned len) {
-  float k  = *q;
+softmax(double *q, unsigned len) {
+  double k  = *q;
 #if 1
   unsigned n;
   if (len % 2) {
@@ -477,7 +486,7 @@ softmax(float *q, unsigned len) {
     }
     n = 2;
   }
-  float k2 = k;
+  double k2 = k;
   for (unsigned i=n; i < len; i+=2) {
     k  = (k  > q[i])   ? k  : q[i];
     k2 = (k2 > q[i+1]) ? k2 : q[i+1];
@@ -488,47 +497,47 @@ softmax(float *q, unsigned len) {
     if (k < q[i])
       k = q[i];
 #endif
-  float sum = 0.0;
+  double sum = 0.0;
   for (unsigned i=0; i < len; i+=1)
-    sum += expf(q[i] - k);
-  sum = logf(sum);
+    sum += exp(q[i] - k);
+  sum = log(sum);
   for (unsigned i=0; i < len; i+=1)
-    q[i] = expf ( q[i] - k - sum );
+    q[i] = exp ( q[i] - k - sum );
 }
 
 void
-logistic(float *q, unsigned len, float beta=1.0) {
+logistic(double *q, unsigned len, float beta=1.0) {
   for (unsigned i=0; i < len; i+=1)
-    q[i] = 1.0 / (1.0 + expf( -beta * q[i] ));
+    q[i] = 1.0 / (1.0 + exp( -beta * q[i] ));
 }
 
 void
-hyptan(float *q, unsigned len) {
+hyptan(double *q, unsigned len) {
   for (unsigned i=0; i < len; i+=1) 
-    q[i] = tanhf(q[i]);
+    q[i] = tanh(q[i]);
 }
 
 #if 0
 #define CUBE_ROOT_OF_2 1.25992104989
 void
-oddroot(float *q, unsigned len) {
+oddroot(double *q, unsigned len) {
   for (unsigned i=0; i < len; i+=1) {
-    float x = powf( 3 * q[i] + sqrtf( 4.0 + 9.0 * q[i] * q[i] ), 1.0/3.0 );
+    double x = pow( 3 * q[i] + sqrt( 4.0 + 9.0 * q[i] * q[i] ), 1.0/3.0 );
     q[i] = x / CUBE_ROOT_OF_2 - CUBE_ROOT_OF_2 / x;
   }
 }
 #else
 void
-oddroot(float *q, unsigned len) {
+oddroot(double *q, unsigned len) {
   for (unsigned i=0; i < len; i+=1) {
-    float y = q[i];
+    double y = q[i];
     bool negate = false;
     if (y < 0) { negate = true; y = -y; }
-    float x = (y <= 20) ? y : powf(3.0 * y, 1.0/3.0);
+    double x = (y <= 20) ? y : pow(3.0 * y, 1.0/3.0);
 
-    float newX;
+    double newX;
     while (true) {
-      float xSqr = x * x;
+      double xSqr = x * x;
       newX = (0.66666666666666666 * xSqr * x + y) / (xSqr + 1.0);
       if (newX >= x) break;
       x = newX;
@@ -540,7 +549,7 @@ oddroot(float *q, unsigned len) {
 
 
 void
-squash(DeepVECPT::SquashFunction fn, float *q, unsigned len, float beta=1.0) {
+squash(DeepVECPT::SquashFunction fn, double *q, unsigned len, float beta=1.0) {
   switch (fn) {
   case DeepVECPT::SOFTMAX:
     softmax(q, len);
@@ -553,6 +562,12 @@ squash(DeepVECPT::SquashFunction fn, float *q, unsigned len, float beta=1.0) {
     break;
   case DeepVECPT::ODDROOT:
     oddroot(q, len);
+    break;
+  case DeepVECPT::LINEAR:
+    // q = q
+    break;
+  case DeepVECPT::RECTLIN:
+    rectlin(q, len);
     break;
   default:
     assert(0); // impossible
@@ -586,24 +601,27 @@ DeepVECPT::applyDeepModel(DiscRVType parentValue, DiscRV * drv) {
   cached_segment = obs->segmentNumber();
 
   unsigned num_inputs = nfs * ( 2 * window_radius + 1 ) + 1;
-  float *input_vector = new float[num_inputs];
+  double *input_vector = new double[num_inputs];
   input_vector[num_inputs-1] = 1.0; // homogeneous coordinates
-  float *dest = input_vector;
+  double *dest = input_vector;
   // guarantees [frame - window_radius, frame + window_radius] are in cache
-  float *src  = obs->floatVecAtFrame(frame) - window_radius * nfs; 
-  for (unsigned i = 0; i < 1 + 2 * window_radius; i+=1, src += nfs, dest += nfs) {
-    memcpy(dest, src, nfs * sizeof(float));
+  unsigned stride = obs->stride();
+  float *src  = obs->floatVecAtFrame(frame) - window_radius * stride + obs_file_foffset; 
+  for (unsigned i = 0; i < 1 + 2 * window_radius; i+=1, src += stride, dest += nfs) {
+    for (unsigned j=0; j < nfs; j+=1) {
+      dest[j] = (double)(src[j]);
+    }
   }
 #if 0
 printf("%02u:", frame);
 for(unsigned i=0; i < num_inputs; i+=1)
   printf(" %f", input_vector[i]);
 #endif
-  float *output_vector[2];
-  output_vector[0] = new float[max_outputs+1]; // big enough to hold any layer's output (+1 for homogeneous coordinates)
-  output_vector[1] = new float[max_outputs+1];
+  double *output_vector[2];
+  output_vector[0] = new double[max_outputs+1]; // big enough to hold any layer's output (+1 for homogeneous coordinates)
+  output_vector[1] = new double[max_outputs+1];
 
-  mul_mfmf_mf(layer_output_count[0], num_inputs, 1, 
+  mul_mdmd_md(layer_output_count[0], num_inputs, 1, 
 	      layer_matrix[0]->values.ptr, input_vector, output_vector[0], 
 	      num_inputs, 1, 1);
   delete[] input_vector;
@@ -614,13 +632,13 @@ for(unsigned i=0; i < num_inputs; i+=1)
   for (unsigned layer=1; layer < num_matrices; layer += 1) {
     input_vector = output_vector[cur_output_vector];
     cur_output_vector = (cur_output_vector + 1) % 2;
-    mul_mfmf_mf(layer_output_count[layer], layer_output_count[layer-1]+1, 1, 
+    mul_mdmd_md(layer_output_count[layer], layer_output_count[layer-1]+1, 1, 
 		layer_matrix[layer]->values.ptr, input_vector, output_vector[cur_output_vector], 
 		layer_output_count[layer-1]+1, 1, 1);
     squash(layer_squash_func[layer], output_vector[cur_output_vector], layer_output_count[layer], layer_logistic_beta[0]);
     output_vector[cur_output_vector][layer_output_count[layer]] = 1.0;
   }
-  memcpy(cached_CPT, output_vector[cur_output_vector], parentCardinality(0) * sizeof(float));
+  memcpy(cached_CPT, output_vector[cur_output_vector], parentCardinality(0) * sizeof(double));
 #if 0
 printf(" ->");
 for (unsigned i=0; i < parentCardinality(0); i+=1)
@@ -677,7 +695,7 @@ DeepVECPT::probGivenParents(vector <RV *>& parents, DiscRV * drv) {
   for (unsigned layer=1; layer < num_matrices; layer += 1) {
     input_vector = output_vector[cur_output_vector];
     cur_output_vector = (cur_output_vector + 1) % 2;
-    mul_mfmf_mf(layer_output_count[layer], layer_output_count[layer-1]+1, 1, 
+    mul_mdmd_md(layer_output_count[layer], layer_output_count[layer-1]+1, 1, 
 		layer_matrix[layer]->values.ptr, input_vector, output_vector[cur_output_vector], 
 		layer_output_count[layer-1]+1, 1, 1);
     squash(layer_squash_func[layer], output_vector[cur_output_vector], layer_output_count[layer]);
