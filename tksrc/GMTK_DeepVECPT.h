@@ -12,7 +12,7 @@
  *   virtual online evidence to variable A.  In this way, the actual
  *   deep model outputs need not even be probabilties, they can be
  *   arbitrary scores. If C is hidden, however, then the values of
- *   P(C=0|A=a) are taken to be 1-P(C=0|A=a), so in such a case (when
+ *   P(C=0|A=a) are taken to be 1-P(C=1|A=a), so in such a case (when
  *   C is hidden) it is more sensible for the scores for each a to be
  *   actual values between 0 and 1.
  *
@@ -39,7 +39,7 @@
 #include "GMTK_NamedObject.h"
 #include "GMTK_ObservationSource.h"
 #include "GMTK_FileSource.h"
-#include "GMTK_RealMatrix.h"
+#include "GMTK_DoubleMatrix.h"
 
 // we need to interface to the external global observation
 // matrix object to get some parametes (such as start skip, end skip,
@@ -58,7 +58,7 @@ class DeepVECPT : public CPT {
   // to the deep model for frame t
   unsigned window_radius; 
 
-  // number of floats expeced in the file
+  // number of floats expected in the file
   unsigned nfs;
 
   // these variables are used in case that we
@@ -82,7 +82,9 @@ class DeepVECPT : public CPT {
     SOFTMAX,
     LOGISTIC,
     TANH,
-    ODDROOT
+    ODDROOT,
+    LINEAR,
+    RECTLIN
   };
 
  private:
@@ -94,12 +96,12 @@ class DeepVECPT : public CPT {
   vector<string>         layer_squash_name;
   vector<SquashFunction> layer_squash_func;
   vector<float>          layer_logistic_beta;
-  vector<RealMatrix *>   layer_matrix;
+  vector<DoubleMatrix *>   layer_matrix;
 
   // remember the computed CPT so we don't have to recompute it
   unsigned  cached_segment; 
   unsigned  cached_frame;
-  float    *cached_CPT;
+  double   *cached_CPT;
 
   logpr applyDeepModel(DiscRVType parentValue, DiscRV * drv);
 
@@ -109,10 +111,9 @@ public:
   // General constructor, 
   // VECPTs always have one parent, and a binary child.
   DeepVECPT() : CPT(di_DeepVECPT), num_matrices(0),
-    cached_segment(0xFFFFFFFF), cached_frame(0xFFFFFFFF)
+    cached_segment(0xFFFFFFFF), cached_frame(0xFFFFFFFF), cached_CPT(NULL)
   { 
     _numParents = 1; _card = 2; cardinalities.resize(_numParents); 
-    cached_CPT = new float[parentCardinality(0)];
   }
   ~DeepVECPT() { if (cached_CPT) delete[] cached_CPT; }
 
@@ -120,6 +121,49 @@ public:
   // change not only from segment to segment, but even within a
   // segment.
   bool iterable() { return true; }
+
+  unsigned numInputs() { return nfs * ( 2 * window_radius + 1 ); } // +1 additional for bias
+
+  unsigned numOutputs() { return layer_output_count[num_matrices-1]; }
+
+  unsigned layerOutputs(unsigned layer) { 
+    assert(layer < layer_output_count.size());
+    return layer_output_count[layer]; 
+  }
+
+  unsigned windowRadius() { return window_radius; }
+
+  SquashFunction getSquashFn(unsigned layer) {
+    assert(layer < layer_squash_func.size());
+    return layer_squash_func[layer];
+  }
+
+  void setParams(unsigned layer, double const *weights, unsigned ld, double const *bias) {
+    assert(layer < layer_matrix.size());
+    DoubleMatrix *w = layer_matrix[layer];
+    unsigned rows = w->_rows;
+    unsigned cols = w->_cols;
+    for (unsigned r=0; r < rows; r+=1) {
+      unsigned c;
+      for (c=0; c < cols - 1; c+=1) {
+	// weights come in column-major order but transposed; store them in row-major
+	w->values[ r * cols + c ] = weights[ r * ld + c ];
+      }
+      w->values[ r * cols + c ] = bias[r];
+    }
+  }
+
+  unsigned numLayers() { return num_matrices; }
+
+  unsigned obsOffset() { return obs_file_foffset; }
+  
+  vector<DoubleMatrix *> &getMatrices() { return layer_matrix; }
+
+  float getBeta(unsigned layer) {
+    assert(layer < layer_logistic_beta.size());
+    assert(layer_squash_func[layer] == LOGISTIC);
+    return layer_logistic_beta[layer];
+  }
 
   ///////////////////////////////////////////////////////////    
   // Semi-constructors: useful for debugging.
@@ -170,6 +214,15 @@ public:
   // sense.
   unsigned totalNumberParameters() { return 0; }
 
+  // The above is true for EM training, but gmtkDMLPtrain actually
+  // learns the deep VE CPT parameters, so count them
+  unsigned totalNumberDMLPParameters() {
+    unsigned total = 0;
+    for (unsigned i=0; i < num_matrices; i+=1) 
+      total += (unsigned)(layer_matrix[i]->rows() * layer_matrix[i]->cols());
+    return total;
+  }
+
   ///////////////////////////////////////////////////////////  
   // These routines are no-ops in this case since all
   // distributions come from files.
@@ -192,7 +245,7 @@ public:
   void emEndIteration() {}
   void emSwapCurAndNew() {}
 
-  // parallel training (DeepVECPTs are never trained)
+  // parallel training (DeepVECPTs are never EM trained)
   void emStoreObjectsAccumulators(oDataStreamFile& ofile,
 				  bool writeLogVals = true,
 				  bool writeZeros = false) {}

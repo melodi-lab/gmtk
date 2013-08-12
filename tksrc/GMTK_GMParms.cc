@@ -3208,6 +3208,12 @@ void GMParms::markUsedMixtureComponents(bool remove_unnamed)
     for (unsigned i=0;i<mixtures.size();i++)
       mixtures[i]->recursivelySetUsedBit();
 
+  for (unsigned i=0; i < deepVECpts.size(); i+=1) {
+    vector<DoubleMatrix *> mats = deepVECpts[i]->getMatrices();
+    for (unsigned m=0; m < mats.size(); m += 1) {
+      mats[m]->recursivelySetUsedBit();
+    }
+  }
 }
 
 

@@ -1,0 +1,83 @@
+
+# We need dgemm, which can come from PHiPAC, MKL, or BLAS
+# PHiPAC is "built-in" to GMTK, so it is preferred. A well-tuned
+# MKL or BLAS dgemm might be faster, so --disable-phipac if
+# you don't want the PHiPAC dgemm
+
+AC_ARG_ENABLE([phipac],
+   [AS_HELP_STRING([--disable-phipac], [use BLAS or MKL matrix multiply instead of PHiPAC])],
+   [AS_IF([test x$enable_phipac == xyes], 
+      [AC_DEFINE([USE_PHIPAC],1,[prefer PHiPAC dGEMM over MKL/BLAS])])],
+   [AC_DEFINE([USE_PHIPAC],1,[prefer PHiPAC dGEMM over MKL/BLAS])])
+AM_CONDITIONAL([USE_PHIPAC],[test x$enable_phipac != xno])
+
+# We need a BLAS. ATLAS or Goto are nice. MKL also provides BLAS.
+# By default, we'll try to use a BLAS located either by pkg-config
+# or in your default build search paths. You can specify
+#   --with-blas-include=<dir> 
+#   --with-blas-libdir=<dir>
+#   --with-blas-libs=<libraries>
+# if you want to use a particular BLAS. If you don't specify any
+# of the above, we will try pkg-config cblas to locate the BLAS.
+# If the --with-blas-* weren't specified and pkg-config fails to 
+# find the BLAS, we just guess -I/usr/include -L/usr/lib -lcblas
+#
+# If you prefer to use MKL instead of a BLAS, see --with-mkl
+
+AC_ARG_WITH([blas-include],
+   [AS_HELP_STRING([--with-blas-include=<dir>], [use non-MKL BLAS includes found under <dir> @<:@/usr/include@:>@])],
+   [AS_IF([test "x$with_blas_include" != "xno"], [BLAS_INCLUDE=-I$with_blas_include], [BLAS_INCLUDE=""])
+    BLAS_REQUEST=yes],
+   [BLAS_INCLUDE=""])
+# assume -I/usr/include is already included in the include seach path  
+
+AC_ARG_WITH([blas-libdir],
+   [AS_HELP_STRING([--with-blas-libdir=<dir>], [use non-MKL BLAS libraries found under <dir> @<:@/usr/lib@:>@])],
+   [AS_IF([test "x$with_blas_libdir" != "xno"], [BLAS_LIBDIR=-L$with_blas_libdir], [BLAS_LIBDIR=""])
+    BLAS_REQUEST=yes],
+   [BLAS_LIBDIR=""])
+# assume -L/usr/lib is already included in the library seach path  
+
+AC_ARG_WITH([blas-libs],
+   [AS_HELP_STRING([--with-blas-libs=<libraries>], [-l flags for non-MKL BLAS library @<:@-lcblas@:>@])],
+   [AS_IF([test "x$with_blas_libs" != "xno"], [BLAS_LIBS=$with_blas_libs], [BLAS_LIBS=""])
+    BLAS_REQUEST=yes],
+   [BLAS_LIBS=""])
+# assume libcblas.* is what we want
+
+
+#AC_ARG_WITH([blas],
+#   [AS_HELP_STRING([--with-blas=<dir>], [use (non-MKL) BLAS installation in <dir>])],
+#   [AS_IF([test "x$with_blas" != "xno"],[use_blas=yes; BLASROOT=$with_blas],[use_blas=no])],
+#   [use_blas=no])
+
+# If you want to use MKL instead of BLAS, use --with-mkl=<dir> to
+# specify where the MKL installation lives. 
+
+# NOTE that it is the absence of --with-mk (or presence of --without-mkl)
+# that turns on usage of BLAS. 
+
+AC_ARG_WITH([mkl],
+   [AS_HELP_STRING([--with-mkl=<dir>], [use MKL installation in <dir>])],
+   [AS_IF([test "x$with_mkl" != "xno"],[use_mkl=yes; MKLROOT=$with_mkl; use_blas=no],[use_mkl=no; use_blas=yes])],
+   [use_mkl=no; use_blas=yes])
+
+AC_ARG_WITH([mkl-thread],
+   [AS_HELP_STRING([--with-mkl-thread=<lib>], 
+     [use MKL threading library <lib> (sequential, intel_thread, pgi_thread, gnu_thread) @<:@sequential@:>@])],
+   [case $with_mkl_thread in
+      intel_thread | pgi_thread | sequential | gnu_thread) ;;
+      no) with_mkl_thread=sequential ;;
+      *) AC_MSG_ERROR([Unknown MKL threading layer: $with_mkl_threading]) ;;
+    esac],
+    [with_mkl_thread=sequential])
+
+AC_ARG_ENABLE([mkl-ilp64],
+  [AS_HELP_STRING([--enable-mkl-ilp64], [use ilp64 instead of lp64 interface for MKL])],
+  [AS_IF([test "x$enable_mkl_ilp64" != "xno"], [mkl_interface=ilp64], [mkl_interface=lp64])],
+  [mkl_interface=lp64])
+
+AC_ARG_ENABLE([mkl-ia32],
+  [AS_HELP_STRING([--enable-mkl-ia32], [use ia32 instead of x84_64 build of MKL])],
+  [AS_IF([test "x$enable_mkl_ia32" != "xno"], [mkl_arch=ia32], [mkl_arch=intel64])],
+  [mkl_arch=intel64])
