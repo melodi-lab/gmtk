@@ -1245,7 +1245,7 @@ public:
 			    unsigned *packed_values,
 			    bool useVitTrigger,
 			    vector< pair< string,int> > &vitTriggerVec,
-			    string &vitRiggerExpr,
+			    string &vitTriggerExpr,
 			    RngDecisionTree::EquationClass &vitTriggerEqn,
 			    bool printObserved,
 			    unsigned part,
@@ -1263,7 +1263,7 @@ public:
 			    vector<RV *> hiddenRVs,
 			    bool useVitTrigger,
 			    vector< pair< string,int> > &vitTriggerVec,
-			    string &vitRiggerExpr,
+			    string &vitTriggerExpr,
 			    RngDecisionTree::EquationClass &vitTriggerEqn,
 			    bool printObserved,
 			    unsigned part,
@@ -1277,13 +1277,13 @@ public:
 			    bool runLengthCompress = false,
 			    int frame = -1);
 
-#if 0
-  void storeToObsFile(PartitionStructures &ps,
-		      unsigned *packed_values,
-		      regex_t *preg);
-#else
-  void storeToObsFile(int frame, vector<RV *> &rvs, regex_t *reg);
-#endif
+  void storeToObsFile(int frame, 
+		      vector<RV *> &rvs, 
+		      bool useVitTrigger,
+		      vector< pair< string,int> > &vitTriggerVec, 
+		      string &vitTriggerExpr, 
+		      RngDecisionTree::EquationClass &vitTriggerEqn,
+		      regex_t *reg);
 
  public:
 
@@ -1369,14 +1369,12 @@ public:
 			       regex_t* ereg,
 			       char* partRangeFilter);
 
-#if 1
   void printSavedViterbiValues(unsigned numFrames,
 			       FILE *f, FILE* binVitFile,
 			       bool printObserved,
 			       regex_t *preg,
 			       regex_t* creg,
 			       regex_t* ereg);
-#endif
 
   void printSavedViterbiFrames(unsigned numFrames,
 			       FILE *f, FILE *binVitFile,
