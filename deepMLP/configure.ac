@@ -23,7 +23,6 @@ AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
 AM_SILENT_RULES([yes])
 
 m4_include([blas_args])
-m4_include([boost_args])
 
 # Checks for programs.
 
@@ -35,24 +34,6 @@ AC_PROG_AWK
 # Checks for libraries.
 
 m4_include([blas_check])
-
-AC_MSG_CHECKING([for Boost])
-AC_LANG_PUSH([C++])
-boost_save_CPP=$CPPLAGS
-CPPFLAGS=$BOOST_CPPFLAGS
-boost_save_LDFLAGS=$LDFLAGS
-LDFLAGS=$BOOST_LDFLAGS
-boost_save_LIBS=$LIBS
-LIBS="-lboost_filesystem -lboost_system"
-AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <boost/filesystem.hpp> 
-                                  using namespace boost::filesystem;]],
-                   [[return file_size("/dev/null") > 0;]])],
-  [AC_MSG_RESULT([yes])],[AC_MSG_RESULT([no])
-                          AC_MSG_ERROR([no Boost available])])
-LIBS=$boost_save_LIBS
-LDFLAGS=$boost_save_LDFLAGS
-CPPFLAGS=$boost_save_CPPFLAGS
-AC_LANG_POP([C++])
 
 # Checks for header files.
 

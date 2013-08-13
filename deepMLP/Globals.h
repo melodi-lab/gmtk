@@ -2,9 +2,8 @@
 
 #include <emmintrin.h>
 #include <xmmintrin.h>
-#include <boost/math/special_functions/fpclassify.hpp>
 #include <limits>
-#include <math.h>
+#include <cmath>
 #include <iostream>
 #include <string>
 #include <fstream>
@@ -30,9 +29,9 @@ static bool IsClose(double a, double b) {
   return fabs(a - b) < TOL;
 }
 
-static bool IsNaN(double x) { return boost::math::isnan(x); }
+static bool IsNaN(double x) { return std::isnan(x); }
 
-static bool IsInf(double x) { return boost::math::isinf(x); }
+static bool IsInf(double x) { return std::isinf(x); }
 
 static bool IsDangerous(double x) { return IsNaN(x) || IsInf(x); }
 

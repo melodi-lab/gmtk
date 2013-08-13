@@ -14,21 +14,20 @@ ANSI = -std=c++0x
 #PEDANTIC = -pedantic
 #WARNING = -Wall
 
-AM_CPPFLAGS = $(BLAS_CPPFLAGS) $(BOOST_CPPFLAGS) -I$(srcdir)/../miscSupport
+AM_CPPFLAGS = $(BLAS_CPPFLAGS) -I$(srcdir)/../miscSupport
 
 AM_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(PEDANTIC) $(WARNING) $(ANSI)
 
 #AM_LDFLAGS = -static -fwhole-program -L. 
-AM_LDFLAGS = -L. $(BOOST_LDFLAGS) $(BLAS_LDFLAGS)
+AM_LDFLAGS = -L. $(BLAS_LDFLAGS)
 
 if USE_PHIPAC
-LDADD = libDMLP.a libPHiPAC.a
+LDADD = $(builddir)/../miscSupport/libmiscSupport.a libDMLP.a libPHiPAC.a
 else
-LDADD = libDMLP.a
+LDADD = $(builddir)/../miscSupport/libmiscSupport.a libDMLP.a
 endif
 
-LIBS += -lboost_thread -lboost_filesystem -lboost_system $(BLAS_LIBS)
-# -lpthread
+LIBS += $(BLAS_LIBS)
 
 noinst_LIBRARIES = libDMLP.a libPHiPAC.a
 
@@ -52,8 +51,8 @@ libDMLP_a_SOURCES =           \
   miniblas.h miniblas.cc      \
   DBN.h Layer.h               \
   Matrix.h Matrix.cc          \
-  MatrixFunc.h MatrixFunc.cc  \
-  Random.h Random.cc
+  MatrixFunc.h MatrixFunc.cc
+
 
 libPHiPAC_a_SOURCES =     \
 mm_double_NN_1.c          \

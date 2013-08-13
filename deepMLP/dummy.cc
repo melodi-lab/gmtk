@@ -11,6 +11,4 @@
 #include "Layer.h"
 #include "Matrix.h"
 #include "MatrixFunc.h"
-#include "Random.h"
-//#include "TrainSGD.h"
 #include "DBN.h"

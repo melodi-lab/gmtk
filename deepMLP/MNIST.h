@@ -5,7 +5,7 @@
 #include <iostream>
 #include <assert.h>
 
-#include "Random.h"
+#include "rand.h"
 
 using namespace std;
 
@@ -38,7 +38,6 @@ public:
   int NumCols() const { return _numCols; }
 
   MNISTData(const string & images, const string & labels) {
-    Random rand(0);
 
     ifstream imageStream(images, ios::in|ios::binary);
     if (!imageStream.is_open()) {
@@ -120,7 +119,7 @@ public:
     // permute training instances
     AllocatingVector temp(_numPixels);
     for (int i = 1; i < numImages; ++i) {
-      int j = (int)(rand.Uniform() * (i + 1));
+      int j = (int)(rnd.drand48() * (i + 1));
       MutableVector imageI = _images.GetCol(i), imageJ = _images.GetCol(j);
       temp.CopyFrom(imageI);
       imageI.CopyFrom(imageJ);

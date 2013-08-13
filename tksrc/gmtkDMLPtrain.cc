@@ -222,7 +222,6 @@ main(int argc,char*argv[])
   
   printf("Finished reading in all parameters and structures\n");
 
-  Random rand(2);
   gomFS->openSegment(0);
 
   DeepVECPT *cpt = NULL;
@@ -410,7 +409,7 @@ main(int argc,char*argv[])
   Matrix trainLabels(doubleObsLabel, outputSize, numInstances, outputSize, false);
   
   DBN::ObjectiveType objType = ( cpt->getSquashFn(numLayers-1) == DeepVECPT::SOFTMAX ) ? DBN::SOFT_MAX : DBN::SQ_ERR;
-  dbn.Train(trainData, trainLabels, objType, rand, false, pretrainHyperParams, bpHyperParams);
+  dbn.Train(trainData, trainLabels, objType, false, pretrainHyperParams, bpHyperParams);
   delete[] doubleObsLabel;
   delete[] doubleObsData;
   

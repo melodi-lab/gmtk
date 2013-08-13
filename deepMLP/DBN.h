@@ -13,9 +13,10 @@ extern "C" {            /* Assume C declarations for C++ */
 
 #include <vector>
 #include <algorithm>
-#include <boost/timer.hpp>
 #include <fstream>
+#include <iomanip>      // std::setprecision
 
+#include "rand.h"
 #include "Layer.h"
 #include "MatrixFunc.h"
 
@@ -107,7 +108,7 @@ private:
     return val;
   }
 
-  void InitLayer(int layer, Random & rand) {
+  void InitLayer(int layer) {
     // sparse initialization strategy from Martens, 2010
     _B[layer] *= 0;
     MutableMatrix W = _W[layer];
@@ -116,7 +117,7 @@ private:
       MutableVector col = W.GetCol(c);
       // sampling with replacement, but it doesn't really matter
       for (int i = 0; i < 15; ++i) {
-        col[rand.Rand(col.Len())] = rand.Normal() * 0.01;
+        col[rnd.uniform(col.Len())] = rnd.normal() * 0.01;
       }
     }
   }
@@ -190,7 +191,7 @@ private:
       _params.CopyFrom(_savedParams);
     }
 
-    virtual void Init(Random & rand) {
+    virtual void Init() {
       _savedParams.CopyFrom(_params);
       _deltaParams *= 0;
     }
@@ -213,24 +214,22 @@ private:
 
   class CDTrainingFunction : public LayerTrainingFunction {
   protected:
-    Random & _rand;
     AllocatingMatrix _particles;
 
     virtual double PrivateEval(Matrix inputMiniBatch, Matrix outputMiniBatch, double stepSize) {
-      return _dbn.UpdateCD(outputMiniBatch, _inputBiases, _layer, _rand, stepSize);
+      return _dbn.UpdateCD(outputMiniBatch, _inputBiases, _layer, stepSize);
     }
 
   public:
-    CDTrainingFunction(DBN & dbn, int layer, const Matrix & trainData, Random & rand, const HyperParams & hyperParams)
+    CDTrainingFunction(DBN & dbn, int layer, const Matrix & trainData, const HyperParams & hyperParams)
       :
-    LayerTrainingFunction(dbn, layer, trainData, hyperParams), _rand(rand)
+    LayerTrainingFunction(dbn, layer, trainData, hyperParams)
     {
     }
   };
 
   class AETrainingFunction : public LayerTrainingFunction {
     AllocatingMatrix _distortedInput;
-    Random & _rand;
 
   protected:
     virtual double PrivateEval(Matrix inputMiniBatch, Matrix outputMiniBatch, double stepSize) {
@@ -238,12 +237,12 @@ private:
     }
 
   public:		
-    AETrainingFunction(DBN & dbn, int layer, const Matrix & trainData, Random & rand, const HyperParams & hyperParams, Layer::ActFunc lowerActFunc, bool fixTrainDistortion)
-      : LayerTrainingFunction(dbn, layer, trainData, hyperParams), _rand(rand)
+    AETrainingFunction(DBN & dbn, int layer, const Matrix & trainData, const HyperParams & hyperParams, Layer::ActFunc lowerActFunc, bool fixTrainDistortion)
+      : LayerTrainingFunction(dbn, layer, trainData, hyperParams)
     {
       if (fixTrainDistortion) {
         _distortedInput.Resize(trainData);
-        lowerActFunc.Sample(trainData.Vec(), _distortedInput.Vec(), _rand);
+        lowerActFunc.Sample(trainData.Vec(), _distortedInput.Vec());
         _input = _distortedInput;
       }
     }
@@ -251,44 +250,42 @@ private:
 
   class BPTrainingFunction : public TrainingFunction {
     AllocatingMatrix _errors;
-    Random & _rand;
 
   private:
     ObjectiveType _objectiveType;
 
   protected:
     virtual double PrivateEval(Matrix inputMiniBatch, Matrix outputMiniBatch, double stepSize) {
-      return _dbn.UpdateBackProp(inputMiniBatch, outputMiniBatch, _objectiveType, false, _hyperParams.dropout, _rand, stepSize);
+      return _dbn.UpdateBackProp(inputMiniBatch, outputMiniBatch, _objectiveType, false, _hyperParams.dropout, stepSize);
     }
 
   public:
-    BPTrainingFunction(const Matrix & input, const Matrix & output, DBN & dbn, HyperParams hyperParams, ObjectiveType objectiveType, Random & rand)
+    BPTrainingFunction(const Matrix & input, const Matrix & output, DBN & dbn, HyperParams hyperParams, ObjectiveType objectiveType)
       :
     TrainingFunction(dbn, input, output, hyperParams, dbn._params, dbn._deltaParams, dbn._savedParams),
-      _objectiveType(objectiveType), _rand(rand)
+      _objectiveType(objectiveType)
     { }
   };
 
   class OutputLayerTrainingFunction : public TrainingFunction {
     AllocatingMatrix _errors;
-    Random & _rand;
 
   private:
     ObjectiveType _objectiveType;
 
   protected:
     virtual double PrivateEval(Matrix inputMiniBatch, Matrix outputMiniBatch, double stepSize) {
-      return _dbn.UpdateBackProp(inputMiniBatch, outputMiniBatch, _objectiveType, true, false, _rand, stepSize);
+      return _dbn.UpdateBackProp(inputMiniBatch, outputMiniBatch, _objectiveType, true, false, stepSize);
     }
 
   public:
-    OutputLayerTrainingFunction(const Matrix & input, const Matrix & output, DBN & dbn, HyperParams hyperParams, ObjectiveType objectiveType, Random & rand)
+    OutputLayerTrainingFunction(const Matrix & input, const Matrix & output, DBN & dbn, HyperParams hyperParams, ObjectiveType objectiveType)
       :
     TrainingFunction(dbn, input, output, hyperParams, dbn._layerParams.back(), dbn._layerDeltaParams.back(), dbn._layerSavedParams.back()),
-      _objectiveType(objectiveType), _rand(rand)
+      _objectiveType(objectiveType)
     { }
 
-    virtual void Init(Random & rand) {
+    virtual void Init() {
       // sparse initialization strategy from Martens, 2010
       _dbn._B.back() *= 0;
       MutableMatrix W = _dbn._W.back();
@@ -297,21 +294,21 @@ private:
         MutableVector col = W.GetCol(c);
         // sampling with replacement, but it doesn't really matter
         for (int i = 0; i < 15; ++i) {
-          col[rand.Rand(col.Len())] = rand.Normal() * 0.01;
+          col[rnd.uniform(col.Len())] = rnd.normal() * 0.01;
         }
       }
 
-      TrainingFunction::Init(rand);
+      TrainingFunction::Init();
     }
   };
 
-  void TrainSGD(TrainingFunction & trainer, Random & rand, const HyperParams & hyperParams) {
+  void TrainSGD(TrainingFunction & trainer, const HyperParams & hyperParams) {
     double stepSize = hyperParams.initStepSize;
     bool quiet = false;
 
     if (!quiet) cout << fixed << setprecision(4);
 
-    trainer.Init(rand);
+    trainer.Init();
 
     // get a baseline
     double bestTrainScore = trainer.Eval();
@@ -381,14 +378,14 @@ private:
 
   }
 
-  double UpdateBackProp(const Matrix & input, const Matrix & output, ObjectiveType _objType, bool lastLayerOnly, bool dropout, Random & rand, double stepSize) {
+  double UpdateBackProp(const Matrix & input, const Matrix & output, ObjectiveType _objType, bool lastLayerOnly, bool dropout, double stepSize) {
     int startLayer = lastLayerOnly ? _numLayers - 1 : 0;
 
     Matrix mappedInput;
     if (dropout) {
       _tempDropoutInput.CopyFrom(input);
-      _tempDropoutInput.Vec().Apply([&] (double x) { return (rand.Uniform() < 0.5) ? x : 0; });
-      mappedInput = MapUpDropout(_tempDropoutInput, rand, startLayer);
+      _tempDropoutInput.Vec().Apply([&] (double x) { return (rnd.drand48() < 0.5) ? x : 0; });
+      mappedInput = MapUpDropout(_tempDropoutInput, startLayer);
     } else {
       mappedInput = MapUp(input, startLayer);
     }
@@ -461,7 +458,7 @@ private:
     }
   }
 
-  double UpdateCD(const Matrix & input, const Vector & inputBiases, int layer, Random & rand, double stepSize) {
+  double UpdateCD(const Matrix & input, const Vector & inputBiases, int layer, double stepSize) {
     Layer::ActFunc lowerActFunc = (layer == 0) ? _iActFunc : _hActFunc[layer-1];
 
     Matrix weights = _W[layer];
@@ -472,10 +469,10 @@ private:
 
     topLayer.ActivateUp(weights, topBiases, input, _hActFunc[layer]);
     _tempTopSample.Resize(topLayer.Size(), input.NumC());
-    topLayer.Sample(_tempTopSample, rand, _hActFunc[layer]);
+    topLayer.Sample(_tempTopSample, _hActFunc[layer]);
 
     _tempBottomLayer.ActivateDown(weights, inputBiases, _tempTopSample, lowerActFunc);
-    _tempBottomLayer.Sample(_tempBottomSample, rand, lowerActFunc);
+    _tempBottomLayer.Sample(_tempBottomSample, lowerActFunc);
     _tempTopLayer.ActivateUp(weights, topBiases, _tempBottomSample, _hActFunc[layer]);
 
     if (stepSize > 0) {
@@ -619,8 +616,8 @@ public:
     outStream.write((const char *) _params.Start(), sizeof(double) * _params.Len());
   }
 
-  void Randomize(Random & rand, double stdDev) {
-    _params.Apply([&] (double x) { return rand.Normal() * stdDev; });
+  void Randomize(double stdDev) {
+    _params.Apply([&] (double x) { return rnd.normal() * stdDev; });
   }
 
   int NumLayers() const { return _numLayers; }
@@ -665,22 +662,22 @@ public:
     return mappedInput;
   }
 
-  Matrix MapLayerDropout(const Matrix & input, int layer, Random & rand) const {
-    return _layers[layer].ActivateUpDropout(_W[layer], _B[layer], input, _hActFunc[layer], rand);
+  Matrix MapLayerDropout(const Matrix & input, int layer) const {
+    return _layers[layer].ActivateUpDropout(_W[layer], _B[layer], input, _hActFunc[layer]);
   }
 
-  Matrix MapUpDropout(const Matrix & input, Random & rand, int startLayer = -1, int endLayer = -1) const {
+  Matrix MapUpDropout(const Matrix & input, int startLayer = -1, int endLayer = -1) const {
     if (startLayer == -1) startLayer = 0;
     if (endLayer == -1) endLayer = _numLayers;
 
     Matrix mappedInput = input;
 
-    for (int layer = startLayer; layer < endLayer; ++layer) mappedInput = MapLayerDropout(mappedInput, layer, rand);
+    for (int layer = startLayer; layer < endLayer; ++layer) mappedInput = MapLayerDropout(mappedInput, layer);
 
     return mappedInput;
   }
 
-  void Train(const Matrix & input, const Matrix & output, ObjectiveType objectiveType, Random & rand, bool quiet, const vector<HyperParams> & hyperParams_pt, const HyperParams & hyperParams_bp) {
+  void Train(const Matrix & input, const Matrix & output, ObjectiveType objectiveType, bool quiet, const vector<HyperParams> & hyperParams_pt, const HyperParams & hyperParams_bp) {
     Matrix mappedInput = input;
 
     if (!quiet) {
@@ -694,7 +691,7 @@ public:
     // pretrain hidden layers
     for (int layer = 0; layer < _layers.size() - 1; ++layer) {
       const HyperParams & hyperParams = hyperParams_pt[layer];
-      InitLayer(layer, rand);
+      InitLayer(layer);
 
       switch (hyperParams.pretrainType) {
       case CD:
@@ -702,8 +699,8 @@ public:
           if (!quiet) {
             cout << "Pretraining layer " << layer << " of size " << LayerInSize(layer) << "x" << LayerOutSize(layer) << " with CD" << endl;
           }
-          CDTrainingFunction cdFunc(*this, layer, mappedInput, rand, hyperParams);
-          TrainSGD(cdFunc, rand, hyperParams);
+          CDTrainingFunction cdFunc(*this, layer, mappedInput, hyperParams);
+          TrainSGD(cdFunc, hyperParams);
         }
         break;
 
@@ -713,8 +710,8 @@ public:
             cout << "Pretraining layer " << layer << " of size " << LayerInSize(layer) << "x" << LayerOutSize(layer) << " with AE" << endl;
           }
           Layer::ActFunc lowerActFunc = (layer == 0) ? _iActFunc : _hActFunc[layer-1];
-          AETrainingFunction aeFunc(*this, layer, mappedInput, rand, hyperParams, lowerActFunc, true);
-          TrainSGD(aeFunc, rand, hyperParams);
+          AETrainingFunction aeFunc(*this, layer, mappedInput, hyperParams, lowerActFunc, true);
+          TrainSGD(aeFunc, hyperParams);
         }
         break;
 
@@ -729,7 +726,7 @@ public:
       if (layer > 0) _layers[layer - 1].Clear(); // save some memory
     }
 
-    InitLayer(_layers.size() - 1, rand);
+    InitLayer(_layers.size() - 1);
 
     if (hyperParams_pt.back().pretrainType != NONE) {
       // pretrain output layer
@@ -737,8 +734,8 @@ public:
         cout << "Pretraining output layer" << endl;
       }
 
-      OutputLayerTrainingFunction outputFunc(mappedInput, output, *this, hyperParams_pt.back(), objectiveType, rand);
-      TrainSGD(outputFunc, rand, hyperParams_pt.back());
+      OutputLayerTrainingFunction outputFunc(mappedInput, output, *this, hyperParams_pt.back(), objectiveType);
+      TrainSGD(outputFunc, hyperParams_pt.back());
     }
 
     // and now, fine tune
@@ -747,8 +744,8 @@ public:
       cout << "Fine tuning" << endl;
     }
 
-    BPTrainingFunction bpFunc(input, output, *this, hyperParams_bp, objectiveType, rand);
-    TrainSGD(bpFunc, rand, hyperParams_bp);
+    BPTrainingFunction bpFunc(input, output, *this, hyperParams_bp, objectiveType);
+    TrainSGD(bpFunc, hyperParams_bp);
 
     if (hyperParams_bp.dropout) {
       for (int l = 0; l < _W.size(); ++l) {
