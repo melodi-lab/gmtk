@@ -39,7 +39,7 @@
 #include "GMTK_NamedObject.h"
 #include "GMTK_ObservationSource.h"
 #include "GMTK_FileSource.h"
-#include "GMTK_RealMatrix.h"
+#include "GMTK_DoubleMatrix.h"
 
 // we need to interface to the external global observation
 // matrix object to get some parametes (such as start skip, end skip,
@@ -96,12 +96,12 @@ class DeepVECPT : public CPT {
   vector<string>         layer_squash_name;
   vector<SquashFunction> layer_squash_func;
   vector<float>          layer_logistic_beta;
-  vector<RealMatrix *>   layer_matrix;
+  vector<DoubleMatrix *>   layer_matrix;
 
   // remember the computed CPT so we don't have to recompute it
   unsigned  cached_segment; 
   unsigned  cached_frame;
-  float    *cached_CPT;
+  double   *cached_CPT;
 
   logpr applyDeepModel(DiscRVType parentValue, DiscRV * drv);
 
@@ -140,16 +140,16 @@ public:
 
   void setParams(unsigned layer, double const *weights, unsigned ld, double const *bias) {
     assert(layer < layer_matrix.size());
-    RealMatrix *w = layer_matrix[layer];
+    DoubleMatrix *w = layer_matrix[layer];
     unsigned rows = w->_rows;
     unsigned cols = w->_cols;
     for (unsigned r=0; r < rows; r+=1) {
       unsigned c;
       for (c=0; c < cols - 1; c+=1) {
 	// weights come in column-major order but transposed; store them in row-major
-	w->values[ r * cols + c ] = (float) weights[ r * ld + c ];
+	w->values[ r * cols + c ] = weights[ r * ld + c ];
       }
-      w->values[ r * cols + c ] = (float) bias[r];
+      w->values[ r * cols + c ] = bias[r];
     }
   }
 
@@ -157,7 +157,7 @@ public:
 
   unsigned obsOffset() { return obs_file_foffset; }
   
-  vector<RealMatrix *> &getMatrices() { return layer_matrix; }
+  vector<DoubleMatrix *> &getMatrices() { return layer_matrix; }
 
   float getBeta(unsigned layer) {
     assert(layer < layer_logistic_beta.size());
