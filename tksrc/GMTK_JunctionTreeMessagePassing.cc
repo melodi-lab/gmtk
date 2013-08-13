@@ -691,6 +691,28 @@ JunctionTree::viterbiValuesToObsFile(unsigned numFrames,
   infoMsg(IM::Printing,IM::High,"NP = %u   NC = %u   M = %u   S = %u   # orig parts = %u\n",
        NP, NC, M, S, totalOriginalPartitions);
 
+
+  set<string> variableNames; // names of variables in the model
+  for (unsigned i=0; i < partition_unrolled_rvs.size(); i+=1) {
+    variableNames.insert(partition_unrolled_rvs[i]->name());
+  }
+
+  RVVec  pVitTriggerVec;
+  string pVitTriggerExpr;
+  RngDecisionTree::EquationClass pTriggerEqn;
+  initializeViterbiTrigger(pVitTrigger, variableNames, pVitTriggerVec, pVitTriggerExpr, pTriggerEqn, 'p');
+
+  RVVec  cVitTriggerVec;
+  string cVitTriggerExpr;
+  RngDecisionTree::EquationClass cTriggerEqn;
+  initializeViterbiTrigger(cVitTrigger, variableNames, cVitTriggerVec, cVitTriggerExpr, cTriggerEqn, 'c');
+
+  RVVec  eVitTriggerVec;
+  string eVitTriggerExpr;
+  RngDecisionTree::EquationClass eTriggerEqn;
+  initializeViterbiTrigger(eVitTrigger, variableNames, eVitTriggerVec, eVitTriggerExpr, eTriggerEqn, 'e');
+
+
   Range* frameRange = NULL;
   frameRange = new Range(frameRangeFilter,0,numUsableFrames);
   if (frameRange->length() == 0) { 
@@ -738,16 +760,16 @@ JunctionTree::viterbiValuesToObsFile(unsigned numFrames,
     if (minAvailableFrame <= (*frameRange_it) && (*frameRange_it) <= maxAvailableFrame) {
       infoMsg(IM::Printing,IM::High,"is available to print:\n");
       if (part == 0) { // print P partition
-	storeToObsFile((*frameRange_it), hidP_rvs, preg);
+	storeToObsFile((*frameRange_it), P_rvs, pVitTrigger != NULL, pVitTriggerVec, pVitTriggerExpr, pTriggerEqn, preg);
       } else if (part == totalOriginalPartitions-1) { // print E partition
 	int targetFrame = fp.numFramesInP() + (int)(part-1) * fp.numFramesInC();
 	shiftOriginalVarstoPosition(E_rvs, targetFrame, Epos);
-	storeToObsFile((*frameRange_it), hidE_rvs, ereg);
+	storeToObsFile((*frameRange_it), E_rvs, eVitTrigger != NULL, eVitTriggerVec, eVitTriggerExpr, eTriggerEqn, ereg);
       } else {      // print C partition
 	int targetFrame = fp.numFramesInP() + (int)(part-1) * fp.numFramesInC();
 	originalIndex = ((int)part - 1) % (int) C_rvs.size();
 	shiftOriginalVarstoPosition(C_rvs[originalIndex], targetFrame, Cpos[originalIndex]);
-	storeToObsFile((*frameRange_it), hidC_rvs[originalIndex], creg);
+	storeToObsFile((*frameRange_it), C_rvs[originalIndex], cVitTrigger != NULL, cVitTriggerVec, cVitTriggerExpr, cTriggerEqn, creg);
       }
       (*frameRange_it)++;  // move on to next frame
       continue;
@@ -860,8 +882,20 @@ computeVarOrder(vector<RV *> &sectionRVs, regex_t *preg, int frame, vector<strin
 
 #if 1
 void 
-JunctionTree::storeToObsFile(int frame, vector<RV *> &rvs, regex_t *reg) {
+JunctionTree::storeToObsFile(int frame, 
+			     vector<RV *> &rvs, 
+			     bool useVitTrigger,
+			     RVVec  &vitTriggerVec, 
+			     string &vitTriggerExpr, 
+			     RngDecisionTree::EquationClass &vitTriggerEqn,
+			     regex_t *reg) 
+{
   assert(0 <= frame);
+  bool trigger = true;
+  if (useVitTrigger) 
+    trigger = evaluateTrigger(rvs, vitTriggerVec, vitTriggerExpr, vitTriggerEqn);
+  if (!trigger || rvs.size()== 0) return;
+
   // check to see if we need to instantiate the output observation file
   if (vitObsFile == NULL) {
     // we need to get the names of the variables to output in order
