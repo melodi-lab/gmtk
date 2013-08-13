@@ -1277,13 +1277,13 @@ public:
 			    bool runLengthCompress = false,
 			    int frame = -1);
 
-  void storeToObsFile(int frame, 
+  void storeToObsFile(int frame, unsigned segment, 
 		      vector<RV *> &rvs, 
 		      bool useVitTrigger,
 		      vector< pair< string,int> > &vitTriggerVec, 
 		      string &vitTriggerExpr, 
 		      RngDecisionTree::EquationClass &vitTriggerEqn,
-		      regex_t *reg);
+		      regex_t *reg, char sectionLabel);
 
  public:
 
@@ -1299,6 +1299,7 @@ public:
   // goes to an ObservationFile
   void viterbiValuesToObsFile(unsigned numFrames,
 			      FILE   * binVitFile,
+			      unsigned segment,
 			      regex_t* preg,
 			      regex_t* creg,
 			      regex_t* ereg,

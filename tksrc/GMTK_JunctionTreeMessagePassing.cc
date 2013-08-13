@@ -636,6 +636,7 @@ newViterbiValues(bool &first_C, unsigned &C_size, bool printObserved,
 void
 JunctionTree::viterbiValuesToObsFile(unsigned numFrames,
 				     FILE   * binVitFile,
+				     unsigned segment,
 				     regex_t* preg,
 				     regex_t* creg,
 				     regex_t* ereg,
@@ -651,6 +652,8 @@ JunctionTree::viterbiValuesToObsFile(unsigned numFrames,
   } else {
     numUsableFrames = this->numUsableFrames;
   }
+
+  // Modified section -> original section initialization
 
   vector<RV*> unrolled_rvs;
   map<RVInfo::rvParent, unsigned> unrolled_map;
@@ -691,6 +694,7 @@ JunctionTree::viterbiValuesToObsFile(unsigned numFrames,
   infoMsg(IM::Printing,IM::High,"NP = %u   NC = %u   M = %u   S = %u   # orig parts = %u\n",
        NP, NC, M, S, totalOriginalPartitions);
 
+  // Trigger initialization
 
   set<string> variableNames; // names of variables in the model
   for (unsigned i=0; i < partition_unrolled_rvs.size(); i+=1) {
@@ -760,16 +764,16 @@ JunctionTree::viterbiValuesToObsFile(unsigned numFrames,
     if (minAvailableFrame <= (*frameRange_it) && (*frameRange_it) <= maxAvailableFrame) {
       infoMsg(IM::Printing,IM::High,"is available to print:\n");
       if (part == 0) { // print P partition
-	storeToObsFile((*frameRange_it), P_rvs, pVitTrigger != NULL, pVitTriggerVec, pVitTriggerExpr, pTriggerEqn, preg);
+	storeToObsFile((*frameRange_it), segment, P_rvs, pVitTrigger, pVitTriggerVec, pVitTriggerExpr, pTriggerEqn, preg, 'p');
       } else if (part == totalOriginalPartitions-1) { // print E partition
 	int targetFrame = fp.numFramesInP() + (int)(part-1) * fp.numFramesInC();
 	shiftOriginalVarstoPosition(E_rvs, targetFrame, Epos);
-	storeToObsFile((*frameRange_it), E_rvs, eVitTrigger != NULL, eVitTriggerVec, eVitTriggerExpr, eTriggerEqn, ereg);
+	storeToObsFile((*frameRange_it), segment, E_rvs, eVitTrigger, eVitTriggerVec, eVitTriggerExpr, eTriggerEqn, ereg, 'e');
       } else {      // print C partition
 	int targetFrame = fp.numFramesInP() + (int)(part-1) * fp.numFramesInC();
 	originalIndex = ((int)part - 1) % (int) C_rvs.size();
 	shiftOriginalVarstoPosition(C_rvs[originalIndex], targetFrame, Cpos[originalIndex]);
-	storeToObsFile((*frameRange_it), C_rvs[originalIndex], cVitTrigger != NULL, cVitTriggerVec, cVitTriggerExpr, cTriggerEqn, creg);
+	storeToObsFile((*frameRange_it), segment, C_rvs[originalIndex], cVitTrigger, cVitTriggerVec, cVitTriggerExpr, cTriggerEqn, creg, 'c');
       }
       (*frameRange_it)++;  // move on to next frame
       continue;
@@ -854,17 +858,27 @@ JunctionTree::viterbiValuesToObsFile(unsigned numFrames,
 
 
 void
-computeVarOrder(vector<RV *> &sectionRVs, regex_t *preg, int frame, vector<string> &names) {
+computeVarOrder(vector<RV *> &sectionRVs, regex_t *preg, char sectionLabel, int frame, unsigned segment, vector<string> &names) {
   assert(0 <= frame);
   set<string> nameSet;
   // collect the names selected by preg
   for (unsigned i=0; i < sectionRVs.size(); i+=1) {
     string name = sectionRVs[i]->name();
     if ( sectionRVs[i]->frame() == (unsigned) frame && (!preg || !regexec(preg, name.c_str(), 0,0,0)) ) {
-      if (!sectionRVs[i]->discrete()) 
-	error("ERROR: variable '%s' selected for Viterbi output to observation file is not discrete\n", name.c_str()); 
-      else 
+      if (!sectionRVs[i]->discrete()) {
+	string byStr("by -");
+	byStr += sectionLabel;
+	byStr += "VitRegexFilter";
+	string sectStr("in ");
+	sectStr += sectionLabel;
+	sectStr +=" section";
+	error("ERROR: variable '%s(%u)' in segment %u selected for Viterbi output to observation file %s is not discrete. "
+	      "Only discrete variables may be stored to Viterbi observation files. "
+	      "Use -(p|c|e)VitRegexFilter to select appropriate variables for Viterbi output.\n", 
+	      name.c_str(), sectionRVs[i]->frame(),  segment, preg ? byStr.c_str() : sectStr.c_str() ); 
+      } else {
 	nameSet.insert(name);
+      }
     }
   }
   names.resize(0); // empty it
@@ -880,15 +894,14 @@ computeVarOrder(vector<RV *> &sectionRVs, regex_t *preg, int frame, vector<strin
 }
 
 
-#if 1
 void 
-JunctionTree::storeToObsFile(int frame, 
+JunctionTree::storeToObsFile(int frame, unsigned segment,
 			     vector<RV *> &rvs, 
 			     bool useVitTrigger,
 			     RVVec  &vitTriggerVec, 
 			     string &vitTriggerExpr, 
 			     RngDecisionTree::EquationClass &vitTriggerEqn,
-			     regex_t *reg) 
+			     regex_t *reg, char sectionLabel) 
 {
   assert(0 <= frame);
   bool trigger = true;
@@ -899,7 +912,7 @@ JunctionTree::storeToObsFile(int frame,
   // check to see if we need to instantiate the output observation file
   if (vitObsFile == NULL) {
     // we need to get the names of the variables to output in order
-    computeVarOrder(rvs, reg, frame, vitObsVariableNames);
+    computeVarOrder(rvs, reg, sectionLabel, frame, segment, vitObsVariableNames);
     // we need to inform the user of the variable order in the output file
     printf("Viterbi values will be stored in the observation file in the order:");
     for (unsigned i=0; i < vitObsVariableNames.size(); i+=1) {
@@ -919,8 +932,23 @@ JunctionTree::storeToObsFile(int frame,
     if (f == (unsigned)frame) {
       if (!reg || !regexec(reg,rvs[i]->name().c_str(),0,0,0)) {
 	if (rvs[i]->name().compare( vitObsVariableNames[writtenCount % vitObsVariableNames.size()]) != 0) {
-	  error("ERROR: variable '%s(%d)' should not be selected for Viterbi output - possibly wrong (p|c|e)VitRegexFilter\n",
-		rvs[i]->name().c_str(), frame);
+	  string nameStr("<");
+	  if (vitObsVariableNames.size()) {
+	    nameStr += vitObsVariableNames[0];
+	    for (unsigned j=1; j < vitObsVariableNames.size(); j+=1) {
+	      nameStr += ", ";
+	      nameStr += vitObsVariableNames[j];
+	    }
+	    nameStr += ">";
+	  }
+	  // Cannot tell if there are missing variables before a correct variable or
+	  // there's an extra variable without diffing the list of correct and selected variables
+	  error("ERROR: Viterbi output to observation file expected to output variable '%s' but got '%s' instead at frame %d in segment %u. "
+		"All sections must output the same sequence of variables %s to the Viterbi observation file. "
+		"'%s' might be an extra variable, or there might be variables missing before it. "
+		"Perhaps the -%cVitRegexFilter is incorrect.\n",
+		vitObsVariableNames[writtenCount % vitObsVariableNames.size()].c_str(), rvs[i]->name().c_str(), frame, segment, 
+		nameStr.c_str(), rvs[i]->name().c_str(), sectionLabel);
 	}
 	vitObsFile->writeFeature(  (Data32) ( dynamic_cast<DiscRV *>(rvs[i])->val )  );
 	writtenCount+=1;
@@ -928,50 +956,23 @@ JunctionTree::storeToObsFile(int frame,
     }
   }
   if (writtenCount % vitObsVariableNames.size() != 0) {
-    error("ERROR: All modified sections must output the same number of variables to the Viterbi observation file\n");
-  }
-}
-#else
-void
-JunctionTree::storeToObsFile(PartitionStructures &ps,
-			     unsigned *packed_values,
-			     unsigned part,
-			     regex_t *preg)
-{
-  if (ps.packer.packedLen() > 0)
-    ps.packer.unpack(packed_values
-		     + 
-		     (pt_i-1)*ps.packer.packedLen(),
-		     ps.hrvValuePtrs.ptr);
-  if (ps.packer.packedLen() > 0) {
-    vector<RV *> rvVector = ps.hidRVVector;
-
-    // check to see if we need to instantiate the output observation file
-    if (vitObsFile == NULL) {
-      // we need to get the names of the variables to output in order
-      computeVarOrder(rvVector, preg, vitObsVariableNames);
-      // we need to inform the user of the variable order in the output file
-      printf("Viterbi values will be stored in the observation file in the order:");
-      for (unsigned i=0; i < vitObsVariableNames.size(); i+=1) {
-	printf(" %s", vitObsVariableNames[i].c_str());
+    // If we get here, we wrote some number of variables in the correct order, but not enough.
+    // There weren't any extras, so the rest must be missing.
+    string nameStr("<");
+    if (vitObsVariableNames.size()) {
+      nameStr += vitObsVariableNames[0];
+      for (unsigned j=1; j < vitObsVariableNames.size(); j+=1) {
+	nameStr += ", ";
+	nameStr += vitObsVariableNames[j];
       }
-      printf("\n");
-      // Now we can instantiate the file. This is Viterbi output, so there are no continuous features.
-      // The number of discrete features is the # of variables to output
-      vitObsFile = instantiateWriteFile(vitObsListName, vitObsFileName, vitObsNameSeparator, vitOBsFileFmt, 
-					0, vitObsVariableNames.size(), vitObsFileSwap);
+      nameStr += ">";
     }
-    // actual output. number written must be a multiple of vitObsVariableNames.size()
-    unsigned writtenCount = 0;
-    for (unsigned i=0; i < rvVector.size(); i+=1) {
-      DO_IF_REGEX_MATCH(preg,rvVector[i],{dynamic_cast<DiscRV *>(rvVector[i])->valueToObsFile(vitObsFile); writtenCount+=1;});
-    }
-    if (writtenCount % vitObsVariableNames.size() != 0) {
-      error("ERROR: All modified sections must output the same number of variables to the Viterbi observation file\n");
-    }
+    error("ERROR: Viterbi output variable '%s' at frame %d in segment %u is missing. "
+	  "All sections must output the same sequence of variables %s to the Viterbi observation file. "
+	  "Perhaps the -%cVitRegexFilter is incorrect.\n", 
+	  vitObsVariableNames[writtenCount % vitObsVariableNames.size()].c_str(), frame, segment, nameStr.c_str(), sectionLabel);
   }
 }
-#endif
 
 
 

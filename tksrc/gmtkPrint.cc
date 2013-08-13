@@ -520,7 +520,7 @@ main(int argc,char*argv[])
     total_data_prob *= probe;
 
     if (myjt.vitObsFileName) {
-      myjt.viterbiValuesToObsFile(numFrames, vitValsFile, vitPreg, vitCreg, vitEreg, vitFrameRangeFilter);
+      myjt.viterbiValuesToObsFile(numFrames, vitValsFile, segment, vitPreg, vitCreg, vitEreg, vitFrameRangeFilter);
     }
 
     if (mVitValsFile) {
