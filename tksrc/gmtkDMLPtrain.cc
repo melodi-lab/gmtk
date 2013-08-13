@@ -414,7 +414,7 @@ main(int argc,char*argv[])
   delete[] doubleObsLabel;
   delete[] doubleObsData;
   
-  vector<RealMatrix *> layerMatrix = cpt->getMatrices();
+  vector<DoubleMatrix *> layerMatrix = cpt->getMatrices();
   assert(layerMatrix.size() == numLayers);
   for (unsigned layer=0; layer < numLayers; layer+=1) {
     Matrix const W = dbn.getWeights(layer);
