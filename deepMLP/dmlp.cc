@@ -1,5 +1,9 @@
+#include "rand.h"
+
 #include "DBN.h"
 #include "MNIST.h"
+
+RAND rnd;
 
 int main(int argc, char *argv[]) {
 
@@ -44,8 +48,7 @@ int main(int argc, char *argv[]) {
   bpHyperParams.numAnnealUpdates = 20000;
   //  bpHyperParams.dropout = true;
 
-  Random rand(2);
-  dbn.Train(mnist.GetImages(), output, objType, rand, false, pretrainHyperParams, bpHyperParams);
+  dbn.Train(mnist.GetImages(), output, objType, false, pretrainHyperParams, bpHyperParams);
 
   // really we shouldn't be using the test set like this, but this is just for debugging
   MNISTData testMnist(testImageFile, testLabelFile);

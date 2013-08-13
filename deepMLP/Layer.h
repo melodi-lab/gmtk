@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "Matrix.h"
-#include "Random.h"
+#include "rand.h"
 
 using namespace std;
 
@@ -179,18 +179,18 @@ public:
       }
     }
 
-    void Sample(const Vector & activations, const MutableVector & sample, Random & rand) const {
+    void Sample(const Vector & activations, const MutableVector & sample) const {
       switch (actType) {
       case LOG_SIG:
         {
-          auto func = [&](double aVal) { return (rand.Uniform() < aVal) ? 1.0 : 0.0; };
+          auto func = [&](double aVal) { return (rnd.drand48() < aVal) ? 1.0 : 0.0; };
           sample.Replace(func, activations);
         }
         break;
 
       case TANH:
         {
-          auto func = [&](double aVal) { return (2 * rand.Uniform() - 1) < aVal ? 1.0 : -1.0; };
+          auto func = [&](double aVal) { return (2 * rnd.drand48() - 1) < aVal ? 1.0 : -1.0; };
           sample.Replace(func, activations);
         }
         break;
@@ -198,7 +198,7 @@ public:
       case LINEAR:
       case CUBIC:
         {
-          auto func = [&](double aVal) { return aVal + rand.Normal(); };
+          auto func = [&](double aVal) { return aVal + rnd.normal(); };
           sample.Replace(func, activations);
         }
         break;
@@ -229,10 +229,10 @@ public:
     return _a;
   }
 
-  const Matrix & ActivateUpDropout(const Matrix & weights, const Vector & biases, const Matrix & lowerValues, ActFunc actFunc, Random & rand) {
+  const Matrix & ActivateUpDropout(const Matrix & weights, const Vector & biases, const Matrix & lowerValues, ActFunc actFunc) {
     ComputeInputs(weights, biases, lowerValues, true);
     actFunc.Apply(_a.Vec());
-    _a.Vec().Apply([&] (double a) { return rand.Uniform() < 0.5 ? a : 0; });
+    _a.Vec().Apply([&] (double a) { return rnd.drand48() < 0.5 ? a : 0; });
     return _a;
   }
 
@@ -258,8 +258,8 @@ public:
 
   int Count() const { return _a.NumC(); }
 
-  void Sample(MutableMatrix & sample, Random & rand, ActFunc actFunc) const {
-    actFunc.Sample(_a.Vec(), sample.Vec(), rand);
+  void Sample(MutableMatrix & sample, ActFunc actFunc) const {
+    actFunc.Sample(_a.Vec(), sample.Vec());
   }
 
   void Clear() {
