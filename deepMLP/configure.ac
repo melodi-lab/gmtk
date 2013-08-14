@@ -24,9 +24,10 @@ AM_SILENT_RULES([yes])
 
 # Checks for programs.
 
+AC_PROG_CC
 AC_PROG_CXX
 AC_PROG_RANLIB
-AM_PROG_AR
+m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 AC_PROG_AWK
 
 # Checks for libraries.
@@ -43,9 +44,9 @@ m4_include([blas_check])
 AC_MSG_CHECKING([for cblas_daxpby])
   AC_LANG_PUSH([C++])
   mkl_save_CXXFLAGS=$CXXFLAGS
-  CXXFLAGS=$BLAS_CPPFLAGS
+  CXXFLAGS=$BLAS_CFLAGS
   mkl_save_LIBS=$LIBS
-  LIBS="$BLAS_LDFLAGS $BLAS_LIBS"
+  LIBS=$BLAS_LIBS
 
   if test "x$USE_MKL" = xyes; then
     AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include "mkl.h"]],
