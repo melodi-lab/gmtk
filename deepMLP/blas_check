@@ -1,5 +1,5 @@
 
-# We will set BLAS_CPPFLAGS, BLAS_LDFLAGS, and BLAS_LIBS appropriately
+# We will set BLAS_CFLAGS and BLAS_LIBS appropriately
 # to link with either MKL or an external CBLAS. To use only the internal
 # replacement kernels, all three should be empty.
 
@@ -12,20 +12,22 @@ if test x"$MKLROOT" != x -a x"$MKLROOT" != xno; then     # --with-mkl=<dir>
 
   if test $with_mkl_architecture = ia32; then
     case  $with_mkl_thread in
-      sequential | gnu_thread) BLAS_LIBS="-Wl,--start-group -lmkl_intel -lmkl_${with_mkl_thread} -lmkl_core -Wl,--end-group -lpthread -lm" ;;
-      intel_thread) BLAS_LIBS="-Wl,--start-group -lmkl_intel -lmkl_${with_mkl_thread} -lmkl_core -Wl,--end-group -liomp5 -lpthread -lm" ;;
+      sequential)   BLAS_LIBS="-Wl,--start-group -lmkl_intel -lmkl_sequential   -lmkl_core -Wl,--end-group         -lpthread -lm" ;;
+      gnu_thread)   BLAS_LIBS="-Wl,--start-group -lmkl_intel -lmkl_gnu_thread   -lmkl_core -Wl,--end-group -lgomp  -lpthread -lm" ;;
+      intel_thread) BLAS_LIBS="-Wl,--start-group -lmkl_intel -lmkl_intel_thread -lmkl_core -Wl,--end-group -liomp5 -lpthread -lm" ;;
       *) AC_MSG_ERROR([Unkown MKL threading $with_mkl_thread, must be one of sequential, intel_thread, gnu_thread]) ;;
     esac
   else                      # intel64
     case  $with_mkl_thread in
-      sequential | gnu_thread) BLAS_LIBS="-Wl,--start-group -lmkl_intel_lp64 -lmkl_${with_mkl_thread} -lmkl_core -Wl,--end-group -lpthread -lm" ;;
-      intel_thread) BLAS_LIBS="-Wl,--start-group -lmkl_intel_lp64 -lmkl_${with_mkl_thread} -lmkl_core -Wl,--end-group -liomp5 -lpthread -lm";;
+      sequential)   BLAS_LIBS="-Wl,--start-group -lmkl_intel_lp64 -lmkl_sequential   -lmkl_core -Wl,--end-group         -lpthread -lm" ;;
+      gnu_thread)   BLAS_LIBS="-Wl,--start-group -lmkl_intel_lp64 -lmkl_gnu_thread   -lmkl_core -Wl,--end-group -lgomp  -lpthread -lm" ;;
+      intel_thread) BLAS_LIBS="-Wl,--start-group -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -Wl,--end-group -liomp5 -lpthread -lm";;
       *) AC_MSG_ERROR([Unkown MKL threading $with_mkl_thread, must be one of sequential, intel_thread, gnu_thread]) ;;
     esac
   fi
 
   BLAS_CFLAGS=-I${MKLROOT}/include
-  BLAS_LIBS="-L${MKLROOT}/lib/${$with_mkl_architecture} $BLAS_LIBS"
+  BLAS_LIBS="-L${MKLROOT}/lib/${with_mkl_architecture} $BLAS_LIBS"
 
   AC_MSG_CHECKING([for MKL under $MKLROOT])
   AC_LANG_PUSH([C++])
@@ -47,7 +49,7 @@ if test x"$MKLROOT" != x -a x"$MKLROOT" != xno; then     # --with-mkl=<dir>
   BLAS_FOUND=yes
 
 # For any other configure stuff that cares if we have MKL
-  USE_MKL= yes
+  USE_MKL=yes
 
   AC_SUBST(BLAS_CFLAGS)
   AC_SUBST(BLAS_LIBS)
@@ -114,8 +116,8 @@ elif test x$BLAS_REQUEST != xno; then  # No MKL; try CBLAS  -- set BLAS_FOUND=ye
   fi
 fi
 
-if test "x$BLAS_FOUND" = xyes; then
-  if test x"$enable_internal_dgemm" = xyes; then
+if test x$BLAS_FOUND = xyes; then
+  if test x$enable_internal_dgemm = xyes; then
 #   build and use PHiPAC dgemm even though we have an external MKL or plain CBLAS dgemm
     AC_DEFINE([USE_PHIPAC],1,[Define if you want to use the PHiPAC dgemm instead of an external CBLAS dgemm])
     AM_CONDITIONAL([BUILD_PHIPAC], [true])

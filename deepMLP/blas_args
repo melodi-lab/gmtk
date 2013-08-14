@@ -98,4 +98,6 @@ AC_ARG_WITH([cblas-libs],
 # Just here to add top-level --help for pkg-config
 m4_include([m4/pkg.m4])
 PKG_PROG_PKG_CONFIG()
-PKG_CHECK_EXISTS([cblas])
+if false; then
+  PKG_CHECK_MODULES([BLAS],[cblas])
+fi
