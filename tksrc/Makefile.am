@@ -73,7 +73,7 @@ $(builddir)/../deepMLP/libDMLP.a \
 $(builddir)/../featureFileIO/libgmtkio.a \
 $(builddir)/../miscSupport/libmiscSupport.a \
 $(builddir)/../IEEEFloatingpoint/libIEEEsupport.a
-if USE_PHIPAC
+if BUILD_PHIPAC
 LDADD += $(builddir)/../deepMLP/libPHiPAC.a
 endif
 

@@ -22,8 +22,6 @@ AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
 AM_SILENT_RULES([yes])
 
-m4_include([blas_args])
-
 # Checks for programs.
 
 AC_PROG_CXX
@@ -33,6 +31,7 @@ AC_PROG_AWK
 
 # Checks for libraries.
 
+m4_include([blas_args])
 m4_include([blas_check])
 
 # Checks for header files.
@@ -48,7 +47,7 @@ AC_MSG_CHECKING([for cblas_daxpby])
   mkl_save_LIBS=$LIBS
   LIBS="$BLAS_LDFLAGS $BLAS_LIBS"
 
-  if test "x$use_mkl" = xyes; then
+  if test "x$USE_MKL" = xyes; then
     AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include "mkl.h"]],
          [[double x[3]; double y[3]; double alpha; double beta; cblas_daxpby(3, alpha, x, 1, beta, y, 1);]])],
       [AC_MSG_RESULT([yes])

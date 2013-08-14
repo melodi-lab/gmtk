@@ -119,6 +119,8 @@ AC_PROG_AWK
 
 # Checks for libraries.
 
+m4_include([deepMLP/blas_args])
+
 # Checks for header files.
 
 # Checks for typedefs, structures, and compiler characteristics.
