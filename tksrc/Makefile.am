@@ -227,11 +227,10 @@ gmtkTime_SOURCES = gmtkTime.cc
 gmtkEMtrain_SOURCES = gmtkEMtrain.cc
 
 gmtkDMLPtrain_SOURCES = gmtkDMLPtrain.cc
-gmtkDMLPtrain_CPPFLAGS = $(AM_CPPFLAGS) $(BLAS_CPPFLAGS) $(BOOST_CPPFLAGS)
+gmtkDMLPtrain_CPPFLAGS = $(AM_CPPFLAGS)
 gmtkDMLPtrain_CXXFLAGS = $(VERSIONFLAG) $(DEBUGFLAGS) \
-   -O3 -march=native -mtune=native -mfpmath=sse -msse3 -std=c++0x $(EXCXXFLAGS)
-gmtkDMLPtrain_LDADD = $(BOOST_LDFLAGS) $(BLAS_LDFLAGS) $(LDADD) \
-   -lboost_thread -lboost_filesystem -lboost_system $(BLAS_LIBS)
+   -O3 -march=native -mtune=native -mfpmath=sse -msse3 -std=c++0x $(EXCXXFLAGS) $(BLAS_CFLAGS)
+gmtkDMLPtrain_LDADD = $(LDADD)  $(BLAS_LIBS)
 
 gmtkKernel_SOURCES = gmtkKernel.cc
 

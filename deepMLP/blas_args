@@ -61,9 +61,8 @@ AC_ARG_WITH([mkl-architecture],
 
 # By default, we'll try to use a CBLAS located either by pkg-config
 # or in your default build search paths. You can specify
-#   --with-cblas-cppflags=-I<dir> 
-#   --with-cblas-ldflags=-L<dir>
-#   --with-cblas-libs=-l<library>
+#   --with-cblas-cflags=-I<dir> 
+#   --with-cblas-libs=-L<dir> -l<library>
 # if you want to use a particular CBLAS. If you don't specify any
 # of the above, we will try pkg-config cblas to locate the CBLAS.
 # If the --with-cblas-* weren't specified and pkg-config fails to 
@@ -73,28 +72,20 @@ AC_ARG_WITH([mkl-architecture],
 #
 # If you prefer to use MKL instead of a CBLAS, see --with-mkl
 
-AC_ARG_WITH([cblas-cppflags],
-   [AS_HELP_STRING([--with-cblas-cpflags=-I<dir>], [cpp -I flags to find non-MKL CBLAS includes @<:@-I/usr/include@:>@])],
-   [AS_IF([test "x$with_cblas_cppflags" != "xno"], 
-     [BLAS_INCLUDE=$with_cblas_cppflags ; BLAS_REQUEST=yes], 
+AC_ARG_WITH([cblas-cflags],
+   [AS_HELP_STRING([--with-cblas-cflags=-I<dir>], [cpp -I flags to find non-MKL CBLAS includes @<:@-I/usr/include@:>@])],
+   [AS_IF([test "x$with_cblas_cflags" != "xno"], 
+     [BLAS_CFLAGS=$with_cblas_cflags ; BLAS_REQUEST=yes], 
      [BLAS_REQUEST=no])],
-   [BLAS_INCLUDE=""])
+   [BLAS_CFLAGS=""])
 # assume -I/usr/include is already included in the include seach path  
 
-AC_ARG_WITH([cblas-ldflags],
-   [AS_HELP_STRING([--with-cblas-ldflags=-L<dir>], [ld -L flags to find non-MKL CBLAS libraries @<:@-L/usr/lib@:>@])],
-   [AS_IF([test "x$with_cblas_ldflags" != "xno"], 
-     [BLAS_LIBDIR=$with_blas_libdir ; BLAS_REQUEST=yes],
-     [BLAS_REQUEST=no])],
-   [BLAS_LIBDIR=""])
-# assume -L/usr/lib is already included in the library seach path  
-
 AC_ARG_WITH([cblas-libs],
-   [AS_HELP_STRING([--with-cblas-libs=-l<library>], [ld -l flags to link with non-MKL CBLAS library @<:@-lcblas@:>@])],
+   [AS_HELP_STRING([--with-cblas-libs=-l<library>], [ld -L and -l flags to link with non-MKL CBLAS library @<:@-lcblas@:>@])],
    [AS_IF([test "x$with_cblas_libs" != "xno"], 
      [BLAS_LIBS=$with_cblas_libs ; BLAS_REQUEST=yes], 
      [BLAS_REQUEST=no])],
-   [BLAS_LIBS=""])
+   [BLAS_LIBS=-lcblas])
 # assume libcblas.* is what we want
 
 # BLAS_REQUEST=yes signals that the user requested a specific CBLAS 
@@ -102,3 +93,7 @@ AC_ARG_WITH([cblas-libs],
 # of trying pkg-config. BLAS_REQUEST=no signals the user gave a
 # --without-cblas-* argument, so don't try to find any external CBLAS
 # (note that if they gave --with-mkl, it will still use MKL as a BLAS).
+
+
+# Just here to add top-level --help for pkg-config
+PKG_CHECK_MODULES([BLAS],[cblas])

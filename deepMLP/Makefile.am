@@ -14,12 +14,12 @@ ANSI = -std=c++0x
 #PEDANTIC = -pedantic
 #WARNING = -Wall
 
-AM_CPPFLAGS = $(BLAS_CPPFLAGS) -I$(srcdir)/../miscSupport
+AM_CPPFLAGS = -I$(srcdir)/../miscSupport
 
-AM_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(PEDANTIC) $(WARNING) $(ANSI)
+AM_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(PEDANTIC) $(WARNING) $(ANSI) $(BLAS_CFLAGS)
 
 #AM_LDFLAGS = -static -fwhole-program -L. 
-AM_LDFLAGS = -L. $(BLAS_LDFLAGS)
+AM_LDFLAGS = -L.
 
 LDADD = $(builddir)/../miscSupport/libmiscSupport.a libDMLP.a
 if BUILD_PHIPAC
