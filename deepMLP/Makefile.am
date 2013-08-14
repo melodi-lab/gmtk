@@ -21,15 +21,15 @@ AM_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(PEDANTIC) $(WARNING) $(ANSI)
 #AM_LDFLAGS = -static -fwhole-program -L. 
 AM_LDFLAGS = -L. $(BLAS_LDFLAGS)
 
-if USE_PHIPAC
-LDADD = $(builddir)/../miscSupport/libmiscSupport.a libDMLP.a libPHiPAC.a
-else
 LDADD = $(builddir)/../miscSupport/libmiscSupport.a libDMLP.a
+if BUILD_PHIPAC
+LDADD += libPHiPAC.a
 endif
 
 LIBS += $(BLAS_LIBS)
 
-noinst_LIBRARIES = libDMLP.a libPHiPAC.a
+noinst_LIBRARIES = libDMLP.a
+EXTRA_LIBRARIES  = libPHiPAC.a
 
 noinst_PROGRAMS = dmlp mnist label
 
