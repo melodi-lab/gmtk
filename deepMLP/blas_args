@@ -85,7 +85,7 @@ AC_ARG_WITH([cblas-libs],
    [AS_IF([test "x$with_cblas_libs" != "xno"], 
      [BLAS_LIBS=$with_cblas_libs ; BLAS_REQUEST=yes], 
      [BLAS_REQUEST=no])],
-   [BLAS_LIBS=-lcblas])
+   [BLAS_LIBS=""])
 # assume libcblas.* is what we want
 
 # BLAS_REQUEST=yes signals that the user requested a specific CBLAS 
@@ -96,4 +96,6 @@ AC_ARG_WITH([cblas-libs],
 
 
 # Just here to add top-level --help for pkg-config
-PKG_CHECK_MODULES([BLAS],[cblas])
+m4_include([m4/pkg.m4])
+PKG_PROG_PKG_CONFIG()
+PKG_CHECK_EXISTS([cblas])

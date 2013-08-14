@@ -147,7 +147,8 @@ class HDF5File: public ObservationFile {
 	   char const *contFeatureRangeStr_=NULL, 
 	   char const *discFeatureRangeStr_=NULL, 
 	   char const *preFrameRangeStr_=NULL, 
-	   char const *segRangeStr_=NULL)
+	   char const *segRangeStr_=NULL,
+           unsigned leftPad=0, unsigned rightPad=0)
   {
     error("This GMTK build does not support HDF5 files\n");
   }
