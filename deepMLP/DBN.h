@@ -117,7 +117,7 @@ private:
       MutableVector col = W.GetCol(c);
       // sampling with replacement, but it doesn't really matter
       for (int i = 0; i < 15; ++i) {
-        col[rnd.uniform(col.Len())] = rnd.normal() * 0.01;
+        col[rnd.uniformOpen(col.Len())] = rnd.normal() * 0.01;
       }
     }
   }
@@ -294,7 +294,7 @@ private:
         MutableVector col = W.GetCol(c);
         // sampling with replacement, but it doesn't really matter
         for (int i = 0; i < 15; ++i) {
-          col[rnd.uniform(col.Len())] = rnd.normal() * 0.01;
+          col[rnd.uniformOpen(col.Len())] = rnd.normal() * 0.01;
         }
       }
 
