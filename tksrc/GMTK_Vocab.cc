@@ -6,6 +6,7 @@
  *
  * Copyright (C) 2001 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  *  $Header: /homes/gang/research/programs/cpp/gmtk/RCS/GMTK_NGramCPT.h,v 1.1 20
 04/05/13 00:59:36 gang Exp $

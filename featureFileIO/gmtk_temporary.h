@@ -6,6 +6,7 @@
  *
  * Copyright (C) 2012 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  */
 
 #define INITIAL_NUM_FRAMES_IN_BUFFER 1000
