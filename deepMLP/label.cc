@@ -1,6 +1,9 @@
 
 #include "Matrix.h"
 #include "MNIST.h"
+#include "rand.h"
+
+RAND rnd;
 
 int
 main(int argc, char *argv[]) {

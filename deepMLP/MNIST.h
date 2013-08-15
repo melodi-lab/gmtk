@@ -7,6 +7,8 @@
 
 #include "rand.h"
 
+extern RAND rnd;
+
 using namespace std;
 
 class MNISTData {
