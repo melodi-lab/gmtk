@@ -59,6 +59,7 @@ AffineFilter::AffineFilter(char const *fileName, Filter *nextFilter)
   }
   fclose(f);
   buffer=NULL; buffSize=0;
+  xBuffer=NULL; xBuffSize=0;
   workBuffer=NULL; workBuffSize=0;
 }
 

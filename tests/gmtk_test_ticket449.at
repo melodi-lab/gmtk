@@ -1,0 +1,11 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/449 is fixed
+
+# obs-stats will crash if buf is not fixed
+
+AT_SETUP([initialize xBuffer in file ctor (ticket 449)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/ticket449])
+AT_CHECK([(cd $TEST_AND_DEV/ticket449 && \
+    obs-stats -of1 posterior.list -fmt1 binary -nf1 8 -trans1 A@normalize1)], 
+  [],[ignore],[ignore])
+AT_CLEANUP
