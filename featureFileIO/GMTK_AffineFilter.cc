@@ -4,10 +4,10 @@
  * 
  * Written by Richard Rogers <rprogers@ee.washington.edu>
  *
- * Copyright (c) 2012, < fill in later >
+ * Copyright (C) 2012 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  * 
- * < License reference >
- * < Disclaimer >
  *
  */
 
@@ -59,6 +59,7 @@ AffineFilter::AffineFilter(char const *fileName, Filter *nextFilter)
   }
   fclose(f);
   buffer=NULL; buffSize=0;
+  xBuffer=NULL; xBuffSize=0;
   workBuffer=NULL; workBuffSize=0;
 }
 
@@ -77,8 +78,8 @@ AffineFilter::getRequiredInput(unsigned first, unsigned count,
 						   outputContinuous, outputDiscrete,
 						   outputFrames);
     assert(nextFilterInput);
-    first = nextFilterInput->requestedFirst;
-    count = nextFilterInput->requestedCount;
+    first = nextFilterInput->firstFrame;
+    count = nextFilterInput->numFrames;
   } 
   return subMatrixDescriptor::getSMD(first, count, 0, 0, 
 				     inputContinuous, inputDiscrete, inputTotalFrames, 

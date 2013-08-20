@@ -1,4 +1,11 @@
 #include "data-points.h"
+/*
+ *
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ *
+ */
 
 /**
    * initializes the set of pointers to the start and end of the data points

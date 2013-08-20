@@ -5,6 +5,10 @@
  *  Author    : Karim Filali (karim@cs.washington.edu)
  *  Time-stamp: <>
 
+ * Copyright (C) 2003 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+
  Computes a Karhunen-Loeve transformation on the feature vectors. 
 
  Originally written by Jeff Bilmes <bilmes@ee.washington.edu>.

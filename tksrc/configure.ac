@@ -1,9 +1,18 @@
 #                                               -*- Autoconf -*-
+
+#
+# Written by Richard Rogers <rprogers@uw.edu>
+#
+# Copyright (C) 2010 Jeff Bilmes
+# Licensed under the Open Software License version 3.0
+# See COPYING or http://opensource.org/licenses/OSL-3.0
+#
+
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.65])
 AC_INIT([GMTK], m4_esyscmd(printf %s `head -n 1 ../RELEASE`), 
-        [https://lungs.ee.washington.edu/trac/gmtk/newticket])
+        [https://j.ee.washington.edu/trac/gmtk/newticket])
 : ${CXXFLAGS=""}
 : ${CFLAGS=""}
 AC_CANONICAL_HOST

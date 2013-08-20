@@ -2,7 +2,7 @@
 
 # Smoke test to exercise Deep VE CPT
 
-AT_SETUP([Deep VE CPT smoke test])
+AT_SETUP([Deep VE CPT smoke test (ticket 345)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/dvecpt])
 AT_CHECK([(cd $TEST_AND_DEV/dvecpt && \
           gmtkJT -strF dvecpt.str -inputM dvecpt.mtr \

@@ -4,10 +4,10 @@
  * 
  * Written by Richard Rogers <rprogers@ee.washington.edu>
  *
- * Copyright (c) 2011, < fill in later >
+ * Copyright (C) 2011 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  * 
- * < License reference >
- * < Disclaimer >
  *
  */
 
@@ -136,8 +136,10 @@ FileSource::openSegment(unsigned seg) {
   }
 
   this->segment = seg;
-  bool success = file->openLogicalSegment(seg);
-
+  if (!file->openLogicalSegment(seg)) {
+    error("ERROR: FileSource::openSegment: failed to open segment %u.\n", seg);
+  }
+  
   _numCacheableFrames = file->numLogicalFrames();  // the file handles -gpr, so this is what's left after that
   if (_numCacheableFrames < _startSkip + _endSkip) {
     error("ERROR: segment %u has only %u frames, but -startSkip %u and -endSkip %u requires at least %u frames\n", 
@@ -191,7 +193,7 @@ FileSource::openSegment(unsigned seg) {
       numBufferedFrames += framesPerGulp;
     }
   }
-  return success;
+  return true;
 }
 
 

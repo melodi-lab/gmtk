@@ -1,6 +1,12 @@
 #ifndef GMTK_OBSADDSIL_H
 #define GMTK_OBSADDSIL_H
 
+/*
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ */
+
 #include "GMTK_ObsPrint.h"
 
 void addSil(FILE* out_fp, 

@@ -1,7 +1,7 @@
 
 # Verify that https://j.ee.washington.edu/trac/gmtk/ticket/23 is fixed
 
-AT_SETUP([ticket 23])
+AT_SETUP([obs-concat crashes (ticket 23)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/ticket23])
 AT_CHECK([obs-concat -of1 $TEST_AND_DEV/ticket23/obs1.pfile \
                      -of2 $TEST_AND_DEV/ticket23/obs2.pfile \

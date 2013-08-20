@@ -4,14 +4,10 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
  *
  */
 
@@ -93,6 +89,7 @@ VCID(HGID)
 /****************************         GENERAL OPTIONS             ***********************************************/
 #define GMTK_ARG_SEED
 #define GMTK_ARG_SKIP_STARTUP_CHECKS
+#define GMTK_ARG_VERSION
 #define GMTK_ARG_VERB
 #define GMTK_ARG_HELP
 

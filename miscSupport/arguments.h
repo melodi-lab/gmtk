@@ -4,6 +4,11 @@
  * an easy interface to quickly define arguments.
  * 
  *       Jeff Bilmes <bilmes@ee.washington.edu>
+// 
+//  Copyright (C) 2001 Jeff Bilmes
+//  Licensed under the Open Software License version 3.0
+//  See COPYING or http://opensource.org/licenses/OSL-3.0
+//
 
  Modified by Karim Filali (karim@cs.washington.edu) to handle the following:
 

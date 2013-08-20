@@ -1,0 +1,27 @@
+
+# test and dev model dbn
+
+
+AT_SETUP([dbn: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/dbn/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/dbn && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([dbn: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/dbn/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/dbn && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([dbn: jtcommand])
+# takes too long & too much memory
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/dbn/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/dbn && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([dbn: vitcommand])
+# takes too long & too much memory
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/dbn/vitcommand])
+AT_CHECK([(cd $TEST_AND_DEV/dbn && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP

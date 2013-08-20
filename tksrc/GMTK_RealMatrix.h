@@ -5,6 +5,7 @@
  * 
  * Copyright (C) 2001 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  */
 
@@ -25,6 +26,7 @@ class RealMatrix : public EMable  {
 
   friend class GammaComponent;
   friend class BetaComponent;
+  friend class MissingFeatureScaledDiagGaussian;
   friend class DeepVECPT;
 
 protected:

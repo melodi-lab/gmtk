@@ -2,10 +2,10 @@
 // to get helper macro definitions
 #include "GMTK_dlopenDeterministicMappings.h"
 
-
 /*
- *
- * 
+ * Copyright (C) 2012 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  * 
  * Define the registerMappers function, containing a REGISTER_MAPPER
  * for each mapping function.

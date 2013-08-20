@@ -10,14 +10,10 @@
  *
  * $Header$
  *
- * Copyright (c) 2001
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this soft
- * for any purpose. It is provided "as is" without express or implied warranty.
  * */
 
 #ifdef HAVE_CONFIG_H
@@ -261,7 +257,6 @@ StreamInfo::~StreamInfo() {
  * */
 size_t StreamInfo::calcNumFileNames(FILE* &f) {
   char line[MAXSTRLEN];
-
   numFileNames = 0;
 #ifdef PIPE_ASCII_FILES_THROUGH_CPP     
   if(cppIfAscii) {
@@ -301,7 +296,7 @@ size_t StreamInfo::calcNumFileNames(FILE* &f) {
 
   return numFileNames;
 
-}	
+}
 
 size_t StreamInfo::readFof(FILE * &f) {
 
@@ -331,6 +326,9 @@ size_t StreamInfo::readFof(FILE * &f) {
     n_lines++;
   }
   assert(numFileNames==n_lines);
+  // if (numFileNames!=n_lines) {
+  // error("numFileNames (= %d) != n_lines (= %d)\n",numFileNames,n_lines);
+  // }  
   return n_lines;
 }
 

@@ -1,4 +1,13 @@
 
+#
+# Written by Richard Rogers <rprogers@uw.edu>
+#
+# Copyright (C) 2010 Jeff Bilmes
+# Licensed under the Open Software License version 3.0
+# See COPYING or http://opensource.org/licenses/OSL-3.0
+#
+
+
 if HAVE_HG
 # this will keep the Mercurial revision id current if you're building 
 # in a working directory. If you're not, use the distributed hgstamp.h
@@ -163,10 +172,9 @@ GMTK_PartitionStructures.h GMTK_PartitionStructures.cc \
 GMTK_BinaryViterbiFileUtils.h GMTK_BinaryViterbiFileUtils.cc \
 GMTK_JunctionTreeMessagePassing.cc \
 GMTK_JunctionTreeIslandMessagePassing.cc \
-version.h
-
-# GMTK_MissingFeatureScaledDiagGaussian.cc 
-# GMTK_MissingFeatureScaledDiagGaussian.h 
+version.h \
+GMTK_MissingFeatureScaledDiagGaussian.cc \
+GMTK_MissingFeatureScaledDiagGaussian.h 
 
 libXOPT_a_SOURCES = \
 GMTK_DiagGaussianOpt.cc \

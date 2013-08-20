@@ -5,6 +5,12 @@
  * 
  *   Jeff Bilmes <bilmes@ee.washington.edu>
 
+// 
+//  Copyright (C) 2001 Jeff Bilmes
+//  Licensed under the Open Software License version 3.0
+//  See COPYING or http://opensource.org/licenses/OSL-3.0
+//
+
  Modified by Karim Filali (karim@cs.washington.edu) to handle the following:
 
  - "Array type" flags: an example is the input flag -i; before if we
@@ -555,7 +561,11 @@ Arg::argsSwitch(Arg* arg_ptr,const char *arg,int& index,bool& found,const char*f
 {
   
   if(arg_ptr->dataStructType == ARRAY) {
-    assert(arg_ptr->arrayElmtIndex >= 0 && arg_ptr->arrayElmtIndex < (int) arg_ptr->maxArrayElmts);
+    if (arg_ptr->arrayElmtIndex < 0 || (int) arg_ptr->maxArrayElmts <= arg_ptr->arrayElmtIndex ) {
+      warning("%s Array index in switch (%s) is out of bounds (1..%u)\n", 
+	    ArgsErrStr, flag, arg_ptr->maxArrayElmts);
+      return ARG_ERROR;
+    }
   }
   
   switch(arg_ptr->mt.type) {

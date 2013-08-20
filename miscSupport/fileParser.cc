@@ -1,4 +1,8 @@
 //
+//  Copyright (C) 2001 Jeff Bilmes
+//  Licensed under the Open Software License version 3.0
+//  See COPYING or http://opensource.org/licenses/OSL-3.0
+//
 // Simple code to read/write data files in either ASCII or binary
 // consisting of either chars, ints, floats, or doubles. If it's an
 // ASCII file, supports reading/writting comments starting with COMMENTCHAR, 

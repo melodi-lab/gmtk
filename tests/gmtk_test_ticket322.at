@@ -3,7 +3,7 @@
 
 # ensure that variously mangled tri files trigger warnings
 
-AT_SETUP([ticket322])
+AT_SETUP([improve trifile error messages (ticket 322)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
 AT_CHECK([cd $TEST_AND_DEV/auroraTutorial && \
           gmtkJT -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \

@@ -1,0 +1,27 @@
+
+# test and dev model ajit-0clique
+
+
+AT_SETUP([ajit-0clique: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/ajit-0clique/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/ajit-0clique && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([ajit-0clique: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/ajit-0clique/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/ajit-0clique && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([ajit-0clique: jtcommand])
+# https://j.ee.washington.edu/trac/gmtk/ticket/152
+AT_XFAIL_IF([test x"$GMTK_NOXFAIL" = x""])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/ajit-0clique/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/ajit-0clique && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([ajit-0clique: vitcommand])
+# https://j.ee.washington.edu/trac/gmtk/ticket/152
+AT_XFAIL_IF([test x"$GMTK_NOXFAIL" = x""])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/ajit-0clique/vitcommand])
+AT_CHECK([(cd $TEST_AND_DEV/ajit-0clique && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP

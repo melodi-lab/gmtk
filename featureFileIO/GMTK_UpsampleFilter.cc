@@ -4,10 +4,10 @@
  * 
  * Written by Richard Rogers <rprogers@ee.washington.edu>
  *
- * Copyright (c) 2012, < fill in later >
+ * Copyright (C) 2012 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  * 
- * < License reference >
- * < Disclaimer >
  *
  */
 
@@ -54,8 +54,8 @@ UpsampleFilter::getRequiredInput(unsigned first, unsigned count,
                                                    outputContinuous, outputDiscrete,
                                                    outputFrames);
     assert(nextFilterInput);
-    first = nextFilterInput->requestedFirst;
-    count = nextFilterInput->requestedCount;
+    first = nextFilterInput->firstFrame;
+    count = nextFilterInput->numFrames;
   } 
   unsigned reqFirst = first / upsample;
   unsigned reqLast  = (first + count - 1) / upsample;

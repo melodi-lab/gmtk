@@ -4,14 +4,10 @@
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *  $Header$
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
  *
  *
  * The top level GMTK random variable object for the RV class hierarchy.
@@ -422,14 +418,14 @@ void RV::setParents(vector<RV *> &sparents,vector<vector<RV *> > &cpl)
 
 #define DO_IF_REGEX_AND_FRAME_MATCH(preg,rv,pcommand)		\
     if (preg) { \
-      if (frameRange->contains(rv->frame()) && !regexec(preg,rv->name().c_str(),0,0,0)) { \
+      if (frame == (int)rv->frame() && !regexec(preg,rv->name().c_str(),0,0,0)) { \
         if (!first) \
           fprintf(f,","); \
 	pcommand; \
 	first = false; \
       } \
     } else { \
-       if (frameRange->contains(rv->frame())) { \
+      if (frame == (int)rv->frame()) {		\
          if (!first) \
            fprintf(f,","); \
          pcommand; \
@@ -466,7 +462,7 @@ void printRVSetAndValues(FILE*f,vector<RV*>& locset,const bool nl,regex_t* preg)
   }
   if (nl) fprintf(f,"\n");
 }
-void printRVSetAndValues(FILE*f,vector<RV*>& locset,const bool nl,regex_t* preg, Range *frameRange)
+void printRVSetAndValues(FILE*f,vector<RV*>& locset,const bool nl,regex_t* preg, int frame)
 {
   bool first = true;
   for (unsigned i=0;i<locset.size();i++) {

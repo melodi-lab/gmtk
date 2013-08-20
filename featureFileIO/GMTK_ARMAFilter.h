@@ -4,10 +4,10 @@
  * 
  * Written by Richard Rogers <rprogers@ee.washington.edu>
  *
- * Copyright (c) 2012, < fill in later >
+ * Copyright (C) 2012 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  * 
- * < License reference >
- * < Disclaimer >
  *
  */
 
@@ -46,6 +46,8 @@ class ARMAFilter: public Filter {
   bool      initialized;           // have I remembered anything yet?
 
  public:
+
+  char const* name() {return "ARMA";}
   
   ARMAFilter(unsigned order, unsigned numFloats, Filter *nextFilter = NULL) 
     : buffer(NULL), buffSize(0), order(order), numFloats(numFloats), numFrames(0),

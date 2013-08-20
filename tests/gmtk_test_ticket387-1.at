@@ -3,14 +3,14 @@
 
 # See $TEST_AND_DEV/scripts/at_test.sh for test details
 
-AT_SETUP([new Viterbi printing single-partiton epiDBN])
+AT_SETUP([printing single-partiton epiDBN (ticket 387)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/epiDBN-387])
 AT_CHECK([(cd $TEST_AND_DEV/epiDBN-387 &&
 	   gmtkViterbi -strFile dbn.str -triFile dbn.str.trifile \
              -inputMasterFile dbn.master \
              -inputTrainableParameters dbn_trained.params \
              -of1 test.txt -fmt1 ascii -nf1 0 -ni1 16 \
-             -allocateDenseCpts 2 -pVitValsFile - \
+             -allocateDenseCpts 2 -mVitValsFile - \
            | testViterbi | sort)],[],[stdout])
 AT_CHECK([(cd $TEST_AND_DEV/epiDBN-387 &&
 	   gmtkViterbi -strFile dbn.str -triFile dbn.str.trifile \

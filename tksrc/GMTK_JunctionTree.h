@@ -4,14 +4,10 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2003, < fill in later >
+ * Copyright (C) 2003 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
  *
  *
  * $Header$
@@ -44,7 +40,7 @@
 #include "GMTK_PartitionTables.h"
 #include "GMTK_StreamSource.h"
 #include "GMTK_ObservationFile.h"
-
+#include "GMTK_RngDecisionTree.h"
 #include "debug.h"
 
 // class mention for forward references.
@@ -879,6 +875,14 @@ public:
   // to compute P(Q_t | X_{0:t})
   static bool sectionDoDist;
 
+
+  // Viterbi printing triggers
+  static char *pVitTrigger;
+  static char *cVitTrigger;
+  static char *eVitTrigger;
+
+  static bool vitRunLength;
+
   // For O(1) memory inference, write Viterbi values to this file for
   // later printing by a separate program
   static bool  binaryViterbiSwap;
@@ -1170,6 +1174,8 @@ public:
 			  FILE *f=stdout,
 			  const bool printObserved=false,
 			  regex_t *preg=NULL,
+			  regex_t *creg=NULL,
+			  regex_t *ereg=NULL,
 			  char *partRangeFilter=NULL,
 			  ObservationFile *posteriorFile = NULL,
 			  const bool cliquePosteriorNormalize = true,
@@ -1222,18 +1228,73 @@ public:
 			  const bool cliquePosteriorUnlog = true);
 
 
+ private:
+  // helper function for parsing Viterbi printing triggers
+  void parseViterbiTrigger(set<string> &variableNames, char *triggerExpression, vector< pair< string,int> > &rvVec, string &expr);
+
+  // setup data structures needed to evaluate a Viterbi printing trigger
+  void initializeViterbiTrigger(char *vitTrigger, set<string> &variableNames, 
+				vector< pair< string,int> > &vitTriggerVec, string &vitTriggerExpr,
+				RngDecisionTree::EquationClass &triggerEqn,
+				char arg);
+
+  // evaluate a Viterbi printing trigger
+  bool evaluateTrigger(vector<RV *> &allrvs, vector< pair< string,int> > &vitTriggerVec, string &vitTriggerExpr, 
+		       RngDecisionTree::EquationClass &triggerEqn);
+
+  void printModifiedSection(PartitionStructures &ps,
+			    unsigned *packed_values,
+			    bool useVitTrigger,
+			    vector< pair< string,int> > &vitTriggerVec,
+			    string &vitRiggerExpr,
+			    RngDecisionTree::EquationClass &vitTriggerEqn,
+			    bool printObserved,
+			    unsigned part,
+			    char sectionLabel,
+			    FILE *f,
+			    regex_t *preg,
+			    vector<bool> &regex_mask,
+			    bool &first_C,
+			    unsigned &C_size,
+			    sArray<unsigned> &previous_values,
+			    bool runLengthCompress = false,
+			    unsigned pt_i = 1);
+
+  void printOriginalSection(vector<RV *> sectionRVs,
+			    vector<RV *> hiddenRVs,
+			    bool useVitTrigger,
+			    vector< pair< string,int> > &vitTriggerVec,
+			    string &vitRiggerExpr,
+			    RngDecisionTree::EquationClass &vitTriggerEqn,
+			    bool printObserved,
+			    unsigned part,
+			    char sectionLabel,
+			    FILE *f,
+			    regex_t *preg,
+			    vector<bool> &regex_mask,
+			    bool &first_C,
+			    unsigned &C_size,
+			    sArray<unsigned> &previous_values,
+			    bool runLengthCompress = false,
+			    int frame = -1);
+ public:
+
   // void saveViterbiValuesIsland(oDataStreamFile& vfile);
   // void saveViterbiValuesLinear(oDataStreamFile& vfile);
   // void saveViterbiValuesIsland(FILE*);
   void printSavedPartitionViterbiValues(FILE*,
 					bool printObserved,
 					regex_t *preg,
+					regex_t* creg,
+					regex_t* ereg,
 					char* partRangeFilter);
 
   void printSavedPartitionViterbiValues(unsigned,
 					FILE*, FILE*,
 					bool printObserved,
 					regex_t *preg,
+					regex_t* creg,
+					regex_t* ereg,
 					char* partRangeFilter);
 
 #if 0
@@ -1271,25 +1332,33 @@ public:
 
   void printSavedViterbiValues(FILE *f,
 			       bool printObserved,
-			       regex_t *preg);
+			       regex_t *preg,
+			       regex_t* creg,
+			       regex_t* ereg);
 
   void printSavedViterbiValues(unsigned numFrames,
 			       FILE *f, FILE *binVitFile,
 			       bool printObserved,
 			       regex_t *preg,
+			       regex_t* creg,
+			       regex_t* ereg,
 			       char* partRangeFilter);
 
 #if 1
   void printSavedViterbiValues(unsigned numFrames,
 			       FILE *f, FILE* binVitFile,
 			       bool printObserved,
-			       regex_t *preg);
+			       regex_t *preg,
+			       regex_t* creg,
+			       regex_t* ereg);
 #endif
 
   void printSavedViterbiFrames(unsigned numFrames,
 			       FILE *f, FILE *binVitFile,
 			       bool printObserved,
 			       regex_t *preg,
+			       regex_t* creg,
+			       regex_t* ereg,
 			       char* frameRangeFilter);
 
   // actuall message routines.

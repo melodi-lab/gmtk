@@ -4,10 +4,10 @@
  * 
  * Written by Richard Rogers <rprogers@ee.washington.edu>
  *
- * Copyright (c) 2012, < fill in later >
+ * Copyright (C) 2012 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  * 
- * < License reference >
- * < Disclaimer >
  *
  */
 
@@ -75,6 +75,8 @@ class AffineFilter: public Filter {
   unsigned xBuffSize;    // in doubles
 
  public:
+
+  char const* name() {return "Affine";}
   
   AffineFilter() 
     : B(NULL), c(NULL),

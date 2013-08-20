@@ -6,14 +6,10 @@
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *  $Header$
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
  *
  *
  *
@@ -57,11 +53,15 @@ public:
 
   virtual void begin(logpr& p) {
     Sw_ObsContRV::begin(p);
+#if 0
+    // TODO:: need to go through and check all of RV subclasses 
+    // that the modification can't happen twice.
     if (rv_info.rvWeightInfo.size() > 1) 
       modifyProbability(p,rv_info.rvWeightInfo[cachedSwitchingState],this);
     else 
       modifyProbability(p,rv_info.rvWeightInfo[0],this);
     return;
+#endif
   }
 
   inline virtual void probGivenParents(logpr& p) {

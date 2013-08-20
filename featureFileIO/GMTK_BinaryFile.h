@@ -4,10 +4,10 @@
  * 
  * Written by Richard Rogers <rprogers@ee.washington.edu>
  *
- * Copyright (c) 2012, < fill in later >
+ * Copyright (C) 2012 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  * 
- * < License reference >
- * < Disclaimer >
  *
  */
 
@@ -39,6 +39,8 @@ class BinaryFile: public ObservationFile {
   FILE      *fofFile;                   // this file (list of file names)
   FILE      *curDataFile;               // currently open segment
 
+  int        startFrame;                // only use frames [startFrame:endFrame]
+  int        endFrame;                  
   unsigned   nFrames;                   // # frames in current segment before -preprX
 
   unsigned   curSegment;                // current segment #

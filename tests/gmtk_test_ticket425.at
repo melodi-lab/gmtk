@@ -1,0 +1,17 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/425 is fixed
+
+# If it's fixed, we should only get the Viterbi output for the single 
+# requested frame
+
+AT_SETUP([Frame range multi-frame sections (ticket 425)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&
+           gmtkViterbi -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
+             -inputMasterFile PARAMS/nonTrainable.master             \
+             -inputTrainable PARAMS/highly_trained.gmp               \
+             -str PARAMS/ticket425.str -dcdrng 0                     \
+             -vitValsFile - -vitFrameRange 22) | grep Ptn],
+	 [],[Ptn-6 C: word(22)=one,wordPosition(22)=0,wholeWordState(22)=8,phoneTransition(22)=1,wordTransition(22)=0
+])
+AT_CLEANUP

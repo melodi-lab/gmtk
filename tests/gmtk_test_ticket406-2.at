@@ -1,0 +1,41 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/406 is implemented
+
+# checks for correct handling of ambiguous function/variable identifiers
+
+AT_SETUP([ambiguous identifier warning (ticket 406)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/trigger])
+# median is a variable, but also a function
+AT_CHECK([(cd $TEST_AND_DEV/trigger && \
+          gmtkViterbi -strF trigger.str -inputM trigger.mtr \
+	  -of1 obs.flatasc -fmt1 flatascii -ni1 1  -sr1 0:0 \
+	  -vitPrintObs T -vitValsFile -                     \
+	  -cVitTrigger "median(0)==1")],[],[ignore],
+[WARNING: identifier 'median' in trigger formula 'median(0)==1' could be either a variable or a single argument function. It will be interpretted as a variable.
+
+])
+# multiple arguments to median, so it must be a function
+AT_CHECK([(cd $TEST_AND_DEV/trigger && \
+          gmtkViterbi -strF trigger.str -inputM trigger.mtr \
+	  -of1 obs.flatasc -fmt1 flatascii -ni1 1  -sr1 0:0 \
+	  -vitPrintObs T -vitValsFile -                     \
+	  -cVitTrigger "median(0,1,2)==1")],[],[ignore],[])
+
+# abs is not a variable, but it is a function
+AT_CHECK([(cd $TEST_AND_DEV/trigger && \
+          gmtkViterbi -strF trigger.str -inputM trigger.mtr \
+	  -of1 obs.flatasc -fmt1 flatascii -ni1 1  -sr1 0:0 \
+	  -vitPrintObs T -vitValsFile -                     \
+	  -cVitTrigger "abs(0)==1")],[],[ignore],[])
+
+# bar is neither variable nor function, so it should error
+AT_CHECK([(cd $TEST_AND_DEV/trigger && \
+          gmtkViterbi -strF trigger.str -inputM trigger.mtr \
+	  -of1 obs.flatasc -fmt1 flatascii -ni1 1  -sr1 0:0 \
+	  -vitPrintObs T -vitValsFile -                     \
+	  -cVitTrigger "bar(0)==1")],[1],[ignore],
+[ERROR: identifier 'bar' in trigger formula 'bar(0)==1' is neither a variable name nor a function name.
+
+])
+
+AT_CLEANUP

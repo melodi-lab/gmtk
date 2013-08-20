@@ -1,8 +1,18 @@
 #ifndef _DATA_POINTS_
 #define _DATA_POINTS_
 
+/*
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ *
+ */
+
 #include "global-parameters.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#endif
 #include "readRange.h"
 
 /**

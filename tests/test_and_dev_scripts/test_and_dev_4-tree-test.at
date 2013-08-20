@@ -1,0 +1,8 @@
+
+# test and dev model 4-tree-test
+
+
+AT_SETUP([4-tree-test: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/4-tree-test/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/4-tree-test && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
