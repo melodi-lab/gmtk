@@ -1,0 +1,14 @@
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/161 is fixed
+
+# Training segfaults if the bug is not fixed
+
+AT_SETUP([MissingFeatureScaledGaussian (ticket 161)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/ticket161.train.share])
+AT_CHECK([(cd $TEST_AND_DEV/ticket161.train.share && gmtkEMtrain \
+  -fmt1 binary -iswp1 F -nf1 2 -ni1 0 -of1 float32.list \
+  -fmt2 binary -iswp2 F -nf2 0 -ni2 2 -of2 int.list \
+  -inputMasterFile input.master -strFile segway.str \
+  -triFile segway.str.missingfeaturescaleddiaggaussian.trifile \
+  -cppCommandOptions "-DTRAIN -DMISSING_FEATURE_SCALED_DIAG_GAUSSIAN")],
+  [0], [ignore], [ignore])
+AT_CLEANUP

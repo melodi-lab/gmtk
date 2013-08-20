@@ -216,6 +216,9 @@ DiagGaussian::noisyClone()
 	     != GM_Parms.componentsMap.end());
 
     if (cloneShareMeans && cloneShareCovars) {
+      // the issue here is that if the user wants to clone a gaussian that shares
+      // both mean and covar, it would be identical and no reason to clone in the first
+      // place.
       warning("WARNING: Diagonal Gaussian component '%s' is cloning, and was asked to share both means and covariances. No sharing is occuring instead.",name().c_str());
       clone->mean = mean->noisyClone();
       clone->covar = covar->noisyClone();
@@ -317,6 +320,7 @@ DiagGaussian::emStartIteration()
 
   if (!emEmAllocatedBitIsSet()) {
     // this is presumably the first time
+    trMembers.allocateIfNeeded();
     emSetEmAllocatedBit();
   }
 
@@ -325,8 +329,8 @@ DiagGaussian::emStartIteration()
   emSetSwappableBit();
 
   accumulatedProbability = 0.0;
-  mean->emStartIteration(nextMeans);
-  covar->emStartIteration(nextDiagCovars);
+  mean->emStartIteration(trMembers->nextMeans);
+  covar->emStartIteration(trMembers->nextDiagCovars);
 }
 
 
@@ -358,20 +362,20 @@ DiagGaussian::emIncrement(logpr prob,
 
 
   // these next calls are presumed to be valid for both EM and FK (fisher kernel accumulation).
-  mean->emIncrement(prob,fprob,f,base,stride,nextMeans.ptr);
-  covar->emIncrement(prob,fprob,f,base,stride,nextDiagCovars.ptr);
+  mean->emIncrement(prob,fprob,f,base,stride,trMembers->nextMeans.ptr);
+  covar->emIncrement(prob,fprob,f,base,stride,trMembers->nextDiagCovars.ptr);
 
   if (!fisherKernelMode) {
     // do normal EM increment
     // this call is optimized to do the 1st and 2nd moment stats simultaneously
-    emIncrementMeanDiagCovar(fprob,f,nextMeans.size(),nextMeans.ptr,nextDiagCovars.ptr);
+    emIncrementMeanDiagCovar(fprob,f,trMembers->nextMeans.size(),trMembers->nextMeans.ptr,trMembers->nextDiagCovars.ptr);
   } else {
     // do a fisher score increment
-    fkIncrementMeanDiagCovar(fprob,f,nextMeans.size(),
+    fkIncrementMeanDiagCovar(fprob,f,trMembers->nextMeans.size(),
 			     mean->means.ptr,
 			     covar->covariances.ptr,
-			     nextMeans.ptr,
-			     nextDiagCovars.ptr);
+			     trMembers->nextMeans.ptr,
+			     trMembers->nextDiagCovars.ptr);
 
   }
 }
@@ -409,17 +413,19 @@ DiagGaussian::emEndIteration()
     if (mean->emSharedBitIsSet()) {
       // mean and covariance are both shared
       mean->emEndIterationSharedMeansCovars
-	(accumulatedProbability,nextMeans.ptr,covar);
+	(accumulatedProbability,trMembers->nextMeans.ptr,covar);
       covar->emEndIterationSharedMeansCovars
 	(accumulatedProbability,
-	 nextMeans.ptr,
-	 nextDiagCovars.ptr,
+	 trMembers->nextMeans.ptr,
+	 trMembers->nextDiagCovars.ptr,
 	 mean);
     } else {
       // Mean is not shared, but covariance is shared
       // can still use normal EM
-      mean->emEndIterationNoSharing(nextMeans.ptr);
-      covar->emEndIterationSharedCovars(accumulatedProbability,nextMeans.ptr,nextDiagCovars.ptr);
+      mean->emEndIterationNoSharing(trMembers->nextMeans.ptr);
+      covar->emEndIterationSharedCovars(accumulatedProbability,
+					trMembers->nextMeans.ptr,
+					trMembers->nextDiagCovars.ptr);
     }
   } else {
     // covariance is not shared
@@ -428,16 +434,16 @@ DiagGaussian::emEndIteration()
       // but use the "all shared" versions since we don't
       // have the new mean at this point.
       mean->emEndIterationSharedMeansCovars
-	(accumulatedProbability,nextMeans.ptr,covar);
+	(accumulatedProbability,trMembers->nextMeans.ptr,covar);
       covar->emEndIterationSharedMeansCovars
 	(accumulatedProbability,
-	 nextMeans.ptr,
-	 nextDiagCovars.ptr,
+	 trMembers->nextMeans.ptr,
+	 trMembers->nextDiagCovars.ptr,
 	 mean);
     } else {
       // nothing is shared, use EM
-      mean->emEndIterationNoSharing(nextMeans.ptr);
-      covar->emEndIterationNoSharing(nextMeans.ptr,nextDiagCovars.ptr);
+      mean->emEndIterationNoSharing(trMembers->nextMeans.ptr);
+      covar->emEndIterationNoSharing(trMembers->nextMeans.ptr,trMembers->nextDiagCovars.ptr);
     }
   }
 
@@ -479,16 +485,16 @@ DiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& ofile,
   // argument since it doesn't make sense to take log of
   // these values since they are continuous, could be negative, etc.
   if (writeZeros) {
-    const unsigned totalLen = nextMeans.len() + nextDiagCovars.len();
+    const unsigned totalLen = trMembers->nextMeans.len() + trMembers->nextDiagCovars.len();
     for (unsigned i=0;i<totalLen;i++) {
       ofile.write(0.0,"Diag Gaussian store accums nm + nc.");
     }
   } else {
-    for (int i=0;i<nextMeans.len();i++) {
-      ofile.write(nextMeans[i],"Diag Gaussian store accums nm.");
+    for (int i=0;i<trMembers->nextMeans.len();i++) {
+      ofile.write(trMembers->nextMeans[i],"Diag Gaussian store accums nm.");
     }
-    for (int i=0;i<nextDiagCovars.len();i++) {
-      ofile.write(nextDiagCovars[i],"Diag Gaussian store accums nc.");
+    for (int i=0;i<trMembers->nextDiagCovars.len();i++) {
+      ofile.write(trMembers->nextDiagCovars[i],"Diag Gaussian store accums nc.");
     }
   }
 }
@@ -513,22 +519,22 @@ DiagGaussian::emLoadObjectsDummyAccumulators(iDataStreamFile& ifile)
 void
 DiagGaussian::emZeroOutObjectsAccumulators()
 {
-  for (int i=0;i<nextMeans.len();i++) {
-    nextMeans[i] = 0.0;
+  for (int i=0;i<trMembers->nextMeans.len();i++) {
+    trMembers->nextMeans[i] = 0.0;
   }
-  for (int i=0;i<nextDiagCovars.len();i++) {
-    nextDiagCovars[i] = 0.0;
+  for (int i=0;i<trMembers->nextDiagCovars.len();i++) {
+    trMembers->nextDiagCovars[i] = 0.0;
   }
 }
 
 void
 DiagGaussian::emLoadObjectsAccumulators(iDataStreamFile& ifile)
 {
-  for (int i=0;i<nextMeans.len();i++) {
-    ifile.read(nextMeans[i],"Diag Gaussian load accums nm.");
+  for (int i=0;i<trMembers->nextMeans.len();i++) {
+    ifile.read(trMembers->nextMeans[i],"Diag Gaussian load accums nm.");
   }
-  for (int i=0;i<nextDiagCovars.len();i++) {
-    ifile.read(nextDiagCovars[i],"Diag Gaussian load accums nc.");
+  for (int i=0;i<trMembers->nextDiagCovars.len();i++) {
+    ifile.read(trMembers->nextDiagCovars[i],"Diag Gaussian load accums nc.");
   }
 }
 
@@ -539,15 +545,15 @@ DiagGaussian::emAccumulateObjectsAccumulators(iDataStreamFile& ifile)
   //
   // ASSUME MEANS AND COVARIANCES ARE OF TYPE FLOAT
   // See the MeanVector.h and DiagcovarVector.h for specifics.
-  for (int i=0;i<nextMeans.len();i++) {
+  for (int i=0;i<trMembers->nextMeans.len();i++) {
     float tmp;
     ifile.read(tmp,"Diag Gaussian accumulate accums nm.");
-    nextMeans[i] += tmp;
+    trMembers->nextMeans[i] += tmp;
   }
-  for (int i=0;i<nextDiagCovars.len();i++) {
+  for (int i=0;i<trMembers->nextDiagCovars.len();i++) {
     float tmp;
     ifile.read(tmp,"Diag Gaussian accumulate accums nc.");
-    nextDiagCovars[i] += tmp;
+    trMembers->nextDiagCovars[i] += tmp;
   }
 }
 

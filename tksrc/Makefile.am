@@ -259,6 +259,7 @@ gmtkViz.app/Contents/PkgInfo: gmtkViz$(EXEEXT) $(srcdir)/Info.plist.in \
 endif
 
 check_PROGRAMS =  \
+gmpstrip \
 parserTest \
 testPackCliqueValue \
 testViterbi \
@@ -269,6 +270,7 @@ dlinktest
 #testRngDecisionTree testGMParms testFileParser lex.yy
 # testHash testHashTree?
 
+gmpstrip_SOURCES = gmpstrip.ll
 
 dlinktest_SOURCES = dlinktest.cc
 
