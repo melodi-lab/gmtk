@@ -1,4 +1,12 @@
+/*
+ *
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ *
+ */
 #include <iostream>
+#include <math.h>
 #include "mixNormalCollection.h"
 
 extern int sentPrintFrequency;
@@ -13,14 +21,14 @@ extern int sentPrintFrequency;
  * reading them from a file.
  *
  */
-void MixNormalCollection::computeMIUsingData(ObservationMatrix& obsMat,
+void MixNormalCollection::computeMIUsingData(FileSource *obsMat,
 					     RangeSetCollection rangeSetCol,
 					     Range &sentenceRange, 
 					     const bool quiet,
 					     FILE *outFileMI, Range &lrrng,int labpos,
 					     FILE* rangeFileFP){
   size_t n_frames, n_samps;
-  size_t n_ftrs = obsMat.numContinuous();
+  size_t n_ftrs = obsMat->numContinuous();
   int readStatus;
   unsigned frameStart,firstFrame;
   startEpochMI(rangeSetCol);
@@ -34,7 +42,7 @@ void MixNormalCollection::computeMIUsingData(ObservationMatrix& obsMat,
 				n_samps,lrrng,labpos,
 				frameStart,firstFrame);
       if(readStatus == NO_DATA) break;
-      addToEpochMI(&obsMat, n_ftrs, 
+      addToEpochMI(obsMat, n_ftrs, 
 				n_frames, n_samps,firstFrame,
 				rangeSetCol);	
     } while(readStatus == DATA_LEFT);
@@ -74,7 +82,7 @@ void MixNormalCollection::startEpochMI(const RangeSetCollection &tupleCol) {
  *  adds the data in the input buffer to MI calculation 
  *  for each mixture
  */
-void MixNormalCollection::addToEpochMI(ObservationMatrix* obsMat,
+void MixNormalCollection::addToEpochMI(FileSource *obsMat,
 				     size_t featureVecDim,
 				     size_t totalNumFramesInSentence,
 				     size_t numFramesToProcess,
@@ -90,7 +98,7 @@ void MixNormalCollection::addToEpochMI(ObservationMatrix* obsMat,
   for( MixNormal *p = _ftrMI; p != _ftrMI_endp; p++ ){
     tuple = tupleCol.rs[i++];
     pointerSet.setDim(tuple.getSize());
-    BUFFER_DATA_TYPE* obsMatPtr = (BUFFER_DATA_TYPE*) obsMat->features.ptr;
+    BUFFER_DATA_TYPE* obsMatPtr = (BUFFER_DATA_TYPE*) obsMat->featurePtr();
     numFramesProcessed = pointerSet.initialize(obsMatPtr, totalNumFramesInSentence, numFramesToProcess, firstFrameToProcess, tuple);
     if (numFramesProcessed != 0) {
       if(tuple.getSize(1) == 0) //entropy

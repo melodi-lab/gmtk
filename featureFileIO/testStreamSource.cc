@@ -4,6 +4,15 @@
 #include <errno.h>
 #include <assert.h>
 
+/*
+ * Written by Richard Rogers <rprogers@uw.edu>
+ *
+ * Copyright (C) 2012 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ *
+ */
+
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
 static const char * gmtk_version_id = PACKAGE_STRING;

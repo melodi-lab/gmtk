@@ -4,6 +4,10 @@
  *  Created   : 2003-12-15 20:16:42 karim
  *  Author    : Karim Filali (karim@cs.washington.edu)
  *  Time-stamp: <>
+ *
+ * Copyright (C) 2003 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
 
  Create an initializtion .mg file for pfile_mi.cc using a simple
  k-means algorithm.  Adapted from the pfile_initmg by Jeff Bilmes

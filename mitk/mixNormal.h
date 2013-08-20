@@ -1,5 +1,10 @@
 /**
  *: mixNormal.h
+ *
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ *
  *  This class contains the mixture of N normal distributions
  *    f(x) = \sum_{k=1}^N{alpha_k e^{-(x-u_k)^2/2/sigma^2}/(sqrt(2 pi) sigma)}
  *

@@ -7,6 +7,16 @@
 #include "GMTK_FileSource.h"
 
 
+/*
+ * Written by Richard Rogers <rprogers@uw.edu>
+ *
+ * Copyright (C) 2012 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ *
+ */
+
+
 char    *ofs[1];
 unsigned nfs[1];
 unsigned nis[1];

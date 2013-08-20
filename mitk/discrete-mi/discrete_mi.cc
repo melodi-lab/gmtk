@@ -4,6 +4,13 @@
  Main functions to calculate the mutual information between 
  two set of discrete-valued vectors.
  */
+/*
+ *
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ *
+ */
 
 #include <cstdlib>
 #include <cstdio>

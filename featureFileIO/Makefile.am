@@ -1,4 +1,13 @@
 
+#
+# Written by Richard Rogers <rprogers@uw.edu>
+#
+# Copyright (C) 2010 Jeff Bilmes
+# Licensed under the Open Software License version 3.0
+# See COPYING or http://opensource.org/licenses/OSL-3.0
+#
+
+
 if HAVE_HG
 # this will keep the Mercurial revision id current if you're building 
 # in a working directory. If you're not, use the distributed hgstamp.h
@@ -112,6 +121,7 @@ testBinStream_SOURCES = testBinStream.cc
 testFileStream_SOURCES = testFileStream.cc
 testFileSrc_SOURCES = testFileSrc.cc
 testFileWriter_SOURCES = testFileWriter.cc
+testPFileWriter_SOURCES = testPFileWriter.cc
 testFilter_SOURCES = testFilter.cc
 testObsFile_SOURCES = testObsFile.cc
 testStreamSource_SOURCES = testStreamSource.cc

@@ -2,7 +2,13 @@
 #ifndef STR_HASH_MAP_H
 #define STR_HASH_MAP_H
 
-
+/*
+ * Written by Jeff Bilmes <bilmes@ee.washington.edu>
+ *
+ * Copyright (C) 2005 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ */
 #include <cstring>
 
 

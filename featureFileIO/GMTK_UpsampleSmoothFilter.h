@@ -4,10 +4,10 @@
  * 
  * Written by Richard Rogers <rprogers@ee.washington.edu>
  *
- * Copyright (c) 2012, < fill in later >
+ * Copyright (C) 2012 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  * 
- * < License reference >
- * < Disclaimer >
  *
  */
 
@@ -35,6 +35,8 @@ class UpsampleSmoothFilter: public Filter {
   unsigned upsample;
 
  public:
+
+  char const* name() {return "UpsampleS";}
 
   UpsampleSmoothFilter(unsigned upsample, Filter *nextFilter = NULL) 
     : buffer(NULL), buffSize(0), upsample(upsample+1)

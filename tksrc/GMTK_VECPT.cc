@@ -68,15 +68,10 @@ sentRange:all
 
 
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
@@ -208,10 +203,10 @@ VECPT::read(iDataStreamFile& is)
 
     if (obsFileName == FILE_NAME_WHEN_USING_GLOBAL_OBSERVATION_FILE) {
       // we take observations from the global observation matrix.
-      obs = static_cast<FileSource *>(globalObservationMatrix);
+      obs = dynamic_cast<FileSource *>(globalObservationMatrix); assert(obs);
       // I think the above should be safe, as there's no chance of
       // trying to read a VECPT from anything other than a FileSource
-    
+
       is.read(str);
       while(! (is.isEOF() || str=="END")) {
 	lineNum++;
@@ -488,7 +483,10 @@ VECPT::read(iDataStreamFile& is)
       Filter *postTrans = instantiateFilters(postTransforms, obsFile->numLogicalContinuous(),
                                                              obsFile->numLogicalDiscrete());
       obsFile = new FilterFile(postTrans, obsFile);
-      obs = new FileSource(obsFile, DEFAULT_BUFFER_SIZE,
+      obs = new FileSource(obsFile,
+			   DEFAULT_FILE_WINDOW_BYTES,
+			   DEFAULT_FILE_WINDOW_DELTA,
+			   DEFAULT_BUFFER_SIZE,
 			   globalObservationMatrix->startSkip(), 
 			   globalObservationMatrix->endSkip());
 #endif
@@ -496,24 +494,26 @@ VECPT::read(iDataStreamFile& is)
       // still here? Do more error checking.
 
       if (obs->numContinuous() == 0) {
-	error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' and reading observation file '%s' with %d ints and %d floats. Range string '%s'. Must have or specify > 0 floats",
+	error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' and reading observation "
+	      "file '%s' with %d ints and %d floats. Range string '%s'. Must have or specify > 0 floats",
 	      is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs,frs.c_str());
       }
 
       if (!((obs->numDiscrete() == 0) || (obs->numDiscrete() == obs->numContinuous()))) {
-	error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' and reading observation file '%s' with %d ints and %d floats. Float range string is '%s', int range string is '%s'. Must have or specify either 0 ints, or same number of ints as floats",
+	error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' and reading observation file '%s' "
+	      "with %d ints and %d floats. Float range string is '%s', int range string is '%s'. Must have "
+	      "or specify either 0 ints, or same number of ints as floats",
 	      is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs,frs.c_str(),irs.c_str());
       }
 
-      FileSource fs;
-      if ( typeid(*globalObservationMatrix) == typeid(fs) &&
-	   typeid(*obs) == typeid(fs) )
-      {
-	FileSource *gomFS = static_cast<FileSource *>(globalObservationMatrix);
-	FileSource *obsFS = static_cast<FileSource *>(obs);
+      FileSource *gomFS = dynamic_cast<FileSource *>(globalObservationMatrix);
+      FileSource *obsFS = dynamic_cast<FileSource *>(obs);
+      if ( gomFS && obsFS ) {
 	// make sure we have same number of segments as global observation case.
 	if (gomFS->numSegments() != obsFS->numSegments()) {
-	  error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' and reading observation file '%s' with %d ints and %d floats. Number of segments %d must match that of the global observation file, which has %d segments",
+	  error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' and reading observation file '%s' "
+		"with %d ints and %d floats. Number of segments %d must match that of the global observation "
+		"file, which has %d segments",
 		is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs,obsFS->numSegments(),gomFS->numSegments());
 	}
       } else {

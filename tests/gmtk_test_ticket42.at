@@ -1,7 +1,7 @@
 
 # Verify that https://j.ee.washington.edu/trac/gmtk/ticket/42 is fixed
 
-AT_SETUP([ticket 42])
+AT_SETUP([obs-create (ticket 42)])
 AT_DATA([obs1.asc],[0 0 0.799279 0.199117 0.465240
 0 1 0.827937 0.915163 0.056923
 0 2 0.808103 0.511985 0.348996

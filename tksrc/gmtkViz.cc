@@ -1,5 +1,11 @@
 // -*- C++ -*-
 
+/*
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ */
+
 // Dots and dashes have been disabled because of the instability they
 // induce. The wxWidgets documentation says that they may only be
 // drawn with width one. I believe the problem is that when you print
@@ -18,6 +24,8 @@
 #if HAVE_HG_H
 #include "hgstamp.h"
 #endif
+
+#include "version.h"
 
 // the only parts of gmtk that gmtkViz needs to concern itself with
 #include "GMTK_FileParser.h"
@@ -1010,7 +1018,7 @@ END_EVENT_TABLE()
 
 
 
-/* Hack to work around https://lungs.ee.washington.edu/trac/gmtk/ticket/71
+/* Hack to work around https://j.ee.washington.edu/trac/gmtk/ticket/71
  */
 class wxTicket71Dialog : public wxDialog {
 	public:
@@ -1339,6 +1347,7 @@ Arg Arg::Args[] = {
 	Arg( "cppCommandOptions", Arg::Opt, cppCommandOptions,
 	 "Additional CPP command line" ),
 	Arg("\n*** General options ***\n"),
+	Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
 	Arg("verbosity",Arg::Opt,verbosity,"Verbosity (0 <= v <= 100) of informational/debugging msgs"),
 	Arg( "help", Arg::Tog, help, "print this message" ),
 	Arg()
@@ -1362,6 +1371,14 @@ bool GMTKStructVizApp::OnInit()
 	if(help || !parse_was_ok) {
 		Arg::usage();
 		return false;
+	}
+	if (print_version_and_exit) {
+#ifdef HAVE_CONFIG_H
+	  printf("%s (Mercurial id: %s)\n",gmtk_version_id,HGID);
+#else
+	  printf("%s\n", gmtk_version_id);
+#endif
+	  exit(0);
 	}
 
 	//init the global Style Maps
@@ -1674,7 +1691,9 @@ GFrame::GFrame( wxWindow* parent, int id, const wxString& title,
 	menu_file->Append(MENU_FILE_PRINT_EPS, wxT("&Print to "PRINT2FILE_ABBREV" file...\tCtrl+E"), wxT("Print an "PRINT2FILE_FORMAT" file of the current graph"), wxITEM_NORMAL);
 	menu_file->AppendSeparator();
 	menu_file->Append(MENU_FILE_CLOSE, wxT("&Close\tCtrl+W"), wxT("Close current placement file"), wxITEM_NORMAL);
+#ifndef GMTK_WX_OSX
 	menu_file->Append(MENU_FILE_EXIT, wxT("E&xit\tCtrl+Q"), wxT("Close all files and exit"), wxITEM_NORMAL);
+#endif
 	MainVizWindow_menubar->Append(menu_file, wxT("&File"));
 	// These don't make sense until a document is open.
 	MainVizWindow_menubar->Enable(MENU_FILE_SAVE, false);

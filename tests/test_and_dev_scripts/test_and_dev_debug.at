@@ -1,0 +1,23 @@
+
+# test and dev model debug
+
+
+AT_SETUP([debug: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/debug/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/debug && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([debug: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/debug/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/debug && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([debug: traincommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/debug/traincommand])
+AT_CHECK([(cd $TEST_AND_DEV/debug && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./traincommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([debug: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/debug/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/debug && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

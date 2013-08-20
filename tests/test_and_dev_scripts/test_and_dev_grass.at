@@ -1,0 +1,23 @@
+
+# test and dev model grass
+
+
+AT_SETUP([grass: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/grass/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/grass && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([grass: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/grass/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/grass && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([grass: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/grass/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/grass && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([grass: vitcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/grass/vitcommand])
+AT_CHECK([(cd $TEST_AND_DEV/grass && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP

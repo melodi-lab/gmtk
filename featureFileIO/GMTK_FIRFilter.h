@@ -4,10 +4,10 @@
  * 
  * Written by Richard Rogers <rprogers@ee.washington.edu>
  *
- * Copyright (c) 2012, < fill in later >
+ * Copyright (C) 2012 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  * 
- * < License reference >
- * < Disclaimer >
  *
  */
 
@@ -47,6 +47,8 @@ class FIRFilter: public Filter {
 
  public:
   
+  char const* name() {return "FIR";}
+
   FIRFilter() {buffer=NULL; buffSize=0;}
 
   // Read B and c from fileName

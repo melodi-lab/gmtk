@@ -1,0 +1,27 @@
+
+# test and dev model CMM
+
+
+AT_SETUP([CMM: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/CMM/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/CMM && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([CMM: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/CMM/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/CMM && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([CMM: jtcommand])
+# takes too long & too much memory
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/CMM/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/CMM && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./jtcommand left-model.str)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([CMM: vitcommand])
+# takes too long & too much memory
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/CMM/vitcommand2])
+AT_CHECK([(cd $TEST_AND_DEV/CMM && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./vitcommand2 model.str)], [], [ignore], [ignore])
+AT_CLEANUP

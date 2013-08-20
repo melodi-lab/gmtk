@@ -59,12 +59,12 @@ intv_int64_t swapb_i64_i64(intv_int64_t val)
 
   uval = (intv_uint64_t) val;
   b0 =  uval >> 56;
-  b1 = (uval >> 40) & 0x000000000000ff00;
-  b2 = (uval >> 24) & 0x0000000000ff0000;
-  b3 = (uval >>  8) & 0x00000000ff000000;
-  b4 = (uval <<  8) & 0x000000ff00000000;
-  b5 = (uval << 24) & 0x0000ff0000000000;
-  b6 = (uval << 40) & 0x00ff000000000000;
+  b1 = (uval >> 40) & 0x000000000000ff00ULL;
+  b2 = (uval >> 24) & 0x0000000000ff0000ULL;
+  b3 = (uval >>  8) & 0x00000000ff000000ULL;
+  b4 = (uval <<  8) & 0x000000ff00000000ULL;
+  b5 = (uval << 24) & 0x0000ff0000000000ULL;
+  b6 = (uval << 40) & 0x00ff000000000000ULL;
   b7 =  uval << 56;
 
   res = b0 | b1 | b2 | b3 | b4 | b5 | b6 | b7;

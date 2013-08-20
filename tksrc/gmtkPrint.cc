@@ -5,14 +5,10 @@
  * by gmtkViterbi with the -binaryVitFile option
  *
  *
- * Copyright (c) 2012, < fill in later >
+ * Copyright (C) 2012 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
  *
  */
 
@@ -358,7 +354,7 @@ main(int argc,char*argv[])
 	  "Viterbi file.\n", JunctionTree::binaryViterbiFilename, GMTK_VITERBI_COOKIE_NOLF);
   }
 
-  int byte_order_mark;
+  int byte_order_mark; assert(sizeof(byte_order_mark) == 4);
   if (fread(&byte_order_mark, sizeof(byte_order_mark), 1, binVitFile) != 1) {
     error("ERROR: Unable to read binary Viterbi file '%s'\n",
 	  JunctionTree::binaryViterbiFilename);
@@ -391,6 +387,14 @@ main(int argc,char*argv[])
   }
 #endif
 
+  if (sizeof(gmtk_off_t) != 8) {
+    error("ERROR: GMTK requires 64-bit file offsets to support binary Viterbi "
+	  "files. The current file offset size appears to be %u bits. The "
+	  "configure script used to build GMTK should have arranged to use "
+	  "64-bit file offsets if that's possible on this platform.\n",
+	  (unsigned)(sizeof(gmtk_off_t)*8));
+  }
+ 
   // What is the difference between the pVit* files and the vit*
   // files?  The pVit* files are similar to the vit* files, but the
   // pVit print via partitions, while the vit* does a bunch more
@@ -400,13 +404,13 @@ main(int argc,char*argv[])
   // for users, while the pVit files are more meant for algorithm
   // writters/debugging which is the reason that we have both of them
   // here.
-  FILE* pVitValsFile = NULL;
-  if (pVitValsFileName) {
-    if (strcmp("-",pVitValsFileName) == 0)
-      pVitValsFile = stdout;
+  FILE* mVitValsFile = NULL;
+  if (mVitValsFileName) {
+    if (strcmp("-",mVitValsFileName) == 0)
+      mVitValsFile = stdout;
     else {
-      if ((pVitValsFile = fopen(pVitValsFileName, "w")) == NULL)
-	error("Can't open file '%s' for writing\n",pVitValsFileName);
+      if ((mVitValsFile = fopen(mVitValsFileName, "w")) == NULL)
+	error("Can't open file '%s' for writing\n",mVitValsFileName);
     }
   }
 #if 1
@@ -419,8 +423,8 @@ main(int argc,char*argv[])
 	error("Can't open file '%s' for writing\n",vitValsFileName);
     }
   }
-  if (!pVitValsFile && !vitValsFile) {
-    error("Argument Error: Missing REQUIRED argument: -pVitValsFile <str>  OR  -vitValsFile <str>\n");
+  if (!mVitValsFile && !vitValsFile) {
+    error("Argument Error: Missing REQUIRED argument: -mVitValsFile <str>  OR  -vitValsFile <str>\n");
   }
 #endif
 
@@ -437,32 +441,41 @@ main(int argc,char*argv[])
 
   Range::iterator* dcdrng_it = new Range::iterator(dcdrng->begin());
     
-  regex_t *pVitPreg = NULL;
-  if (pVitRegexFilter != NULL) {
-    pVitPreg = (regex_t*) malloc(sizeof(regex_t));
-    const unsigned case_ignore = (pVitCaseSensitiveRegexFilter? 0 : REG_ICASE);
-    if (regcomp(pVitPreg,pVitRegexFilter,
-		REG_EXTENDED
-		| case_ignore
-		| REG_NOSUB
-		)) {
-      error("ERROR: problem with regular expression filter string '%s'\n",pVitRegexFilter);
-    }
-  }
-
+  const unsigned case_ignore = (vitCaseSensitiveRegexFilter? 0 : REG_ICASE);
   regex_t *vitPreg = NULL;
-  if (vitRegexFilter != NULL) {
+  if (pVitRegexFilter != NULL) {
     vitPreg = (regex_t*) malloc(sizeof(regex_t));
-    const unsigned case_ignore = (vitCaseSensitiveRegexFilter? 0 : REG_ICASE);
-    if (regcomp(vitPreg,vitRegexFilter,
+    if (regcomp(vitPreg,pVitRegexFilter,
 		REG_EXTENDED
 		| case_ignore
 		| REG_NOSUB
 		)) {
-      error("ERROR: problem with regular expression filter string '%s'\n",vitRegexFilter);
+      error("ERROR: problem with prolog regular expression filter string '%s'\n",pVitRegexFilter);
     }
   }
-
+  regex_t *vitCreg = NULL;
+  if (cVitRegexFilter != NULL) {
+    vitCreg = (regex_t*) malloc(sizeof(regex_t));
+    if (regcomp(vitCreg,cVitRegexFilter,
+		REG_EXTENDED
+		| case_ignore
+		| REG_NOSUB
+		)) {
+      error("ERROR: problem with chunk regular expression filter string '%s'\n",cVitRegexFilter);
+    }
+  }
+  regex_t *vitEreg = NULL;
+  if (eVitRegexFilter != NULL) {
+    vitEreg = (regex_t*) malloc(sizeof(regex_t));
+    if (regcomp(vitEreg,eVitRegexFilter,
+		REG_EXTENDED
+		| case_ignore
+		| REG_NOSUB
+		)) {
+      error("ERROR: problem with epilog regular expression filter string '%s'\n",pVitRegexFilter);
+    }
+  }
+    
   while (!dcdrng_it->at_end()) {
     const unsigned segment = (unsigned)(*(*dcdrng_it));
 
@@ -507,18 +520,18 @@ main(int argc,char*argv[])
 
     total_data_prob *= probe;
 
-    if (pVitValsFile) {
-      fprintf(pVitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
+    if (mVitValsFile) {
+      fprintf(mVitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
 	      segment, numFrames, probe.val());
       myjt.printSavedPartitionViterbiValues(numFrames,
 					    binVitFile,
-					    pVitValsFile,
-					    pVitAlsoPrintObservedVariables,
-					    pVitPreg,
-					    pVitPartRangeFilter);
+					    mVitValsFile,
+					    vitAlsoPrintObservedVariables,
+					    vitPreg, vitCreg, vitEreg,
+					    vitPartRangeFilter);
     }
 
-    if (pVitValsFile || pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange)
+    if (mVitValsFile || pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange)
       myjt.resetViterbiPrinting();
     if (vitValsFile) {
       fprintf(vitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
@@ -528,21 +541,29 @@ main(int argc,char*argv[])
 				     vitValsFile,
 				     binVitFile,
 				     vitAlsoPrintObservedVariables,
-				     vitPreg,
+				     vitPreg, vitCreg, vitEreg,
 				     vitPartRangeFilter);
       } else {
 	myjt.printSavedViterbiFrames(numFrames, vitValsFile, NULL,
 				     vitAlsoPrintObservedVariables,
-				     vitPreg,
+				     vitPreg, vitCreg, vitEreg,
 				     vitFrameRangeFilter);
       }
     }
     (*dcdrng_it)++;
   }
 
-  if (pVitPreg != NULL) {
-    regfree(pVitPreg);
-    free(pVitPreg);
+  if (vitPreg != NULL) {
+    regfree(vitPreg);
+    free(vitPreg);
+  }
+  if (vitCreg != NULL) {
+    regfree(vitCreg);
+    free(vitCreg);
+  }
+  if (vitEreg != NULL) {
+    regfree(vitEreg);
+    free(vitEreg);
   }
 
   infoMsg(IM::Default,"Total data log prob for all segments is: %1.9e\n",
@@ -555,8 +576,8 @@ main(int argc,char*argv[])
     reportTiming(rus,rue,userTime,sysTime,stdout);
   }
 
-  if (pVitValsFile && pVitValsFile != stdout)
-    fclose(pVitValsFile);
+  if (mVitValsFile && mVitValsFile != stdout)
+    fclose(mVitValsFile);
 #if 1
   if (vitValsFile && vitValsFile != stdout)
     fclose(vitValsFile);

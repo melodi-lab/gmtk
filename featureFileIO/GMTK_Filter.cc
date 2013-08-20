@@ -4,10 +4,10 @@
  * 
  * Written by Richard Rogers <rprogers@ee.washington.edu>
  *
- * Copyright (c) 2012, < fill in later >
+ * Copyright (C) 2012 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  * 
- * < License reference >
- * < Disclaimer >
  *
  */
 
@@ -34,7 +34,7 @@
 
 subMatrixDescriptor *subMatrixDescriptor::freeList = NULL;
 
-static long parse_long(const char*const s) {
+static long parse_long(const char*const s, char *err_str) {
     size_t len = strlen(s);
     char *ptr;
     long val;
@@ -42,24 +42,24 @@ static long parse_long(const char*const s) {
     val = strtol(s, &ptr, 0);
 
     if (ptr != (s+len))
-        error("Not an integer argument.");
+      error("ERROR: '%s' not an integer argument in transform string '%s'.\n", s, err_str);
 
     return val;
 }
 
 
-static double parse_float(const char*const s) {
+static double parse_float(const char*const s, char *err_str) {
     size_t len = strlen(s);
     char *ptr;
     double val;
     val = strtod(s, &ptr);
     if (ptr != (s+len))
-        error("Not an floating point argument.");
+      error("ERROR: '%s' not a floating point argument in transform string '%s'.\n", s, err_str);
     return val;
 }
 
 
-static double conv2double(char* str, unsigned& len, char delimiter,bool conv2int=false) {
+static double conv2double(char* str, unsigned& len, char delimiter, char *err_str, bool conv2int=false) {
 #define NUMBER_STRING_MAX_LEN 20
   char* str_ptr=str;
   char new_str[NUMBER_STRING_MAX_LEN];
@@ -71,14 +71,14 @@ static double conv2double(char* str, unsigned& len, char delimiter,bool conv2int
   while(*str_ptr!='_' && *str_ptr!='\0') {
     new_str[i]=*str_ptr; str_ptr++; i++;
     if(i>=NUMBER_STRING_MAX_LEN)
-      error("ERROR: While reading observation files, a number string was too long while converting to float\n");
+      error("ERROR: A number string was too long in transform string '%s'.\n", err_str);
   }
 
   new_str[i]='\0';
   if(conv2int)
-    val=parse_long(new_str);
+    val=parse_long(new_str, err_str);
   else
-    val=parse_float(new_str);
+    val=parse_float(new_str, err_str);
 
   len=i;
 
@@ -89,6 +89,7 @@ static double conv2double(char* str, unsigned& len, char delimiter,bool conv2int
 
 int 
 parseTransform(char*& trans_str, int& magic_int, double& magic_double, char *&filterFileName) {
+  char *err_str = trans_str;
   if(*trans_str=='\0')
     return (END_STR);
 
@@ -113,18 +114,18 @@ parseTransform(char*& trans_str, int& magic_int, double& magic_double, char *&fi
     ++trans_str;
     // get multiplier
     //DBGFPRINTF((stderr,"trans_str=%s\n",trans_str));
-    magic_double=conv2double(trans_str,len,'_');
+    magic_double=conv2double(trans_str,len,'_', err_str);
     if(len==0)
-      error("ERROR: In parsing tranforms: Need to supply multiplicative factor with the 'M' transformation.\n");
+      error("ERROR: In parsing tranform '%s': Need to supply multiplicative factor with the 'M' transformation.\n", err_str);
     trans_str+=len;
     if(*trans_str=='_') ++trans_str;  // get rid of separator
     return MULTIPLY;
   case TRANS_OFFSET_LETTER: // 'O'
     ++trans_str;
     // get offset
-    magic_double=conv2double(trans_str,len,'_');
+    magic_double=conv2double(trans_str,len,'_', err_str);
     if(len==0)
-      error("ERROR: In parsing tranforms: Need to supply offset with 'O' transformation.\n");
+      error("ERROR: In parsing tranform '%s': Need to supply offset with 'O' transformation.\n", err_str);
     trans_str+=len;
     if(*trans_str=='_') ++trans_str;  // get rid of separator
     return OFFSET;
@@ -139,9 +140,9 @@ parseTransform(char*& trans_str, int& magic_int, double& magic_double, char *&fi
       return UNRECOGNIZED_TRANSFORM;
     // a number to upsample by should follow
     ++trans_str;
-    magic_double=conv2double(trans_str,len,'_');
+    magic_double=conv2double(trans_str,len,'_', err_str);
     if(len==0)
-      error("ERROR: In parsing tranforms: Need to supply upsampling factor with 'UH' or 'US' transformations.\n");
+      error("ERROR: In parsing tranform '%s': Need to supply upsampling factor with 'UH' or 'US' transformations.\n", err_str);
     trans_str+=len;
     if(*trans_str=='_') ++trans_str;  // get rid of separator
     return return_val;
@@ -149,9 +150,9 @@ parseTransform(char*& trans_str, int& magic_int, double& magic_double, char *&fi
     ++trans_str;
     //DBGFPRINTF((stderr,"trans_str=%s\n",trans_str));
     // get order of ARMA filter
-    magic_int=(int)conv2double(trans_str,len,'_',true); // conv2int is true
+    magic_int=(int)conv2double(trans_str,len,'_', err_str, true); // conv2int is true
     if(len==0)
-      error("ERROR: In parsing tranforms: Need to supply order of arma filter with 'R' transformation.\n");
+      error("ERROR: In parsing tranform '%s': Need to supply order of arma filter with 'R' transformation.\n", err_str);
     trans_str+=len;
     if(*trans_str=='_') ++trans_str;
     return ARMA;
@@ -171,7 +172,8 @@ parseTransform(char*& trans_str, int& magic_int, double& magic_double, char *&fi
       tmpString[i]='\0';
       DBGFPRINTF((stderr,"Read filter file name '%s'\n",tmpString));
       unsigned tmpStringLen=strlen(tmpString);
-      if(tmpStringLen==0) error("ERROR: In parsing tranforms: no filter file name specified\n");
+      if(tmpStringLen==0) 
+	error("ERROR: In parsing tranform '%s': no filter file name specified\n", err_str);
       filterFileName=new char[tmpStringLen];
       strcpy(filterFileName,tmpString);
       if(*trans_str=='_') ++trans_str;
@@ -184,7 +186,7 @@ parseTransform(char*& trans_str, int& magic_int, double& magic_double, char *&fi
     if(*trans_str=='_') ++trans_str;
     return NONE;
   default:
-    error("ERROR: In parsing tranforms: Unrecognized transformation substring (%s)\n",trans_str);
+    error("ERROR: In parsing tranform '%s': Unrecognized transformation substring (%s)\n",err_str, trans_str);
     //DBGFPRINTF((stderr,"In parseTransform: Unrecognized transform @ trans_str=%s\n",trans_str));
     //return UNRECOGNIZED_TRANSFORM;
 
@@ -236,10 +238,12 @@ instantiateFilters(char *filterStr, unsigned numContinuous, unsigned numDiscrete
 	xformer = new FIRFilter(0, numContinuous, B, NULL, NULL);
 	break;
       case NORMALIZE:
-	error("normalize stream - now handled by affine\n");
+	error("ERROR: The normalize transform is now handled by affine. "
+	      "You can use the obs-stats program to produce a suitable affine transform.\n");
 	break;
       case MEAN_SUB:
-	error("mean sub stream - now handled by affine\n");
+	error("ERROR: The mean subtraction transform is now handled by affine."
+	      "You can use the 'obs-stats -meanSubOnly' program to produce a suitable affine transform.\n");
 	break;
       case ARMA:
 	xformer = new ARMAFilter(magicInt, numContinuous);

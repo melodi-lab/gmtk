@@ -1,0 +1,23 @@
+
+# test and dev model xiaoyu
+
+
+AT_SETUP([xiaoyu: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/xiaoyu/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/xiaoyu && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([xiaoyu: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/xiaoyu/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/xiaoyu && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([xiaoyu: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/xiaoyu/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/xiaoyu && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([xiaoyu: vitcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/xiaoyu/vitcommand])
+AT_CHECK([(cd $TEST_AND_DEV/xiaoyu && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP

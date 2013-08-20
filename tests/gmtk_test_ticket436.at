@@ -1,0 +1,20 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/436 is fixed
+
+# If it's fixed, the command should succeed 
+
+AT_SETUP([FileSource vs StreamSource VECPT (ticket 436)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/abhishek_protein_2nd_structure])
+AT_CHECK([(cd $TEST_AND_DEV/abhishek_protein_2nd_structure &&
+      gmtkJT  -strFile ./params/model_test1.str \
+        -triFile ./params/model_test1.mytrifile \
+        -of1 ./params/small.list -nf1 0 -ni1 2 -fmt1 ascii \
+        -inputMasterFile ./params/model_test1.master.JT \
+        -inputTrainableParameters ./params/learnedParams0.out \
+        -pCliquePrintRange 1:1 \
+        -cCliquePrintRange 1:1 \
+        -eCliquePrintRange 1:1 \
+        -doDist \
+        -cptNormThreshold 10. )],
+         [],[ignore])
+AT_CLEANUP

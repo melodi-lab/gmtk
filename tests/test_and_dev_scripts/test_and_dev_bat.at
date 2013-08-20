@@ -1,0 +1,27 @@
+
+# test and dev model bat
+
+
+AT_SETUP([bat: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/bat/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/bat && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([bat: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/bat/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/bat && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([bat: jtcommand])
+# not actually a valid model - it 0-cliques
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/bat/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/bat && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([bat: vitcommand])
+# not actually a valid model - it 0-cliques
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/bat/vitcommand])
+AT_CHECK([(cd $TEST_AND_DEV/bat && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP

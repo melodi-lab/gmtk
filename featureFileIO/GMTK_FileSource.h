@@ -3,10 +3,10 @@
  * 
  * Written by Richard Rogers <rprogers@ee.washington.edu>
  *
- * Copyright (c) 2011, < fill in later >
+ * Copyright (C) 2011 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  * 
- * < License reference >
- * < Disclaimer >
  *
  */
 
@@ -193,6 +193,17 @@ class FileSource: public ObservationSource {
 		  unsigned bufferSize  = DEFAULT_BUFFER_SIZE,
 		  unsigned startSkip=0, unsigned endSkip=0,
 		  int justificationMode = 0, bool constantSpace = false);
+
+  // Returns a pointer to the observed data. This does not support
+  // constant space mode, since the code that uses this method expects
+  // all observations to be available.
+  Data32 *featurePtr() {
+    assert(file);
+    if (constantSpace) {
+      error("ERROR: constant space observations not supported\n");
+    }
+    return cookedBuffer;
+  }
 
   // The number of available segments.
   unsigned numSegments() { 

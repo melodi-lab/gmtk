@@ -6,14 +6,10 @@
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *  $Header$
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
  *
  *
  *
@@ -79,7 +75,11 @@ public:
 
   virtual logpr maxValue() {
     logpr p = HidDiscRV::maxValue();
-    // todo: we might want to cache this value rather than modifying it all the time.
+    // TODO: we might want to cache this value rather than modifying it all the time.
+    // TODO: note that there is an assumption here that the modify probability
+    // funciton is monotonic. If it is not the case (e.g., if scale could be negative) then
+    // this would be false, and we'd need to compute the maximum over the modified
+    // values rather than the modification of the max as we are doing here.
     modifyProbability(p,rv_info.rvWeightInfo[0],this);    
     return p;
   }

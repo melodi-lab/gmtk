@@ -1,5 +1,9 @@
 /*
-    $Header$
+ *
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ *
   
     This program selects an arbitrary subset set of features from each
     frame of a pfile and creates a new pfile with that
