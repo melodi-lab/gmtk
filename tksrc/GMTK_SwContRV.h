@@ -49,12 +49,12 @@ public:
   ~SwContRV() {}
 
   ////////////////////////////////////////////////////////////////////////
-  // Ties the parameters of 'this' with whatever those of 'other' are. 
+  // Ties the parameters of 'this' with whatever those of 'other' are.
   void tieParametersWith(SwContRV* other) {
     SwRV::tieParametersWith(other);
   }
 
-  bool iterableSw() const { 
+  bool iterableSw() const {
     return dtMapper->iterable();
   }
 

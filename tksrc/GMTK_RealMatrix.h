@@ -26,6 +26,7 @@ class RealMatrix : public EMable  {
 
   friend class GammaComponent;
   friend class BetaComponent;
+  friend class MissingFeatureScaledDiagGaussian;
   friend class DeepVECPT;
 
 protected:

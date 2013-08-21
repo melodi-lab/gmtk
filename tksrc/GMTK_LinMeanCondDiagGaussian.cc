@@ -400,6 +400,7 @@ void
 LinMeanCondDiagGaussian::emStartIteration()
 {
   assert ( basicAllocatedBitIsSet() );
+  assert ( emEmAllocatedBitIsSet() );
   if (!emAmTrainingBitIsSet())
     return;
 
@@ -408,6 +409,7 @@ LinMeanCondDiagGaussian::emStartIteration()
 
   if (!emEmAllocatedBitIsSet()) {
     // this is presumably the first time
+    trMembers.allocateIfNeeded();
     emSetEmAllocatedBit();
   }
 
@@ -416,9 +418,9 @@ LinMeanCondDiagGaussian::emStartIteration()
   emSetSwappableBit();
 
   accumulatedProbability = 0.0;
-  mean->emStartIteration(xAccumulators);
-  dLinkMat->emStartIteration(xzAccumulators,zzAccumulators,zAccumulators);
-  covar->emStartIteration(xxAccumulators);
+  mean->emStartIteration(trMembers->xAccumulators);
+  dLinkMat->emStartIteration(trMembers->xzAccumulators,trMembers->zzAccumulators,trMembers->zAccumulators);
+  covar->emStartIteration(trMembers->xxAccumulators);
 }
 
 
@@ -429,6 +431,8 @@ LinMeanCondDiagGaussian::emIncrement(logpr prob,
 				     const int stride)
 {
   assert ( basicAllocatedBitIsSet() );
+  assert ( emEmAllocatedBitIsSet() );
+
   if (!emAmTrainingBitIsSet())
     return;
 
@@ -449,18 +453,18 @@ LinMeanCondDiagGaussian::emIncrement(logpr prob,
   const float fprob = prob.unlog();
 
   if (!fisherKernelMode) {
-    mean->emIncrement(prob,fprob,f,base,stride,xAccumulators.ptr);
+    mean->emIncrement(prob,fprob,f,base,stride,trMembers->xAccumulators.ptr);
     dLinkMat->emIncrement(prob,fprob,f,base,stride,
-			  xzAccumulators.ptr,
-			  zzAccumulators.ptr,
-			  zAccumulators.ptr);
-    covar->emIncrement(prob,fprob,f,base,stride,xxAccumulators.ptr);
-    DiagGaussian::emIncrementMeanDiagCovar(fprob,f,xAccumulators.size(),xAccumulators.ptr,xxAccumulators.ptr);
+			  trMembers->xzAccumulators.ptr,
+			  trMembers->zzAccumulators.ptr,
+			  trMembers->zAccumulators.ptr);
+    covar->emIncrement(prob,fprob,f,base,stride,trMembers->xxAccumulators.ptr);
+    DiagGaussian::emIncrementMeanDiagCovar(fprob,f,trMembers->xAccumulators.size(),trMembers->xAccumulators.ptr,trMembers->xxAccumulators.ptr);
   } else {
     // these next three routines only increment the total accumulated probability,
     // not the actual real-valued scores.
-    mean->emIncrement(prob,fprob,f,base,stride,xAccumulators.ptr);
-    covar->emIncrement(prob,fprob,f,base,stride,xxAccumulators.ptr);
+    mean->emIncrement(prob,fprob,f,base,stride,trMembers->xAccumulators.ptr);
+    covar->emIncrement(prob,fprob,f,base,stride,trMembers->xxAccumulators.ptr);
     dLinkMat->emIncrement(prob,fprob,f,base,stride);
 
     // do the Fisher kernel real-valued true accumulations.
@@ -569,6 +573,8 @@ LinMeanCondDiagGaussian::emEndIteration()
 void
 LinMeanCondDiagGaussian::emEndIterationNoSharing()
 {
+  assert ( emEmAllocatedBitIsSet() );
+
   // accumulatedProbability.floor();
   if (accumulatedProbability < minContAccumulatedProbability()) {
     warning("WARNING: Lin Mean-Cond Diag Gaussian Component named '%s' received only %e accumulated log probability (min is %e) in EM iteration, Global missed increment count is %d. Also check child mean '%s', covar '%s', and dlink matrix '%s'",
@@ -618,7 +624,7 @@ LinMeanCondDiagGaussian::emEndIterationNoSharing()
 
     // now copy xz and x over to expanded xz
     double *xzExpAccumulators_p = xzExpAccumulators.ptr;
-    float *xzAccumulators_p = xzAccumulators.ptr;
+    float *xzAccumulators_p = trMembers->xzAccumulators.ptr;
 
 
     if (adaptToMean == NULL && adaptToDLinkMat == NULL) {
@@ -632,7 +638,7 @@ LinMeanCondDiagGaussian::emEndIterationNoSharing()
 	}
 
 	*xzExpAccumulators_p++ =
-	  xAccumulators[feat];
+	  trMembers->xAccumulators[feat];
       }
     } else {
       // do some regularized adaptation.
@@ -661,9 +667,9 @@ LinMeanCondDiagGaussian::emEndIterationNoSharing()
 	  }
 
 	if (adaptToMean != NULL)
-	  *xzExpAccumulators_p++ = xAccumulators[feat] + mean_regularizer*(*vadaptMean_p++);
+	  *xzExpAccumulators_p++ = trMembers->xAccumulators[feat] + mean_regularizer*(*vadaptMean_p++);
 	else 
-	  *xzExpAccumulators_p++ = xAccumulators[feat];
+	  *xzExpAccumulators_p++ = trMembers->xAccumulators[feat];
       }
     }
 
@@ -685,8 +691,8 @@ LinMeanCondDiagGaussian::emEndIterationNoSharing()
     // 1) it turns the triangular matrix into a full matrix, and
     // 2) it adds an extra row&col to the full matrix for the final z value
     // which wasn't represented during the EM increment stage.
-    float *zzAccumulators_p = zzAccumulators.ptr;
-    float *zAccumulators_p = zAccumulators.ptr;
+    float *zzAccumulators_p = trMembers->zzAccumulators.ptr;
+    float *zAccumulators_p = trMembers->zAccumulators.ptr;
     double *zzExpAccumulators_p = zzExpAccumulators.ptr;
     for (int feat=0;feat<mean->dim();feat++) {
       const double dlink_regularizer = gdarCoeffL2*covar->covariances[feat];
@@ -780,8 +786,8 @@ LinMeanCondDiagGaussian::emEndIterationNoSharing()
       // object when we give this to it, below. Note also that
       // we do not check for variances being too small here, that
       // is also done in the variance object itself.
-      xxAccumulators[feat] = 
-	(xxAccumulators[feat] - tmp)*invRealAccumulatedProbability;
+      trMembers->xxAccumulators[feat] = 
+	(trMembers->xxAccumulators[feat] - tmp)*invRealAccumulatedProbability;
 
       xzExpAccumulators_p += (nLinks+1);
       nextDlinkMat_p += (nLinks+1);
@@ -798,13 +804,13 @@ LinMeanCondDiagGaussian::emEndIterationNoSharing()
     // now copy it and means over. Note, this could potentially call
     // overflow here since we are converting from doubles to floats.
     nextDlinkMat_p = nextDlinkMat.ptr;
-    xzAccumulators_p = xzAccumulators.ptr;
+    xzAccumulators_p = trMembers->xzAccumulators.ptr;
     for (int feat=0;feat<mean->dim();feat++) {
       const int nLinks = dLinkMat->numLinks(feat);
       for (int dlink=0;dlink<nLinks;dlink++) {
 	*xzAccumulators_p++ = *nextDlinkMat_p++;
       }
-      xAccumulators[feat] = *nextDlinkMat_p++;
+      trMembers->xAccumulators[feat] = *nextDlinkMat_p++;
     }
   }
 
@@ -812,9 +818,9 @@ LinMeanCondDiagGaussian::emEndIterationNoSharing()
   // Finally, incorporate our hard work into the 
   // (respectively) shared objects who will do any
   // normalization
-  mean->emEndIterationNoSharingAlreadyNormalized(xAccumulators.ptr);
-  covar->emEndIterationNoSharingAlreadyNormalized(xxAccumulators.ptr);
-  dLinkMat->emEndIterationNoSharingAlreadyNormalized(xzAccumulators.ptr);
+  mean->emEndIterationNoSharingAlreadyNormalized(trMembers->xAccumulators.ptr);
+  covar->emEndIterationNoSharingAlreadyNormalized(trMembers->xxAccumulators.ptr);
+  dLinkMat->emEndIterationNoSharingAlreadyNormalized(trMembers->xzAccumulators.ptr);
 
   // Finally, end the EM epoch.
   emClearOnGoingBit();
@@ -853,6 +859,7 @@ LinMeanCondDiagGaussian::emEndIterationNoSharing()
 void
 LinMeanCondDiagGaussian::emEndIterationSharedCovars()
 {
+  assert ( emEmAllocatedBitIsSet() );
   // accumulatedProbability.floor();
   if (accumulatedProbability < minContAccumulatedProbability()) {
     warning("WARNING: Lin Mean-Cond Diag Gaussian Component named '%s' received only %e accumulated log probability (min is %e) in EM iteration, Global missed increment count is %d. Also check child mean '%s', covar '%s', and dlink matrix '%s'",
@@ -898,7 +905,7 @@ LinMeanCondDiagGaussian::emEndIterationSharedCovars()
 
     // now copy xz and x over to expanded xz
     double *xzExpAccumulators_p = xzExpAccumulators.ptr;
-    float *xzAccumulators_p = xzAccumulators.ptr;
+    float *xzAccumulators_p = trMembers->xzAccumulators.ptr;
     for (int feat=0;feat<mean->dim();feat++) {
       const int nLinks = dLinkMat->numLinks(feat);
 
@@ -908,7 +915,7 @@ LinMeanCondDiagGaussian::emEndIterationSharedCovars()
       }
 
       *xzExpAccumulators_p++ =
-	xAccumulators[feat];
+	trMembers->xAccumulators[feat];
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -929,8 +936,8 @@ LinMeanCondDiagGaussian::emEndIterationSharedCovars()
     // 1) it turns the triangular matrix into a full matrix, and
     // 2) it adds an extra row&col to the full matrix for the final z value
     // which wasn't represented during the EM increment stage.
-    float *zzAccumulators_p = zzAccumulators.ptr;
-    float *zAccumulators_p = zAccumulators.ptr;
+    float *zzAccumulators_p = trMembers->zzAccumulators.ptr;
+    float *zAccumulators_p = trMembers->zAccumulators.ptr;
     double *zzExpAccumulators_p = zzExpAccumulators.ptr;
     for (int feat=0;feat<mean->dim();feat++) {
       const int nLinks = dLinkMat->numLinks(feat);
@@ -1013,8 +1020,8 @@ LinMeanCondDiagGaussian::emEndIterationSharedCovars()
       // is done below as well, since when sharing occurs, the
       // individual covars might be small, but the shared covariances
       // might be fine.
-      xxAccumulators[feat] = 
-	(xxAccumulators[feat] - tmp);
+      trMembers->xxAccumulators[feat] = 
+	(trMembers->xxAccumulators[feat] - tmp);
 
       xzExpAccumulators_p += (nLinks+1);
       nextDlinkMat_p += (nLinks+1);
@@ -1030,13 +1037,13 @@ LinMeanCondDiagGaussian::emEndIterationSharedCovars()
 
     // now copy it and means over.
     nextDlinkMat_p = nextDlinkMat.ptr;
-    xzAccumulators_p = xzAccumulators.ptr;
+    xzAccumulators_p = trMembers->xzAccumulators.ptr;
     for (int feat=0;feat<mean->dim();feat++) {
       const int nLinks = dLinkMat->numLinks(feat);
       for (int dlink=0;dlink<nLinks;dlink++) {
 	*xzAccumulators_p++ = *nextDlinkMat_p++;
       }
-      xAccumulators[feat] = *nextDlinkMat_p++;
+      trMembers->xAccumulators[feat] = *nextDlinkMat_p++;
     }
   }
 
@@ -1044,9 +1051,9 @@ LinMeanCondDiagGaussian::emEndIterationSharedCovars()
   // Finally, incorporate our hard work into the 
   // (respectively) shared objects who will do any
   // normalization
-  mean->emEndIterationNoSharingAlreadyNormalized(xAccumulators.ptr);
-  covar->emEndIterationSharedCovars(xxAccumulators.ptr);
-  dLinkMat->emEndIterationNoSharingAlreadyNormalized(xzAccumulators.ptr);
+  mean->emEndIterationNoSharingAlreadyNormalized(trMembers->xAccumulators.ptr);
+  covar->emEndIterationSharedCovars(trMembers->xxAccumulators.ptr);
+  dLinkMat->emEndIterationNoSharingAlreadyNormalized(trMembers->xzAccumulators.ptr);
 
   // Finally, end the EM epoch.
   emClearOnGoingBit();
@@ -1082,6 +1089,7 @@ void
 LinMeanCondDiagGaussian::emEndIterationSharedAll()
 {
 
+  assert ( emEmAllocatedBitIsSet() );
   // accumulatedProbability.floor();
   if (accumulatedProbability < minContAccumulatedProbability()) {
     warning("WARNING: Lin Mean-Cond Diag Gaussian Component named '%s' received only %e accumulated log probability (min is %e) in EM iteration, Global missed increment count is %d. Also check child mean '%s', covar '%s', and dlink matrix '%s'",
@@ -1103,23 +1111,23 @@ LinMeanCondDiagGaussian::emEndIterationSharedAll()
   }
 
   mean->emEndIterationSharedMeansCovarsDlinks(accumulatedProbability,
-					      xAccumulators.ptr,
-					      zAccumulators.ptr,
+					      trMembers->xAccumulators.ptr,
+					      trMembers->zAccumulators.ptr,
 					      dLinkMat,
 					      covar);
 
   covar->emEndIterationSharedMeansCovarsDlinks(accumulatedProbability,
-					       xAccumulators.ptr,
-					       xxAccumulators.ptr,
-					       xzAccumulators.ptr,
-					       zAccumulators.ptr,
-					       zzAccumulators.ptr,
+					       trMembers->xAccumulators.ptr,
+					       trMembers->xxAccumulators.ptr,
+					       trMembers->xzAccumulators.ptr,
+					       trMembers->zAccumulators.ptr,
+					       trMembers->zzAccumulators.ptr,
 					       mean,
 					       dLinkMat);
 
-  dLinkMat->emEndIterationSharedMeansCovarsDlinks(xzAccumulators.ptr,
-						  zAccumulators.ptr,
-						  zzAccumulators.ptr,
+  dLinkMat->emEndIterationSharedMeansCovarsDlinks(trMembers->xzAccumulators.ptr,
+						  trMembers->zAccumulators.ptr,
+						  trMembers->zzAccumulators.ptr,
 						  mean,
 						  covar);
 						  
@@ -1164,34 +1172,36 @@ LinMeanCondDiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& ofile,
 						    bool writeLogVals,
 						    bool writeZeros)
 {
+
+  assert ( emEmAllocatedBitIsSet() );
   // since this is a Gaussian, we ignore the writeLogVals
   // argument since it doesn't make sense to take log of
   // these values since they are continuous, could be negative, etc.
   if (writeZeros) {
     const unsigned totalLen = 
-      xAccumulators.len()+ 
-      xxAccumulators.len()+ 
-      xzAccumulators.len()+ 
-      zzAccumulators.len()+ 
-      zAccumulators.len();
+      trMembers->xAccumulators.len()+ 
+      trMembers->xxAccumulators.len()+ 
+      trMembers->xzAccumulators.len()+ 
+      trMembers->zzAccumulators.len()+ 
+      trMembers->zAccumulators.len();
     for (unsigned i=0;i<totalLen;i++) {
       ofile.write(0.0,"LMDG zero accums x.");
     }
   } else {
-    for (int i=0;i<xAccumulators.len();i++) {
-      ofile.write(xAccumulators[i],"LMDG store accums x.");
+    for (int i=0;i<trMembers->xAccumulators.len();i++) {
+      ofile.write(trMembers->xAccumulators[i],"LMDG store accums x.");
     }
-    for (int i=0;i<xxAccumulators.len();i++) {
-      ofile.write(xxAccumulators[i],"LMDG store accums xx.");
+    for (int i=0;i<trMembers->xxAccumulators.len();i++) {
+      ofile.write(trMembers->xxAccumulators[i],"LMDG store accums xx.");
     }
-    for (int i=0;i<xzAccumulators.len();i++) {
-      ofile.write(xzAccumulators[i],"LMDG store accums xz.");
+    for (int i=0;i<trMembers->xzAccumulators.len();i++) {
+      ofile.write(trMembers->xzAccumulators[i],"LMDG store accums xz.");
     }
-    for (int i=0;i<zzAccumulators.len();i++) {
-      ofile.write(zzAccumulators[i],"LMDG store accums zz.");
+    for (int i=0;i<trMembers->zzAccumulators.len();i++) {
+      ofile.write(trMembers->zzAccumulators[i],"LMDG store accums zz.");
     }
-    for (int i=0;i<zAccumulators.len();i++) {
-      ofile.write(zAccumulators[i],"LMDG store accums z.");
+    for (int i=0;i<trMembers->zAccumulators.len();i++) {
+      ofile.write(trMembers->zAccumulators[i],"LMDG store accums z.");
     }
   }
 }
@@ -1224,20 +1234,21 @@ LinMeanCondDiagGaussian::emLoadObjectsDummyAccumulators(iDataStreamFile& ifile)
 void
 LinMeanCondDiagGaussian::emZeroOutObjectsAccumulators()
 {
-  for (int i=0;i<xAccumulators.len();i++) {
-    xAccumulators[i] = 0.0;
+  assert ( emEmAllocatedBitIsSet() );
+  for (int i=0;i<trMembers->xAccumulators.len();i++) {
+    trMembers->xAccumulators[i] = 0.0;
   }
-  for (int i=0;i<xxAccumulators.len();i++) {
-    xxAccumulators[i] = 0.0;
+  for (int i=0;i<trMembers->xxAccumulators.len();i++) {
+    trMembers->xxAccumulators[i] = 0.0;
   }
-  for (int i=0;i<xzAccumulators.len();i++) {
-    xzAccumulators[i] = 0.0;
+  for (int i=0;i<trMembers->xzAccumulators.len();i++) {
+    trMembers->xzAccumulators[i] = 0.0;
   }
-  for (int i=0;i<zzAccumulators.len();i++) {
-    zzAccumulators[i] = 0.0;
+  for (int i=0;i<trMembers->zzAccumulators.len();i++) {
+    trMembers->zzAccumulators[i] = 0.0;
   }
-  for (int i=0;i<zAccumulators.len();i++) {
-    zAccumulators[i] = 0.0;
+  for (int i=0;i<trMembers->zAccumulators.len();i++) {
+    trMembers->zAccumulators[i] = 0.0;
   }
 }
 
@@ -1245,20 +1256,21 @@ LinMeanCondDiagGaussian::emZeroOutObjectsAccumulators()
 void
 LinMeanCondDiagGaussian::emLoadObjectsAccumulators(iDataStreamFile& ifile)
 {
-  for (int i=0;i<xAccumulators.len();i++) {
-    ifile.read(xAccumulators[i],"LMDG load accums x.");
+  assert ( emEmAllocatedBitIsSet() );
+  for (int i=0;i<trMembers->xAccumulators.len();i++) {
+    ifile.read(trMembers->xAccumulators[i],"LMDG load accums x.");
   }
-  for (int i=0;i<xxAccumulators.len();i++) {
-    ifile.read(xxAccumulators[i],"LMDG load accums xx.");
+  for (int i=0;i<trMembers->xxAccumulators.len();i++) {
+    ifile.read(trMembers->xxAccumulators[i],"LMDG load accums xx.");
   }
-  for (int i=0;i<xzAccumulators.len();i++) {
-    ifile.read(xzAccumulators[i],"LMDG load accums xz.");
+  for (int i=0;i<trMembers->xzAccumulators.len();i++) {
+    ifile.read(trMembers->xzAccumulators[i],"LMDG load accums xz.");
   }
-  for (int i=0;i<zzAccumulators.len();i++) {
-    ifile.read(zzAccumulators[i],"LMDG load accums zz.");
+  for (int i=0;i<trMembers->zzAccumulators.len();i++) {
+    ifile.read(trMembers->zzAccumulators[i],"LMDG load accums zz.");
   }
-  for (int i=0;i<zAccumulators.len();i++) {
-    ifile.read(zAccumulators[i],"LMDG load accums z.");
+  for (int i=0;i<trMembers->zAccumulators.len();i++) {
+    ifile.read(trMembers->zAccumulators[i],"LMDG load accums z.");
   }
 }
 
@@ -1266,31 +1278,32 @@ LinMeanCondDiagGaussian::emLoadObjectsAccumulators(iDataStreamFile& ifile)
 void
 LinMeanCondDiagGaussian::emAccumulateObjectsAccumulators(iDataStreamFile& ifile)
 {
+  assert ( emEmAllocatedBitIsSet() );
   // ASSUME ACCUMULATOR TYPE IS 'float'
-  for (int i=0;i<xAccumulators.len();i++) {
+  for (int i=0;i<trMembers->xAccumulators.len();i++) {
     float tmp;
     ifile.read(tmp,"LMDG accumulate accums x.");
-    xAccumulators[i] += tmp;
+    trMembers->xAccumulators[i] += tmp;
   }
-  for (int i=0;i<xxAccumulators.len();i++) {
+  for (int i=0;i<trMembers->xxAccumulators.len();i++) {
     float tmp;
     ifile.read(tmp,"LMDG accumulate accums xx.");
-    xxAccumulators[i] += tmp;
+    trMembers->xxAccumulators[i] += tmp;
   }
-  for (int i=0;i<xzAccumulators.len();i++) {
+  for (int i=0;i<trMembers->xzAccumulators.len();i++) {
     float tmp;
     ifile.read(tmp,"LMDG accumulate accums xz.");
-    xzAccumulators[i] += tmp;
+    trMembers->xzAccumulators[i] += tmp;
   }
-  for (int i=0;i<zzAccumulators.len();i++) {
+  for (int i=0;i<trMembers->zzAccumulators.len();i++) {
     float tmp;
     ifile.read(tmp,"LMDG accumulate accums zz.");
-    zzAccumulators[i] += tmp;
+    trMembers->zzAccumulators[i] += tmp;
   }
-  for (int i=0;i<zAccumulators.len();i++) {
+  for (int i=0;i<trMembers->zAccumulators.len();i++) {
     float tmp;
     ifile.read(tmp,"LMDG accumulate accums z.");
-    zAccumulators[i] += tmp;
+    trMembers->zAccumulators[i] += tmp;
   }
 }
 
