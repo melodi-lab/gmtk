@@ -119,19 +119,23 @@ main(int argc, char *argv[]) {
     mean[i] = 0.0; xSqrd[i] = 0.0; std[i] = 0.0; diff[i] = 0.0; diffSqrd[i] = 0.0;
   }
   
-  float N = 0.0f;
-  for (unsigned j=0; j < f->numSegments(); j+=1) {
+  double N = 0.0;
+  unsigned NN = 0;
+  unsigned numSegments = f->numSegments();
+  for (unsigned j=0; j < numSegments; j+=1) {
     assert(f->openSegment(j));
-    for (unsigned k=0; k < f->numFrames(); k+=1) {
+    unsigned numFrames = f->numFrames();
+    for (unsigned k=0; k < numFrames; k+=1) {
       Data32 const *buf = f->loadFrames(k,1);
       for (unsigned ff=0; ff < nCont; ff+=1) {
 	float x = ((float *)buf)[ff];
 	mean[ff] += x;
 	xSqrd[ff] += x * x;
       }
-      N += 1.0f;
+      NN += 1;
     }
   }
+  N = (double)NN;
 
   if (meanSubOnly) {
     for (unsigned i=0; i < nCont; i+=1) {
