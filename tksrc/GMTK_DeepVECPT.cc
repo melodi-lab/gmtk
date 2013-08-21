@@ -508,7 +508,12 @@ softmax(double *q, unsigned len) {
 void
 logistic(double *q, unsigned len, float beta=1.0) {
   for (unsigned i=0; i < len; i+=1)
-    q[i] = 1.0 / (1.0 + exp( -beta * q[i] ));
+    if (q[i] < -30)
+      q[i] = 0;
+    else if (q[i] > 30)
+      q[i] = 1;
+    else
+      q[i] = 1.0 / (1.0 + exp( -beta * q[i] ));
 }
 
 void
