@@ -35,7 +35,7 @@
 
 # The "make distcheck" command is another good one to be aware of. It will
 # build the distribution tarball that users would download, perform a V-path
-# build from it, and the run the testsuite against the build result. This
+# build from it, and then run the testsuite against that build. This
 # ensures that the distributed GMTK passes the tests. It also does some
 # checks to ensure that the cleaning targets work properly. A successful
 # distcheck is a good sign that the distributed tarball is healthy.
@@ -43,6 +43,7 @@
 # It's helpful to set the environment variables
 # MAKEFLAGS="-j 6"
 # TESTSUITEFLAGS="--jobs=6"
+# TEST_AND_DEV=/.../test_and_dev
 
 # Now, how to write a test case:
 
