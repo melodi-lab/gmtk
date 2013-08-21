@@ -262,8 +262,7 @@ main(int argc,char*argv[])
       if (i == numLayers - 1) {
 	error("ERROR: gmtkDMLPtrain only supports linear or softmax for the output layer\n");
       }
-      hActFunc[i] = Layer::ActFunc(Layer::ActFunc::LOG_SIG, (float)cpt->getBeta(i)); 
-      assert((float)cpt->getBeta(i) == 1.0f);
+      hActFunc[i] = Layer::ActFunc(Layer::ActFunc::LOG_SIG); 
       break;
     case DeepVECPT::TANH: 
       if (i == numLayers - 1) {

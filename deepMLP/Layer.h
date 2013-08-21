@@ -13,11 +13,9 @@ public:
   struct ActFunc {
     enum ActType { LOG_SIG, TANH, CUBIC, LINEAR, RECT_LIN } actType;
 
-    double beta;
+  ActFunc() : actType(LINEAR) {}
 
-    ActFunc() : actType(LINEAR), beta(1.0) { assert(beta==1.0); }
-
-    ActFunc(ActType actType, double beta=1.0) : actType(actType), beta(beta) { assert(beta==1.0);}
+  ActFunc(ActType actType) : actType(actType) {}
 
     static double CubicSigmoid(double y) {
       // I have a vectorized implementation of this using SSE but
@@ -42,10 +40,10 @@ public:
 
       case LOG_SIG:
         {
-          auto func = [beta] (double x)->double {
-            if (beta * x < -30) return 0;
-            else if (beta * x > 30) return 1;
-            else return 1.0 / (1 + exp(-beta * x));
+          auto func = [] (double x)->double {
+            if (x < -30) return 0;
+            else if (x > 30) return 1;
+            else return 1.0 / (1 + exp(-x));
           };
           inputs.Apply(func);
         }
@@ -117,14 +115,14 @@ public:
       case LOG_SIG:
         {
           auto func = [&](double aVal, double xVal)->double {
-            if (beta * aVal < -30) {
+            if (aVal < -30) {
               negll -= xVal * aVal;
               return 0;
-            } else if (beta * aVal > 30) {
+            } else if (aVal > 30) {
               negll += (1 - xVal) * aVal;
               return 1;
             } else {
-              double p = 1.0 / (1.0 + exp(-beta * aVal));
+              double p = 1.0 / (1.0 + exp(-aVal));
               negll -= xVal * log(p) + (1 - xVal) * log (1.0 - p);
               return p;
             }
