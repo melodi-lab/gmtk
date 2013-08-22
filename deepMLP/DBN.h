@@ -203,12 +203,12 @@ private:
     AllocatingVector _inputBiases;
 
   public:
-    LayerTrainingFunction(DBN & dbn, int layer, const Matrix & trainData, const HyperParams & hyperParams)
+  LayerTrainingFunction(DBN & dbn, int layer, const Matrix & trainData, const HyperParams & hyperParams, Layer::ActFunc actFunc)
       :
     TrainingFunction(dbn, trainData, hyperParams, dbn._layerParams[layer], dbn._layerDeltaParams[layer], dbn._layerSavedParams[layer]),
       _layer(layer)
     {
-      DBN::InitializeInputBiases(trainData, _inputBiases, 1e-3);
+      DBN::InitializeInputBiases(trainData, _inputBiases, actFunc, 1e-3);
     }
   };
 
@@ -221,9 +221,9 @@ private:
     }
 
   public:
-    CDTrainingFunction(DBN & dbn, int layer, const Matrix & trainData, const HyperParams & hyperParams)
+    CDTrainingFunction(DBN & dbn, int layer, const Matrix & trainData, const HyperParams & hyperParams, Layer::ActFunc actFunc)
       :
-    LayerTrainingFunction(dbn, layer, trainData, hyperParams)
+    LayerTrainingFunction(dbn, layer, trainData, hyperParams, actFunc)
     {
     }
   };
@@ -238,7 +238,7 @@ private:
 
   public:		
     AETrainingFunction(DBN & dbn, int layer, const Matrix & trainData, const HyperParams & hyperParams, Layer::ActFunc lowerActFunc, bool fixTrainDistortion)
-      : LayerTrainingFunction(dbn, layer, trainData, hyperParams)
+      : LayerTrainingFunction(dbn, layer, trainData, hyperParams, lowerActFunc)
     {
       if (fixTrainDistortion) {
         _distortedInput.Resize(trainData);
@@ -448,12 +448,34 @@ private:
     return loss;
   }
 
-  static void InitializeInputBiases(const Matrix & input, AllocatingVector & inputBiases, double eps) {
+  static void InitializeInputBiases(const Matrix & input, AllocatingVector & inputBiases, Layer::ActFunc actFunc, double eps) {
     int n = input.NumC();
     inputBiases.Resize(input.NumR());
     //		inputBiases.MultInto(input, false, AllocatingVector(n, 1.0), 1.0/n);
+//    AllocatingVector transformedRow(input.NumR());
+    AllocatingVector transformedRow(input.NumC());
     for (int r = 0; r < input.NumR(); ++r) {
       Vector row = input.GetRow(r);
+      switch (actFunc.actType) {
+      case Layer::ActFunc::LOG_SIG:
+	transformedRow.Replace([&] (double x) { 
+	    x = eps + (1 - 2 * eps) * x;
+	    return log(x / (1-x));
+	  }, row);
+	row = transformedRow;
+	break;
+
+      case Layer::ActFunc::TANH:
+	transformedRow.Replace([&] (double x) { 
+	    x = (1 - eps) * x;
+	    return atanh(x);
+	  }, row);
+	row = transformedRow;
+	break;
+	
+      default:
+	break;
+      }
       inputBiases[r] = Sum(row) / n;
     }
   }
@@ -693,13 +715,14 @@ public:
       const HyperParams & hyperParams = hyperParams_pt[layer];
       InitLayer(layer);
 
+      Layer::ActFunc lowerActFunc = (layer == 0) ? _iActFunc : _hActFunc[layer-1];
       switch (hyperParams.pretrainType) {
       case CD:
         {
           if (!quiet) {
             cout << "Pretraining layer " << layer << " of size " << LayerInSize(layer) << "x" << LayerOutSize(layer) << " with CD" << endl;
           }
-          CDTrainingFunction cdFunc(*this, layer, mappedInput, hyperParams);
+          CDTrainingFunction cdFunc(*this, layer, mappedInput, hyperParams, lowerActFunc);
           TrainSGD(cdFunc, hyperParams);
         }
         break;
@@ -709,7 +732,6 @@ public:
           if (!quiet) {
             cout << "Pretraining layer " << layer << " of size " << LayerInSize(layer) << "x" << LayerOutSize(layer) << " with AE" << endl;
           }
-          Layer::ActFunc lowerActFunc = (layer == 0) ? _iActFunc : _hActFunc[layer-1];
           AETrainingFunction aeFunc(*this, layer, mappedInput, hyperParams, lowerActFunc, true);
           TrainSGD(aeFunc, hyperParams);
         }
