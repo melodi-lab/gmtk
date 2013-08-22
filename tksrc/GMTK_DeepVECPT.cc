@@ -640,7 +640,7 @@ for(unsigned i=0; i < num_inputs; i+=1)
     mul_mdmd_md(layer_output_count[layer], layer_output_count[layer-1]+1, 1, 
 		layer_matrix[layer]->values.ptr, input_vector, output_vector[cur_output_vector], 
 		layer_output_count[layer-1]+1, 1, 1);
-    squash(layer_squash_func[layer], output_vector[cur_output_vector], layer_output_count[layer], layer_logistic_beta[0]);
+    squash(layer_squash_func[layer], output_vector[cur_output_vector], layer_output_count[layer], layer_logistic_beta[layer]);
     output_vector[cur_output_vector][layer_output_count[layer]] = 1.0;
   }
   memcpy(cached_CPT, output_vector[cur_output_vector], parentCardinality(0) * sizeof(double));
