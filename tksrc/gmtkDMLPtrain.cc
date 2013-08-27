@@ -57,6 +57,7 @@ VCID(HGID)
 #include "GMTK_BinaryFile.h"
 #include "GMTK_Filter.h"
 #include "GMTK_Stream.h"
+#include "GMTK_RandomSampleSchedule.h"
 
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_GaussianComponent.h"
@@ -322,7 +323,8 @@ main(int argc,char*argv[])
   unsigned radius = cpt->windowRadius();
   gomFS->setMinPastFrames( radius );
   gomFS->setMinFutureFrames( radius );
-  
+
+#if 0  
   Range* trrng = new Range(trrng_str,0,gomFS->numSegments());
   if (trrng->length() <= 0) {
     error("Error: training range '%s' specifies empty set. Exiting...\n", trrng_str);
@@ -370,6 +372,11 @@ main(int argc,char*argv[])
 	    labelOffset, outputSize, gomFS->numContinuous());
     }
   }
+
+  RandomSampleSchedule rss(cpt->obsOffset(), cpt->numFeaturesPerFrame(),
+			   labelOffset, outputSize, oneHot, radius, ptMiniBatchSize,
+			   gomFS, trrng_str);
+
   trrng_it = new Range::iterator(trrng->begin());
   while (!trrng_it->at_end()) {
     const unsigned segment = (unsigned)(*(*trrng_it));
@@ -380,8 +387,8 @@ main(int argc,char*argv[])
 
     for (unsigned i = 0; i < numFrames; i+=1) {
       Data32 const *obsData = gomFS->loadFrames(i, 1);
-      for (int w = -radius; w < radius + 1; w+=1) {
-	for (unsigned j=0; j < inputSize; j+=1) {
+      for (int w = -radius; w <= radius; w+=1) { // 2r+1
+	for (unsigned j=0; j < cpt->numFeaturesPerFrame(); j+=1) {
 	  *(p++) = (double)( *((float *)(obsData + w * stride) + obsOffset + j) );
 	}
       }
@@ -403,6 +410,62 @@ main(int argc,char*argv[])
     }
     (*trrng_it)++;
   }
+#else
+
+  unsigned obsOffset = cpt->obsOffset();
+  unsigned numFeaturesPerFrame = cpt->numFeaturesPerFrame();
+
+  if (oneHot) {
+    if (labelOffset < gomFS->numContinuous()) {
+      error("ERROR: labelOffset (%u) must refer to a discrete feature (the first %u are continuous)\n", 
+	    labelOffset, gomFS->numContinuous());
+    }
+    if (labelOffset >= gomFS->numFeatures()) {
+      error("ERROR: labelOffset (%u) is too large for the number of available features (%u)\n",
+	    labelOffset, gomFS->numFeatures());
+    }
+  } else {
+    if (labelOffset >= gomFS->numContinuous()) {
+      error("ERROR: labelOffset (%u) is too large for the number of continuous features (%u)\n",
+	    labelOffset, gomFS->numContinuous());
+    }
+    if (labelOffset + outputSize > gomFS->numContinuous()) {
+      error("ERROR: labelOffset (%u) + number of outputs (%u) is too large for the number of continuous features (%u)\n", 
+	    labelOffset, outputSize, gomFS->numContinuous());
+    }
+  }
+  RandomSampleSchedule rss(obsOffset, numFeaturesPerFrame,
+			   labelOffset, outputSize, oneHot, radius, 
+			   1 /* batch size */, gomFS, trrng_str);
+
+  unsigned numInstances = rss.numTrainingUnits();
+
+  double *doubleObsData = new double[inputSize * numInstances];
+  double *p = doubleObsData;
+  double *doubleObsLabel = new double[outputSize * numInstances];
+  double *q = doubleObsLabel;
+
+  unsigned dummy1, dummy2;
+  unsigned stride;
+  rss.describeFeatures(dummy1, dummy2, stride);
+
+  unsigned segment, frame;
+  unsigned nf = 2 * radius+1;
+  for (unsigned i=0; i < numInstances && rss.nextTrainingUnit(segment, frame); i+=1) {
+    float *obsData = rss.getFeatures(segment, frame);
+    for (unsigned w = 0; w < nf; w+=1, obsData += stride) {
+      for (unsigned j=0; j < numFeaturesPerFrame; j+=1) {
+        *(p++) = (double)obsData[j];
+      }
+    }
+    obsData = rss.getLabels(segment, frame);
+    for (unsigned j=0; j < outputSize; j+=1) {
+      *(q++) = (double) obsData[j];
+    }
+  }
+#endif
+
+  return 0;
 
   Matrix   trainData(doubleObsData,  inputSize,  numInstances, inputSize,  false);
   Matrix trainLabels(doubleObsLabel, outputSize, numInstances, outputSize, false);
