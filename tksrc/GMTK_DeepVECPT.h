@@ -58,7 +58,7 @@ class DeepVECPT : public CPT {
   // to the deep model for frame t
   unsigned window_radius; 
 
-  // number of floats expected in the file
+  // number of floats per frame taken from the file
   unsigned nfs;
 
   // these variables are used in case that we
@@ -122,22 +122,33 @@ public:
   // segment.
   bool iterable() { return true; }
 
+
+  // Number of input features taken from a single obs file frame
+  unsigned numFeaturesPerFrame() { return nfs; }
+
+
+  // Total number of input features from the obs file
   unsigned numInputs() { return nfs * ( 2 * window_radius + 1 ); } // +1 additional for bias
 
+  // Number of outputs from the top layer
   unsigned numOutputs() { return layer_output_count[num_matrices-1]; }
 
+  // Number of outputs from the specified layer
   unsigned layerOutputs(unsigned layer) { 
     assert(layer < layer_output_count.size());
     return layer_output_count[layer]; 
   }
 
+  // Number of past/future frames included in the input
   unsigned windowRadius() { return window_radius; }
 
+  // Specified layer's squash function
   SquashFunction getSquashFn(unsigned layer) {
     assert(layer < layer_squash_func.size());
     return layer_squash_func[layer];
   }
 
+  // Set the parameters of the specified layer. ld is the weights' stride
   void setParams(unsigned layer, double const *weights, unsigned ld, double const *bias) {
     assert(layer < layer_matrix.size());
     DoubleMatrix *w = layer_matrix[layer];
