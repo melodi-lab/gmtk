@@ -1097,9 +1097,7 @@ public:
   // this one is general.
   void printAllCliques(FILE* f,const bool normalize, const bool unlog,
 		       const bool justPrintEntropy,
-		       ObservationFile *pFile = NULL,
-		       ObservationFile *cFile = NULL,
-		       ObservationFile *eFile = NULL);
+		       ObservationFile *pFile = NULL);
 
   void printAllCliques(PartitionStructures& ps,
 		       PartitionTables& pt,
