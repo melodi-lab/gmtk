@@ -1227,6 +1227,9 @@ public:
 
 
  private:
+  
+  // A few Viterbi printing helper functions:
+
   // helper function for parsing Viterbi printing triggers
   void parseViterbiTrigger(set<string> &variableNames, char *triggerExpression, vector< pair< string,int> > &rvVec, string &expr);
 
@@ -1240,6 +1243,7 @@ public:
   bool evaluateTrigger(vector<RV *> &allrvs, vector< pair< string,int> > &vitTriggerVec, string &vitTriggerExpr, 
 		       RngDecisionTree::EquationClass &triggerEqn);
 
+  // print a modified section to file f if it passes the triggers, reg ex, etc.
   void printModifiedSection(PartitionStructures &ps,
 			    unsigned *packed_values,
 			    bool useVitTrigger,
@@ -1258,6 +1262,7 @@ public:
 			    bool runLengthCompress = false,
 			    unsigned pt_i = 1);
 
+  // print an original section to file f if it passes the triggers, reg ex, etc.
   void printOriginalSection(vector<RV *> sectionRVs,
 			    vector<RV *> hiddenRVs,
 			    bool useVitTrigger,
@@ -1275,38 +1280,8 @@ public:
 			    sArray<unsigned> &previous_values,
 			    bool runLengthCompress = false,
 			    int frame = -1);
- public:
 
-  // void saveViterbiValuesIsland(oDataStreamFile& vfile);
-  // void saveViterbiValuesLinear(oDataStreamFile& vfile);
-  // void saveViterbiValuesIsland(FILE*);
-  void printSavedPartitionViterbiValues(FILE*,
-					bool printObserved,
-					regex_t *preg,
-					regex_t* creg,
-					regex_t* ereg,
-					char* partRangeFilter);
-
-  void printSavedPartitionViterbiValues(unsigned,
-					FILE*, FILE*,
-					bool printObserved,
-					regex_t *preg,
-					regex_t* creg,
-					regex_t* ereg,
-					char* partRangeFilter);
-
-#if 0
-  void printSavedViterbiValues(FILE*,
-			       bool printObserved = false,
-			       regex_t *preg = NULL,
-			       bool reverseOrder = false,
-			       unsigned maxTriggerVars = 0,
-			       const char **triggerVars = NULL,
-			       const char **triggerValSets = NULL);
-#endif
-
-  void resetViterbiPrinting() { setCurrentInferenceShiftTo(0); }
-
+  // sets up the data structures for printing original sections
   void createUnpackingMap(vector<RV*> &unrolled_rvs, 
 			  map<RVInfo::rvParent, unsigned> &unrolled_map,
 			  vector<RV*> &P_rvs, vector<RV*> &hidP_rvs,
@@ -1319,21 +1294,123 @@ public:
 			  vector<sArray<DiscRVType *> > &CprimeValuePtrs, 
 			  vector<sArray<DiscRVType *> > &EprimeValuePtrs);
 
-#if 0
-  void printSavedViterbiValues(FILE* f,
-			       bool printObserved,
-			       regex_t *preg,
-			       char* partRangeFilter);
-#endif
-
+  // fetch Viterbi values from a file instead of memory
   void readBinaryVitPartition(PartitionStructures& ps, unsigned part);
+
+ public:
+
+  // void saveViterbiValuesIsland(oDataStreamFile& vfile);
+  // void saveViterbiValuesLinear(oDataStreamFile& vfile);
+  // void saveViterbiValuesIsland(FILE*);
+
+
+  // this must be called between printSavedViterbi...() calls
+  void resetViterbiPrinting() { setCurrentInferenceShiftTo(0); }
+
+
+/*
+ *
+ * This routine prints the Viterbi values computed by the most recent
+ * linear inference run (assuming its data structures are still valid)
+ * in ASCII to f (typically stdout). The Viterbi values are printed
+ * by modified section (P', C', E').
+ *
+ * Preconditions: 
+ *
+ *    Assumes that distributeEvidence has just been run and all data
+ *    structures (such as the compressed viterbi value array) are set
+ *    up appropriately. 
+ *
+ *    Assumes that inference_it is currently set for the current
+ *    segment.
+ *  
+ *    Assumes that the CC and CE partition pair random variables
+ *    have been properly set up.
+ * 
+ *
+ */
+
+  void printSavedPartitionViterbiValues(FILE *f,
+					bool printObserved,
+					regex_t *preg,
+					regex_t* creg,
+					regex_t* ereg,
+					char* partRangeFilter);
+
+  /*
+   * This version of the above reads the saved binary Viterbi values
+   * from vitFile to populate the inference data structures rather
+   * than requiring the execution of distributeEvidence().
+   */
+  void printSavedPartitionViterbiValues(unsigned numFrames,
+					FILE *vitFile, FILE *f,
+					bool printObserved,
+					regex_t *preg,
+					regex_t* creg,
+					regex_t* ereg,
+					char* partRangeFilter);
+
+
+/*
+ *
+ * This routine prints the Viterbi values computed by the most recent
+ * linear inference run (assuming its data structures are still valid)
+ * in ASCII to f (typically stdout). Unlike printSavedPartitionViterbiValues(), 
+ * this method prints the values ordered by the original P, C, and E,
+ * sections rather than the modified P', C', and E' sections.
+ *
+ * Preconditions: 
+ *
+ *    Assumes that distributeEvidence has just been run and all data
+ *    structures (such as the compressed viterbi value array) are set
+ *    up appropriately. 
+ *
+ *    Assumes that inference_it is currently set for the current
+ *    segment.
+ *  
+ *    Assumes that the CC and CE partition pair random variables
+ *    have been properly set up.
+ * 
+ *
+ */
 
   void printSavedViterbiValues(FILE *f,
 			       bool printObserved,
 			       regex_t *preg,
 			       regex_t* creg,
 			       regex_t* ereg);
+  /*
+   * This version of the above reads the saved binary Viterbi values
+   * from binVitFile to populate the Viterbi value data structures rather
+   * than requiring the execution of distributeEvidence().
+   */
+  void printSavedViterbiValues(unsigned numFrames,
+			       FILE *f, FILE* binVitFile,
+			       bool printObserved,
+			       regex_t *preg,
+			       regex_t* creg,
+			       regex_t* ereg);
 
+  /*
+   * This version prints the Viterbi values for the original (P, C, E)
+   * sections specified by the partRangeFilter.
+   *
+   * Preconditions: 
+   *
+   *    If binVitFile is NULL, assumes that distributeEvidence() has just 
+   *    been run and all data structures (such as the compressed Viterbi 
+   *    value array) are set up appropriately. If binVitFile is non-NULL,
+   *    it reads the saved binary Viterbi values from the file to populate 
+   *    the Viterbi value data structures rather than requiring the execution
+   *    of distributeEvidence().
+   *
+   *    Assumes that inference_it is currently set for the current
+   *    segment.
+   *  
+   *    Assumes that the CC and CE partition pair random variables
+   *    have been properly set up.
+   * 
+   */
   void printSavedViterbiValues(unsigned numFrames,
 			       FILE *f, FILE *binVitFile,
 			       bool printObserved,
@@ -1342,15 +1419,10 @@ public:
 			       regex_t* ereg,
 			       char* partRangeFilter);
 
-#if 1
-  void printSavedViterbiValues(unsigned numFrames,
-			       FILE *f, FILE* binVitFile,
-			       bool printObserved,
-			       regex_t *preg,
-			       regex_t* creg,
-			       regex_t* ereg);
-#endif
-
+  /*
+   * This version of the above prints the Viterbi values for the frames
+   * specified by the frameRangeFilter.
+   */
   void printSavedViterbiFrames(unsigned numFrames,
 			       FILE *f, FILE *binVitFile,
 			       bool printObserved,
@@ -1358,6 +1430,8 @@ public:
 			       regex_t* creg,
 			       regex_t* ereg,
 			       char* frameRangeFilter);
+
+
 
   // actuall message routines.
   // void collectMessage(MaxClique& from,MaxClique& to);
