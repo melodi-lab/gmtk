@@ -1121,7 +1121,7 @@ void Arg::usage(const char* filter,bool stdErrPrint, const char *programDescript
  *
  *-----------------------------------------------------------------------
  */
-Arg::ArgsRetCode Arg::parseArgsFromFile(char *fileName)
+Arg::ArgsRetCode Arg::parseArgsFromFile(char const *fileName)
 {
   countAndClearArgBits();
   ifstream ifile(fileName);

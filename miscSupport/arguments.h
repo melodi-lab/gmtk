@@ -228,7 +228,7 @@ class Arg {
   ~Arg();
 
   static ArgsRetCode parseArgsFromCommandLine(int,char**);
-  static ArgsRetCode parseArgsFromFile(char*f="argsFile");
+  static ArgsRetCode parseArgsFromFile(char const *f="argsFile");
   static bool parse(int i,char**c, const char *programDescription=NULL);
   static void usage(const char* filter=NULL, bool stdErrPrint = true, const char *programDescription=NULL);
   static void printArgs(Arg*args,FILE*f);
