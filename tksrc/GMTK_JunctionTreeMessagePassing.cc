@@ -1179,9 +1179,12 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames,
 		     E_rvs, hidE_rvs, Eprime_rvs, hidEprime_rvs,
 		     PprimeValuePtrs, CprimeValuePtrs, EprimeValuePtrs);
 
+  unsigned M = gm_template.M;
+  unsigned S = gm_template.S;
+
   fprintf(f,"Printing random variables from (P,C,E)=(%d,%d,%d) sections\n",
 	  P_partition_values.size(),
-	  C_partition_values.size(),
+	  C_partition_values.size() * S + M,
 	  E_partition_values.size());
 
   Range* partRange = new Range("all",0,inference_it.pt_len());
@@ -1412,14 +1415,14 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames, FILE* f,
 		     C_rvs, hidC_rvs, Cprime_rvs, hidCprime_rvs,
 		     E_rvs, hidE_rvs, Eprime_rvs, hidEprime_rvs,
 		     PprimeValuePtrs, CprimeValuePtrs, EprimeValuePtrs);
+  unsigned M = gm_template.M;
+  unsigned S = gm_template.S;
 
   fprintf(f,"Printing random variables from (P,C,E)=(%d,%d,%d) sections\n",
 	  P_partition_values.size(),
-	  C_partition_values.size(),
+	  C_partition_values.size() * S + M,
 	  E_partition_values.size());
 
-  unsigned M = gm_template.M;
-  unsigned S = gm_template.S;
   unsigned totalOriginalPartitions = 2 + inference_it.num_c_partitions() * S + M;
 
   infoMsg(IM::Printing,IM::High,"M = %u   S = %u   # orig parts = %u\n",
@@ -1620,17 +1623,18 @@ JunctionTree::printSavedViterbiFrames(unsigned numFrames, FILE* f,
 		     E_rvs, hidE_rvs, Eprime_rvs, hidEprime_rvs,
 		     PprimeValuePtrs, CprimeValuePtrs, EprimeValuePtrs);
 
+  unsigned M = gm_template.M;
+  unsigned S = gm_template.S;
+
   fprintf(f,"Printing random variables from (P,C,E)=(%d,%d,%d) sections\n",
 	  P_partition_values.size(),
-	  C_partition_values.size(),
+	  C_partition_values.size() * S + M,
 	  E_partition_values.size());
 
 
   unsigned NP = fp.numFramesInP();
   unsigned NC = fp.numFramesInC();
 
-  unsigned M = gm_template.M;
-  unsigned S = gm_template.S;
   unsigned totalOriginalPartitions = 2 + inference_it.num_c_partitions() * S + M;
 
   infoMsg(IM::Printing,IM::High,"NP = %u   NC = %u   M = %u   S = %u   # orig parts = %u\n",
