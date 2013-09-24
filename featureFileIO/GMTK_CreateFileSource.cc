@@ -103,26 +103,30 @@ instantiateFileSource() {
   if (gpr_str && ALLOREMPTY(gpr_str)) gpr_str = NULL;
 
   ObservationFile *obsFile[MAX_NUM_OBS_FILES];
-  unsigned nFiles=0;
-  for (unsigned i=0; i < MAX_NUM_OBS_FILES && ofs[i] != NULL; i+=1, nFiles+=1) {
-    obsFile[i] = instantiateFile(ifmts[i], ofs[i], nfs[i], nis[i], i, iswp[i],
-                                 Cpp_If_Ascii, cppCommandOptions, prefrs[i], preirs[i],
-                                 prepr[i], sr[i], fmts[i]);
-    assert(obsFile[i]);
-    if (Per_Stream_Transforms[i] || frs[i] || irs[i] || postpr[i]) {
-      Filter *fileFilter = instantiateFilters(Per_Stream_Transforms[i],
-					      obsFile[i]->numContinuous(),
-					      obsFile[i]->numDiscrete());
-      assert(fileFilter);
-      obsFile[i] = new FilterFile(fileFilter, obsFile[i], frs[i], irs[i], postpr[i]);
+  int lastFileIdx = -1;
+  unsigned nFiles = 0;
+  for (unsigned i=0; i < MAX_NUM_OBS_FILES; i+=1) {
+    if (ofs[i]) {
+      obsFile[i] = instantiateFile(ifmts[i], ofs[i], nfs[i], nis[i], i, iswp[i],
+				   Cpp_If_Ascii, cppCommandOptions, prefrs[i], preirs[i],
+				   prepr[i], sr[i], fmts[i]);
+      assert(obsFile[i]);
+      if ((unsigned)(lastFileIdx + 1) != i) {
+	error("Error: -of%d through -of%d are missing\n", lastFileIdx+2, i); // +1 for 0 offset, +1 to get next index
+      }
+      lastFileIdx = (int)i;
+      nFiles += 1;
+      if (Per_Stream_Transforms[i] || frs[i] || irs[i] || postpr[i]) {
+	Filter *fileFilter = instantiateFilters(Per_Stream_Transforms[i],
+						obsFile[i]->numContinuous(),
+						obsFile[i]->numDiscrete());
+	assert(fileFilter);
+	obsFile[i] = new FilterFile(fileFilter, obsFile[i], frs[i], irs[i], postpr[i]);
+      }
     }
   }
 
   if (nFiles == 0) return NULL;
-
-  for (unsigned i=nFiles+1; i < MAX_NUM_OBS_FILES; i+=1) {
-    if (ofs[i]) error("instantiateFileSource: Observation files [%u,%u] are missing\n", nFiles,i-1);
-  }
 
   ObservationFile *mf;
   if (nFiles > 1) {
