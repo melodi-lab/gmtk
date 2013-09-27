@@ -45,14 +45,6 @@ class DlinkMatrix : public EMable  {
   sArray< float > arr;
   ///////////////////////////////////////////////////////////  
 
-  ///////////////////////////////////////////////////////////
-  // Data structures support for EM
-  sArray< float > nextArr;
-
-  /////////////////////////////////////////////////////////
-  // the denominator used in the case of shared dlinks
-  sArray<double> sharedZZDenominator;
-
   /////////////////////////////////////////////////
   // counts the number of gaussian components
   // that are sharing this mean at all. This is a static
@@ -61,14 +53,37 @@ class DlinkMatrix : public EMable  {
   // is read in.
   unsigned numTimesShared;
 
-  /////////////////////////////////////////////////
-  // counts the number of gaussian components
-  // that are sharing this mean at EM training time. This is a dynamic
-  // count, and is computed as EM training is run. This
-  // value does not necessarily equal the number of
-  // objects that have specified this object in
-  // the object files.
-  unsigned refCount;
+  ////////////////////////////////////////////////////////////////////
+  // Data structures support for training (EM, etc.)
+  ////////////////////////////////////////////////////////////////////
+  struct Training_Members {
+    // NOTE: if we change from type float, to type double,
+    //   we will need to check the load/store accumulator code
+    //   for subclasses of GaussianComponent.
+    sArray< float > nextArr;
+
+    /////////////////////////////////////////////////////////
+    // the denominator used in the case of shared dlinks
+    sArray<double> sharedZZDenominator;
+
+    /////////////////////////////////////////////////
+    // counts the number of gaussian components
+    // that are sharing this mean at EM training time. This is a dynamic
+    // count, and is computed as EM training is run. This
+    // value does not necessarily equal the number of
+    // objects that have specified this object in
+    // the object files.
+    unsigned refCount;
+
+    // default constructor
+    Training_Members() : refCount(0) {}  
+  };
+  auto_deleting_ptr<struct Training_Members> trMembers;
+  ////////////////////////////////////////////////////////////////////
+  // End of data structures support for EM
+  ////////////////////////////////////////////////////////////////////
+
+
 
 public:
 
