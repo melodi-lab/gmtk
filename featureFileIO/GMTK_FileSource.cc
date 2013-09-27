@@ -18,6 +18,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 
 #include "error.h"
 #include "general.h"
@@ -28,6 +29,10 @@
 #include "GMTK_FileSource.h"
 #include "GMTK_Filter.h"
 #include "GMTK_MergeFile.h"
+
+
+bool ObservationsAllowNan = false;
+
 
 
 FileSource::FileSource(ObservationFile *file, 
@@ -254,8 +259,9 @@ FileSource::loadFrames(unsigned bufferIndex, unsigned first, unsigned count) {
   memcpy((void *)dst, (const void *)fileBuf, file->numLogicalFeatures() * count * sizeof(Data32));
 #ifdef WARNING_ON_NAN
   if (!ObservationsAllowNan) {
-    for (float *fp = (float *)dst, unsigned i=0; i < count; i+=1, fp += file->numLogicalFeatures()) {
-      for (unsigned j=0; j < file->numLogicalContinuousFeatures(); j+=1) {
+    unsigned i = 0;
+    for (float *fp = (float *)dst; i < count; i+=1, fp += file->numLogicalFeatures()) {
+      for (unsigned j=0; j < file->numLogicalContinuous(); j+=1) {
 	if (isnan(fp[j])) {
 	  error("ERROR: Found NaN or +/-INF at %u'th float in frame %u, segment %u\n",
                 j, first+i, segmentNumber());
