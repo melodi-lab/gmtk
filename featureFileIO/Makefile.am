@@ -60,7 +60,6 @@ noinst_LIBRARIES = libgmtkio.a
 
 libgmtkio_a_SOURCES = \
 GMTK_ObservationArguments.h ObsArguments.h \
-GMTK_ObservationMatrix.h GMTK_ObservationMatrix.cc \
 GMTK_Stream.h GMTK_Stream.cc \
 GMTK_DataTransformations.cc \
 GMTK_WordOrganization.h GMTK_WordOrganization.cc \
@@ -95,6 +94,7 @@ GMTK_UpsampleFilter.h GMTK_UpsampleFilter.cc \
 GMTK_UpsampleSmoothFilter.h GMTK_UpsampleSmoothFilter.cc \
 GMTK_AffineFilter.h GMTK_AffineFilter.cc
 
+# GMTK_ObservationMatrix.h GMTK_ObservationMatrix.cc 
 
 check_PROGRAMS = \
 testPFileFile \

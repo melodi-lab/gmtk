@@ -63,6 +63,10 @@
 // instantiates the above object hierarchy according to the command
 // line arguments given to a GMTK program.
 
+
+#define WARNING_ON_NAN 1
+
+
 class FileSource: public ObservationSource {
 
  protected:
