@@ -31,7 +31,7 @@
 #include "GMTK_MergeFile.h"
 
 
-bool ObservationsAllowNan = false;
+extern bool ObservationsAllowNan;
 
 
 
