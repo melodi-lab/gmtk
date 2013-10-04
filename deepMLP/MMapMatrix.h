@@ -45,7 +45,7 @@ class MMapMatrix : public Matrix {
 
   char *tempname(char const *dir, char const *dummy) {
     char  tempname_buf[MAX_TEMP_FILENAME_LENGTH];
-    char const *tempdir = getenv("TMPDIR");
+    char const *tempdir = getenv("GMTKTMPDIR");
     if (!tempdir) tempdir = dir;
     assert(tempdir);
     size_t len = strlen(tempdir);
