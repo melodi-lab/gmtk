@@ -40,7 +40,7 @@ endif
 if NO_MODEL_CHECKS
 DEBUGFLAGS += -DNMODELCHECK
 endif
-OPTFLAGS = -O3
+OPTFLAGS = -O3 -march=native -mtune=native -mfpmath=sse -msse3
 
 if CYGWIN_FLAGS
 ANSI = 
@@ -226,11 +226,12 @@ gmtkTime_SOURCES = gmtkTime.cc
 
 gmtkEMtrain_SOURCES = gmtkEMtrain.cc
 
+
 gmtkDMLPtrain_SOURCES = gmtkDMLPtrain.cc
-gmtkDMLPtrain_CPPFLAGS = $(AM_CPPFLAGS)
-gmtkDMLPtrain_CXXFLAGS = $(VERSIONFLAG) $(DEBUGFLAGS) \
-   -O3 -march=native -mtune=native -mfpmath=sse -msse3 -std=c++0x $(EXCXXFLAGS) $(BLAS_CFLAGS)
+gmtkDMLPtrain_CPPFLAGS = $(AM_CPPFLAGS) $(VERSIONFLAG)
+gmtkDMLPtrain_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) -std=c++0x $(EXCXXFLAGS) $(BLAS_CFLAGS)
 gmtkDMLPtrain_LDADD = $(LDADD)  $(BLAS_LIBS)
+
 
 gmtkKernel_SOURCES = gmtkKernel.cc
 
