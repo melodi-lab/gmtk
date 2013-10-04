@@ -1781,9 +1781,8 @@ static bool     ptDropout = false;
 
 static char const *pretrainType = "CD";
 static DBN::PretrainType pretrainMode;
-static char const *pretrainActFuncStr = "TANH";
+static char const *pretrainActFuncStr = "linear";
 static Layer::ActFunc iActFunc;
-
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
@@ -1814,6 +1813,8 @@ Arg("ptDropout", Arg::Opt, ptDropout, "Pretrain: Dropout hyperparameter"),
 
 Arg("pretrainType", Arg::Opt, pretrainType, "Pretraining type (none, AE, CD)"),
 Arg("pretrainActFunc", Arg::Opt, pretrainActFuncStr, "Pretraining input activation function (sig, tanh, cubic, linear, rect)"),
+
+Arg("tempDir", Arg::Opt, MMapMatrix::dmlpTempDir, "Directory to store temp files if $TMPDIR environment variable is not set"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 

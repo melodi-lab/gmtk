@@ -955,7 +955,7 @@ JunctionTree::storeToObsFile(int frame, unsigned segment,
       }
     }
   }
-  if (writtenCount % vitObsVariableNames.size() != 0) {
+  if ( (vitObsVariableNames.size() > 0) && (writtenCount % vitObsVariableNames.size() != 0) ) {
     // If we get here, we wrote some number of variables in the correct order, but not enough.
     // There weren't any extras, so the rest must be missing.
     string nameStr("<");

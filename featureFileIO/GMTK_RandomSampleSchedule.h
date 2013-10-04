@@ -26,30 +26,33 @@ class RandomSampleSchedule : public TrainingSchedule {
                
  public:
 
-  RandomSampleSchedule(unsigned feature_offset, unsigned num_features,
+  RandomSampleSchedule(unsigned feature_offset, unsigned features_per_frame,
 		       unsigned label_offset,  unsigned label_domain_size,
 		       bool one_hot, unsigned window_radius, unsigned unit_size, 
 		       FileSource *obs_source, char const *trrng_str)
-    : TrainingSchedule(feature_offset, num_features, label_offset, 
+    : TrainingSchedule(feature_offset, features_per_frame, label_offset, 
 		       label_domain_size, one_hot, window_radius, unit_size,
 		       obs_source, trrng_str)
   {
     segment_dist = new float[num_segments];
-    
+    unsigned segment_count[num_segments];
+    memset((void *)segment_count, 0, num_segments * sizeof(unsigned));
     for (unsigned i=0; i < num_segments; i+=1) {
       if (!obs_source->openSegment(trrng->index(i))) {
 	error("ERROR: Unable to open observation file segment %u\n", trrng->index(i));
       }
-      segment_dist[i] = (float)(obs_source->numFrames() - unit_size + 1);
+      segment_count[i] = obs_source->numFrames() - unit_size + 1;
     }
     for (unsigned i=0; i < num_segments; i+=1) {
-      segment_dist[i] /= num_units;
+      segment_dist[i] = (double)segment_count[i] / (double)num_segments;
     }
   } 
   
+
   ~RandomSampleSchedule() {
     if (segment_dist) delete[] segment_dist;
   }
+
 
   // RAND's state is global, and other GMTK functions consume random variables,
   // so RandomSampleSchedule would either need a private PRNG implementation or
@@ -57,15 +60,17 @@ class RandomSampleSchedule : public TrainingSchedule {
   // the RAND output stream is used by other clients in unpredictable ways, we 
   // couldn't guarantee the same sample sequence even if we did reset the seed.
   TrainingScheduleState const *getState() {
-    return new TrainingScheduleState();
+    return NULL;
   }
+
 
   void reset(TrainingScheduleState const *state) {
     TrainingSchedule::reset(state);
   }
 
+
   bool nextTrainingUnit(unsigned &segment, unsigned &frame) { 
-    if (num_units_dispensed >= num_units) return false;
+    if (num_units_dispensed >= num_viable_units) return false;
 
     segment = (unsigned) rnd.sample(num_segments, segment_dist);
     if (!obs_source->openSegment(trrng->index(segment))) {
@@ -75,7 +80,6 @@ class RandomSampleSchedule : public TrainingSchedule {
     (void) TrainingSchedule::nextTrainingUnit(segment, frame);
     return true;
   }
-
 };
 
 #endif

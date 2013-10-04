@@ -11,4 +11,5 @@
 #include "Layer.h"
 #include "Matrix.h"
 #include "MatrixFunc.h"
+#include "MMapMatrix.h"
 #include "DBN.h"

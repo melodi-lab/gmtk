@@ -5,6 +5,7 @@
 
 RAND rnd;
 
+
 int main(int argc, char *argv[]) {
 
   //   MNISTData mnist("C:\\svn\\data\\mnist\\train-images.idx3-ubyte", "C:\\svn\\data\\mnist\\train-labels.idx1-ubyte");
@@ -48,7 +49,9 @@ int main(int argc, char *argv[]) {
   bpHyperParams.numAnnealUpdates = 20000;
   //  bpHyperParams.dropout = true;
 
-  dbn.Train(mnist.GetImages(), output, objType, false, pretrainHyperParams, bpHyperParams);
+  Matrix input = mnist.GetImages();
+  MMapMatrix mappedInput(input), mappedOutput(output);
+  dbn.Train(mappedInput, mappedOutput, objType, false, pretrainHyperParams, bpHyperParams);
 
   // really we shouldn't be using the test set like this, but this is just for debugging
   MNISTData testMnist(testImageFile, testLabelFile);

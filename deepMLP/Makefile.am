@@ -14,14 +14,20 @@ ANSI = -std=c++0x
 #PEDANTIC = -pedantic
 #WARNING = -Wall
 
-AM_CPPFLAGS = -I$(srcdir)/../miscSupport
+AM_CPPFLAGS = \
+-I$(srcdir)/../miscSupport   \
+-I$(srcdir)/../featureFileIO
 
 AM_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(PEDANTIC) $(WARNING) $(ANSI) $(BLAS_CFLAGS)
 
 #AM_LDFLAGS = -static -fwhole-program -L. 
 AM_LDFLAGS = -L.
 
-LDADD = $(builddir)/../miscSupport/libmiscSupport.a libDMLP.a
+LDADD = \
+$(builddir)/../miscSupport/libmiscSupport.a \
+$(builddir)/../featureFileIO/libgmtkio.a    \
+libDMLP.a
+
 if BUILD_PHIPAC
 LDADD += libPHiPAC.a
 endif
@@ -51,7 +57,8 @@ libDMLP_a_SOURCES =           \
   miniblas.h miniblas.cc      \
   DBN.h Layer.h               \
   Matrix.h Matrix.cc          \
-  MatrixFunc.h MatrixFunc.cc
+  MatrixFunc.h MatrixFunc.cc  \
+  MMapMatrix.h MMapMatrix.cc
 
 
 libPHiPAC_a_SOURCES =     \

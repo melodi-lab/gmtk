@@ -28,38 +28,46 @@ class TrainingScheduleState {};
 
 class TrainingSchedule {
  protected:
-  unsigned feature_offset;
-  unsigned num_features; 
+  unsigned feature_offset;       // offset of first input feature 
+  unsigned features_per_frame;   // # features to take from each frame in the window
 
-  unsigned label_offset;
+  unsigned label_offset;         // offset of first label feature 
+                                 //   this will be >= # continuous features if 1-hot
   unsigned label_domain_size;
-  bool     one_hot;           // true iff we must expand single int -> vector
+  bool     one_hot;              // true iff we must expand single int -> vector
 
-  unsigned stride;
+  unsigned stride;               // obs file stride
   unsigned window_radius;
-  unsigned unit_size;
+  unsigned unit_size;            // # of instances in a training unit (minibatch size)
 
   // Can't use StreamSource because it doesn't know how many segments/frames
   // there are until the end of the input is reached.
   FileSource *obs_source;
 
-  unsigned  num_units;
-  Range    *trrng;        // observation file segment range
-  unsigned  num_segments; // in the observation file segment range
+  unsigned  num_viable_units;    // total # of frames across all segments that
+                                 //   can be the start of a training unit
 
-  float    *heated_labels; // hold label matrix if one_hot is true
+  unsigned  total_frames;        // total frames between startSkip & endSkip 
+                                 //   across all segments
+ 
+  Range    *trrng;               // observation file segment range
+  unsigned  num_segments;        // in the observation file segment range
 
-  unsigned num_units_dispensed; // # of calls to nextTrainingUnit
+  float    *unit_data;           // hold the training data for a unit
+  float    *heated_labels;       // hold label matrix if one_hot is true
+
+  unsigned num_units_dispensed;  // # of calls to nextTrainingUnit since last reset()
 
  public:
 
-  TrainingSchedule(unsigned feature_offset, unsigned num_features,
+  TrainingSchedule(unsigned feature_offset, unsigned features_per_frame,
 		   unsigned label_offset,  unsigned label_domain_size,
 		   bool one_hot, unsigned window_radius, unsigned unit_size, 
 		   FileSource *obs_source, char const *trrng_str);
 
   ~TrainingSchedule() {
     if (trrng) delete trrng;
+    if (unit_data) delete[] unit_data;
     if (heated_labels) delete[] heated_labels;
   }
 
@@ -74,27 +82,14 @@ class TrainingSchedule {
     num_units_dispensed = 0;
   }
 
-  // Returns the number of training units in the input data.
+  // Returns the number of viable training units in the input data.
+  virtual unsigned numViableUnits() { return num_viable_units; }
+
 
   // Some training schedules may sample the same training unit more than 
   // once (or not sample a training unit at all), so this is not necessarily 
   // the number of training units the client will process.
-  virtual unsigned numTrainingUnits() { return num_units; }
-
-
-  // Describes the feature matrix returned by getFeatures()
-
-  // Returns the number of features in a training instance in numFeatures.
-  // Returns the number of instances in the training unit in numInstances.
-  // Returns the number of floats between each instance in stride.
-  // The features of a particular instance are contiguous in memory.
-  virtual void describeFeatures(unsigned &numFeatures,
-				unsigned &numInstances,
-				unsigned &stride)
-  {
-    numFeatures = num_features; numInstances = unit_size; stride = this->stride;
-  }
-
+  virtual unsigned numTrainingUnits() { return total_frames / unit_size; }
 
   // Returns true and sets segment and frame index to the first instance of the
   // next training unit, or returns false if the end of the schedule has been reached. 
@@ -105,7 +100,7 @@ class TrainingSchedule {
   }
 
 
-  // Returns the feature matrix of the training unit starting at semgnet, frame.
+  // Returns the observation source matrix of the training unit starting at segment, frame.
 
   // The data is organized as in ObservationSource::loadFrames() except
   // the returned pointer is to the first feature of the first instance (rather
@@ -113,13 +108,63 @@ class TrainingSchedule {
 
   // returns floatVecAtFrame(frame) - window_radius * stride + feature_offset
   // ensures data for frames [frame - window_radius, frame + unit_size + window_radius) are in memory
-  virtual float *getFeatures(unsigned segment, unsigned frame) {
+  virtual float *getObservations(unsigned segment, unsigned frame) {
     segment = trrng->index(segment);
     if (!obs_source->openSegment(segment)) {
 	error("ERROR: Unable to open observation file segment %u\n", segment);
     } 
     (void) obs_source->loadFrames(frame, unit_size); // ensure necessary data is in memory
     return obs_source->floatVecAtFrame(frame) - window_radius * stride + feature_offset;
+  }
+
+
+  // Describes the observation source matrix returned by getObservations()
+
+  // Returns the number of features per frame to use in numFeatures
+  // Returns the number of frames in a training instance in numFrames
+  // Returns the number of instances in the training unit in numInstances.
+  // Returns the number of floats between each instance in stride.
+  virtual void describeObservations(unsigned &numFeatures,
+				    unsigned &numFrames,
+				    unsigned &numInstances,
+				    unsigned &stride)
+  {
+    numFeatures = features_per_frame;
+    numFrames = 2 * window_radius + 1; 
+    numInstances = unit_size; 
+    stride = this->stride;
+  }
+
+
+  // Returns the feature matrix of the training unit starting at segment, frame.
+
+  virtual float *getFeatures(unsigned segment, unsigned frame) {
+    unsigned frames_per_instance = 2 * window_radius + 1;
+    float *obsData = getObservations(segment, frame);
+    float *dest = unit_data, *src;
+    for (unsigned b=0; b < unit_size; b+=1) { // loop over instances in batch
+      src = obsData + b * stride;             //   first frame of current instance
+      for (unsigned w=0; w < frames_per_instance; w+=1) { // loop over frames in instance
+	memcpy((void *)dest, (void const *)src, features_per_frame * sizeof(float));
+	dest += features_per_frame;
+	src  += stride;
+      }
+    }
+    return unit_data;
+  }
+
+
+  // Describes the feature matrix returned by getFeatures()
+
+  // Returns the number of features in a training instance in numFeatures.
+  // Returns the number of instances in the training unit in numInstances.
+
+  // The features of a particular instance are contiguous in memory.
+  virtual void describeFeatures(unsigned &numFeatures,
+				unsigned &numInstances)
+  {
+    numFeatures = features_per_frame * (2 * window_radius + 1); 
+    numInstances = unit_size; 
   }
 
 

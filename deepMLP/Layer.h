@@ -221,7 +221,7 @@ private:
 public:
   Layer() { }
 
-  const Matrix & ActivateUp(const Matrix & weights, const Vector & biases, const Matrix & lowerValues, ActFunc actFunc) {
+  Matrix ActivateUp(const Matrix & weights, const Vector & biases, const Matrix & lowerValues, ActFunc actFunc) {
     ComputeInputs(weights, biases, lowerValues, true);
     actFunc.Apply(_a.Vec());
     return _a;

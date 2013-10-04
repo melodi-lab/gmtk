@@ -16,11 +16,16 @@ extern "C" {            /* Assume C declarations for C++ */
 #include <fstream>
 #include <iomanip>      // std::setprecision
 
+#include "MMapMatrix.h"
 #include "rand.h"
 #include "Layer.h"
 #include "MatrixFunc.h"
 
+
 using namespace std;
+
+#define MIN_STEP_SIZE (1.0e-20)
+
 
 class DBN {
 public:
@@ -126,7 +131,7 @@ private:
   protected:
     DBN & _dbn;
 
-    Matrix _input, _output;
+    MMapMatrix _input, _output;
 
     MutableVector _params, _deltaParams, _savedParams;
 
@@ -134,19 +139,32 @@ private:
 
     const HyperParams & _hyperParams;
 
-    TrainingFunction(DBN & dbn, const Matrix & input, const Matrix & output, const HyperParams & hyperParams, MutableVector & params, MutableVector & deltaParams, MutableVector & savedParams)
+    TrainingFunction(DBN & dbn, const MMapMatrix & input, const MMapMatrix & output, const HyperParams & hyperParams, MutableVector & params, MutableVector & deltaParams, MutableVector & savedParams)
       :
     _dbn(dbn), _hyperParams(hyperParams), _input(input), _output(output), _params(params), _deltaParams(deltaParams), _savedParams(savedParams) { }
 
-    TrainingFunction(DBN & dbn, const Matrix & output, const HyperParams & hyperParams, MutableVector & params, MutableVector & deltaParams, MutableVector & savedParams)
+    TrainingFunction(DBN & dbn, const MMapMatrix & output, const HyperParams & hyperParams, MutableVector & params, MutableVector & deltaParams, MutableVector & savedParams)
       :
-    _dbn(dbn), _hyperParams(hyperParams), _output(output), _params(params), _deltaParams(deltaParams), _savedParams(savedParams) { }
+    _dbn(dbn), _hyperParams(hyperParams), _input(), _output(output), _params(params), _deltaParams(deltaParams), _savedParams(savedParams) { }
 
     virtual double PrivateEval(Matrix inputMiniBatch, Matrix outputMiniBatch, double stepSize) = 0;
 
   public:
     double Eval() {
+#if 0
       return PrivateEval(_input, _output, 0) / _output.NumC() + Decay(_params, _hyperParams.l2, 0);
+#else
+      double sum = 0;
+      int input_NumC = _input.NumC();
+      int miniBatchSize = _hyperParams.miniBatchSize;
+      for (int startCol=0; startCol < input_NumC; startCol += miniBatchSize) {
+	int endCol = (startCol + miniBatchSize <= input_NumC) ? startCol + miniBatchSize : input_NumC;
+	Matrix  inputMiniBatch =  _input.GetCols(startCol, endCol);
+	Matrix outputMiniBatch = _output.GetCols(startCol, endCol);
+	sum += PrivateEval(inputMiniBatch, outputMiniBatch, 0);
+      }
+      return sum / _output.NumC() + Decay(_params, _hyperParams.l2, 0);
+#endif
     }
 
     double Update(int start, double stepSize, double maxUpdate, double momentum) {
@@ -176,7 +194,7 @@ private:
       }
 
       _deltaParams *= momentum;
-      double val = PrivateEval(inputMiniBatch, outputMiniBatch, stepSize * (1 - momentum) / miniBatchSize);			
+      double val = PrivateEval(inputMiniBatch, outputMiniBatch, stepSize * (1 - momentum) / miniBatchSize);
       if (!IsNaN(maxUpdate)) Trunc(_deltaParams, maxUpdate);
       _params -= _deltaParams;
 
@@ -203,12 +221,12 @@ private:
     AllocatingVector _inputBiases;
 
   public:
-  LayerTrainingFunction(DBN & dbn, int layer, const Matrix & trainData, const HyperParams & hyperParams, Layer::ActFunc actFunc)
+  LayerTrainingFunction(DBN & dbn, int layer, MMapMatrix & trainData, const HyperParams & hyperParams, Layer::ActFunc actFunc)
       :
     TrainingFunction(dbn, trainData, hyperParams, dbn._layerParams[layer], dbn._layerDeltaParams[layer], dbn._layerSavedParams[layer]),
       _layer(layer)
     {
-      DBN::InitializeInputBiases(trainData, _inputBiases, actFunc, 1e-3);
+      DBN::InitializeInputBiases(trainData, hyperParams.miniBatchSize, _inputBiases, actFunc, 1e-3);
     }
   };
 
@@ -221,7 +239,7 @@ private:
     }
 
   public:
-    CDTrainingFunction(DBN & dbn, int layer, const Matrix & trainData, const HyperParams & hyperParams, Layer::ActFunc actFunc)
+    CDTrainingFunction(DBN & dbn, int layer, MMapMatrix & trainData, const HyperParams & hyperParams, Layer::ActFunc actFunc)
       :
     LayerTrainingFunction(dbn, layer, trainData, hyperParams, actFunc)
     {
@@ -229,7 +247,7 @@ private:
   };
 
   class AETrainingFunction : public LayerTrainingFunction {
-    AllocatingMatrix _distortedInput;
+    //    AllocatingMatrix _distortedInput;
 
   protected:
     virtual double PrivateEval(Matrix inputMiniBatch, Matrix outputMiniBatch, double stepSize) {
@@ -237,13 +255,27 @@ private:
     }
 
   public:		
-    AETrainingFunction(DBN & dbn, int layer, const Matrix & trainData, const HyperParams & hyperParams, Layer::ActFunc lowerActFunc, bool fixTrainDistortion)
+    AETrainingFunction(DBN & dbn, int layer, MMapMatrix & trainData, const HyperParams & hyperParams, Layer::ActFunc lowerActFunc, bool fixTrainDistortion)
       : LayerTrainingFunction(dbn, layer, trainData, hyperParams, lowerActFunc)
     {
       if (fixTrainDistortion) {
+#if 1
+	MMapMatrix _distortedInput(trainData.NumR(), trainData.NumC(), trainData.NumR());
+	int input_NumC = trainData.NumC();
+	int miniBatchSize = hyperParams.miniBatchSize;
+	for (int startCol=0; startCol < input_NumC; startCol += miniBatchSize) {
+	  int endCol = (startCol + miniBatchSize <= input_NumC) ? startCol + miniBatchSize : input_NumC;
+	  Matrix miniBatch = trainData.GetCols(startCol, endCol);
+	  AllocatingMatrix temp(miniBatch.NumR(), miniBatch.NumC());
+	  lowerActFunc.Sample(miniBatch.Vec(), temp.Vec());
+	  _distortedInput.PutCols(temp, startCol);
+	}
+	_input = _distortedInput;
+#else
         _distortedInput.Resize(trainData);
         lowerActFunc.Sample(trainData.Vec(), _distortedInput.Vec());
         _input = _distortedInput;
+#endif
       }
     }
   };
@@ -260,7 +292,7 @@ private:
     }
 
   public:
-    BPTrainingFunction(const Matrix & input, const Matrix & output, DBN & dbn, HyperParams hyperParams, ObjectiveType objectiveType)
+    BPTrainingFunction(const MMapMatrix & input, const MMapMatrix & output, DBN & dbn, HyperParams hyperParams, ObjectiveType objectiveType)
       :
     TrainingFunction(dbn, input, output, hyperParams, dbn._params, dbn._deltaParams, dbn._savedParams),
       _objectiveType(objectiveType)
@@ -279,7 +311,7 @@ private:
     }
 
   public:
-    OutputLayerTrainingFunction(const Matrix & input, const Matrix & output, DBN & dbn, HyperParams hyperParams, ObjectiveType objectiveType)
+    OutputLayerTrainingFunction(const MMapMatrix & input, const MMapMatrix & output, DBN & dbn, HyperParams hyperParams, ObjectiveType objectiveType)
       :
     TrainingFunction(dbn, input, output, hyperParams, dbn._layerParams.back(), dbn._layerDeltaParams.back(), dbn._layerSavedParams.back()),
       _objectiveType(objectiveType)
@@ -336,6 +368,9 @@ private:
       }
 
       stepSize /= 2;
+      if (stepSize < MIN_STEP_SIZE) {
+	error("ERROR: step size < %f; giving up\n", MIN_STEP_SIZE);
+      }
       if (!quiet) cout << "Step size reduced to " << stepSize << endl;
       trainer.Restore();
     }
@@ -380,7 +415,6 @@ private:
 
   double UpdateBackProp(const Matrix & input, const Matrix & output, ObjectiveType _objType, bool lastLayerOnly, bool dropout, double stepSize) {
     int startLayer = lastLayerOnly ? _numLayers - 1 : 0;
-
     Matrix mappedInput;
     if (dropout) {
       _tempDropoutInput.CopyFrom(input);
@@ -448,11 +482,10 @@ private:
     return loss;
   }
 
-  static void InitializeInputBiases(const Matrix & input, AllocatingVector & inputBiases, Layer::ActFunc actFunc, double eps) {
+  static void InitializeInputBiases(MMapMatrix & input, int miniBatchSize, AllocatingVector & inputBiases, Layer::ActFunc actFunc, double eps) {
     int n = input.NumC();
-    inputBiases.Resize(input.NumR());
-    //		inputBiases.MultInto(input, false, AllocatingVector(n, 1.0), 1.0/n);
-//    AllocatingVector transformedRow(input.NumR());
+    inputBiases.Assign(input.NumR(), 0);
+#if 0
     AllocatingVector transformedRow(input.NumC());
     for (int r = 0; r < input.NumR(); ++r) {
       Vector row = input.GetRow(r);
@@ -478,6 +511,48 @@ private:
       }
       inputBiases[r] = Sum(row) / n;
     }
+#else
+    int input_NumC = input.NumC();
+    for (int startCol=0; startCol < input_NumC; startCol += miniBatchSize) {
+      int endCol = (startCol + miniBatchSize <= input_NumC) ? startCol + miniBatchSize : input_NumC;
+      Matrix miniBatch = input.GetCols(startCol, endCol);
+      int numCols = miniBatch.NumC();
+      int numRows = miniBatch.NumR();
+      int miniBatchLD = miniBatch.Ld();
+      double const *miniBatchP = miniBatch.Start();
+      for (int c=0; c < numCols; c+=1, miniBatchP += miniBatchLD) {
+	for (int r=0; r < numRows; r+=1) {
+	  double transformed = miniBatchP[r], x;
+assert(!std::isnan(transformed));
+	  switch (actFunc.actType) {
+	  case Layer::ActFunc::LOG_SIG:
+	    x = eps + (1 - 2 * eps) * transformed;
+assert(0.0 < x && x < 1.0);
+	    transformed = log(x / (1-x));
+assert(!std::isnan(transformed));
+	    break;
+			      
+	  case Layer::ActFunc::TANH:
+	    x = (1 - eps) * transformed;
+assert(-1.0 < x && x < 1.0);
+	    transformed = atanh(x);
+assert(!std::isnan(transformed));
+	    break;
+	    
+	  default:
+	    break;
+	  }
+assert(!std::isnan(inputBiases[r]));
+	  inputBiases[r] += transformed;
+	}
+      }
+    }
+    int numRows = input.NumR();
+    for (int r=0; r < numRows; r+=1) {
+      assert(!std::isnan(inputBiases[r]));
+      inputBiases[r] /= n;
+    }
+#endif
   }
 
   double UpdateCD(const Matrix & input, const Vector & inputBiases, int layer, double stepSize) {
@@ -525,7 +600,6 @@ private:
     Matrix topProbs = topLayer.ActivateUp(weights, topBiases, input, _hActFunc[layer]);
 
     double negll = _tempBottomLayer.ActivateDownAndGetNegLL(weights, inputBiases, topProbs, targetInput, lowerActFunc);
-
     if (stepSize > 0) {
       // fill bottomProbs with errors
       MutableMatrix & bottomProbs = _tempBottomLayer.Activations();
@@ -669,6 +743,17 @@ public:
     return (layer == 0) ? _iSize : _hSize[layer-1];
   }
 
+  MMapMatrix MapLayer(MMapMatrix &input, int layer, int miniBatchSize) const {
+    MMapMatrix output(_B[layer].Len(), input.NumC(), _B[layer].Len());
+    int start=0, end, lastCol = input.NumC();
+    for ( ; start < lastCol ; start += miniBatchSize) {
+      end = (start + miniBatchSize <= lastCol) ? start + miniBatchSize : lastCol;
+      Matrix const &m = input.GetCols(start, end);
+      output.PutCols( _layers[layer].ActivateUp(_W[layer], _B[layer], m, _hActFunc[layer]) , start);
+    }
+    return output;
+  }
+
   Matrix MapLayer(const Matrix & input, int layer) const {
     return _layers[layer].ActivateUp(_W[layer], _B[layer], input, _hActFunc[layer]);
   }
@@ -699,9 +784,8 @@ public:
     return mappedInput;
   }
 
-  void Train(const Matrix & input, const Matrix & output, ObjectiveType objectiveType, bool quiet, const vector<HyperParams> & hyperParams_pt, const HyperParams & hyperParams_bp) {
-    Matrix mappedInput = input;
-
+  void Train(MMapMatrix & input, const MMapMatrix & output, ObjectiveType objectiveType, bool quiet, const vector<HyperParams> & hyperParams_pt, const HyperParams & hyperParams_bp) {
+    MMapMatrix mappedInput = input;
     if (!quiet) {
       printf("\nPretrain hyperparams:\n\n");
       hyperParams_pt[0].print();
@@ -726,7 +810,7 @@ public:
           TrainSGD(cdFunc, hyperParams);
         }
         break;
-
+	
       case AE:
         {
           if (!quiet) {
@@ -736,15 +820,15 @@ public:
           TrainSGD(aeFunc, hyperParams);
         }
         break;
-
+	
       case NONE:
         break;
-
+	
       default:
         abort();
       }
-
-      mappedInput = MapLayer(mappedInput, layer);
+      int l = layer, mbs = hyperParams.miniBatchSize;
+      mappedInput = MapLayer(mappedInput, l, mbs);
       if (layer > 0) _layers[layer - 1].Clear(); // save some memory
     }
 

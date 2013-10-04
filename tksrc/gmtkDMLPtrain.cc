@@ -19,6 +19,7 @@
 
 
 #include "DBN.h"
+#include "MMapMatrix.h"
 
 #include "general.h"
 #include "error.h"
@@ -69,8 +70,6 @@ VCID(HGID)
 #include "GMTK_WordOrganization.h"
 
 #include "GMTK_DeepVECPT.h"
-
-#include "MNIST.h"
 
 #define GMTK_ARG_OBS_FILES
 /****************************      FILE RANGE OPTIONS             ***********************************************/
@@ -146,6 +145,8 @@ ObservationMatrix globalObservationMatrix;
 FileSource *gomFS;
 ObservationSource *globalObservationMatrix;
 
+#include <iostream>
+
 int
 main(int argc,char*argv[])
 {
@@ -190,36 +191,6 @@ main(int argc,char*argv[])
     GM_Parms.readTrainable(pf);
   }
   GM_Parms.finalizeParameters();  
-
-#if 0
-  // load up the structure file as we might want
-  // it to allocate some Dense CPTs.
-  FileParser fp(strFileName,cppCommandOptions);
-  infoMsg(IM::Tiny,"Finished reading in all parameters and structures\n");
-    
-  // parse the file
-  infoMsg(IM::Max,"Parsing structure file...\n");
-  fp.parseGraphicalModel();
-  // create the rv variable objects
-  infoMsg(IM::Max,"Creating rv objects...\n");
-  fp.createRandomVariableGraph();
-
-  // Make sure that there are no directed loops in the graph.
-  infoMsg(IM::Max,"Checking template...\n");
-  fp.ensureValidTemplate();
-
-  // link the RVs with the parameters that are contained in
-  // the bn1_gm.dt file.
-  if (allocateDenseCpts == 0)
-    fp.associateWithDataParams(FileParser::noAllocate);
-  else if (allocateDenseCpts == 1)
-    fp.associateWithDataParams(FileParser::allocateRandom);
-  else if (allocateDenseCpts == 2)
-    fp.associateWithDataParams(FileParser::allocateUniform);
-  else
-    error("Error: command line argument '-allocateDenseCpts d', must have d = {0,1,2}\n");
-#endif
-  
   
   printf("Finished reading in all parameters and structures\n");
 
@@ -324,94 +295,6 @@ main(int argc,char*argv[])
   gomFS->setMinPastFrames( radius );
   gomFS->setMinFutureFrames( radius );
 
-#if 0  
-  Range* trrng = new Range(trrng_str,0,gomFS->numSegments());
-  if (trrng->length() <= 0) {
-    error("Error: training range '%s' specifies empty set. Exiting...\n", trrng_str);
-  }
-
-  unsigned stride = gomFS->stride();
-  unsigned numInstances = 0;
-  Range::iterator* trrng_it = new Range::iterator(trrng->begin());
-  while (!trrng_it->at_end()) {
-    const unsigned segment = (unsigned)(*(*trrng_it));
-    if (gomFS->numSegments() < (segment+1)) 
-      error("ERROR: only %u segments in file, segment must be in range [%u,%u]\n",
-	    gomFS->numSegments(),
-	    0,gomFS->numSegments()-1);
-    if (!gomFS->openSegment(segment))
-      error("ERROR: unable to open segment %u\n", segment);
-
-    numInstances += gomFS->numFrames();
-    (*trrng_it)++;
-  }
-  delete trrng_it;
-
-  double *doubleObsData = new double[inputSize * numInstances];
-  double *p = doubleObsData;
-  double *doubleObsLabel = new double[outputSize * numInstances];
-  double *q = doubleObsLabel;
-  unsigned obsOffset = cpt->obsOffset();
-
-  if (oneHot) {
-    if (labelOffset < gomFS->numContinuous()) {
-      error("ERROR: labelOffset (%u) must refer to a discrete feature (the first %u are continuous)\n", 
-	    labelOffset, gomFS->numContinuous());
-    }
-    if (labelOffset >= gomFS->numFeatures()) {
-      error("ERROR: labelOffset (%u) is too large for the number of available features (%u)\n",
-	    labelOffset, gomFS->numFeatures());
-    }
-  } else {
-    if (labelOffset >= gomFS->numContinuous()) {
-      error("ERROR: labelOffset (%u) is too large for the number of continuous features (%u)\n",
-	    labelOffset, gomFS->numContinuous());
-    }
-    if (labelOffset + outputSize > gomFS->numContinuous()) {
-      error("ERROR: labelOffset (%u) + number of outputs (%u) is too large for the number of continuous features (%u)\n", 
-	    labelOffset, outputSize, gomFS->numContinuous());
-    }
-  }
-
-  RandomSampleSchedule rss(cpt->obsOffset(), cpt->numFeaturesPerFrame(),
-			   labelOffset, outputSize, oneHot, radius, ptMiniBatchSize,
-			   gomFS, trrng_str);
-
-  trrng_it = new Range::iterator(trrng->begin());
-  while (!trrng_it->at_end()) {
-    const unsigned segment = (unsigned)(*(*trrng_it));
-    infoMsg(IM::Max,"Loading segment %u ...\n",segment);
-    if (!gomFS->openSegment(segment))
-      error("ERROR: unable to open segment %u\n", segment);
-    unsigned numFrames = gomFS->numFrames();
-
-    for (unsigned i = 0; i < numFrames; i+=1) {
-      Data32 const *obsData = gomFS->loadFrames(i, 1);
-      for (int w = -radius; w <= radius; w+=1) { // 2r+1
-	for (unsigned j=0; j < cpt->numFeaturesPerFrame(); j+=1) {
-	  *(p++) = (double)( *((float *)(obsData + w * stride) + obsOffset + j) );
-	}
-      }
-      if (oneHot) {
-	for (unsigned j=0; j < outputSize; j+=1) {
-	  unsigned label = *((unsigned *)obsData + labelOffset);
-	  if ( label >= outputSize ) {
-	    error("ERROR: oneHot label %u is too large for output size %u at frame %u in segment %u\n",
-		  label, outputSize, i, segment);
-	  }
-	  *(q++) = (j == label)  ?  1.0 : 0.0;
-	}
-      } else {
-	for (unsigned j=0; j < outputSize; j+=1) {
-	  *(q++) = (double)( *((float *)obsData + labelOffset + j) );
-	}
-      }
-      infoMsg(IM::Max,"Finished loading segment %u with %u frames.\n",segment,numFrames);
-    }
-    (*trrng_it)++;
-  }
-#else
-
   unsigned obsOffset = cpt->obsOffset();
   unsigned numFeaturesPerFrame = cpt->numFeaturesPerFrame();
 
@@ -436,45 +319,44 @@ main(int argc,char*argv[])
   }
   RandomSampleSchedule rss(obsOffset, numFeaturesPerFrame,
 			   labelOffset, outputSize, oneHot, radius, 
-			   1 /* batch size */, gomFS, trrng_str);
+			   1, gomFS, trrng_str);
 
-  unsigned numInstances = rss.numTrainingUnits();
 
-  double *doubleObsData = new double[inputSize * numInstances];
-  double *p = doubleObsData;
-  double *doubleObsLabel = new double[outputSize * numInstances];
-  double *q = doubleObsLabel;
+  unsigned numUnits = rss.numTrainingUnits();
 
-  unsigned dummy1, dummy2;
-  unsigned stride;
-  rss.describeFeatures(dummy1, dummy2, stride);
+  unsigned features_per_instance, instances_per_unit, dataSize, labelSize, labelStride;
+  rss.describeFeatures(features_per_instance, instances_per_unit);
+  dataSize = features_per_instance * instances_per_unit;
+  double *ddata = new double[dataSize];
 
-  unsigned segment, frame;
-  unsigned nf = 2 * radius+1;
-  for (unsigned i=0; i < numInstances && rss.nextTrainingUnit(segment, frame); i+=1) {
-    float *obsData = rss.getFeatures(segment, frame);
-    for (unsigned w = 0; w < nf; w+=1, obsData += stride) {
-      for (unsigned j=0; j < numFeaturesPerFrame; j+=1) {
-        *(p++) = (double)obsData[j];
-      }
-    }
-    obsData = rss.getLabels(segment, frame);
-    for (unsigned j=0; j < outputSize; j+=1) {
-      *(q++) = (double) obsData[j];
-    }
+  rss.describeLabels(features_per_instance, instances_per_unit, labelStride);
+  labelSize = instances_per_unit * labelStride;
+  double *dlabel = new double[labelSize];
+
+  MMapMatrix   trainData(inputSize,  numUnits, inputSize);
+  MMapMatrix trainLabels(outputSize, numUnits, outputSize);
+
+  unsigned segment, frame, destCol = 0;
+  for (unsigned b=0; b < numUnits && rss.nextTrainingUnit(segment, frame); b+=1) {
+
+    float *data = rss.getFeatures(segment, frame);
+    for (unsigned i=0; i < dataSize; i+=1) ddata[i] = (double) data[i];
+    trainData.PutCols(ddata, 1, inputSize, inputSize, destCol);
+
+    data = rss.getLabels(segment, frame);
+    for (unsigned i=0; i < labelSize; i+=1) dlabel[i] = (double) data[i];
+    trainLabels.PutCols(dlabel, 1, outputSize, labelStride, destCol);
+
+    destCol += 1;
   }
-#endif
+  delete[] ddata;
+  delete[] dlabel;
 
-  return 0;
+  DBN::ObjectiveType objType = 
+    ( cpt->getSquashFn(numLayers-1) == DeepVECPT::SOFTMAX ) ? DBN::SOFT_MAX : DBN::SQ_ERR;
 
-  Matrix   trainData(doubleObsData,  inputSize,  numInstances, inputSize,  false);
-  Matrix trainLabels(doubleObsLabel, outputSize, numInstances, outputSize, false);
-  
-  DBN::ObjectiveType objType = ( cpt->getSquashFn(numLayers-1) == DeepVECPT::SOFTMAX ) ? DBN::SOFT_MAX : DBN::SQ_ERR;
   dbn.Train(trainData, trainLabels, objType, false, pretrainHyperParams, bpHyperParams);
-  delete[] doubleObsLabel;
-  delete[] doubleObsData;
-  
+
   vector<DoubleMatrix *> layerMatrix = cpt->getMatrices();
   assert(layerMatrix.size() == numLayers);
   for (unsigned layer=0; layer < numLayers; layer+=1) {
@@ -499,7 +381,7 @@ main(int argc,char*argv[])
     double userTime,sysTime;
     reportTiming(rus,rue,userTime,sysTime,stdout);
   }
-
+  MMapMatrix::GarbageCollect(); // delete left-over temp files
   exit_program_with_status(0);
 }
 
