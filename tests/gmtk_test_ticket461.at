@@ -1,0 +1,17 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/461 is fixed
+
+# obs-print should fail with NaN warnings without -obsNAN when swapping is on
+
+AT_SETUP([implement -obsNAN (ticket 461)])
+AT_SKIP_IF([test ! -f $TEST_AND_DEV/ticket461/p1.list])
+AT_CHECK([(cd $TEST_AND_DEV/ticket461 && obs-print -of1 p1.list -fmt1 binary -nf1 8 -iswp1 T)],
+         [1],[ignore],
+[ERROR: Found NaN or +/-INF at 4'th float in frame 23, segment 0
+
+])
+AT_CHECK([(cd $TEST_AND_DEV/ticket461 && obs-print -of1 p1.list -fmt1 binary -nf1 8 -iswp1 T -obsNAN >/dev/null)],
+         [0],[],[])
+AT_CHECK([(cd $TEST_AND_DEV/ticket461 && obs-print -of1 p1.list -fmt1 binary -nf1 8 -iswp1 F >/dev/null)],
+         [0],[],[])
+AT_CLEANUP

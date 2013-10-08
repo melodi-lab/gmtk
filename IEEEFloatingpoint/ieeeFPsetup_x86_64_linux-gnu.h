@@ -3,6 +3,7 @@
 **
 ** Copyright (C) 2010 Jeff Bilmes
 ** Licensed under the Open Software License version 3.0
+** See COPYING or http://opensource.org/licenses/OSL-3.0
 **
 ** This code will set up the FPU on x86 archiectures to trap with
 ** SIGFPEs when an inf or nan occurs (or some other fp exception depending

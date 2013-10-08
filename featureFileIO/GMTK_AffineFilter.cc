@@ -6,6 +6,7 @@
  *
  * Copyright (C) 2012 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  * 
  *
  */
@@ -58,7 +59,7 @@ AffineFilter::AffineFilter(char const *fileName, Filter *nextFilter)
   }
   fclose(f);
   buffer=NULL; buffSize=0;
-  xBuffer=NULL; xBuffSize=0; 
+  xBuffer=NULL; xBuffSize=0;
   workBuffer=NULL; workBuffSize=0;
 }
 

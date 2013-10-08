@@ -1,0 +1,24 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/460 is fixed
+
+# obs-print will segfault if it's not fixed
+
+AT_SETUP([skipped -of1 (ticket 460)])
+AT_DATA([foo.flatasc],
+[0 0 0.0 0
+0 1 1.0 1
+0 2 2.0 2
+1 0 3.0 3
+1 1 4.0 4
+2 0 5.0 5
+2 1 6.0 6
+2 2 7.0 7
+2 3 8.0 8
+2 4 9.0 9 
+])
+AT_CHECK([obs-print -of2 foo.flatasc -nf2 1 -ni2 1 -fmt2 flatascii],
+         [1],[ignore],
+[Error: -of1 through -of1 are missing
+
+])
+AT_CLEANUP

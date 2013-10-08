@@ -2,6 +2,7 @@
  *
  * Copyright (C) 2004 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  */
 #include <cstdio>

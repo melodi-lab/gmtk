@@ -7,6 +7,7 @@
  *
  * Copyright (C) 2003-2009.
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  *
  */
@@ -1060,11 +1061,13 @@ JunctionTree::printOriginalSection(vector<RV *> sectionRVs,
 }
 
 
+
 /*
  *
- * This routine saves the viterbi values computed by the most recent
+ * This routine prints the Viterbi values computed by the most recent
  * linear inference run (assuming its data structures are still valid)
- * to stdout.
+ * in ASCII to f (typically stdout). The Viterbi values are printed
+ * by modified section (P', C', E').
  *
  * Preconditions: 
  *
@@ -1080,6 +1083,26 @@ JunctionTree::printOriginalSection(vector<RV *> sectionRVs,
  * 
  *
  */
+
+void
+JunctionTree::printSavedPartitionViterbiValues(FILE* f,
+					       bool printObserved,
+					       regex_t* preg,
+					       regex_t* creg,
+					       regex_t* ereg,
+					       char* partRangeFilter)
+{
+  printSavedPartitionViterbiValues(0, NULL, f, printObserved, preg, creg, ereg, partRangeFilter);
+}
+
+
+
+/*
+ * This version of the above reads the saved binary Viterbi values
+ * from vitFile to populate the inference data structures rather
+ * than requiring the execution of distributeEvidence().
+ */
+
 void
 JunctionTree::printSavedPartitionViterbiValues(unsigned numFrames,
 					       FILE* vitFile,
@@ -1090,7 +1113,7 @@ JunctionTree::printSavedPartitionViterbiValues(unsigned numFrames,
 					       regex_t* ereg,
 					       char* partRangeFilter)
 {
-  fprintf(f,"Printing random variables from (P,C,E)=(%d,%d,%d) partitions\n",
+  fprintf(f,"Printing random variables from (P',C',E')=(%d,%d,%d) modified sections\n",
 	  P_partition_values.size(),
 	  C_partition_values.size(),
 	  E_partition_values.size());
@@ -1182,18 +1205,6 @@ JunctionTree::printSavedPartitionViterbiValues(unsigned numFrames,
   }
   delete partRange;
   //clearAfterUnroll();  ???
-}
-
-
-void
-JunctionTree::printSavedPartitionViterbiValues(FILE* f,
-					       bool printObserved,
-					       regex_t* preg,
-					       regex_t* creg,
-					       regex_t* ereg,
-					       char* partRangeFilter)
-{
-  printSavedPartitionViterbiValues(0, NULL, f, printObserved, preg, creg, ereg, partRangeFilter);
 }
 
 
@@ -1456,14 +1467,13 @@ void JunctionTree::createUnpackingMap(
 
 
 
-
 /*
  *
- * This routine saves the viterbi values computed by the most recent
+ * This routine prints the Viterbi values computed by the most recent
  * linear inference run (assuming its data structures are still valid)
- * to stdout. Unlike printSavedPartitionViterbiValues, this method
- * prints the values ordered by the original P, C, and E, rather than
- * the modified P', C', and E'.
+ * in ASCII to f (typically stdout). Unlike printSavedPartitionViterbiValues(), 
+ * this method prints the values ordered by the original P, C, and E,
+ * sections rather than the modified P', C', and E' sections.
  *
  * Preconditions: 
  *
@@ -1489,8 +1499,9 @@ JunctionTree::printSavedViterbiValues(FILE* f,
 
 
 /*
- * This version of the above reads the Viterbi values from a file.
- *
+ * This version of the above reads the saved binary Viterbi values
+ * from binVitFile to populate the Viterbi value data structures rather
+ * than requiring the execution of distributeEvidence().
  */
 void
 JunctionTree::printSavedViterbiValues(unsigned numFrames,
@@ -1533,9 +1544,12 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames,
 		     E_rvs, hidE_rvs, Eprime_rvs, hidEprime_rvs,
 		     PprimeValuePtrs, CprimeValuePtrs, EprimeValuePtrs);
 
-  fprintf(f,"Printing random variables from (P',C',E')=(%d,%d,%d) modified partitions\n",
+  unsigned M = gm_template.M;
+  unsigned S = gm_template.S;
+
+  fprintf(f,"Printing random variables from (P,C,E)=(%d,%d,%d) sections\n",
 	  P_partition_values.size(),
-	  C_partition_values.size(),
+	  C_partition_values.size() * S + M,
 	  E_partition_values.size());
 
   Range* partRange = new Range("all",0,inference_it.pt_len());
@@ -1695,6 +1709,26 @@ JunctionTree::readBinaryVitPartition(PartitionStructures& ps, unsigned part) {
 }
 
 
+/*
+ * This version prints the Viterbi values for the original (P, C, E)
+ * sections specified by the partRangeFilter.
+ *
+ * Preconditions: 
+ *
+ *    If binVitFile is NULL, assumes that distributeEvidence() has just 
+ *    been run and all data structures (such as the compressed Viterbi 
+ *    value array) are set up appropriately. If binVitFile is non-NULL,
+ *    it reads the saved binary Viterbi values from the file to populate 
+ *    the Viterbi value data structures rather than requiring the execution
+ *    of distributeEvidence().
+ *
+ *    Assumes that inference_it is currently set for the current
+ *    segment.
+ *  
+ *    Assumes that the CC and CE partition pair random variables
+ *    have been properly set up.
+ * 
+ */
 void
 JunctionTree::printSavedViterbiValues(unsigned numFrames, FILE* f,
 				      FILE *binVitFile,
@@ -1746,14 +1780,14 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames, FILE* f,
 		     C_rvs, hidC_rvs, Cprime_rvs, hidCprime_rvs,
 		     E_rvs, hidE_rvs, Eprime_rvs, hidEprime_rvs,
 		     PprimeValuePtrs, CprimeValuePtrs, EprimeValuePtrs);
-
-  fprintf(f,"Printing random variables from (P',C',E')=(%d,%d,%d) modified partitions\n",
-	  P_partition_values.size(),
-	  C_partition_values.size(),
-	  E_partition_values.size());
-
   unsigned M = gm_template.M;
   unsigned S = gm_template.S;
+
+  fprintf(f,"Printing random variables from (P,C,E)=(%d,%d,%d) sections\n",
+	  P_partition_values.size(),
+	  C_partition_values.size() * S + M,
+	  E_partition_values.size());
+
   unsigned totalOriginalPartitions = 2 + inference_it.num_c_partitions() * S + M;
 
   infoMsg(IM::Printing,IM::High,"M = %u   S = %u   # orig parts = %u\n",
@@ -1903,6 +1937,11 @@ JunctionTree::printSavedViterbiValues(unsigned numFrames, FILE* f,
 }
 
 
+/*
+ * This version of the above prints the Viterbi values for the frames
+ * specified by the frameRangeFilter.
+ */
+
 void
 JunctionTree::printSavedViterbiFrames(unsigned numFrames, FILE* f,
 				      FILE *binVitFile,
@@ -1949,17 +1988,18 @@ JunctionTree::printSavedViterbiFrames(unsigned numFrames, FILE* f,
 		     E_rvs, hidE_rvs, Eprime_rvs, hidEprime_rvs,
 		     PprimeValuePtrs, CprimeValuePtrs, EprimeValuePtrs);
 
-  fprintf(f,"Printing random variables from (P',C',E')=(%d,%d,%d) modified partitions\n",
+  unsigned M = gm_template.M;
+  unsigned S = gm_template.S;
+
+  fprintf(f,"Printing random variables from (P,C,E)=(%d,%d,%d) sections\n",
 	  P_partition_values.size(),
-	  C_partition_values.size(),
+	  C_partition_values.size() * S + M,
 	  E_partition_values.size());
 
 
   unsigned NP = fp.numFramesInP();
   unsigned NC = fp.numFramesInC();
 
-  unsigned M = gm_template.M;
-  unsigned S = gm_template.S;
   unsigned totalOriginalPartitions = 2 + inference_it.num_c_partitions() * S + M;
 
   infoMsg(IM::Printing,IM::High,"NP = %u   NC = %u   M = %u   S = %u   # orig parts = %u\n",
