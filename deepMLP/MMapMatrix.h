@@ -35,13 +35,14 @@
 class MMapMatrix : public Matrix {
   friend class MutableVector;
 
-  bool   mapped;
-  char  *fileName;
-  int    fd;
-  long   pagesize;
-  size_t map_length;
-  static map<string, unsigned> ref_count;
-  static unsigned fileNumber;
+  bool    mapped;
+  char   *fileName;
+  int     fd;
+  long    pagesize;
+  ssize_t map_length;
+  static  map<string, unsigned> ref_count;
+  static  unsigned fileNumber;
+
 
   char *tempname(char const *dir, char const *dummy) {
     char  tempname_buf[MAX_TEMP_FILENAME_LENGTH];
@@ -62,11 +63,14 @@ public:
 
   MMapMatrix() : Matrix(), mapped(false), fileName(NULL) { }
 
+
   MMapMatrix(const Matrix & mat) : Matrix(mat), mapped(false), fileName(NULL) { }
+
 
   MMapMatrix(double *start, int numR, int numC, int ld, bool trans=false) 
     : Matrix(start, numR, numC, ld, trans), mapped(false), fileName(NULL) 
   { }
+
 
   MMapMatrix(int numR, int numC, int ld, bool trans=false) 
     : Matrix(NULL, numR, numC, ld, trans), mapped(false) 
@@ -94,15 +98,18 @@ public:
       error("ERROR: unable to seek to offset %u in temporary file '%s'\n", map_length, fileName);
     }
     if (write(fd, &numR, sizeof(numR)) != sizeof(numR)) {
+      perror(fileName);
       error("ERROR: error writing to temporary file '%s'\n", fileName);
     }
     _start = (const double *)mmap(NULL, map_length, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
     if (!_start || _start == (void *) -1) {
+      perror(fileName);
       error("ERROR: unable to allocate %ld bytes via mmap()\n", map_length);
     }
     ref_count[string(fileName)] = 1;
     mapped = true;
   }
+
 
   MMapMatrix(MMapMatrix const &that) 
     : Matrix(NULL, that._numR, that._numC, that._ld, that._trans), 
@@ -118,11 +125,19 @@ public:
 	perror(fileName);
 	error("ERROR: unable to create temporary file '%s'\n", fileName);
       }
-      if (write(fd, that._start, map_length) != map_length) {
-	error("ERROR: error duplicating temporary file '%s' to '%s'\n", that.fileName, fileName);
-      }
+      ssize_t bwritten = 0, result;
+      do {
+	char *buf = ((char *)that._start)+bwritten;
+	result = write(fd, buf, map_length-bwritten);
+	if (result < 0) {
+	  perror(fileName);
+	  error("ERROR: error duplicating temporary file '%s' to '%s'\n", that.fileName, fileName);
+	}
+	bwritten += result;
+      } while (bwritten < map_length);
       _start = (const double *)mmap(NULL, map_length, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
       if (!_start || _start == (void *) -1) {
+	perror(fileName);
 	error("ERROR: unable to allocate %ld bytes via mmap()\n", map_length);
       }
       string fn(fileName);
@@ -135,6 +150,7 @@ public:
     }
   }
 
+
   MMapMatrix & operator= (const MMapMatrix &rhs) {
     _numR  = rhs._numR;
     _numC  = rhs._numC;
@@ -142,17 +158,19 @@ public:
     _trans = rhs._trans;
 
     if (mapped && _start) {
-      munmap((void *)_start, map_length);
-      close(fd);
       string fn(fileName);
       if (ref_count[fn] == 1) {
+	munmap((void *)_start, map_length);
+	close(fd);
 	unlink(fileName);
 	ref_count.erase(fn);
+	fileName = NULL;
+	mapped = false;
       } else {
 	ref_count[fn] = ref_count[fn] - 1;
       }
+      if (fileName) free(fileName);
     }
-    if (fileName) free(fileName);
     if (rhs.mapped) {
       map_length = rhs.map_length;
       pagesize = rhs.pagesize;
@@ -160,32 +178,25 @@ public:
       if (!fileName) {
 	error("ERROR: unable to duplicate temporary file name\n");
       }
-      fd = open(fileName, O_RDWR, S_IRWXU);
-      if (fd == -1) {
-	perror(fileName);
-	error("ERROR: unable to open temporary file '%s'\n", fileName);
-      }
-      _start = (const double *)mmap(NULL, map_length, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-      if (!_start || _start == (void *) -1) {
-	error("ERROR: unable to allocate %ld bytes via mmap()\n", map_length);
-      }
+      fd = rhs.fd;
       string fn(fileName);
       ref_count[fn] = ref_count[fn] + 1;
       mapped = true;
     } else {
-      _start = rhs._start;
       mapped = false;
       fileName = NULL;
     }
+    _start = rhs._start;
     return *this;
   }
 
+
   ~MMapMatrix() {
     if (mapped && _start) {
-      munmap((void *)_start, map_length);
-      close(fd);
       string fn(fileName);
       if (ref_count[fn] == 1) {
+	munmap((void *)_start, map_length);
+	close(fd);
 	unlink(fileName);
 	ref_count.erase(fn);
       } else {
@@ -200,6 +211,7 @@ public:
       unlink(it->first.c_str());
     }
   }
+
 
 #if 0
 void debug() {
@@ -221,6 +233,7 @@ void debug() {
 }
 #endif
 
+
   char *GetFileName() {
     return mapped ? fileName : NULL;
   }
@@ -239,6 +252,7 @@ void debug() {
       dest += _ld;
       src  += mLd;
     } while (src != end);
+#if 0
     if (mapped) {
       size_t page_offset = (destCol * _ld * sizeof(double) / pagesize) * pagesize;
       void *addr = (char *)(const_cast<double *>(_start)) + page_offset;
@@ -249,6 +263,7 @@ void debug() {
 	error("ERROR: failed to synchronize '%s'\n", fileName);
       }
     }
+#endif
   }
 
 
@@ -262,6 +277,7 @@ void debug() {
       dest += _ld;
       src += srcLd;
     } while (src != end);
+#if 0
     if (mapped) {
       size_t page_offset = (destCol * _ld * sizeof(double) / pagesize) * pagesize;
       void *addr = (char *)(const_cast<double *>(_start)) + page_offset;
@@ -272,12 +288,16 @@ void debug() {
 	error("ERROR: failed to synchronize temporary file '%s'\n", fileName);
       }
     }
+#endif
   }
+
   
   const double *Start() const { assert(0); return NULL; }
   const double *End() const { assert(0); return NULL; }
+
   
   Vector Vec() const { assert(0); return Vector(); }
+
  
   const double & At(int r, int c) const {
     if (_trans) std::swap(r, c);
@@ -288,6 +308,7 @@ void debug() {
     return *(_start + c * _ld + r);
   }
 
+
   Vector GetCol(int c) const {
     if (_trans) return Trans().GetRow(c);
 
@@ -297,14 +318,17 @@ void debug() {
     return Vector(Start() + c * _ld, _numR, 1, _ld);
   }
 
+
   Vector GetRow(int r) const {
     assert(0);
     return Vector();
   }
 
+
   Matrix GetCols(int beginCol, int endCol) const {
     return SubMatrix(0, -1, beginCol, endCol);
   }
+
 
   Matrix SubMatrix(int beginRow, int endRow, int beginCol, int endCol) const {
 #if 0
