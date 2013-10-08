@@ -460,9 +460,8 @@ DeepVECPT::write(oDataStreamFile& os)
 ////////////////////////////////////////////////////////////////////
 
 
-void DeepVECPT::becomeAwareOfParentValues( vector <RV *>& parents,
-				       const RV* rv ) 
-{
+void 
+DeepVECPT::becomeAwareOfParentValues( vector <RV *>& parents, const RV* rv ) {
   assert ( parents.size() == 1 );
   curParentValue = RV2DRV(parents[0])->val;
 }
@@ -477,6 +476,7 @@ void
 softmax(double *q, unsigned len) {
   double k  = *q;
 #if 1
+  // Unrolled max by 2 was fastest of a few implementations I tried
   unsigned n;
   if (len % 2) {
     n = 1;
@@ -501,8 +501,9 @@ softmax(double *q, unsigned len) {
   for (unsigned i=0; i < len; i+=1)
     sum += exp(q[i] - k);
   sum = log(sum);
-  for (unsigned i=0; i < len; i+=1)
+  for (unsigned i=0; i < len; i+=1) {
     q[i] = exp ( q[i] - k - sum );
+  }
 }
 
 void
@@ -523,6 +524,7 @@ hyptan(double *q, unsigned len) {
 }
 
 #if 0
+// Mathematica's inverse of $\frac{x^3}{3} + x$
 #define CUBE_ROOT_OF_2 1.25992104989
 void
 oddroot(double *q, unsigned len) {
@@ -532,6 +534,7 @@ oddroot(double *q, unsigned len) {
   }
 }
 #else
+// Galen's faster implementation based on Newton's method 
 void
 oddroot(double *q, unsigned len) {
   for (unsigned i=0; i < len; i+=1) {
@@ -587,9 +590,9 @@ DeepVECPT::applyDeepModel(DiscRVType parentValue, DiscRV * drv) {
   logpr p((void*)NULL);
 
   unsigned frame = drv->frame();
-
-  if (frame == cached_frame && obs->segmentNumber() == cached_segment) {
-    p.valref() = cached_CPT[curParentValue];
+  unsigned segment = obs->segmentNumber();
+  if (frame == cached_frame && segment == cached_segment) {
+    p.setFromP(cached_CPT[curParentValue]);
     // The obseved value (1) is the one corresponding
     // to the value in the file. I.e., the score 
     // in the file corresponds to Pr(child = 1 | parent = j) = f_t(j), 
@@ -603,7 +606,7 @@ DeepVECPT::applyDeepModel(DiscRVType parentValue, DiscRV * drv) {
   }
 
   cached_frame = frame;
-  cached_segment = obs->segmentNumber();
+  cached_segment = segment;
 
   unsigned num_inputs = nfs * ( 2 * window_radius + 1 ) + 1;
   double *input_vector = new double[num_inputs];
@@ -617,11 +620,6 @@ DeepVECPT::applyDeepModel(DiscRVType parentValue, DiscRV * drv) {
       dest[j] = (double)(src[j]);
     }
   }
-#if 0
-printf("%02u:", frame);
-for(unsigned i=0; i < num_inputs; i+=1)
-  printf(" %f", input_vector[i]);
-#endif
   double *output_vector[2];
   output_vector[0] = new double[max_outputs+1]; // big enough to hold any layer's output (+1 for homogeneous coordinates)
   output_vector[1] = new double[max_outputs+1];
@@ -644,13 +642,7 @@ for(unsigned i=0; i < num_inputs; i+=1)
     output_vector[cur_output_vector][layer_output_count[layer]] = 1.0;
   }
   memcpy(cached_CPT, output_vector[cur_output_vector], parentCardinality(0) * sizeof(double));
-#if 0
-printf(" ->");
-for (unsigned i=0; i < parentCardinality(0); i+=1)
-  printf(" %f", output_vector[cur_output_vector][i]);
-printf("\n");
-#endif
-  p.valref() = output_vector[cur_output_vector][curParentValue];
+  p.setFromP(output_vector[cur_output_vector][curParentValue]);
   // The obseved value (1) is the one corresponding
   // to the value in the file. I.e., the score 
   // in the file corresponds to Pr(child = 1 | parent = j) = f_t(j), 
@@ -670,56 +662,6 @@ DeepVECPT::probGivenParents(vector <RV *>& parents, DiscRV * drv) {
   assert ( bitmask & bm_basicAllocated );
   curParentValue = RV2DRV(parents[0])->val;
   return applyDeepModel(curParentValue, drv);
-
-#if 0
-  register DiscRVType val = drv->val;
-
-  logpr p((void*)NULL);
-
-  unsigned num_inputs = nfs * ( 2 * window_radius + 1 ) + 1;
-  float *input_vector = new float[num_inputs];
-  input_vector[num_inputs-1] = 1.0; // homogeneous coordinates
-  unsigned frame = drv->frame();
-  float *dest = input_vector;
-  for (unsigned t = frame - window_radius; t <= frame + window_radius; t+=1, dest += nfs) {
-    memcpy(dest, obs->floatVecAtFrame(t), nfs * sizeof(float));
-  }
-
-  float *output_vector[2];
-  output_vector[0] = new float[max_outputs]; // big enough to hold any layer's output (+1 for homogeneous coordinates)
-  output_vector[1] = new float[max_outputs];
-
-  mul_mfmf_mf(layer_output_count[0], num_inputs, 1, 
-	      layer_matrix[0]->values.ptr, input_vector, output_vector[0], 
-	      num_inputs, 1, 1);
-  delete[] input_vector;
-  squash(layer_squash_func[0], output_vector[0], layer_output_count[0]);
-  output_vector[0][layer_output_count[0]] = 1.0;
-
-  unsigned cur_output_vector = 0;
-  for (unsigned layer=1; layer < num_matrices; layer += 1) {
-    input_vector = output_vector[cur_output_vector];
-    cur_output_vector = (cur_output_vector + 1) % 2;
-    mul_mdmd_md(layer_output_count[layer], layer_output_count[layer-1]+1, 1, 
-		layer_matrix[layer]->values.ptr, input_vector, output_vector[cur_output_vector], 
-		layer_output_count[layer-1]+1, 1, 1);
-    squash(layer_squash_func[layer], output_vector[cur_output_vector], layer_output_count[layer]);
-    output_vector[cur_output_vector][layer_output_count[layer]] = 1.0;
-  }
-  p.valref() = output_vector[cur_output_vector][curParentValue];
-  // The obseved value (1) is the one corresponding
-  // to the value in the file. I.e., the score 
-  // in the file corresponds to Pr(child = 1 | parent = j) = f_t(j), 
-  // and f_t(j) is the value stored in the file.  
-  if (val == 0) {
-    // if the child RV has zero value, then we invert the probability.
-    // see comment 'zero valued child case' elsewhere in this file.
-    p = 1.0 - p;
-  }
-  delete[] output_vector[0];
-  delete[] output_vector[1];
-  return p;
-#endif
 }
 
 
