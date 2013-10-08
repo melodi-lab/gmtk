@@ -1,5 +1,5 @@
 /*
- * TSFeatureMatrix.h
+ * MMapMatrix.h
  * 
  * Written by Richard Rogers <rprogers@ee.washington.edu>
  *
@@ -24,11 +24,6 @@
 #include "GMTK_TrainingSchedule.h"
 #include "Matrix.h"
 
-
-// see https://j.ee.washington.edu/trac/gmtk/ticket/371
-#ifndef   MAP_ANONYMOUS
-#  define MAP_ANONYMOUS MAP_ANON
-#endif
 
 #define MAX_TEMP_FILENAME_LENGTH 1024
 
@@ -88,7 +83,7 @@ public:
 #if defined(_SC_PAGESIZE)
     pagesize = sysconf(_SC_PAGESIZE);
 #elif defined(PAGE_SIZE)
-    pagesize = sysconf(_SC_PAGESIZE);
+    pagesize = sysconf(PAGE_SIZE);
 #else
     error("ERROR: unknown pagesize\n");
 #endif
@@ -252,18 +247,6 @@ void debug() {
       dest += _ld;
       src  += mLd;
     } while (src != end);
-#if 0
-    if (mapped) {
-      size_t page_offset = (destCol * _ld * sizeof(double) / pagesize) * pagesize;
-      void *addr = (char *)(const_cast<double *>(_start)) + page_offset;
-      size_t length = m.NumC() * _ld * sizeof(double);
-      length += (destCol * _ld * sizeof(double)) % pagesize;
-      if (msync(addr, length, MS_SYNC)) {
-	perror(fileName);
-	error("ERROR: failed to synchronize '%s'\n", fileName);
-      }
-    }
-#endif
   }
 
 
@@ -277,18 +260,6 @@ void debug() {
       dest += _ld;
       src += srcLd;
     } while (src != end);
-#if 0
-    if (mapped) {
-      size_t page_offset = (destCol * _ld * sizeof(double) / pagesize) * pagesize;
-      void *addr = (char *)(const_cast<double *>(_start)) + page_offset;
-      size_t length = numCols * _ld * sizeof(double);
-      length += (destCol * _ld * sizeof(double)) % pagesize;
-      if (msync(addr, length, MS_SYNC)) {
-	perror(fileName);
-	error("ERROR: failed to synchronize temporary file '%s'\n", fileName);
-      }
-    }
-#endif
   }
 
   
