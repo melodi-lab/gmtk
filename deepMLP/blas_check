@@ -121,6 +121,7 @@ if test x$BLAS_FOUND = xyes; then
 #   build and use PHiPAC dgemm even though we have an external MKL or plain CBLAS dgemm
     AC_DEFINE([USE_PHIPAC],1,[Define if you want to use the PHiPAC dgemm instead of an external CBLAS dgemm])
     AM_CONDITIONAL([BUILD_PHIPAC], [true])
+    AC_SUBST([optional_libraries],[libPHiPAC.a])
   else
     AM_CONDITIONAL([BUILD_PHIPAC], [false])
   fi
@@ -131,5 +132,6 @@ else
   fi
   AC_DEFINE([USE_PHIPAC],1,[Define if you want to use the PHiPAC dgemm instead of an external CBLAS dgemm])
   AM_CONDITIONAL([BUILD_PHIPAC], [true])
+  AC_SUBST([optional_libraries],[libPHiPAC.a])
 fi
 
