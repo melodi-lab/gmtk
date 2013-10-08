@@ -34,7 +34,7 @@ endif
 
 LIBS += $(BLAS_LIBS)
 
-noinst_LIBRARIES = libDMLP.a
+noinst_LIBRARIES = libDMLP.a $(optional_libraries)
 EXTRA_LIBRARIES  = libPHiPAC.a
 
 noinst_PROGRAMS = dmlp mnist label
