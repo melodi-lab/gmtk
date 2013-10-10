@@ -45,10 +45,10 @@ class MMapMatrix : public Matrix {
     if (!tempdir) tempdir = dir;
     assert(tempdir);
     size_t len = strlen(tempdir);
-    if (len > MAX_TEMP_FILENAME_LENGTH - 16) {
-      error("ERROR: TMPDIR '%s' is too long, must be less than %u characters\n", tempdir, MAX_TEMP_FILENAME_LENGTH-16);
+    if (len > MAX_TEMP_FILENAME_LENGTH - 32) {
+      error("ERROR: TMPDIR '%s' is too long, must be less than %u characters\n", tempdir, MAX_TEMP_FILENAME_LENGTH-32);
     }
-    sprintf(tempname_buf, "%s/gmtk_%08X", tempdir, fileNumber++);
+    sprintf(tempname_buf, "%s/gmtk_%08X.%08X", tempdir, fileNumber++,(unsigned)getpid());
     return strdup(tempname_buf);
   }
 
