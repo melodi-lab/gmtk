@@ -177,7 +177,9 @@ ObservationSource *globalObservationMatrix;
     gammaDist_F,
     betaDist_F,
     veCPT_F,
+    dNN_F,
     dveCPT_F,
+    dCPT_F,
     veSep_F,
     format_F,
     unknown_F, // use this for fields you don't know how to compute
@@ -362,6 +364,8 @@ main(int argc,char*argv[])
   bool betaDist = false;
   bool veCPT = GM_Parms.veCpts.size() > 0;
   bool dveCPT = GM_Parms.deepVECpts.size() > 0;
+  bool dCPT = GM_Parms.deepCpts.size() > 0;
+  bool dNN = GM_Parms.deepNNs.size() > 0;
   bool veSep = false;
 
   for (vector<RV*>::iterator it = unrolled_rvs.begin(); it != unrolled_rvs.end(); ++it) {
@@ -464,7 +468,9 @@ main(int argc,char*argv[])
     "gammaDist",
     "betaDist",
     "veCPT",
+    "deepNN",
     "deepVECPT",
+    "deepCPT",
     "veSep",
     "format",
     "unknown",
@@ -510,7 +516,9 @@ main(int argc,char*argv[])
     "gamma distribution",
     "beta distribution",
     "VE CPTs",
+    "deep NNs",
     "deep VE CPTs",
+    "deep CPTs",
     "VE separators",
     "data format",
     "unknown field",
@@ -548,7 +556,9 @@ main(int argc,char*argv[])
     lattice_F, 
     l1Reg_F, 
     l2Reg_F, 
-    veCPT_F, 
+    veCPT_F,
+    dNN_F, 
+    dCPT_F,
     dveCPT_F,
     format_F,
 #else
@@ -705,6 +715,8 @@ switch (mode) {\
     case gammaDist_F:   PB(gammaDist); break;
     case betaDist_F:    PB(betaDist); break;
     case veCPT_F:       PB(veCPT); break;
+    case dCPT_F:        PB(dCPT); break;
+    case dNN_F:         PB(dNN); break;
     case dveCPT_F:      PB(dveCPT); break;
     case veSep_F:       PB(veSep); break;
     case format_F:      PS(fmts[0]); break;

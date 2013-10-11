@@ -183,7 +183,8 @@ public:
     KW_LogLinear=52,
     KW_EmarfNum=53,
     KW_SymbolTable=54,
-    KW_DeepVECPT=55
+    KW_DeepVECPT=55,
+    KW_DeepCPT=56
   };
 
   // list of token keyword strings.

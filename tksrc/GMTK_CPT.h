@@ -114,6 +114,7 @@ public:
     di_FNGramCPT, // factored ngram "language model" CPT
     di_VECPT,    // Virtual Evidence CPT
     di_DeepVECPT, // Deep Virtual Evidence CPT
+    di_DeepCPT,   // Deep CPT
     di_LatticeNodeCPT,	// lattice node CPT
     di_LatticeEdgeCPT,	// lattice edge CPT
     di_unknown
@@ -176,6 +177,7 @@ public:
     friend class FNGramCPT;
     friend class VECPT;
     friend class DeepVECPT;
+    friend class DeepCPT;
 
     // The cpt for this iterator.
     CPT* cpt;

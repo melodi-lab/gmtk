@@ -40,7 +40,7 @@
 #include "GMTK_NamedObject.h"
 #include "GMTK_ObservationSource.h"
 #include "GMTK_FileSource.h"
-#include "GMTK_DoubleMatrix.h"
+#include "GMTK_DeepNN.h"
 
 // we need to interface to the external global observation
 // matrix object to get some parametes (such as start skip, end skip,
@@ -78,45 +78,33 @@ class DeepVECPT : public CPT {
   // the value
   int _val;
 
- public:
-  enum SquashFunction {
-    SOFTMAX,
-    LOGISTIC,
-    TANH,
-    ODDROOT,
-    LINEAR,
-    RECTLIN
-  };
+  ////////////////
+  // the Deep Multi-Layer Perceptron
+  DeepNN *dmlp;
 
- private:
-  unsigned max_outputs;
-  unsigned num_matrices;
-
-  vector<unsigned>       layer_output_count;
-  vector<string>         layer_matrix_name;
-  vector<string>         layer_squash_name;
-  vector<SquashFunction> layer_squash_func;
-  vector<float>          layer_logistic_beta;
-  vector<DoubleMatrix *>   layer_matrix;
-
+  ////////////////
   // remember the computed CPT so we don't have to recompute it
   unsigned  cached_segment; 
   unsigned  cached_frame;
   double   *cached_CPT;
 
-  logpr applyDeepModel(DiscRVType parentValue, DiscRV * drv);
+  // Apply the deep neural network to get the probability
+  logpr applyNN(DiscRVType parentValue, DiscRV * drv);
 
 public:
 
   ///////////////////////////////////////////////////////////  
   // General constructor, 
   // VECPTs always have one parent, and a binary child.
-  DeepVECPT() : CPT(di_DeepVECPT), num_matrices(0),
+  DeepVECPT() : CPT(di_DeepVECPT), dmlp(NULL),
     cached_segment(0xFFFFFFFF), cached_frame(0xFFFFFFFF), cached_CPT(NULL)
   { 
     _numParents = 1; _card = 2; cardinalities.resize(_numParents); 
   }
   ~DeepVECPT() { if (cached_CPT) delete[] cached_CPT; }
+
+
+  DeepNN *getDeepNN() { return dmlp; }
 
   // a VECPT is considered iterable since its implementation can
   // change not only from segment to segment, but even within a
@@ -128,54 +116,12 @@ public:
   unsigned numFeaturesPerFrame() { return nfs; }
 
 
-  // Total number of input features from the obs file
-  unsigned numInputs() { return nfs * ( 2 * window_radius + 1 ); } // +1 additional for bias
-
-  // Number of outputs from the top layer
-  unsigned numOutputs() { return layer_output_count[num_matrices-1]; }
-
-  // Number of outputs from the specified layer
-  unsigned layerOutputs(unsigned layer) { 
-    assert(layer < layer_output_count.size());
-    return layer_output_count[layer]; 
-  }
-
   // Number of past/future frames included in the input
   unsigned windowRadius() { return window_radius; }
 
-  // Specified layer's squash function
-  SquashFunction getSquashFn(unsigned layer) {
-    assert(layer < layer_squash_func.size());
-    return layer_squash_func[layer];
-  }
-
-  // Set the parameters of the specified layer. ld is the weights' stride
-  void setParams(unsigned layer, double const *weights, unsigned ld, double const *bias) {
-    assert(layer < layer_matrix.size());
-    DoubleMatrix *w = layer_matrix[layer];
-    unsigned rows = w->_rows;
-    unsigned cols = w->_cols;
-    for (unsigned r=0; r < rows; r+=1) {
-      unsigned c;
-      for (c=0; c < cols - 1; c+=1) {
-	// weights come in column-major order but transposed; store them in row-major
-	w->values[ r * cols + c ] = weights[ r * ld + c ];
-      }
-      w->values[ r * cols + c ] = bias[r];
-    }
-  }
-
-  unsigned numLayers() { return num_matrices; }
 
   unsigned obsOffset() { return obs_file_foffset; }
   
-  vector<DoubleMatrix *> &getMatrices() { return layer_matrix; }
-
-  float getBeta(unsigned layer) {
-    assert(layer < layer_logistic_beta.size());
-    assert(layer_squash_func[layer] == LOGISTIC);
-    return layer_logistic_beta[layer];
-  }
 
   ///////////////////////////////////////////////////////////    
   // Semi-constructors: useful for debugging.
@@ -229,10 +175,7 @@ public:
   // The above is true for EM training, but gmtkDMLPtrain actually
   // learns the deep VE CPT parameters, so count them
   unsigned totalNumberDMLPParameters() {
-    unsigned total = 0;
-    for (unsigned i=0; i < num_matrices; i+=1) 
-      total += (unsigned)(layer_matrix[i]->rows() * layer_matrix[i]->cols());
-    return total;
+    return dmlp->totalNumberParameters();
   }
 
   ///////////////////////////////////////////////////////////  
