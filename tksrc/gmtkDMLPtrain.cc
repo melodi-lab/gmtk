@@ -213,45 +213,45 @@ main(int argc,char*argv[])
   struct rusage rue; /* ending time */
   getrusage(RUSAGE_SELF,&rus);
 
-  int inputSize = (int)cpt->numInputs();
-  int numLayers = (int)cpt->numLayers();
-  int outputSize = (int)cpt->numOutputs();
+  int inputSize =  (int)cpt->getDeepNN()->numInputs();
+  int numLayers =  (int)cpt->getDeepNN()->numLayers();
+  int outputSize = (int)cpt->getDeepNN()->numOutputs();
   
   vector<int> hiddenSize(numLayers);
   for (unsigned i=0; i < numLayers; i+=1)
-    hiddenSize[i] = (int)cpt->layerOutputs(i);
+    hiddenSize[i] = (int)cpt->getDeepNN()->layerOutputs(i);
 
   vector<Layer::ActFunc> hActFunc(numLayers);
   for (unsigned i=0; i < numLayers; i+=1) {
-    switch (cpt->getSquashFn(i)) {
-    case DeepVECPT::SOFTMAX: 
+    switch (cpt->getDeepNN()->getSquashFn(i)) {
+    case DeepNN::SOFTMAX: 
       if (i != numLayers - 1) {
 	error("ERROR: gmtkDMLPtrain only supports softmax for the output layer\n");
       }
       hActFunc[i] = Layer::ActFunc(Layer::ActFunc::LINEAR);
       break;
-    case DeepVECPT::LOGISTIC: 
+    case DeepNN::LOGISTIC: 
       if (i == numLayers - 1) {
 	error("ERROR: gmtkDMLPtrain only supports linear or softmax for the output layer\n");
       }
       hActFunc[i] = Layer::ActFunc(Layer::ActFunc::LOG_SIG); 
       break;
-    case DeepVECPT::TANH: 
+    case DeepNN::TANH: 
       if (i == numLayers - 1) {
 	error("ERROR: gmtkDMLPtrain only supports linear or softmax for the output layer\n");
       }
       hActFunc[i] = Layer::ActFunc(Layer::ActFunc::TANH); 
       break;
-    case DeepVECPT::ODDROOT: 
+    case DeepNN::ODDROOT: 
       if (i == numLayers - 1) {
 	error("ERROR: gmtkDMLPtrain only supports linear or softmax for the output layer\n");
       }
       hActFunc[i] = Layer::ActFunc(Layer::ActFunc::CUBIC); 
       break;
-    case DeepVECPT::LINEAR:
+    case DeepNN::LINEAR:
       hActFunc[i] = Layer::ActFunc(Layer::ActFunc::LINEAR);
       break;
-    case DeepVECPT::RECTLIN:
+    case DeepNN::RECTLIN:
       if (i == numLayers - 1) {
 	error("ERROR: gmtkDMLPtrain only supports linear or softmax for the output layer\n");
       }
@@ -353,15 +353,15 @@ main(int argc,char*argv[])
   delete[] dlabel;
 
   DBN::ObjectiveType objType = 
-    ( cpt->getSquashFn(numLayers-1) == DeepVECPT::SOFTMAX ) ? DBN::SOFT_MAX : DBN::SQ_ERR;
+    ( cpt->getDeepNN()->getSquashFn(numLayers-1) == DeepNN::SOFTMAX ) ? DBN::SOFT_MAX : DBN::SQ_ERR;
 
   dbn.Train(trainData, trainLabels, objType, false, pretrainHyperParams, bpHyperParams);
 
-  vector<DoubleMatrix *> layerMatrix = cpt->getMatrices();
+  vector<DoubleMatrix *> layerMatrix = cpt->getDeepNN()->getMatrices();
   assert(layerMatrix.size() == numLayers);
   for (unsigned layer=0; layer < numLayers; layer+=1) {
     Matrix const W = dbn.getWeights(layer);
-    cpt->setParams(layer, W.Start(), W.Ld(), dbn.getBias(layer).Start());
+    cpt->getDeepNN()->setParams(layer, W.Start(), W.Ld(), dbn.getBias(layer).Start());
   }
   
   if (outputTrainableParameters != NULL) {
