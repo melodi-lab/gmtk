@@ -25,7 +25,8 @@ class DoubleMatrix : public EMable  {
 
   friend class GammaComponent;
   friend class BetaComponent;
-  friend class DeepVECPT;
+  friend class DeepVECPT;     // FIXME - delete this one?
+  friend class DeepNN;
 
 protected:
 

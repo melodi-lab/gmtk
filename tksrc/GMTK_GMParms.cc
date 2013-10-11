@@ -55,7 +55,9 @@
 #include "GMTK_NGramCPT.h"
 #include "GMTK_FNGramCPT.h"
 #include "GMTK_VECPT.h"
+#include "GMTK_DeepNN.h"
 #include "GMTK_DeepVECPT.h"
+#include "GMTK_DeepCPT.h"
 #include "GMTK_Vocab.h"
 #include "GMTK_LatticeADT.h"
 #include "GMTK_LatticeNodeCPT.h"
@@ -137,6 +139,7 @@ GMParms::~GMParms()
   deleteObsInVector(latticeNodeCpts);
   deleteObsInVector(veCpts);
   deleteObsInVector(deepVECpts);
+  deleteObsInVector(deepNNs);
   deleteObsInVector(mixtures);
   // deleteObsInVector(gausSwitchingMixtures);
   // deleteObsInVector(logitSwitchingMixtures);
@@ -177,6 +180,7 @@ void GMParms::add(LatticeADT* ob) {
 void GMParms::add(LatticeNodeCPT* ob) { add(ob,latticeNodeCpts,latticeNodeCptsMap); }
 void GMParms::add(LatticeEdgeCPT* ob) { add(ob,latticeEdgeCpts,latticeEdgeCptsMap); }
 void GMParms::add(VECPT*ob) { add(ob,veCpts,veCptsMap); }
+void GMParms::add(DeepNN*ob) { add(ob,deepNNs,deepNNsMap); }
 void GMParms::add(DeepVECPT*ob) { add(ob,deepVECpts,deepVECptsMap); }
 void GMParms::add(Mixture*ob) { add(ob,mixtures,mixturesMap); }
 void GMParms::add(GausSwitchingMixture*ob) { assert (0); }
@@ -896,6 +900,42 @@ void GMParms::readVECpts(iDataStreamFile& is, bool reset)
 }
 
 
+void GMParms::readDeepCpts(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
+
+  is.read(num, "Can't read num DeepCPTs");
+  if ( num > GMPARMS_MAX_NUM )
+    error("ERROR: number of DeepCPTs (%d) exceeds maximum", num);
+  if ( reset ) {
+    start = 0;
+    deepCpts.resize(num);
+  } else {
+    start = deepCpts.size();
+    deepCpts.resize(start + num);
+  }
+  for ( unsigned i = 0; i <num; i++ ) {
+    // first read the count
+    DeepCPT* ob;
+
+    is.read(cnt, "Can't read DeepCPT num");
+    if ( cnt != i )
+      error("ERROR: DeepCPT count (%d), out of order in file '%s' line %d, expecting %d", 
+	    cnt, is.fileName(), is.lineNo(),i);
+
+    ob = new DeepCPT();
+    ob->read(is);
+    if ( deepCptsMap.find(ob->name()) != deepCptsMap.end() )
+      error("ERROR: DeepCPT named '%s' already defined but is specified for a second time in file '%s' line %d",
+	    ob->name().c_str(), is.fileName(),is.lineNo());
+    deepCpts[i + start] = ob;
+    deepCptsMap[ob->name()] = i + start;
+  }
+}
+
+
 void GMParms::readDeepVECpts(iDataStreamFile& is, bool reset)
 {
   unsigned num;
@@ -931,6 +971,42 @@ void GMParms::readDeepVECpts(iDataStreamFile& is, bool reset)
   }
 }
 
+
+
+void GMParms::readDeepNNs(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
+
+  is.read(num, "Can't read num DeepNNs");
+  if ( num > GMPARMS_MAX_NUM )
+    error("ERROR: number of Deep Neural Networks (%d) exceeds maximum", num);
+  if ( reset ) {
+    start = 0;
+    deepNNs.resize(num);
+  } else {
+    start = deepNNs.size();
+    deepNNs.resize(start + num);
+  }
+  for ( unsigned i = 0; i <num; i++ ) {
+    // first read the count
+    DeepNN* ob;
+
+    is.read(cnt, "Can't read DeepNN num");
+    if ( cnt != i )
+      error("ERROR: DeepNN count (%d), out of order in file '%s' line %d, expecting %d", 
+	    cnt, is.fileName(), is.lineNo(),i);
+
+    ob = new DeepNN();
+    ob->read(is);
+    if ( deepNNsMap.find(ob->name()) != deepNNsMap.end() )
+      error("ERROR: DeepNN named '%s' already defined but is specified for a second time in file '%s' line %d",
+	    ob->name().c_str(), is.fileName(),is.lineNo());
+    deepNNs[i + start] = ob;
+    deepNNsMap[ob->name()] = i + start;
+  }
+}
 
 
 
@@ -1239,6 +1315,7 @@ GMParms::readAll(iDataStreamFile& is)
   readFNgramImps(is);
   readLatticeAdts(is);
   readVECpts(is);
+  readDeepNNs(is);
   readDeepVECpts(is);
   // next read definitional items
   readComponents(is);
@@ -1354,6 +1431,8 @@ GMParms::readNonTrainable(iDataStreamFile& is)
   readFNgramImps(is);
   infoMsg(Low+9,"Reading VirtualEvidenceCPTs\n");
   readVECpts(is);
+  infoMsg(Low+9,"Reading DeepNNss\n");
+  readDeepNNs(is);
   infoMsg(Low+9,"Reading DeepVirtualEvidenceCPTs\n");
   readDeepVECpts(is);
 }
@@ -1470,8 +1549,14 @@ GMParms::read(
     } else if (keyword == "VE_CPT_IN_FILE") {
       readVECpts(*((*it).second),false);
 
+    } else if (keyword == "DEEP_NN_IN_FILE") {
+      readDeepNNs(*((*it).second),false);
+
     } else if (keyword == "DEEP_VE_CPT_IN_FILE") {
       readDeepVECpts(*((*it).second),false);
+
+    } else if (keyword == "DEEP_CPT_IN_FILE") {
+      readDeepCpts(*((*it).second),false);
 
     } else if (keyword == "DT_IN_FILE") {
       readDTs(*((*it).second),false);
@@ -3050,6 +3135,8 @@ unsigned GMParms::totalNumberParameters()
     sum += fngramCpts[i]->totalNumberParameters();
   for (unsigned i=0;i<veCpts.size();i++)
     sum += veCpts[i]->totalNumberParameters();
+  for (unsigned i=0;i<deepNNs.size();i++)
+    sum += deepNNs[i]->totalNumberParameters();
   for (unsigned i=0;i<deepVECpts.size();i++)
     sum += deepVECpts[i]->totalNumberParameters();
   return sum;
@@ -3209,8 +3296,8 @@ void GMParms::markUsedMixtureComponents(bool remove_unnamed)
     for (unsigned i=0;i<mixtures.size();i++)
       mixtures[i]->recursivelySetUsedBit();
 
-  for (unsigned i=0; i < deepVECpts.size(); i+=1) {
-    vector<DoubleMatrix *> mats = deepVECpts[i]->getMatrices();
+  for (unsigned i=0; i < deepNNs.size(); i+=1) {
+    vector<DoubleMatrix *> mats = deepNNs[i]->getMatrices();
     for (unsigned m=0; m < mats.size(); m += 1) {
       mats[m]->recursivelySetUsedBit();
     }

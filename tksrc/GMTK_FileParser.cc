@@ -53,6 +53,7 @@
 #include "GMTK_USCPT.h"
 #include "GMTK_VECPT.h"
 #include "GMTK_DeepVECPT.h"
+#include "GMTK_DeepCPT.h"
 #include "GMTK_LatticeNodeCPT.h"
 #include "GMTK_LatticeEdgeCPT.h"
 #include "GMTK_Mixture.h"
@@ -468,6 +469,7 @@ FileParser::fillKeywordTable()
     /* 53 */ "emarfNum",
     /* 54 */ "symboltable",
     /* 55 */ "DeepVirtualEvidenceCPT",
+    /* 56 */ "DeepCPT"
   };
   vector<string> v;
   const unsigned len = sizeof(kw_table)/sizeof(char*);
@@ -2066,7 +2068,7 @@ FileParser::parseDiscreteImplementation()
   ensureNotAtEOF("discrete implementation");
   if (tokenInfo == KW_MDCPT || tokenInfo == KW_MSCPT
       || tokenInfo == KW_MTCPT || tokenInfo == KW_NGRAMCPT || tokenInfo == KW_FNGRAMCPT
-      || tokenInfo == KW_VECPT || tokenInfo == KW_DeepVECPT || tokenInfo == KW_LATTICENODECPT || tokenInfo == KW_LATTICEEDGECPT ) {
+      || tokenInfo == KW_VECPT || tokenInfo == KW_DeepVECPT || tokenInfo == KW_DeepCPT || tokenInfo == KW_LATTICENODECPT || tokenInfo == KW_LATTICEEDGECPT ) {
 
     if (tokenInfo == KW_MDCPT)
       curRV.discImplementations.push_back(CPT::di_MDCPT);
@@ -2082,6 +2084,8 @@ FileParser::parseDiscreteImplementation()
       curRV.discImplementations.push_back(CPT::di_VECPT);
     else if (tokenInfo == KW_DeepVECPT)
       curRV.discImplementations.push_back(CPT::di_DeepVECPT);
+    else if (tokenInfo == KW_DeepCPT)
+      curRV.discImplementations.push_back(CPT::di_DeepCPT);
     else if (tokenInfo == KW_LATTICENODECPT)
 	    curRV.discImplementations.push_back(CPT::di_LatticeNodeCPT);
     else if (tokenInfo == KW_LATTICEEDGECPT)
@@ -3233,6 +3237,38 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		cpts[j] = 
 		  GM_Parms.deepVECpts[
 				  GM_Parms.deepVECptsMap[
+						     rvInfoVector[i].listIndices[j].nameIndex
+				  ]
+		  ];
+	      }
+	    } else {
+	      // TODO: need to remove the integer index code.
+	      assert(0);
+	    }
+	} else
+	  if (rvInfoVector[i].discImplementations[j] == CPT::di_DeepCPT) {
+
+	    /////////////////////////////////////////////////////////
+	    // Once again, same code as above, but using DeepCPTs.
+
+	    //////////////////////////////////////////////////////
+	    // set the CPT to a DeepCPT, depending on if a string
+	    // or integer index was used in the file.
+	    if (rvInfoVector[i].listIndices[j].liType
+		== RVInfo::ListIndex::li_String) {
+	      if (GM_Parms.deepCptsMap.find(
+					  rvInfoVector[i].listIndices[j].nameIndex) ==
+		  GM_Parms.deepCptsMap.end()) {
+		  error("Error: RV \"%s\" at frame %d (line %d), conditional parent DeepCPT \"%s\" doesn't exist\n",
+			rvInfoVector[i].name.c_str(),
+			rvInfoVector[i].frame,
+			rvInfoVector[i].fileLineNumber,
+			rvInfoVector[i].listIndices[j].nameIndex.c_str());
+	      } else {
+		// otherwise add it
+		cpts[j] = 
+		  GM_Parms.deepCpts[
+				  GM_Parms.deepCptsMap[
 						     rvInfoVector[i].listIndices[j].nameIndex
 				  ]
 		  ];
