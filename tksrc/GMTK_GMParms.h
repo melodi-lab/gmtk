@@ -48,6 +48,8 @@ class FNGramCPT;
 class FNGramImp;
 class VECPT;
 class DeepVECPT;
+class DeepCPT;
+class DeepNN;
 class Vocab;
 class LatticeADT;
 class LatticeNodeCPT;
@@ -244,6 +246,17 @@ public:
   ObjectMapType deepVECptsMap;
   void add(DeepVECPT*);
 
+  vector<DeepCPT*> deepCpts;
+  ObjectMapType deepCptsMap;
+  void add(DeepCPT*);
+
+  ///////////////////////////////////
+  // Collection of Deep Neural Networks
+  vector<DeepNN*> deepNNs;
+  ObjectMapType deepNNsMap;
+  void add(DeepNN*);
+
+
   /********************************************************************/
   /********************************************************************/
   /********************************************************************/
@@ -363,6 +376,8 @@ public:
   void readLatticeAdts(iDataStreamFile& is, bool reset = false);
   void readVECpts(iDataStreamFile& is, bool reset = false);
   void readDeepVECpts(iDataStreamFile& is, bool reset = false);
+  void readDeepCpts(iDataStreamFile& is, bool reset = false);
+  void readDeepNNs(iDataStreamFile& is, bool reset = false);
   void readDTs(iDataStreamFile& is,bool reset = false);
   void readComponents(iDataStreamFile& is,bool reset = false);
   void readMixtures(iDataStreamFile& is,bool reset = false);
@@ -388,6 +403,7 @@ public:
   //void writeNgramCpts(oDataStreamFile& os);
   //void writeFNgramCpts(oDataStreamFile& os);
   //void writeVECpts(oDataStreamFile& os);
+  //void writeDeepNNs(oDataStreamFile& os);
   void writeDTs(oDataStreamFile& os);
   void writeComponents(oDataStreamFile& os);
   void writeMixtures(oDataStreamFile& os);
