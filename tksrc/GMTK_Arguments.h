@@ -1847,6 +1847,10 @@ Arg("tempDir", Arg::Opt, MMapMatrix::dmlpTempDir, "Directory to store temp files
 	  argerr, pretrainActFuncStr);
   }
 
+  if (resumeTraining && strcasecmp(pretrainType, "none")) {
+    error("%s: -resumeTraining T requires -pretrainType none\n", argerr);
+  }
+
 #else
 #endif
 #endif // defined(GMTK_ARG_EM_TRAINING_PARAMS)
