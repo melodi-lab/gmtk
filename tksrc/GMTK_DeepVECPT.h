@@ -164,6 +164,14 @@ public:
     }
   }
 
+  void getParams(unsigned layer, int &rows, int &cols, double *&params) {
+    assert (layer < layer_matrix.size());
+    DoubleMatrix *w = layer_matrix[layer];
+    rows = w->_rows;
+    cols = w->_cols;
+    params = w->values.ptr;
+  }
+
   unsigned numLayers() { return num_matrices; }
 
   unsigned obsOffset() { return obs_file_foffset; }
