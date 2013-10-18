@@ -127,7 +127,8 @@ DeepVECPT::read(iDataStreamFile& is)
   cardinalities.resize(_numParents);
   // read the parent cardinality
   is.read(cardinalities[0],"Can't read DeepVirtualEvidenceCPT's parent cardinality");
-  cached_CPT = NULL;
+  cached_CPT = new double[cardinalities[0]];
+
   // read the self cardinality, must be binary
   is.read(_card,"Can't read DeepVirtualEvidenceCPT's self cardinality");
   if (_card != 2)
@@ -140,6 +141,7 @@ DeepVECPT::read(iDataStreamFile& is)
   }
   dmlp = GM_Parms.deepNNs[ GM_Parms.deepNNsMap[str] ];
   assert(dmlp);
+  input_vector = new float[dmlp->numInputs() + 1];
 
   try {
 
@@ -321,6 +323,7 @@ void
 DeepVECPT::becomeAwareOfParentValues( vector <RV *>& parents, const RV* rv ) {
   assert ( parents.size() == 1 );
   curParentValue = RV2DRV(parents[0])->val;
+  assert(curParentValue <  cardinalities[0]);
 }
 
 
@@ -334,7 +337,7 @@ DeepVECPT::applyNN(DiscRVType parentValue, DiscRV * drv) {
   unsigned frame = drv->frame();
   unsigned segment = obs->segmentNumber();
   if (frame == cached_frame && segment == cached_segment) {
-    p.setFromP(cached_CPT[curParentValue]);
+    p.setFromP(cached_CPT[parentValue]);
     // The obseved value (1) is the one corresponding
     // to the value in the file. I.e., the score 
     // in the file corresponds to Pr(child = 1 | parent = j) = f_t(j), 
@@ -348,28 +351,26 @@ DeepVECPT::applyNN(DiscRVType parentValue, DiscRV * drv) {
   }
 
   // Not in the cache, so compute & cache it
-
   cached_frame = frame;
   cached_segment = segment;
 
   // assemble input vector
-
-  unsigned num_inputs = dmlp->numInputs() + 1;
-  float *input_vector = new float[num_inputs];
-  input_vector[num_inputs-1] = 1.0; // homogeneous coordinates
+  assert(input_vector);
+  input_vector[dmlp->numInputs()] = 1.0; // homogeneous coordinates
   float *dest = input_vector;
   // guarantees [frame - window_radius, frame + window_radius] are in cache
   unsigned stride = obs->stride();
   float *src  = obs->floatVecAtFrame(frame) - window_radius * stride + obs_file_foffset; 
-  for (unsigned i = 0; i < 1 + 2 * window_radius; i+=1, src += stride, dest += nfs) {
+  unsigned diameter = 1 + 2 * window_radius;
+  for (unsigned i = 0; i < diameter; i+=1, src += stride, dest += nfs) {
     memcpy(dest, src, nfs * sizeof(float));
   }
+  memcpy(cached_CPT, dmlp->applyDeepModel(input_vector), cardinalities[0] * sizeof(double)) ;
 
-  if (cached_CPT) delete[] cached_CPT;
-  cached_CPT = dmlp->applyDeepModel(input_vector);
+  // logpr the CPT entry
+  assert(parentValue < cardinalities[0]);
+  p.setFromP(cached_CPT[parentValue]);
 
-  // log the CPT entry
-  p.setFromP(cached_CPT[curParentValue]);
   // The obseved value (1) is the one corresponding
   // to the value in the file. I.e., the score 
   // in the file corresponds to Pr(child = 1 | parent = j) = f_t(j), 
@@ -386,6 +387,7 @@ logpr
 DeepVECPT::probGivenParents(vector <RV *>& parents, DiscRV * drv) {
   assert ( bitmask & bm_basicAllocated );
   curParentValue = RV2DRV(parents[0])->val;
+  assert(curParentValue <  cardinalities[0]);
   return applyNN(curParentValue, drv);
 }
 
@@ -407,6 +409,7 @@ void DeepVECPT::begin(iterator& it,DiscRV* drv, logpr& p)
   it.drv = drv;
   it.uInternalState = curParentValue;
   drv->val = 0;
+  assert(curParentValue <  cardinalities[0]);
   p = applyNN(curParentValue, drv);
 }
 

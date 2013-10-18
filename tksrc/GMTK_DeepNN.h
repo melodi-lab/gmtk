@@ -49,12 +49,18 @@ class DeepNN : public NamedObject {
   vector<float>          layer_logistic_beta;
   vector<DoubleMatrix *> layer_matrix;
 
+  // storage for layer outputs
+  double *output_vector[2];
+
 public:
 
   ///////////////////////////////////////////////////////////  
   // General constructor, 
 
-  DeepNN() : num_inputs(0), num_matrices(0) { }
+  DeepNN() : num_inputs(0), num_matrices(0) {
+    output_vector[0] = NULL;
+    output_vector[1] = NULL;
+  }
  
   ~DeepNN() { }
 
