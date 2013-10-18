@@ -196,15 +196,11 @@ main(int argc,char*argv[])
 
   gomFS->openSegment(0);
 
-  DeepVECPT *cpt = NULL;
-  for (unsigned i=0; i < GM_Parms.deepVECpts.size(); i+=1) {
-    cpt = GM_Parms.deepVECpts[i];
-    if (cpt->name().compare(DVECPTName) == 0) break;
-  }
-
-  if (!cpt || cpt->name().compare(DVECPTName) != 0) {
+  string DVECPTNameStr(DVECPTName);
+  if (GM_Parms.deepVECptsMap.find(DVECPTNameStr) == GM_Parms.deepVECptsMap.end()) {
     error("Error: No Deep VE CPT named '%s' found\n", DVECPTName);
   }
+  DeepVECPT *cpt = GM_Parms.deepVECpts[ GM_Parms.deepVECptsMap[DVECPTNameStr] ];
 
   printf("Total number of trainable parameters in input files = %u\n",
 	 cpt->totalNumberDMLPParameters());
