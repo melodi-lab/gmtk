@@ -88,6 +88,8 @@ class DeepVECPT : public CPT {
   unsigned  cached_frame;
   double   *cached_CPT;
 
+  float    *input_vector;
+
   // Apply the deep neural network to get the probability
   logpr applyNN(DiscRVType parentValue, DiscRV * drv);
 
@@ -97,11 +99,15 @@ public:
   // General constructor, 
   // VECPTs always have one parent, and a binary child.
   DeepVECPT() : CPT(di_DeepVECPT), dmlp(NULL),
-    cached_segment(0xFFFFFFFF), cached_frame(0xFFFFFFFF), cached_CPT(NULL)
+    cached_segment(0xFFFFFFFF), cached_frame(0xFFFFFFFF), cached_CPT(NULL), input_vector(NULL)
   { 
     _numParents = 1; _card = 2; cardinalities.resize(_numParents); 
   }
-  ~DeepVECPT() { if (cached_CPT) delete[] cached_CPT; }
+
+  ~DeepVECPT() { 
+    if (cached_CPT) delete[] cached_CPT; 
+    if (input_vector) delete[] input_vector;
+  }
 
 
   DeepNN *getDeepNN() { return dmlp; }

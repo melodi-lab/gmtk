@@ -299,6 +299,9 @@ DeepNN::read(iDataStreamFile& is)
       if (layer_output_count[i] > max_outputs)
 	max_outputs = layer_output_count[i];
     }
+    unsigned vector_length = max_outputs > num_inputs ? max_outputs : num_inputs;
+    output_vector[0] = new double[vector_length+1]; // big enough to hold any layer's (in|out)put (+1 for homogeneous coordinates)
+    output_vector[1] = new double[vector_length+1];
 
     // now check that the input vector size for layer i matches the
     // output vector size from layer i-1
@@ -488,20 +491,16 @@ squash(DeepNN::SquashFunction fn, double *q, unsigned len, float beta=1.0) {
 
 double *
 DeepNN::applyDeepModel(float *inputs) {
-
-  double *input_vector = new double[num_inputs+1]; 
+  assert(output_vector[0] && output_vector[1]);
+  double *input_vector = output_vector[1];
   input_vector[num_inputs] = 1.0;                  // homogeneous coordinates
   for (unsigned i = 0; i < num_inputs; i+=1) {
     input_vector[i] = (double)inputs[i];
   }
-  double *output_vector[2];
-  output_vector[0] = new double[max_outputs+1]; // big enough to hold any layer's output (+1 for homogeneous coordinates)
-  output_vector[1] = new double[max_outputs+1];
-
-  mul_mdmd_md(layer_output_count[0], num_inputs, 1, 
+  memset(output_vector[0], 0, (max_outputs+1) * sizeof(double));
+  mul_mdmd_md(layer_output_count[0], num_inputs+1, 1, 
 	      layer_matrix[0]->values.ptr, input_vector, output_vector[0], 
-	      num_inputs, 1, 1);
-  delete[] input_vector;
+	      num_inputs+1, 1, 1);
   squash(layer_squash_func[0], output_vector[0], layer_output_count[0], layer_logistic_beta[0]);
   output_vector[0][layer_output_count[0]] = 1.0;
 
@@ -509,19 +508,14 @@ DeepNN::applyDeepModel(float *inputs) {
   for (unsigned layer=1; layer < num_matrices; layer += 1) {
     input_vector = output_vector[cur_output_vector];
     cur_output_vector = (cur_output_vector + 1) % 2;
+    memset(output_vector[cur_output_vector], 0, (max_outputs+1) * sizeof(double));
     mul_mdmd_md(layer_output_count[layer], layer_output_count[layer-1]+1, 1, 
 		layer_matrix[layer]->values.ptr, input_vector, output_vector[cur_output_vector], 
 		layer_output_count[layer-1]+1, 1, 1);
     squash(layer_squash_func[layer], output_vector[cur_output_vector], layer_output_count[layer], layer_logistic_beta[layer]);
     output_vector[cur_output_vector][layer_output_count[layer]] = 1.0;
   }
-  if (cur_output_vector == 0) {
-    delete[] output_vector[1];
-    return   output_vector[0];
-  } else {
-    delete[] output_vector[0];
-    return   output_vector[1];
-  }
+  return output_vector[cur_output_vector];
 }
 
 ////////////////////////////////////////////////////////////////////
