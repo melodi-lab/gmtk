@@ -260,7 +260,19 @@ main(int argc,char*argv[])
       error("Error: unknown activation function\n");
     }
   }
-  DBN dbn(numLayers, inputSize, hiddenSize, outputSize, iActFunc, hActFunc);
+
+  vector<AllocatingMatrix> W(numLayers);
+  vector<AllocatingVector> B(numLayers);
+  for (unsigned j=0; j < numLayers; j+=1) {
+    double *params;
+    int rows, cols;
+    cpt->getDeepNN()->getParams(j, rows, cols, params);
+    Matrix P(params, cols, rows, cols, false);
+    W[j].CopyFrom( P.SubMatrix(0, cols-1, 0, rows) ); // -1 for bias column
+    B[j].CopyFrom( P.GetRow(cols - 1) );
+  }
+
+  DBN dbn(numLayers, inputSize, hiddenSize, outputSize, iActFunc, hActFunc, W, B);
 
   vector<DBN::HyperParams> pretrainHyperParams(numLayers);
   for (int j = 0; j < numLayers; j+=1) {
@@ -351,7 +363,7 @@ main(int argc,char*argv[])
   DBN::ObjectiveType objType = 
     ( cpt->getDeepNN()->getSquashFn(numLayers-1) == DeepNN::SOFTMAX ) ? DBN::SOFT_MAX : DBN::SQ_ERR;
 
-  dbn.Train(trainData, trainLabels, objType, false, pretrainHyperParams, bpHyperParams);
+  dbn.Train(trainData, trainLabels, objType, false, pretrainHyperParams, bpHyperParams, resumeTraining);
 
   vector<DoubleMatrix *> layerMatrix = cpt->getDeepNN()->getMatrices();
   assert(layerMatrix.size() == numLayers);

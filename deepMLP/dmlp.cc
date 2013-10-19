@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
 
   Matrix input = mnist.GetImages();
   MMapMatrix mappedInput(input), mappedOutput(output);
-  dbn.Train(mappedInput, mappedOutput, objType, false, pretrainHyperParams, bpHyperParams);
+  dbn.Train(mappedInput, mappedOutput, objType, false, pretrainHyperParams, bpHyperParams, false);
 
   // really we shouldn't be using the test set like this, but this is just for debugging
   MNISTData testMnist(testImageFile, testLabelFile);
