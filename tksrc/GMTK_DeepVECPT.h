@@ -126,6 +126,7 @@ public:
   unsigned windowRadius() { return window_radius; }
 
 
+  // Offset into global observation matrix
   unsigned obsOffset() { return obs_file_foffset; }
   
 
