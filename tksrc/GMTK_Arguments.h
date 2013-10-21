@@ -1755,6 +1755,7 @@ static float normalizeScoreEachClique = MaxClique::normalizeScoreEachClique;
 static char const *DVECPTName         = NULL;
 static unsigned    labelOffset        = 0;
 static bool        oneHot             = true;
+unsigned    nnChunkSize        = 4;
 
   // backprop hyperparameters
 
@@ -1787,6 +1788,7 @@ static Layer::ActFunc iActFunc;
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
+Arg("nnChunkSize", Arg::Opt, nnChunkSize, "Size in MB to use for incremental DeepNN matrix operations"),
 Arg("deepVECPTName", Arg::Req, DVECPTName, "Name of Deep VE CPT to train"),
 Arg("labelOffset", Arg::Req, labelOffset, "Position in observation file where output labels start"),
 Arg("oneHot", Arg::Opt, oneHot, "If true, labelOffset is the single discrete correct parent value, "
