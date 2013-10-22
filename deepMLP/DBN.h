@@ -100,6 +100,9 @@ private:
   vector<MutableVector> _savedB;
   vector<MutableVector> _layerParams, _layerDeltaParams, _layerSavedParams;
 
+  // should I initialize W & B?
+  static bool resumeTraining;
+
   // space for temporary values during CD training
   mutable AllocatingMatrix _tempTopSample, _tempBottomSample;
 
@@ -115,6 +118,7 @@ private:
   }
 
   void InitLayer(int layer) {
+    if (resumeTraining) return;
     bool sparse = false;
 
     if (sparse) {
@@ -250,7 +254,11 @@ private:
     TrainingFunction(dbn, trainData, hyperParams, dbn._layerParams[layer], dbn._layerDeltaParams[layer], dbn._layerSavedParams[layer]),
       _layer(layer)
     {
-      DBN::InitializeInputBiases(trainData, _inputBiases, actFunc, 1e-3);
+      if (resumeTraining) {
+	_inputBiases.CopyFrom(dbn._B[layer]);
+      } else {
+	DBN::InitializeInputBiases(trainData, _inputBiases, actFunc, 1e-3);
+      }
     }
   };
 
@@ -648,9 +656,19 @@ assert(!std::isnan(inputBiases[r]));
   }
 
 public:
-  DBN(int numLayers, int iSize, vector<int> &hSize, int oSize, Layer::ActFunc iActFunc, vector<Layer::ActFunc> &hActFunc) 
+
+  DBN(int numLayers, int iSize, vector<int> &hSize, int oSize, Layer::ActFunc iActFunc, vector<Layer::ActFunc> &hActFunc)
   {
     Initialize(numLayers, iSize, hSize, oSize, iActFunc, hActFunc);
+  }
+
+  DBN(int numLayers, int iSize, vector<int> &hSize, int oSize, Layer::ActFunc iActFunc, vector<Layer::ActFunc> &hActFunc, vector<AllocatingMatrix> &W, vector<AllocatingVector> &B)
+  {
+    Initialize(numLayers, iSize, hSize, oSize, iActFunc, hActFunc);
+    for (int i=0; i < numLayers; i+=1) {
+      _W[i].CopyFrom(W[i]);
+      _B[i].CopyFrom(B[i]);
+    }
   }
 
   void Initialize(int numLayers, int iSize, vector<int> &hSize, int oSize, Layer::ActFunc iActFunc, vector<Layer::ActFunc> &hActFunc)
@@ -813,7 +831,9 @@ public:
     return mappedInput;
   }
 
-  void Train(MMapMatrix & input, const MMapMatrix & output, ObjectiveType objectiveType, bool quiet, const vector<HyperParams> & hyperParams_pt, const HyperParams & hyperParams_bp) {
+  void Train(MMapMatrix & input, const MMapMatrix & output, ObjectiveType objectiveType, bool quiet, const vector<HyperParams> & hyperParams_pt, const HyperParams & hyperParams_bp, bool resume) 
+  {
+    resumeTraining = resume;
     MMapMatrix mappedInput = input;
     if (!quiet) {
       printf("\nPretrain hyperparams:\n\n");

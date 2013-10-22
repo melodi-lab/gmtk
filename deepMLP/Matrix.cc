@@ -54,7 +54,7 @@ void
       *(Bp++) = alpha * *Ap;
       Ap += Ainc1;
     } while (Bp != colEnd);
-    Bcol += lda;
+    Bcol += ldb;
     Apos += Ainc2;
   } while (Bcol != pastB);
 }

@@ -85,6 +85,15 @@ public:
     return layer_squash_func[layer];
   }
 
+  // Get the parameters of the specified layer
+  void getParams(unsigned layer, int &rows, int &cols, double *&params) {
+    assert (layer < layer_matrix.size());
+    DoubleMatrix *w = layer_matrix[layer];
+    rows = w->_rows;
+    cols = w->_cols;
+    params = w->values.ptr;
+  }
+
   // Set the parameters of the specified layer. ld is the weights' stride
   void setParams(unsigned layer, double const *weights, unsigned ld, double const *bias) {
     assert(layer < layer_matrix.size());
