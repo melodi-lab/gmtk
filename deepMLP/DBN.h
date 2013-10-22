@@ -27,6 +27,7 @@ using namespace std;
 #define MIN_STEP_SIZE (1.0e-20)
 
 extern unsigned nnChunkSize;
+extern bool     sparseInitLayer;
 
 class DBN {
 public:
@@ -119,9 +120,7 @@ private:
 
   void InitLayer(int layer) {
     if (resumeTraining) return;
-    bool sparse = false;
-
-    if (sparse) {
+    if (sparseInitLayer) {
       // sparse initialization strategy from Martens, 2010
       _B[layer] *= 0;
       MutableMatrix W = _W[layer];
