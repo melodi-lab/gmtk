@@ -1755,7 +1755,9 @@ static float normalizeScoreEachClique = MaxClique::normalizeScoreEachClique;
 static char const *DVECPTName         = NULL;
 static unsigned    labelOffset        = 0;
 static bool        oneHot             = true;
-unsigned    nnChunkSize        = 4;
+static bool        resumeTraining     = false;
+       unsigned    nnChunkSize        = 4;
+
 
   // backprop hyperparameters
 
@@ -1793,6 +1795,7 @@ Arg("deepVECPTName", Arg::Req, DVECPTName, "Name of Deep VE CPT to train"),
 Arg("labelOffset", Arg::Req, labelOffset, "Position in observation file where output labels start"),
 Arg("oneHot", Arg::Opt, oneHot, "If true, labelOffset is the single discrete correct parent value, "
                                 "else the parent distribution starts ate labelOffset"),
+Arg("resumeTraining", Arg::Opt, resumeTraining, "Continue training specified deep VE CPT rather than starting from scratch"),
 
 Arg("bpInitStepSize", Arg::Opt, bpInitStepSize, "Backprop: Initial step size hyperparameter"),
 Arg("bpMaxMomentum", Arg::Opt, bpMaxMomentum, "Backprop: Maximum momentum hyperparameter"),
@@ -1846,6 +1849,10 @@ Arg("tempDir", Arg::Opt, MMapMatrix::dmlpTempDir, "Directory to store temp files
   } else {
     error("%s: Unknown pretraining input activation function '%s', must be 'sig', 'tanh', 'cubic', 'linear', or 'rect'\n",
 	  argerr, pretrainActFuncStr);
+  }
+
+  if (resumeTraining && strcasecmp(pretrainType, "none")) {
+    error("%s: -resumeTraining T requires -pretrainType none\n", argerr);
   }
 
 #else
