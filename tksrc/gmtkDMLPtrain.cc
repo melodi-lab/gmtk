@@ -217,6 +217,7 @@ main(int argc,char*argv[])
   for (unsigned i=0; i < numLayers; i+=1)
     hiddenSize[i] = (int)cpt->getDeepNN()->layerOutputs(i);
 
+  bool warned = false;
   vector<Layer::ActFunc> hActFunc(numLayers);
   for (unsigned i=0; i < numLayers; i+=1) {
     switch (cpt->getDeepNN()->getSquashFn(i)) {
@@ -253,6 +254,11 @@ main(int argc,char*argv[])
       }
       if (pretrainMode != DBN::NONE) {
 	error("ERROR: gmtkDMLPtrain only supports rectified linear activation functions with -pretrainType none\n");
+      }
+      if (sparseInitLayer && !warned) {
+	warning("WARNING: Deep NN '%s' uses rectified linear, which may perform poorly without -sparseInitLayer F\n",
+		cpt->getDeepNN()->name().c_str());
+	warned = true;
       }
       hActFunc[i] = Layer::ActFunc(Layer::ActFunc::RECT_LIN);
       break;
