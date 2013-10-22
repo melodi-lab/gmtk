@@ -6,6 +6,7 @@
 RAND rnd;
 
 unsigned nnChunkSize = 4;
+bool sparseInitLayer = true;
 
 int main(int argc, char *argv[]) {
 
