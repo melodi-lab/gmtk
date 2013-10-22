@@ -1755,7 +1755,8 @@ static float normalizeScoreEachClique = MaxClique::normalizeScoreEachClique;
 static char const *DVECPTName         = NULL;
 static unsigned    labelOffset        = 0;
 static bool        oneHot             = true;
-unsigned    nnChunkSize        = 4;
+       bool        sparseInitLayer    = true;
+       unsigned    nnChunkSize        = 4;
 
   // backprop hyperparameters
 
@@ -1793,6 +1794,14 @@ Arg("deepVECPTName", Arg::Req, DVECPTName, "Name of Deep VE CPT to train"),
 Arg("labelOffset", Arg::Req, labelOffset, "Position in observation file where output labels start"),
 Arg("oneHot", Arg::Opt, oneHot, "If true, labelOffset is the single discrete correct parent value, "
                                 "else the parent distribution starts ate labelOffset"),
+Arg("sparseInitLayer", Arg::Opt, sparseInitLayer, "Use sparse or dense initilization strategy (dense is better for rectified linear)"),
+
+
+Arg("pretrainType", Arg::Opt, pretrainType, "Pretraining type (none, AE, CD)"),
+Arg("pretrainActFunc", Arg::Opt, pretrainActFuncStr, "Pretraining input activation function (sig, tanh, cubic, linear, rect)"),
+Arg("tempDir", Arg::Opt, MMapMatrix::dmlpTempDir, "Directory to store temp files if $GMTKTMPDIR environment variable is not set"),
+
+Arg("\n*** DMLP backprob hyperparameters ***\n"),
 
 Arg("bpInitStepSize", Arg::Opt, bpInitStepSize, "Backprop: Initial step size hyperparameter"),
 Arg("bpMaxMomentum", Arg::Opt, bpMaxMomentum, "Backprop: Maximum momentum hyperparameter"),
@@ -1804,6 +1813,8 @@ Arg("bpMiniBatchSize", Arg::Opt, bpMiniBatchSize, "Backprop: Mini-batch size hyp
 Arg("bpCheckInterval", Arg::Opt, bpCheckInterval, "Backprop: Check interval hyperparameter"),
 Arg("bpDropout", Arg::Opt, bpDropout, "Backprop: Dropout hyperparameter"),
 
+Arg("\n*** DMLP pretraining hyperparameters ***\n"),
+
 Arg("ptInitStepSize", Arg::Opt, ptInitStepSize, "Pretrain: Initial step size hyperparameter"),
 Arg("ptMaxMomentum", Arg::Opt, ptMaxMomentum, "Pretrain: Maximum momentum hyperparameter"),
 Arg("ptMaxUpdate", Arg::Opt, ptMaxUpdate, "Pretrain: Maximum update hyperparameter"),
@@ -1813,11 +1824,6 @@ Arg("ptNumAnnealUpdates", Arg::Opt, ptNumAnnealUpdates, "Pretrain: Number of ann
 Arg("ptMiniBatchSize", Arg::Opt, ptMiniBatchSize, "Pretrain: Mini-batch size hyperparameter"),
 Arg("ptCheckInterval", Arg::Opt, ptCheckInterval, "Pretrain: Check interval hyperparameter"),
 Arg("ptDropout", Arg::Opt, ptDropout, "Pretrain: Dropout hyperparameter"),
-
-Arg("pretrainType", Arg::Opt, pretrainType, "Pretraining type (none, AE, CD)"),
-Arg("pretrainActFunc", Arg::Opt, pretrainActFuncStr, "Pretraining input activation function (sig, tanh, cubic, linear, rect)"),
-
-Arg("tempDir", Arg::Opt, MMapMatrix::dmlpTempDir, "Directory to store temp files if $GMTKTMPDIR environment variable is not set"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
