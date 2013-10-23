@@ -26,11 +26,13 @@ using namespace std;
 
 #define MIN_STEP_SIZE (1.0e-20)
 
-extern unsigned nnChunkSize;
-extern bool     sparseInitLayer;
-
 class DBN {
 public:
+
+  static bool     checkSignal;     // if true, print status as if end of check interval
+  static bool     sparseInitLayer; // select layer initialization method
+  static unsigned nnChunkSize;     // O(1) space to use for (non-minibatch) incremental processing
+
   enum PretrainType {
     NONE, // no pretraining
     AE, // denoising autoencoder
@@ -40,40 +42,41 @@ public:
   enum ObjectiveType { SQ_ERR, SOFT_MAX };
 
   struct HyperParams {
-    double initStepSize, maxMomentum, maxUpdate, l2;
-
+    double initStepSize, maxMomentum, minMomentum, maxUpdate, l2;
+    double iDropP, hDropP;
     int numUpdates, numAnnealUpdates, miniBatchSize, checkInterval;
-
-    bool dropout;
 
     PretrainType pretrainType;
 
     HyperParams() :
-    initStepSize(1e-2),
+      initStepSize(1e-2),
+      minMomentum(0.5),
       maxMomentum(0.99),
       maxUpdate(0.1),
       l2(1e-3),
+      iDropP(0),
+      hDropP(0),
       numUpdates(10000),
       numAnnealUpdates(2000),
       miniBatchSize(10),
       checkInterval(2000),
-      dropout(false),
       pretrainType(CD)
     { }
 
     void print() const {
       printf("initStepSize     %f\n"
+	     "minMomentum      %f\n"
              "maxMomentum      %f\n"
              "maxUpdate        %f\n"
              "l2               %f\n"
+             "iDropP           %f\n"
+             "hDropP           %f\n"
              "numUpdates       %d\n"
              "numAnnealUpdates %d\n"
 	     "miniBatchSize    %d\n"
-	     "checkInterval    %d\n"
-	     "dropout          %s\n",
-	     initStepSize, maxMomentum, maxUpdate, l2,
-	     numUpdates, numAnnealUpdates, miniBatchSize, checkInterval,
-	     dropout ? "true" : "false");
+	     "checkInterval    %d\n",
+	     initStepSize, minMomentum, maxMomentum, maxUpdate, l2, iDropP, hDropP,
+	     numUpdates, numAnnealUpdates, miniBatchSize, checkInterval);
     }
   };
 
@@ -312,7 +315,7 @@ private:
 
   protected:
     virtual double PrivateEval(Matrix inputMiniBatch, Matrix outputMiniBatch, double stepSize) {
-      return _dbn.UpdateBackProp(inputMiniBatch, outputMiniBatch, _objectiveType, false, _hyperParams.dropout, stepSize);
+      return _dbn.UpdateBackProp(inputMiniBatch, outputMiniBatch, _objectiveType, false, _hyperParams.iDropP, _hyperParams.hDropP, stepSize);
     }
 
   public:
@@ -331,7 +334,7 @@ private:
 
   protected:
     virtual double PrivateEval(Matrix inputMiniBatch, Matrix outputMiniBatch, double stepSize) {
-      return _dbn.UpdateBackProp(inputMiniBatch, outputMiniBatch, _objectiveType, true, false, stepSize);
+      return _dbn.UpdateBackProp(inputMiniBatch, outputMiniBatch, _objectiveType, true, _hyperParams.iDropP, _hyperParams.hDropP, stepSize);
     }
 
   public:
@@ -341,6 +344,8 @@ private:
       _objectiveType(objectiveType)
     { }
 
+// Delete me
+#if 0
     virtual void Init() {
       // sparse initialization strategy from Martens, 2010
       _dbn._B.back() *= 0;
@@ -356,6 +361,7 @@ private:
 
       TrainingFunction::Init();
     }
+#endif
   };
 
   void TrainSGD(TrainingFunction & trainer, const HyperParams & hyperParams) {
@@ -404,26 +410,28 @@ private:
       // momentum increases from 0.5 to max
       // using formula from Sutskever et al. 2013
       double tFrac = (double)t / hyperParams.numUpdates;
-      double momentum = 1.0 - 1.0 / (2.0 + tFrac * ( 1.0 / (1.0 - hyperParams.maxMomentum) - 2.0));
+      double m = tFrac / (1 - hyperParams.maxMomentum) + (1 - tFrac) / (1 - hyperParams.minMomentum);
+      double momentum = 1.0 - 1.0 / m;
 
       totalScore += trainer.Update(startInstance, stepSize, hyperParams.maxUpdate, momentum);
       startInstance += hyperParams.miniBatchSize;
 
-      if (!quiet && t % hyperParams.checkInterval == 0) {
+      if (checkSignal || !quiet && t % hyperParams.checkInterval == 0) {
         double score = totalScore / hyperParams.checkInterval;
         cout << "Step: " << t << endl;
         cout << "Momentum: " << momentum << endl;
         cout << "New score: " << score << endl << endl;
         totalScore = 0;
+	checkSignal = false;
       }
     }
 
     totalScore = 0;
     for (int t = 0; t < hyperParams.numAnnealUpdates; ++t) {
-      // momentum increases from 0.5 to max
-      // using formula from Sutskever et al. 2013
+      // anneal momentum and step size to zero
       double tFrac = (double)t / hyperParams.numAnnealUpdates;
-      double momentum = (1 - tFrac) * hyperParams.maxMomentum + tFrac * 0.9;
+      double m = tFrac + (1 - tFrac) / (1 - hyperParams.maxMomentum);
+      double momentum = 1.0 - 1.0 / m;
       double step = (1 - tFrac) * stepSize;
 
       totalScore += trainer.Update(startInstance, step, hyperParams.maxUpdate, momentum);
@@ -437,16 +445,18 @@ private:
 
   }
 
-  double UpdateBackProp(const Matrix & input, const Matrix & output, ObjectiveType _objType, bool lastLayerOnly, bool dropout, double stepSize) {
+  double UpdateBackProp(const Matrix & input, const Matrix & output, ObjectiveType _objType, bool lastLayerOnly, double iDropP, double hDropP, double stepSize) {
     int startLayer = lastLayerOnly ? _numLayers - 1 : 0;
-    Matrix mappedInput;
-    if (dropout) {
+    Matrix altInput;
+    if (iDropP > 0) {
       _tempDropoutInput.CopyFrom(input);
-      _tempDropoutInput.Vec().Apply([&] (double x) { return (rnd.drand48() < 0.5) ? x : 0; });
-      mappedInput = MapUpDropout(_tempDropoutInput, startLayer);
+      _tempDropoutInput.Vec().Apply([&] (double x) { return (rnd.drand48() > iDropP) ? x : 0; });
+      altInput = _tempDropoutInput;
     } else {
-      mappedInput = MapUp(input, startLayer);
+      altInput = input;
     }
+
+    Matrix mappedInput = MapUp(altInput, hDropP, startLayer);
 
     double loss = 0;
 
@@ -492,7 +502,7 @@ private:
       for (int l = _numLayers - 1; ; --l) {
         for (int i = 0; i < input.NumC(); ++i) _deltaB[l] += mappedError.GetCol(i) * stepSize;
 
-        const Matrix & lowerProbs = l > startLayer ? _layers[l - 1].Activations() : dropout ? _tempDropoutInput : input;
+	const Matrix & lowerProbs = l > startLayer ? _layers[l - 1].Activations() : altInput;
 
         _deltaW[l] += stepSize * lowerProbs * mappedError.Trans();
 
@@ -786,29 +796,18 @@ public:
     return _layers[layer].ActivateUp(_W[layer], _B[layer], input, _hActFunc[layer]);
   }
 
-  Matrix MapUp(const Matrix & input, int startLayer = -1, int endLayer = -1) const {
+  Matrix MapUp(const Matrix & input, double dropoutRate = 0, int startLayer = -1, int endLayer = -1) const {
     if (startLayer == -1) startLayer = 0;
     if (endLayer == -1) endLayer = _numLayers;
 
     Matrix mappedInput = input;
 
-    for (int layer = startLayer; layer < endLayer; ++layer) mappedInput = MapLayer(mappedInput, layer);
-
-    return mappedInput;
-  }
-
-  Matrix MapLayerDropout(const Matrix & input, int layer) const {
-    return _layers[layer].ActivateUpDropout(_W[layer], _B[layer], input, _hActFunc[layer]);
-  }
-
-  Matrix MapUpDropout(const Matrix & input, int startLayer = -1, int endLayer = -1) const {
-    if (startLayer == -1) startLayer = 0;
-    if (endLayer == -1) endLayer = _numLayers;
-
-    Matrix mappedInput = input;
-
-    for (int layer = startLayer; layer < endLayer; ++layer) mappedInput = MapLayerDropout(mappedInput, layer);
-
+    for (int layer = startLayer; layer < endLayer; ++layer) {
+      mappedInput = MapLayer(mappedInput, layer);
+      if (layer + 1 < _numLayers && dropoutRate > 0) {
+        mappedInput = _layers[layer].Dropout(dropoutRate);
+      }
+    }
     return mappedInput;
   }
 
@@ -881,9 +880,10 @@ public:
     BPTrainingFunction bpFunc(input, output, *this, hyperParams_bp, objectiveType);
     TrainSGD(bpFunc, hyperParams_bp);
 
-    if (hyperParams_bp.dropout) {
-      for (int l = 0; l < _W.size(); ++l) {
-        _W[l] /= 2;
+    if (hyperParams_bp.iDropP > 0) _W[0] *= (1 - hyperParams_bp.iDropP);
+    if (hyperParams_bp.hDropP > 0) {
+      for (int l = 1; l < _W.size(); ++l) {
+        _W[l] *= (1 - hyperParams_bp.hDropP);
       }
     }
   }

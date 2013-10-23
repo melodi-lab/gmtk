@@ -150,14 +150,20 @@ public:
 
       case TANH:
         {
-          auto func = [](double aVal, double eVal) { return (1.0 - aVal * aVal) * eVal; };
+	  auto func = [](double aVal, double eVal) {
+	    // if activation is numerically equal to zero, assume it is a dropped-out unit
+	    return (aVal == 0.0) ? 0 : (1.0 - aVal * aVal) * eVal;
+	  };
           activations.Apply(func, inError);
         }
         break;
 
       case CUBIC:
         {
-          auto func = [](double aVal, double eVal) { return eVal / (1.0 + aVal * aVal); };
+	  auto func = [](double aVal, double eVal) {
+	    // if activation is numerically equal to zero, assume it is a dropped-out unit
+	    return (aVal == 0.0) ? 0 : eVal / (1.0 + aVal * aVal);
+	  };
           activations.Apply(func, inError);
         }
         break;
@@ -227,10 +233,8 @@ public:
     return _a;
   }
 
-  const Matrix & ActivateUpDropout(const Matrix & weights, const Vector & biases, const Matrix & lowerValues, ActFunc actFunc) {
-    ComputeInputs(weights, biases, lowerValues, true);
-    actFunc.Apply(_a.Vec());
-    _a.Vec().Apply([&] (double a) { return rnd.drand48() < 0.5 ? a : 0; });
+  const Matrix & Dropout(double dropP) {
+    _a.Vec().Apply([&] (double a) { return rnd.drand48() > dropP ? a : 0; });
     return _a;
   }
 
