@@ -1752,15 +1752,16 @@ static float normalizeScoreEachClique = MaxClique::normalizeScoreEachClique;
 #if defined(GMTK_ARG_DMLP_TRAINING_PARAMS)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
+#include "DBN.h"
+
 static char const *DVECPTName         = NULL;
 static unsigned    labelOffset        = 0;
 static bool        oneHot             = true;
-       bool        sparseInitLayer    = true;
-       unsigned    nnChunkSize        = 4;
 
   // backprop hyperparameters
 
 static double   bpInitStepSize = 1e-2;
+static double   bpMinMomentum = 0.5;
 static double   bpMaxMomentum = 0.99;
 static double   bpMaxUpdate = 0.1;
 static double   bpL2 = 1e-3;
@@ -1768,11 +1769,13 @@ static unsigned bpNumUpdates = 25000;
 static unsigned bpNumAnnealUpdates = 10000;
 static unsigned bpMiniBatchSize = 10;
 static unsigned bpCheckInterval = 2000;
-static bool     bpDropout = false;
+static double   bpIdropP = 0;
+static double   bpHdropP = 0;
 
   // pretraining hyperparameters
 
 static double   ptInitStepSize = 1e-2;
+static double   ptMinMomentum = 0.5;
 static double   ptMaxMomentum = 0.99;
 static double   ptMaxUpdate = 0.1;
 static double   ptL2 = 1e-3;
@@ -1780,7 +1783,8 @@ static unsigned ptNumUpdates = 25000;
 static unsigned ptNumAnnealUpdates = 10000;
 static unsigned ptMiniBatchSize = 10;
 static unsigned ptCheckInterval = 2000;
-static bool     ptDropout = false;
+static double   ptIdropP = 0;
+static double   ptHdropP = 0;
 
 static char const *pretrainType = "CD";
 static DBN::PretrainType pretrainMode;
@@ -1789,12 +1793,12 @@ static Layer::ActFunc iActFunc;
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-Arg("nnChunkSize", Arg::Opt, nnChunkSize, "Size in MB to use for incremental DeepNN matrix operations"),
+Arg("nnChunkSize", Arg::Opt, DBN::nnChunkSize, "Size in MB to use for incremental DeepNN matrix operations"),
 Arg("deepVECPTName", Arg::Req, DVECPTName, "Name of Deep VE CPT to train"),
 Arg("labelOffset", Arg::Req, labelOffset, "Position in observation file where output labels start"),
 Arg("oneHot", Arg::Opt, oneHot, "If true, labelOffset is the single discrete correct parent value, "
                                 "else the parent distribution starts ate labelOffset"),
-Arg("sparseInitLayer", Arg::Opt, sparseInitLayer, "Use sparse or dense initilization strategy (dense is better for rectified linear)"),
+Arg("sparseInitLayer", Arg::Opt, DBN::sparseInitLayer, "Use sparse or dense initilization strategy (dense is better for rectified linear)"),
 
 
 Arg("pretrainType", Arg::Opt, pretrainType, "Pretraining type (none, AE, CD)"),
@@ -1804,6 +1808,7 @@ Arg("tempDir", Arg::Opt, MMapMatrix::dmlpTempDir, "Directory to store temp files
 Arg("\n*** DMLP backprob hyperparameters ***\n"),
 
 Arg("bpInitStepSize", Arg::Opt, bpInitStepSize, "Backprop: Initial step size hyperparameter"),
+Arg("bpMinMomentum", Arg::Opt, bpMinMomentum, "Backprop: Minimum momentum hyperparameter"),
 Arg("bpMaxMomentum", Arg::Opt, bpMaxMomentum, "Backprop: Maximum momentum hyperparameter"),
 Arg("bpMaxUpdate", Arg::Opt, bpMaxUpdate, "Backprop: Maximum update hyperparameter"),
 Arg("bpL2", Arg::Opt, bpL2, "Backprop: l2 hyperparameter"),
@@ -1811,11 +1816,13 @@ Arg("bpNumUpdates", Arg::Opt, bpNumUpdates, "Backprop: Number of updates hyperpa
 Arg("bpNumAnnealUpdates", Arg::Opt, bpNumAnnealUpdates, "Backprop: Number of anneal updates hyperparameter"),
 Arg("bpMiniBatchSize", Arg::Opt, bpMiniBatchSize, "Backprop: Mini-batch size hyperparameter"),
 Arg("bpCheckInterval", Arg::Opt, bpCheckInterval, "Backprop: Check interval hyperparameter"),
-Arg("bpDropout", Arg::Opt, bpDropout, "Backprop: Dropout hyperparameter"),
+Arg("bpIdropP", Arg::Opt, bpIdropP, "Backprop: iDropP for dropout"),
+Arg("bpHdropP", Arg::Opt, bpHdropP, "Backprop: hDropP for dropout"),
 
 Arg("\n*** DMLP pretraining hyperparameters ***\n"),
 
 Arg("ptInitStepSize", Arg::Opt, ptInitStepSize, "Pretrain: Initial step size hyperparameter"),
+Arg("ptMinMomentum", Arg::Opt, ptMinMomentum, "Pretrain: Minimum momentum hyperparameter"),
 Arg("ptMaxMomentum", Arg::Opt, ptMaxMomentum, "Pretrain: Maximum momentum hyperparameter"),
 Arg("ptMaxUpdate", Arg::Opt, ptMaxUpdate, "Pretrain: Maximum update hyperparameter"),
 Arg("ptL2", Arg::Opt, ptL2, "Pretrain: l2 hyperparameter"),
@@ -1823,7 +1830,8 @@ Arg("ptNumUpdates", Arg::Opt, ptNumUpdates, "Pretrain: Number of updates hyperpa
 Arg("ptNumAnnealUpdates", Arg::Opt, ptNumAnnealUpdates, "Pretrain: Number of anneal updates hyperparameter"),
 Arg("ptMiniBatchSize", Arg::Opt, ptMiniBatchSize, "Pretrain: Mini-batch size hyperparameter"),
 Arg("ptCheckInterval", Arg::Opt, ptCheckInterval, "Pretrain: Check interval hyperparameter"),
-Arg("ptDropout", Arg::Opt, ptDropout, "Pretrain: Dropout hyperparameter"),
+Arg("ptIdropP", Arg::Opt, ptIdropP, "Pretrain: iDropP for dropout"),
+Arg("ptHdropP", Arg::Opt, ptHdropP, "Pretrain: hDropP for dropout"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
