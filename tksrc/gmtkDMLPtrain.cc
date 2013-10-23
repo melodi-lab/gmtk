@@ -16,6 +16,7 @@
 #include <string.h>
 #include <float.h>
 #include <assert.h>
+#include <signal.h>
 
 
 #include "DBN.h"
@@ -132,6 +133,14 @@ Arg Arg::Args[] = {
   Arg()
 
 };
+
+
+
+void
+usr1_handler(int arg) {
+  DBN::checkSignal = true;
+  signal(SIGUSR1, usr1_handler);
+}
 
 /*
  * definition of needed global arguments
@@ -255,7 +264,7 @@ main(int argc,char*argv[])
       if (pretrainMode != DBN::NONE) {
 	error("ERROR: gmtkDMLPtrain only supports rectified linear activation functions with -pretrainType none\n");
       }
-      if (sparseInitLayer && !warned) {
+      if (DBN::sparseInitLayer && !warned) {
 	warning("WARNING: Deep NN '%s' uses rectified linear, which may perform poorly without -sparseInitLayer F\n",
 		cpt->getDeepNN()->name().c_str());
 	warned = true;
@@ -283,6 +292,7 @@ main(int argc,char*argv[])
   vector<DBN::HyperParams> pretrainHyperParams(numLayers);
   for (int j = 0; j < numLayers; j+=1) {
     pretrainHyperParams[j].initStepSize     = ptInitStepSize;
+    pretrainHyperParams[j].minMomentum      = ptMinMomentum;
     pretrainHyperParams[j].maxMomentum      = ptMaxMomentum;
     pretrainHyperParams[j].maxUpdate        = ptMaxUpdate;
     pretrainHyperParams[j].l2               = ptL2;
@@ -290,12 +300,14 @@ main(int argc,char*argv[])
     pretrainHyperParams[j].numAnnealUpdates = ptNumAnnealUpdates;
     pretrainHyperParams[j].miniBatchSize    = ptMiniBatchSize;
     pretrainHyperParams[j].checkInterval    = ptCheckInterval;
-    pretrainHyperParams[j].dropout          = ptDropout;
+    pretrainHyperParams[j].iDropP           = ptIdropP;
+    pretrainHyperParams[j].hDropP           = ptHdropP;
     pretrainHyperParams[j].pretrainType     = pretrainMode;
   }
 
   DBN::HyperParams bpHyperParams;
   bpHyperParams.initStepSize     = bpInitStepSize;
+  bpHyperParams.minMomentum      = bpMinMomentum;
   bpHyperParams.maxMomentum      = bpMaxMomentum;
   bpHyperParams.maxUpdate        = bpMaxUpdate;
   bpHyperParams.l2               = bpL2;
@@ -303,7 +315,8 @@ main(int argc,char*argv[])
   bpHyperParams.numAnnealUpdates = bpNumAnnealUpdates;
   bpHyperParams.miniBatchSize    = bpMiniBatchSize;
   bpHyperParams.checkInterval    = bpCheckInterval;
-  bpHyperParams.dropout          = bpDropout;
+  bpHyperParams.iDropP           = bpIdropP;
+  bpHyperParams.hDropP           = bpHdropP;
 
   unsigned radius = cpt->windowRadius();
   gomFS->setMinPastFrames( radius );
@@ -366,10 +379,15 @@ main(int argc,char*argv[])
   delete[] ddata;
   delete[] dlabel;
 
+  // Sending the process a usr1 signal will cause it to print out
+  // status as if a check interval expired. If check intervals take
+  // a long time to finish and you're worried the process has gone
+  // awry, you can signal it to restore your faith :)
+  signal(SIGUSR1, usr1_handler);
+
   DBN::ObjectiveType objType = 
     ( cpt->getDeepNN()->getSquashFn(numLayers-1) == DeepNN::SOFTMAX ) ? DBN::SOFT_MAX : DBN::SQ_ERR;
-
-  dbn.Train(trainData, trainLabels, objType, false, pretrainHyperParams, bpHyperParams, resumeTraining);
+  dbn.Train(trainData, trainLabels, objType, false, pretrainHyperParams, bpHyperParams);
 
   vector<DoubleMatrix *> layerMatrix = cpt->getDeepNN()->getMatrices();
   assert(layerMatrix.size() == numLayers);
