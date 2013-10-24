@@ -1783,8 +1783,6 @@ static unsigned ptNumUpdates = 25000;
 static unsigned ptNumAnnealUpdates = 10000;
 static unsigned ptMiniBatchSize = 10;
 static unsigned ptCheckInterval = 2000;
-static double   ptIdropP = 0;
-static double   ptHdropP = 0;
 
 static char const *pretrainType = "CD";
 static DBN::PretrainType pretrainMode;
@@ -1816,8 +1814,8 @@ Arg("bpNumUpdates", Arg::Opt, bpNumUpdates, "Backprop: Number of updates hyperpa
 Arg("bpNumAnnealUpdates", Arg::Opt, bpNumAnnealUpdates, "Backprop: Number of anneal updates hyperparameter"),
 Arg("bpMiniBatchSize", Arg::Opt, bpMiniBatchSize, "Backprop: Mini-batch size hyperparameter"),
 Arg("bpCheckInterval", Arg::Opt, bpCheckInterval, "Backprop: Check interval hyperparameter"),
-Arg("bpIdropP", Arg::Opt, bpIdropP, "Backprop: iDropP for dropout"),
-Arg("bpHdropP", Arg::Opt, bpHdropP, "Backprop: hDropP for dropout"),
+Arg("bpIdropP", Arg::Opt, bpIdropP, "Backprop: dropout probability for input layer"),
+Arg("bpHdropP", Arg::Opt, bpHdropP, "Backprop: dropout probability for hidden layers"),
 
 Arg("\n*** DMLP pretraining hyperparameters ***\n"),
 
@@ -1830,8 +1828,6 @@ Arg("ptNumUpdates", Arg::Opt, ptNumUpdates, "Pretrain: Number of updates hyperpa
 Arg("ptNumAnnealUpdates", Arg::Opt, ptNumAnnealUpdates, "Pretrain: Number of anneal updates hyperparameter"),
 Arg("ptMiniBatchSize", Arg::Opt, ptMiniBatchSize, "Pretrain: Mini-batch size hyperparameter"),
 Arg("ptCheckInterval", Arg::Opt, ptCheckInterval, "Pretrain: Check interval hyperparameter"),
-Arg("ptIdropP", Arg::Opt, ptIdropP, "Pretrain: iDropP for dropout"),
-Arg("ptHdropP", Arg::Opt, ptHdropP, "Pretrain: hDropP for dropout"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
