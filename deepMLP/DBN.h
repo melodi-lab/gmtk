@@ -182,7 +182,7 @@ private:
       double sum = 0;
       int data_NumC = _output.NumC();
       int miniBatchSize = nnChunkSize * ((1<<20) / sizeof(double)) / _input.Ld();
-      if (miniBatchSize < 10) miniBatchSize = 10;
+      if (miniBatchSize < 1) miniBatchSize = 1;
       for (int startCol=0; startCol < data_NumC; startCol += miniBatchSize) {
 	int endCol = (startCol + miniBatchSize <= data_NumC) ? startCol + miniBatchSize : data_NumC;
 	Matrix  inputMiniBatch = (_input.NumC() > 0) ? _input.GetCols(startCol, endCol) : _input;
@@ -289,7 +289,7 @@ private:
 	MMapMatrix _distortedInput(trainData.NumR(), trainData.NumC(), trainData.NumR());
 	int input_NumC = trainData.NumC();
 	int miniBatchSize = nnChunkSize * ((1<<20) / sizeof(double)) / trainData.Ld();
-	if (miniBatchSize < 10) miniBatchSize = 10;
+	if (miniBatchSize < 1) miniBatchSize = 1;
 	for (int startCol=0; startCol < input_NumC; startCol += miniBatchSize) {
 	  int endCol = (startCol + miniBatchSize <= input_NumC) ? startCol + miniBatchSize : input_NumC;
 	  Matrix miniBatch = trainData.GetCols(startCol, endCol);
@@ -343,25 +343,6 @@ private:
     TrainingFunction(dbn, input, output, hyperParams, dbn._layerParams.back(), dbn._layerDeltaParams.back(), dbn._layerSavedParams.back()),
       _objectiveType(objectiveType)
     { }
-
-// Delete me
-#if 0
-    virtual void Init() {
-      // sparse initialization strategy from Martens, 2010
-      _dbn._B.back() *= 0;
-      MutableMatrix W = _dbn._W.back();
-      W *= 0;
-      for (int c = 0; c < W.NumC(); ++c) {
-        MutableVector col = W.GetCol(c);
-        // sampling with replacement, but it doesn't really matter
-        for (int i = 0; i < 15; ++i) {
-          col[rnd.uniformOpen(col.Len())] = rnd.normal() * 0.01;
-        }
-      }
-
-      TrainingFunction::Init();
-    }
-#endif
   };
 
   void TrainSGD(TrainingFunction & trainer, const HyperParams & hyperParams) {
@@ -547,7 +528,7 @@ private:
     }
 #else
     int miniBatchSize = nnChunkSize * ((1<<20) / sizeof(double)) / input.Ld();
-    if (miniBatchSize < 10) miniBatchSize = 10;
+    if (miniBatchSize < 1) miniBatchSize = 1;
     int input_NumC = input.NumC();
     for (int startCol=0; startCol < input_NumC; startCol += miniBatchSize) {
       int endCol = (startCol + miniBatchSize <= input_NumC) ? startCol + miniBatchSize : input_NumC;
@@ -781,7 +762,7 @@ public:
 
   MMapMatrix MapLayer(MMapMatrix &input, int layer) const {
     int miniBatchSize = nnChunkSize * ((1<<20) / sizeof(double)) / input.Ld();
-    if (miniBatchSize < 10) miniBatchSize = 10;
+    if (miniBatchSize < 1) miniBatchSize = 1;
     MMapMatrix output(_B[layer].Len(), input.NumC(), _B[layer].Len());
     int start=0, end, lastCol = input.NumC();
     for ( ; start < lastCol ; start += miniBatchSize) {

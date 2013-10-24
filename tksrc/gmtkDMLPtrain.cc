@@ -288,8 +288,8 @@ main(int argc,char*argv[])
     pretrainHyperParams[j].numAnnealUpdates = ptNumAnnealUpdates;
     pretrainHyperParams[j].miniBatchSize    = ptMiniBatchSize;
     pretrainHyperParams[j].checkInterval    = ptCheckInterval;
-    pretrainHyperParams[j].iDropP           = ptIdropP;
-    pretrainHyperParams[j].hDropP           = ptHdropP;
+    pretrainHyperParams[j].iDropP           = 0; // no dropout in pretraining
+    pretrainHyperParams[j].hDropP           = 0;
     pretrainHyperParams[j].pretrainType     = pretrainMode;
   }
 
