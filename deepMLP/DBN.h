@@ -26,6 +26,11 @@ using namespace std;
 
 #define MIN_STEP_SIZE (1.0e-20)
 
+/*
+The DBN class maintains all of the parameters of the DBN, and includes operations
+for training and testing.
+ */
+
 class DBN {
 public:
 
@@ -39,12 +44,23 @@ public:
     CD, // contrastive divergence
   };
 
+	// The type of training objective, either minimize squared error, or softmax regression
   enum ObjectiveType { SQ_ERR, SOFT_MAX };
 
+	// structure for storing all hyperparameters of pretraining or backpropagation
   struct HyperParams {
-    double initStepSize, maxMomentum, minMomentum, maxUpdate, l2;
-    double iDropP, hDropP;
-    int numUpdates, numAnnealUpdates, miniBatchSize, checkInterval;
+    double initStepSize, // step size, constant unless no progress observed, then decreased
+			maxMomentum, // momentum reaches this value by the end of training (before annealing)
+			minMomentum, // initial momentum value
+			maxUpdate, // maximum l2 norm of update (including momentum). Updates truncated if larger than this
+			l2; // l2 regularization, aka weight decay
+    double iDropP, // dropout probability for input layer
+			hDropP; // dropout probability for hidden layers
+    int numUpdates, // total number of updates before annealing phase
+			numAnnealUpdates, // number of updates in annealing phase
+		                    // during which momentum and step size both decrease to zero 
+			miniBatchSize, // number of instances in each minibatch
+			checkInterval; // number of updates between console outputs
 
     PretrainType pretrainType;
 
@@ -85,23 +101,29 @@ private:
   int _iSize, _oSize;
   vector<int> _hSize;
 
+	// activation function of input layer
   Layer::ActFunc _iActFunc;
+
+	// activation function of hidden layers
   vector<Layer::ActFunc> _hActFunc;
   
   // number of layers (not including input)
   int _numLayers;
 
+	// layers
   mutable vector<Layer> _layers;
 
   // all model parameters
   AllocatingVector _params, _deltaParams, _savedParams;
 
-  vector<MutableMatrix> _W;
-  vector<MutableVector> _B;
-  vector<MutableMatrix> _deltaW;
-  vector<MutableVector> _deltaB;
-  vector<MutableMatrix> _savedW;
-  vector<MutableVector> _savedB;
+  vector<MutableMatrix> _W; // weight matrices for each layer
+  vector<MutableVector> _B; // biases for each layer
+  vector<MutableMatrix> _deltaW; // cumulative weight update for each layer (with momentum)
+  vector<MutableVector> _deltaB; // cumulative bias update for each layer (with momentum)
+  vector<MutableMatrix> _savedW; // saved weights
+  vector<MutableVector> _savedB; // saved biases
+
+	// vectors pointing to all parameters _W and _B for each layer (and deltas and saved)
   vector<MutableVector> _layerParams, _layerDeltaParams, _layerSavedParams;
 
   // space for temporary values during CD training
@@ -112,12 +134,15 @@ private:
   mutable AllocatingVector _tempVec;
   mutable Layer _tempTopLayer, _tempBottomLayer;
 
+	// apply weight decay and return weighted squared L2 norm
   static double Decay(MutableVector & v, double alpha, double step) {
     double val = 0.5 * alpha * (v * v);
+		// decay amount is scaled by step size
     if (step * alpha > 0) v *= (1.0 - step * alpha);
     return val;
   }
 
+	// initialize the weights and biases
   void InitLayer(int layer) {
     if (sparseInitLayer) {
       // sparse initialization strategy from Martens, 2010
@@ -152,16 +177,23 @@ private:
 #endif
   }
 
+	// base class of functions to be optimized with SGD
+	// stores parameters and input and output layers
   class TrainingFunction {
   protected:
+		// DBN whose parameters we are training
     DBN & _dbn;
 
+		// input and output data
     MMapMatrix _input, _output;
 
+		// pointers to parameters
     MutableVector _params, _deltaParams, _savedParams;
 
+		// temporary input and output matrices for making edge-case minibatches
     AllocatingMatrix _tempInput, _tempOutput;
 
+		// training hyperparameters
     const HyperParams & _hyperParams;
 
     TrainingFunction(DBN & dbn, const MMapMatrix & input, const MMapMatrix & output, const HyperParams & hyperParams, MutableVector & params, MutableVector & deltaParams, MutableVector & savedParams)
@@ -172,9 +204,11 @@ private:
       :
     _dbn(dbn), _hyperParams(hyperParams), _input(), _output(output), _params(params), _deltaParams(deltaParams), _savedParams(savedParams) { }
 
+		// to be overridden in subclasses, implementing the specific training function update
     virtual double PrivateEval(Matrix inputMiniBatch, Matrix outputMiniBatch, double stepSize) = 0;
 
   public:
+		// evaluate the function on the entire dataset and return the value (performing no update)
     double Eval() {
 #if 0
       return PrivateEval(_input, _output, 0) / _output.NumC() + Decay(_params, _hyperParams.l2, 0);
@@ -193,6 +227,9 @@ private:
 #endif
     }
 
+		// update the parameters using a minibatch beginning from instance start
+		// with the specified step size, max update and momentum
+		// calls PrivateEval for actual evaluation and gradient computation
     double Update(int start, double stepSize, double maxUpdate, double momentum) {
       int numIns = _output.NumC();
       start %= numIns;
@@ -227,20 +264,24 @@ private:
       return val / miniBatchSize + Decay(_params, _hyperParams.l2, stepSize);
     }
 
+		// save parameters
     void Save() {
       _savedParams.CopyFrom(_params);
     }
 
+		// load saved parameters
     void Restore() {
       _params.CopyFrom(_savedParams);
     }
 
+		// reset saved and delta parameters
     virtual void Init() {
       _savedParams.CopyFrom(_params);
       _deltaParams *= 0;
     }
   };
 
+	// base class for training functions that operate on a single layer's parameters
   class LayerTrainingFunction : public TrainingFunction {
   protected:
     int _layer;
@@ -256,10 +297,11 @@ private:
     }
   };
 
+	// training function to implement the contrastive divergence update
   class CDTrainingFunction : public LayerTrainingFunction {
   protected:
     AllocatingMatrix _particles;
-
+		
     virtual double PrivateEval(Matrix inputMiniBatch, Matrix outputMiniBatch, double stepSize) {
       return _dbn.UpdateCD(outputMiniBatch, _inputBiases, _layer, stepSize);
     }
@@ -272,6 +314,7 @@ private:
     }
   };
 
+	// training function to implement denoising autoencoder update
   class AETrainingFunction : public LayerTrainingFunction {
     //    AllocatingMatrix _distortedInput;
 
@@ -285,6 +328,8 @@ private:
       : LayerTrainingFunction(dbn, layer, trainData, hyperParams, lowerActFunc)
     {
       if (fixTrainDistortion) {
+				// precompute the distorted input data on the whole dataset and save it
+				// if fixTrainDistortion is false, new noisy input will be created for each update
 #if 1
 	MMapMatrix _distortedInput(trainData.NumR(), trainData.NumC(), trainData.NumR());
 	int input_NumC = trainData.NumC();
@@ -307,10 +352,12 @@ private:
     }
   };
 
+	// training function for backpropagation training
   class BPTrainingFunction : public TrainingFunction {
-    AllocatingMatrix _errors;
+    AllocatingMatrix _errors; // I think this is not referenced
 
   private:
+		// training objective (squared error or softmax)
     ObjectiveType _objectiveType;
 
   protected:
@@ -325,11 +372,13 @@ private:
       _objectiveType(objectiveType)
     { }
   };
-
+	
+	// training function for output layer before full backpropagation
   class OutputLayerTrainingFunction : public TrainingFunction {
-    AllocatingMatrix _errors;
+    AllocatingMatrix _errors; // I think this is not referenced
 
   private:
+		// training objective (squared error or softmax)
     ObjectiveType _objectiveType;
 
   protected:
@@ -345,6 +394,7 @@ private:
     { }
   };
 
+	// implments stochastic gradient descent training with momentum
   void TrainSGD(TrainingFunction & trainer, const HyperParams & hyperParams) {
     double stepSize = hyperParams.initStepSize;
     bool quiet = false;
@@ -353,7 +403,7 @@ private:
 
     trainer.Init();
 
-    // get a baseline
+    // get a baseline score by evaluating on the whole dataset
     double bestTrainScore = trainer.Eval();
 
     if (!quiet) cout << "Baseline score: " << bestTrainScore << endl;
@@ -378,6 +428,7 @@ private:
         break;
       }
 
+			// step size did not yield improvement, so it is probably too large
       stepSize /= 2;
       if (stepSize < MIN_STEP_SIZE) {
 	error("ERROR: step size < %f; giving up\n", MIN_STEP_SIZE);
@@ -397,6 +448,7 @@ private:
       totalScore += trainer.Update(startInstance, stepSize, hyperParams.maxUpdate, momentum);
       startInstance += hyperParams.miniBatchSize;
 
+			// output online training objective value regularly
       if (checkSignal || !quiet && t % hyperParams.checkInterval == 0) {
         double score = totalScore / hyperParams.checkInterval;
         cout << "Step: " << t << endl;
@@ -426,8 +478,12 @@ private:
 
   }
 
+	// perform the backpropagation update to update the weights of all layers
+	// if lastLayerOnly, then backpropagation is terminated after updating the output layer
   double UpdateBackProp(const Matrix & input, const Matrix & output, ObjectiveType _objType, bool lastLayerOnly, double iDropP, double hDropP, double stepSize) {
     int startLayer = lastLayerOnly ? _numLayers - 1 : 0;
+
+		// the input matrix (which may be altered if dropout is used
     Matrix altInput;
     if (iDropP > 0) {
       _tempDropoutInput.CopyFrom(input);
@@ -437,12 +493,13 @@ private:
       altInput = input;
     }
 
+		// map the data up to the output layer
     Matrix mappedInput = MapUp(altInput, hDropP, startLayer);
 
     double loss = 0;
 
+		// compute the loss, depending on objective type
     // _tempMat is used to store the gradient w.r.t. the outputs at each layer
-
     switch (_objType) {
     case SQ_ERR:
       _tempMat.CopyFrom(mappedInput);
@@ -479,16 +536,20 @@ private:
     }
 
     if (stepSize > 0) {
+			// backpropagate errors
       Matrix mappedError = _layers.back().ComputeErrors(_tempMat, Layer::ActFunc::LINEAR);
       for (int l = _numLayers - 1; ; --l) {
         for (int i = 0; i < input.NumC(); ++i) _deltaB[l] += mappedError.GetCol(i) * stepSize;
 
-	const Matrix & lowerProbs = l > startLayer ? _layers[l - 1].Activations() : altInput;
+				// inputs to this layer
+				const Matrix & lowerProbs = l > startLayer ? _layers[l - 1].Activations() : altInput;
 
+				// perform actual update
         _deltaW[l] += stepSize * lowerProbs * mappedError.Trans();
 
         if (lastLayerOnly || l == 0) break;
 
+				// backpropagate error
         _tempMat = _W[l] * mappedError;
         mappedError = _layers[l-1].ComputeErrors(_tempMat, _hActFunc[l-1]);
       }
@@ -497,6 +558,8 @@ private:
     return loss;
   }
 
+	// determine biases used for input during pretraining (either autoencoder or contrastive divergence)
+	// essentially minimizes the loss for a zero weight matrix
   static void InitializeInputBiases(MMapMatrix & input, AllocatingVector & inputBiases, Layer::ActFunc actFunc, double eps) {
     int n = input.NumC();
     inputBiases.Assign(input.NumR(), 0);
@@ -572,6 +635,7 @@ assert(!std::isnan(inputBiases[r]));
 #endif
   }
 
+	// update the layer's parameters using contrastive divergence
   double UpdateCD(const Matrix & input, const Vector & inputBiases, int layer, double stepSize) {
     Layer::ActFunc lowerActFunc = (layer == 0) ? _iActFunc : _hActFunc[layer-1];
 
@@ -590,6 +654,7 @@ assert(!std::isnan(inputBiases[r]));
     _tempTopLayer.ActivateUp(weights, topBiases, _tempBottomSample, _hActFunc[layer]);
 
     if (stepSize > 0) {
+			// actually perform update
       Matrix topProbsP = topLayer.Activations(), topProbsN = _tempTopLayer.Activations();
 
       _deltaW[layer] -= stepSize * input * topProbsP.Trans();
@@ -607,6 +672,7 @@ assert(!std::isnan(inputBiases[r]));
     return _tempBottomSample.Vec() * _tempBottomSample.Vec();
   }
 
+	// update layer's parameters using the autoencoder loss
   double UpdateAE(const Matrix & input, const Vector & inputBiases, const Matrix & targetInput, int layer, double stepSize) {
     Layer::ActFunc lowerActFunc = (layer == 0) ? _iActFunc : _hActFunc[layer-1];
 
@@ -618,7 +684,8 @@ assert(!std::isnan(inputBiases[r]));
 
     double negll = _tempBottomLayer.ActivateDownAndGetNegLL(weights, inputBiases, topProbs, targetInput, lowerActFunc);
     if (stepSize > 0) {
-      // fill bottomProbs with errors
+      // fill bottomProbs with errors = activations - input
+			// it is independent of activation type
       MutableMatrix & bottomProbs = _tempBottomLayer.Activations();
       bottomProbs -= targetInput;
 
@@ -643,6 +710,7 @@ public:
     Initialize(numLayers, iSize, hSize, oSize, iActFunc, hActFunc);
   }
 
+	// allocate memory for parameters and activations at all layers
   void Initialize(int numLayers, int iSize, vector<int> &hSize, int oSize, Layer::ActFunc iActFunc, vector<Layer::ActFunc> &hActFunc)
   {
     _numLayers = numLayers;
@@ -706,6 +774,7 @@ public:
     return _B[layer];
   }
 
+	// read all parameters from disk
   void Deserialize(istream & inStream) {
     inStream.read((char *) &_numLayers, sizeof(int));
     inStream.read((char *) &_iSize, sizeof(int));
@@ -719,6 +788,7 @@ public:
     inStream.read((char *) _params.Start(), sizeof(double) * _params.Len());
   }
 
+	// write all parameters to disk
   void Serialize(ostream & outStream) const {
     outStream.write((const char *) &_numLayers, sizeof(int));
     outStream.write((const char *) &_iSize, sizeof(int));
@@ -729,12 +799,14 @@ public:
     outStream.write((const char *) _params.Start(), sizeof(double) * _params.Len());
   }
 
+	// randomize parameters
   void Randomize(double stdDev) {
     _params.Apply([&] (double x) { return rnd.normal() * stdDev; });
   }
 
   int NumLayers() const { return _numLayers; }
 
+	// total number of parameters
   int NumParams() const {
     int numParams = 0;
     for (int layer = 0; layer < _numLayers; ++layer) numParams += NumParamsInLayer(layer);
@@ -742,6 +814,7 @@ public:
     return numParams;
   }
 
+	// number of parameters in a given layer
   int NumParamsInLayer(int layer) const {
     assert (0 <= layer && layer < _numLayers);
     if (_numLayers == 1) return (_iSize + 1) * _oSize;
@@ -750,16 +823,20 @@ public:
     else return (_hSize[layer-1] + 1) * _hSize[layer];
   }
 
+	// output size of a layer
   int LayerOutSize(int layer) const {
     assert (0 <= layer && layer < _numLayers);
     return (layer < _numLayers - 1) ? _hSize[layer] : _oSize;
   }
 
+	// expected input size of a layer
   int LayerInSize(int layer) const {
     assert (0 <= layer && layer < _numLayers);
     return (layer == 0) ? _iSize : _hSize[layer-1];
   }
 
+	// given an input matrix to a given layer, compute the output matrix
+	// by multiplying by weights and adding biases
   MMapMatrix MapLayer(MMapMatrix &input, int layer) const {
     int miniBatchSize = nnChunkSize * ((1<<20) / sizeof(double)) / input.Ld();
     if (miniBatchSize < 1) miniBatchSize = 1;
@@ -773,10 +850,14 @@ public:
     return output;
   }
 
+	// given an input matrix to a given layer, compute the output matrix
+	// by multiplying by weights and adding biases
   Matrix MapLayer(const Matrix & input, int layer) const {
     return _layers[layer].ActivateUp(_W[layer], _B[layer], input, _hActFunc[layer]);
   }
 
+	// given an input matrix to a given layer, compute the output matrix of a higher layer
+	// by consecutively multiplying by weights and adding biases
   Matrix MapUp(const Matrix & input, double dropoutRate = 0, int startLayer = -1, int endLayer = -1) const {
     if (startLayer == -1) startLayer = 0;
     if (endLayer == -1) endLayer = _numLayers;
@@ -792,6 +873,7 @@ public:
     return mappedInput;
   }
 
+	// (Pretrain and) train parameters of entire network
   void Train(MMapMatrix & input, const MMapMatrix & output, ObjectiveType objectiveType, bool quiet, const vector<HyperParams> & hyperParams_pt, const HyperParams & hyperParams_bp) {
     MMapMatrix mappedInput = input;
     if (!quiet) {
@@ -852,8 +934,7 @@ public:
       TrainSGD(outputFunc, hyperParams_pt.back());
     }
 
-    // and now, fine tune
-
+    // and now, fine tune all layers with backpropagation
     if (!quiet) {
       cout << "Fine tuning" << endl;
     }
@@ -861,6 +942,7 @@ public:
     BPTrainingFunction bpFunc(input, output, *this, hyperParams_bp, objectiveType);
     TrainSGD(bpFunc, hyperParams_bp);
 
+		// renormalize weights if dropout training was used
     if (hyperParams_bp.iDropP > 0) _W[0] *= (1 - hyperParams_bp.iDropP);
     if (hyperParams_bp.hDropP > 0) {
       for (int l = 1; l < _W.size(); ++l) {

@@ -8,8 +8,26 @@
 
 using namespace std;
 
+// The Layer class holds the activations of a layer
+// and is responsible for computing them and backpropagating error
 class Layer {
 public:
+
+	// The ActFunc struct stores a type of activation function
+	// and performs the operations pertinant to it
+	// 
+	// possible activation functions:
+	// LOG_SIG: logistic sigmoid (1+exp(-x))^{-1}
+	// TANH: hyperbolic tangent
+	// CUBIC: modified cube root, described in Andrew et al., 2013
+	// LINEAR: identity function
+	// RECT_LIN: rectified linear activation
+	// 
+	// Operations include
+	//   evaluating the function,
+	//   multiplying by the derivative (for backpropagation)
+	//   sampling a value, if it is interpreted as the parameter of a distribution
+  //      (LINEAR and CUBIC are mean of Gaussian, LOG_SIG is p of Bernoulli)
   struct ActFunc {
     enum ActType { LOG_SIG, TANH, CUBIC, LINEAR, RECT_LIN } actType;
 
@@ -35,6 +53,7 @@ public:
       return negate ? -newX : newX;
     }
 
+		// compute function value on all inputs
     void Apply(const MutableVector & inputs) {
       switch (actType) {
 
@@ -74,6 +93,8 @@ public:
       }
     }
 
+		// compute function on all inputs, and return negative log-likelihood
+		// of single-parameter distribution evaluated on label vector
     double ApplyAndGetNegLL(const MutableVector & inputs, const Vector & labels) {
       double negll = 0;
 
@@ -138,6 +159,8 @@ public:
       return negll;
     }
 
+		// Given incoming error vector (derivative of loss wrt output)
+		// multiply by derivative to produce derivative of loss wrt input
     void ComputeErrors(const MutableVector & activations, const Vector & inError) {
       switch (actType) {
 
@@ -216,6 +239,7 @@ public:
 private:
   AllocatingMatrix _a;
 
+	// compute the input values by multiplying by weights and adding biases
   void ComputeInputs(const Matrix & weights, const Vector & biases, const Matrix & values, bool trans) {
     int numIns = values.NumC();
     int size = trans ? weights.NumC() : weights.NumR();
@@ -227,28 +251,33 @@ private:
 public:
   Layer() { }
 
+	// compute inputs and apply activation function
   Matrix ActivateUp(const Matrix & weights, const Vector & biases, const Matrix & lowerValues, ActFunc actFunc) {
     ComputeInputs(weights, biases, lowerValues, true);
     actFunc.Apply(_a.Vec());
     return _a;
   }
 
+	// dropout values
   const Matrix & Dropout(double dropP) {
     _a.Vec().Apply([&] (double a) { return rnd.drand48() > dropP ? a : 0; });
     return _a;
   }
 
+	// compute activation downward, and return the negative log-likelihood, for autoencoder training
   double ActivateDownAndGetNegLL(const Matrix & weights, const Vector & biases, const Matrix & upperValues, const Matrix & lowerValues, ActFunc actFunc) {
     ComputeInputs(weights, biases, upperValues, false);
     return actFunc.ApplyAndGetNegLL(_a.Vec(), lowerValues.Vec());
   }
-
+	
+	// compute activations downward
   const Matrix & ActivateDown(const Matrix & weights, const Vector & biases, const Matrix & upperValues, ActFunc actFunc) {
     ComputeInputs(weights, biases, upperValues, false);
     actFunc.Apply(_a.Vec());
     return _a;
   }
 
+	// multiply errors by derivative, for backpropagation
   const Matrix & ComputeErrors(const Matrix & inError, ActFunc actFunc) {
     actFunc.ComputeErrors(_a.Vec(), inError.Vec());
     return _a;
