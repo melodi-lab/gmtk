@@ -431,7 +431,7 @@ private:
 			// step size did not yield improvement, so it is probably too large
       stepSize /= 2;
       if (stepSize < MIN_STEP_SIZE) {
-	error("ERROR: step size < %f; giving up\n", MIN_STEP_SIZE);
+	error("ERROR: step size < %e does not improve check score; giving up\n", MIN_STEP_SIZE);
       }
       if (!quiet) cout << "Step size reduced to " << stepSize << endl;
       trainer.Restore();
