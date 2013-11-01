@@ -95,8 +95,9 @@ GMTK_UpsampleFilter.h GMTK_UpsampleFilter.cc \
 GMTK_UpsampleSmoothFilter.h GMTK_UpsampleSmoothFilter.cc \
 GMTK_AffineFilter.h GMTK_AffineFilter.cc \
 GMTK_TrainingSchedule.h GMTK_TrainingSchedule.cc \
-GMTK_RandomSampleSchedule.h 
-#GMTK_PermutationSchedule.h
+GMTK_RandomSampleSchedule.h \
+GMTK_LinearSchedule.h \
+GMTK_PermutationSchedule.h
 
 check_PROGRAMS = \
 testPFileFile \

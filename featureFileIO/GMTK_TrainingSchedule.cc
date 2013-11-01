@@ -23,6 +23,7 @@ TrainingSchedule::TrainingSchedule(unsigned feature_offset, unsigned features_pe
       unit_size(unit_size), obs_source(obs_source), num_units_dispensed(0)
 {
   assert(obs_source);
+  assert(unit_size);
   if (window_radius > obs_source->startSkip()) {
     error("ERROR: -startSkip must be >= %u to support requested window radius\n", window_radius);
   }
@@ -56,7 +57,17 @@ TrainingSchedule::TrainingSchedule(unsigned feature_offset, unsigned features_pe
     // Because startSkip & endSkip frames exist, all frames counted by
     // numFrames() are viable for unit size == 1 frame. Larger units
     // exclude the last unit_size - 1 frames.
-    num_viable_units += obs_source->numFrames() - unit_size + 1;
+    unsigned num_frames = obs_source->numFrames();
+    unsigned units;
+    if (num_frames == 0) {
+      warning("WARNING: segment %u contains no frames\n", i);
+      units = 0;
+    } else if (num_frames >= unit_size) {
+      units = num_frames - unit_size + 1;
+    } else {
+      units = 1; // it will be short
+    }
+    num_viable_units += units;
     (*trrng_it)++;
   }
   delete trrng_it;
@@ -66,22 +77,25 @@ TrainingSchedule::TrainingSchedule(unsigned feature_offset, unsigned features_pe
   } else {
     heated_labels = NULL;
   }
+  obs_source->openSegment( trrng->first() );
 }
 
 
 float *
-TrainingSchedule::getLabels(unsigned segment, unsigned frame) {
+TrainingSchedule::getLabels(unsigned segment, unsigned frame, unsigned &length) {
   segment = trrng->index(segment);
   if (!obs_source->openSegment(segment)) {
     error("ERROR: Unable to open observation file segment %u\n", segment);
   } 
-  (void) obs_source->loadFrames(frame, unit_size); // ensure necessary data is in memory
+  unsigned num_frames = obs_source->numFrames();
+  length = (num_frames > frame + unit_size - 1) ? unit_size : num_frames - frame;
+  (void) obs_source->loadFrames(frame, length); // ensure necessary data is in memory
   if (one_hot) {
     memset(heated_labels, 0, label_domain_size * unit_size * sizeof(float));
     unsigned *labels = obs_source->unsignedVecAtFrame(frame) + 
       label_offset - obs_source->numContinuous();
     float *dest = heated_labels;
-    for (unsigned i=0; i < unit_size; i+=1, labels += stride, dest += label_domain_size) {
+    for (unsigned i=0; i < length; i+=1, labels += stride, dest += label_domain_size) {
       unsigned label = *labels;
       if (label >= label_domain_size) {
 	error("ERROR: observed label %u at frame %u in segment %u is too large for label domain size %u\n", label, frame, segment, label_domain_size);

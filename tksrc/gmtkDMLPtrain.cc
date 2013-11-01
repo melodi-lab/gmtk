@@ -5,6 +5,7 @@
  *
  * Copyright (C) 2013 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  */
 
@@ -28,7 +29,6 @@
 #include "arguments.h"
 #include "ieeeFPsetup.h"
 #include "debug.h"
-//#include "spi.h"
 #include "version.h"
 
 #if HAVE_CONFIG_H
@@ -60,6 +60,8 @@ VCID(HGID)
 #include "GMTK_Filter.h"
 #include "GMTK_Stream.h"
 #include "GMTK_RandomSampleSchedule.h"
+#include "GMTK_LinearSchedule.h"
+#include "GMTK_PermutationSchedule.h"
 
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_GaussianComponent.h"
@@ -332,33 +334,41 @@ main(int argc,char*argv[])
 	    labelOffset, outputSize, gomFS->numContinuous());
     }
   }
-  RandomSampleSchedule rss(obsOffset, numFeaturesPerFrame,
-			   labelOffset, outputSize, oneHot, radius, 
-			   1, gomFS, trrng_str);
 
+  TrainingSchedule *trainSched;
+  if (strcasecmp(trainingSchedule, "linear") == 0) {
+    trainSched = new LinearSchedule(obsOffset, numFeaturesPerFrame, labelOffset, outputSize, oneHot, radius, 1, gomFS, trrng_str);
+  } else if (strcasecmp(trainingSchedule, "random") == 0) {
+    trainSched = new RandomSampleSchedule(obsOffset, numFeaturesPerFrame, labelOffset, outputSize, oneHot, radius, 1, gomFS, trrng_str);
+  } else if (strcasecmp(trainingSchedule, "permute") == 0) {
+    trainSched = new PermutationSchedule(obsOffset, numFeaturesPerFrame, labelOffset, outputSize, oneHot, radius, 1, gomFS, trrng_str);
+  } else {
+    error("ERROR: unknown training schedule '%s', must be one of linear, random, or permute\n", trainingSchedule);
+  }
 
-  unsigned numUnits = rss.numTrainingUnits();
+  unsigned numUnits = trainSched->numTrainingUnitsPerEpoch();
 
   unsigned features_per_instance, instances_per_unit, dataSize, labelSize, labelStride;
-  rss.describeFeatures(features_per_instance, instances_per_unit);
+  trainSched->describeFeatures(features_per_instance, instances_per_unit);
   dataSize = features_per_instance * instances_per_unit;
   double *ddata = new double[dataSize];
 
-  rss.describeLabels(features_per_instance, instances_per_unit, labelStride);
-  labelSize = instances_per_unit * labelStride;
+  trainSched->describeLabels(features_per_instance, instances_per_unit, labelStride);
+  labelSize = instances_per_unit * features_per_instance;
   double *dlabel = new double[labelSize];
 
   MMapMatrix   trainData(inputSize,  numUnits, inputSize);
   MMapMatrix trainLabels(outputSize, numUnits, outputSize);
 
   unsigned segment, frame, destCol = 0;
-  for (unsigned b=0; b < numUnits && rss.nextTrainingUnit(segment, frame); b+=1) {
-
-    float *data = rss.getFeatures(segment, frame);
+  for (unsigned b=0; b < numUnits; b+=1) {
+    unsigned length;
+    trainSched->nextTrainingUnit(segment, frame);
+    float *data = trainSched->getFeatures(segment, frame, length);
     for (unsigned i=0; i < dataSize; i+=1) ddata[i] = (double) data[i];
     trainData.PutCols(ddata, 1, inputSize, inputSize, destCol);
 
-    data = rss.getLabels(segment, frame);
+    data = trainSched->getLabels(segment, frame, length);
     for (unsigned i=0; i < labelSize; i+=1) dlabel[i] = (double) data[i];
     trainLabels.PutCols(dlabel, 1, outputSize, labelStride, destCol);
 
