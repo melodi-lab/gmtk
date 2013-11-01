@@ -1764,7 +1764,7 @@ static double   bpInitStepSize = 1e-2;
 static double   bpMinMomentum = 0.5;
 static double   bpMaxMomentum = 0.99;
 static double   bpMaxUpdate = 0.1;
-static double   bpL2 = 1e-3;
+static double   bpL2 = 0;
 static unsigned bpNumUpdates = 25000;
 static unsigned bpNumAnnealUpdates = 10000;
 static unsigned bpMiniBatchSize = 10;
@@ -1778,7 +1778,7 @@ static double   ptInitStepSize = 1e-2;
 static double   ptMinMomentum = 0.5;
 static double   ptMaxMomentum = 0.99;
 static double   ptMaxUpdate = 0.1;
-static double   ptL2 = 1e-3;
+static double   ptL2 = 0;
 static unsigned ptNumUpdates = 25000;
 static unsigned ptNumAnnealUpdates = 10000;
 static unsigned ptMiniBatchSize = 10;
@@ -1789,6 +1789,8 @@ static DBN::PretrainType pretrainMode;
 static char const *pretrainActFuncStr = "linear";
 static Layer::ActFunc iActFunc;
 
+static char const *trainingSchedule = "linear";
+
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
 Arg("nnChunkSize", Arg::Opt, DBN::nnChunkSize, "Size in MB to use for incremental DeepNN matrix operations"),
@@ -1798,7 +1800,7 @@ Arg("oneHot", Arg::Opt, oneHot, "If true, labelOffset is the single discrete cor
                                 "else the parent distribution starts ate labelOffset"),
 Arg("sparseInitLayer", Arg::Opt, DBN::sparseInitLayer, "Use sparse or dense initilization strategy (dense is better for rectified linear)"),
 
-
+Arg("trainingSchedule", Arg::Opt, trainingSchedule, "Order to process training data (linear, random, permute)"),
 Arg("pretrainType", Arg::Opt, pretrainType, "Pretraining type (none, AE, CD)"),
 Arg("pretrainActFunc", Arg::Opt, pretrainActFuncStr, "Pretraining input activation function (sig, tanh, cubic, linear, rect)"),
 Arg("tempDir", Arg::Opt, MMapMatrix::dmlpTempDir, "Directory to store temp files if $GMTKTMPDIR environment variable is not set"),
