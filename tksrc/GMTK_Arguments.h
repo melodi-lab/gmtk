@@ -1765,8 +1765,10 @@ static double   bpMinMomentum = 0.5;
 static double   bpMaxMomentum = 0.99;
 static double   bpMaxUpdate = 0.1;
 static double   bpL2 = 0;
-static unsigned bpNumUpdates = 25000;
-static unsigned bpNumAnnealUpdates = 10000;
+static float    bpNumEpochs = 1.0,
+                bpEpochFraction = 1.0;        // fraction of bpNum[Anneal]Epochs to do in this gmtkDMLPtrain invocation
+static float    bpNumAnnealEpochs = 1.0, 
+                bpAnnealEpochFraction = 1.0; 
 static unsigned bpMiniBatchSize = 10;
 static unsigned bpCheckInterval = 2000;
 static double   bpIdropP = 0;
@@ -1779,8 +1781,8 @@ static double   ptMinMomentum = 0.5;
 static double   ptMaxMomentum = 0.99;
 static double   ptMaxUpdate = 0.1;
 static double   ptL2 = 0;
-static unsigned ptNumUpdates = 25000;
-static unsigned ptNumAnnealUpdates = 10000;
+static float    ptNumEpochs = 1.0;
+static float    ptNumAnnealEpochs = 1.0;
 static unsigned ptMiniBatchSize = 10;
 static unsigned ptCheckInterval = 2000;
 
@@ -1803,21 +1805,8 @@ Arg("sparseInitLayer", Arg::Opt, DBN::sparseInitLayer, "Use sparse or dense init
 Arg("trainingSchedule", Arg::Opt, trainingSchedule, "Order to process training data (linear, random, permute)"),
 Arg("pretrainType", Arg::Opt, pretrainType, "Pretraining type (none, AE, CD)"),
 Arg("pretrainActFunc", Arg::Opt, pretrainActFuncStr, "Pretraining input activation function (sig, tanh, cubic, linear, rect)"),
+Arg("resumeTraining", Arg::Opt, DBN::resumeTraining, "Continue training specified deep VE CPT rather than starting from scratch"),
 Arg("tempDir", Arg::Opt, MMapMatrix::dmlpTempDir, "Directory to store temp files if $GMTKTMPDIR environment variable is not set"),
-
-Arg("\n*** DMLP backprob hyperparameters ***\n"),
-
-Arg("bpInitStepSize", Arg::Opt, bpInitStepSize, "Backprop: Initial step size hyperparameter"),
-Arg("bpMinMomentum", Arg::Opt, bpMinMomentum, "Backprop: Minimum momentum hyperparameter"),
-Arg("bpMaxMomentum", Arg::Opt, bpMaxMomentum, "Backprop: Maximum momentum hyperparameter"),
-Arg("bpMaxUpdate", Arg::Opt, bpMaxUpdate, "Backprop: Maximum update hyperparameter"),
-Arg("bpL2", Arg::Opt, bpL2, "Backprop: l2 hyperparameter"),
-Arg("bpNumUpdates", Arg::Opt, bpNumUpdates, "Backprop: Number of updates hyperparameter"),
-Arg("bpNumAnnealUpdates", Arg::Opt, bpNumAnnealUpdates, "Backprop: Number of anneal updates hyperparameter"),
-Arg("bpMiniBatchSize", Arg::Opt, bpMiniBatchSize, "Backprop: Mini-batch size hyperparameter"),
-Arg("bpCheckInterval", Arg::Opt, bpCheckInterval, "Backprop: Check interval hyperparameter"),
-Arg("bpIdropP", Arg::Opt, bpIdropP, "Backprop: dropout probability for input layer"),
-Arg("bpHdropP", Arg::Opt, bpHdropP, "Backprop: dropout probability for hidden layers"),
 
 Arg("\n*** DMLP pretraining hyperparameters ***\n"),
 
@@ -1826,10 +1815,26 @@ Arg("ptMinMomentum", Arg::Opt, ptMinMomentum, "Pretrain: Minimum momentum hyperp
 Arg("ptMaxMomentum", Arg::Opt, ptMaxMomentum, "Pretrain: Maximum momentum hyperparameter"),
 Arg("ptMaxUpdate", Arg::Opt, ptMaxUpdate, "Pretrain: Maximum update hyperparameter"),
 Arg("ptL2", Arg::Opt, ptL2, "Pretrain: l2 hyperparameter"),
-Arg("ptNumUpdates", Arg::Opt, ptNumUpdates, "Pretrain: Number of updates hyperparameter"),
-Arg("ptNumAnnealUpdates", Arg::Opt, ptNumAnnealUpdates, "Pretrain: Number of anneal updates hyperparameter"),
+Arg("ptNumEpochs", Arg::Opt, ptNumEpochs, "Pretrain: Number of epochs hyperparameter"),
+Arg("ptNumAnnealEpochs", Arg::Opt, ptNumAnnealEpochs, "Pretrain: Number of anneal epochs hyperparameter"),
 Arg("ptMiniBatchSize", Arg::Opt, ptMiniBatchSize, "Pretrain: Mini-batch size hyperparameter"),
 Arg("ptCheckInterval", Arg::Opt, ptCheckInterval, "Pretrain: Check interval hyperparameter"),
+
+Arg("\n*** DMLP backprob hyperparameters ***\n"),
+
+Arg("bpInitStepSize", Arg::Opt, bpInitStepSize, "Backprop: Initial step size hyperparameter"),
+Arg("bpMinMomentum", Arg::Opt, bpMinMomentum, "Backprop: Minimum momentum hyperparameter"),
+Arg("bpMaxMomentum", Arg::Opt, bpMaxMomentum, "Backprop: Maximum momentum hyperparameter"),
+Arg("bpMaxUpdate", Arg::Opt, bpMaxUpdate, "Backprop: Maximum update hyperparameter"),
+Arg("bpL2", Arg::Opt, bpL2, "Backprop: l2 hyperparameter"),
+Arg("bpNumEpochs", Arg::Opt, bpNumEpochs, "Backprop: Total epochs of training hyperparameter"),
+Arg("bpEpochFraction", Arg::Opt, bpEpochFraction, "Backprop: fraction of -bpNumEpochs to do in this invocation)"),
+Arg("bpNumAnnealEpochs", Arg::Opt, bpNumAnnealEpochs, "Backprop: Total epochs of anneal training hyperparameter"),
+Arg("bpAnnealEpochFraction", Arg::Opt, bpEpochFraction, "Backprop: fraction of -bpNumAnnealEpochs to do in this invocation"),
+Arg("bpMiniBatchSize", Arg::Opt, bpMiniBatchSize, "Backprop: Mini-batch size hyperparameter"),
+Arg("bpCheckInterval", Arg::Opt, bpCheckInterval, "Backprop: Check interval hyperparameter"),
+Arg("bpIdropP", Arg::Opt, bpIdropP, "Backprop: dropout probability for input layer"),
+Arg("bpHdropP", Arg::Opt, bpHdropP, "Backprop: dropout probability for hidden layers"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
@@ -1858,6 +1863,16 @@ Arg("ptCheckInterval", Arg::Opt, ptCheckInterval, "Pretrain: Check interval hype
   } else {
     error("%s: Unknown pretraining input activation function '%s', must be 'sig', 'tanh', 'cubic', 'linear', or 'rect'\n",
 	  argerr, pretrainActFuncStr);
+  }
+
+  if (bpEpochFraction <= 0.0 || 1.0 < bpEpochFraction) {
+    error("%s: -bpEpochFraction %e is invalid, it must be in (0,1]\n", bpEpochFraction);
+  }
+  if (bpAnnealEpochFraction <= 0.0 || 1.0 < bpAnnealEpochFraction) {
+    error("%s: -bpAnnealEpochFraction %e is invalid, it must be in (0,1]\n", bpAnnealEpochFraction);
+  }
+  if (DBN::resumeTraining && strcasecmp(pretrainType, "none")) {
+    error("%s: -resumeTraining T requires -pretrainType none\n", argerr);
   }
 
 #else

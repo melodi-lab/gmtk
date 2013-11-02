@@ -34,6 +34,7 @@ for training and testing.
 class DBN {
 public:
 
+  static bool     resumeTraining;  // should this invocation resume where the last left off?
   static bool     checkSignal;     // if true, print status as if end of check interval
   static bool     sparseInitLayer; // select layer initialization method
   static unsigned nnChunkSize;     // O(1) space to use for (non-minibatch) incremental processing
@@ -293,7 +294,11 @@ private:
     TrainingFunction(dbn, trainData, hyperParams, dbn._layerParams[layer], dbn._layerDeltaParams[layer], dbn._layerSavedParams[layer]),
       _layer(layer)
     {
-      DBN::InitializeInputBiases(trainData, _inputBiases, actFunc, 1e-3);
+      if (resumeTraining) {
+        _inputBiases.CopyFrom(dbn._B[layer]);
+      } else {
+	DBN::InitializeInputBiases(trainData, _inputBiases, actFunc, 1e-3);
+      }
     }
   };
 
@@ -710,6 +715,16 @@ public:
     Initialize(numLayers, iSize, hSize, oSize, iActFunc, hActFunc);
   }
 
+  // resume training with previously learned W and B
+  DBN(int numLayers, int iSize, vector<int> &hSize, int oSize, Layer::ActFunc iActFunc, vector<Layer::ActFunc> &hActFunc, vector<AllocatingMatrix> &W, vector<AllocatingVector> &B)
+  {
+    Initialize(numLayers, iSize, hSize, oSize, iActFunc, hActFunc);
+    for (int i=0; i < numLayers; i+=1) {
+      _W[i].CopyFrom(W[i]);
+      _B[i].CopyFrom(B[i]);
+    }
+  }
+
 	// allocate memory for parameters and activations at all layers
   void Initialize(int numLayers, int iSize, vector<int> &hSize, int oSize, Layer::ActFunc iActFunc, vector<Layer::ActFunc> &hActFunc)
   {
@@ -884,54 +899,57 @@ public:
       printf("\n");
     }
 
-    // pretrain hidden layers
-    for (int layer = 0; layer < _layers.size() - 1; ++layer) {
-      const HyperParams & hyperParams = hyperParams_pt[layer];
-      InitLayer(layer);
+    if (!resumeTraining) { // we only support resuming backprop, not pretraining
 
-      Layer::ActFunc lowerActFunc = (layer == 0) ? _iActFunc : _hActFunc[layer-1];
-      switch (hyperParams.pretrainType) {
-      case CD:
-        {
-          if (!quiet) {
-            cout << "Pretraining layer " << layer << " of size " << LayerInSize(layer) << "x" << LayerOutSize(layer) << " with CD" << endl;
-          }
-          CDTrainingFunction cdFunc(*this, layer, mappedInput, hyperParams, lowerActFunc);
-          TrainSGD(cdFunc, hyperParams);
-        }
-        break;
+      // pretrain hidden layers
+      for (int layer = 0; layer < _layers.size() - 1; ++layer) {
+	const HyperParams & hyperParams = hyperParams_pt[layer];
+	InitLayer(layer);
 	
-      case AE:
-        {
-          if (!quiet) {
-            cout << "Pretraining layer " << layer << " of size " << LayerInSize(layer) << "x" << LayerOutSize(layer) << " with AE" << endl;
-          }
-          AETrainingFunction aeFunc(*this, layer, mappedInput, hyperParams, lowerActFunc, true);
-          TrainSGD(aeFunc, hyperParams);
-        }
-        break;
-	
-      case NONE:
-        break;
-	
-      default:
-        abort();
-      }
-      int l = layer;
-      mappedInput = MapLayer(mappedInput, l);
-      if (layer > 0) _layers[layer - 1].Clear(); // save some memory
-    }
-
-    InitLayer(_layers.size() - 1);
-
-    if (hyperParams_pt.back().pretrainType != NONE) {
-      // pretrain output layer
-      if (!quiet) {
-        cout << "Pretraining output layer" << endl;
+	Layer::ActFunc lowerActFunc = (layer == 0) ? _iActFunc : _hActFunc[layer-1];
+	switch (hyperParams.pretrainType) {
+	case CD:
+	  {
+	    if (!quiet) {
+	      cout << "Pretraining layer " << layer << " of size " << LayerInSize(layer) << "x" << LayerOutSize(layer) << " with CD" << endl;
+	    }
+	    CDTrainingFunction cdFunc(*this, layer, mappedInput, hyperParams, lowerActFunc);
+	    TrainSGD(cdFunc, hyperParams);
+	  }
+	  break;
+	  
+	case AE:
+	  {
+	    if (!quiet) {
+	      cout << "Pretraining layer " << layer << " of size " << LayerInSize(layer) << "x" << LayerOutSize(layer) << " with AE" << endl;
+	    }
+	    AETrainingFunction aeFunc(*this, layer, mappedInput, hyperParams, lowerActFunc, true);
+	    TrainSGD(aeFunc, hyperParams);
+	  }
+	  break;
+	  
+	case NONE:
+	  break;
+	  
+	default:
+	  abort();
+	}
+	int l = layer;
+	mappedInput = MapLayer(mappedInput, l);
+	if (layer > 0) _layers[layer - 1].Clear(); // save some memory
       }
 
-      OutputLayerTrainingFunction outputFunc(mappedInput, output, *this, hyperParams_pt.back(), objectiveType);
-      TrainSGD(outputFunc, hyperParams_pt.back());
+      InitLayer(_layers.size() - 1);
+      
+      if (hyperParams_pt.back().pretrainType != NONE) {
+	// pretrain output layer
+	if (!quiet) {
+	  cout << "Pretraining output layer" << endl;
+	}
+
+	OutputLayerTrainingFunction outputFunc(mappedInput, output, *this, hyperParams_pt.back(), objectiveType);
+	TrainSGD(outputFunc, hyperParams_pt.back());
+      }
     }
 
     // and now, fine tune all layers with backpropagation
