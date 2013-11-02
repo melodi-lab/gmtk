@@ -277,7 +277,37 @@ main(int argc,char*argv[])
       error("Error: unknown activation function\n");
     }
   }
-  DBN dbn(numLayers, inputSize, hiddenSize, outputSize, iActFunc, hActFunc);
+
+  vector<AllocatingMatrix> W(numLayers);
+  vector<AllocatingVector> B(numLayers);
+  for (unsigned j=0; j < numLayers; j+=1) {
+    double *params;
+    int rows, cols;
+    cpt->getDeepNN()->getParams(j, rows, cols, params);
+    Matrix P(params, cols, rows, cols, false);
+    W[j].CopyFrom( P.SubMatrix(0, cols-1, 0, rows) ); // -1 for bias column
+    B[j].CopyFrom( P.GetRow(cols - 1) );
+  }
+  DBN dbn(numLayers, inputSize, hiddenSize, outputSize, iActFunc, hActFunc, W, B);
+
+
+  unsigned radius = cpt->windowRadius();
+  gomFS->setMinPastFrames( radius );
+  gomFS->setMinFutureFrames( radius );
+
+  unsigned obsOffset = cpt->obsOffset();
+  unsigned numFeaturesPerFrame = cpt->numFeaturesPerFrame();
+
+  TrainingSchedule *trainSched;
+  if (strcasecmp(trainingSchedule, "linear") == 0) {
+    trainSched = new LinearSchedule(obsOffset, numFeaturesPerFrame, labelOffset, outputSize, oneHot, radius, 1, gomFS, trrng_str);
+  } else if (strcasecmp(trainingSchedule, "random") == 0) {
+    trainSched = new RandomSampleSchedule(obsOffset, numFeaturesPerFrame, labelOffset, outputSize, oneHot, radius, 1, gomFS, trrng_str);
+  } else if (strcasecmp(trainingSchedule, "permute") == 0) {
+    trainSched = new PermutationSchedule(obsOffset, numFeaturesPerFrame, labelOffset, outputSize, oneHot, radius, 1, gomFS, trrng_str);
+  } else {
+    error("ERROR: unknown training schedule '%s', must be one of linear, random, or permute\n", trainingSchedule);
+  }
 
   vector<DBN::HyperParams> pretrainHyperParams(numLayers);
   for (int j = 0; j < numLayers; j+=1) {
@@ -286,8 +316,8 @@ main(int argc,char*argv[])
     pretrainHyperParams[j].maxMomentum      = ptMaxMomentum;
     pretrainHyperParams[j].maxUpdate        = ptMaxUpdate;
     pretrainHyperParams[j].l2               = ptL2;
-    pretrainHyperParams[j].numUpdates       = ptNumUpdates;
-    pretrainHyperParams[j].numAnnealUpdates = ptNumAnnealUpdates;
+    pretrainHyperParams[j].numUpdates       = (int)(0.5 + (ptNumEpochs * trainSched->numInstances()) / ptMiniBatchSize);
+    pretrainHyperParams[j].numAnnealUpdates = (int)(0.5 + (ptNumAnnealEpochs * trainSched->numInstances()) / ptMiniBatchSize);
     pretrainHyperParams[j].miniBatchSize    = ptMiniBatchSize;
     pretrainHyperParams[j].checkInterval    = ptCheckInterval;
     pretrainHyperParams[j].iDropP           = 0; // no dropout in pretraining
@@ -301,19 +331,12 @@ main(int argc,char*argv[])
   bpHyperParams.maxMomentum      = bpMaxMomentum;
   bpHyperParams.maxUpdate        = bpMaxUpdate;
   bpHyperParams.l2               = bpL2;
-  bpHyperParams.numUpdates       = bpNumUpdates;
-  bpHyperParams.numAnnealUpdates = bpNumAnnealUpdates;
+  bpHyperParams.numUpdates       = (int)(0.5 + (bpNumEpochs * trainSched->numInstances()) / bpMiniBatchSize);
+  bpHyperParams.numAnnealUpdates = (int)(0.5 + (bpNumAnnealEpochs * trainSched->numInstances()) / bpMiniBatchSize);
   bpHyperParams.miniBatchSize    = bpMiniBatchSize;
   bpHyperParams.checkInterval    = bpCheckInterval;
   bpHyperParams.iDropP           = bpIdropP;
   bpHyperParams.hDropP           = bpHdropP;
-
-  unsigned radius = cpt->windowRadius();
-  gomFS->setMinPastFrames( radius );
-  gomFS->setMinFutureFrames( radius );
-
-  unsigned obsOffset = cpt->obsOffset();
-  unsigned numFeaturesPerFrame = cpt->numFeaturesPerFrame();
 
   if (oneHot) {
     if (labelOffset < gomFS->numContinuous()) {
@@ -333,17 +356,6 @@ main(int argc,char*argv[])
       error("ERROR: labelOffset (%u) + number of outputs (%u) is too large for the number of continuous features (%u)\n", 
 	    labelOffset, outputSize, gomFS->numContinuous());
     }
-  }
-
-  TrainingSchedule *trainSched;
-  if (strcasecmp(trainingSchedule, "linear") == 0) {
-    trainSched = new LinearSchedule(obsOffset, numFeaturesPerFrame, labelOffset, outputSize, oneHot, radius, 1, gomFS, trrng_str);
-  } else if (strcasecmp(trainingSchedule, "random") == 0) {
-    trainSched = new RandomSampleSchedule(obsOffset, numFeaturesPerFrame, labelOffset, outputSize, oneHot, radius, 1, gomFS, trrng_str);
-  } else if (strcasecmp(trainingSchedule, "permute") == 0) {
-    trainSched = new PermutationSchedule(obsOffset, numFeaturesPerFrame, labelOffset, outputSize, oneHot, radius, 1, gomFS, trrng_str);
-  } else {
-    error("ERROR: unknown training schedule '%s', must be one of linear, random, or permute\n", trainingSchedule);
   }
 
   unsigned numUnits = trainSched->numTrainingUnitsPerEpoch();

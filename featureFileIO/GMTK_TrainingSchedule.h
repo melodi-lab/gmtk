@@ -118,6 +118,10 @@ class TrainingSchedule {
   }
 
 
+  // Returns the number of training instances in the input data.
+  virtual unsigned numInstances() { return total_frames; }
+
+
   // Returns the number of viable training units in the input data.
   virtual unsigned numViableUnits() { return num_viable_units; }
 
