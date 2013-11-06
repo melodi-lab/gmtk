@@ -21,6 +21,21 @@ Other POSIX-like platforms might work too. See
 for full information on the available configure options.
 
 
+gmtkDMLPtrain requires a compiler with ISO C++ 2011 support. For
+GCC 4.5 or 4.6, use
+
+  CXX='g++ -std=c++0x' ./configure ...
+
+For GCC 4.7 and later, use
+
+  CXX='g++ -std=c++11' ./configure ...
+
+If you build GMTK with a compiler that does not support ISO C++ 2011,
+the gmtkDMLPtrain program will be skipped. You will also want to 
+use a good CBLAS implementation like MKL or ATLAS to get the best
+performance with gmtkDMLPtrain. See the relevant options in ./configure --help
+
+
 gmtkViz requires wxWidgets 2.9.1 or later. On most platforms, it
 will build automatically if a suitable wx-config in in your PATH.
 To build gmtkViz on OSX, use a 32-bit wxOSX_CARBON build of 
