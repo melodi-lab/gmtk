@@ -118,6 +118,10 @@ AC_ARG_ENABLE([continuous-cardinality-warning],
 
 AC_PROG_AWK
 
+if test -d .hg ; then
+  ./version.sh > version.info
+fi
+
 # Checks for libraries.
 
 m4_include([deepMLP/blas_args])
