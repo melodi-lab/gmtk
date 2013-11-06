@@ -70,12 +70,14 @@ AM_CPPFLAGS = \
 # make BINDIR available for warning message in GMTK_FileParser.cc for ticket 320
 
 LDADD = libGMTK.a libXOPT.a \
-$(builddir)/../deepMLP/libDMLP.a \
 $(builddir)/../featureFileIO/libgmtkio.a \
 $(builddir)/../miscSupport/libmiscSupport.a \
 $(builddir)/../IEEEFloatingpoint/libIEEEsupport.a
 if BUILD_PHIPAC
 LDADD += $(builddir)/../deepMLP/libPHiPAC.a
+endif
+if BUILD_DMLP
+LDADD += $(builddir)/../deepMLP/libDMLP.a
 endif
 
 LIBS += $(LEXLIB)
@@ -206,7 +208,6 @@ bin_PROGRAMS = \
 gmtkTime \
 gmtkJT \
 gmtkEMtrain \
-gmtkDMLPtrain \
 gmtkKernel \
 gmtkViterbi \
 gmtkTriangulate \
@@ -218,8 +219,8 @@ gmtkTie \
 gmtkModelInfo \
 gmtkOnline \
 gmtkPrint \
-$(GMTKVIZ) $(OSXBUNDLE)
-EXTRA_PROGRAMS = gmtkViz gmtkViz.app
+$(dmlp_programs) $(GMTKVIZ) $(OSXBUNDLE)
+EXTRA_PROGRAMS = gmtkDMLPtrain gmtkViz gmtkViz.app
 
 gmtkTie_SOURCES = gmtkTie.cc
 
@@ -232,7 +233,7 @@ gmtkEMtrain_SOURCES = gmtkEMtrain.cc
 
 gmtkDMLPtrain_SOURCES = gmtkDMLPtrain.cc
 gmtkDMLPtrain_CPPFLAGS = $(AM_CPPFLAGS) $(VERSIONFLAG)
-gmtkDMLPtrain_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) -std=c++0x $(EXCXXFLAGS) $(BLAS_CFLAGS)
+gmtkDMLPtrain_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(BLAS_CFLAGS)
 gmtkDMLPtrain_LDADD = $(LDADD)  $(BLAS_LIBS)
 
 
@@ -289,6 +290,7 @@ gmtkViz.app/Contents/PkgInfo: gmtkViz$(EXEEXT) $(srcdir)/Info.plist.in \
 endif
 
 check_PROGRAMS =  \
+flat2vit \
 parserTest \
 testPackCliqueValue \
 testViterbi \

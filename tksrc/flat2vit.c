@@ -1,6 +1,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 /* flat2vit var1 ... */
 
@@ -13,7 +14,7 @@ main(int argc, char *argv[]) {
   while (fscanf(stdin, "%u %u", &seg, &frame) == 2) {
     int i;
     for (i=0; i < n; i+=1)
-      fscanf(stdin, "%u", vals+i);
+      assert(fscanf(stdin, "%u", vals+i) == 1);
     for (i=0; i < n; i+=1)
       printf("seg %u: %s(%u)=%u\n", seg, argv[i+1], frame, vals[i]);
   }
