@@ -114,6 +114,21 @@ AC_CHECK_FILE([../.hg/dirstate],[
 ])
 AM_CONDITIONAL([HAVE_HG],[test  x$HAVE_HG = xyes])
 
+# Test if compiler accepts ISO C++ 2011.  This is required for
+# the DMLP training code.
+
+AC_MSG_CHECKING([for ISO C++ 2011 support])
+AC_LANG_PUSH([C++])
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[]], [[auto f = [] () { return 0;}; f()]])],
+  [AC_MSG_RESULT([yes])
+   AC_SUBST([dmlp_libraries],[../deepMLP/libDMLP.a])
+   AC_SUBST([dmlp_programs],[gmtkDMLPtrain])
+   AM_CONDITIONAL([BUILD_DMLP],[true])],
+  [AC_MSG_RESULT([no])
+   AC_WARN([C++ compiler does not support ISO C++ 2011 (you may need -std=c++0x or -std=c++11 depending on GCC version). gmtkDMLPtrain can't be built])
+   AM_CONDITIONAL([BUILD_DMLP],[false])])
+AC_LANG_POP([C++])
+
 # Checks for libraries.
 
 AC_ARG_ENABLE([gmtkViz], 

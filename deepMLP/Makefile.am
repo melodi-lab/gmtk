@@ -10,7 +10,7 @@
 DEBUGFLAGS = -ggdb3
 #OPTFLAGS = -O3 -march=native -mtune=native -mfpmath=sse -msse3 -flto
 OPTFLAGS = -O3 -march=native -mtune=native -mfpmath=sse -msse3
-ANSI = -std=c++0x
+ANSI = 
 #PEDANTIC = -pedantic
 #WARNING = -Wall
 
@@ -34,19 +34,16 @@ endif
 
 LIBS += $(BLAS_LIBS)
 
-noinst_LIBRARIES = libDMLP.a $(optional_libraries)
-EXTRA_LIBRARIES  = libPHiPAC.a
+noinst_LIBRARIES = $(dmlp_library) $(optional_libraries)
+EXTRA_LIBRARIES  = libDMLP.a libPHiPAC.a
 
-noinst_PROGRAMS = dmlp mnist label
+EXTRA_PROGRAMS  = dmlp mnist label dmlpTest orderTest phipacTest
 
+check_PROGRAMS = $(check_programs)
+#dmlpTest orderTest phipacTest flat2vit
 dmlp_SOURCES = dmlp.cc MNIST.h
-
 mnist_SOURCES = mnist.cc MNIST.h
-
 label_SOURCES = label.cc
-
-check_PROGRAMS = dmlpTest orderTest phipacTest flat2vit
-
 dmlpTest_SOURCES = dmlpTest.cc
 orderTest_SOURCES = orderTest.cc
 phipacTest_SOURCES = phipacTest.cc

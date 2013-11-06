@@ -30,6 +30,19 @@ AC_PROG_RANLIB
 m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 AC_PROG_AWK
 
+# Test if compiler accepts ISO C++ 2011.  This is required for
+# the DMLP training code.
+
+AC_MSG_CHECKING([for ISO C++ 2011 support])
+AC_LANG_PUSH([C++])
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[]], [[auto f = [] () { return 0;}; f()]])],
+  [AC_MSG_RESULT([yes])
+   AC_SUBST([dmlp_libraries],[libDMLP.a])
+   AC_SUBST([check_programs],['dmlp mnist label dmlpTest orderTest phipacTest'])],
+  [AC_MSG_RESULT([no])
+   AC_WARN([C++ compiler does not support ISO C++ 2011 (you may need -std=c++0x or -std=c++11 depending on GCC version). gmtkDMLPtrain can't be built])])
+AC_LANG_POP([C++])
+
 # Checks for libraries.
 
 m4_include([blas_args])
