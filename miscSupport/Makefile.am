@@ -80,7 +80,8 @@ eig.h eig.c \
 bin_search.cc \
 lms_filter.h lms_filter.cc \
 rls_filter.h rls_filter.cc \
-vhash_set.h
+vhash_set.h \
+prime.h prime.c
 
 libmiscSupport_a_CPPFLAGS = -DDEFAULT_CPP="\"$(GMTKCPPCMD)\""
 
@@ -104,6 +105,7 @@ LDADD = libmiscSupport.a
 # These are test programs, so they only need to be built for make check.
 # They are not installed anywhere
 check_PROGRAMS = \
+testPrime \
 testError \
 testBPRange \
 testArguments testLogp testRand testsArray testcArray testmArray \
