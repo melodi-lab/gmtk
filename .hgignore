@@ -72,6 +72,7 @@ miscSupport/testcArray
 miscSupport/testsArray
 miscSupport/testmArray
 miscSupport/testQSort
+miscSupport/testPrime
 mitk/bivariate-mi
 mitk/mvnrnd
 mitk/test-matrix-ops
