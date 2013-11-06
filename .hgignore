@@ -16,6 +16,7 @@ mitk/discrete-mi/ac_config.h.in
 tksrc/GMTK_FileTokenizer.cc
 tksrc/testViterbi.cc
 hgstamp.h
+version.info
 Makefile
 aclocal.m4
 autom4te.cache
