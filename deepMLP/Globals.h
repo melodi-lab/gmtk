@@ -13,6 +13,8 @@ over the NN training code.
 #include <string>
 #include <fstream>
 
+#include "error.h"
+
 using namespace std;
 
 // swap the values of a and b
@@ -78,8 +80,7 @@ template<class C>
 void Serialize(const C & c, const string & filename) {
   ofstream outStream(filename, ios::out|ios::binary);
   if (!outStream.is_open()) {
-    cout << "Couldn't open serialized file " << filename.c_str() << endl;
-    abort();
+    error("Error: Couldn't open serialized file '%s'\n", filename.c_str());
   }
 
   c.Serialize(outStream);

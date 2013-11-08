@@ -55,6 +55,7 @@ m4_include([blas_check])
 # Checks for library functions.
 
 AC_FUNC_MMAP
+AC_FUNC_FSEEKO
 
 AC_MSG_CHECKING([for cblas_daxpby])
   AC_LANG_PUSH([C++])

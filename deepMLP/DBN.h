@@ -16,11 +16,13 @@ extern "C" {            /* Assume C declarations for C++ */
 #include <fstream>
 #include <iomanip>      // std::setprecision
 
-#include "MMapMatrix.h"
 #include "rand.h"
+#include "fileParser.h"
+#include "debug.h"
+
+#include "MMapMatrix.h"
 #include "Layer.h"
 #include "MatrixFunc.h"
-
 
 using namespace std;
 
@@ -399,51 +401,76 @@ private:
     { }
   };
 
-	// implments stochastic gradient descent training with momentum
+  // Implments stochastic gradient descent training with momentum.
+  // This version always does the full # of requested [anneal] updates and
+  // assumes the training state won't be saved or restored. This version is
+  // used for pre-training.
   void TrainSGD(TrainingFunction & trainer, const HyperParams & hyperParams) {
-    double stepSize = hyperParams.initStepSize;
-    bool quiet = false;
+    float epochFraction = 1.0, annealEpochFraction = 1.0;
+    double prevStepSize = 0.0;
+    int curUpdate = 0, curAnnealUpdate = 0;
+    TrainSGD(trainer, hyperParams, epochFraction, annealEpochFraction, prevStepSize, curUpdate, curAnnealUpdate);
+  }
 
-    if (!quiet) cout << fixed << setprecision(4);
 
-    trainer.Init();
+  // Implments stochastic gradient descent training with momentum.
+  // This version supports partial training, and should only be used by back prop.
+  void TrainSGD(TrainingFunction & trainer, const HyperParams & hyperParams, 
+		float epochFraction,             // fraction of total non-anneal updates to do in this program invocation
+		float annealEpochFraction,       // fraction of total anneal updates ...
+		double &prevStepSize,            // non-anneal step size from previous program invocation
+		int &curUpdate,                  // non-anneal update # from previous ...
+		int &curAnnealUpdate             // anneal update # from previous ...
+		) 
+  {
+    double stepSize = resumeTraining ? prevStepSize : hyperParams.initStepSize;
 
-    // get a baseline score by evaluating on the whole dataset
-    double bestTrainScore = trainer.Eval();
+    int startInstance = 0;
 
-    if (!quiet) cout << "Baseline score: " << bestTrainScore << endl;
+    if (!resumeTraining) {
+      trainer.Init();
 
-    int startInstance;
+      // get a baseline score by evaluating on the whole dataset
+      double bestTrainScore = trainer.Eval();
 
-    // ensure that step size gives improvement over one check period before adding momentum
-    for (;;) {
-      startInstance = 0;
+      infoMsg(IM::Training, IM::Default, "Baseline score: %e \n", bestTrainScore);
 
-      double totalScore = 0;
-      for (int t = 0; t < hyperParams.checkInterval; ++t) {
-        totalScore += trainer.Update(startInstance, stepSize, hyperParams.maxUpdate, 0);
-        startInstance += hyperParams.miniBatchSize;
+      // ensure that step size gives improvement over one check period before adding momentum
+      for (;;) {
+	startInstance = 0;
+
+	double totalScore = 0;
+	for (int t = 0; t < hyperParams.checkInterval; ++t) {
+	  totalScore += trainer.Update(startInstance, stepSize, hyperParams.maxUpdate, 0);
+	  startInstance += hyperParams.miniBatchSize;
+	}
+
+	double score = totalScore / hyperParams.checkInterval;
+
+	infoMsg(IM::Training, IM::Default, "Improvement check score: %e\n", score);
+
+	if (score < bestTrainScore) {
+	  infoMsg(IM::Training, IM::Default, "Keeping step size of %e\n", stepSize);
+	  break;
+	}
+
+	// step size did not yield improvement, so it is probably too large
+	stepSize /= 2;
+	if (stepSize < MIN_STEP_SIZE) {
+	  error("ERROR: step size < %e does not improve check score; giving up\n", MIN_STEP_SIZE);
+	}
+	infoMsg(IM::Training, IM::Default, "Step size reduced to %e\n", stepSize);
+	trainer.Restore(); // undo failed training with previous stepSize
       }
-
-      double score = totalScore / hyperParams.checkInterval;
-
-      if (!quiet) cout << "Improvement check score: " << score << endl;
-      if (score < bestTrainScore) {
-        if (!quiet) cout << "Keeping step size of " << stepSize << endl;
-        break;
-      }
-
-			// step size did not yield improvement, so it is probably too large
-      stepSize /= 2;
-      if (stepSize < MIN_STEP_SIZE) {
-	error("ERROR: step size < %e does not improve check score; giving up\n", MIN_STEP_SIZE);
-      }
-      if (!quiet) cout << "Step size reduced to " << stepSize << endl;
-      trainer.Restore();
     }
 
     double totalScore = 0;
-    for (int t = 1; t <= hyperParams.numUpdates; ++t) {
+    int t = resumeTraining ? curUpdate : 1; // non-anneal update number
+    int numUpdates = (int) (epochFraction * hyperParams.numUpdates + 0.5);
+    int lastUpdate = t + numUpdates - 1; // last update # for this invocation
+    if (lastUpdate > hyperParams.numUpdates) lastUpdate = hyperParams.numUpdates;  // in case numUpdates doesn't divide evenly
+    infoMsg(IM::Training, IM::Moderate, "Training updates %d to %d of %d\n", t, lastUpdate, hyperParams.numUpdates);
+    for (; t <= lastUpdate; t+=1) {
       // momentum increases from 0.5 to max
       // using formula from Sutskever et al. 2013
       double tFrac = (double)t / hyperParams.numUpdates;
@@ -453,34 +480,40 @@ private:
       totalScore += trainer.Update(startInstance, stepSize, hyperParams.maxUpdate, momentum);
       startInstance += hyperParams.miniBatchSize;
 
-			// output online training objective value regularly
-      if (checkSignal || !quiet && t % hyperParams.checkInterval == 0) {
+      // output online training objective value regularly
+      if (checkSignal || t % hyperParams.checkInterval == 0) {
         double score = totalScore / hyperParams.checkInterval;
-        cout << "Step: " << t << endl;
-        cout << "Momentum: " << momentum << endl;
-        cout << "New score: " << score << endl << endl;
+	infoMsg(IM::Training, IM::Default, "Step: %d\nMomentum: %e\nNew score: %e\n\n", t, momentum, score);
         totalScore = 0;
 	checkSignal = false;
       }
     }
+    curUpdate = t; // remember in case we save training state later
 
+    double step = stepSize; // remember this in case need to save state but we don't anneal
     totalScore = 0;
-    for (int t = 0; t < hyperParams.numAnnealUpdates; ++t) {
+    t = resumeTraining ? curAnnealUpdate : 0; // anneal update #
+    numUpdates = (int) (annealEpochFraction * hyperParams.numAnnealUpdates + 0.5);
+    lastUpdate = t + numUpdates - 1; // last anneal update # for this invocation
+    if (lastUpdate > hyperParams.numAnnealUpdates) lastUpdate = hyperParams.numAnnealUpdates;
+    infoMsg(IM::Training, IM::Moderate, "Training anneal updates %d to %d of %d\n", t, lastUpdate, hyperParams.numAnnealUpdates);
+    for (; t < lastUpdate; t+=1) {
       // anneal momentum and step size to zero
       double tFrac = (double)t / hyperParams.numAnnealUpdates;
       double m = tFrac + (1 - tFrac) / (1 - hyperParams.maxMomentum);
       double momentum = 1.0 - 1.0 / m;
-      double step = (1 - tFrac) * stepSize;
+      step = (1 - tFrac) * stepSize;
 
       totalScore += trainer.Update(startInstance, step, hyperParams.maxUpdate, momentum);
       startInstance += hyperParams.miniBatchSize;
     }
+    curAnnealUpdate = t;
+    prevStepSize = step;
 
-    if (!quiet) {
+    if (numUpdates > 0) {
       double score = totalScore / hyperParams.numAnnealUpdates;
-      cout << "Anneal score: " << score << endl << endl;
+      infoMsg(IM::Training, IM::Default, "Anneal score: %e\n\n", score);
     }
-
   }
 
 	// perform the backpropagation update to update the weights of all layers
@@ -889,9 +922,13 @@ public:
   }
 
 	// (Pretrain and) train parameters of entire network
-  void Train(MMapMatrix & input, const MMapMatrix & output, ObjectiveType objectiveType, bool quiet, const vector<HyperParams> & hyperParams_pt, const HyperParams & hyperParams_bp) {
+  void Train(MMapMatrix &input, const MMapMatrix &output, ObjectiveType objectiveType, 
+	     const vector<HyperParams> &hyperParams_pt, const HyperParams &hyperParams_bp, 
+	     float epochFraction = 1.0, float annealEpochFraction = 1.0,
+	     char const *loadFilename=NULL, char const *saveFilename=NULL) 
+  {
     MMapMatrix mappedInput = input;
-    if (!quiet) {
+    if (IM::messageGlb(IM::Training, IM::Default)) {
       printf("\nPretrain hyperparams:\n\n");
       hyperParams_pt[0].print();
       printf("\nBackprop hyperparams:\n\n");
@@ -910,9 +947,8 @@ public:
 	switch (hyperParams.pretrainType) {
 	case CD:
 	  {
-	    if (!quiet) {
-	      cout << "Pretraining layer " << layer << " of size " << LayerInSize(layer) << "x" << LayerOutSize(layer) << " with CD" << endl;
-	    }
+	    infoMsg(IM::Training, IM::Default, "Pretraining layer %d of size %d x %d with CD\n", 
+		    layer, LayerInSize(layer), LayerOutSize(layer));
 	    CDTrainingFunction cdFunc(*this, layer, mappedInput, hyperParams, lowerActFunc);
 	    TrainSGD(cdFunc, hyperParams);
 	  }
@@ -920,9 +956,8 @@ public:
 	  
 	case AE:
 	  {
-	    if (!quiet) {
-	      cout << "Pretraining layer " << layer << " of size " << LayerInSize(layer) << "x" << LayerOutSize(layer) << " with AE" << endl;
-	    }
+	    infoMsg(IM::Training, IM::Default, "Pretraining layer %d of size %d x %d with AE\n", 
+		    layer, LayerInSize(layer), LayerOutSize(layer));
 	    AETrainingFunction aeFunc(*this, layer, mappedInput, hyperParams, lowerActFunc, true);
 	    TrainSGD(aeFunc, hyperParams);
 	  }
@@ -943,9 +978,7 @@ public:
       
       if (hyperParams_pt.back().pretrainType != NONE) {
 	// pretrain output layer
-	if (!quiet) {
-	  cout << "Pretraining output layer" << endl;
-	}
+	infoMsg(IM::Training, IM::Default, "Pretraining output layer\n");
 
 	OutputLayerTrainingFunction outputFunc(mappedInput, output, *this, hyperParams_pt.back(), objectiveType);
 	TrainSGD(outputFunc, hyperParams_pt.back());
@@ -953,19 +986,44 @@ public:
     }
 
     // and now, fine tune all layers with backpropagation
-    if (!quiet) {
-      cout << "Fine tuning" << endl;
+    infoMsg(IM::Training, IM::Default, "Fine tuning\n");
+
+    double prevStepSize = 0.0;
+    int curUpdate = 0, curAnnealUpdate = 0;
+    iDataStreamFile *loadFile = NULL;
+    oDataStreamFile *saveFile = NULL;
+    if (resumeTraining) {
+      loadFile = new iDataStreamFile(loadFilename, true);
+      loadFile->read(prevStepSize, "previous backprop step size");
+      loadFile->read(curUpdate, "previous backprop update number");
+      loadFile->read(curAnnealUpdate, "previous backprop anneal update number");
+      // read momentum & update schedule -- squak if inconsistant w/ args
+      loadFile->read(_params.Start(), _params.Len(), "previous network parameters");
+      loadFile->read(_deltaParams.Start(), _deltaParams.Len(), "previous network momentum");
+      delete loadFile;
     }
 
     BPTrainingFunction bpFunc(input, output, *this, hyperParams_bp, objectiveType);
-    TrainSGD(bpFunc, hyperParams_bp);
+    TrainSGD(bpFunc, hyperParams_bp, epochFraction, annealEpochFraction, prevStepSize, curUpdate, curAnnealUpdate);
 
-		// renormalize weights if dropout training was used
+    // renormalize weights if dropout training was used
     if (hyperParams_bp.iDropP > 0) _W[0] *= (1 - hyperParams_bp.iDropP);
     if (hyperParams_bp.hDropP > 0) {
       for (int l = 1; l < _W.size(); ++l) {
         _W[l] *= (1 - hyperParams_bp.hDropP);
       }
+    }
+
+    bool outputStateFile = false;
+    if (saveFilename) {
+      saveFile = new oDataStreamFile(saveFilename, true);
+      saveFile->write(prevStepSize, "previous backprop step size");
+      saveFile->write(curUpdate, "previous backprop update number");
+      saveFile->write(curAnnealUpdate, "previous backprop anneal update number");
+      // write momentum & update schedule
+      saveFile->write(_params.Start(), _params.Len(), "previous network parameters");
+      saveFile->write(_deltaParams.Start(), _deltaParams.Len(), "previous network momentum");
+      delete saveFile;
     }
   }
 };
