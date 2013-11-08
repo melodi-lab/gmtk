@@ -61,6 +61,7 @@ VCID(HGID)
 #include "GMTK_Stream.h"
 #include "GMTK_RandomSampleSchedule.h"
 #include "GMTK_LinearSchedule.h"
+#include "GMTK_ShuffleSchedule.h"
 #include "GMTK_PermutationSchedule.h"
 
 #include "GMTK_MixtureCommon.h"
@@ -305,8 +306,10 @@ main(int argc,char*argv[])
     trainSched = new RandomSampleSchedule(obsOffset, numFeaturesPerFrame, labelOffset, outputSize, oneHot, radius, 1, gomFS, trrng_str);
   } else if (strcasecmp(trainingSchedule, "permute") == 0) {
     trainSched = new PermutationSchedule(obsOffset, numFeaturesPerFrame, labelOffset, outputSize, oneHot, radius, 1, gomFS, trrng_str);
+  } else if (strcasecmp(trainingSchedule, "shuffle") == 0) {
+    trainSched = new ShuffleSchedule(obsOffset, numFeaturesPerFrame, labelOffset, outputSize, oneHot, radius, 1, gomFS, trrng_str);
   } else {
-    error("ERROR: unknown training schedule '%s', must be one of linear, random, or permute\n", trainingSchedule);
+    error("ERROR: unknown training schedule '%s', must be one of linear, random, shuffle, or permute\n", trainingSchedule);
   }
 
   vector<DBN::HyperParams> pretrainHyperParams(numLayers);
@@ -397,7 +400,8 @@ main(int argc,char*argv[])
 
   DBN::ObjectiveType objType = 
     ( cpt->getDeepNN()->getSquashFn(numLayers-1) == DeepNN::SOFTMAX ) ? DBN::SOFT_MAX : DBN::SQ_ERR;
-  dbn.Train(trainData, trainLabels, objType, false, pretrainHyperParams, bpHyperParams);
+  dbn.Train(trainData, trainLabels, objType, pretrainHyperParams, bpHyperParams, 
+	    bpEpochFraction, bpAnnealEpochFraction, loadTrainingFile, saveTrainingFile);
 
   vector<DoubleMatrix *> layerMatrix = cpt->getDeepNN()->getMatrices();
   assert(layerMatrix.size() == numLayers);

@@ -1757,6 +1757,8 @@ static float normalizeScoreEachClique = MaxClique::normalizeScoreEachClique;
 static char const *DVECPTName         = NULL;
 static unsigned    labelOffset        = 0;
 static bool        oneHot             = true;
+static char const *saveTrainingFile   = NULL;
+static char const *loadTrainingFile   = NULL;
 
   // backprop hyperparameters
 
@@ -1802,10 +1804,12 @@ Arg("oneHot", Arg::Opt, oneHot, "If true, labelOffset is the single discrete cor
                                 "else the parent distribution starts ate labelOffset"),
 Arg("sparseInitLayer", Arg::Opt, DBN::sparseInitLayer, "Use sparse or dense initilization strategy (dense is better for rectified linear)"),
 
-Arg("trainingSchedule", Arg::Opt, trainingSchedule, "Order to process training data (linear, random, permute)"),
+Arg("trainingSchedule", Arg::Opt, trainingSchedule, "Order to process training data (linear, random, permute, shuffle)"),
 Arg("pretrainType", Arg::Opt, pretrainType, "Pretraining type (none, AE, CD)"),
 Arg("pretrainActFunc", Arg::Opt, pretrainActFuncStr, "Pretraining input activation function (sig, tanh, cubic, linear, rect)"),
 Arg("resumeTraining", Arg::Opt, DBN::resumeTraining, "Continue training specified deep VE CPT rather than starting from scratch"),
+Arg("saveTrainingFile", Arg::Opt, saveTrainingFile, "Filename to save training state for later -resumeTraining"),
+Arg("loadTrainingFile", Arg::Opt, loadTrainingFile, "Filename to load training state from for -resumeTraining"),
 Arg("tempDir", Arg::Opt, MMapMatrix::dmlpTempDir, "Directory to store temp files if $GMTKTMPDIR environment variable is not set"),
 
 Arg("\n*** DMLP pretraining hyperparameters ***\n"),
@@ -1830,7 +1834,7 @@ Arg("bpL2", Arg::Opt, bpL2, "Backprop: l2 hyperparameter"),
 Arg("bpNumEpochs", Arg::Opt, bpNumEpochs, "Backprop: Total epochs of training hyperparameter"),
 Arg("bpEpochFraction", Arg::Opt, bpEpochFraction, "Backprop: fraction of -bpNumEpochs to do in this invocation)"),
 Arg("bpNumAnnealEpochs", Arg::Opt, bpNumAnnealEpochs, "Backprop: Total epochs of anneal training hyperparameter"),
-Arg("bpAnnealEpochFraction", Arg::Opt, bpEpochFraction, "Backprop: fraction of -bpNumAnnealEpochs to do in this invocation"),
+Arg("bpAnnealEpochFraction", Arg::Opt, bpAnnealEpochFraction, "Backprop: fraction of -bpNumAnnealEpochs to do in this invocation"),
 Arg("bpMiniBatchSize", Arg::Opt, bpMiniBatchSize, "Backprop: Mini-batch size hyperparameter"),
 Arg("bpCheckInterval", Arg::Opt, bpCheckInterval, "Backprop: Check interval hyperparameter"),
 Arg("bpIdropP", Arg::Opt, bpIdropP, "Backprop: dropout probability for input layer"),
@@ -1865,6 +1869,15 @@ Arg("bpHdropP", Arg::Opt, bpHdropP, "Backprop: dropout probability for hidden la
 	  argerr, pretrainActFuncStr);
   }
 
+  if (strcasecmp(trainingSchedule, "linear") == 0) {
+  } else if (strcasecmp(trainingSchedule, "random") == 0) {
+  } else if (strcasecmp(trainingSchedule, "permute") == 0) {
+  } else if (strcasecmp(trainingSchedule, "shuffle") == 0) {
+  } else {
+    error("%s: Unknown training schedule '%s', must be 'linear', 'random', 'permute', or 'shuffle'\n",
+	  argerr, trainingSchedule);
+  }
+
   if (bpEpochFraction <= 0.0 || 1.0 < bpEpochFraction) {
     error("%s: -bpEpochFraction %e is invalid, it must be in (0,1]\n", bpEpochFraction);
   }
@@ -1873,6 +1886,10 @@ Arg("bpHdropP", Arg::Opt, bpHdropP, "Backprop: dropout probability for hidden la
   }
   if (DBN::resumeTraining && strcasecmp(pretrainType, "none")) {
     error("%s: -resumeTraining T requires -pretrainType none\n", argerr);
+  }
+
+  if (DBN::resumeTraining && loadTrainingFile == NULL) {
+    error("%s: -resumeTraining requires a training state file to load specified by -loadTrainingFile\n", argerr);
   }
 
 #else
