@@ -12,6 +12,21 @@
 #ifndef GMTK_PERMUTATIONSCHEDULE_H
 #define GMTK_PERMUTATIONSCHEDULE_H
 
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
+#if HAVE_INTTYPES_H
+   // The ISO C99 standard specifies that the macros in inttypes.h must
+   //  only be defined if explicitly requested. 
+#  ifndef __STDC_FORMAT_MACROS
+#    define __STDC_FORMAT_MACROS 1
+#  endif
+#  include <inttypes.h>
+#endif
+#if HAVE_STDINT_H
+#  include <stdint.h>
+#endif
+
 #include <string.h>
 
 #include "GMTK_TrainingSchedule.h"
@@ -22,17 +37,20 @@
 #include "debug.h"
 
 
-// Return non-overlapping training units of requested size in observation source order.
-// If a segment's length is not a multiple of the unit size, the last unit from that
-// segment will be short.
+// Return non-overlapping training units of requested size according to a permutation
+// of the $T$ total training units determined by $\sigma(i) = (ai + b)^3 \bmod p$ where
+//    $p$ is the smallest prime such that $p >= T$ and $p \equiv_3 2$
+//    $a$ is a random integer in $[1, p)$
+//    $b$ is a random integer in $[0, p)$
+
 
 class PermutationSchedule : public TrainingSchedule {
 
   unsigned *segmentPerm;     // segment # of training unit permutation
   unsigned *framePerm;       // frame # of training unit permutation
-  unsigned  i;               // position in permutation
+  uint32_t  i;               // position in permutation
 
-  unsigned  a, b, p;         // p is the smallest prime \equiv_3 2 larger than num_units
+  uint32_t  a, b, p;         // p is the smallest prime \equiv_3 2 larger than num_units
                              // a is an integer in [1, p)  and b is an integer in [0, p)
                              // \sigma(i) = (ai+b)^3 mod p is a permutation of 0, 1, ..., p-1
  public:
@@ -102,11 +120,11 @@ class PermutationSchedule : public TrainingSchedule {
 
   
   void nextTrainingUnit(unsigned &segment, unsigned &frame) { 
-    unsigned sigma; // sigma(i) = (ai + b)^3 mod p
+    uint32_t sigma; // sigma(i) = (ai + b)^3 mod p
     do {
-      unsigned long t = (a * i) % p;
+      uint64_t t = (a * i) % p;
       t = (t + b) % p;
-      unsigned long tt = (t * t) % p;
+      uint64_t tt = (t * t) % p;
       sigma = (t * tt) % p;
       i = (i + 1) % p;
     } while (sigma >= num_viable_units); // skip any extras since p >= num_viable_units
