@@ -73,12 +73,6 @@ LDADD = libGMTK.a libXOPT.a \
 $(builddir)/../featureFileIO/libgmtkio.a \
 $(builddir)/../miscSupport/libmiscSupport.a \
 $(builddir)/../IEEEFloatingpoint/libIEEEsupport.a
-if BUILD_PHIPAC
-LDADD += $(builddir)/../deepMLP/libPHiPAC.a
-endif
-if BUILD_DMLP
-LDADD += $(builddir)/../deepMLP/libDMLP.a
-endif
 
 LIBS += $(LEXLIB)
 
@@ -234,8 +228,14 @@ gmtkEMtrain_SOURCES = gmtkEMtrain.cc
 gmtkDMLPtrain_SOURCES = gmtkDMLPtrain.cc
 gmtkDMLPtrain_CPPFLAGS = $(AM_CPPFLAGS) $(VERSIONFLAG)
 gmtkDMLPtrain_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(BLAS_CFLAGS)
-gmtkDMLPtrain_LDADD = $(LDADD)  $(BLAS_LIBS)
-
+gmtkDMLPtrain_LDADD = $(LDADD)
+if BUILD_PHIPAC
+gmtkDMLPtrain_LDADD += $(builddir)/../deepMLP/libPHiPAC.a
+endif
+if BUILD_DMLP
+gmtkDMLPtrain_LDADD += $(builddir)/../deepMLP/libDMLP.a
+endif
+gmtkDMLPtrain_LDADD += $(BLAS_LIBS)
 
 gmtkKernel_SOURCES = gmtkKernel.cc
 
