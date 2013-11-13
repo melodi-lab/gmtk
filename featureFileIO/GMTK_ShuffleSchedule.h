@@ -1,6 +1,7 @@
 /*
  * GMTK_ShuffleSchedule.h
- * 
+ *   Return training units according to a random permutation.
+ *
  * Written by Richard Rogers <rprogers@ee.washington.edu>
  *
  * Copyright (C) 2013 Jeff Bilmes
@@ -19,9 +20,8 @@
 #include "rand.h"
 #include "error.h"
 
-// Return non-overlapping training units of requested size in observation source order.
-// If a segment's length is not a multiple of the unit size, the last unit from that
-// segment will be short.
+// Return non-overlapping training units of requested size in an order determined
+// by random sampling without replacement (Knuth shuffle random permutation).
 
 class ShuffleSchedule : public TrainingSchedule {
 
