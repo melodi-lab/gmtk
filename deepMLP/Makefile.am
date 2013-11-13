@@ -55,7 +55,8 @@ libDMLP_a_SOURCES =           \
   DBN.h DBN.cc Layer.h        \
   Matrix.h Matrix.cc          \
   MatrixFunc.h MatrixFunc.cc  \
-  MMapMatrix.h MMapMatrix.cc
+  MMapMatrix.h MMapMatrix.cc  \
+  BatchSource.h
 
 
 libPHiPAC_a_SOURCES =     \
