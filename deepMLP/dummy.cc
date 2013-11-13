@@ -13,3 +13,4 @@
 #include "MatrixFunc.h"
 #include "MMapMatrix.h"
 #include "DBN.h"
+#include "BatchSource.h"
