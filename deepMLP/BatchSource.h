@@ -35,25 +35,44 @@
 
 #include "Matrix.h"
 
+
+// BatchSource subclasses provide a stream of [mini]batches for NN trainers.
 class BatchSource {
 
  protected:
 
-  unsigned batchSize;
+  unsigned batchSize; // number of training instances in a batch
 
  public:
 
   BatchSource(unsigned batchSize) : batchSize(batchSize) {}
 
+  // Return the ith [mini]batch. Note that there's no guarantee that
+  // you will get the same results from multiple calls for a particular i.
+  // Note that the returned batch may be shorter than the batchSize.
+  // Matrix is column-major, with a column corresponding to a training instance.
   virtual Matrix getBatch(unsigned i) = 0;
 
+  // Return the label Matrix for the ith [mini]batch. The result of 
+  // getLabels(i) will correspond to the result of getBatch(i) as long
+  // as there aren't any intervening calls of getLabels(j) or getBatch(j) 
+  // where j != i.
   virtual Matrix getLabels(unsigned i) = 0;
 
+  // Smallest number of [mini]batches such that the total number of [mini]batch
+  // columns will be >= the total number of training instances.
   virtual unsigned batchesPerEpoch() = 0;
 
+  // So you don't have to actually produce a Matrix to know the # of rows...
+  // You can't know the number of columns in advance, since returned [mini]batches
+  // may be smaller than batchSize.
+  virtual unsigned numBatchRows() = 0;
+
+  virtual unsigned numLabelRows() = 0;
 };
 
 
+// Stream batches from instances of Galen's Matrix class
 class MatrixBatchSource : public BatchSource {
 
   Matrix const     &batchSource;  // training data
@@ -112,5 +131,10 @@ class MatrixBatchSource : public BatchSource {
   unsigned batchesPerEpoch() { 
     return (batchSource.NumC() / batchSize) + ((batchSource.NumC() % batchSize) ? 1 : 0);
   }
+
+
+  unsigned numBatchRows() { return batchSource.NumR(); }
+
+  virtual unsigned numLabelRows() { return labelSource.NumR(); }
 
 };
