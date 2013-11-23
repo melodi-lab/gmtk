@@ -191,9 +191,6 @@ private:
 		// DBN whose parameters we are training
     DBN & _dbn;
 
-		// input and output data
-    MMapMatrix _input, _output;
-
     BatchSource *batchSrc;
 
 		// pointers to parameters
@@ -205,62 +202,36 @@ private:
 		// training hyperparameters
     const HyperParams & _hyperParams;
 
-#if 0
-    TrainingFunction(DBN & dbn, const MMapMatrix & input, const MMapMatrix & output, const HyperParams & hyperParams, MutableVector & params, MutableVector & deltaParams, MutableVector & savedParams)
-      :
-    _dbn(dbn), _hyperParams(hyperParams), _input(input), _output(output), _params(params), _deltaParams(deltaParams), _savedParams(savedParams) { }
 
-    TrainingFunction(DBN & dbn, const MMapMatrix & output, const HyperParams & hyperParams, MutableVector & params, MutableVector & deltaParams, MutableVector & savedParams)
+    TrainingFunction(DBN & dbn, BatchSource *batchSrc, const HyperParams & hyperParams, MutableVector & params, MutableVector & deltaParams, MutableVector & savedParams)
       :
-    _dbn(dbn), _hyperParams(hyperParams), _input(), _output(output), _params(params), _deltaParams(deltaParams), _savedParams(savedParams) { }
-#endif
-
-
-    TrainingFunction(DBN & dbn, const MMapMatrix & input, const MMapMatrix & output, BatchSource *batchSrc, 
-		     const HyperParams & hyperParams, MutableVector & params, MutableVector & deltaParams, MutableVector & savedParams)
-      :
-       _dbn(dbn), _hyperParams(hyperParams), _input(input), _output(output), batchSrc(batchSrc), 
-       _params(params), _deltaParams(deltaParams), _savedParams(savedParams) 
+    _dbn(dbn), _hyperParams(hyperParams), batchSrc(batchSrc), _params(params), _deltaParams(deltaParams), _savedParams(savedParams) 
     { }
-
-    TrainingFunction(DBN & dbn, const MMapMatrix & output, BatchSource *batchSrc, const HyperParams & hyperParams, 
-		     MutableVector & params, MutableVector & deltaParams, MutableVector & savedParams)
-      :
-       _dbn(dbn), _hyperParams(hyperParams), _input(), _output(output), batchSrc(batchSrc),
-       _params(params), _deltaParams(deltaParams), _savedParams(savedParams) 
-    { }
-
 
 		// to be overridden in subclasses, implementing the specific training function update
     virtual double PrivateEval(Matrix inputMiniBatch, Matrix outputMiniBatch, double stepSize) = 0;
 
   public:
-		// evaluate the function on the entire dataset and return the value (performing no update)
-    double Eval(float epochFraction=1.0) {
-#if 1
+
+    // evaluate the function on the entire dataset and return the value (performing no update)
+    virtual double Eval(float epochFraction=1.0) {
       double sum = 0;
-      unsigned numBatches = (unsigned)(0.5 + batchSrc->batchesPerEpoch() * epochFraction);
+      unsigned numRows = batchSrc->numDataRows() + batchSrc->numLabelRows();
+      unsigned miniBatchSize = nnChunkSize * ((1<<20) / sizeof(double)) / numRows;
+      if (miniBatchSize < 1) {
+	miniBatchSize = 1;
+	warning("WARNING: -nnChunkSize %u MiB is too small. One training instances requires %u bytes\n",
+		nnChunkSize, numRows * sizeof(double));
+      }
+      unsigned numBatches = (unsigned)(0.5 + batchSrc->batchesPerEpoch(miniBatchSize) * epochFraction);
       unsigned data_NumC = 0;
       for (unsigned i=0; i < numBatches; i+=1) {
-	Matrix  inputMiniBatch = batchSrc->getBatch(i);
-        Matrix outputMiniBatch = batchSrc->getLabels(i);
+	Matrix  inputMiniBatch, outputMiniBatch;
+	batchSrc->getBatch(miniBatchSize, inputMiniBatch, outputMiniBatch);
 	data_NumC += outputMiniBatch.NumC();
 	sum += PrivateEval(inputMiniBatch, outputMiniBatch, 0);
       }
       return sum / data_NumC + Decay(_params, _hyperParams.l2, 0);
-#else
-      double sum = 0;
-      int data_NumC = _output.NumC();
-      int miniBatchSize = nnChunkSize * ((1<<20) / sizeof(double)) / _input.Ld();
-      if (miniBatchSize < 1) miniBatchSize = 1;
-      for (int startCol=0; startCol < data_NumC; startCol += miniBatchSize) {
-	int endCol = (startCol + miniBatchSize <= data_NumC) ? startCol + miniBatchSize : data_NumC;
-	Matrix  inputMiniBatch = (_input.NumC() > 0) ? _input.GetCols(startCol, endCol) : _input;
-        Matrix outputMiniBatch = _output.GetCols(startCol, endCol);
-	sum += PrivateEval(inputMiniBatch, outputMiniBatch, 0);
-      }
-      return sum / _output.NumC() + Decay(_params, _hyperParams.l2, 0);
-#endif
     }
 
     double DoUpdate(Matrix &inputMiniBatch, Matrix &outputMiniBatch, double stepSize, double maxUpdate, double momentum) {
@@ -276,43 +247,10 @@ private:
 		// update the parameters using the ith minibatch
 		// with the specified step size, max update and momentum
 		// calls PrivateEval for actual evaluation and gradient computation
-    virtual double Update(unsigned i, double stepSize, double maxUpdate, double momentum) {
-#if 1
-      Matrix inputMiniBatch  = batchSrc->getBatch(i), 
-             outputMiniBatch = batchSrc->getLabels(i);
+    virtual double Update(double stepSize, double maxUpdate, double momentum) {
+      Matrix  inputMiniBatch, outputMiniBatch;
+      batchSrc->getBatch(_hyperParams.miniBatchSize, inputMiniBatch, outputMiniBatch);
       return DoUpdate(inputMiniBatch, outputMiniBatch, stepSize, maxUpdate, momentum);
-#else
-      int numIns = _output.NumC();
-      start %= numIns;
-
-      int miniBatchSize = _hyperParams.miniBatchSize;
-      if (miniBatchSize <= 0) miniBatchSize = numIns;
-
-      Matrix inputMiniBatch, outputMiniBatch;
-      int end = start + miniBatchSize;
-      if (end <= numIns) {
-        inputMiniBatch = (_input.NumC() > 0) ? _input.GetCols(start, end) : _input;
-        outputMiniBatch = _output.GetCols(start, end);
-      } else {
-        if (_input.NumC() > 0) {
-          _tempInput.Resize(_input.NumR(), miniBatchSize);
-          _tempInput.GetCols(0, numIns - start).CopyFrom(_input.GetCols(start, -1));
-          _tempInput.GetCols(numIns - start, -1).CopyFrom(_input.GetCols(0, end - numIns));
-          inputMiniBatch = _tempInput;
-        } else inputMiniBatch = _input;
-
-        _tempOutput.Resize(_output.NumR(), miniBatchSize);
-        _tempOutput.GetCols(0, numIns - start).CopyFrom(_output.GetCols(start, -1));
-        _tempOutput.GetCols(numIns - start, -1).CopyFrom(_output.GetCols(0, end - numIns));
-        outputMiniBatch = _tempOutput;
-      }
-      _deltaParams *= momentum;
-      double val = PrivateEval(inputMiniBatch, outputMiniBatch, stepSize * (1 - momentum) / miniBatchSize);
-      if (!IsNaN(maxUpdate)) Trunc(_deltaParams, maxUpdate);
-      _params -= _deltaParams;
-
-      return val / miniBatchSize + Decay(_params, _hyperParams.l2, stepSize);
-#endif
     }
 
 		// save parameters
@@ -339,18 +277,50 @@ private:
     AllocatingVector _inputBiases;
 
   public:
-  LayerTrainingFunction(DBN & dbn, int layer, MMapMatrix & trainData, BatchSource *batchSrc, const HyperParams & hyperParams, Layer::ActFunc actFunc)
+
+    LayerTrainingFunction(DBN & dbn, int layer, BatchSource *batchSrc, const HyperParams & hyperParams, Layer::ActFunc actFunc)
       :
-    TrainingFunction(dbn, trainData, batchSrc, hyperParams, dbn._layerParams[layer], dbn._layerDeltaParams[layer], dbn._layerSavedParams[layer]),
+    TrainingFunction(dbn, batchSrc, hyperParams, dbn._layerParams[layer], dbn._layerDeltaParams[layer], dbn._layerSavedParams[layer]),
       _layer(layer)
     {
       if (resumeTraining) {
         _inputBiases.CopyFrom(dbn._B[layer]);
       } else {
-	DBN::InitializeInputBiases(trainData, _inputBiases, actFunc, 1e-3);
+	DBN::InitializeInputBiases(batchSrc, _inputBiases, actFunc, 1e-3);
       }
     }
+
+    // Evaluate the function on the entire dataset and return the value (performing no update)
+    // For pretraining TrainingFunctions, use the input as the target output.
+    virtual double Eval(float epochFraction=1.0) {
+      double sum = 0;
+      unsigned numRows = batchSrc->numDataRows();
+      unsigned miniBatchSize = nnChunkSize * ((1<<20) / sizeof(double)) / numRows;
+      if (miniBatchSize < 1) {
+	miniBatchSize = 1;
+	warning("WARNING: -nnChunkSize %u MiB is too small. One training instances requires %u bytes\n",
+		nnChunkSize, numRows * sizeof(double));
+      }
+      unsigned numBatches = (unsigned)(0.5 + batchSrc->batchesPerEpoch(miniBatchSize) * epochFraction);
+      unsigned data_NumC = 0;
+      for (unsigned i=0; i < numBatches; i+=1) {
+	Matrix  inputMiniBatch = batchSrc->getData(miniBatchSize);
+	data_NumC += inputMiniBatch.NumC();
+	sum += PrivateEval(inputMiniBatch, inputMiniBatch, 0);
+      }
+      return sum / data_NumC + Decay(_params, _hyperParams.l2, 0);
+    }
+
+    // Update the parameters using the ith minibatch with the specified step size, max update and momentum.
+    // Calls PrivateEval for actual evaluation and gradient computation.
+    // For pretraining TrainingFunctions, use input as the target output
+    virtual double Update(double stepSize, double maxUpdate, double momentum) {
+      Matrix  inputMiniBatch =  batchSrc->getData(_hyperParams.miniBatchSize);
+      return DoUpdate(inputMiniBatch, inputMiniBatch, stepSize, maxUpdate, momentum);
+    }
   };
+
+
 
 	// training function to implement the contrastive divergence update
   class CDTrainingFunction : public LayerTrainingFunction {
@@ -362,11 +332,9 @@ private:
     }
 
   public:
-  CDTrainingFunction(DBN & dbn, int layer, MMapMatrix & trainData, BatchSource *batchSrc, const HyperParams & hyperParams, Layer::ActFunc actFunc)
-      :
-    LayerTrainingFunction(dbn, layer, trainData, batchSrc, hyperParams, actFunc)
-    {
-    }
+  CDTrainingFunction(DBN & dbn, int layer, BatchSource *batchSrc, const HyperParams & hyperParams, Layer::ActFunc actFunc)
+    : LayerTrainingFunction(dbn, layer, batchSrc, hyperParams, actFunc)
+    { }
   };
 
 	// training function to implement denoising autoencoder update
@@ -381,122 +349,79 @@ private:
 
   public:
 
-    AETrainingFunction(DBN & dbn, int layer, MMapMatrix & trainData, BatchSource *batchSrc, const HyperParams & hyperParams, Layer::ActFunc lowerActFunc)
-      : LayerTrainingFunction(dbn, layer, trainData, batchSrc, hyperParams, lowerActFunc), lowerActFunc(lowerActFunc)
-    {  }
+    AETrainingFunction(DBN & dbn, int layer, BatchSource *batchSrc, const HyperParams & hyperParams, Layer::ActFunc lowerActFunc)
+      : LayerTrainingFunction(dbn, layer, batchSrc, hyperParams, lowerActFunc), lowerActFunc(lowerActFunc)
+    { }
 
-#if 0
-    AETrainingFunction(DBN & dbn, int layer, MMapMatrix & trainData, BatchSource *batchSrc, const HyperParams & hyperParams, Layer::ActFunc lowerActFunc, bool fixTrainDistortion)
-      : LayerTrainingFunction(dbn, layer, trainData, batchSrc, hyperParams, lowerActFunc), lowerActFunc(lowerActFunc)
-    {
-      if (fixTrainDistortion) {
-				// precompute the distorted input data on the whole dataset and save it
-				// if fixTrainDistortion is false, new noisy input will be created for each update
-#if 0
-	MMapMatrix _distortedInput(trainData.NumR(), trainData.NumC(), trainData.NumR());
-	int input_NumC = trainData.NumC();
-	int miniBatchSize = nnChunkSize * ((1<<20) / sizeof(double)) / trainData.Ld();
-	if (miniBatchSize < 1) miniBatchSize = 1;
-	for (int startCol=0; startCol < input_NumC; startCol += miniBatchSize) {
-	  int endCol = (startCol + miniBatchSize <= input_NumC) ? startCol + miniBatchSize : input_NumC;
-	  Matrix miniBatch = trainData.GetCols(startCol, endCol);
-	  AllocatingMatrix temp(miniBatch.NumR(), miniBatch.NumC());
-	  lowerActFunc.Sample(miniBatch.Vec(), temp.Vec());
-	  _distortedInput.PutCols(temp, startCol);
-	}
-	_input = _distortedInput;
-#else
-        _distortedInput.Resize(trainData);
-        lowerActFunc.Sample(trainData.Vec(), _distortedInput.Vec());
-        _input = _distortedInput;
-#endif
+    // evaluate the function on the entire (distorted) dataset and return the value (performing no update)
+    virtual double Eval(float epochFraction=1.0) {
+      double sum = 0;
+      unsigned numRows = batchSrc->numDataRows();
+      unsigned miniBatchSize = nnChunkSize * ((1<<20) / sizeof(double)) / numRows;
+      if (miniBatchSize < 1) {
+	miniBatchSize = 1;
+	warning("WARNING: -nnChunkSize %u MiB is too small. One training instances requires %u bytes\n",
+		nnChunkSize, numRows * sizeof(double));
       }
+      unsigned numBatches = (unsigned)(0.5 + batchSrc->batchesPerEpoch(miniBatchSize) * epochFraction);
+      unsigned data_NumC = 0;
+      for (unsigned i=0; i < numBatches; i+=1) {
+	Matrix  inputMiniBatch = batchSrc->getData(miniBatchSize);
+	AllocatingMatrix temp(inputMiniBatch.NumR(), inputMiniBatch.NumC());
+	// distort the input, use undistorted input as the target output
+	lowerActFunc.Sample(inputMiniBatch.Vec(), temp.Vec());
+	data_NumC += inputMiniBatch.NumC();
+	sum += PrivateEval(temp, inputMiniBatch, 0);
+      }
+      return sum / data_NumC + Decay(_params, _hyperParams.l2, 0);
     }
-#endif
 
-#if 1
-    virtual double Update(unsigned i, double stepSize, double maxUpdate, double momentum) {
-      Matrix inputMiniBatch  = batchSrc->getBatch(i), 
-             outputMiniBatch = batchSrc->getLabels(i);
+
+    // Update on distorted input
+    virtual double Update(double stepSize, double maxUpdate, double momentum) {
+      Matrix  inputMiniBatch = batchSrc->getData(_hyperParams.miniBatchSize);
       AllocatingMatrix temp(inputMiniBatch.NumR(), inputMiniBatch.NumC());
       lowerActFunc.Sample(inputMiniBatch.Vec(), temp.Vec());
-      return DoUpdate(temp, outputMiniBatch, stepSize, maxUpdate, momentum);
+      return DoUpdate(temp, inputMiniBatch, stepSize, maxUpdate, momentum);
     }
-#else
-    virtual double Update(unsigned i, double stepSize, double maxUpdate, double momentum) {
-      int numIns = _output.NumC();
-      int start = (i * _hyperParams.miniBatchSize) % numIns;
-
-      int miniBatchSize = _hyperParams.miniBatchSize;
-      if (miniBatchSize <= 0) miniBatchSize = numIns;
-
-      Matrix inputMiniBatch, outputMiniBatch;
-      int end = start + miniBatchSize;
-      if (end <= numIns) {
-        inputMiniBatch = (_input.NumC() > 0) ? _input.GetCols(start, end) : _input;
-        outputMiniBatch = _output.GetCols(start, end);
-      } else {
-        if (_input.NumC() > 0) {
-          _tempInput.Resize(_input.NumR(), miniBatchSize);
-          _tempInput.GetCols(0, numIns - start).CopyFrom(_input.GetCols(start, -1));
-          _tempInput.GetCols(numIns - start, -1).CopyFrom(_input.GetCols(0, end - numIns));
-          inputMiniBatch = _tempInput;
-        } else inputMiniBatch = _input;
-
-        _tempOutput.Resize(_output.NumR(), miniBatchSize);
-        _tempOutput.GetCols(0, numIns - start).CopyFrom(_output.GetCols(start, -1));
-        _tempOutput.GetCols(numIns - start, -1).CopyFrom(_output.GetCols(0, end - numIns));
-        outputMiniBatch = _tempOutput;
-      }
-      _deltaParams *= momentum;
-      double val = PrivateEval(inputMiniBatch, outputMiniBatch, stepSize * (1 - momentum) / miniBatchSize);
-      if (!IsNaN(maxUpdate)) Trunc(_deltaParams, maxUpdate);
-      _params -= _deltaParams;
-
-      return val / miniBatchSize + Decay(_params, _hyperParams.l2, stepSize);
-    }
-#endif
   };
 
 	// training function for backpropagation training
   class BPTrainingFunction : public TrainingFunction {
-    AllocatingMatrix _errors; // I think this is not referenced
 
-  private:
+   private:
 		// training objective (squared error or softmax)
     ObjectiveType _objectiveType;
 
-  protected:
+   protected:
     virtual double PrivateEval(Matrix inputMiniBatch, Matrix outputMiniBatch, double stepSize) {
       return _dbn.UpdateBackProp(inputMiniBatch, outputMiniBatch, _objectiveType, false, _hyperParams.iDropP, _hyperParams.hDropP, stepSize);
     }
 
-  public:
-  BPTrainingFunction(const MMapMatrix & input, const MMapMatrix & output, BatchSource *batchSrc, DBN & dbn, HyperParams hyperParams, ObjectiveType objectiveType)
-      :
-    TrainingFunction(dbn, input, output, batchSrc, hyperParams, dbn._params, dbn._deltaParams, dbn._savedParams),
-      _objectiveType(objectiveType)
+   public:
+
+  BPTrainingFunction(BatchSource *batchSrc, DBN & dbn, HyperParams hyperParams, ObjectiveType objectiveType)
+    : TrainingFunction(dbn, batchSrc, hyperParams, dbn._params, dbn._deltaParams, dbn._savedParams), _objectiveType(objectiveType)
     { }
   };
 	
 	// training function for output layer before full backpropagation
   class OutputLayerTrainingFunction : public TrainingFunction {
-    AllocatingMatrix _errors; // I think this is not referenced
 
-  private:
+   private:
 		// training objective (squared error or softmax)
     ObjectiveType _objectiveType;
 
-  protected:
+   protected:
     virtual double PrivateEval(Matrix inputMiniBatch, Matrix outputMiniBatch, double stepSize) {
       return _dbn.UpdateBackProp(inputMiniBatch, outputMiniBatch, _objectiveType, true, _hyperParams.iDropP, _hyperParams.hDropP, stepSize);
     }
 
-  public:
-  OutputLayerTrainingFunction(const MMapMatrix & input, const MMapMatrix & output, BatchSource *batchSrc, DBN & dbn, HyperParams hyperParams, ObjectiveType objectiveType)
+   public:
+
+    OutputLayerTrainingFunction(BatchSource *batchSrc, DBN & dbn, HyperParams hyperParams, ObjectiveType objectiveType)
       :
-    TrainingFunction(dbn, input, output, batchSrc, hyperParams, dbn._layerParams.back(), dbn._layerDeltaParams.back(), dbn._layerSavedParams.back()),
-      _objectiveType(objectiveType)
+    TrainingFunction(dbn, batchSrc, hyperParams, dbn._layerParams.back(), dbn._layerDeltaParams.back(), dbn._layerSavedParams.back()),  _objectiveType(objectiveType)
     { }
   };
 
@@ -522,6 +447,7 @@ private:
 		int &curAnnealUpdate)            // anneal update # from previous ...
   {
     double stepSize = resumeTraining ? prevStepSize : hyperParams.initStepSize;
+    unsigned t = 0;
 
     if (!resumeTraining) {
       trainer.Init();
@@ -534,8 +460,8 @@ private:
       // ensure that step size gives improvement over one check period before adding momentum
       for (;;) {
 	double totalScore = 0;
-	for (unsigned t = 0; t < (unsigned)hyperParams.checkInterval; t += 1) {
-	  totalScore += trainer.Update(t, stepSize, hyperParams.maxUpdate, 0);
+	for (t = 0; t < (unsigned)hyperParams.checkInterval; t += 1) {
+	  totalScore += trainer.Update(stepSize, hyperParams.maxUpdate, 0);
 	}
 
 	double score = totalScore / hyperParams.checkInterval;
@@ -556,12 +482,9 @@ private:
 	trainer.Restore(); // undo failed training with previous stepSize
       }
     }
-
-    // FIXME: Galen? Should we do trainer.Restore() here, or set t=hyperParams.checkInterval ?
-    //               As currently coded, it trains on the first checkInterval batches twice...
  
     double totalScore = 0;
-    unsigned t = resumeTraining ? (unsigned)curUpdate : 1; // non-anneal update number
+    if (resumeTraining) t = curUpdate; // non-anneal update number to resume at
     unsigned numUpdates = (unsigned) (epochFraction * hyperParams.numUpdates + 0.5);
     unsigned lastUpdate = t + numUpdates - 1; // last update # for this invocation
     if (lastUpdate > (unsigned)hyperParams.numUpdates) lastUpdate = hyperParams.numUpdates;  // in case numUpdates doesn't divide evenly
@@ -573,7 +496,7 @@ private:
       double m = tFrac / (1 - hyperParams.maxMomentum) + (1 - tFrac) / (1 - hyperParams.minMomentum);
       double momentum = 1.0 - 1.0 / m;
 
-      totalScore += trainer.Update(t, stepSize, hyperParams.maxUpdate, momentum);
+      totalScore += trainer.Update(stepSize, hyperParams.maxUpdate, momentum);
 
       // output online training objective value regularly
       if (checkSignal || t % hyperParams.checkInterval == 0) {
@@ -591,7 +514,12 @@ private:
     numUpdates = (unsigned) (annealEpochFraction * hyperParams.numAnnealUpdates + 0.5);
     lastUpdate = t + numUpdates - 1; // last anneal update # for this invocation
     if (lastUpdate > (unsigned)hyperParams.numAnnealUpdates) lastUpdate = hyperParams.numAnnealUpdates;
-    infoMsg(IM::Training, IM::Moderate, "Training anneal updates %u to %u of %d\n", t, lastUpdate, hyperParams.numAnnealUpdates);
+
+    if (t < lastUpdate) {
+      infoMsg(IM::Training, IM::Default, "Annealing\n");
+      infoMsg(IM::Training, IM::Moderate, "Training anneal updates %u to %u of %d\n", 
+	      t, lastUpdate, hyperParams.numAnnealUpdates);
+    }
     for (; t < lastUpdate; t+=1) {
       // anneal momentum and step size to zero
       double tFrac = (double)t / hyperParams.numAnnealUpdates;
@@ -599,7 +527,7 @@ private:
       double momentum = 1.0 - 1.0 / m;
       step = (1 - tFrac) * stepSize;
 
-      totalScore += trainer.Update(t, step, hyperParams.maxUpdate, momentum);
+      totalScore += trainer.Update(step, hyperParams.maxUpdate, momentum);
     }
     curAnnealUpdate = t;
     prevStepSize = step;
@@ -612,7 +540,7 @@ private:
 
 	// perform the backpropagation update to update the weights of all layers
 	// if lastLayerOnly, then backpropagation is terminated after updating the output layer
-  double UpdateBackProp(const Matrix & input, const Matrix & output, ObjectiveType _objType, bool lastLayerOnly, double iDropP, double hDropP, double stepSize) {
+  double UpdateBackProp(const Matrix &input, const Matrix& output, ObjectiveType _objType, bool lastLayerOnly, double iDropP, double hDropP, double stepSize) {
     int startLayer = lastLayerOnly ? _numLayers - 1 : 0;
 
 		// the input matrix (which may be altered if dropout is used
@@ -692,80 +620,58 @@ private:
 
 	// determine biases used for input during pretraining (either autoencoder or contrastive divergence)
 	// essentially minimizes the loss for a zero weight matrix
-  static void InitializeInputBiases(MMapMatrix & input, AllocatingVector & inputBiases, Layer::ActFunc actFunc, double eps) {
-    int n = input.NumC();
-    inputBiases.Assign(input.NumR(), 0);
-#if 0
-    AllocatingVector transformedRow(input.NumC());
-    for (int r = 0; r < input.NumR(); ++r) {
-      Vector row = input.GetRow(r);
-      switch (actFunc.actType) {
-      case Layer::ActFunc::LOG_SIG:
-	transformedRow.Replace([&] (double x) { 
-	    x = eps + (1 - 2 * eps) * x;
-	    return log(x / (1-x));
-	  }, row);
-	row = transformedRow;
-	break;
-
-      case Layer::ActFunc::TANH:
-	transformedRow.Replace([&] (double x) { 
-	    x = (1 - eps) * x;
-	    return atanh(x);
-	  }, row);
-	row = transformedRow;
-	break;
-	
-      default:
-	break;
-      }
-      inputBiases[r] = Sum(row) / n;
+  static void 
+  InitializeInputBiases(BatchSource *batchSrc, AllocatingVector & inputBiases, Layer::ActFunc actFunc, double eps, float epochFraction=1.0) 
+  {
+    unsigned n = 0;
+    unsigned numRows = batchSrc->numDataRows();
+    inputBiases.Assign(numRows, 0);
+    unsigned miniBatchSize = nnChunkSize * ((1<<20) / sizeof(double)) / numRows;
+    if (miniBatchSize < 1) {
+      miniBatchSize = 1;
+      warning("WARNING: -nnChunkSize %u MiB is too small. One training instances requires %u bytes\n",
+	      nnChunkSize, numRows * sizeof(double));
     }
-#else
-    int miniBatchSize = nnChunkSize * ((1<<20) / sizeof(double)) / input.Ld();
-    if (miniBatchSize < 1) miniBatchSize = 1;
-    int input_NumC = input.NumC();
-    for (int startCol=0; startCol < input_NumC; startCol += miniBatchSize) {
-      int endCol = (startCol + miniBatchSize <= input_NumC) ? startCol + miniBatchSize : input_NumC;
-      Matrix miniBatch = input.GetCols(startCol, endCol);
-      int numCols = miniBatch.NumC();
-      int numRows = miniBatch.NumR();
+    unsigned numBatches = (unsigned)(0.5 + batchSrc->batchesPerEpoch(miniBatchSize) * epochFraction);
+
+    for (unsigned t=0; t < numBatches; t+=1) {
+      Matrix miniBatch = batchSrc->getData(miniBatchSize);
+      unsigned numCols = miniBatch.NumC();
+      n += numCols;
       int miniBatchLD = miniBatch.Ld();
       double const *miniBatchP = miniBatch.Start();
-      for (int c=0; c < numCols; c+=1, miniBatchP += miniBatchLD) {
-	for (int r=0; r < numRows; r+=1) {
+      for (unsigned c=0; c < numCols; c+=1, miniBatchP += miniBatchLD) {
+	for (unsigned r=0; r < numRows; r+=1) {
 	  double transformed = miniBatchP[r], x;
-assert(!std::isnan(transformed));
 	  switch (actFunc.actType) {
 	  case Layer::ActFunc::LOG_SIG:
 	    x = eps + (1 - 2 * eps) * transformed;
-assert(0.0 < x && x < 1.0);
+	    if (x <= 0.0 || 1.0 <= x) {
+	      error("ERROR: input %e is out of the allowed range (0,1) for the sigmoid input activation function\n", transformed);
+	    }
 	    transformed = log(x / (1-x));
-assert(!std::isnan(transformed));
 	    break;
 			      
 	  case Layer::ActFunc::TANH:
 	    x = (1 - eps) * transformed;
-assert(-1.0 < x && x < 1.0);
+	    if (x <= -1.0 || 1.0 <= x) {
+	      error("ERROR: input %e is out of the allowed range (-1,1) for the hyperbolic tangent input activation function\n", transformed);
+	    }
 	    transformed = atanh(x);
-assert(!std::isnan(transformed));
 	    break;
 	    
 	  default:
 	    break;
 	  }
-assert(!std::isnan(inputBiases[r]));
 	  inputBiases[r] += transformed;
 	}
       }
     }
-    int numRows = input.NumR();
-    for (int r=0; r < numRows; r+=1) {
-      assert(!std::isnan(inputBiases[r]));
+    for (unsigned r=0; r < numRows; r+=1) {
       inputBiases[r] /= n;
     }
-#endif
   }
+
 
 	// update the layer's parameters using contrastive divergence
   double UpdateCD(const Matrix & input, const Vector & inputBiases, int layer, double stepSize) {
@@ -981,7 +887,11 @@ public:
 	// by multiplying by weights and adding biases
   MMapMatrix MapLayer(MMapMatrix &input, int layer) const {
     int miniBatchSize = nnChunkSize * ((1<<20) / sizeof(double)) / input.Ld();
-    if (miniBatchSize < 1) miniBatchSize = 1;
+    if (miniBatchSize < 1) {
+      miniBatchSize = 1;
+      warning("WARNING: -nnChunkSize %u MiB is too small. One training instances requires %u bytes\n",
+	      nnChunkSize, input.Ld() * sizeof(double));
+    }
     MMapMatrix output(_B[layer].Len(), input.NumC(), _B[layer].Len());
     int start=0, end, lastCol = input.NumC();
     for ( ; start < lastCol ; start += miniBatchSize) {
@@ -992,15 +902,49 @@ public:
     return output;
   }
 
+	// given input data to a given layer from observation files, compute the output matrix
+	// by multiplying by weights and adding biases
+  MMapMatrix MapLayer(BatchSource *batchSrc, int layer, MMapMatrix &batchSrcLabels) const {
+    unsigned numRows = batchSrc->numDataRows() + batchSrc->numLabelRows();
+    unsigned miniBatchSize = nnChunkSize * ((1<<20) / sizeof(double)) / numRows;
+    if (miniBatchSize < 1) {
+      miniBatchSize = 1;
+      warning("WARNING: -nnChunkSize %u MiB is too small. One training instances requires %u bytes\n",
+	      nnChunkSize, numRows * sizeof(double));
+    }
+    MMapMatrix output(_B[layer].Len(), batchSrc->epochSize(), _B[layer].Len());
+    unsigned start, end, lastCol = batchSrc->epochSize();
+    assert(batchSrcLabels.NumC() == lastCol);
+    for (start=0, end=miniBatchSize; start < lastCol ; start += miniBatchSize, end += miniBatchSize) {
+      unsigned batchSize;
+      if (end <= lastCol) {
+	// take the full minibatch
+	batchSize = miniBatchSize;
+      } else {
+	end = lastCol; // partial batch
+	batchSize = lastCol - start;
+      }
+      //      end = (start + miniBatchSize <= lastCol) ? start + miniBatchSize : lastCol;
+      Matrix d, l; // instance data, labels
+      batchSrc->getBatch(batchSize, d, l);
+assert(d.NumC() == l.NumC());
+      output.PutCols( _layers[layer].ActivateUp(_W[layer], _B[layer], d, _hActFunc[layer]) , start);
+      batchSrcLabels.PutCols(l, start);
+    }
+    return output;
+  }
+
+
 	// given an input matrix to a given layer, compute the output matrix
 	// by multiplying by weights and adding biases
   Matrix MapLayer(const Matrix & input, int layer) const {
     return _layers[layer].ActivateUp(_W[layer], _B[layer], input, _hActFunc[layer]);
   }
 
+
 	// given an input matrix to a given layer, compute the output matrix of a higher layer
 	// by consecutively multiplying by weights and adding biases
-  Matrix MapUp(const Matrix & input, double dropoutRate = 0, int startLayer = -1, int endLayer = -1) const {
+  Matrix MapUp(const Matrix &input, double dropoutRate = 0, int startLayer = -1, int endLayer = -1) const {
     if (startLayer == -1) startLayer = 0;
     if (endLayer == -1) endLayer = _numLayers;
 
@@ -1016,12 +960,11 @@ public:
   }
 
 	// (Pretrain and) train parameters of entire network
-  void Train(MMapMatrix &input, const MMapMatrix &output, ObjectiveType objectiveType, 
+  void Train(BatchSource *batchSrc, ObjectiveType objectiveType, 
 	     const vector<HyperParams> &hyperParams_pt, const HyperParams &hyperParams_bp, 
 	     float epochFraction = 1.0, float annealEpochFraction = 1.0,
 	     char const *loadFilename=NULL, char const *saveFilename=NULL) 
   {
-    MMapMatrix mappedInput = input;
     if (IM::messageGlb(IM::Training, IM::Moderate)) {
       printf("\nPretrain hyperparams:\n\n");
       hyperParams_pt[0].print();
@@ -1030,21 +973,33 @@ public:
       printf("\n");
     }
 
+    MMapMatrix   input,  // current layer's input data
+                 output, // current layer's output data (will become next layer's input)
+      // labels for the MapLayer()ed input instances
+      batchSrcLabels(batchSrc->numLabelRows(), batchSrc->epochSize(), batchSrc->numLabelRows());
+
+    BatchSource *bs;
+
     if (!resumeTraining) { // we only support resuming backprop, not pretraining
 
       // pretrain hidden layers
-      for (int layer = 0; layer < _layers.size() - 1; ++layer) {
+      int layer;
+      for (layer = 0; layer < _layers.size() - 1; ++layer) {
 	const HyperParams & hyperParams = hyperParams_pt[layer];
 	InitLayer(layer);
 	
 	Layer::ActFunc lowerActFunc = (layer == 0) ? _iActFunc : _hActFunc[layer-1];
+	if (layer == 0) {
+	  bs = batchSrc; // use observation file data
+	} else {
+	  bs = new MatrixBatchSource(input); // use previous layer's output
+	}
 	switch (hyperParams.pretrainType) {
 	case CD:
 	  {
 	    infoMsg(IM::Training, IM::Default, "Pretraining layer %d of size %d x %d with CD\n", 
 		    layer, LayerInSize(layer), LayerOutSize(layer));
-	    MatrixBatchSource *bs = new MatrixBatchSource(hyperParams.miniBatchSize, mappedInput, mappedInput);
-	    CDTrainingFunction cdFunc(*this, layer, mappedInput, bs, hyperParams, lowerActFunc);
+	    CDTrainingFunction cdFunc(*this, layer, bs, hyperParams, lowerActFunc);
 	    TrainSGD(cdFunc, hyperParams);
 	  }
 	  break;
@@ -1053,8 +1008,7 @@ public:
 	  {
 	    infoMsg(IM::Training, IM::Default, "Pretraining layer %d of size %d x %d with AE\n", 
 		    layer, LayerInSize(layer), LayerOutSize(layer));
-	    MatrixBatchSource *bs = new MatrixBatchSource(hyperParams.miniBatchSize, mappedInput, mappedInput);
-	    AETrainingFunction aeFunc(*this, layer, mappedInput, bs, hyperParams, lowerActFunc);
+	    AETrainingFunction aeFunc(*this, layer, bs, hyperParams, lowerActFunc);
 	    TrainSGD(aeFunc, hyperParams);
 	  }
 	  break;
@@ -1065,8 +1019,13 @@ public:
 	default:
 	  abort();
 	}
-	int l = layer;
-	mappedInput = MapLayer(mappedInput, l);
+	if (layer == 0) {
+	  output = MapLayer(batchSrc, layer, batchSrcLabels); // apply input layer to observation file data
+	} else {
+	  output = MapLayer(input, layer);    // apply hidden layer to previous layer's output
+	}
+	input = output; // current layer's output becomes next layer's input
+assert(input.NumC() == batchSrcLabels.NumC());
 	if (layer > 0) _layers[layer - 1].Clear(); // save some memory
       }
 
@@ -1076,15 +1035,18 @@ public:
 	// pretrain output layer
 	infoMsg(IM::Training, IM::Default, "Pretraining output layer\n");
 
-	MatrixBatchSource *bs = new MatrixBatchSource((unsigned) hyperParams_pt.back().miniBatchSize, mappedInput, output);
-	OutputLayerTrainingFunction outputFunc(mappedInput, output, bs, *this, hyperParams_pt.back(), objectiveType);
+	if (layer == 0) {
+	  bs = batchSrc; // use observation file data
+	} else {
+	  bs = new MatrixBatchSource(input, batchSrcLabels); // use previous layer's output
+	}
+	OutputLayerTrainingFunction outputFunc(bs, *this, hyperParams_pt.back(), objectiveType);
 	TrainSGD(outputFunc, hyperParams_pt.back());
       }
     }
 
     // and now, fine tune all layers with backpropagation
-    infoMsg(IM::Training, IM::Default, "Fine tuning\n");
-
+    
     double prevStepSize = 0.0;
     int curUpdate = 0, curAnnealUpdate = 0;
     iDataStreamFile *loadFile = NULL;
@@ -1099,20 +1061,22 @@ public:
       loadFile->read(_deltaParams.Start(), _deltaParams.Len(), "previous network momentum");
       delete loadFile;
     }
-
-    MatrixBatchSource *bs = new MatrixBatchSource(hyperParams_bp.miniBatchSize, input, output);
-    BPTrainingFunction bpFunc(input, output, bs, *this, hyperParams_bp, objectiveType);
-    TrainSGD(bpFunc, hyperParams_bp, epochFraction, annealEpochFraction, prevStepSize, curUpdate, curAnnealUpdate);
-
-    // renormalize weights if dropout training was used
-    if (hyperParams_bp.iDropP > 0) _W[0] *= (1 - hyperParams_bp.iDropP);
-    if (hyperParams_bp.hDropP > 0) {
-      for (int l = 1; l < _W.size(); ++l) {
-        _W[l] *= (1 - hyperParams_bp.hDropP);
+    
+    if (epochFraction > 0.0 || annealEpochFraction > 0.0) {
+      infoMsg(IM::Training, IM::Default, "Fine tuning\n");
+      BPTrainingFunction bpFunc(batchSrc, *this, hyperParams_bp, objectiveType);
+      TrainSGD(bpFunc, hyperParams_bp, epochFraction, annealEpochFraction, prevStepSize, curUpdate, curAnnealUpdate);
+      
+      // renormalize weights if dropout training was used -- only after all training is finished
+      if (curUpdate >= hyperParams_bp.numUpdates && curAnnealUpdate >= hyperParams_bp.numAnnealUpdates) {
+	if (hyperParams_bp.iDropP > 0) _W[0] *= (1 - hyperParams_bp.iDropP);
+	if (hyperParams_bp.hDropP > 0) {
+	  for (int l = 1; l < _W.size(); ++l) {
+	    _W[l] *= (1 - hyperParams_bp.hDropP);
+	  }
+	}
       }
     }
-
-    bool outputStateFile = false;
     if (saveFilename) {
       saveFile = new oDataStreamFile(saveFilename, true);
       saveFile->write(prevStepSize, "previous backprop step size");

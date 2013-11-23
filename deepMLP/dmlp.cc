@@ -2,6 +2,7 @@
 
 #include "DBN.h"
 #include "MNIST.h"
+#include "BatchSource.h"
 
 RAND rnd;
 
@@ -53,7 +54,8 @@ int main(int argc, char *argv[]) {
 
   Matrix input = mnist.GetImages();
   MMapMatrix mappedInput(input), mappedOutput(output);
-  dbn.Train(mappedInput, mappedOutput, objType, false, pretrainHyperParams, bpHyperParams);
+  BatchSource *batchSrc = new MatrixBatchSource(mappedInput, mappedOutput);
+  dbn.Train(batchSrc, objType, pretrainHyperParams, bpHyperParams);
 
   // really we shouldn't be using the test set like this, but this is just for debugging
   MNISTData testMnist(testImageFile, testLabelFile);

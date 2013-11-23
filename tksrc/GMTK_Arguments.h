@@ -1756,6 +1756,7 @@ static float normalizeScoreEachClique = MaxClique::normalizeScoreEachClique;
 
 static char const *DVECPTName         = NULL;
 static unsigned    labelOffset        = 0;
+static unsigned    batchQueueSize     = 1000;
 static bool        oneHot             = true;
 static char const *saveTrainingFile   = NULL;
 static char const *loadTrainingFile   = NULL;
@@ -1798,6 +1799,7 @@ static char const *trainingSchedule = "linear";
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
 Arg("nnChunkSize", Arg::Opt, DBN::nnChunkSize, "Size in MB to use for incremental DeepNN matrix operations"),
+Arg("batchQueueSize", Arg::Opt, batchQueueSize, "Size (in training instances) of the asynchronous batch queue"),
 Arg("deepVECPTName", Arg::Req, DVECPTName, "Name of Deep VE CPT to train"),
 Arg("labelOffset", Arg::Req, labelOffset, "Position in observation file where output labels start"),
 Arg("oneHot", Arg::Opt, oneHot, "If true, labelOffset is the single discrete correct parent value, "
@@ -1807,9 +1809,8 @@ Arg("sparseInitLayer", Arg::Opt, DBN::sparseInitLayer, "Use sparse or dense init
 Arg("trainingSchedule", Arg::Opt, trainingSchedule, "Order to process training data (linear, random, permute, shuffle)"),
 Arg("pretrainType", Arg::Opt, pretrainType, "Pretraining type (none, AE, CD)"),
 Arg("pretrainActFunc", Arg::Opt, pretrainActFuncStr, "Pretraining input activation function (sig, tanh, cubic, linear, rect)"),
-Arg("resumeTraining", Arg::Opt, DBN::resumeTraining, "Continue training specified deep VE CPT rather than starting from scratch"),
-Arg("saveTrainingFile", Arg::Opt, saveTrainingFile, "Filename to save training state for later -resumeTraining"),
-Arg("loadTrainingFile", Arg::Opt, loadTrainingFile, "Filename to load training state from for -resumeTraining"),
+Arg("saveTrainingFile", Arg::Opt, saveTrainingFile, "Filename to save training state for resuming training later"),
+Arg("loadTrainingFile", Arg::Opt, loadTrainingFile, "Filename to load training state from to resume training"),
 Arg("tempDir", Arg::Opt, MMapMatrix::dmlpTempDir, "Directory to store temp files if $GMTKTMPDIR environment variable is not set"),
 
 Arg("\n*** DMLP pretraining hyperparameters ***\n"),
@@ -1832,9 +1833,9 @@ Arg("bpMaxMomentum", Arg::Opt, bpMaxMomentum, "Backprop: Maximum momentum hyperp
 Arg("bpMaxUpdate", Arg::Opt, bpMaxUpdate, "Backprop: Maximum update hyperparameter"),
 Arg("bpL2", Arg::Opt, bpL2, "Backprop: l2 hyperparameter"),
 Arg("bpNumEpochs", Arg::Opt, bpNumEpochs, "Backprop: Total epochs of training hyperparameter"),
-Arg("bpEpochFraction", Arg::Opt, bpEpochFraction, "Backprop: fraction of -bpNumEpochs to do in this invocation)"),
+Arg("bpEpochFraction", Arg::Opt, bpEpochFraction, "Backprop: [0,1] fraction of -bpNumEpochs to do in this invocation"),
 Arg("bpNumAnnealEpochs", Arg::Opt, bpNumAnnealEpochs, "Backprop: Total epochs of anneal training hyperparameter"),
-Arg("bpAnnealEpochFraction", Arg::Opt, bpAnnealEpochFraction, "Backprop: fraction of -bpNumAnnealEpochs to do in this invocation"),
+Arg("bpAnnealEpochFraction", Arg::Opt, bpAnnealEpochFraction, "Backprop: [0,1] fraction of -bpNumAnnealEpochs to do in this invocation"),
 Arg("bpMiniBatchSize", Arg::Opt, bpMiniBatchSize, "Backprop: Mini-batch size hyperparameter"),
 Arg("bpCheckInterval", Arg::Opt, bpCheckInterval, "Backprop: Check interval hyperparameter"),
 Arg("bpIdropP", Arg::Opt, bpIdropP, "Backprop: dropout probability for input layer"),
@@ -1878,18 +1879,16 @@ Arg("bpHdropP", Arg::Opt, bpHdropP, "Backprop: dropout probability for hidden la
 	  argerr, trainingSchedule);
   }
 
-  if (bpEpochFraction <= 0.0 || 1.0 < bpEpochFraction) {
-    error("%s: -bpEpochFraction %e is invalid, it must be in (0,1]\n", bpEpochFraction);
+  if (bpEpochFraction < 0.0 || 1.0 < bpEpochFraction) {
+    error("%s: -bpEpochFraction %e is invalid, it must be in [0,1]\n", bpEpochFraction);
   }
-  if (bpAnnealEpochFraction <= 0.0 || 1.0 < bpAnnealEpochFraction) {
-    error("%s: -bpAnnealEpochFraction %e is invalid, it must be in (0,1]\n", bpAnnealEpochFraction);
-  }
-  if (DBN::resumeTraining && strcasecmp(pretrainType, "none")) {
-    error("%s: -resumeTraining T requires -pretrainType none\n", argerr);
+  if (bpAnnealEpochFraction < 0.0 || 1.0 < bpAnnealEpochFraction) {
+    error("%s: -bpAnnealEpochFraction %e is invalid, it must be in [0,1]\n", bpAnnealEpochFraction);
   }
 
-  if (DBN::resumeTraining && loadTrainingFile == NULL) {
-    error("%s: -resumeTraining requires a training state file to load specified by -loadTrainingFile\n", argerr);
+  DBN::resumeTraining = loadTrainingFile != NULL;
+  if (DBN::resumeTraining && strcasecmp(pretrainType, "none")) {
+    error("%s: Resuming training T requires -pretrainType none\n", argerr);
   }
 
 #else
