@@ -18,6 +18,7 @@
 #include "GMTK_ObservationSource.h"
 #include "rand.h"
 #include "error.h"
+#include "debug.h"
 
 // Return non-overlapping training units of requested size in observation source order.
 // If a segment's length is not a multiple of the unit size, the last unit from that
@@ -58,6 +59,8 @@ class LinearSchedule : public TrainingSchedule {
     if (num_viable_units == 0) {
       error("ERROR: observation files contain no viable training instances\n");
     }
+    infoMsg(IM::ObsFile, IM::Mod, "Linear training schedule: %u segments, %u viable units\n",
+	    trrng->length(), num_viable_units);
     trrng_it->reset();
     unsigned num_frames;
     do {
@@ -66,9 +69,15 @@ class LinearSchedule : public TrainingSchedule {
 	error("ERROR: Unable to open observation file segment %u\n", curSegment);
       }
       num_frames = obs_source->numFrames();
-      if (num_frames == 0) (*trrng_it)++;
+      if (num_frames == 0) {
+	infoMsg(IM::ObsFile, IM::Warning, "Linear training schedule: skipping segment %u since it contains no frames\n",
+		curSegment);
+	(*trrng_it)++;
+      }
     } while (num_frames == 0);
     maxFrame = ((num_frames-1) / unit_size) * unit_size;
+    infoMsg(IM::ObsFile, IM::Mod, "Linear training schedule: starting at segment %u with max frame %u\n",
+	    curSegment, maxFrame);
     curFrame = 0;
   } 
 
@@ -83,8 +92,10 @@ class LinearSchedule : public TrainingSchedule {
       unsigned num_frames;
       do {
 	(*trrng_it)++;
+	infoMsg(IM::ObsFile, IM::Mod, "Linear training schedule: advancing to segment %u\n", *(*trrng_it));
 	if (trrng_it->at_end()) {
 	  trrng_it->reset();
+	  infoMsg(IM::ObsFile, IM::Mod, "Linear training schedule: reset to segment %u\n", *(*trrng_it));
 	}
 	curSegment = *(*trrng_it);
 	if (!obs_source->openSegment(curSegment)) {
@@ -94,9 +105,12 @@ class LinearSchedule : public TrainingSchedule {
       } while (num_frames == 0); // must be a viable unit somewhere or the ctor would fail
       maxFrame = ((num_frames-1) / unit_size) * unit_size;
       curFrame = 0;
+      infoMsg(IM::ObsFile, IM::Mod, "Linear training schedule: using segment %u with max frame %u\n",
+	      curSegment, maxFrame);
     } 
     segment = curSegment;
     frame = curFrame;
+    infoMsg(IM::ObsFile, IM::Mod, "Linear training schedule: dispatched training unit (%u,%u)\n", segment, frame);
     curFrame += unit_size;
     TrainingSchedule::nextTrainingUnit(segment, frame);
   }

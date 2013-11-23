@@ -131,6 +131,10 @@ AC_LANG_POP([C++])
 
 # Checks for libraries.
 
+# AX_PTHREAD comes from m4/m4_ax_pthread.m4 which is not distributed with GMTK
+# See http://www.gnu.org/software/autoconf-archive/ax_pthread.html
+AX_PTHREAD
+
 AC_ARG_ENABLE([gmtkViz], 
               [AS_HELP_STRING([--disable-gmtkViz],
                               [disable gmtkViz @<:@default: no@:>@])],

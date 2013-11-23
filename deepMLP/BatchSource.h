@@ -39,34 +39,31 @@
 // BatchSource subclasses provide a stream of [mini]batches for NN trainers.
 class BatchSource {
 
- protected:
-
-  unsigned batchSize; // number of training instances in a batch
-
  public:
 
-  BatchSource(unsigned batchSize) : batchSize(batchSize) {}
+  // Get the next batchSize training instances' data. You won't be able to get
+  // their labels -- use getBatch() if you need them. May return fewer instances
+  // than you request. Instances are columns, Matrix in column-major order.
+  virtual Matrix getData(unsigned batchSize) = 0;
 
-  // Return the ith [mini]batch. Note that there's no guarantee that
-  // you will get the same results from multiple calls for a particular i.
-  // Note that the returned batch may be shorter than the batchSize.
-  // Matrix is column-major, with a column corresponding to a training instance.
-  virtual Matrix getBatch(unsigned i) = 0;
-
-  // Return the label Matrix for the ith [mini]batch. The result of 
-  // getLabels(i) will correspond to the result of getBatch(i) as long
-  // as there aren't any intervening calls of getLabels(j) or getBatch(j) 
-  // where j != i.
-  virtual Matrix getLabels(unsigned i) = 0;
+  // Get the next batchSize labels. You won't be able to get the input data
+  // corresponding to the labels -- use getBatch if you need it...
+  virtual Matrix getLabels(unsigned batchSize) = 0;
+  
+  // Get the next [mini]batch's training data and labels.
+  virtual void getBatch(unsigned batchSize, Matrix &data, Matrix &labels) = 0;
 
   // Smallest number of [mini]batches such that the total number of [mini]batch
   // columns will be >= the total number of training instances.
-  virtual unsigned batchesPerEpoch() = 0;
+  virtual unsigned batchesPerEpoch(unsigned batchSize) = 0;
+
+  // Number of instances in an epoch
+  virtual unsigned epochSize() { return batchesPerEpoch(1); }
 
   // So you don't have to actually produce a Matrix to know the # of rows...
   // You can't know the number of columns in advance, since returned [mini]batches
   // may be smaller than batchSize.
-  virtual unsigned numBatchRows() = 0;
+  virtual unsigned numDataRows() = 0;
 
   virtual unsigned numLabelRows() = 0;
 };
@@ -75,32 +72,40 @@ class BatchSource {
 // Stream batches from instances of Galen's Matrix class
 class MatrixBatchSource : public BatchSource {
 
-  Matrix const     &batchSource;  // training data
+  Matrix const     &dataSource;   // training data
   Matrix const     &labelSource;  // labels thereof
 
-  bool              small;        // mini-batch size <= source matrix size
+  unsigned nextColumn;            // index of start of next batch
 
-  AllocatingMatrix  batchTemp;    // used to assemble "wrap-around" mini-batches
+  AllocatingMatrix  dataTemp;     // used to assemble "wrap-around" mini-batches
   AllocatingMatrix  labelTemp;
   
 
-  // get the ith batch or labels
-  Matrix getMatrix(unsigned i, Matrix const &source, AllocatingMatrix &temp) {
-    if (small) return source; // that's all there is...
+  // get the batch or labels starting at column i
+  Matrix getMatrix(unsigned i, unsigned batchSize, Matrix const &source, AllocatingMatrix &temp, unsigned &actualSize) {
+    temp.Resize(source.NumR(), batchSize);
+    unsigned srcCols = source.NumC();
 
     Matrix batch;
-    uint64_t c = (i * batchSize) % source.NumC();
+    uint64_t c = i % srcCols;
     unsigned startCol = (unsigned) c;
     unsigned endCol = startCol + batchSize;
-    if (endCol <= source.NumC()) {
+    if (endCol <= srcCols) {
       batch = source.GetCols(startCol, endCol);
+      actualSize = batchSize;
       return batch;
     }
 
     // take the last few columns, then wrap around to the first columns
-    int numLastCols = source.NumC() - startCol;
+    int numLastCols = srcCols - startCol;
     temp.GetCols(0, numLastCols).CopyFrom(source.GetCols(startCol, -1)); // last few
-    endCol %= source.NumC();
+    if (batchSize <= srcCols) { // batch is smaller than matrix
+      endCol %= srcCols;
+      actualSize = batchSize;
+    } else {
+      endCol = startCol; // use entire matrix
+      actualSize = srcCols;
+    }
     temp.GetCols(numLastCols, -1).CopyFrom(source.GetCols(0, endCol)); // wrap around
     batch = temp;
     return batch;
@@ -108,33 +113,139 @@ class MatrixBatchSource : public BatchSource {
 
  public:
 
-  MatrixBatchSource(unsigned batchSize, Matrix const &batchSource, Matrix const &labelSource) 
-    : BatchSource(batchSize), batchSource(batchSource), labelSource(labelSource),
-      small(batchSource.NumC() <= batchSize)
+  MatrixBatchSource(Matrix const &dataSource, Matrix const &labelSource) 
+    : dataSource(dataSource), labelSource(labelSource), nextColumn(0)
   {
-    assert(batchSource.NumC() == labelSource.NumC());
-    batchTemp.Resize(batchSource.NumR(), batchSize);
-    labelTemp.Resize(labelSource.NumR(), batchSize);
+    assert(dataSource.NumC() == labelSource.NumC());
   }
 
 
-  Matrix getBatch(unsigned i) {
-    return getMatrix(i, batchSource, batchTemp);
+  MatrixBatchSource(Matrix const &source) 
+    : dataSource(source), labelSource(source), nextColumn(0)
+  { }
+
+
+  Matrix getData(unsigned batchSize) {
+    unsigned actualSize;
+    Matrix batch = getMatrix(nextColumn, batchSize, dataSource, dataTemp, actualSize);
+    nextColumn += actualSize;
+    nextColumn %= dataSource.NumC();
+    return batch;
   }
 
 
-  Matrix getLabels(unsigned i) {
-    return getMatrix(i, labelSource, labelTemp);
+  Matrix getLabels(unsigned batchSize) {
+    unsigned actualSize;
+    Matrix batch = getMatrix(nextColumn, batchSize, labelSource, labelTemp, actualSize);
+    nextColumn += actualSize;
+    nextColumn %= dataSource.NumC();
+    return batch;
   }
 
 
-  unsigned batchesPerEpoch() { 
-    return (batchSource.NumC() / batchSize) + ((batchSource.NumC() % batchSize) ? 1 : 0);
+  void getBatch(unsigned batchSize, Matrix &data, Matrix &labels) {
+    unsigned actualBatchSize, actualLabelSize;
+    data   = getMatrix(nextColumn, batchSize, dataSource,  dataTemp, actualBatchSize);
+    labels = getMatrix(nextColumn, batchSize, labelSource, labelTemp, actualLabelSize);
+    assert(actualBatchSize == actualLabelSize);
+    nextColumn += actualBatchSize;
+    nextColumn %= dataSource.NumC();
   }
 
 
-  unsigned numBatchRows() { return batchSource.NumR(); }
+  unsigned batchesPerEpoch(unsigned batchSize) { 
+    return (dataSource.NumC() / batchSize) + ((dataSource.NumC() % batchSize) ? 1 : 0);
+  }
+
+
+  unsigned numDataRows() { return dataSource.NumR(); }
 
   virtual unsigned numLabelRows() { return labelSource.NumR(); }
 
+};
+
+
+// Stream batches from a TrainingSchedule
+class ScheduleBatchSource : public BatchSource {
+  TrainingSchedule *schedule;
+  float            *TSfeatures;   // current unit's instance data
+  float            *TSlabels;     // current unit's label data
+  unsigned          unitSize;     // # instances in current training unit
+  unsigned          curInstance;  // index of current instance within current unit
+
+  AllocatingMatrix  dataTemp;     // used to assemble "wrap-around" mini-batches
+  AllocatingMatrix  labelTemp;
+
+  unsigned dataRows, labelRows, labelStride;
+
+ public:
+
+  ScheduleBatchSource(TrainingSchedule *schedule) 
+    : schedule(schedule), TSfeatures(NULL), TSlabels(NULL), unitSize(0), curInstance(0)
+  {
+    assert(schedule);
+    unsigned dummy;
+    schedule->describeFeatures(dataRows, dummy);
+    schedule->describeLabels(labelRows, dummy, labelStride);
+    infoMsg(IM::ObsFile, IM::Moderate, "Training schedule batch source: data %u x %u;  labels %u x %u + %u\n",
+	    dataRows, epochSize(), labelRows, epochSize(), labelStride);
+  }
+
+
+  Matrix getData(unsigned batchSize) {
+    Matrix result, dummy;
+    getBatch(batchSize, result, dummy);
+    return result;
+  }
+
+
+  Matrix getLabels(unsigned batchSize) {
+    Matrix result, dummy;
+    getBatch(batchSize, dummy, result);
+    return result;
+  }
+
+
+  void getBatch(unsigned batchSize, Matrix &data, Matrix &labels) {
+    infoMsg(IM::ObsFile, IM::High, "ScheduleBatchSource::getBatch(%u)\n", batchSize);
+    dataTemp.Resize(dataRows, batchSize);
+    labelTemp.Resize(labelRows, batchSize);
+    double *dataP = dataTemp.Start();
+    double *labelsP = labelTemp.Start();
+    for (unsigned i = 0; i < batchSize; i += 1, 
+	   curInstance += 1, dataP += dataRows, labelsP += labelRows, TSfeatures += dataRows, TSlabels += labelStride) 
+    {
+      if (curInstance == unitSize) { // need to load a new training unit
+	unsigned segment, frame;
+	schedule->nextTrainingUnit(segment, frame);
+	TSfeatures = schedule->getFeatures(segment, frame, unitSize);
+	TSlabels = schedule->getLabels(segment, frame, unitSize);
+	infoMsg(IM::ObsFile, IM::High, "ScheduleBatchSource: loading training unit %u instances @ segment %u frame %u\n",
+		unitSize, segment, frame);
+	curInstance = 0;
+      }
+      for (unsigned r=0; r < dataRows; r+=1)
+	dataP[r] = (double) (TSfeatures[r]);
+      for (unsigned r=0; r < labelRows; r+=1)
+	labelsP[r] = (double) (TSlabels[r]);
+    }
+    data = dataTemp;
+    labels = labelTemp;
+  }
+
+
+  unsigned batchesPerEpoch(unsigned batchSize) {
+    return (schedule->numInstances() / batchSize) + 
+           ((schedule->numInstances() % batchSize) ? 1 : 0);
+  }
+
+
+  unsigned numDataRows() {
+    return dataRows;
+  }
+
+
+  unsigned numLabelRows() {
+    return labelRows;
+  }
 };

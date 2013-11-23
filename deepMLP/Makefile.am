@@ -23,10 +23,10 @@ AM_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(PEDANTIC) $(WARNING) $(ANSI) $(BLAS_CF
 #AM_LDFLAGS = -static -fwhole-program -L. 
 AM_LDFLAGS = -L.
 
-LDADD = \
-$(builddir)/../miscSupport/libmiscSupport.a \
+LDADD =                                     \
+libDMLP.a                                   \
 $(builddir)/../featureFileIO/libgmtkio.a    \
-libDMLP.a
+$(builddir)/../miscSupport/libmiscSupport.a 
 
 if BUILD_PHIPAC
 LDADD += libPHiPAC.a
@@ -56,7 +56,9 @@ libDMLP_a_SOURCES =           \
   Matrix.h Matrix.cc          \
   MatrixFunc.h MatrixFunc.cc  \
   MMapMatrix.h MMapMatrix.cc  \
-  BatchSource.h
+  BatchSource.h               \
+  AsynchronousBatchSource.h   \
+  AsynchronousBatchSource.cc
 
 
 libPHiPAC_a_SOURCES =     \

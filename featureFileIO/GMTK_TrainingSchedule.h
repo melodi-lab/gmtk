@@ -141,7 +141,7 @@ class TrainingSchedule {
 
   // Returns the feature matrix of the training unit starting at segment, frame.
   // length is set to the number of training instances it contains.
-  // Note that some training schedules may return units shorted than unit_size.
+  // Note that some training schedules may return units shorter than unit_size.
 
   virtual float *getFeatures(unsigned segment, unsigned frame, unsigned &length) {
     unsigned frames_per_instance = 2 * window_radius + 1;
@@ -180,7 +180,7 @@ class TrainingSchedule {
   // correct label has value 1, or there may be a posterior-like score 
   // for every element of the domain.
   // length is set to the number of training instances it contains.
-  // Note that some training schedules may return units shorted than unit_size.
+  // Note that some training schedules may return units shorter than unit_size.
   virtual float *getLabels(unsigned segment, unsigned frame, unsigned &length);
 
 

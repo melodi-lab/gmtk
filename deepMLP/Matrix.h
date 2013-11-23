@@ -302,7 +302,7 @@ public:
 
 	// Return a Matrix consisting of the columns from beginCol
 	// to endCol (not inclusive: the result will have
-	// endCol-beginCol-1 total columns)
+	// endCol-beginCol total columns)
 	// See NOTE ABOUT INDEXING above
   Matrix GetCols(int beginCol, int endCol) const {
     return SubMatrix(0, -1, beginCol, endCol);
@@ -310,7 +310,7 @@ public:
 
 	// Return a Matrix consisting of the rows from beginRow
 	// to endRow (not inclusive: the result will have
-	// endRow-beginRow-1 total rows)
+	// endRow-beginRow total rows)
 	// See NOTE ABOUT INDEXING above
   Matrix GetRows(int beginRow, int endRow) const {
     return SubMatrix(beginRow, endRow, 0, -1);
@@ -323,8 +323,8 @@ public:
 
 	// Return a Matrix consisting of the rows from beginRow
 	// to endRow, and the columns from beginCol to endCol
-	// (not inclusive: the result will have (endRow-beginRow-1)
-	// total rows and (endCol-beginCol-1) total columns)
+	// (not inclusive: the result will have (endRow-beginRow)
+	// total rows and (endCol-beginCol) total columns)
 	// See NOTE ABOUT INDEXING above
   Matrix SubMatrix(int beginRow, int endRow, int beginCol, int endCol) const {
     if (_trans) {
@@ -591,7 +591,7 @@ public:
 
 	// Return a Matrix consisting of the columns from beginCol
 	// to endCol (not inclusive: the result will have
-	// endCol-beginCol-1 total columns)
+	// endCol-beginCol total columns)
 	// See NOTE ABOUT INDEXING above
   MutableMatrix GetCols(int beginCol, int endCol) const {
     return SubMatrix(0, -1, beginCol, endCol);
@@ -599,7 +599,7 @@ public:
 
 	// Return a Matrix consisting of the rows from beginRow
 	// to endRow (not inclusive: the result will have
-	// endRow-beginRow-1 total rows)
+	// endRow-beginRow total rows)
 	// See NOTE ABOUT INDEXING above
   MutableMatrix GetRows(int beginRow, int endRow) const {
     return SubMatrix(beginRow, endRow, 0, -1);
@@ -607,8 +607,8 @@ public:
 
 	// Return a Matrix consisting of the rows from beginRow
 	// to endRow, and the columns from beginCol to endCol
-	// (not inclusive: the result will have (endRow-beginRow-1)
-	// total rows and (endCol-beginCol-1) total columns)
+	// (not inclusive: the result will have (endRow-beginRow)
+	// total rows and (endCol-beginCol) total columns)
 	// See NOTE ABOUT INDEXING above
   MutableMatrix SubMatrix(int beginRow, int endRow, int beginCol, int endCol) const {
     return Matrix::SubMatrix(beginRow, endRow, beginCol, endCol);

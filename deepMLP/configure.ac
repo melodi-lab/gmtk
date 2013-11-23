@@ -22,6 +22,14 @@ AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
 AM_SILENT_RULES([yes])
 
+AC_ARG_ENABLE([cppIfASCII],
+              [AS_HELP_STRING([--disable-cppIfASCII],
+                              [disable piping ASCII parameter files through cpp @<:@default: no@:>@])],
+              [cppIfASCII=${enableval}], [cppIfASCII=yes])
+if test x"$cppIfASCII" = x"yes"; then
+  AC_DEFINE([PIPE_ASCII_FILES_THROUGH_CPP],[1],[Pipe ASCII files through cpp])
+fi
+
 # Checks for programs.
 
 AC_PROG_CC
@@ -47,6 +55,10 @@ AC_LANG_POP([C++])
 
 m4_include([blas_args])
 m4_include([blas_check])
+
+# AX_PTHREAD comes from m4/m4_ax_pthread.m4 which is not distributed with GMTK
+# See http://www.gnu.org/software/autoconf-archive/ax_pthread.html
+AX_PTHREAD
 
 # Checks for header files.
 

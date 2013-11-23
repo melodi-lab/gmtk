@@ -10,6 +10,13 @@
  */
 
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
+
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -19,9 +26,10 @@
 #include <assert.h>
 #include <signal.h>
 
-
 #include "DBN.h"
 #include "MMapMatrix.h"
+#include "BatchSource.h"
+#include "AsynchronousBatchSource.h"
 
 #include "general.h"
 #include "error.h"
@@ -30,14 +38,6 @@
 #include "ieeeFPsetup.h"
 #include "debug.h"
 #include "version.h"
-
-#if HAVE_CONFIG_H
-#include <config.h>
-#endif
-#if HAVE_HG_H
-#include "hgstamp.h"
-#endif
-VCID(HGID)
 
 
 #include "GMTK_FileParser.h"
@@ -74,6 +74,8 @@ VCID(HGID)
 #include "GMTK_WordOrganization.h"
 
 #include "GMTK_DeepVECPT.h"
+
+VCID(HGID)
 
 #define GMTK_ARG_OBS_FILES
 /****************************      FILE RANGE OPTIONS             ***********************************************/
@@ -188,11 +190,13 @@ main(int argc,char*argv[])
   /////////////////////////////////////////////
 
 
+  // Setup to read observation files
   infoMsg(IM::Max,"Opening Files ...\n");
   gomFS = instantiateFileSource();
   globalObservationMatrix = gomFS;
   infoMsg(IM::Max,"Finished opening files.\n");
 
+  // Read in all GMTK object definitions (matrices, neural networks, etc.)
   if (inputMasterFile != NULL) {
     iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
     GM_Parms.read(pf);
@@ -208,6 +212,7 @@ main(int argc,char*argv[])
 
   gomFS->openSegment(0);
 
+  // Look up the Deep VE CPT to train 
   string DVECPTNameStr(DVECPTName);
   if (GM_Parms.deepVECptsMap.find(DVECPTNameStr) == GM_Parms.deepVECptsMap.end()) {
     error("Error: No Deep VE CPT named '%s' found\n", DVECPTName);
@@ -221,6 +226,7 @@ main(int argc,char*argv[])
   struct rusage rue; /* ending time */
   getrusage(RUSAGE_SELF,&rus);
 
+  // Construct Galen's DBN data structure based on DeepNN defined in master file(s)
   int inputSize =  (int)cpt->getDeepNN()->numInputs();
   int numLayers =  (int)cpt->getDeepNN()->numLayers();
   int outputSize = (int)cpt->getDeepNN()->numOutputs();
@@ -279,7 +285,7 @@ main(int argc,char*argv[])
     }
   }
 
-  vector<AllocatingMatrix> W(numLayers);
+  vector<AllocatingMatrix> W(numLayers); // copy existing weights into W & B in case we're resuming training
   vector<AllocatingVector> B(numLayers);
   for (unsigned j=0; j < numLayers; j+=1) {
     double *params;
@@ -291,13 +297,33 @@ main(int argc,char*argv[])
   }
   DBN dbn(numLayers, inputSize, hiddenSize, outputSize, iActFunc, hActFunc, W, B);
 
-
+  // Setup TrainingSchedule to create training instances from observation files in desired order
   unsigned radius = cpt->windowRadius();
   gomFS->setMinPastFrames( radius );
   gomFS->setMinFutureFrames( radius );
 
   unsigned obsOffset = cpt->obsOffset();
   unsigned numFeaturesPerFrame = cpt->numFeaturesPerFrame();
+
+  if (oneHot) {
+    if (labelOffset < gomFS->numContinuous()) {
+      error("ERROR: labelOffset (%u) must refer to a discrete feature (the first %u are continuous)\n", 
+	    labelOffset, gomFS->numContinuous());
+    }
+    if (labelOffset >= gomFS->numFeatures()) {
+      error("ERROR: labelOffset (%u) is too large for the number of available features (%u)\n",
+	    labelOffset, gomFS->numFeatures());
+    }
+  } else {
+    if (labelOffset >= gomFS->numContinuous()) {
+      error("ERROR: labelOffset (%u) is too large for the number of continuous features (%u)\n",
+	    labelOffset, gomFS->numContinuous());
+    }
+    if (labelOffset + outputSize > gomFS->numContinuous()) {
+      error("ERROR: labelOffset (%u) + number of outputs (%u) is too large for the number of continuous features (%u)\n", 
+	    labelOffset, outputSize, gomFS->numContinuous());
+    }
+  }
 
   TrainingSchedule *trainSched;
   if (strcasecmp(trainingSchedule, "linear") == 0) {
@@ -312,6 +338,12 @@ main(int argc,char*argv[])
     error("ERROR: unknown training schedule '%s', must be one of linear, random, shuffle, or permute\n", trainingSchedule);
   }
 
+  BatchSource *batchSrc = new ScheduleBatchSource(trainSched);
+#if 1
+  BatchSource *asynchBatchSrc = new AsynchronousBatchSource(batchSrc, batchQueueSize);
+#endif
+
+  // Set hyperparameters (mostly from command line arguments)
   vector<DBN::HyperParams> pretrainHyperParams(numLayers);
   for (int j = 0; j < numLayers; j+=1) {
     pretrainHyperParams[j].initStepSize     = ptInitStepSize;
@@ -341,26 +373,8 @@ main(int argc,char*argv[])
   bpHyperParams.iDropP           = bpIdropP;
   bpHyperParams.hDropP           = bpHdropP;
 
-  if (oneHot) {
-    if (labelOffset < gomFS->numContinuous()) {
-      error("ERROR: labelOffset (%u) must refer to a discrete feature (the first %u are continuous)\n", 
-	    labelOffset, gomFS->numContinuous());
-    }
-    if (labelOffset >= gomFS->numFeatures()) {
-      error("ERROR: labelOffset (%u) is too large for the number of available features (%u)\n",
-	    labelOffset, gomFS->numFeatures());
-    }
-  } else {
-    if (labelOffset >= gomFS->numContinuous()) {
-      error("ERROR: labelOffset (%u) is too large for the number of continuous features (%u)\n",
-	    labelOffset, gomFS->numContinuous());
-    }
-    if (labelOffset + outputSize > gomFS->numContinuous()) {
-      error("ERROR: labelOffset (%u) + number of outputs (%u) is too large for the number of continuous features (%u)\n", 
-	    labelOffset, outputSize, gomFS->numContinuous());
-    }
-  }
-
+#if 0
+  // Pack training instances into a Matrix for Galen's training code
   unsigned numUnits = trainSched->numTrainingUnitsPerEpoch();
 
   unsigned features_per_instance, instances_per_unit, dataSize, labelSize, labelStride;
@@ -391,6 +405,7 @@ main(int argc,char*argv[])
   }
   delete[] ddata;
   delete[] dlabel;
+#endif
 
   // Sending the process a usr1 signal will cause it to print out
   // status as if a check interval expired. If check intervals take
@@ -398,11 +413,19 @@ main(int argc,char*argv[])
   // awry, you can signal it to restore your faith :)
   signal(SIGUSR1, usr1_handler);
 
+  // Do the actual training
   DBN::ObjectiveType objType = 
     ( cpt->getDeepNN()->getSquashFn(numLayers-1) == DeepNN::SOFTMAX ) ? DBN::SOFT_MAX : DBN::SQ_ERR;
-  dbn.Train(trainData, trainLabels, objType, pretrainHyperParams, bpHyperParams, 
-	    bpEpochFraction, bpAnnealEpochFraction, loadTrainingFile, saveTrainingFile);
 
+#if 1
+  dbn.Train(asynchBatchSrc, objType, pretrainHyperParams, bpHyperParams, 
+	    bpEpochFraction, bpAnnealEpochFraction, loadTrainingFile, saveTrainingFile);
+#else
+  dbn.Train(batchSrc, objType, pretrainHyperParams, bpHyperParams, 
+	    bpEpochFraction, bpAnnealEpochFraction, loadTrainingFile, saveTrainingFile);
+#endif
+
+  // Now write training results back to master file(s)
   vector<DoubleMatrix *> layerMatrix = cpt->getDeepNN()->getMatrices();
   assert(layerMatrix.size() == numLayers);
   for (unsigned layer=0; layer < numLayers; layer+=1) {

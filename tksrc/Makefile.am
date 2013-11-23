@@ -227,8 +227,8 @@ gmtkEMtrain_SOURCES = gmtkEMtrain.cc
 
 gmtkDMLPtrain_SOURCES = gmtkDMLPtrain.cc
 gmtkDMLPtrain_CPPFLAGS = $(AM_CPPFLAGS) $(VERSIONFLAG)
-gmtkDMLPtrain_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(BLAS_CFLAGS)
-gmtkDMLPtrain_LDADD = $(LDADD)
+gmtkDMLPtrain_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(BLAS_CFLAGS) $(PTHREAD_CFLAGS)
+gmtkDMLPtrain_LDADD = $(LDADD) $(PTHREAD_LIBS)
 if BUILD_PHIPAC
 gmtkDMLPtrain_LDADD += $(builddir)/../deepMLP/libPHiPAC.a
 endif
@@ -290,12 +290,25 @@ gmtkViz.app/Contents/PkgInfo: gmtkViz$(EXEEXT) $(srcdir)/Info.plist.in \
 endif
 
 check_PROGRAMS =  \
+abstest \
 flat2vit \
 parserTest \
 testPackCliqueValue \
 testViterbi \
 neghead \
 dlinktest
+
+abstest_SOURCES = abstest.cc
+abstest_CPPFLAGS = $(AM_CPPFLAGS) $(VERSIONFLAG)
+abstest_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(BLAS_CFLAGS) $(PTHREAD_CFLAGS)
+abstest_LDADD = $(LDADD) $(PTHREAD_LIBS)
+if BUILD_PHIPAC
+abstest_LDADD += $(builddir)/../deepMLP/libPHiPAC.a
+endif
+if BUILD_DMLP
+abstest_LDADD += $(builddir)/../deepMLP/libDMLP.a
+endif
+abstest_LDADD += $(BLAS_LIBS)
 
 # testMDCPT testMTCPT
 #testRngDecisionTree testGMParms testFileParser lex.yy
