@@ -1754,10 +1754,13 @@ static float normalizeScoreEachClique = MaxClique::normalizeScoreEachClique;
 
 #include "DBN.h"
 
-static char const *DVECPTName         = NULL;
+static char const *DMLPName           = NULL;
+static unsigned    obsOffset          = 0;
+static unsigned    numFeatures        = 0;
+static unsigned    radius             = 0;
 static unsigned    labelOffset        = 0;
-static unsigned    batchQueueSize     = 1000;
 static bool        oneHot             = true;
+static unsigned    batchQueueSize     = 1000;
 static char const *saveTrainingFile   = NULL;
 static char const *loadTrainingFile   = NULL;
 
@@ -1800,8 +1803,11 @@ static char const *trainingSchedule = "linear";
 
 Arg("nnChunkSize", Arg::Opt, DBN::nnChunkSize, "Size in MB to use for incremental DeepNN matrix operations"),
 Arg("batchQueueSize", Arg::Opt, batchQueueSize, "Size (in training instances) of the asynchronous batch queue"),
-Arg("deepVECPTName", Arg::Req, DVECPTName, "Name of Deep VE CPT to train"),
-Arg("labelOffset", Arg::Req, labelOffset, "Position in observation file where output labels start"),
+Arg("deepMLPName", Arg::Req, DMLPName, "Name of deep NN to train"),
+Arg("featureOffset", Arg::Opt, obsOffset, "Offset in observation file where input features start"),
+Arg("numFeatures", Arg::Req, numFeatures, "Number of input features (per frame)"),
+Arg("radius", Arg::Opt, radius, "Number of frames comprising one input instance = 2r+1"),
+Arg("labelOffset", Arg::Req, labelOffset, "Offset in observation file where output labels start"),
 Arg("oneHot", Arg::Opt, oneHot, "If true, labelOffset is the single discrete correct parent value, "
                                 "else the parent distribution starts ate labelOffset"),
 Arg("sparseInitLayer", Arg::Opt, DBN::sparseInitLayer, "Use sparse or dense initilization strategy (dense is better for rectified linear)"),

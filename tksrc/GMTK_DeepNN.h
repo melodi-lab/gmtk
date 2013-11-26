@@ -122,9 +122,7 @@ public:
 
 
   ////////////////////////////////////////////////////////////////////
-  // How many parameters does this consume? We return 0 since the
-  // virtual evidence does not constitute parameters in the normal
-  // sense.
+  // How many parameters does this consume?
   unsigned totalNumberParameters() { 
     unsigned count = 0;
     for (unsigned layer=0; layer < num_matrices; layer+=1) {
