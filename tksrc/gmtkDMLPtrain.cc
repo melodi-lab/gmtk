@@ -213,32 +213,37 @@ main(int argc,char*argv[])
   gomFS->openSegment(0);
 
   // Look up the Deep VE CPT to train 
-  string DVECPTNameStr(DVECPTName);
-  if (GM_Parms.deepVECptsMap.find(DVECPTNameStr) == GM_Parms.deepVECptsMap.end()) {
-    error("Error: No Deep VE CPT named '%s' found\n", DVECPTName);
+  string DMLPNameStr(DMLPName);
+  if (GM_Parms.deepNNsMap.find(DMLPNameStr) == GM_Parms.deepNNsMap.end()) {
+    error("Error: No Deep NN named '%s' found\n", DMLPName);
   }
-  DeepVECPT *cpt = GM_Parms.deepVECpts[ GM_Parms.deepVECptsMap[DVECPTNameStr] ];
+  DeepNN *dnn = GM_Parms.deepNNs[ GM_Parms.deepNNsMap[DMLPNameStr] ];
 
   printf("Total number of trainable parameters in input files = %u\n",
-	 cpt->totalNumberDMLPParameters());
+	 dnn->totalNumberParameters());
 
   struct rusage rus; /* starting time */
   struct rusage rue; /* ending time */
   getrusage(RUSAGE_SELF,&rus);
 
   // Construct Galen's DBN data structure based on DeepNN defined in master file(s)
-  int inputSize =  (int)cpt->getDeepNN()->numInputs();
-  int numLayers =  (int)cpt->getDeepNN()->numLayers();
-  int outputSize = (int)cpt->getDeepNN()->numOutputs();
+  int inputSize =  (int)dnn->numInputs();
+
+  if (inputSize != (2 * radius + 1) * numFeatures) {
+    error("ERROR: total inputs to '%s' (%d) must equal (2r+1)n, where r is -radius and n is -numFeatures\n", 
+	  inputSize, radius, numFeatures);
+  }
+  int numLayers =  (int)dnn->numLayers();
+  int outputSize = (int)dnn->numOutputs();
   
   vector<int> hiddenSize(numLayers);
   for (unsigned i=0; i < numLayers; i+=1)
-    hiddenSize[i] = (int)cpt->getDeepNN()->layerOutputs(i);
+    hiddenSize[i] = (int)dnn->layerOutputs(i);
 
   bool warned = false;
   vector<Layer::ActFunc> hActFunc(numLayers);
   for (unsigned i=0; i < numLayers; i+=1) {
-    switch (cpt->getDeepNN()->getSquashFn(i)) {
+    switch (dnn->getSquashFn(i)) {
     case DeepNN::SOFTMAX: 
       if (i != numLayers - 1) {
 	error("ERROR: gmtkDMLPtrain only supports softmax for the output layer\n");
@@ -275,7 +280,7 @@ main(int argc,char*argv[])
       }
       if (DBN::sparseInitLayer && !warned) {
 	warning("WARNING: Deep NN '%s' uses rectified linear, which may perform poorly without -sparseInitLayer F\n",
-		cpt->getDeepNN()->name().c_str());
+		dnn->name().c_str());
 	warned = true;
       }
       hActFunc[i] = Layer::ActFunc(Layer::ActFunc::RECT_LIN);
@@ -290,7 +295,7 @@ main(int argc,char*argv[])
   for (unsigned j=0; j < numLayers; j+=1) {
     double *params;
     int rows, cols;
-    cpt->getDeepNN()->getParams(j, rows, cols, params);
+    dnn->getParams(j, rows, cols, params);
     Matrix P(params, cols, rows, cols, false);
     W[j].CopyFrom( P.SubMatrix(0, cols-1, 0, rows) ); // -1 for bias column
     B[j].CopyFrom( P.GetRow(cols - 1) );
@@ -298,12 +303,8 @@ main(int argc,char*argv[])
   DBN dbn(numLayers, inputSize, hiddenSize, outputSize, iActFunc, hActFunc, W, B);
 
   // Setup TrainingSchedule to create training instances from observation files in desired order
-  unsigned radius = cpt->windowRadius();
   gomFS->setMinPastFrames( radius );
   gomFS->setMinFutureFrames( radius );
-
-  unsigned obsOffset = cpt->obsOffset();
-  unsigned numFeaturesPerFrame = cpt->numFeaturesPerFrame();
 
   if (oneHot) {
     if (labelOffset < gomFS->numContinuous()) {
@@ -325,15 +326,24 @@ main(int argc,char*argv[])
     }
   }
 
+  if (obsOffset >= gomFS->numContinuous()) {
+    error("ERROR: featureOffset (%u) is too large for the number of continuous features (%u)\n",
+	  obsOffset, gomFS->numContinuous());
+  }
+  if (obsOffset + numFeatures > gomFS->numContinuous()) {
+    error("ERROR: featureOffset (%u) + numFeatures (%u) is too large for the number of continuous features (%u)\n", 
+	  obsOffset, numFeatures, gomFS->numContinuous());
+  }
+
   TrainingSchedule *trainSched;
   if (strcasecmp(trainingSchedule, "linear") == 0) {
-    trainSched = new LinearSchedule(obsOffset, numFeaturesPerFrame, labelOffset, outputSize, oneHot, radius, 1, gomFS, trrng_str);
+    trainSched = new LinearSchedule(obsOffset, numFeatures, labelOffset, outputSize, oneHot, radius, 1, gomFS, trrng_str);
   } else if (strcasecmp(trainingSchedule, "random") == 0) {
-    trainSched = new RandomSampleSchedule(obsOffset, numFeaturesPerFrame, labelOffset, outputSize, oneHot, radius, 1, gomFS, trrng_str);
+    trainSched = new RandomSampleSchedule(obsOffset, numFeatures, labelOffset, outputSize, oneHot, radius, 1, gomFS, trrng_str);
   } else if (strcasecmp(trainingSchedule, "permute") == 0) {
-    trainSched = new PermutationSchedule(obsOffset, numFeaturesPerFrame, labelOffset, outputSize, oneHot, radius, 1, gomFS, trrng_str);
+    trainSched = new PermutationSchedule(obsOffset, numFeatures, labelOffset, outputSize, oneHot, radius, 1, gomFS, trrng_str);
   } else if (strcasecmp(trainingSchedule, "shuffle") == 0) {
-    trainSched = new ShuffleSchedule(obsOffset, numFeaturesPerFrame, labelOffset, outputSize, oneHot, radius, 1, gomFS, trrng_str);
+    trainSched = new ShuffleSchedule(obsOffset, numFeatures, labelOffset, outputSize, oneHot, radius, 1, gomFS, trrng_str);
   } else {
     error("ERROR: unknown training schedule '%s', must be one of linear, random, shuffle, or permute\n", trainingSchedule);
   }
@@ -415,7 +425,7 @@ main(int argc,char*argv[])
 
   // Do the actual training
   DBN::ObjectiveType objType = 
-    ( cpt->getDeepNN()->getSquashFn(numLayers-1) == DeepNN::SOFTMAX ) ? DBN::SOFT_MAX : DBN::SQ_ERR;
+    ( dnn->getSquashFn(numLayers-1) == DeepNN::SOFTMAX ) ? DBN::SOFT_MAX : DBN::SQ_ERR;
 
 #if 1
   dbn.Train(asynchBatchSrc, objType, pretrainHyperParams, bpHyperParams, 
@@ -426,11 +436,11 @@ main(int argc,char*argv[])
 #endif
 
   // Now write training results back to master file(s)
-  vector<DoubleMatrix *> layerMatrix = cpt->getDeepNN()->getMatrices();
+  vector<DoubleMatrix *> layerMatrix = dnn->getMatrices();
   assert(layerMatrix.size() == numLayers);
   for (unsigned layer=0; layer < numLayers; layer+=1) {
     Matrix const W = dbn.getWeights(layer);
-    cpt->getDeepNN()->setParams(layer, W.Start(), W.Ld(), dbn.getBias(layer).Start());
+    dnn->setParams(layer, W.Start(), W.Ld(), dbn.getBias(layer).Start());
   }
   
   if (outputTrainableParameters != NULL) {
