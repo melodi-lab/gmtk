@@ -10,7 +10,7 @@
 
 # Process this file with autoconf to produce a configure script.
 
-AC_PREREQ([2.65])
+AC_PREREQ([2.69])
 AC_INIT([GMTK], m4_esyscmd(printf %s `head -n 1 ../RELEASE`),
         [https://j.ee.washington.edu/trac/gmtk/newticket])
 : ${CXXFLAGS=""}
