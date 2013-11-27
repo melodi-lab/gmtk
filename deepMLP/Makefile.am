@@ -6,6 +6,8 @@
 # Licensed under the Open Software License version 3.0
 #
 
+ACLOCAL_AMFLAGS = -I m4
+EXTRA_DIST = m4/gpl.txt
 
 DEBUGFLAGS = -ggdb3
 #OPTFLAGS = -O3 -march=native -mtune=native -mfpmath=sse -msse3 -flto

@@ -7,6 +7,7 @@
 # See COPYING or http://opensource.org/licenses/OSL-3.0
 #
 
+ACLOCAL_AMFLAGS = -I m4
 
 if HAVE_HG
 # this will keep the Mercurial revision id current if you're building 
@@ -192,6 +193,7 @@ $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 # include register_user_internal_cfunc_dts.cc and 
 #   user_internal_cfunc_dts.cc in the tar ball
 EXTRA_DIST = \
+m4/gpl.txt \
 GMTK_dlopenDeterministicMappings.h \
 register_user_internal_cfunc_dts.cc \
 user_internal_cfunc_dts.cc \
