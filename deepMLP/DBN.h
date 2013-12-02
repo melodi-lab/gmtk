@@ -660,6 +660,10 @@ private:
 	    transformed = atanh(x);
 	    break;
 	    
+	  case Layer::ActFunc::CUBIC:
+	    transformed = x * (x * x / 3 + x);
+	    break;
+
 	  default:
 	    break;
 	  }
