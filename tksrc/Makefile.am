@@ -216,7 +216,7 @@ gmtkModelInfo \
 gmtkOnline \
 gmtkPrint \
 $(dmlp_programs) $(GMTKVIZ) $(OSXBUNDLE)
-EXTRA_PROGRAMS = gmtkDMLPtrain gmtkViz gmtkViz.app
+EXTRA_PROGRAMS = gmtkDMLPtrain gmtkViz gmtkViz.app abstest
 
 gmtkTie_SOURCES = gmtkTie.cc
 
@@ -231,11 +231,11 @@ gmtkDMLPtrain_SOURCES = gmtkDMLPtrain.cc
 gmtkDMLPtrain_CPPFLAGS = $(AM_CPPFLAGS) $(VERSIONFLAG)
 gmtkDMLPtrain_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(BLAS_CFLAGS) $(PTHREAD_CFLAGS)
 gmtkDMLPtrain_LDADD = $(LDADD) $(PTHREAD_LIBS)
-if BUILD_PHIPAC
-gmtkDMLPtrain_LDADD += $(builddir)/../deepMLP/libPHiPAC.a
-endif
 if BUILD_DMLP
 gmtkDMLPtrain_LDADD += $(builddir)/../deepMLP/libDMLP.a
+endif
+if BUILD_PHIPAC
+gmtkDMLPtrain_LDADD += $(builddir)/../deepMLP/libPHiPAC.a
 endif
 gmtkDMLPtrain_LDADD += $(BLAS_LIBS)
 
@@ -274,8 +274,8 @@ gmtkViz_app_SOURCES = Info.plist.in wxmac.icns
 if MAKE_BUNDLE
 gmtkViz.app: gmtkViz.app/Contents/PkgInfo
 
-app_verbose   = $(app_verbose_$(V))
-app_verbose_  = $(app_verbose_$(AM_DEFAULT_VERBOSITY))
+app_verbose   = $(app_verbose_@AM_V@)
+app_verbose_  = $(app_verbose_@AM_DEFAULT_V@)
 app_verbose_0 = @echo "  APP\t gmtkViz.app";
 
 gmtkViz.app/Contents/PkgInfo: gmtkViz$(EXEEXT) $(srcdir)/Info.plist.in \
@@ -292,7 +292,7 @@ gmtkViz.app/Contents/PkgInfo: gmtkViz$(EXEEXT) $(srcdir)/Info.plist.in \
 endif
 
 check_PROGRAMS =  \
-abstest \
+$(dmlp_check_programs) \
 flat2vit \
 parserTest \
 testPackCliqueValue \
@@ -304,11 +304,11 @@ abstest_SOURCES = abstest.cc
 abstest_CPPFLAGS = $(AM_CPPFLAGS) $(VERSIONFLAG)
 abstest_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(BLAS_CFLAGS) $(PTHREAD_CFLAGS)
 abstest_LDADD = $(LDADD) $(PTHREAD_LIBS)
-if BUILD_PHIPAC
-abstest_LDADD += $(builddir)/../deepMLP/libPHiPAC.a
-endif
 if BUILD_DMLP
 abstest_LDADD += $(builddir)/../deepMLP/libDMLP.a
+endif
+if BUILD_PHIPAC
+abstest_LDADD += $(builddir)/../deepMLP/libPHiPAC.a
 endif
 abstest_LDADD += $(BLAS_LIBS)
 
