@@ -123,6 +123,7 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[]], [[auto f = [] () { return 0;}; f()]])],
   [AC_MSG_RESULT([yes])
    AC_SUBST([dmlp_libraries],[../deepMLP/libDMLP.a])
    AC_SUBST([dmlp_programs],[gmtkDMLPtrain])
+   AC_SUBST([dmlp_check_programs],[abstest])
    AM_CONDITIONAL([BUILD_DMLP],[true])],
   [AC_MSG_RESULT([no])
    AC_WARN([C++ compiler does not support ISO C++ 2011 (you may need -std=c++0x or -std=c++11 depending on GCC version). gmtkDMLPtrain can't be built])
