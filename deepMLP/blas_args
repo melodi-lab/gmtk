@@ -35,12 +35,12 @@ AC_ARG_WITH([mkl],
 # MKL has several threading options. Default is intel_thread
 AC_ARG_WITH([mkl-thread],
    [AS_HELP_STRING([--with-mkl-thread=<thread>], 
-     [use MKL threading library <thread> (sequential, intel_thread, gnu_thread) @<:@intel_thread@:>@])],
+     [use MKL threading library <thread> (sequential, intel_thread, gnu_thread) @<:@sequential@:>@])],
    [case $with_mkl_thread in
       intel_thread | sequential | gnu_thread) ;;
       *) AC_MSG_ERROR([Unknown MKL threading layer: $with_mkl_thread (must be one of sequential, intel_thread, gnu_thread)]) ;;
     esac],
-   [with_mkl_thread=intel_thread])
+   [with_mkl_thread=sequential])
 
 
 # 32- or 64-bit CPU, default 64-bit
