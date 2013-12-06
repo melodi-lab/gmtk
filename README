@@ -13,7 +13,7 @@ GMTK uses a simple GNU Autotools build process. The familiar
 
    ./configure && make && make install
 
-should work on the target platforms (Linux, OSX, and Windows/Cygwin).
+should work on the target platforms (Linux, Mac OS X, and Windows/Cygwin).
 Other POSIX-like platforms might work too. See
 
    ./configure --help
@@ -24,11 +24,11 @@ for full information on the available configure options.
 gmtkDMLPtrain requires a compiler with ISO C++ 2011 support. For
 GCC 4.5 or 4.6, use
 
-  CXX='g++ -std=c++0x' ./configure ...
+  ./configure CXX='g++ -std=c++0x' ...
 
 For GCC 4.7 and later, use
 
-  CXX='g++ -std=c++11' ./configure ...
+  ./configure CXX='g++ -std=c++11' ...
 
 If you build GMTK with a compiler that does not support ISO C++ 2011,
 the gmtkDMLPtrain program will be skipped. You will also want to 
