@@ -46,8 +46,9 @@
 
 class PermutationSchedule : public TrainingSchedule {
 
-  unsigned *segmentPerm;     // segment # of training unit permutation
-  unsigned *framePerm;       // frame # of training unit permutation
+  vector<unsigned> segmentScanSum;  // total # of training units preceeding segment i
+  vector<unsigned> segmentIndex;    // segmentIndex[i] is the ith segment # in the trrng
+
   uint32_t  i;               // position in permutation
 
   uint32_t  a, b, p;         // p is the smallest prime \equiv_3 2 larger than num_units
@@ -64,8 +65,11 @@ class PermutationSchedule : public TrainingSchedule {
 		       obs_source, trrng_str), i(0)
   {
     // count viable training units
+    segmentScanSum.resize(trrng->length()+1, 0); // +1 to avoid writing past end
+    segmentIndex.resize(trrng->length());
     num_viable_units = 0;
     Range::iterator* trrng_it = new Range::iterator(trrng->begin());
+    unsigned ii = 0;
     while (!trrng_it->at_end()) {
       unsigned i = (unsigned)(*(*trrng_it));
       if (!obs_source->openSegment(i)) {
@@ -78,47 +82,25 @@ class PermutationSchedule : public TrainingSchedule {
 	warning("WARNING: segment %u contains no frames\n", i);
       }
       num_viable_units += units;
+      segmentIndex[ii] = i;
+      segmentScanSum[ii+1] = segmentScanSum[ii] + units; // ii+1 as frames in this segment preceed the next segment
+      ii += 1;
       (*trrng_it)++;
     }
     if (num_viable_units == 0) {
       error("ERROR: observation files contain no viable training instances\n");
     }
 
-    // find smallest prime >= num_viable_units that is \equiv_3 2
+    // find smallest prime p >= num_viable_units that is \equiv_3 2
     for (p = num_viable_units + (2 - num_viable_units % 3); !prime32(p); p += 3)
       ;
     a = rnd.uniform(1, p-1);     // pick a random a in [1,p)
     b = rnd.uniform(p-1);        // pick a random b in [0,p)
     infoMsg(IM::ObsFile, IM::Moderate, "T=%u <= %u = %u mod 3;  sigma(i) = (%u i + %u)^3 mod %u\n",
 	    num_viable_units, p, p%3, a, b, p);
-    // initialize segment & frame permutation arrays 
-    segmentPerm = new unsigned[num_viable_units];
-    framePerm = new unsigned[num_viable_units];
-    trrng_it->reset();
-    unsigned j=0;
-    while (!trrng_it->at_end()) {
-      unsigned i = (unsigned)(*(*trrng_it));
-      if (!obs_source->openSegment(i)) {
-	error("ERROR: Unable to open observation file segment %u\n", i);
-      }
-      unsigned num_frames = obs_source->numFrames();
-      unsigned units = num_frames / unit_size;
-      if (num_frames % unit_size) units += 1;
-      for (unsigned u = 0, f=0; u < units; u+=1, f+=unit_size, j+=1) {
-	segmentPerm[j] = i;
-	framePerm[j] = f;
-      }
-      (*trrng_it)++;
-    }
   } 
 
-  
-  ~PermutationSchedule() {
-    delete[] segmentPerm;
-    delete[] framePerm;
-  }
-
-  
+    
   void nextTrainingUnit(unsigned &segment, unsigned &frame) { 
     uint32_t sigma; // sigma(i) = (ai + b)^3 mod p
     do {
@@ -129,8 +111,19 @@ class PermutationSchedule : public TrainingSchedule {
       i = (i + 1) % p;
     } while (sigma >= num_viable_units); // skip any extras since p >= num_viable_units
 
-    segment = segmentPerm[sigma];
-    frame = framePerm[sigma];
+    // binary search for the segment containing the selected training unit
+    unsigned l=1, m, r=segmentScanSum.size();
+    do {
+      m = (l+r)/2;
+      if (segmentScanSum[m] <= sigma) {
+	l = m+1;
+      } else {
+	r = m;
+      }
+    } while ( ! (segmentScanSum[m-1] <= sigma && sigma < segmentScanSum[m]) ); // m >= 1
+
+    segment = segmentIndex[m-1];
+    frame = sigma - segmentScanSum[m-1];
     TrainingSchedule::nextTrainingUnit(segment, frame);
   }
 };
