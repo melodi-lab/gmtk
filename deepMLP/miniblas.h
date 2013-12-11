@@ -6,6 +6,8 @@
 
 #if !defined(HAVE_BLAS) && !defined(HAVE_MKL)
 
+// Simple-minded BLAS level 1 replacement kernels
+
 void cblas_dcopy(int n, double const* x, int incx, double *y, int incy);
 
 void cblas_dscal(int n, double alpha, double *x, int incx);

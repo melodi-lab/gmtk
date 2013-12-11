@@ -48,7 +48,7 @@ void *MinibatchProducer(void *asynchBatchSource);
 
 class AsynchronousBatchSource : public BatchSource {
 
-  BatchSource      *src;
+  BatchSource      *src;         // BatchSource run by the producer thread
   AllocatingMatrix *dataQueue;   // queue of training features
   AllocatingMatrix *labelQueue;  // queue of labels
   unsigned          queueSize;   // queue capacity
@@ -98,45 +98,43 @@ class AsynchronousBatchSource : public BatchSource {
     if (labelQueue) delete[] labelQueue;
   }
 
+  // Call getBatch to keep the two queues aligned
   Matrix getData(unsigned batchSize) { 
     Matrix data, labels;
     getBatch(batchSize, data, labels);
     return data;
   }
 
+  // Call getBatch to keep the two queues aligned
   Matrix getLabels(unsigned batchSize) {
     Matrix data, labels;
     getBatch(batchSize, data, labels);
     return labels;
   }
   
-  // consume batch from the queue
+  // consume a batch from the queue
   void getBatch(unsigned batchSize, Matrix &data, Matrix &labels) {
 #if HAVE_PTHREAD
     if (batchSize >= queueSize) {
       error("ERROR: minibatch of size %u requested, but the batch queue can only hold %u\n", 
 	    batchSize, queueSize);
     }
-    pthread_mutex_lock(&queueMutex);
+    pthread_mutex_lock(&queueMutex); // lock queue, wait for queue to contain at least batchSize entries
     while (queueCount < batchSize) {
       infoMsg(IM::ObsFile, IM::Mod, "AsynchBatchSource: waiting for %u batches to be enqueued\n", 
 	      batchSize - queueCount);
       pthread_cond_wait(&queueNotEmpty, &queueMutex);
     }
-#if 0
-    AllocatingMatrix batchData(src->numDataRows(), batchSize);
-    AllocatingMatrix batchLabels(src->numLabelRows(), batchSize);
-#else
       batchData.Resize(src->numDataRows(),  batchSize);
     batchLabels.Resize(src->numLabelRows(), batchSize);
-#endif
+    // pull the batch out of the queue
     for (unsigned n=0; n < batchSize; n+=1, queueCount-=1, queueStart = (queueStart+1) % queueSize) {
       unsigned numC = dataQueue[queueStart].NumC();
       infoMsg(IM::ObsFile, IM::Mod, "AsynchBatchSource: dequeuing %u from %u\n", numC, queueStart);
         batchData.GetCols(n, n + numC).CopyFrom(dataQueue[queueStart]);
       batchLabels.GetCols(n, n + numC).CopyFrom(labelQueue[queueStart]);
     }
-    pthread_cond_signal(&queueNotFull);
+    pthread_cond_signal(&queueNotFull); // now there's room for the producer to fill, unlock
     pthread_mutex_unlock(&queueMutex);
     data = batchData;
     labels = batchLabels;
@@ -146,11 +144,11 @@ class AsynchronousBatchSource : public BatchSource {
   }
 
 
-  // Ye Olde producer
+  // Ye Olde Producer
   void fill() {
 #if HAVE_PTHREAD
     do {
-      pthread_mutex_lock(&queueMutex);
+      pthread_mutex_lock(&queueMutex); // lock queue & wait for room to produce
       while (queueCount == queueSize) {
 	infoMsg(IM::ObsFile, IM::Mod, "AsynchBatchSource: waiting for queue to not be full\n");
 	pthread_cond_wait(&queueNotFull, &queueMutex);
@@ -174,11 +172,12 @@ class AsynchronousBatchSource : public BatchSource {
 	assert(data.GetCols(i,i+1).NumC() > 0);
 	assert(data.GetCols(i,i+1).Start());
 #endif
+	// enqueue the data
          dataQueue[queueEnd].CopyFrom(   data.GetCols(i, i+1) );
 	labelQueue[queueEnd].CopyFrom( labels.GetCols(i, i+1) );
 	infoMsg(IM::ObsFile, IM::Mod, "AsynchBatchSource: enqueuing %u\n", queueEnd);
       }
-      pthread_cond_signal(&queueNotEmpty);
+      pthread_cond_signal(&queueNotEmpty); // now there's data available for the consumer, unlock
       pthread_mutex_unlock(&queueMutex);
     } while (1);
 #endif

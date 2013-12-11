@@ -28,18 +28,33 @@
 
 #define MAX_TEMP_FILENAME_LENGTH 1024
 
+// A subclass of Matrix (see Matrix.h) that is backed by a file.
+// You can only do O(1) space accesses via GetCols, Submatrix, and the like.
+// Trying to access the entire matrix (e.g., via Start or Vec) will fail.
+// You can do O(1) space writes via PutCols.
+
 class MMapMatrix : public Matrix {
   friend class MutableVector;
 
-  bool    mapped;
-  char   *fileName;
-  int     fd;
-  long    pagesize;
-  ssize_t map_length;
-  static  map<string, unsigned> ref_count;
-  static  unsigned fileNumber;
+  bool    mapped;        // is this instance mmapped?
+  char   *fileName;      // backing file name
+  int     fd;            // backing file descriptor
+  long    pagesize;      // VM system page size
+  ssize_t map_length;    // size of mmapped buffer
+  static  map<string, unsigned> ref_count;  // Reference counting garbage collector.
+                                            // The assignment operator causes the MMapMatrix
+                                            // instances to share the same backing file since
+                                            // the Matrix class is supposed to be like a double*.
+                                            // Thus we can't unmap the file until the last user
+                                            // is destroyed.
+
+  static  unsigned fileNumber;              // counter for generating temporary file names
 
 
+  // Generate backing file names. POSIX has a number of functions that do this,
+  // but they all warn of issues in the man pages or during compilation. I don't
+  // think the issues are very applicable to our use case, but it's not hard to
+  // roll our own...
   char *tempname(char const *dir, char const *dummy) {
     char  tempname_buf[MAX_TEMP_FILENAME_LENGTH];
     char const *tempdir = getenv("GMTKTMPDIR");
@@ -55,32 +70,34 @@ class MMapMatrix : public Matrix {
 
 public:
 
-  static char const *dmlpTempDir;
+  static char const *dmlpTempDir; // temp dir from command line
 
   MMapMatrix() : Matrix(), mapped(false), fileName(NULL) { }
 
-
   MMapMatrix(const Matrix & mat) : Matrix(mat), mapped(false), fileName(NULL) { }
 
-
+#if 0
   MMapMatrix(double *start, int numR, int numC, int ld, bool trans=false) 
     : Matrix(start, numR, numC, ld, trans), mapped(false), fileName(NULL) 
   { }
-
+#endif
 
   MMapMatrix(int numR, int numC, int ld, bool trans=false) 
     : Matrix(NULL, numR, numC, ld, trans), mapped(false) 
   {
     assert(numC > 0 && ld > 0 && numR > 0);
+    // create backing file
     fileName = tempname(dmlpTempDir, "gmtk_XXXXX");
     if (!fileName) {
       error("ERROR: unable to generate temporary file name\n");
     }
+    // O_EXCL so it fails if we didn't create the file
     fd = open(fileName, O_RDWR|O_CREAT|O_EXCL, S_IRWXU);
     if (fd == -1) {
       perror(fileName);
       error("ERROR: unable to create temporary file '%s'\n", fileName);
     }
+    // memory mappings must be a multiple of the VM system page size
 #if defined(_SC_PAGESIZE)
     pagesize = sysconf(_SC_PAGESIZE);
 #elif defined(PAGE_SIZE)
@@ -89,6 +106,8 @@ public:
     error("ERROR: unknown pagesize\n");
 #endif
     map_length = ( (numC * ld * sizeof(double) - 1) / pagesize + 1 ) * pagesize;
+    // write to end of file to make it map_length bytes long so we can
+    // memory map that many bytes
     if (lseek(fd, (off_t)map_length, SEEK_SET) == (off_t) -1) {
       perror(fileName);
       error("ERROR: unable to seek to offset %u in temporary file '%s'\n", map_length, fileName);
@@ -107,6 +126,7 @@ public:
   }
 
 
+  // Copy ctor - create a new backing file 
   MMapMatrix(MMapMatrix const &that) 
     : Matrix(NULL, that._numR, that._numC, that._ld, that._trans), 
       pagesize(that.pagesize), map_length(that.map_length)
@@ -121,6 +141,7 @@ public:
 	perror(fileName);
 	error("ERROR: unable to create temporary file '%s'\n", fileName);
       }
+      // appearantly there's an upper limit on how much you can write in one call...
       ssize_t bwritten = 0, result;
       do {
 	char *buf = ((char *)that._start)+bwritten;
@@ -140,6 +161,7 @@ public:
       ref_count[fn] = 1;
       mapped = true;
     } else {
+      // just a shallow copy in this case
       _start = that._start;
       mapped = false;
       fileName = NULL;
@@ -154,8 +176,10 @@ public:
     _trans = rhs._trans;
 
     if (mapped && _start) {
+      // free old this
       string fn(fileName);
       if (ref_count[fn] == 1) {
+	// this was the last user of the backing file
 	munmap((void *)_start, map_length);
 	close(fd);
 	unlink(fileName);
@@ -163,11 +187,13 @@ public:
 	fileName = NULL;
 	mapped = false;
       } else {
+	// other instances are still using the backing file
 	ref_count[fn] = ref_count[fn] - 1;
       }
       if (fileName) free(fileName);
     }
     if (rhs.mapped) {
+      // alias the rhs file
       map_length = rhs.map_length;
       pagesize = rhs.pagesize;
       fileName = strdup(rhs.fileName);
@@ -179,6 +205,7 @@ public:
       ref_count[fn] = ref_count[fn] + 1;
       mapped = true;
     } else {
+      // no backing file to alias ...
       mapped = false;
       fileName = NULL;
     }
@@ -191,17 +218,21 @@ public:
     if (mapped && _start) {
       string fn(fileName);
       if (ref_count[fn] == 1) {
+	// this was the last user of the backing file
 	munmap((void *)_start, map_length);
 	close(fd);
 	unlink(fileName);
 	ref_count.erase(fn);
       } else {
+	// other instances are still using the backing file
 	ref_count[fn] = ref_count[fn] - 1;
       }
     }
     if (fileName) free(fileName);
   }
 
+
+  // delete all MMapMatrix backing files
   static void GarbageCollect() {
     for (map<string,unsigned>::iterator it = ref_count.begin(); it != ref_count.end(); ++it) {
       unlink(it->first.c_str());
@@ -209,32 +240,12 @@ public:
   }
 
 
-#if 0
-void debug() {
-  printf("%p %d x %d + %d @ %p mapped %c trans %c   %s\n",
-	 this, _numR, _numC, _ld, _start, mapped?'T':'F',_trans?'T':'F', mapped?fileName:"");
-#if 0
-  int prec=3;
-  int len = 4 + prec;
-  std::string s = "%-l.pf";
-  s[2] = '0' + len;
-  s[4] = '0' + prec;
-  for (int r = 0; r < 5; ++r) {
-    for (int c = 0; c < 5; ++c) {
-      printf(s.c_str(), At(r,c));
-    }
-    printf("\n");
-  }
-#endif
-}
-#endif
-
-
   char *GetFileName() {
     return mapped ? fileName : NULL;
   }
 
 
+  // Copy Matrix m into this, starting at column destCol
   void PutCols(Matrix const &m, int destCol) {
     assert(_start && _start != (void *)-1);
     int numCols = m.NumC();
@@ -251,6 +262,7 @@ void debug() {
   }
 
 
+  // Copy Matrix(src, numRows, numCols, srcLd) into this, starting at column destCol
   void PutCols(double *src, int numCols, int numRows, int srcLd, int destCol) {
     assert(_start && _start != (void *)-1);
     assert(destCol + numCols <= _numC);
@@ -264,63 +276,11 @@ void debug() {
   }
 
   
+  // non-constant space accessors not supported
   const double *Start() const { assert(0); return NULL; }
   const double *End() const { assert(0); return NULL; }
-
-  
   Vector Vec() const { assert(0); return Vector(); }
+  Vector GetRow(int r) const { assert(0); return Vector(); }
+  Matrix GetRows(int beginRow, int endRow) const { assert(0); return Matrix(); }
 
- 
-  const double & At(int r, int c) const {
-    if (_trans) std::swap(r, c);
-    if (r < 0) r += _numR;
-    if (c < 0) c += _numC;
-    assert (r >= 0 && r < _numR);
-    assert (c >= 0 && c < _numC);
-    return *(_start + c * _ld + r);
-  }
-
-
-  Vector GetCol(int c) const {
-    if (_trans) return Trans().GetRow(c);
-
-    if (c < 0) c += _numC;
-    assert (0 <= c && c < _numC);
-
-    return Vector(Start() + c * _ld, _numR, 1, _ld);
-  }
-
-
-  Vector GetRow(int r) const {
-    assert(0);
-    return Vector();
-  }
-
-
-  Matrix GetCols(int beginCol, int endCol) const {
-    return SubMatrix(0, -1, beginCol, endCol);
-  }
-
-
-  Matrix SubMatrix(int beginRow, int endRow, int beginCol, int endCol) const {
-#if 0
-    assert(0);
-    return Matrix();
-#else
-    if (_trans) {
-      std::swap(beginRow, beginCol);
-      std::swap(endRow, endCol);
-    }
-
-    if (beginRow < 0) beginRow = _numR - ~beginRow;
-    if (endRow < 0) endRow = _numR - ~endRow;
-    assert (0 <= beginRow && beginRow <= endRow && endRow <= _numR);
-
-    if (beginCol < 0) beginCol = _numC - ~beginCol;
-    if (endCol < 0) endCol = _numC - ~endCol;
-    assert (0 <= beginCol && beginCol <= endCol && endCol <= _numC);
-
-    return Matrix(_start + beginCol * _ld + beginRow, endRow - beginRow, endCol - beginCol, _ld, _trans);
-#endif
-  }
 }; 
