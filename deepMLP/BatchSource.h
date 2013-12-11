@@ -37,6 +37,11 @@
 
 
 // BatchSource subclasses provide a stream of [mini]batches for NN trainers.
+// MatrixBatchSource produces the [mini]batch stream from instances of Galen's 
+//   Matrix class (see Matrix.h). 
+// The ScheduleBatchSource produces the stream from observation files permuted 
+//   according to a TrainingSchedule (see featureFileIO/TrainingSchedule.h).
+
 class BatchSource {
 
  public:
@@ -120,6 +125,7 @@ class MatrixBatchSource : public BatchSource {
   }
 
 
+  // Use the same matrix as training data & labels (e.g., for pre-training)
   MatrixBatchSource(Matrix const &source) 
     : dataSource(source), labelSource(source), nextColumn(0)
   { }
@@ -212,6 +218,7 @@ class ScheduleBatchSource : public BatchSource {
     labelTemp.Resize(labelRows, batchSize);
     double *dataP = dataTemp.Start();
     double *labelsP = labelTemp.Start();
+    // copy columns from {data,label}Temp until they're all used, then load more according to the schedule
     for (unsigned i = 0; i < batchSize; i += 1, 
 	   curInstance += 1, dataP += dataRows, labelsP += labelRows, TSfeatures += dataRows, TSlabels += labelStride) 
     {
