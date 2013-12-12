@@ -21,17 +21,16 @@ Other POSIX-like platforms might work too. See
 for full information on the available configure options.
 
 
-gmtkDMLPtrain requires a compiler with ISO C++ 2011 support. For
-GCC 4.5 or 4.6, use
+gmtkDMLPtrain requires a compiler with ISO C++ 2011 support. The configure
+script will enable support for GCC 4.5 or later. This may also work for
+other compilers that enable ISO C++ 2011 support with -std=c++0x or -std=c++11.
+For compilers for which that doesn't work, you may need to specify the 
+required command line arguments with something like
 
-  ./configure CXX='g++ -std=c++0x' ...
-
-For GCC 4.7 and later, use
-
-  ./configure CXX='g++ -std=c++11' ...
+  ./configure CXXFLAGS='<arguments to enable C++ 2011>' ...
 
 If you build GMTK with a compiler that does not support ISO C++ 2011,
-the gmtkDMLPtrain program will be skipped. You will also want to 
+the gmtkDMLPtrain program will not be compiled. You will also want to 
 use a good CBLAS implementation like MKL or ATLAS to get the best
 performance with gmtkDMLPtrain. See the relevant options in ./configure --help
 
@@ -93,7 +92,7 @@ Note, many of the above options can be combined.
 
 Don't forget to read the documentation. It can be found at:
 
-       http://ssli.ee.washington.edu/~bilmes/gmtk
+       http://melodi.ee.washington.edu/~bilmes/gmtk
 
 and will be updated in the near future. To build gmtkViz (which is a
 graphical user interface for taking an existing graph structure
