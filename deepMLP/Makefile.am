@@ -20,7 +20,7 @@ AM_CPPFLAGS = \
 -I$(srcdir)/../miscSupport   \
 -I$(srcdir)/../featureFileIO
 
-AM_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(PEDANTIC) $(WARNING) $(ANSI) $(BLAS_CFLAGS)
+AM_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(PEDANTIC) $(WARNING) $(ANSI) $(BLAS_CFLAGS) $(ISOCXX11FLAGS)
 
 #AM_LDFLAGS = -static -fwhole-program -L. 
 AM_LDFLAGS = -L.
