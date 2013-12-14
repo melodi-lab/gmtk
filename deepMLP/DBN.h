@@ -433,6 +433,7 @@ private:
     float epochFraction = 1.0, annealEpochFraction = 1.0;
     double prevStepSize = 0.0;
     int curUpdate = 0, curAnnealUpdate = 0;
+    assert(!resumeTraining); // this version only supports pre-training, which cannot be resumed
     TrainSGD(trainer, hyperParams, epochFraction, annealEpochFraction, prevStepSize, curUpdate, curAnnealUpdate);
   }
 
@@ -1029,7 +1030,7 @@ assert(d.NumC() == l.NumC());
 	  output = MapLayer(input, layer);    // apply hidden layer to previous layer's output
 	}
 	input = output; // current layer's output becomes next layer's input
-assert(input.NumC() == batchSrcLabels.NumC());
+	assert(input.NumC() == batchSrcLabels.NumC());
 	if (layer > 0) _layers[layer - 1].Clear(); // save some memory
       }
 
@@ -1051,7 +1052,7 @@ assert(input.NumC() == batchSrcLabels.NumC());
 
     // and now, fine tune all layers with backpropagation
     
-    double prevStepSize = 0.0;
+    double prevStepSize = hyperParams_bp.initStepSize;
     int curUpdate = 0, curAnnealUpdate = 0;
     iDataStreamFile *loadFile = NULL;
     oDataStreamFile *saveFile = NULL;
