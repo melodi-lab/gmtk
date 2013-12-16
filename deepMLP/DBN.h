@@ -487,7 +487,7 @@ private:
     double totalScore = 0;
     if (resumeTraining) t = curUpdate; // non-anneal update number to resume at
     unsigned numUpdates = (unsigned) (epochFraction * hyperParams.numUpdates + 0.5);
-    unsigned lastUpdate = t + numUpdates - 1; // last update # for this invocation
+    unsigned lastUpdate = t + numUpdates; // last update # for this invocation
     if (lastUpdate > (unsigned)hyperParams.numUpdates) lastUpdate = hyperParams.numUpdates;  // in case numUpdates doesn't divide evenly
     infoMsg(IM::Training, IM::Moderate, "Training updates %u to %u of %d\n", t, lastUpdate, hyperParams.numUpdates);
     for (; t <= lastUpdate; t+=1) {
@@ -513,7 +513,7 @@ private:
     totalScore = 0;
     t = resumeTraining ? (unsigned)curAnnealUpdate : 0; // anneal update #
     numUpdates = (unsigned) (annealEpochFraction * hyperParams.numAnnealUpdates + 0.5);
-    lastUpdate = t + numUpdates - 1; // last anneal update # for this invocation
+    lastUpdate = t + numUpdates; // last anneal update # for this invocation
     if (lastUpdate > (unsigned)hyperParams.numAnnealUpdates) lastUpdate = hyperParams.numAnnealUpdates;
 
     if (t < lastUpdate) {
