@@ -105,7 +105,7 @@ public:
 #else
     error("ERROR: unknown pagesize\n");
 #endif
-    map_length = ( (numC * ld * sizeof(double) - 1) / pagesize + 1 ) * pagesize;
+    map_length = ( ((off_t)numC * (off_t)ld * sizeof(double) - 1) / (off_t)pagesize + 1 ) * (off_t)pagesize;
     // write to end of file to make it map_length bytes long so we can
     // memory map that many bytes
     if (lseek(fd, (off_t)map_length, SEEK_SET) == (off_t) -1) {
@@ -250,7 +250,7 @@ public:
     assert(_start && _start != (void *)-1);
     int numCols = m.NumC();
     assert(destCol + numCols <= _numC);
-    double *dest = const_cast<double *>(_start) + destCol * _ld;
+    double *dest = const_cast<double *>(_start) + (ssize_t)destCol * (ssize_t)_ld;
     double const *src  = m.Start();
     double const *end = m.End();
     int numToCopy = m.NumR(), mLd = m.Ld();
@@ -266,7 +266,7 @@ public:
   void PutCols(double *src, int numCols, int numRows, int srcLd, int destCol) {
     assert(_start && _start != (void *)-1);
     assert(destCol + numCols <= _numC);
-    double *dest = const_cast<double *>(_start) + destCol * _ld;
+    double *dest = const_cast<double *>(_start) + (ssize_t)destCol * (ssize_t)_ld;
     double *end = src + numCols * srcLd;
     do {
       memcpy((void *)dest, (void *)src, numRows * sizeof(double));

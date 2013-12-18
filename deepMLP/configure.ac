@@ -58,7 +58,11 @@ AX_PTHREAD
 
 # Checks for header files.
 
+AC_CHECK_HEADERS([inttypes.h stdint.h])
+
 # Checks for typedefs, structures, and compiler characteristics.
+
+AC_TYPE_INT64_T
 
 # Checks for library functions.
 

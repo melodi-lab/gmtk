@@ -3,6 +3,17 @@
 #if defined(HAVE_CONFIG_H)
 #  include <config.h>
 #endif
+#if HAVE_INTTYPES_H
+  // The ISO C99 standard specifies that the macros in inttypes.h must
+  //  only be defined if explicitly requested. 
+#  ifndef __STDC_FORMAT_MACROS
+#    define __STDC_FORMAT_MACROS 1
+#  endif
+#  include <inttypes.h>
+#endif
+#if HAVE_STDINT_H
+#  include <stdint.h>
+#endif
 
 #include <vector>
 #include <assert.h>
@@ -340,7 +351,7 @@ public:
     if (endCol < 0) endCol = _numC - ~endCol;
     assert (0 <= beginCol && beginCol <= endCol && endCol <= _numC);
 
-    return Matrix(_start + beginCol * _ld + beginRow, endRow - beginRow, endCol - beginCol, _ld, _trans);
+    return Matrix(_start + (int64_t)beginCol * _ld + beginRow, endRow - beginRow, endCol - beginCol, _ld, _trans);
   }
 };
 
