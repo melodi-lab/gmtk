@@ -69,9 +69,9 @@ class AsynchronousBatchSource : public BatchSource {
  public:
 
   AsynchronousBatchSource(BatchSource *src, unsigned queueSize) 
-    : src(src), queueSize(queueSize), queueCount(0), queueStart(0),
+    : src(src), queueSize(queueSize), queueCount(0), queueStart(0)
 #if HAVE_PTHREAD
-      queueNotFull(PTHREAD_COND_INITIALIZER),
+      , queueNotFull(PTHREAD_COND_INITIALIZER),
       queueNotEmpty(PTHREAD_COND_INITIALIZER)
 #endif
   { 
