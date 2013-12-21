@@ -118,8 +118,8 @@ AC_ARG_ENABLE([continuous-cardinality-warning],
 
 AC_PROG_AWK
 
-if test -d .hg ; then
-  ./version.sh > version.info
+if test -d $srcdir/.hg ; then
+  (cd $srcdir; ./version.sh) > version.info
 fi
 
 # Checks for libraries.
