@@ -7,6 +7,7 @@
 # See COPYING or http://opensource.org/licenses/OSL-3.0
 #
 
+ACLOCAL_AMFLAGS = -I m4
 
 if HAVE_HG
 # this will keep the Mercurial revision id current if you're building 
@@ -41,7 +42,7 @@ endif
 if NO_MODEL_CHECKS
 DEBUGFLAGS += -DNMODELCHECK
 endif
-OPTFLAGS = -O3
+OPTFLAGS = -O3 -march=native -mtune=native -mfpmath=sse -msse3
 
 if CYGWIN_FLAGS
 ANSI = 
@@ -65,6 +66,7 @@ AM_CPPFLAGS = \
 -I$(srcdir)/../miscSupport \
 -I$(builddir)/../IEEEFloatingpoint \
 -I$(srcdir)/../featureFileIO \
+-I$(srcdir)/../deepMLP \
 -DBINDIR="\"$(bindir)\""
 # make BINDIR available for warning message in GMTK_FileParser.cc for ticket 320
 
@@ -84,6 +86,7 @@ GMTK_Sparse1DPMF.h GMTK_Sparse1DPMF.cc \
 GMTK_MeanVector.h GMTK_MeanVector.cc \
 GMTK_DiagCovarVector.h GMTK_DiagCovarVector.cc \
 GMTK_RealMatrix.h GMTK_RealMatrix.cc \
+GMTK_DoubleMatrix.h GMTK_DoubleMatrix.cc \
 GMTK_DlinkMatrix.h GMTK_DlinkMatrix.cc \
 GMTK_DirichletTable.h GMTK_DirichletTable.cc \
 GMTK_DirichletPrior.h GMTK_DirichletPrior.cc \
@@ -130,7 +133,9 @@ GMTK_Sw_HidDiscRV.h GMTK_Sw_HidDiscRV.cc \
 GMTK_Sw_ObsContRV.h GMTK_Sw_ObsContRV.cc \
 GMTK_Sw_ObsDiscRV.h GMTK_Sw_ObsDiscRV.cc \
 GMTK_VECPT.h GMTK_VECPT.cc \
+GMTK_DeepNN.h GMTK_DeepNN.cc \
 GMTK_DeepVECPT.h GMTK_DeepVECPT.cc \
+GMTK_DeepCPT.h GMTK_DeepCPT.cc \
 GMTK_NetworkFlow.h GMTK_NetworkFlow.cc \
 GMTK_NetworkFlowTriangulate.h GMTK_NetworkFlowTriangulate.cc \
 GMTK_LatticeADT.h GMTK_LatticeADT.cc GMTK_LatticeADT.h GMTK_LatticeNodeCPT.h \
@@ -188,6 +193,7 @@ $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 # include register_user_internal_cfunc_dts.cc and 
 #   user_internal_cfunc_dts.cc in the tar ball
 EXTRA_DIST = \
+m4/gpl.txt \
 GMTK_dlopenDeterministicMappings.h \
 register_user_internal_cfunc_dts.cc \
 user_internal_cfunc_dts.cc \
@@ -209,22 +215,48 @@ gmtkTie \
 gmtkModelInfo \
 gmtkOnline \
 gmtkPrint \
-$(GMTKVIZ) $(OSXBUNDLE)
-EXTRA_PROGRAMS = gmtkViz gmtkViz.app
+$(dmlp_programs) $(GMTKVIZ) $(OSXBUNDLE)
+EXTRA_PROGRAMS = gmtkDMLPtrain gmtkViz gmtkViz.app abstest
 
 gmtkTie_SOURCES = gmtkTie.cc
+
 gmtkJT_SOURCES = gmtkJT.cc
+
 gmtkTime_SOURCES = gmtkTime.cc
+
 gmtkEMtrain_SOURCES = gmtkEMtrain.cc
+
+
+gmtkDMLPtrain_SOURCES = gmtkDMLPtrain.cc
+gmtkDMLPtrain_CPPFLAGS = $(AM_CPPFLAGS) $(VERSIONFLAG)
+gmtkDMLPtrain_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(BLAS_CFLAGS) $(PTHREAD_CFLAGS) $(ISOCXX11FLAGS)
+gmtkDMLPtrain_LDADD = $(LDADD) $(PTHREAD_LIBS)
+if BUILD_DMLP
+gmtkDMLPtrain_LDADD += $(builddir)/../deepMLP/libDMLP.a
+endif
+if BUILD_PHIPAC
+gmtkDMLPtrain_LDADD += $(builddir)/../deepMLP/libPHiPAC.a
+endif
+gmtkDMLPtrain_LDADD += $(BLAS_LIBS)
+
 gmtkKernel_SOURCES = gmtkKernel.cc
+
 gmtkViterbi_SOURCES = gmtkViterbi.cc
+
 gmtkPrint_SOURCES = gmtkPrint.cc
+
 gmtkTriangulate_SOURCES = gmtkTriangulate.cc
+
 gmtkParmConvert_SOURCES = gmtkParmConvert.cc
+
 gmtkModelInfo_SOURCES = gmtkModelInfo.cc
+
 gmtkTFmerge_SOURCES = gmtkTFmerge.cc
+
 gmtkDTindex_SOURCES = gmtkDTindex.cc
+
 gmtkNGramIndex_SOURCES = gmtkNGramIndex.cc
+
 gmtkOnline_SOURCES = gmtkOnline.cc
 
 #gmtkUnroll_SOURCES = gmtkUnroll.o  libGMTK.a ../miscSupport/libmiscSupport.a .NOEXPORT
@@ -242,8 +274,8 @@ gmtkViz_app_SOURCES = Info.plist.in wxmac.icns
 if MAKE_BUNDLE
 gmtkViz.app: gmtkViz.app/Contents/PkgInfo
 
-app_verbose   = $(app_verbose_$(V))
-app_verbose_  = $(app_verbose_$(AM_DEFAULT_VERBOSITY))
+app_verbose   = $(app_verbose_@AM_V@)
+app_verbose_  = $(app_verbose_@AM_DEFAULT_V@)
 app_verbose_0 = @echo "  APP\t gmtkViz.app";
 
 gmtkViz.app/Contents/PkgInfo: gmtkViz$(EXEEXT) $(srcdir)/Info.plist.in \
@@ -260,11 +292,25 @@ gmtkViz.app/Contents/PkgInfo: gmtkViz$(EXEEXT) $(srcdir)/Info.plist.in \
 endif
 
 check_PROGRAMS =  \
+$(dmlp_check_programs) \
+flat2vit \
 parserTest \
 testPackCliqueValue \
 testViterbi \
 neghead \
 dlinktest
+
+abstest_SOURCES = abstest.cc
+abstest_CPPFLAGS = $(AM_CPPFLAGS) $(VERSIONFLAG)
+abstest_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(BLAS_CFLAGS) $(PTHREAD_CFLAGS) $(ISOCXX11FLAGS) 
+abstest_LDADD = $(LDADD) $(PTHREAD_LIBS)
+if BUILD_DMLP
+abstest_LDADD += $(builddir)/../deepMLP/libDMLP.a
+endif
+if BUILD_PHIPAC
+abstest_LDADD += $(builddir)/../deepMLP/libPHiPAC.a
+endif
+abstest_LDADD += $(BLAS_LIBS)
 
 # testMDCPT testMTCPT
 #testRngDecisionTree testGMParms testFileParser lex.yy

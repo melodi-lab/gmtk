@@ -9,48 +9,31 @@
  * Licensed under the Open Software License version 3.0
  * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
+ * A Virtual Evidence CPT that uses a deep neural network to
+ * compute P(parent | observations)
+ *
  * An example of how you'd specify DeepVECPTs:
  * (in a masterfile:)
 
 
-REAL_MAT_IN_FILE inline <m>
-0
-matrixName0
-<rows>              % # of outputs
-<cols>              % # of inputs +1 for bias vector
-<value>...<value>
-...
 
 DEEP_VE_CPT_IN_FILE inline 1
 0
-modelName
+cptName
 1                    % number of parents (always 1)
 <parent card>        % must match final layer's # outputs
 2                    % self cardinality (always 2)
+deepNNName           % DeepNN to use to compute probabilities
 f_offset:0           % starting index in observation matrix for floats
 nfs:0                % # of floats to take from observation matrix
 radius:<d>           % # of frames to take from observation matrix = 2d + 1
-matrices:m M_0 M_1 ... M_{m-1}  % m is # of weight layers (matrices)
-                                % matrix0 must be M_0 rows by 1 + nfs(2 radius + 1) columns
-                                % matrixX must be M_X rows by 1 + M_{X-1} columns
-                                % M_{m-1} = <parent card> rows by 1 + M_{m-2} columns 
-matrix0:matrixName0  
-squash0:<squash fn>  % softmax, logistic(b), tanh, odd root, etc.
-matrix1:matrixName1
-squash1:<squash fn>
-...
-matrix<m-1>:matrixName<m-1>
-squash<m-1>:<squash fn>
 END
 
-Note the "EOF" at the end of each DeepVECPT.  Also, parsing of the DeepVECPTs is
-rudimentary and no spaces are allowed around the ":".
 
-Also the order in which the arguments are written is not important.
+Note: parsing of the DeepVECPTs is rudimentary and no spaces are allowed around the ":".
 
 The default values are:
 
-matrices:0 % will cause an error if not updated
 nfs:0      % will cause an error if not updated
 f_offset:0 %
 radius:0   % use a single frame as input to the model
@@ -133,28 +116,38 @@ DeepVECPT::read(iDataStreamFile& is)
   //   2) num parents (which must be 1 in this case), 
   //   3) parent cardinality
   //   4) self cardinaltiy (which must be 2 in this case).
+  //   5) DeepNN name to use to get probabilities
 
   // read the name of the object.
   NamedObject::read(is);
   is.read(_numParents,"Can't read DeepVirtualEvidenceCPT's num parents");
   if (_numParents != 1)
-    error("ERROR: reading file '%s' line %d, DeepVirtualEvidenceCPT '%s' must have exactly one(1) rather than %d parents",
+    error("ERROR: reading file '%s' line %d, DeepVirtualEvidenceCPT '%s' must have exactly one (1) rather than %d parents",
           is.fileName(),is.lineNo(),name().c_str(),_numParents);
   cardinalities.resize(_numParents);
   // read the parent cardinality
   is.read(cardinalities[0],"Can't read DeepVirtualEvidenceCPT's parent cardinality");
-  
+  cached_CPT = new double[cardinalities[0]];
+
   // read the self cardinality, must be binary
   is.read(_card,"Can't read DeepVirtualEvidenceCPT's self cardinality");
   if (_card != 2)
-    error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s', child cardinality must be two(2) rather than %d.",
+    error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s', child cardinality must be two (2) rather than %d.",
           is.fileName(),is.lineNo(),name().c_str(),_card);
+
+  is.read(str, "Can't read DeepVirtualEvidenceCPT's DeepNN name");
+  if (GM_Parms.deepNNsMap.find(str) == GM_Parms.deepNNsMap.end()) {
+    error("ERROR: reading file '%s' line %d,  DeepVirtualEvidenceCPT '%s' uses undefined DeepNN '%s'\n", is.fileName(), is.lineNo(), name().c_str(), str.c_str());
+  }
+  dmlp = GM_Parms.deepNNs[ GM_Parms.deepNNsMap[str] ];
+  assert(dmlp);
+  input_vector = new float[dmlp->numInputs() + 1];
 
   try {
 
     if(cardinalities[0]==0) {
       string error_message;
-      stringprintf(error_message,"must supply parent cardinality");
+      stringprintf(error_message,"must supply parent cardinality > 0");
       throw(error_message);
     }
     obs = globalObservationMatrix;
@@ -214,110 +207,6 @@ DeepVECPT::read(iDataStreamFile& is)
 	  obs->setMinFutureFrames(window_radius);
 	}
       }
-      else if(option_name == "matrices") {
-	if (!strIsInt(option_value.c_str(),&num_matrices)) {
-	  string error_message;
-	  stringprintf(error_message,"Invalid value '%s' for number of matrices option 'matrices. Must be integer.", option_value.c_str());
-	  throw(error_message);
-	}
-	if (num_matrices == 0) {
-	  string error_message;
-	  stringprintf(error_message,"DeepVirtualEvidenceCPT requires at least 1 matrix");
-	  throw(error_message);
-	}
-	layer_output_count.resize(num_matrices);
-	layer_matrix_name.resize(num_matrices);
-	layer_squash_name.resize(num_matrices);
-	layer_squash_func.resize(num_matrices);
-	layer_logistic_beta.resize(num_matrices);
-	layer_matrix.resize(num_matrices);
-
-	if (!is.read(layer_output_count, num_matrices)) {
-	  string error_message;
-	  stringprintf(error_message,"Invalid matrix row counts for option 'matrices'. Must be %u integers.", num_matrices);
-	  throw(error_message);
-	}
-	for (unsigned layer=0; layer < num_matrices; layer+=1) {
-	  is.read(str);
-	  // parse the string we have just read
-	  string::size_type len=str.length();
-	  string::size_type pos=str.find(":",0);
-	  if (pos == string::npos || len < 7 || pos == 0) {
-	    string error_message;
-	    stringprintf(error_message,"Invalid format '%s' which should be of form 'matrix%u:name' where 'name' is the name of a real matrix.",
-			 str.c_str(), layer);
-	    throw(error_message);
-	  }
-	  option_name = str.substr(0,pos);
-	  option_value = str.substr(pos+1,len-pos-1);
-	  string matrixNum;
-	  stringprintf(matrixNum,"matrix%u", layer);
-	  if (option_name != matrixNum) {
-	    string error_message;
-	    stringprintf(error_message, "Expected 'matrix%u:name' but got '%s'",
-			 layer, layer, str.c_str());
-	    throw(error_message);
-	  }
-	  layer_matrix_name[layer] = option_value;
-	  if (GM_Parms.realMatsMap.find(option_value) == GM_Parms.realMatsMap.end()) {
-	    string error_message;
-	    stringprintf(error_message,"DeepVirtualEvidenceCPT '%s' specifies real matrix name '%s' that does not exist",
-			 _name.c_str(), option_value.c_str());
-	    throw(error_message);
-	  }
-	  unsigned matrix_index = GM_Parms.realMatsMap[option_value];
-	  layer_matrix[layer] = GM_Parms.realMats[matrix_index];
-
-	  is.read(str);
-	  // parse the string we have just read
-	  len=str.length();
-	  pos=str.find(":",0);
-	  if (pos == string::npos || len < 7 || pos == 0) {
-	    string error_message;
-	    stringprintf(error_message,"Invalid format '%s' which should be of form 'matrix%u:name' where 'name' is the name of a real matrix.", 
-			 str.c_str(), layer);
-	    throw(error_message);
-	  }
-	  option_name = str.substr(0,pos);
-	  option_value = str.substr(pos+1,len-pos-1);
-	  string squashNum;
-	  stringprintf(squashNum,"squash%u", layer);
-	  if (option_name != squashNum) {
-	    string error_message;
-	    stringprintf(error_message, "Expected 'squash%u:function but got '%s'",
-			 layer, layer, str.c_str());
-	    throw(error_message);
-	  }
-	  layer_squash_name[layer] = option_value;
-	  if (option_value == "softmax") {
-	    layer_squash_func[layer] = SOFTMAX;
-	  } else if (option_value.compare(0, 8, "logistic") == 0) {
-	    layer_squash_func[layer] = LOGISTIC;
-	    if (option_value[8] == '(') {
-	      string beta_str = option_value.substr(9, option_value.find(')', 9)-9);
-	      int float_len;
-	      if (!strIsFloat(beta_str.c_str(),&(layer_logistic_beta[layer]), &float_len) ||
-		  float_len != (int)beta_str.length()) 
-	      {
-		string error_message;
-		stringprintf(error_message,"Invalid value '%s' for logistic beta. Must be float.", beta_str.c_str());
-		throw(error_message);
-	      }
-	    } else {
-	      layer_logistic_beta[layer] = 1.0;
-	    }
-	  } else if (option_value == "tanh") {
-	    layer_squash_func[layer] = TANH;
-	  } else if (option_value == "ODDROOT") {
-	    layer_squash_func[layer] = ODDROOT;
-	  } else {
-	    string error_message;
-	    stringprintf(error_message, "Invalid squash function '%s', must be one of 'softmax', 'logistic', 'tanh', or 'oddroot'", 
-			 option_value.c_str());
-	    throw(error_message);
-	  }
-	}
-      }
       else {
 	string error_message;
 	stringprintf(error_message,"Unknown option:value pair '%s'",str.c_str());
@@ -340,7 +229,7 @@ DeepVECPT::read(iDataStreamFile& is)
     // check that it works with the current global observation matrix.
     if (nfs + obs_file_foffset > globalObservationMatrix->numContinuous()) {
       string error_message;
-      stringprintf(error_message,"specifies %d floats and offset %d, but global observation matrix only has %d",
+      stringprintf(error_message,"specifies %d floats at offset %d, but global observation matrix only has %d",
 		   nfs,obs_file_foffset,globalObservationMatrix->numContinuous());
       throw(error_message);
     }
@@ -350,52 +239,24 @@ DeepVECPT::read(iDataStreamFile& is)
 
     // still here? Do more error checking.
 
-
-    // matrix rows = # of outputs for the layer
-    // matrix cols = # of inputs for the layer (+ 1 for bias vector)
-    
     // input vector from the observation matrix is 
     // (1 + 2*window_radius) frames times nfs floats elements
 
     // final output layer size must match parent cardinality
 
-    // check that layer 0 matches the input vector size (+1 for bias element)
-    if (layer_matrix[0]->cols() != (int)((1 + 2 * window_radius) * nfs + 1)) {
+    // check that DeepNN inputs matches the input vector size
+    if (dmlp->numInputs() != (1 + 2 * window_radius) * nfs) {
       string error_message;
-      stringprintf(error_message, "DeepVirtualEvidenceCPT '%s' requires matrix0 to have %u columns, but real matrix '%s' has %d columns", 
-		   _name.c_str(), (1+2*window_radius)*nfs + 1, layer_matrix_name[0].c_str(), layer_matrix[0]->cols());
+      stringprintf(error_message, "DeepVirtualEvidenceCPT '%s' requires DeepNN '%s' to have %u inputs, but it has %u", 
+		   _name.c_str(), dmlp->name().c_str(), (1+2*window_radius)*nfs, dmlp->numInputs());
       throw(error_message);
     }
 
-    // check that the # rows for each layer's matrix matches the declared
-    // output size in the matrix:... option   Also find the maximum # of outputs
-    max_outputs = 0;
-    for (unsigned i=0; i < num_matrices; i+=1) {
-      if (layer_matrix[i]->rows() != (int)layer_output_count[i]) {
-	string error_message;
-	stringprintf(error_message,"DeepVirtualEvicenceCPT '%s' expects real matrix '%s' to have %u rows, but it has %d",
-		     _name.c_str(), layer_matrix_name[i].c_str(), layer_output_count[i], layer_matrix[i]->rows());
-	throw(error_message);
-      }
-      if (layer_output_count[i] > max_outputs)
-	max_outputs = layer_output_count[i];
-    }
-
-    // now check that the input vector size for layer i matches the
-    // output vector size from layer i-1
-    for (unsigned i=1; i < num_matrices; i+=1) {
-      if (layer_matrix[i]->cols() != (int)layer_output_count[i-1] + 1) {
-	string error_message;
-	stringprintf(error_message,"DeepVirtualEvidenceCPT '%s' expects real matrix '%s' to have %u cols, but it has %d",
-		     _name.c_str(), layer_matrix_name[i].c_str(), layer_output_count[i-1]+1, layer_matrix[i]->cols());
-	throw(error_message);
-      }
-    }
     // check that the final # outputs = parent cardinality
-    if (layer_matrix[num_matrices-1]->rows() != (int)cardinalities[0]) {
+    if (dmlp->numOutputs() != cardinalities[0]) {
       string error_message;
-      stringprintf(error_message,"DeepVirtualEvidenceCPT '%s' final output matrix '%s' must have %u rows to match the parent variable's cardinality, but it has %d",
-		   _name.c_str(), layer_matrix_name[num_matrices-1].c_str(), cardinalities[0], layer_matrix[num_matrices-1]->rows());
+      stringprintf(error_message,"DeepVirtualEvidenceCPT '%s' requires DeepNN '%s' to have %u outputs, but it has %u",
+		   _name.c_str(), dmlp->name().c_str(), cardinalities[0], dmlp->numOutputs());
       throw(error_message);
     }
 
@@ -439,13 +300,14 @@ DeepVECPT::write(oDataStreamFile& os)
   sprintf(tmp,"parentCard:%u",cardinalities[0]);
   os.write(tmp);
   os.write("selfCard:2"); // self card
+  sprintf(tmp,"deepNN:%s", dmlp->name().c_str());
+  os.write(tmp);
   sprintf(tmp,"f_offset:%u",obs_file_foffset);
   os.write(tmp);
   sprintf(tmp,"nfs:%u",nfs);
   os.write(tmp);
   sprintf(tmp,"radius:%u",window_radius);
   os.write(tmp);
-  // FIXME - write matrices: stanza
   os.write("END");
   os.nl();
   os.nl();
@@ -457,120 +319,25 @@ DeepVECPT::write(oDataStreamFile& os)
 ////////////////////////////////////////////////////////////////////
 
 
-void DeepVECPT::becomeAwareOfParentValues( vector <RV *>& parents,
-				       const RV* rv ) 
-{
+void 
+DeepVECPT::becomeAwareOfParentValues( vector <RV *>& parents, const RV* rv ) {
   assert ( parents.size() == 1 );
   curParentValue = RV2DRV(parents[0])->val;
-}
-
-
-void
-softmax(float *q, unsigned len) {
-  float k  = *q;
-#if 1
-  unsigned n;
-  if (len % 2) {
-    n = 1;
-  } else {
-    if (*q < q[1]) {
-      k = q[1];
-    }
-    n = 2;
-  }
-  float k2 = k;
-  for (unsigned i=n; i < len; i+=2) {
-    k  = (k  > q[i])   ? k  : q[i];
-    k2 = (k2 > q[i+1]) ? k2 : q[i+1];
-  }
-  k = (k > k2) ? k : k2;
-#else
-  for (unsigned i=1; i < len; i+=1)
-    if (k < q[i])
-      k = q[i];
-#endif
-  float sum = 0.0;
-  for (unsigned i=0; i < len; i+=1)
-    sum += expf(q[i] - k);
-  sum = logf(sum);
-  for (unsigned i=0; i < len; i+=1)
-    q[i] = expf ( q[i] - k - sum );
-}
-
-void
-logistic(float *q, unsigned len, float beta=1.0) {
-  for (unsigned i=0; i < len; i+=1)
-    q[i] = 1.0 / (1.0 + expf( -beta * q[i] ));
-}
-
-void
-hyptan(float *q, unsigned len) {
-  for (unsigned i=0; i < len; i+=1) 
-    q[i] = tanhf(q[i]);
-}
-
-#if 0
-#define CUBE_ROOT_OF_2 1.25992104989
-void
-oddroot(float *q, unsigned len) {
-  for (unsigned i=0; i < len; i+=1) {
-    float x = powf( 3 * q[i] + sqrtf( 4.0 + 9.0 * q[i] * q[i] ), 1.0/3.0 );
-    q[i] = x / CUBE_ROOT_OF_2 - CUBE_ROOT_OF_2 / x;
-  }
-}
-#else
-void
-oddroot(float *q, unsigned len) {
-  for (unsigned i=0; i < len; i+=1) {
-    float y = q[i];
-    bool negate = false;
-    if (y < 0) { negate = true; y = -y; }
-    float x = (y <= 20) ? y : powf(3.0 * y, 1.0/3.0);
-
-    float newX;
-    while (true) {
-      float xSqr = x * x;
-      newX = (0.66666666666666666 * xSqr * x + y) / (xSqr + 1.0);
-      if (newX >= x) break;
-      x = newX;
-    }
-    q[i] = negate ? -newX : newX;
-  }
-}
-#endif
-
-
-void
-squash(DeepVECPT::SquashFunction fn, float *q, unsigned len, float beta=1.0) {
-  switch (fn) {
-  case DeepVECPT::SOFTMAX:
-    softmax(q, len);
-    break;
-  case DeepVECPT::LOGISTIC:
-    logistic(q, len, beta);
-    break;
-  case DeepVECPT::TANH:
-    hyptan(q, len);
-    break;
-  case DeepVECPT::ODDROOT:
-    oddroot(q, len);
-    break;
-  default:
-    assert(0); // impossible
-  }
+  assert(curParentValue <  cardinalities[0]);
 }
 
 
 logpr
-DeepVECPT::applyDeepModel(DiscRVType parentValue, DiscRV * drv) {
+DeepVECPT::applyNN(DiscRVType parentValue, DiscRV * drv) {
   register DiscRVType val = drv->val;
 
   logpr p((void*)NULL);
 
+  // check if the CPT is cached
   unsigned frame = drv->frame();
-
-  if (frame == cached_frame && obs->segmentNumber() == cached_segment) {
-    p.valref() = cached_CPT[curParentValue];
+  unsigned segment = obs->segmentNumber();
+  if (frame == cached_frame && segment == cached_segment) {
+    p.setFromP(cached_CPT[parentValue]);
     // The obseved value (1) is the one corresponding
     // to the value in the file. I.e., the score 
     // in the file corresponds to Pr(child = 1 | parent = j) = f_t(j), 
@@ -583,52 +350,27 @@ DeepVECPT::applyDeepModel(DiscRVType parentValue, DiscRV * drv) {
     return p;
   }
 
+  // Not in the cache, so compute & cache it
   cached_frame = frame;
-  cached_segment = obs->segmentNumber();
+  cached_segment = segment;
 
-  unsigned num_inputs = nfs * ( 2 * window_radius + 1 ) + 1;
-  float *input_vector = new float[num_inputs];
-  input_vector[num_inputs-1] = 1.0; // homogeneous coordinates
+  // assemble input vector
+  assert(input_vector);
+  input_vector[dmlp->numInputs()] = 1.0; // homogeneous coordinates
   float *dest = input_vector;
   // guarantees [frame - window_radius, frame + window_radius] are in cache
-  float *src  = obs->floatVecAtFrame(frame) - window_radius * nfs; 
-  for (unsigned i = 0; i < 1 + 2 * window_radius; i+=1, src += nfs, dest += nfs) {
+  unsigned stride = obs->stride();
+  float *src  = obs->floatVecAtFrame(frame) - window_radius * stride + obs_file_foffset; 
+  unsigned diameter = 1 + 2 * window_radius;
+  for (unsigned i = 0; i < diameter; i+=1, src += stride, dest += nfs) {
     memcpy(dest, src, nfs * sizeof(float));
   }
-#if 0
-printf("%02u:", frame);
-for(unsigned i=0; i < num_inputs; i+=1)
-  printf(" %f", input_vector[i]);
-#endif
-  float *output_vector[2];
-  output_vector[0] = new float[max_outputs+1]; // big enough to hold any layer's output (+1 for homogeneous coordinates)
-  output_vector[1] = new float[max_outputs+1];
+  memcpy(cached_CPT, dmlp->applyDeepModel(input_vector), cardinalities[0] * sizeof(double)) ;
 
-  mul_mfmf_mf(layer_output_count[0], num_inputs, 1, 
-	      layer_matrix[0]->values.ptr, input_vector, output_vector[0], 
-	      num_inputs, 1, 1);
-  delete[] input_vector;
-  squash(layer_squash_func[0], output_vector[0], layer_output_count[0], layer_logistic_beta[0]);
-  output_vector[0][layer_output_count[0]] = 1.0;
+  // logpr the CPT entry
+  assert(parentValue < cardinalities[0]);
+  p.setFromP(cached_CPT[parentValue]);
 
-  unsigned cur_output_vector = 0;
-  for (unsigned layer=1; layer < num_matrices; layer += 1) {
-    input_vector = output_vector[cur_output_vector];
-    cur_output_vector = (cur_output_vector + 1) % 2;
-    mul_mfmf_mf(layer_output_count[layer], layer_output_count[layer-1]+1, 1, 
-		layer_matrix[layer]->values.ptr, input_vector, output_vector[cur_output_vector], 
-		layer_output_count[layer-1]+1, 1, 1);
-    squash(layer_squash_func[layer], output_vector[cur_output_vector], layer_output_count[layer], layer_logistic_beta[0]);
-    output_vector[cur_output_vector][layer_output_count[layer]] = 1.0;
-  }
-  memcpy(cached_CPT, output_vector[cur_output_vector], parentCardinality(0) * sizeof(float));
-#if 0
-printf(" ->");
-for (unsigned i=0; i < parentCardinality(0); i+=1)
-  printf(" %f", output_vector[cur_output_vector][i]);
-printf("\n");
-#endif
-  p.valref() = output_vector[cur_output_vector][curParentValue];
   // The obseved value (1) is the one corresponding
   // to the value in the file. I.e., the score 
   // in the file corresponds to Pr(child = 1 | parent = j) = f_t(j), 
@@ -638,8 +380,6 @@ printf("\n");
     // see comment 'zero valued child case' elsewhere in this file.
     p = 1.0 - p;
   }
-  delete[] output_vector[0];
-  delete[] output_vector[1];
   return p;
 }
 
@@ -647,57 +387,8 @@ logpr
 DeepVECPT::probGivenParents(vector <RV *>& parents, DiscRV * drv) {
   assert ( bitmask & bm_basicAllocated );
   curParentValue = RV2DRV(parents[0])->val;
-  return applyDeepModel(curParentValue, drv);
-
-#if 0
-  register DiscRVType val = drv->val;
-
-  logpr p((void*)NULL);
-
-  unsigned num_inputs = nfs * ( 2 * window_radius + 1 ) + 1;
-  float *input_vector = new float[num_inputs];
-  input_vector[num_inputs-1] = 1.0; // homogeneous coordinates
-  unsigned frame = drv->frame();
-  float *dest = input_vector;
-  for (unsigned t = frame - window_radius; t <= frame + window_radius; t+=1, dest += nfs) {
-    memcpy(dest, obs->floatVecAtFrame(t), nfs * sizeof(float));
-  }
-
-  float *output_vector[2];
-  output_vector[0] = new float[max_outputs]; // big enough to hold any layer's output (+1 for homogeneous coordinates)
-  output_vector[1] = new float[max_outputs];
-
-  mul_mfmf_mf(layer_output_count[0], num_inputs, 1, 
-	      layer_matrix[0]->values.ptr, input_vector, output_vector[0], 
-	      num_inputs, 1, 1);
-  delete[] input_vector;
-  squash(layer_squash_func[0], output_vector[0], layer_output_count[0]);
-  output_vector[0][layer_output_count[0]] = 1.0;
-
-  unsigned cur_output_vector = 0;
-  for (unsigned layer=1; layer < num_matrices; layer += 1) {
-    input_vector = output_vector[cur_output_vector];
-    cur_output_vector = (cur_output_vector + 1) % 2;
-    mul_mfmf_mf(layer_output_count[layer], layer_output_count[layer-1]+1, 1, 
-		layer_matrix[layer]->values.ptr, input_vector, output_vector[cur_output_vector], 
-		layer_output_count[layer-1]+1, 1, 1);
-    squash(layer_squash_func[layer], output_vector[cur_output_vector], layer_output_count[layer]);
-    output_vector[cur_output_vector][layer_output_count[layer]] = 1.0;
-  }
-  p.valref() = output_vector[cur_output_vector][curParentValue];
-  // The obseved value (1) is the one corresponding
-  // to the value in the file. I.e., the score 
-  // in the file corresponds to Pr(child = 1 | parent = j) = f_t(j), 
-  // and f_t(j) is the value stored in the file.  
-  if (val == 0) {
-    // if the child RV has zero value, then we invert the probability.
-    // see comment 'zero valued child case' elsewhere in this file.
-    p = 1.0 - p;
-  }
-  delete[] output_vector[0];
-  delete[] output_vector[1];
-  return p;
-#endif
+  assert(curParentValue <  cardinalities[0]);
+  return applyNN(curParentValue, drv);
 }
 
 
@@ -718,7 +409,8 @@ void DeepVECPT::begin(iterator& it,DiscRV* drv, logpr& p)
   it.drv = drv;
   it.uInternalState = curParentValue;
   drv->val = 0;
-  p = applyDeepModel(curParentValue, drv);
+  assert(curParentValue <  cardinalities[0]);
+  p = applyNN(curParentValue, drv);
 }
 
 bool DeepVECPT::next(iterator &it,logpr& p)
@@ -727,7 +419,7 @@ bool DeepVECPT::next(iterator &it,logpr& p)
     return false;
   // here, the RV child now gets value 1.
   it.drv->val = 1;
-  p = applyDeepModel(curParentValue, it.drv);
+  p = applyNN(curParentValue, it.drv);
   return true;
 }
 

@@ -1725,6 +1725,186 @@ static float normalizeScoreEachClique = MaxClique::normalizeScoreEachClique;
 
 
 
+
+
+/*==============================================================================================================*/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+/****************************                                     ***********************************************/
+/****************************         DMLP TRAINING OPTIONS       ***********************************************/
+/****************************                                     ***********************************************/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+
+#if defined(GMTK_ARG_DMLP_TRAINING_OPTIONS)
+#if defined(GMTK_ARGUMENTS_DOCUMENTATION)
+  Arg("\n*** DMLP training options ***\n"),
+#endif
+#endif
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
+#if defined(GMTK_ARG_DMLP_TRAINING_PARAMS)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+#include "DBN.h"
+
+static char const *DMLPName           = NULL;
+static unsigned    obsOffset          = 0;
+static unsigned    numFeatures        = 0;
+static unsigned    radius             = 0;
+static unsigned    labelOffset        = 0;
+static bool        oneHot             = true;
+static unsigned    batchQueueSize     = 1000;
+static char const *saveTrainingFile   = NULL;
+static char const *loadTrainingFile   = NULL;
+
+  // backprop hyperparameters
+
+static double   bpInitStepSize = 1e-2;
+static double   bpMinMomentum = 0.5;
+static double   bpMaxMomentum = 0.99;
+static double   bpMaxUpdate = 0.1;
+static double   bpL2 = 0;
+static float    bpNumEpochs = 1.0,
+                bpEpochFraction = 1.0;        // fraction of bpNum[Anneal]Epochs to do in this gmtkDMLPtrain invocation
+static float    bpNumAnnealEpochs = 1.0, 
+                bpAnnealEpochFraction = 1.0; 
+static unsigned bpMiniBatchSize = 10;
+static unsigned bpCheckInterval = 2000;
+static double   bpIdropP = 0;
+static double   bpHdropP = 0;
+
+  // pretraining hyperparameters
+
+static double   ptInitStepSize = 1e-2;
+static double   ptMinMomentum = 0.5;
+static double   ptMaxMomentum = 0.99;
+static double   ptMaxUpdate = 0.1;
+static double   ptL2 = 0;
+static float    ptNumEpochs = 1.0;
+static float    ptNumAnnealEpochs = 1.0;
+static unsigned ptMiniBatchSize = 10;
+static unsigned ptCheckInterval = 2000;
+
+static char const *pretrainType = "CD";
+static DBN::PretrainType pretrainMode;
+static char const *pretrainActFuncStr = "linear";
+static Layer::ActFunc iActFunc;
+
+static char const *trainingSchedule = "linear";
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+Arg("nnChunkSize", Arg::Opt, DBN::nnChunkSize, "Size in MB to use for incremental DeepNN matrix operations"),
+Arg("batchQueueSize", Arg::Opt, batchQueueSize, "Size (in training instances) of the asynchronous batch queue"),
+Arg("deepMLPName", Arg::Req, DMLPName, "Name of deep NN to train"),
+Arg("featureOffset", Arg::Opt, obsOffset, "Offset in observation file where input features start"),
+Arg("numFeatures", Arg::Req, numFeatures, "Number of input features (per frame)"),
+Arg("radius", Arg::Opt, radius, "Number of frames comprising one input instance = 2r+1"),
+Arg("labelOffset", Arg::Req, labelOffset, "Offset in observation file where output labels start"),
+Arg("oneHot", Arg::Opt, oneHot, "If true, labelOffset is the single discrete correct parent value, "
+                                "else the parent distribution starts ate labelOffset"),
+Arg("sparseInitLayer", Arg::Opt, DBN::sparseInitLayer, "Use sparse or dense initilization strategy (dense is better for rectified linear)"),
+
+Arg("trainingSchedule", Arg::Opt, trainingSchedule, "Order to process training data (linear, random, permute, shuffle)"),
+Arg("pretrainType", Arg::Opt, pretrainType, "Pretraining type (none, AE, CD)"),
+Arg("pretrainActFunc", Arg::Opt, pretrainActFuncStr, "Pretraining input activation function (sig, tanh, cubic, linear, rect)"),
+Arg("saveTrainingFile", Arg::Opt, saveTrainingFile, "Filename to save training state for resuming training later"),
+Arg("loadTrainingFile", Arg::Opt, loadTrainingFile, "Filename to load training state from to resume training"),
+Arg("tempDir", Arg::Opt, MMapMatrix::dmlpTempDir, "Directory to store temp files if $GMTKTMPDIR environment variable is not set"),
+
+Arg("\n*** DMLP pretraining hyperparameters ***\n"),
+
+Arg("ptInitStepSize", Arg::Opt, ptInitStepSize, "Pretrain: Initial step size hyperparameter"),
+Arg("ptMinMomentum", Arg::Opt, ptMinMomentum, "Pretrain: Minimum momentum hyperparameter"),
+Arg("ptMaxMomentum", Arg::Opt, ptMaxMomentum, "Pretrain: Maximum momentum hyperparameter"),
+Arg("ptMaxUpdate", Arg::Opt, ptMaxUpdate, "Pretrain: Maximum update hyperparameter"),
+Arg("ptL2", Arg::Opt, ptL2, "Pretrain: l2 hyperparameter"),
+Arg("ptNumEpochs", Arg::Opt, ptNumEpochs, "Pretrain: Number of epochs hyperparameter"),
+Arg("ptNumAnnealEpochs", Arg::Opt, ptNumAnnealEpochs, "Pretrain: Number of anneal epochs hyperparameter"),
+Arg("ptMiniBatchSize", Arg::Opt, ptMiniBatchSize, "Pretrain: Mini-batch size hyperparameter"),
+Arg("ptCheckInterval", Arg::Opt, ptCheckInterval, "Pretrain: Check interval hyperparameter"),
+
+Arg("\n*** DMLP backprob hyperparameters ***\n"),
+
+Arg("bpInitStepSize", Arg::Opt, bpInitStepSize, "Backprop: Initial step size hyperparameter"),
+Arg("bpMinMomentum", Arg::Opt, bpMinMomentum, "Backprop: Minimum momentum hyperparameter"),
+Arg("bpMaxMomentum", Arg::Opt, bpMaxMomentum, "Backprop: Maximum momentum hyperparameter"),
+Arg("bpMaxUpdate", Arg::Opt, bpMaxUpdate, "Backprop: Maximum update hyperparameter"),
+Arg("bpL2", Arg::Opt, bpL2, "Backprop: l2 hyperparameter"),
+Arg("bpNumEpochs", Arg::Opt, bpNumEpochs, "Backprop: Total epochs of training hyperparameter"),
+Arg("bpEpochFraction", Arg::Opt, bpEpochFraction, "Backprop: [0,1] fraction of -bpNumEpochs to do in this invocation"),
+Arg("bpNumAnnealEpochs", Arg::Opt, bpNumAnnealEpochs, "Backprop: Total epochs of anneal training hyperparameter"),
+Arg("bpAnnealEpochFraction", Arg::Opt, bpAnnealEpochFraction, "Backprop: [0,1] fraction of -bpNumAnnealEpochs to do in this invocation"),
+Arg("bpMiniBatchSize", Arg::Opt, bpMiniBatchSize, "Backprop: Mini-batch size hyperparameter"),
+Arg("bpCheckInterval", Arg::Opt, bpCheckInterval, "Backprop: Check interval hyperparameter"),
+Arg("bpIdropP", Arg::Opt, bpIdropP, "Backprop: dropout probability for input layer"),
+Arg("bpHdropP", Arg::Opt, bpHdropP, "Backprop: dropout probability for hidden layers"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+// error checks
+
+  if (strcasecmp(pretrainType, "AE") == 0) {
+    pretrainMode = DBN::AE;
+  } else if (strcasecmp(pretrainType, "CD") == 0) {
+    pretrainMode = DBN::CD;
+  } else if (strcasecmp(pretrainType, "none") == 0) {
+    pretrainMode = DBN::NONE;
+  } else {
+    error("%s: Unknown pretraining type '%s', must be 'AE' 'CD' or 'none'\n", argerr, pretrainType);
+  }
+
+  if (strcasecmp(pretrainActFuncStr, "sig") == 0) {
+    iActFunc = Layer::ActFunc::LOG_SIG;
+  } else if (strcasecmp(pretrainActFuncStr, "tanh") == 0) {
+    iActFunc = Layer::ActFunc::TANH;
+  } else if (strcasecmp(pretrainActFuncStr, "cubic") == 0) {
+    iActFunc = Layer::ActFunc::CUBIC;
+  } else if (strcasecmp(pretrainActFuncStr, "linear") == 0) {
+    iActFunc = Layer::ActFunc::LINEAR;
+  } else if (strcasecmp(pretrainActFuncStr, "rect") == 0) {
+    iActFunc = Layer::ActFunc::RECT_LIN;
+  } else {
+    error("%s: Unknown pretraining input activation function '%s', must be 'sig', 'tanh', 'cubic', 'linear', or 'rect'\n",
+	  argerr, pretrainActFuncStr);
+  }
+
+  if (strcasecmp(trainingSchedule, "linear") == 0) {
+  } else if (strcasecmp(trainingSchedule, "random") == 0) {
+  } else if (strcasecmp(trainingSchedule, "permute") == 0) {
+  } else if (strcasecmp(trainingSchedule, "shuffle") == 0) {
+  } else {
+    error("%s: Unknown training schedule '%s', must be 'linear', 'random', 'permute', or 'shuffle'\n",
+	  argerr, trainingSchedule);
+  }
+
+  if (bpEpochFraction < 0.0 || 1.0 < bpEpochFraction) {
+    error("%s: -bpEpochFraction %e is invalid, it must be in [0,1]\n", bpEpochFraction);
+  }
+  if (bpAnnealEpochFraction < 0.0 || 1.0 < bpAnnealEpochFraction) {
+    error("%s: -bpAnnealEpochFraction %e is invalid, it must be in [0,1]\n", bpAnnealEpochFraction);
+  }
+
+  DBN::resumeTraining = loadTrainingFile != NULL;
+  if (DBN::resumeTraining && strcasecmp(pretrainType, "none")) {
+    error("%s: Resuming training T requires -pretrainType none\n", argerr);
+  }
+
+#else
+#endif
+#endif // defined(GMTK_ARG_EM_TRAINING_PARAMS)
+
+
+
+
+
 /*==============================================================================================================*/
 /****************************************************************************************************************/
 /****************************************************************************************************************/
@@ -1875,6 +2055,12 @@ static bool writeLogVals = false;
 
   Arg("\n*** Decoding options ***\n"),
 
+  Arg("vitObsFileName", Arg::Opt, JunctionTree::vitObsFileName, "Output filename for Viterbi observation file"),
+  Arg("vitObsListFileName", Arg::Opt, JunctionTree::vitObsListName, "Output list filename for Viterbi observation file (HTK, ASCII, Binary)"),
+  Arg("vitObsNameSeparator", Arg::Opt, JunctionTree::vitObsNameSeparator, "String to use as separator when outputting HTK, ASCII, or binary Viterbi observation file"),
+  Arg("vitObsFileFormat", Arg::Opt, JunctionTree::vitObsFileFmt, "Output Viterbi observation file format (htk,binary,ascii,flatascii,pfile)"),
+  Arg("vitObsFileSwap", Arg::Opt, JunctionTree::vitObsFileSwap, "Do byte swapping when outputting PFile, HTK, or binary Viterbi observation file"),
+
   Arg("mVitValsFile",Arg::Opt,mVitValsFileName,"Modified Section Vit: file to print viterbi values in ASCII, '-' for stdout"),
 #ifndef GMTK_ONLINE_UNSUPPORTED
   Arg("vitValsFile",Arg::Opt,vitValsFileName,"Original Section Vit: file to print viterbi values in ASCII, '-' for stdout"),
@@ -1945,10 +2131,13 @@ static bool writeLogVals = false;
     error("%s: Can't use both -vitPrintRange and -vitFrameRange\n", argerr);
   }
 
-  if ( vitFrameRangeFilter && ! vitValsFileName ) {
-    error("%s: -vitFrameRange requires -vitValsFile to be specified\n", argerr);
+  if ( vitFrameRangeFilter && ! (vitValsFileName || JunctionTree::vitObsFileName)) {
+    error("%s: -vitFrameRange requires -vitValsFile or -vitObsFileName to be specified\n", argerr);
   }
 
+  if (JunctionTree::vitObsFileName && (vitValsFileName || mVitValsFileName) ) {
+    error("%s: -vitValsFileName cannot be used with -vitValsFileName or -mVitValsFileName\n", argerr);
+  }
 #else
 #endif
 #endif // defined(GMTK_ARG_NEW_DECODING_OPTIONS)

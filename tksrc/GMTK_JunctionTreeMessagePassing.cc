@@ -612,6 +612,371 @@ newViterbiValues(bool &first_C, unsigned &C_size, bool printObserved,
 
 
 
+
+/*
+ *
+ * This routine saves the viterbi values computed by the most recent
+ * linear inference run (assuming its data structures are still valid)
+ * to an observation file.
+ *
+ * Preconditions: 
+ *
+ *    Assumes that distributeEvidence has just been run and all data
+ *    structures (such as the compressed viterbi value array) are set
+ *    up appropriately. 
+ *
+ *    Assumes that inference_it is currently set for the current
+ *    segment.
+ *  
+ *    Assumes that the CC and CE partition pair random variables
+ *    have been properly set up.
+ * 
+ *
+ */
+
+void
+JunctionTree::viterbiValuesToObsFile(unsigned numFrames,
+				     FILE   * binVitFile,
+				     unsigned segment,
+				     regex_t* preg,
+				     regex_t* creg,
+				     regex_t* ereg,
+				     char   * frameRangeFilter)
+{
+  unsigned numUsableFrames;
+  if (binaryViterbiFile) {
+    unsigned totalNumberPartitions;
+    numUsableFrames = unroll(numFrames,ZeroTable,&totalNumberPartitions);
+    
+    new (&inference_it) ptps_iterator(*this,totalNumberPartitions);
+    init_CC_CE_rvs(inference_it);
+  } else {
+    numUsableFrames = this->numUsableFrames;
+  }
+
+  // Modified section -> original section initialization
+
+  vector<RV*> unrolled_rvs;
+  map<RVInfo::rvParent, unsigned> unrolled_map;
+
+  vector<RV*> P_rvs;      // original P for printing
+  vector<RV*> Pprime_rvs; // modified P' for unpacking
+  vector<RV*> hidP_rvs;      // hidden subset of original P for printing
+  vector<RV*> hidPprime_rvs; // hidden subset of modified P' for unpacking
+
+  vector<vector<RV*> > C_rvs; // original Cs for printing
+  vector<vector<RV*> > Cprime_rvs; // modified C's for unpacking
+  vector<vector<RV*> > hidC_rvs; // hidden subset of original Cs for printing
+  vector<vector<RV*> > hidCprime_rvs; // hidden subset of modified C's for unpacking
+
+  vector<RV*> E_rvs; // ... printing
+  vector<vector<RV*> > Eprime_rvs; // ... unpacking
+  vector<RV*> hidE_rvs; // ... printing
+  vector<vector<RV*> > hidEprime_rvs; // ... unpacking
+
+  sArray<DiscRVType *>PprimeValuePtrs;
+  vector<sArray<DiscRVType *> > CprimeValuePtrs;
+  vector<sArray<DiscRVType *> > EprimeValuePtrs;
+
+  createUnpackingMap(unrolled_rvs, unrolled_map, 
+		     P_rvs, hidP_rvs, Pprime_rvs, hidPprime_rvs, 
+		     C_rvs, hidC_rvs, Cprime_rvs, hidCprime_rvs,
+		     E_rvs, hidE_rvs, Eprime_rvs, hidEprime_rvs,
+		     PprimeValuePtrs, CprimeValuePtrs, EprimeValuePtrs);
+
+
+  unsigned NP = fp.numFramesInP();
+  unsigned NC = fp.numFramesInC();
+
+  unsigned M = gm_template.M;
+  unsigned S = gm_template.S;
+  unsigned totalOriginalPartitions = 2 + inference_it.num_c_partitions() * S + M;
+
+  infoMsg(IM::Printing,IM::High,"NP = %u   NC = %u   M = %u   S = %u   # orig parts = %u\n",
+       NP, NC, M, S, totalOriginalPartitions);
+
+  // Trigger initialization
+
+  set<string> variableNames; // names of variables in the model
+  for (unsigned i=0; i < partition_unrolled_rvs.size(); i+=1) {
+    variableNames.insert(partition_unrolled_rvs[i]->name());
+  }
+
+  RVVec  pVitTriggerVec;
+  string pVitTriggerExpr;
+  RngDecisionTree::EquationClass pTriggerEqn;
+  initializeViterbiTrigger(pVitTrigger, variableNames, pVitTriggerVec, pVitTriggerExpr, pTriggerEqn, 'p');
+
+  RVVec  cVitTriggerVec;
+  string cVitTriggerExpr;
+  RngDecisionTree::EquationClass cTriggerEqn;
+  initializeViterbiTrigger(cVitTrigger, variableNames, cVitTriggerVec, cVitTriggerExpr, cTriggerEqn, 'c');
+
+  RVVec  eVitTriggerVec;
+  string eVitTriggerExpr;
+  RngDecisionTree::EquationClass eTriggerEqn;
+  initializeViterbiTrigger(eVitTrigger, variableNames, eVitTriggerVec, eVitTriggerExpr, eTriggerEqn, 'e');
+
+
+  Range* frameRange = NULL;
+  frameRange = new Range(frameRangeFilter,0,numUsableFrames);
+  if (frameRange->length() == 0) { 
+    warning("WARNING: Frame range filter must specify a valid non-zero "
+	    "length range within [0:%d]. Range given is %s\n",
+	    numUsableFrames, frameRangeFilter);
+    delete frameRange;
+    frameRange = NULL;
+  }
+
+  if (frameRange == NULL)
+    frameRange = new Range("all",0,numUsableFrames);
+
+  Range::iterator* frameRange_it = new Range::iterator(frameRange->begin());
+
+  vector<int> Cpos(C_rvs.size());
+  for (unsigned int i=0; i < Cpos.size(); i+=1) 
+    Cpos[i] = fp.numFramesInP() + i * fp.numFramesInC();
+  int Epos = fp.numFramesInP() + C_rvs.size() * fp.numFramesInC();
+  
+
+
+  int primeIndex = 0;     // which of the Cprime_rvs or Eprime_rvs to unpack to
+  int originalIndex = 0;  // which of the C_rvs to print from
+
+  int minAvailableFrame = -1; // nothing unpacked yet
+  int maxAvailableFrame = -1;
+
+  while (!frameRange_it->at_end()) {
+    unsigned ppp = (*frameRange_it);
+    infoMsg(IM::Printing,IM::High,"frame %u ", ppp);
+
+    // map frame to original partition
+    unsigned part;
+    if ( (*frameRange_it) < (int)NP ) {
+      part = 0; // P
+    } else if ( (*frameRange_it) >= (int)NP + ((int)totalOriginalPartitions-2)*(int)NC ) {
+      part = totalOriginalPartitions - 1; // E
+    } else {
+      part = 1 + ((*frameRange_it) - NP) / NC; // C
+    }
+    infoMsg(IM::Printing,IM::High,"in original partition %u ", part);
+
+    // already fully unpacked? if so, print it
+    if (minAvailableFrame <= (*frameRange_it) && (*frameRange_it) <= maxAvailableFrame) {
+      infoMsg(IM::Printing,IM::High,"is available to print:\n");
+      if (part == 0) { // print P partition
+	storeToObsFile((*frameRange_it), segment, P_rvs, pVitTrigger, pVitTriggerVec, pVitTriggerExpr, pTriggerEqn, preg, 'p');
+      } else if (part == totalOriginalPartitions-1) { // print E partition
+	int targetFrame = fp.numFramesInP() + (int)(part-1) * fp.numFramesInC();
+	shiftOriginalVarstoPosition(E_rvs, targetFrame, Epos);
+	storeToObsFile((*frameRange_it), segment, E_rvs, eVitTrigger, eVitTriggerVec, eVitTriggerExpr, eTriggerEqn, ereg, 'e');
+      } else {      // print C partition
+	int targetFrame = fp.numFramesInP() + (int)(part-1) * fp.numFramesInC();
+	originalIndex = ((int)part - 1) % (int) C_rvs.size();
+	shiftOriginalVarstoPosition(C_rvs[originalIndex], targetFrame, Cpos[originalIndex]);
+	storeToObsFile((*frameRange_it), segment, C_rvs[originalIndex], cVitTrigger, cVitTriggerVec, cVitTriggerExpr, cTriggerEqn, creg, 'c');
+      }
+      (*frameRange_it)++;  // move on to next frame
+      continue;
+    }
+
+    /* Before we can print this original partition $C_j$ (j = part), we must 
+       unpack the modified partitions 
+
+       $$\left\{ C'_i \left| \, \max\left(-1,\left\lceil\frac{j-s-m+1}{s}\right\rceil\right) \leq i 
+         \leq \left\lfloor \frac{j}{s} \right\rfloor \right. \right\}$$
+
+       where $s$ and $m$ are the boundary algorithm parameters, $C'_{-1}=P'$, and $C'_{N_{C'}}=E'$. 
+     */
+    
+    int numerator = ( (int)part - 1 - (int)S - (int)M + 1 );
+    int firstPrimePart;
+    if (numerator <= -(int)S) {
+      firstPrimePart = -1; // max
+    } else if (numerator <= 0){
+      firstPrimePart = 0;  // ceil
+    } else {
+      firstPrimePart = numerator / (int)S;
+      if (numerator % (int)S)
+	firstPrimePart += 1;   // ceil
+    }
+    firstPrimePart += 1; // account for C_{-1} = P'
+
+    unsigned lastPrimePart = (part > 0) ?  1 + ((int)part-1) / (int)S : 0;
+    if (lastPrimePart >= inference_it.pt_len())  // E original partition # may > # of modified partitions
+      lastPrimePart = inference_it.pt_len() - 1;
+
+    infoMsg(IM::Printing,IM::High,"requires unpacking modified partitions %u to %u:\n  unpack:", 
+	    firstPrimePart, lastPrimePart);
+
+    for (unsigned i = (unsigned) firstPrimePart; i <= lastPrimePart; i += 1) { // unpack C'_{i} set
+      infoMsg(IM::Printing,IM::High,"  %u'", i); 
+      setCurrentInferenceShiftTo(i);
+      PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+
+      if (binaryViterbiFile) { // load packed values from disk if not already in memory
+	readBinaryVitPartition(ps, i);
+      }
+      
+      // unpack
+      if (inference_it.at_p()) { // P'
+	if (ps.packer.packedLen() > 0) 
+	  ps.packer.unpack(P_partition_values.ptr,PprimeValuePtrs.ptr);
+      } else if (inference_it.at_e()) { // E'
+	// -1 to get the preceding C', -1 to account for C'_{-1} = P'
+	primeIndex = ((int)i - 2) % (int)Eprime_rvs.size(); 
+	if (ps.packer.packedLen() > 0) 
+	  ps.packer.unpack(E_partition_values.ptr,EprimeValuePtrs[primeIndex].ptr);
+      } else { // C'
+	assert ( inference_it.at_c() );
+	primeIndex = ((int)i - 1) % (int)Cprime_rvs.size();
+	if (ps.packer.packedLen() > 0) 
+	  ps.packer.unpack(C_partition_values.ptr  + 
+			   ( binaryViterbiFile ? 0 : (inference_it.pt_i()-1)*ps.packer.packedLen() ),
+			   CprimeValuePtrs[primeIndex].ptr);
+      }
+    }
+
+    // unpacking firstPrimePart ... lastPrimePart makes these frames available:
+    if (firstPrimePart == 0) {
+      minAvailableFrame = 0;
+    } else {
+      minAvailableFrame = NP + (  ( (firstPrimePart-1) * S + M ) * NC  );
+    }
+
+    if (lastPrimePart == inference_it.pt_len()-1) {
+      maxAvailableFrame = numUsableFrames - 1;
+    } else {
+      maxAvailableFrame = NP + lastPrimePart * S * NC - 1;
+    }
+    infoMsg(IM::Printing,IM::High,"  available frames %u to %u\n", minAvailableFrame, maxAvailableFrame);
+  }
+
+  if (vitObsFile) vitObsFile->endOfSegment();
+
+  delete frameRange;
+}
+
+
+void
+computeVarOrder(vector<RV *> &sectionRVs, regex_t *preg, char sectionLabel, int frame, unsigned segment, vector<string> &names) {
+  assert(0 <= frame);
+  set<string> nameSet;
+  // collect the names selected by preg
+  for (unsigned i=0; i < sectionRVs.size(); i+=1) {
+    string name = sectionRVs[i]->name();
+    if ( sectionRVs[i]->frame() == (unsigned) frame && (!preg || !regexec(preg, name.c_str(), 0,0,0)) ) {
+      if (!sectionRVs[i]->discrete()) {
+	string byStr("by -");
+	byStr += sectionLabel;
+	byStr += "VitRegexFilter";
+	string sectStr("in ");
+	sectStr += sectionLabel;
+	sectStr +=" section";
+	error("ERROR: variable '%s(%u)' in segment %u selected for Viterbi output to observation file %s is not discrete. "
+	      "Only discrete variables may be stored to Viterbi observation files. "
+	      "Use -(p|c|e)VitRegexFilter to select appropriate variables for Viterbi output.\n", 
+	      name.c_str(), sectionRVs[i]->frame(),  segment, preg ? byStr.c_str() : sectStr.c_str() ); 
+      } else {
+	nameSet.insert(name);
+      }
+    }
+  }
+  names.resize(0); // empty it
+  // now add the selected names to the vector in output order
+  for (unsigned i=0; i < sectionRVs.size(); i+=1) {
+    if (names.size() == nameSet.size()) return; // got all the allowed names
+    string name = sectionRVs[i]->name();
+    if (nameSet.find(name) != nameSet.end()) {
+      names.push_back(name);
+    }
+  }
+  assert(names.size() == nameSet.size());
+}
+
+
+void 
+JunctionTree::storeToObsFile(int frame, unsigned segment,
+			     vector<RV *> &rvs, 
+			     bool useVitTrigger,
+			     RVVec  &vitTriggerVec, 
+			     string &vitTriggerExpr, 
+			     RngDecisionTree::EquationClass &vitTriggerEqn,
+			     regex_t *reg, char sectionLabel) 
+{
+  assert(0 <= frame);
+  bool trigger = true;
+  if (useVitTrigger) 
+    trigger = evaluateTrigger(rvs, vitTriggerVec, vitTriggerExpr, vitTriggerEqn);
+  if (!trigger || rvs.size()== 0) return;
+
+  // check to see if we need to instantiate the output observation file
+  if (vitObsFile == NULL) {
+    // we need to get the names of the variables to output in order
+    computeVarOrder(rvs, reg, sectionLabel, frame, segment, vitObsVariableNames);
+    // we need to inform the user of the variable order in the output file
+    printf("Viterbi values will be stored in the observation file in the order:");
+    for (unsigned i=0; i < vitObsVariableNames.size(); i+=1) {
+      printf(" %s", vitObsVariableNames[i].c_str());
+    }
+    printf("\n");
+    // Now we can instantiate the file. This is Viterbi output, so there are no continuous features.
+    // The number of discrete features is the # of variables to output
+    vitObsFile = instantiateWriteFile(vitObsListName, vitObsFileName, const_cast<char *>(vitObsNameSeparator), 
+				      const_cast<char *>(vitObsFileFmt), 0, vitObsVariableNames.size(), vitObsFileSwap);
+  }
+  // actual output. number written must be a multiple of vitObsVariableNames.size()
+  unsigned writtenCount = 0;
+  for (unsigned i=0; i < rvs.size(); i+=1) {
+    unsigned f = rvs[i]->frame();
+    assert(f <= 2147483647);
+    if (f == (unsigned)frame) {
+      if (!reg || !regexec(reg,rvs[i]->name().c_str(),0,0,0)) {
+	if (rvs[i]->name().compare( vitObsVariableNames[writtenCount % vitObsVariableNames.size()]) != 0) {
+	  string nameStr("<");
+	  if (vitObsVariableNames.size()) {
+	    nameStr += vitObsVariableNames[0];
+	    for (unsigned j=1; j < vitObsVariableNames.size(); j+=1) {
+	      nameStr += ", ";
+	      nameStr += vitObsVariableNames[j];
+	    }
+	    nameStr += ">";
+	  }
+	  // Cannot tell if there are missing variables before a correct variable or
+	  // there's an extra variable without diffing the list of correct and selected variables
+	  error("ERROR: Viterbi output to observation file expected to output variable '%s' but got '%s' instead at frame %d in segment %u. "
+		"All sections must output the same sequence of variables %s to the Viterbi observation file. "
+		"'%s' might be an extra variable, or there might be variables missing before it. "
+		"Perhaps the -%cVitRegexFilter is incorrect.\n",
+		vitObsVariableNames[writtenCount % vitObsVariableNames.size()].c_str(), rvs[i]->name().c_str(), frame, segment, 
+		nameStr.c_str(), rvs[i]->name().c_str(), sectionLabel);
+	}
+	vitObsFile->writeFeature(  (Data32) ( dynamic_cast<DiscRV *>(rvs[i])->val )  );
+	writtenCount+=1;
+      }
+    }
+  }
+  if ( (vitObsVariableNames.size() > 0) && (writtenCount % vitObsVariableNames.size() != 0) ) {
+    // If we get here, we wrote some number of variables in the correct order, but not enough.
+    // There weren't any extras, so the rest must be missing.
+    string nameStr("<");
+    if (vitObsVariableNames.size()) {
+      nameStr += vitObsVariableNames[0];
+      for (unsigned j=1; j < vitObsVariableNames.size(); j+=1) {
+	nameStr += ", ";
+	nameStr += vitObsVariableNames[j];
+      }
+      nameStr += ">";
+    }
+    error("ERROR: Viterbi output variable '%s' at frame %d in segment %u is missing. "
+	  "All sections must output the same sequence of variables %s to the Viterbi observation file. "
+	  "Perhaps the -%cVitRegexFilter is incorrect.\n", 
+	  vitObsVariableNames[writtenCount % vitObsVariableNames.size()].c_str(), frame, segment, nameStr.c_str(), sectionLabel);
+  }
+}
+
+
+
 void
 JunctionTree::printModifiedSection(PartitionStructures &ps,
 				   unsigned *packed_values,

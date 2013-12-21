@@ -135,6 +135,8 @@ FileSource::initialize(ObservationFile *file,
 bool 
 FileSource::openSegment(unsigned seg) {
   assert(file);
+  if (seg == (unsigned) this->segment) return true;
+
   if (seg >= numSegments()) {
     error("ERROR: FileSource::openSegment: requested segment %u, but only 0 to %u are available\n", 
 	  seg, numSegments()-1);
