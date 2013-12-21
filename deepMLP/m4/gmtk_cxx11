@@ -1,0 +1,29 @@
+
+AC_DEFUN([GMTK_STDCXX11],[dnl
+  AC_LANG_PUSH([C++])
+  GMTK_OLD_FLAGS=$CXXFLAGS
+  CXXFLAGS="$CXXFLAGS $1"
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[]], [[auto f = [] () { return 0;}; f()]])],
+    [AC_MSG_RESULT([yes])
+     AC_SUBST([ISOCXX11FLAGS],[$1])
+     gmtk_cxx11=yes],
+    [AC_MSG_RESULT([no])
+     gmtk_cxx11=no])
+  CXXFLAGS=$GMTK_OLD_FLAGS
+  AC_LANG_POP([C++])
+])
+
+AC_MSG_CHECKING([whether $CXX supports ISO C++ 2011 by default])
+GMTK_STDCXX11
+if test x$gmtk_cxx11 = xno; then
+  AC_MSG_CHECKING([whether $CXX supports ISO C++ 2011 with -std=c++11])
+  GMTK_STDCXX11([-std=c++11])
+fi
+if test x$gmtk_cxx11 = xno; then
+  AC_MSG_CHECKING([whether $CXX supports ISO C++ 2011 with -std=c++0x])
+  GMTK_STDCXX11([-std=c++0x])
+fi
+if test x$gmtk_cxx11 = xno; then
+  AC_WARN([$CXX does not appear to support ISO C++ 2011. gmtkDMLPtrain will not be built])
+fi
+

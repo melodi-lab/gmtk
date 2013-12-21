@@ -68,7 +68,8 @@ class FlatASCIIFile: public ObservationFile {
 		char const *contFeatureRangeStr_=NULL, 
 		char const *discFeatureRangeStr_=NULL, 
 		char const *preFrameRangeStr_=NULL, 
-		char const *segRangeStr_=NULL);
+		char const *segRangeStr_=NULL,
+		unsigned leftPad=0, unsigned rightPad=0);
 
 
   // write constructor

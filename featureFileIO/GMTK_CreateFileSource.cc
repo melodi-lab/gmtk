@@ -41,6 +41,8 @@ extern const char    *frs[];
 extern const char    *irs[];
 extern const char    *prefrs[];
 extern const char    *preirs[];
+extern unsigned leftPad[];
+extern unsigned rightPad[];
 extern const char    *sr[];
 extern char  *prepr[];
 extern char *postpr[];
@@ -109,7 +111,7 @@ instantiateFileSource() {
     if (ofs[i]) {
       obsFile[i] = instantiateFile(ifmts[i], ofs[i], nfs[i], nis[i], i, iswp[i],
 				   Cpp_If_Ascii, cppCommandOptions, prefrs[i], preirs[i],
-				   prepr[i], sr[i], fmts[i]);
+				   prepr[i], sr[i], fmts[i], leftPad[i], rightPad[i]);
       assert(obsFile[i]);
       if ((unsigned)(lastFileIdx + 1) != i) {
 	error("Error: -of%d through -of%d are missing\n", lastFileIdx+2, i); // +1 for 0 offset, +1 to get next index

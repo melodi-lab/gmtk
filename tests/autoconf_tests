@@ -4,6 +4,7 @@ gmtk_test_newViterbi-1.at \
 gmtk_test_newViterbi-2.at \
 gmtk_test_newViterbi-3.at \
 gmtk_test_newViterbi-4.at \
+gmtk_test_padding.at \
 gmtk_test_ticket125.at \
 gmtk_test_ticket127.at \
 gmtk_test_ticket130.at \
@@ -45,8 +46,10 @@ gmtk_test_ticket428.at \
 gmtk_test_ticket436.at \
 gmtk_test_ticket441.at \
 gmtk_test_ticket444.at \
+gmtk_test_ticket445.at \
 gmtk_test_ticket449.at \
 gmtk_test_ticket454.at \
+gmtk_test_ticket455.at \
 gmtk_test_ticket460.at \
 gmtk_test_ticket461.at \
 gmtk_test_ticket52.at \

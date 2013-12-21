@@ -1248,7 +1248,7 @@ public:
 			    unsigned *packed_values,
 			    bool useVitTrigger,
 			    vector< pair< string,int> > &vitTriggerVec,
-			    string &vitRiggerExpr,
+			    string &vitTriggerExpr,
 			    RngDecisionTree::EquationClass &vitTriggerEqn,
 			    bool printObserved,
 			    unsigned part,
@@ -1267,7 +1267,7 @@ public:
 			    vector<RV *> hiddenRVs,
 			    bool useVitTrigger,
 			    vector< pair< string,int> > &vitTriggerVec,
-			    string &vitRiggerExpr,
+			    string &vitTriggerExpr,
 			    RngDecisionTree::EquationClass &vitTriggerEqn,
 			    bool printObserved,
 			    unsigned part,
@@ -1280,6 +1280,14 @@ public:
 			    sArray<unsigned> &previous_values,
 			    bool runLengthCompress = false,
 			    int frame = -1);
+
+  void storeToObsFile(int frame, unsigned segment, 
+		      vector<RV *> &rvs, 
+		      bool useVitTrigger,
+		      vector< pair< string,int> > &vitTriggerVec, 
+		      string &vitTriggerExpr, 
+		      RngDecisionTree::EquationClass &vitTriggerEqn,
+		      regex_t *reg, char sectionLabel);
 
   // sets up the data structures for printing original sections
   void createUnpackingMap(vector<RV*> &unrolled_rvs, 
@@ -1298,6 +1306,24 @@ public:
   void readBinaryVitPartition(PartitionStructures& ps, unsigned part);
 
  public:
+
+  static ObservationFile *vitObsFile;
+  static char *vitObsFileName;
+  static char *vitObsListName;
+  static const char *vitObsNameSeparator;
+  static const char *vitObsFileFmt;
+  static bool  vitObsFileSwap;
+  vector<string> vitObsVariableNames;
+
+  // this is like the printSavedViterbiFrames(), but output
+  // goes to an ObservationFile
+  void viterbiValuesToObsFile(unsigned numFrames,
+			      FILE   * binVitFile,
+			      unsigned segment,
+			      regex_t* preg,
+			      regex_t* creg,
+			      regex_t* ereg,
+			      char   * frameRangeFilter);
 
   // void saveViterbiValuesIsland(oDataStreamFile& vfile);
   // void saveViterbiValuesLinear(oDataStreamFile& vfile);

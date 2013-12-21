@@ -65,7 +65,7 @@ ObservationFile::openLogicalSegment(unsigned seg) {
   // it's open, so the preFrameRange has to be handled here
   if (preFrameRangeStr) {
     if (preFrameRange) delete preFrameRange;
-    preFrameRange = new Range(preFrameRangeStr, 0, numFrames());
+    preFrameRange = new Range(preFrameRangeStr, 0, _leftPad + numFrames() + _rightPad);
     assert(preFrameRange);
   }
   return result;
@@ -76,14 +76,14 @@ ObservationFile::numLogicalFrames() {
   if (preFrameRange) {
     return preFrameRange->length();
   } else {
-    return numFrames();
+    return _leftPad + numFrames() + _rightPad;
   }
 }
 
 Data32 const *
 ObservationFile::getLogicalFrames(unsigned first, unsigned count) {
-  // if no range selection, logical = physical
-  if (!preFrameRange && !contFeatureRange && !discFeatureRange) {
+  // if no range selection or padding, logical = physical 
+  if (!preFrameRange && !contFeatureRange && !discFeatureRange && !_leftPad && !_rightPad) {
     return getFrames(first, count);
   }
 
@@ -96,8 +96,21 @@ ObservationFile::getLogicalFrames(unsigned first, unsigned count) {
     logicalObsBufSize = needed;
   }
   Data32 *dest = logicalObservationBuffer;
-  for (unsigned f = first; f < first+count; f+=1) {
+  unsigned leftDelta = 0;
+  if (first < _leftPad) {
+    leftDelta = _leftPad - first;
+    memset(dest, 0, _numLogicalFeatures * leftDelta * sizeof(Data32));
+    dest += _numLogicalFeatures * leftDelta;
+  }
+  unsigned rightDelta = 0;
+  unsigned numPhysFrames = numFrames();
+  if (first+count > numPhysFrames + _leftPad) {
+    rightDelta = first + count - numPhysFrames - _leftPad;
+  }
+  unsigned endFrame = first + count - rightDelta;
+  for (unsigned f = first + leftDelta; f < endFrame; f+=1) {
     unsigned physFrameIdx = preFrameRange ? preFrameRange->index(f) : f;
+    physFrameIdx -= _leftPad;
     Data32 const *physicalFrame = getFrames(physFrameIdx, 1);
     assert(physicalFrame);
     for (unsigned i=0; i < _numLogicalContinuousFeatures; i+=1) {
@@ -109,6 +122,9 @@ ObservationFile::getLogicalFrames(unsigned first, unsigned count) {
       unsigned srcIdx = discFeatureRange ? discFeatureRange->index(i) : i;
       *(dest++) = physicalFrame[discOffset+srcIdx];
     }
+  }
+  if (rightDelta) {
+    memset(dest, 0, _numLogicalFeatures * rightDelta * sizeof(Data32));
   }
   return logicalObservationBuffer;
 }
@@ -144,33 +160,34 @@ ObservationFile *
 instantiateFile(unsigned ifmt, char *ofs, unsigned nfs, unsigned nis,
 		unsigned number, bool iswp, bool Cpp_If_Ascii, 
 		char *cppCommandOptions, char const *frs, char const *irs, 
-		char const *prepr, char const *sr, char const *ifmtStr)
+		char const *prepr, char const *sr, char const *ifmtStr,
+		unsigned leftPad, unsigned rightPad)
 {
   ObservationFile *obsFile = NULL;
   switch (ifmt) {
   case RAWASC:
     obsFile = new ASCIIFile(ofs, nfs, nis, number,
 			       Cpp_If_Ascii, cppCommandOptions,
-			       frs, irs, prepr, sr);
+			    frs, irs, prepr, sr, leftPad, rightPad);
     break;
   case PFILE:
-    obsFile = new PFileFile(ofs, nfs, nis, number, iswp, frs, irs, prepr, sr);
+    obsFile = new PFileFile(ofs, nfs, nis, number, iswp, frs, irs, prepr, sr, leftPad, rightPad);
     break;
   case HTK:
     obsFile = new HTKFile(ofs, nfs, nis, number, iswp, Cpp_If_Ascii, cppCommandOptions,
-			     frs, irs, prepr, sr);
+			  frs, irs, prepr, sr, leftPad, rightPad);
     break;
   case HDF5:
     obsFile = new HDF5File(ofs, number, Cpp_If_Ascii, cppCommandOptions,
-			      frs, irs, prepr, sr);
+			   frs, irs, prepr, sr, leftPad, rightPad);
     break;
   case FLATASC:
     obsFile = new FlatASCIIFile(ofs, nfs, nis, number, Cpp_If_Ascii, cppCommandOptions,
-				   frs, irs, prepr, sr);
+				frs, irs, prepr, sr, leftPad, rightPad);
     break;
   case RAWBIN:
     obsFile = new BinaryFile(ofs, nfs, nis, number, iswp, Cpp_If_Ascii, cppCommandOptions,
-				frs, irs, prepr, sr);
+			     frs, irs, prepr, sr, leftPad, rightPad);
     break;
   default:
     error("ERROR: Unknown observation file format type: '%s'\n", ifmtStr);

@@ -408,8 +408,9 @@ main(int argc,char*argv[])
 	error("Can't open file '%s' for writing\n",vitValsFileName);
     }
   }
-  if (!mVitValsFile && !vitValsFile && !JunctionTree::binaryViterbiFile) {
-    error("Argument Error: Missing REQUIRED argument: -mVitValsFile <str>  OR  -vitValsFile <str> OR -binaryVitFile <str>\n");
+  if (!mVitValsFile && !vitValsFile && !JunctionTree::binaryViterbiFile && !JunctionTree::vitObsFileName) {
+    error("Argument Error: Missing REQUIRED argument: -mVitValsFile <str>  OR  -vitValsFile <str> OR "
+	  "-binaryVitFile <str> OR -vitObsFileName <str>\n");
   }
 #endif
 
@@ -709,6 +710,10 @@ main(int argc,char*argv[])
 		segment);
       else {
 
+	if (myjt.vitObsFileName) {
+	  myjt.viterbiValuesToObsFile(numFrames, vitValsFile, segment, vitPreg, vitCreg, vitEreg, vitFrameRangeFilter);
+	}
+
 	if (mVitValsFile) {
 	  fprintf(mVitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
 		  segment,numFrames,probe.val());
@@ -744,7 +749,9 @@ main(int argc,char*argv[])
     }
     (*dcdrng_it)++;
   }
-  
+
+  if (JunctionTree::vitObsFile) delete JunctionTree::vitObsFile;
+
   if (pCliqueFile) delete pCliqueFile;
 #if 0
   if (cCliqueFile) delete cCliqueFile;
