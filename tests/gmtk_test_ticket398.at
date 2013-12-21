@@ -7,5 +7,6 @@ AT_SETUP([Only apply -{start,end}Skip once (ticket 398)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/dvecpt])
 AT_CHECK([(cd $TEST_AND_DEV/dvecpt && \
           gmtkJT -strF dvecpt.str -inputM dvecpt.mtr \
-          -of1 obs.flat -fmt1 flatascii -nf1 3 -startSkip 1 -endSkip 1)],[],[ignore])
+          -of1 obs.flat -fmt1 flatascii -nf1 3 \
+          -startSkip 1 -endSkip 1 -cppCom -DNEW_DVECPT)],[],[ignore])
 AT_CLEANUP

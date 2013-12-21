@@ -44,6 +44,8 @@
 
 #include <cstdio>
 
+#include "rand.h"
+
 class RangeNode {
     // One node in a linked-list of matlab sequences
 public:
@@ -93,8 +95,8 @@ public:
 
     void PrintRanges(char *tag=NULL, FILE *stream=stderr);
 
-    unsigned int length(void);	// total number of points in range
-    int index(int ix);	// return ix'th value in list (counting from 0)
+    unsigned int length(void) const;	// total number of points in range
+    int index(int ix) const;	// return ix'th value in list (counting from 0)
 
     int first(void);	// first value in list, substitute for min()
     int last(void);	// last value in list, like max()
@@ -194,10 +196,89 @@ public:
       int operator >=(const iterator& it){ return (cur_value >= it.val());}
   };
 
+  // Like an iterator, but in permuted order. O(n) space
+  class permuter {
+  protected:
+      bool atEnd;
+      unsigned cur_pos;
+      int *permutation;
+      unsigned length;
+      const Range* myrange;
+  public:
+      permuter() : atEnd(true), permutation(NULL), length(0), myrange(NULL) { };
+
+      permuter(const Range& rng) : atEnd(false), cur_pos(0), length(rng.length()), myrange(&rng) {
+	if (length > 0) {
+	  permutation = new int[length];
+	  // Knuth shuffle - http://en.wikipedia.org/wiki/Random_permutation
+	  for (unsigned i=0; i < length; i+=1) {
+	    unsigned j = rnd.uniform(i);
+	    permutation[i] = permutation[j];
+	    permutation[j] = myrange->index(i);
+	  }
+	} else permutation = NULL;
+      }
+
+      permuter(const permuter& perm) 
+        : atEnd(perm.atEnd), cur_pos(perm.cur_pos), length(perm.myrange->length()), myrange(perm.myrange)
+      {
+	if (length > 0) {
+	  permutation = new int[length];
+	  // Knuth shuffle - http://en.wikipedia.org/wiki/Random_permutation
+	  for (unsigned i=0; i < length; i+=1) {
+	    unsigned j = rnd.uniform(i);
+	    permutation[i] = permutation[j];
+	    permutation[j] = myrange->index(i);
+	  }
+	} else permutation = NULL;
+      }
+
+     ~permuter(void) { if (permutation) delete[] permutation; }
+
+      int reset (const Range& rng) { cur_pos = 0; return permutation[cur_pos]; }
+      int reset (void) { cur_pos = 0; return permutation[cur_pos]; } // reset to where we were before .. hope we were!
+
+      int next_el(void) { 
+	if (cur_pos < length - 1) {
+	  cur_pos += 1;
+	  return permutation[cur_pos];
+	}
+	atEnd = true;
+	return 0;
+      }
+
+      int step_by(int n) {	// i.e. step on multiple steps
+	if (cur_pos < length - n) {
+	  cur_pos += n;
+	  return permutation[cur_pos];
+	}
+	atEnd = true;
+	return 0;
+      }
+
+      permuter& operator ++(void) // prefix
+	  { next_el(); return *this; }
+      permuter& operator ++(int) // suffix (used to return a new it? (no &))
+	  { next_el(); return *this; }
+
+      bool at_end(void) const { return atEnd; }
+      int val(void) const    { return permutation[cur_pos]; }
+      const int operator *(void) const { return permutation[cur_pos]; }
+      operator int(void) const         { return permutation[cur_pos]; }
+
+      int operator ==(const permuter& it){ return (permutation[cur_pos] == it.val());}
+      int operator !=(const permuter& it){ return (permutation[cur_pos] != it.val());}
+      int operator <(const permuter& it) { return (permutation[cur_pos] < it.val());}
+      int operator <=(const permuter& it){ return (permutation[cur_pos] <= it.val());}
+      int operator >(const permuter& it) { return (permutation[cur_pos] > it.val());}
+      int operator >=(const permuter& it){ return (permutation[cur_pos] >= it.val());}
+  };
+
     friend class iterator;
+    friend class permuter;
 
     iterator begin(void) { return iterator(*this); }
-
+    permuter permute(void) { return permuter(*this); }
 };
 
 // Iterators on range objects.

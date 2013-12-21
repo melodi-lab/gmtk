@@ -118,7 +118,8 @@ openOneSourceFile(char *ofs,
 		  unsigned fileWindowDelta,
 		  unsigned justification,
 		  unsigned fileNum,
-		  const char *ifmtStr)
+		  const char *ifmtStr, 
+		  unsigned leftPad, unsigned rightPad)
 {
   // range selection is much more efficient if "all" is replaced with NULL
   // since the logical <-> physical mapping step can be skipped
@@ -135,7 +136,7 @@ openOneSourceFile(char *ofs,
   
   obsFile = instantiateFile(ifmt, ofs, nfs, nis, fileNum, iswp,
 			    Cpp_If_Ascii, cppCommandOptions, prefrs, preirs,
-			    prepr, sr, ifmtStr);
+			    prepr, sr, ifmtStr, leftPad, rightPad);
   assert(obsFile);
   if (Per_Stream_Transforms || frs || irs || postpr) {
     Filter *fileFilter = instantiateFilters(Per_Stream_Transforms,
@@ -331,6 +332,8 @@ unsigned ifmt[2];
 
 unsigned int nis[2];
 unsigned int nfs[2];
+unsigned int leftPad[2] = {0,0};
+unsigned int rightPad[2] = {0,0};
 
 char *sr_str = NULL;
 char *sr1_str = 0;   // sentence range string
@@ -623,7 +626,8 @@ int main(int argc, const char *argv[]) {
 				 fileWindowSize, 
 				 fileWindowDelta,
 				 justification1, 
-				 1, ifmtStr[0]);
+				 1, ifmtStr[0],
+				 leftPad[0], rightPad[0]);
 
      sr1_rng = new Range(sr1_str,0,Obs_Mat1->numSegments());
 
@@ -634,7 +638,7 @@ int main(int argc, const char *argv[]) {
 				 perStreamTransforms[1], NULL, NULL, NULL, 
 				 postTransforms2, NULL, constantSpace, startSkip2, endSkip2,
 				 fileBufferSize, fileWindowSize, fileWindowDelta,
-				  justification2, 2, ifmtStr[1]);
+				  justification2, 2, ifmtStr[1], leftPad[1], rightPad[1]);
 
      sr2_rng = new Range(sr2_str,0,Obs_Mat2->numSegments());
 

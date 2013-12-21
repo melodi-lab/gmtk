@@ -10,7 +10,7 @@
 
 # Process this file with autoconf to produce a configure script.
 
-AC_PREREQ([2.65])
+AC_PREREQ([2.69])
 AC_INIT([GMTK],m4_esyscmd([printf %s `head -n 1 RELEASE`]),
         [https://j.ee.washington.edu/trac/gmtk/newticket])
 AM_INIT_AUTOMAKE([1.11 tar-ustar silent-rules -Wall -Werror foreign])
@@ -124,6 +124,8 @@ fi
 
 # Checks for libraries.
 
+m4_include([deepMLP/blas_args])
+
 # Checks for header files.
 
 # Checks for typedefs, structures, and compiler characteristics.
@@ -133,7 +135,7 @@ fi
 
 # Autotest suite
 
-AC_CONFIG_TESTDIR([tests],[tksrc:featureFileIO:miscSupport])
+AC_CONFIG_TESTDIR([tests],[tksrc:featureFileIO:miscSupport:deepMLP])
 AC_CONFIG_FILES([tests/Makefile tests/atlocal])
 
 AC_CONFIG_FILES([Makefile])
@@ -141,5 +143,6 @@ AC_CONFIG_SUBDIRS([IEEEFloatingpoint
                    miscSupport
                    featureFileIO
                    mitk
+		   deepMLP
                    tksrc])
 AC_OUTPUT

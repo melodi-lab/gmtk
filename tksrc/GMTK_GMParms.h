@@ -38,6 +38,7 @@ class DiagCovarVector;
 class DlinkMatrix;
 class Dlinks;
 class RealMatrix;
+class DoubleMatrix;
 class DirichletTable;
 class MDCPT;
 class MSCPT;
@@ -47,6 +48,8 @@ class FNGramCPT;
 class FNGramImp;
 class VECPT;
 class DeepVECPT;
+class DeepCPT;
+class DeepNN;
 class Vocab;
 class LatticeADT;
 class LatticeNodeCPT;
@@ -151,6 +154,10 @@ public:
   ObjectMapType realMatsMap;
   void add(RealMatrix*ob);
 
+  vector< DoubleMatrix* > doubleMats;
+  ObjectMapType doubleMatsMap;
+  void add(DoubleMatrix*ob);
+
 
   ////////////////////////////////
   // Collection of N-D Dense count (Dirichlet hyperparameter) matrices, used
@@ -238,6 +245,17 @@ public:
   vector<DeepVECPT*> deepVECpts;
   ObjectMapType deepVECptsMap;
   void add(DeepVECPT*);
+
+  vector<DeepCPT*> deepCpts;
+  ObjectMapType deepCptsMap;
+  void add(DeepCPT*);
+
+  ///////////////////////////////////
+  // Collection of Deep Neural Networks
+  vector<DeepNN*> deepNNs;
+  ObjectMapType deepNNsMap;
+  void add(DeepNN*);
+
 
   /********************************************************************/
   /********************************************************************/
@@ -347,6 +365,7 @@ public:
   void readDLinkMats(iDataStreamFile& is,bool reset = false);
   void readDLinks(iDataStreamFile& is,bool reset = false);
   void readRealMats(iDataStreamFile& is,bool reset = false);
+  void readDoubleMats(iDataStreamFile& is,bool reset = false);
   void readDirichletTabs(iDataStreamFile& is,bool reset = false);
   void readMdCpts(iDataStreamFile& is,bool reset = false);
   void readMsCpts(iDataStreamFile& is,bool reset = false);
@@ -357,6 +376,8 @@ public:
   void readLatticeAdts(iDataStreamFile& is, bool reset = false);
   void readVECpts(iDataStreamFile& is, bool reset = false);
   void readDeepVECpts(iDataStreamFile& is, bool reset = false);
+  void readDeepCpts(iDataStreamFile& is, bool reset = false);
+  void readDeepNNs(iDataStreamFile& is, bool reset = false);
   void readDTs(iDataStreamFile& is,bool reset = false);
   void readComponents(iDataStreamFile& is,bool reset = false);
   void readMixtures(iDataStreamFile& is,bool reset = false);
@@ -373,6 +394,7 @@ public:
   void writeDLinkMats(oDataStreamFile& os);
   void writeDLinks(oDataStreamFile& os);
   void writeRealMats(oDataStreamFile& os);
+  void writeDoubleMats(oDataStreamFile& os);
   void writeDirichletTabs(oDataStreamFile& os);
   void writeMdCpts(oDataStreamFile& os);
   void writeMsCpts(oDataStreamFile& os);
@@ -381,6 +403,7 @@ public:
   //void writeNgramCpts(oDataStreamFile& os);
   //void writeFNgramCpts(oDataStreamFile& os);
   //void writeVECpts(oDataStreamFile& os);
+  //void writeDeepNNs(oDataStreamFile& os);
   void writeDTs(oDataStreamFile& os);
   void writeComponents(oDataStreamFile& os);
   void writeMixtures(oDataStreamFile& os);
