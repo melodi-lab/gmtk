@@ -27,7 +27,8 @@ $(srcdir)/package.m4: $(top_srcdir)/configure.ac
 	echo '  [$(PACKAGE_URL)])'; \
              } >'$(srcdir)/package.m4'
 
-TESTSUITE = testsuite
+TESTSUITE = $(srcdir)/testsuite
+TESTANDDEV= $(srcdir)/testanddev
 
 include autoconf_tests
 
@@ -42,31 +43,31 @@ update-tests:
 	           END{print "testanddev.at"}' >> autoconf_tests
 
 EXTRA_DIST =          \
+atlocal.in            \
 testsuite.at          \
 testanddev.at         \
 $(srcdir)/package.m4  \
 $(TESTSUITE)          \
-testanddev            \
-atlocal.in            \
+$(TESTANDDEV)         \
 $(LOCAL_GMTK_AT)      \
 $(LOCAL_TEST_AND_DEV) \
 autoconf_tests
 
 
-gmtk_tests.at:
+$(srcdir)/gmtk_tests.at:
 	touch $@
 	find $(srcdir) -type f -name gmtk_test_\*.at | sort | \
 	  $(AWK) '{print "m4_include(["$$1"])"}' > $@
 
-testanddev.at:
+$(srcdir)/testanddev.at:
 	echo "AT_COPYRIGHT([Copyright (C) 2013 Jeff Bilmes])" > $@
 	echo "AT_INIT([GMTK Test And Dev Suite])" >> $@
 	echo "AT_COLOR_TESTS" >> $@
 	find $(srcdir) -type f -name test_and_dev_\*.at | sort | \
 	  $(AWK) '{print "m4_include(["$$1"])"}' >> $@
 
-check-local: atconfig atlocal $(TESTSUITE) testanddev gmtk_tests.at
-	$(SHELL) '$(srcdir)/$(TESTSUITE)' $(TESTSUITEFLAGS)
+check-local: atconfig atlocal $(TESTSUITE) $(TESTANDDEV) gmtk_tests.at
+	$(SHELL) '$(TESTSUITE)' $(TESTSUITEFLAGS)
 
 
 # The installcheck target is meant to test the installed build products
@@ -76,8 +77,8 @@ check-local: atconfig atlocal $(TESTSUITE) testanddev gmtk_tests.at
 # separate test suite for the installed programs that doesn't require
 # the extra test programs...
 
-installcheck-local: atconfig atlocal $(TESTSUITE) testanddev gmtk_tests.at
-	$(SHELL) '$(srcdir)/$(TESTSUITE)' \
+installcheck-local: atconfig atlocal $(TESTSUITE) $(TESTANDDEV) gmtk_tests.at
+	$(SHELL) '$(TESTSUITE)' \
 	AUTOTEST_PATH='$(bindir):$(abs_top_builddir)/tksrc:$(abs_top_builddir)/miscSupport' \
 	$(TESTSUITEFLAGS)
 
@@ -85,15 +86,15 @@ clean-local:
 	test ! -f '$(TESTSUITE)'  || $(SHELL) '$(TESTSUITE)' --clean
 	test ! -f test_and_dev.at || rm test_and_dev.at
 	test ! -f gmtk_tests.at   || rm gmtk_tests.at
-	test ! -f $(TESTSUITE)    || rm $(TESTSUITE)
-	test ! -f 'testanddev'    || $(SHELL) 'testanddev' --clean
+#	test ! -f $(TESTSUITE)    || rm $(TESTSUITE)
+	test ! -f $(TESTANDDEV)   || $(SHELL) '$(TESTANDDEV)' --clean
 	test ! -f testanddev.at   || rm testanddev.at
-	test ! -f testanddev      || rm testanddev
+#	test ! -f $(TESTANDDEV)   || rm $(TESTANDDEV)
 
 distclean-local:
 	test ! -f atconfig || rm atconfig
-	test ! -f $(TESTSUITE).log || rm $(TESTSUITE).log 
-	test ! -f testanddev.log   || rm testanddev.log 
+	test ! -f $(TESTSUITE).log  || rm $(TESTSUITE).log 
+	test ! -f $(TESTANDDEV).log || rm $(TESTANDDEV).log 
 
 AUTOM4TE = $(SHELL) $(top_srcdir)/missing --run autom4te
 AUTOTEST = $(AUTOM4TE) --language=autotest
@@ -101,6 +102,6 @@ $(TESTSUITE): $(srcdir)/testsuite.at $(srcdir)/gmtk_tests.at $(srcdir)/package.m
 	$(AUTOTEST) -I '$(srcdir)' -o $@.tmp $@.at
 	mv $@.tmp $@
 
-testanddev: $(srcdir)/testanddev.at $(srcdir)/package.m4
+$(TESTANDDEV): $(srcdir)/testanddev.at $(srcdir)/package.m4
 	$(AUTOTEST) -I '$(srcdir)' -o $@.tmp $@.at
 	mv $@.tmp $@
