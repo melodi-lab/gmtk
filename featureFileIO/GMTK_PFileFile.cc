@@ -32,12 +32,14 @@ PFileFile::PFileFile(const char *name, unsigned nfloats, unsigned nints,
 		     char const *contFeatureRangeStr_, 
 		     char const *discFeatureRangeStr_, 
 		     char const *preFrameRangeStr_, 
-		     char const *segRangeStr_)
+		     char const *segRangeStr_,
+		     unsigned leftPad, unsigned rightPad)
   : ObservationFile(name, num,
 		    contFeatureRangeStr_, 
 		    discFeatureRangeStr_, 
 		    preFrameRangeStr_,
-		    segRangeStr_),
+		    segRangeStr_, 
+		    leftPad, rightPad),
     out_fp(NULL), out_stream(NULL)
 {
   assert(name);

@@ -73,6 +73,7 @@ miscSupport/testcArray
 miscSupport/testsArray
 miscSupport/testmArray
 miscSupport/testQSort
+miscSupport/testPrime
 mitk/bivariate-mi
 mitk/mvnrnd
 mitk/test-matrix-ops
@@ -93,9 +94,18 @@ tests/testanddev
 tests/testanddev.at
 tests/testanddev.dir
 tests/testanddev.log
+deepMLP/dmlp
+deepMLP/mnist
+deepMLP/label
+deepMLP/dmlpTest
+deepMLP/orderTest
+deepMLP/phipacTest
+tksrc/abstest
+tksrc/flat2vit
 tksrc/unrevisioned
 tksrc/gmtkDTindex
 tksrc/gmtkEMtrain
+tksrc/gmtkDMLPtrain
 tksrc/gmtkJT
 tksrc/gmtkKernel
 tksrc/gmtkModelInfo

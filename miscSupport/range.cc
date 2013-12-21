@@ -717,7 +717,7 @@ void Range::PrintRanges(char *tag/*=NULL*/, FILE *stream/*=stderr*/) {
     }
 }
 
-unsigned int Range::length(void) {
+unsigned int Range::length(void) const {
     // Total number of values specified by a list
     unsigned int size = 0;
     RangeList list = rangeList;
@@ -728,7 +728,7 @@ unsigned int Range::length(void) {
     return size;
 }
 
-int Range::index(int ix) {
+int Range::index(int ix) const {
     // Value of ix'th index in list
     RangeList list = rangeList;
     int n_pts;

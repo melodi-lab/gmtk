@@ -204,8 +204,10 @@ extern bool ObservationsAllowNan;
 
    // observation input file handling
    char    *ofs[MAX_NUM_OBS_STREAMS] = { NULL, NULL, NULL, NULL,NULL }; 
-   unsigned nfs[MAX_NUM_OBS_STREAMS] = { 0, 0, 0,0,0 };
-   unsigned nis[MAX_NUM_OBS_STREAMS] = { 0, 0, 0,0,0 };
+   unsigned nfs[MAX_NUM_OBS_STREAMS] = { 0, 0, 0, 0, 0 };
+   unsigned nis[MAX_NUM_OBS_STREAMS] = { 0, 0, 0, 0, 0 };
+   unsigned leftPad[MAX_NUM_OBS_STREAMS] = { 0, 0, 0, 0, 0};
+   unsigned rightPad[MAX_NUM_OBS_STREAMS] = { 0, 0, 0, 0, 0};
    const char   *fmts[MAX_NUM_OBS_STREAMS] = {"binary","binary","binary","binary","binary"};
    unsigned ifmts[MAX_NUM_OBS_STREAMS];
    const char    *frs[MAX_NUM_OBS_STREAMS] = { "all", "all", "all","all","all" };
@@ -253,6 +255,8 @@ extern bool ObservationsAllowNan;
   Arg("fr",  Arg::Opt,frs,"Float range for observation stream X (after transforms)",Arg::ARRAY,MAX_NUM_OBS_STREAMS),
   Arg("ir",  Arg::Opt,irs,"Int range for observation stream X",Arg::ARRAY,MAX_NUM_OBS_STREAMS),
   Arg("sr",  Arg::Opt,sr,"Sentence range for observation file X",Arg::ARRAY,MAX_NUM_OBS_STREAMS),
+  Arg("leftPad", Arg::Opt,leftPad,"Prepend padding frames to file X", Arg::ARRAY,MAX_NUM_OBS_STREAMS),
+  Arg("rightPad", Arg::Opt,rightPad,"Append padding frames to file X", Arg::ARRAY,MAX_NUM_OBS_STREAMS),
   Arg("prepr", Arg::Opt, prepr,"Pre Per-segment frame Range for obs file X before any transforms are applied",Arg::ARRAY,MAX_NUM_OBS_STREAMS),
   Arg("postpr",Arg::Opt, postpr,"Post Per-segment frame Range for obs file X after per-stream transforms are applied",Arg::ARRAY,MAX_NUM_OBS_STREAMS),
   Arg("gpr",   Arg::Opt, gpr_str,"Global Per-segment final frame Range"),
@@ -426,8 +430,10 @@ extern bool ObservationsAllowNan;
 #define MAX_NUM_OBS_FILES (5)
 #endif
    char    *ofs[MAX_NUM_OBS_FILES] = { NULL, NULL, NULL, NULL,NULL }; 
-   unsigned nfs[MAX_NUM_OBS_FILES] = { 0, 0, 0,0,0 };
-   unsigned nis[MAX_NUM_OBS_FILES] = { 0, 0, 0,0,0 };
+   unsigned nfs[MAX_NUM_OBS_FILES] = { 0, 0, 0, 0, 0 };
+   unsigned nis[MAX_NUM_OBS_FILES] = { 0, 0, 0, 0, 0 };
+   unsigned leftPad[MAX_NUM_OBS_FILES] = { 0, 0, 0, 0, 0};
+   unsigned rightPad[MAX_NUM_OBS_FILES] = { 0, 0, 0, 0, 0};
    const char   *fmts[MAX_NUM_OBS_FILES] = { "pfile", "pfile", "pfile","pfile","pfile" };
    unsigned ifmts[MAX_NUM_OBS_FILES];
    const char    *frs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
@@ -474,6 +480,8 @@ extern bool ObservationsAllowNan;
   Arg("fr",  Arg::Opt,frs,"Float range for observation file X (after transforms)",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("ir",  Arg::Opt,irs,"Int range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("sr",  Arg::Opt,sr,"Sentence range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("leftPad", Arg::Opt,leftPad,"Prepend padding frames to file X", Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("rightPad", Arg::Opt,rightPad,"Append padding frames to file X", Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("prepr", Arg::Opt, prepr,"Pre Per-segment frame Range for obs file X before any transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("postpr",Arg::Opt, postpr,"Post Per-segment frame Range for obs file X after per-stream transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("gpr",   Arg::Opt, gpr_str,"Global Per-segment final frame Range"),
@@ -618,7 +626,7 @@ extern bool ObservationsAllowNan;
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("trrng",Arg::Opt,trrng_str,"Range to decode over segment file"),
+  Arg("trrng",Arg::Opt,trrng_str,"Range to train over segment file"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 

@@ -1,0 +1,14 @@
+# Smoke test for https://j.ee.washington.edu/trac/gmtk/ticket/455
+
+# Smoke test to exercise DeepCPT
+
+AT_SETUP([Deep CPT smoke test (ticket 455)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/dcpt])
+AT_CHECK([(cd $TEST_AND_DEV/dcpt && \
+          gmtkJT -strF dvecpt.str -inputM dvecpt.mtr \
+          -of1 obs.flat -fmt1 flatascii -nf1 3 -startSkip 1 -endSkip 1)],[],[ignore])
+AT_CHECK([(cd $TEST_AND_DEV/dcpt && \
+          gmtkViterbi -strF dvecpt.str -inputM dvecpt.mtr \
+          -of1 obs.flat -fmt1 flatascii -nf1 3 -startSkip 1 -endSkip 1 \
+	  -vitValsFile -)],[],[ignore])
+AT_CLEANUP

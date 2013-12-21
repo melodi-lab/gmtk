@@ -92,6 +92,13 @@ off_t  JunctionTree::binaryViterbiOffset;
 off_t  JunctionTree::nextViterbiOffset;
 bool JunctionTree::normalizePrintedCliques = true;
 
+ObservationFile *JunctionTree::vitObsFile = NULL;
+char *JunctionTree::vitObsFileName = NULL;
+char *JunctionTree::vitObsListName = NULL;
+const char *JunctionTree::vitObsNameSeparator = "_";
+const char *JunctionTree::vitObsFileFmt = "pfile";
+bool  JunctionTree::vitObsFileSwap = false;
+
 // default names of the three partitions for printing/debugging messages.
 const char* JunctionTree::P1_n = "P'";
 const char* JunctionTree::Co_n = "C'";

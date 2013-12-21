@@ -103,6 +103,8 @@ class VECPT : public CPT {
   string fmt;
   // Endian swap condition for observation files.
   bool iswp;
+  // Frame padding
+  unsigned leftPad, rightPad;
 
   // Observation Matrix transforms
   char* preTransforms;

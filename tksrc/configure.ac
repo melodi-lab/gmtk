@@ -10,7 +10,7 @@
 
 # Process this file with autoconf to produce a configure script.
 
-AC_PREREQ([2.65])
+AC_PREREQ([2.69])
 AC_INIT([GMTK], m4_esyscmd(printf %s `head -n 1 ../RELEASE`), 
         [https://j.ee.washington.edu/trac/gmtk/newticket])
 : ${CXXFLAGS=""}
@@ -85,7 +85,10 @@ if test x"$badLZERO" = x"bad"; then
 fi 
 AC_DEFINE_UNQUOTED([LZERO], [(${with_LZERO})], [smallest log value that we represent])
 
+m4_include([../deepMLP/blas_args])
+
 # Checks for programs.
+
 AC_PROG_CXX
 AC_PROG_CC
 AM_PROG_LEX
@@ -111,7 +114,24 @@ AC_CHECK_FILE([$srcdir/../.hg/dirstate],[
 ])
 AM_CONDITIONAL([HAVE_HG],[test  x$HAVE_HG = xyes])
 
+# Test if compiler accepts ISO C++ 2011.  This is required for
+# the DMLP training code.
+
+m4_include([../deepMLP/m4/gmtk_cxx11])
+if test x$gmtk_cxx11 = xyes; then
+  AC_SUBST([dmlp_libraries],[../deepMLP/libDMLP.a])
+  AC_SUBST([dmlp_programs],[gmtkDMLPtrain])
+  AC_SUBST([dmlp_check_programs],[abstest])
+  AM_CONDITIONAL([BUILD_DMLP],[true])
+else
+  AM_CONDITIONAL([BUILD_DMLP],[false])
+fi
+
 # Checks for libraries.
+
+# AX_PTHREAD comes from m4/m4_ax_pthread.m4 which is not distributed with GMTK
+# See http://www.gnu.org/software/autoconf-archive/ax_pthread.html
+AX_PTHREAD
 
 AC_ARG_ENABLE([gmtkViz], 
               [AS_HELP_STRING([--disable-gmtkViz],
@@ -226,6 +246,8 @@ AC_SEARCH_LIBS([dlopen], [dl dld], [], [
   AC_MSG_ERROR([unable to find the dlopen() function])
 ])
 
+m4_include([../deepMLP/blas_check])
+
 # Checks for header files.
 AC_PATH_XTRA
 AC_CHECK_HEADERS([float.h stdlib.h string.h sys/time.h unistd.h dlfcn.h])
@@ -253,6 +275,7 @@ AC_FUNC_REALLOC
 AC_FUNC_STRTOD
 AC_CHECK_FUNCS([alarm floor memset pow regcomp sqrt strchr strerror strstr strtol log1p getline])
 AC_FUNC_FSEEKO
+AC_SYS_LARGEFILE
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
