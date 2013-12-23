@@ -10,6 +10,7 @@ want to know about:
 
  * How we use Mercurial https://j.ee.washington.edu/trac/gmtk/wiki/HgHowTo
  * Building GMTK https://j.ee.washington.edu/trac/gmtk/wiki/AutotoolsHowTo
+ * Tips for Autotools problems: https://j.ee.washington.edu/trac/gmtk/wiki/AutotoolTips
  * Bug reporting https://j.ee.washington.edu/trac/gmtk/wiki/BugReportHowTo
  * System requirements https://j.ee.washington.edu/trac/gmtk/wiki/DevEnvReqs
  * gmtkViz https://j.ee.washington.edu/trac/gmtk/wiki/GmtkVizBuildHowTo
