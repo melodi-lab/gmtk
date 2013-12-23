@@ -1770,15 +1770,15 @@ static double   bpInitStepSize = 1e-2;
 static double   bpMinMomentum = 0.5;
 static double   bpMaxMomentum = 0.99;
 static double   bpMaxUpdate = 0.1;
-static double   bpL2 = 0;
+static double   bpL2 = 0.0;
 static float    bpNumEpochs = 1.0,
                 bpEpochFraction = 1.0;        // fraction of bpNum[Anneal]Epochs to do in this gmtkDMLPtrain invocation
 static float    bpNumAnnealEpochs = 1.0, 
                 bpAnnealEpochFraction = 1.0; 
 static unsigned bpMiniBatchSize = 10;
 static unsigned bpCheckInterval = 2000;
-static double   bpIdropP = 0;
-static double   bpHdropP = 0;
+static double   bpIdropP = 0.0;
+static double   bpHdropP = 0.0;
 
   // pretraining hyperparameters
 
@@ -1786,7 +1786,7 @@ static double   ptInitStepSize = 1e-2;
 static double   ptMinMomentum = 0.5;
 static double   ptMaxMomentum = 0.99;
 static double   ptMaxUpdate = 0.1;
-static double   ptL2 = 0;
+static double   ptL2 = 0.0;
 static float    ptNumEpochs = 1.0;
 static float    ptNumAnnealEpochs = 1.0;
 static unsigned ptMiniBatchSize = 10;
@@ -1885,16 +1885,62 @@ Arg("bpHdropP", Arg::Opt, bpHdropP, "Backprop: dropout probability for hidden la
 	  argerr, trainingSchedule);
   }
 
-  if (bpEpochFraction < 0.0 || 1.0 < bpEpochFraction) {
-    error("%s: -bpEpochFraction %e is invalid, it must be in [0,1]\n", bpEpochFraction);
-  }
-  if (bpAnnealEpochFraction < 0.0 || 1.0 < bpAnnealEpochFraction) {
-    error("%s: -bpAnnealEpochFraction %e is invalid, it must be in [0,1]\n", bpAnnealEpochFraction);
-  }
-
   DBN::resumeTraining = loadTrainingFile != NULL;
   if (DBN::resumeTraining && strcasecmp(pretrainType, "none")) {
     error("%s: Resuming training T requires -pretrainType none\n", argerr);
+  }
+
+  if (bpInitStepSize <= 0.0) {
+    error("%s: -bpInitStepSize %e is invalid, it must be greater than 0\n", argerr, bpInitStepSize);
+  }
+  if (bpMinMomentum < 0.0 || 1.0 < bpMinMomentum) {
+    error("%s: -bpMinMomentum %e is invalid, it must be in [0,1]\n", argerr, bpMinMomentum);
+  }
+  if (bpMaxMomentum < 0.0 || 1.0 < bpMaxMomentum) {
+    error("%s: -bpMaxMomentum %e is invalid, it must be in [0,1]\n", argerr, bpMaxMomentum);
+  } 
+  if (bpMaxUpdate <= 0.0) {
+    error("%s: -bpMaxUpdate %e is invalid, it must be greater than 0\n", argerr, bpMaxUpdate);
+  }
+  if (bpL2 < 0.0) {
+    error("%s: -bpL2 %e is invalid, it must be greater than or equal to 0\n", argerr, bpL2);
+  }
+  if (bpNumEpochs <= 0.0) {
+    error("%s: -bpNumEpochs %e is invalid, it must be greater than 0\n", argerr, bpNumEpochs);
+  }
+  if (bpEpochFraction < 0.0 || 1.0 < bpEpochFraction) {
+    error("%s: -bpEpochFraction %e is invalid, it must be in [0,1]\n", argerr, bpEpochFraction);
+  }
+  if (bpNumAnnealEpochs <= 0.0) {
+    error("%s: -bpNumAnnealEpochs %e is invalid, it must be greater than 0\n", argerr, bpNumAnnealEpochs);
+  }
+  if (bpAnnealEpochFraction < 0.0 || 1.0 < bpAnnealEpochFraction) {
+    error("%s: -bpAnnealEpochFraction %e is invalid, it must be in [0,1]\n", argerr, bpAnnealEpochFraction);
+  }
+  if (bpIdropP < 0.0 || 1.0 <= bpIdropP) {
+    error("%s: -bpIdropP %e is invalid, it must be in [0,1)\n", argerr, bpIdropP);
+  }
+  if (bpHdropP < 0.0 || 1.0 <= bpHdropP) {
+    error("%s: -bpHdropP %e is invalid, it must be in [0,1)\n", argerr, bpHdropP);
+  }
+
+  if (ptInitStepSize <= 0.0) {
+    error("%s: -ptInitStepSize %e is invalid, it must be greater than 0\n", argerr, ptInitStepSize);
+  }
+  if (ptMinMomentum < 0.0 || 1.0 < ptMinMomentum) {
+    error("%s: -ptMinMomentum %e is invalid, it must be in [0,1]\n", argerr, ptMinMomentum);
+  }
+  if (ptMaxMomentum < 0.0 || 1.0 < ptMaxMomentum) {
+    error("%s: -ptMaxMomentum %e is invalid, it must be in [0,1]\n", argerr, ptMaxMomentum);
+  } 
+  if (ptL2 < 0.0) {
+    error("%s: -ptL2 %e is invalid, it must be greater than or equal to 0\n", argerr, ptL2);
+  }
+  if (ptNumEpochs <= 0.0) {
+    error("%s: -ptNumEpochs %e is invalid, it must be greater than 0\n", argerr, ptNumEpochs);
+  }
+  if (ptNumAnnealEpochs <= 0.0) {
+    error("%s: -ptNumAnnealEpochs %e is invalid, it must be greater than 0\n", argerr, ptNumAnnealEpochs);
   }
 
 #else
