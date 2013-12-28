@@ -20,7 +20,7 @@ SUBDIRS = IEEEFloatingpoint miscSupport featureFileIO mitk deepMLP tksrc tests
 
 .PHONY: rc revdist datedist hgdatedist autoclean
 rc:
-	make VERSION=`cat RELEASE`.`hg id | tr ' ()' _` dist
+	make VERSION=`cat RELEASE`.`hg id -i | tr ' ()' _` dist
 
 revdist:
 	make VERSION=`hg id | tr ' ()' _` dist
