@@ -18,7 +18,10 @@ scripts/triangulateTimings
 
 SUBDIRS = IEEEFloatingpoint miscSupport featureFileIO mitk deepMLP tksrc tests
 
-.PHONY: revdist datedist hgdatedist autoclean
+.PHONY: rc revdist datedist hgdatedist autoclean
+rc:
+	make VERSION=`cat RELEASE`.`hg id | tr ' ()' _` dist
+
 revdist:
 	make VERSION=`hg id | tr ' ()' _` dist
 
