@@ -86,8 +86,8 @@ public:
 
     HyperParams() :
       initStepSize(1e-2),
-      minMomentum(0.5),
       maxMomentum(0.99),
+      minMomentum(0.5),
       maxUpdate(0.1),
       l2(1e-3),
       iDropP(0),
@@ -205,7 +205,7 @@ private:
 
     TrainingFunction(DBN & dbn, BatchSource *batchSrc, const HyperParams & hyperParams, MutableVector & params, MutableVector & deltaParams, MutableVector & savedParams)
       :
-    _dbn(dbn), _hyperParams(hyperParams), batchSrc(batchSrc), _params(params), _deltaParams(deltaParams), _savedParams(savedParams) 
+    _dbn(dbn), batchSrc(batchSrc), _params(params), _deltaParams(deltaParams), _savedParams(savedParams), _hyperParams(hyperParams) 
     { }
 
 		// to be overridden in subclasses, implementing the specific training function update
@@ -919,7 +919,7 @@ public:
     }
     MMapMatrix output(_B[layer].Len(), batchSrc->epochSize(), _B[layer].Len());
     unsigned start, end, lastCol = batchSrc->epochSize();
-    assert(batchSrcLabels.NumC() == lastCol);
+    assert(batchSrcLabels.NumC() == (int)lastCol);
     for (start=0, end=miniBatchSize; start < lastCol ; start += miniBatchSize, end += miniBatchSize) {
       unsigned batchSize;
       if (end <= lastCol) {
@@ -988,7 +988,7 @@ assert(d.NumC() == l.NumC());
     if (!resumeTraining) { // we only support resuming backprop, not pretraining
 
       // pretrain hidden layers
-      int layer;
+      unsigned layer;
       for (layer = 0; layer < _layers.size() - 1; ++layer) {
 	const HyperParams & hyperParams = hyperParams_pt[layer];
 	InitLayer(layer);
@@ -1076,7 +1076,7 @@ assert(d.NumC() == l.NumC());
       if (curUpdate >= hyperParams_bp.numUpdates && curAnnealUpdate >= hyperParams_bp.numAnnealUpdates) {
 	if (hyperParams_bp.iDropP > 0) _W[0] *= (1 - hyperParams_bp.iDropP);
 	if (hyperParams_bp.hDropP > 0) {
-	  for (int l = 1; l < _W.size(); ++l) {
+	  for (unsigned l = 1; l < _W.size(); ++l) {
 	    _W[l] *= (1 - hyperParams_bp.hDropP);
 	  }
 	}

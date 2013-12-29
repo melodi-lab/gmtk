@@ -14,3 +14,4 @@
 #include "MMapMatrix.h"
 #include "DBN.h"
 #include "BatchSource.h"
+#include "AsynchronousBatchSource.h"
