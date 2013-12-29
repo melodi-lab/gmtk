@@ -242,7 +242,7 @@ private:
 	// compute the input values by multiplying by weights and adding biases
   void ComputeInputs(const Matrix & weights, const Vector & biases, const Matrix & values, bool trans) {
     int numIns = values.NumC();
-    int size = trans ? weights.NumC() : weights.NumR();
+    //    int size = trans ? weights.NumC() : weights.NumR();
 
     _a = (trans ? weights.Trans() : weights) * values;
     for (int i = 0; i < numIns; ++i) _a.GetCol(i) += biases;

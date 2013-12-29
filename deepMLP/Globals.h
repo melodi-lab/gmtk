@@ -1,8 +1,15 @@
 #pragma once
 
 /*********
-This file, Globals.h, contains some basic functions that are used all
-over the NN training code.
+ * This file, Globals.h, contains some basic functions that are used all
+ * over the NN training code.
+ *
+ * Written by Galen Andrew gmandrew@uw.edu
+ *
+ * Copyright (C) 2013 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ *
  *********/
 
 #include <emmintrin.h>
@@ -25,21 +32,24 @@ void Swap(T a, T b) {
   b = t;
 }
 
-// macro defining hard assertion: aborts program if condition fails
-#define ASSERT(TST) ( (TST) ? (void)0 : (std::cerr << __FILE__ "(" << __LINE__	<< "): Assertion failed " #TST << std::endl,abort()) )
-
 static const double INFTY = std::numeric_limits<double>::infinity();
 
 static const double NaN = std::numeric_limits<double>::quiet_NaN();
 
 static const double TOL = pow(std::numeric_limits<double>::epsilon(), (double)1.0 / 3);
 
+#if 0
+// unused
 static bool IsClose(double a, double b) {
   return fabs(a - b) < TOL;
 }
+#endif
 
+#pragma GCC diagnostic ignored "-Wunused-function"
 static bool IsNaN(double x) { return std::isnan(x); }
 
+#if 0
+// unused
 static bool IsInf(double x) { return std::isinf(x); }
 
 static bool IsDangerous(double x) { return IsNaN(x) || IsInf(x); }
@@ -72,6 +82,7 @@ static double LogLoss(double x) {
   else if (x > 30) return 0;
   else return log(1 + exp(-x));
 }
+#endif
 
 // Assuming the class C implements a method
 // void Serialize(std::ofstream)

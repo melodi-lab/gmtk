@@ -1,5 +1,14 @@
 #pragma once
 
+/*
+ * Written by Galen Andrew gmandrew@uw.edu
+ *
+ * Copyright (C) 2003 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ *
+ */
+
 #if defined(HAVE_CONFIG_H)
 #  include <config.h>
 #endif
@@ -250,7 +259,7 @@ public:
 
 	// Total number of elements IF IsVec() is true
 	// otherwise causes program abort
-  int VecLen() const { ASSERT (IsVec()); return _numR * _numC; }
+  int VecLen() const { assert(IsVec()); return _numR * _numC; }
 
 	// Returns vector representation of matrix IF IsVec() is true
 	// otherwise causes program abort
@@ -919,7 +928,7 @@ struct MatScaledSum {
   const Matrix A, B;
   const double a, b;
 
-  MatScaledSum(const MatScal & ax, const MatScal & by) : A(ax.A), a(ax.a), B(by.A), b(by.a) {
+  MatScaledSum(const MatScal & ax, const MatScal & by) : A(ax.A), B(by.A), a(ax.a), b(by.a) {
     assert (A.NumC() == B.NumC() && A.NumR() == B.NumR());
   }
 
@@ -989,7 +998,7 @@ struct VecScaledSum {
   const Vector x, y;
   const double a, b;
 
-  VecScaledSum(const VecScal & ax, const VecScal & by) : x(ax.v), a(ax.a), y(by.v), b(by.a) {
+  VecScaledSum(const VecScal & ax, const VecScal & by) : x(ax.v), y(by.v), a(ax.a), b(by.a) {
     assert(x.Len() == y.Len());
   }
 
