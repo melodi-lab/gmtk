@@ -428,7 +428,14 @@ main(int argc,char*argv[])
     ( dnn->getSquashFn(numLayers-1) == DeepNN::SOFTMAX ) ? DBN::SOFT_MAX : DBN::SQ_ERR;
 
 #if 1
-  dbn.Train(asynchBatchSrc, objType, pretrainHyperParams, bpHyperParams, 
+  // We want to minimize the size of the temporary files used to hold
+  // the mapped inputs to the next layer for pre-training. If either
+  // ptNumEpochs or ptNumAnnealEpochs are > 1, the code will just make
+  // the temp files hold 1 epoch and cycle through them to get the desired
+  // number of minibatches. If both are < 1, we need the larger of them to
+  // supply enough minibatches.
+  float ptFraction = max(ptNumEpochs, ptNumAnnealEpochs);
+  dbn.Train(asynchBatchSrc, objType, pretrainHyperParams, bpHyperParams, ptFraction,
 	    bpEpochFraction, bpAnnealEpochFraction, loadTrainingFile, saveTrainingFile);
 #else
   dbn.Train(batchSrc, objType, pretrainHyperParams, bpHyperParams, 

@@ -50,16 +50,18 @@ dmlpTest_SOURCES = dmlpTest.cc
 orderTest_SOURCES = orderTest.cc
 phipacTest_SOURCES = phipacTest.cc
 
-
-libDMLP_a_SOURCES =           \
-  dummy.cc Globals.h          \
-  miniblas.h miniblas.cc      \
-  DBN.h DBN.cc Layer.h        \
-  Matrix.h Matrix.cc          \
-  MatrixFunc.h MatrixFunc.cc  \
-  MMapMatrix.h MMapMatrix.cc  \
-  BatchSource.h               \
-  AsynchronousBatchSource.h   \
+libDMLP_a_SOURCES =            \
+  dummy.cc Globals.h           \
+  miniblas.h miniblas.cc       \
+  DBN.h DBN.cc Layer.h         \
+  Matrix.h Matrix.cc           \
+  MatrixFunc.h MatrixFunc.cc   \
+  FileBackedMatrix.h           \
+  FileBackedMatrix.cc          \
+  MMapMatrix.h                 \
+  StdioMatrix.h StdioMatrix.cc \
+  BatchSource.h                \
+  AsynchronousBatchSource.h    \
   AsynchronousBatchSource.cc
 
 

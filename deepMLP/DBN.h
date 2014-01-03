@@ -36,7 +36,9 @@ extern "C" {            /* Assume C declarations for C++ */
 #include "fileParser.h"
 #include "debug.h"
 
+#include "FileBackedMatrix.h"
 #include "MMapMatrix.h"
+#include "StdioMatrix.h"
 #include "Layer.h"
 #include "MatrixFunc.h"
 #include "BatchSource.h"
@@ -278,7 +280,7 @@ private:
 
   public:
 
-    LayerTrainingFunction(DBN & dbn, int layer, BatchSource *batchSrc, const HyperParams & hyperParams, Layer::ActFunc actFunc)
+    LayerTrainingFunction(DBN & dbn, int layer, BatchSource *batchSrc, const HyperParams & hyperParams, Layer::ActFunc actFunc, float epcohFraction=1.0)
       :
     TrainingFunction(dbn, batchSrc, hyperParams, dbn._layerParams[layer], dbn._layerDeltaParams[layer], dbn._layerSavedParams[layer]),
       _layer(layer)
@@ -332,8 +334,8 @@ private:
     }
 
   public:
-  CDTrainingFunction(DBN & dbn, int layer, BatchSource *batchSrc, const HyperParams & hyperParams, Layer::ActFunc actFunc)
-    : LayerTrainingFunction(dbn, layer, batchSrc, hyperParams, actFunc)
+  CDTrainingFunction(DBN & dbn, int layer, BatchSource *batchSrc, const HyperParams & hyperParams, Layer::ActFunc actFunc, float epochFraction=1.0)
+    : LayerTrainingFunction(dbn, layer, batchSrc, hyperParams, actFunc, epochFraction)
     { }
   };
 
@@ -349,8 +351,8 @@ private:
 
   public:
 
-    AETrainingFunction(DBN & dbn, int layer, BatchSource *batchSrc, const HyperParams & hyperParams, Layer::ActFunc lowerActFunc)
-      : LayerTrainingFunction(dbn, layer, batchSrc, hyperParams, lowerActFunc), lowerActFunc(lowerActFunc)
+  AETrainingFunction(DBN & dbn, int layer, BatchSource *batchSrc, const HyperParams & hyperParams, Layer::ActFunc lowerActFunc, float epochFraction=1.0)
+    : LayerTrainingFunction(dbn, layer, batchSrc, hyperParams, lowerActFunc, epochFraction), lowerActFunc(lowerActFunc)
     { }
 
     // evaluate the function on the entire (distorted) dataset and return the value (performing no update)
@@ -637,6 +639,7 @@ private:
 
     for (unsigned t=0; t < numBatches; t+=1) {
       Matrix miniBatch = batchSrc->getData(miniBatchSize);
+assert(miniBatch.Start());
       unsigned numCols = miniBatch.NumC();
       n += numCols;
       int miniBatchLD = miniBatch.Ld();
@@ -890,26 +893,27 @@ public:
 
 	// given an input matrix to a given layer, compute the output matrix
 	// by multiplying by weights and adding biases
-  MMapMatrix MapLayer(MMapMatrix &input, int layer) const {
+  StdioMatrix MapLayer(StdioMatrix &input, int layer) const {
     int miniBatchSize = nnChunkSize * ((1<<20) / sizeof(double)) / input.Ld();
     if (miniBatchSize < 1) {
       miniBatchSize = 1;
       warning("WARNING: -nnChunkSize %u MiB is too small. One training instances requires %u bytes\n",
 	      nnChunkSize, input.Ld() * sizeof(double));
     }
-    MMapMatrix output(_B[layer].Len(), input.NumC(), _B[layer].Len());
+    StdioMatrix output(_B[layer].Len(), input.NumC(), _B[layer].Len());
     int start=0, end, lastCol = input.NumC();
     for ( ; start < lastCol ; start += miniBatchSize) {
       end = (start + miniBatchSize <= lastCol) ? start + miniBatchSize : lastCol;
       Matrix const &m = input.GetCols(start, end);
-      output.PutCols( _layers[layer].ActivateUp(_W[layer], _B[layer], m, _hActFunc[layer]) , start);
+      Matrix const &activated = _layers[layer].ActivateUp(_W[layer], _B[layer], m, _hActFunc[layer]);
+      output.PutColsM(activated, (int)start);
     }
     return output;
   }
 
 	// given input data to a given layer from observation files, compute the output matrix
 	// by multiplying by weights and adding biases
-  MMapMatrix MapLayer(BatchSource *batchSrc, int layer, MMapMatrix &batchSrcLabels) const {
+  StdioMatrix MapLayer(BatchSource *batchSrc, int layer, StdioMatrix &batchSrcLabels, unsigned numCols) const {
     unsigned numRows = batchSrc->numDataRows() + batchSrc->numLabelRows();
     unsigned miniBatchSize = nnChunkSize * ((1<<20) / sizeof(double)) / numRows;
     if (miniBatchSize < 1) {
@@ -917,9 +921,9 @@ public:
       warning("WARNING: -nnChunkSize %u MiB is too small. One training instances requires %u bytes\n",
 	      nnChunkSize, numRows * sizeof(double));
     }
-    MMapMatrix output(_B[layer].Len(), batchSrc->epochSize(), _B[layer].Len());
-    unsigned start, end, lastCol = batchSrc->epochSize();
-    assert(batchSrcLabels.NumC() == (int)lastCol);
+    unsigned start, end, lastCol = min(numCols, batchSrc->epochSize());
+    StdioMatrix output(_B[layer].Len(), lastCol, _B[layer].Len());
+    //    assert(batchSrcLabels.NumC() == (int)lastCol);
     for (start=0, end=miniBatchSize; start < lastCol ; start += miniBatchSize, end += miniBatchSize) {
       unsigned batchSize;
       if (end <= lastCol) {
@@ -933,8 +937,8 @@ public:
       Matrix d, l; // instance data, labels
       batchSrc->getBatch(batchSize, d, l);
 assert(d.NumC() == l.NumC());
-      output.PutCols( _layers[layer].ActivateUp(_W[layer], _B[layer], d, _hActFunc[layer]) , start);
-      batchSrcLabels.PutCols(l, start);
+      output.PutColsM( _layers[layer].ActivateUp(_W[layer], _B[layer], d, _hActFunc[layer]) , start);
+      batchSrcLabels.PutColsM(l, start);
     }
     return output;
   }
@@ -967,7 +971,7 @@ assert(d.NumC() == l.NumC());
 	// (Pretrain and) train parameters of entire network
   void Train(BatchSource *batchSrc, ObjectiveType objectiveType, 
 	     const vector<HyperParams> &hyperParams_pt, const HyperParams &hyperParams_bp, 
-	     float epochFraction = 1.0, float annealEpochFraction = 1.0,
+	     float ptFraction = 1.0, float epochFraction = 1.0, float annealEpochFraction = 1.0,
 	     char const *loadFilename=NULL, char const *saveFilename=NULL) 
   {
     if (IM::messageGlb(IM::Training, IM::Moderate)) {
@@ -978,10 +982,13 @@ assert(d.NumC() == l.NumC());
       printf("\n");
     }
 
-    MMapMatrix   input,  // current layer's input data
+    // numCols is the # of columns in the temp file holding the mapped up input to the next layer
+    unsigned numCols = (ptFraction >= 1.0) ? batchSrc->epochSize() : (ptFraction * batchSrc->epochSize());
+
+    StdioMatrix   input,  // current layer's input data
                  output, // current layer's output data (will become next layer's input)
       // labels for the MapLayer()ed input instances
-      batchSrcLabels(batchSrc->numLabelRows(), batchSrc->epochSize(), batchSrc->numLabelRows());
+      batchSrcLabels(batchSrc->numLabelRows(), numCols, batchSrc->numLabelRows());
 
     BatchSource *bs;
 
@@ -1025,12 +1032,13 @@ assert(d.NumC() == l.NumC());
 	  abort();
 	}
 	if (layer == 0) {
-	  output = MapLayer(batchSrc, layer, batchSrcLabels); // apply input layer to observation file data
+	  // apply input layer to observation file data
+	  output = MapLayer(batchSrc, layer, batchSrcLabels, numCols);
 	} else {
 	  output = MapLayer(input, layer);    // apply hidden layer to previous layer's output
 	}
 	input = output; // current layer's output becomes next layer's input
-	assert(input.NumC() == batchSrcLabels.NumC());
+	//	assert(input.NumC() == batchSrcLabels.NumC());  no longer valid with ptNumEpoch < 1
 	if (layer > 0) _layers[layer - 1].Clear(); // save some memory
       }
 

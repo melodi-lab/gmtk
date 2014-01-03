@@ -273,7 +273,7 @@ public:
 
 	// Return the element at the given row and column
 	// See NOTE ABOUT INDEXING above
-  const double & At(int r, int c) const {
+  virtual const double & At(int r, int c) const {
     if (_trans) std::swap(r, c);
     if (r < 0) r += _numR;
     if (c < 0) c += _numC;
@@ -292,7 +292,8 @@ public:
     s[4] = '0' + prec;
     for (int r = 0; r < NumR(); ++r) {
       for (int c = 0; c < NumC(); ++c) {
-        printf(s.c_str(), At(r,c));
+        double d = At(r,c);
+        printf(s.c_str(),d);
       }
       printf("\n");
     }
@@ -346,7 +347,7 @@ public:
 	// (not inclusive: the result will have (endRow-beginRow)
 	// total rows and (endCol-beginCol) total columns)
 	// See NOTE ABOUT INDEXING above
-  Matrix SubMatrix(int beginRow, int endRow, int beginCol, int endCol) const {
+  virtual Matrix SubMatrix(int beginRow, int endRow, int beginCol, int endCol) const {
     if (_trans) {
       std::swap(beginRow, beginCol);
       std::swap(endRow, endCol);
@@ -584,7 +585,7 @@ public:
 
 	// Return the element at the given row and column
 	// See NOTE ABOUT INDEXING above
-  double & At(int r, int c) const {
+  double & AtMutable(int r, int c) const {
     return const_cast<double &>(Matrix::At(r,c));
   }
 
@@ -630,7 +631,7 @@ public:
 	// (not inclusive: the result will have (endRow-beginRow)
 	// total rows and (endCol-beginCol) total columns)
 	// See NOTE ABOUT INDEXING above
-  MutableMatrix SubMatrix(int beginRow, int endRow, int beginCol, int endCol) const {
+  Matrix SubMatrix(int beginRow, int endRow, int beginCol, int endCol) const {
     return Matrix::SubMatrix(beginRow, endRow, beginCol, endCol);
   }
 

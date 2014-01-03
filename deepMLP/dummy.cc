@@ -11,6 +11,8 @@
 #include "Layer.h"
 #include "Matrix.h"
 #include "MatrixFunc.h"
+#include "FileBackedMatrix.h"
+#include "StdioMatrix.h"
 #include "MMapMatrix.h"
 #include "DBN.h"
 #include "BatchSource.h"

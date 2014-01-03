@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
 
   vector<unsigned char> labels = mnist.GetLabels();
   for (int i = 0; i < numInstances; ++i) {
-    output.At(labels[i], i) = 1;
+    output.AtMutable(labels[i], i) = 1;
   }
 
   vector<DBN::HyperParams> pretrainHyperParams(layers);

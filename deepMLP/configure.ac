@@ -66,6 +66,7 @@ AC_TYPE_INT64_T
 
 # Checks for library functions.
 
+AC_CHECK_FUNCS([fdopen])
 AC_FUNC_MMAP
 AC_FUNC_FSEEKO
 AC_SYS_LARGEFILE
