@@ -3,6 +3,6 @@
 
 map<string,unsigned> FileBackedMatrix::ref_count;
 
-char const *FileBackedMatrix::dmlpTempDir = "/tmp";
+char const *FileBackedMatrix::dmlpTempDir = NULL;
 unsigned FileBackedMatrix::fileNumber = 0;
 

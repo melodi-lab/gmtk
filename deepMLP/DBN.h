@@ -639,7 +639,6 @@ private:
 
     for (unsigned t=0; t < numBatches; t+=1) {
       Matrix miniBatch = batchSrc->getData(miniBatchSize);
-assert(miniBatch.Start());
       unsigned numCols = miniBatch.NumC();
       n += numCols;
       int miniBatchLD = miniBatch.Ld();
