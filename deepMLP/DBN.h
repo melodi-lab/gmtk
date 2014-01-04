@@ -280,7 +280,7 @@ private:
 
   public:
 
-    LayerTrainingFunction(DBN & dbn, int layer, BatchSource *batchSrc, const HyperParams & hyperParams, Layer::ActFunc actFunc, float epcohFraction=1.0)
+    LayerTrainingFunction(DBN & dbn, int layer, BatchSource *batchSrc, const HyperParams & hyperParams, Layer::ActFunc actFunc, float epochFraction=1.0)
       :
     TrainingFunction(dbn, batchSrc, hyperParams, dbn._layerParams[layer], dbn._layerDeltaParams[layer], dbn._layerSavedParams[layer]),
       _layer(layer)
@@ -288,7 +288,7 @@ private:
       if (resumeTraining) {
         _inputBiases.CopyFrom(dbn._B[layer]);
       } else {
-	DBN::InitializeInputBiases(batchSrc, _inputBiases, actFunc, 1e-3);
+	DBN::InitializeInputBiases(batchSrc, _inputBiases, actFunc, 1e-3, epochFraction);
       }
     }
 
@@ -636,7 +636,6 @@ private:
 	      nnChunkSize, numRows * sizeof(double));
     }
     unsigned numBatches = (unsigned)(0.5 + batchSrc->batchesPerEpoch(miniBatchSize) * epochFraction);
-
     for (unsigned t=0; t < numBatches; t+=1) {
       Matrix miniBatch = batchSrc->getData(miniBatchSize);
       unsigned numCols = miniBatch.NumC();
@@ -1005,12 +1004,19 @@ assert(d.NumC() == l.NumC());
 	} else {
 	  bs = new MatrixBatchSource(input); // use previous layer's output
 	}
+	// For the first layer, we only want to use ptFraction of an epoch as
+	// input to InitializeInputBiases() (and there's no point using more
+	// than one epoch for it, hence the min()).
+
+	// For the remaining layers, we already have the truncated data size,
+	// so we want to use all available input.
+	float curPtFraction = (layer > 0) ? 1.0 : min(1.0f, ptFraction);
 	switch (hyperParams.pretrainType) {
 	case CD:
 	  {
 	    infoMsg(IM::Training, IM::Default, "Pretraining layer %d of size %d x %d with CD\n", 
 		    layer, LayerInSize(layer), LayerOutSize(layer));
-	    CDTrainingFunction cdFunc(*this, layer, bs, hyperParams, lowerActFunc);
+	    CDTrainingFunction cdFunc(*this, layer, bs, hyperParams, lowerActFunc, curPtFraction);
 	    TrainSGD(cdFunc, hyperParams);
 	  }
 	  break;
@@ -1019,7 +1025,7 @@ assert(d.NumC() == l.NumC());
 	  {
 	    infoMsg(IM::Training, IM::Default, "Pretraining layer %d of size %d x %d with AE\n", 
 		    layer, LayerInSize(layer), LayerOutSize(layer));
-	    AETrainingFunction aeFunc(*this, layer, bs, hyperParams, lowerActFunc);
+	    AETrainingFunction aeFunc(*this, layer, bs, hyperParams, lowerActFunc, curPtFraction);
 	    TrainSGD(aeFunc, hyperParams);
 	  }
 	  break;
