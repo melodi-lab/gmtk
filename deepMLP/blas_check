@@ -1,35 +1,19 @@
 
 # We will set BLAS_CFLAGS and BLAS_LIBS appropriately
 # to link with either MKL or an external CBLAS. To use only the internal
-# replacement kernels, all three should be empty.
+# replacement kernels, both should be empty.
 
 # Handle MKL
 
-if test x"$MKLROOT" != x -a x"$MKLROOT" != xno; then     # --with-mkl=<dir>
+if test x$MKL_REQUEST == xyes; then     # one of the --with-mkl-* flags was given, so use MKL
   if test x$BLAS_REQUEST = xyes; then
-    AC_MSG_ERROR([MKL provides CBLAS, so you cannot use both MKL and another external CBLAS library. Give only either --with-mkl or --with-cblas-*])
+    AC_MSG_ERROR([MKL provides CBLAS, so you cannot use both MKL and another external CBLAS library. Do not use both --with-mkl-* and --with-cblas-*])
   fi
 
-  if test $with_mkl_architecture = ia32; then
-    case  $with_mkl_thread in
-      sequential)   BLAS_LIBS="-Wl,--start-group -lmkl_intel -lmkl_sequential   -lmkl_core -Wl,--end-group         -lpthread -lm" ;;
-      gnu_thread)   BLAS_LIBS="-Wl,--start-group -lmkl_intel -lmkl_gnu_thread   -lmkl_core -Wl,--end-group -lgomp  -lpthread -lm" ;;
-      intel_thread) BLAS_LIBS="-Wl,--start-group -lmkl_intel -lmkl_intel_thread -lmkl_core -Wl,--end-group -liomp5 -lpthread -lm" ;;
-      *) AC_MSG_ERROR([Unkown MKL threading $with_mkl_thread, must be one of sequential, intel_thread, gnu_thread]) ;;
-    esac
-  else                      # intel64
-    case  $with_mkl_thread in
-      sequential)   BLAS_LIBS="-Wl,--start-group -lmkl_intel_lp64 -lmkl_sequential   -lmkl_core -Wl,--end-group         -lpthread -lm" ;;
-      gnu_thread)   BLAS_LIBS="-Wl,--start-group -lmkl_intel_lp64 -lmkl_gnu_thread   -lmkl_core -Wl,--end-group -lgomp  -lpthread -lm" ;;
-      intel_thread) BLAS_LIBS="-Wl,--start-group -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -Wl,--end-group -liomp5 -lpthread -lm";;
-      *) AC_MSG_ERROR([Unkown MKL threading $with_mkl_thread, must be one of sequential, intel_thread, gnu_thread]) ;;
-    esac
-  fi
+  BLAS_CFLAGS=$MKL_CFLAGS
+  BLAS_LIBS=$MKL_LIBS
 
-  BLAS_CFLAGS=-I${MKLROOT}/include
-  BLAS_LIBS="-L${MKLROOT}/lib/${with_mkl_architecture} $BLAS_LIBS"
-
-  AC_MSG_CHECKING([for MKL under $MKLROOT])
+  AC_MSG_CHECKING([for MKL])
   AC_LANG_PUSH([C++])
   mkl_save_CXXFLAGS=$CXXFLAGS
   CXXFLAGS=$BLAS_CFLAGS
@@ -40,7 +24,7 @@ if test x"$MKLROOT" != x -a x"$MKLROOT" != xno; then     # --with-mkl=<dir>
     [AC_MSG_RESULT([yes])
      AC_DEFINE([HAVE_MKL],1,[Define if you have intel MKL])], 
     [AC_MSG_RESULT([no])
-     AC_MSG_ERROR([MKL not found under $MKLROOT])])
+     AC_MSG_ERROR([MKL failed with --with-mkl-cflags='$MKL_CFLAGS' and --with-mkl-libs='$MKL_LIBS'])])
   LIBS=$mkl_save_LIBS
   CXXFLAGS=$mkl_save_CXXFLAGS
   AC_LANG_POP([C++])
