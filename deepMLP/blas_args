@@ -4,14 +4,14 @@
 # A well-tuned CBLAS dgemm might be faster.
 
 AC_ARG_ENABLE([internal-dgemm],
-   [AS_HELP_STRING([--enable-internal-dgemm], [use internal CBLAS matrix multiply])])
+   [AS_HELP_STRING([--enable-internal-dgemm], [use internal matrix multiply instead of external CBLAS/MKL dgemm])])
 
 # If the user gives --enable-internal-dgemm, $enable_internal_dgemm will be "yes"
 #    and we should AC_DEFINE(USE_PHIPAC) and build libPHiPAC.a.
 
 # If the user gives --disable-internal-dgemm, $enable_internal_dgemm will be "no"
 #    and we should not build libPHiPAC.a. In this case, the user (or pkg-config) must 
-#    supply a CBLAS to link with.
+#    supply an external CBLAS to link with to supply the required dgemm.
 
 # If the user gives neither, the the default is to use PHiPAC if they don't
 #    specify a CBLAS or MKL. Otherwise, the CBLAS or MKL dgemm will be used.
@@ -19,38 +19,36 @@ AC_ARG_ENABLE([internal-dgemm],
 
 
 # We need a CBLAS. ATLAS or Goto are nice. OpenBLAS is based on Goto. MKL also 
-# provides CBLAS. ACML seems pretty fast on Opterons, though you have to build the
-# Netlib CBLAS for it yourself. See http://www.netlib.org/blas/blast-forum/cblas.tgz
+# provides CBLAS. The ACML BLAS seems pretty fast on Opterons, though you have to build the
+# Netlib CBLAS interface for it yourself. See http://www.netlib.org/blas/blast-forum/cblas.tgz
 
 # We can also make use of some VML and MKL routines, so we AC_DEFINE(HAVE_MKL)
-# if the user tells us where to find MKL. We'll also use MKL's CBLAS. If the user
-# gives --with-mkl, we'll use the MKL CBLAS dgemm unless the user also explicitly
-# gives --enable-internal-dgemm.
+# if the user tells us where to find MKL. We'll also use MKL's CBLAS in that case. If the user
+# gives one of the --with-mkl-* arguments, we'll use the MKL CBLAS dgemm unless the user also 
+# explicitly gives --enable-internal-dgemm.
 
-AC_ARG_WITH([mkl],
-   [AS_HELP_STRING([--with-mkl=<dir>], [use MKL installation in <dir> for CBLAS, VML, and MKL routines])],
-   [MKLROOT=$with_mkl])
-# Just setting $MKLROOT might also work
-
-# MKL has several threading options. Default is intel_thread
-AC_ARG_WITH([mkl-thread],
-   [AS_HELP_STRING([--with-mkl-thread=<thread>], 
-     [use MKL threading library <thread> (sequential, intel_thread, gnu_thread) @<:@sequential@:>@])],
-   [case $with_mkl_thread in
-      intel_thread | sequential | gnu_thread) ;;
-      *) AC_MSG_ERROR([Unknown MKL threading layer: $with_mkl_thread (must be one of sequential, intel_thread, gnu_thread)]) ;;
-    esac],
-   [with_mkl_thread=sequential])
+AC_ARG_WITH([mkl-cflags],
+   [AS_HELP_STRING([--with-mkl-cflags=-I<dir>], [C pre-processor -I flags to find MKL headers for CBLAS, VML, and MKL routines])],
+   [AS_IF([test "x$with_mkl_cflags" != "xno"],
+      [MKL_CFLAGS=$with_mkl_cflags; MKL_REQUEST=yes],
+      [MKL_REQUEST=no])],
+   [MKL_CFLAGS=""])
 
 
-# 32- or 64-bit CPU, default 64-bit
-AC_ARG_WITH([mkl-architecture],
-  [AS_HELP_STRING([--with-mkl-architecture], [CPU architecture (ia32 or intel64) @<:@intel64@:>@])],
-  [case $with_mkl_architecture in
-     ia32 | intel64) ;;
-     *) AC_MSG_ERROR([Unknown MKL architecture: $with_mkl_architecture (must be ia32 or intel64)]) ;;
-   esac],
-  [with_mkl_architecture=intel64])
+AC_ARG_WITH([mkl-libs],
+   [AS_HELP_STRING([--with-mkl-libs=-l<library>], [linker -L and -l flags to link with MKL installation])],
+   [AS_IF([test "x$with_mkl_libs" != "xno"], 
+     [MKL_LIBS=$with_mkl_libs ; MKL_REQUEST=yes], 
+     [MKL_REQUEST=no])],
+   [MKL_LIBS=""])
+
+# MKL_REQUEST=yes signals that the user requested MKL
+# by using one of the --with-MKL-* arguments, so we must
+# verify the user-provided flags work; the configure script
+# fails if they do not.
+
+# MKL_REQUEST=no signals the user gave a --without-MKL-* argument, so don't try to use MKL.
+
 
 
 # If we don't have MKL, we need a plain external CBLAS (and we'll use internal 
@@ -73,7 +71,7 @@ AC_ARG_WITH([mkl-architecture],
 # If you prefer to use MKL instead of a CBLAS, see --with-mkl
 
 AC_ARG_WITH([cblas-cflags],
-   [AS_HELP_STRING([--with-cblas-cflags=-I<dir>], [cpp -I flags to find non-MKL CBLAS includes @<:@-I/usr/include@:>@])],
+   [AS_HELP_STRING([--with-cblas-cflags=-I<dir>], [C pre-processor -I flags to find non-MKL CBLAS headers @<:@-I/usr/include@:>@])],
    [AS_IF([test "x$with_cblas_cflags" != "xno"], 
      [BLAS_CFLAGS=$with_cblas_cflags ; BLAS_REQUEST=yes], 
      [BLAS_REQUEST=no])],
@@ -81,7 +79,7 @@ AC_ARG_WITH([cblas-cflags],
 # assume -I/usr/include is already included in the include seach path  
 
 AC_ARG_WITH([cblas-libs],
-   [AS_HELP_STRING([--with-cblas-libs=-l<library>], [ld -L and -l flags to link with non-MKL CBLAS library @<:@-lcblas@:>@])],
+   [AS_HELP_STRING([--with-cblas-libs=-l<library>], [linker -L and -l flags to link with a non-MKL CBLAS library @<:@-lcblas@:>@])],
    [AS_IF([test "x$with_cblas_libs" != "xno"], 
      [BLAS_LIBS=$with_cblas_libs ; BLAS_REQUEST=yes], 
      [BLAS_REQUEST=no])],
