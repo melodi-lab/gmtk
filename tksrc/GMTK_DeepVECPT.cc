@@ -24,6 +24,7 @@ cptName
 <parent card>        % must match final layer's # outputs
 2                    % self cardinality (always 2)
 deepNNName           % DeepNN to use to compute probabilities
+prior_1dpmf:priorPMFName  % optional prior for NN output
 f_offset:0           % starting index in observation matrix for floats
 nfs:0                % # of floats to take from observation matrix
 radius:<d>           % # of frames to take from observation matrix = 2d + 1
@@ -162,6 +163,7 @@ DeepVECPT::read(iDataStreamFile& is)
     
     //  bool done=false;
     
+    prior = NULL;
     is.read(str);
     while(! (is.isEOF() || str=="END")) {
       lineNum++;
@@ -205,6 +207,22 @@ DeepVECPT::read(iDataStreamFile& is)
 	}
 	if (obs->minFutureFrames() < window_radius) {
 	  obs->setMinFutureFrames(window_radius);
+	}
+      }
+      else if(option_name == "prior_1dpmf") {
+	if (prior) {
+	  error("ERROR: reading file '%s' line %d, DeepVirtualEvidenceCPT '%s' has multiple prior_1dpmf specifications\n",
+		is.fileName(), is.lineNo(), name().c_str());
+	}
+	if (GM_Parms.dPmfsMap.find(option_value) == GM_Parms.dPmfsMap.end()) {
+	  error("ERROR: reading file '%s' line %d,  DeepVirtualEvidenceCPT '%s' uses undefined Dense1DPMF '%s'\n", 
+		is.fileName(), is.lineNo(), name().c_str(), option_value.c_str());
+	}
+	prior = GM_Parms.dPmfs[ GM_Parms.dPmfsMap[option_value] ];
+	assert(prior);
+	if (prior->card() != cardinalities[0]) {
+	  error("ERROR: reading file '%s' line %d,  DeepVirtualEvidenceCPT '%s' needs a Dense1DPMF with cardinality %u, but '%s' has cardinality %u\n",
+		is.fileName(), is.lineNo(), name().c_str(), cardinalities[0], prior->card());
 	}
       }
       else {
@@ -338,6 +356,14 @@ DeepVECPT::applyNN(DiscRVType parentValue, DiscRV * drv) {
   unsigned segment = obs->segmentNumber();
   if (frame == cached_frame && segment == cached_segment) {
     p.setFromP(cached_CPT[parentValue]);
+    if (prior) {
+      logpr priorP(prior->p(curParentValue));
+      if (priorP.essentially_zero()) {
+	p.setFromLogP(LZERO);
+      } else {
+	p /= priorP;
+      }
+    }
     // The obseved value (1) is the one corresponding
     // to the value in the file. I.e., the score 
     // in the file corresponds to Pr(child = 1 | parent = j) = f_t(j), 
@@ -371,6 +397,14 @@ DeepVECPT::applyNN(DiscRVType parentValue, DiscRV * drv) {
   assert(parentValue < cardinalities[0]);
   p.setFromP(cached_CPT[parentValue]);
 
+  if (prior) {
+    logpr priorP(prior->p(curParentValue));
+    if (priorP.essentially_zero()) {
+      p.setFromLogP(LZERO);
+    } else {
+      p /= priorP;
+    }
+  }
   // The obseved value (1) is the one corresponding
   // to the value in the file. I.e., the score 
   // in the file corresponds to Pr(child = 1 | parent = j) = f_t(j), 
