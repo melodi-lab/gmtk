@@ -41,6 +41,7 @@
 #include "GMTK_ObservationSource.h"
 #include "GMTK_FileSource.h"
 #include "GMTK_DeepNN.h"
+#include "GMTK_Dense1DPMF.h"
 
 // we need to interface to the external global observation
 // matrix object to get some parametes (such as start skip, end skip,
@@ -81,6 +82,10 @@ class DeepVECPT : public CPT {
   ////////////////
   // the Deep Multi-Layer Perceptron
   DeepNN *dmlp;
+
+  ////////////////
+  // optional Dense1DPMF to divide NN output by
+  Dense1DPMF *prior;
 
   ////////////////
   // remember the computed CPT so we don't have to recompute it
