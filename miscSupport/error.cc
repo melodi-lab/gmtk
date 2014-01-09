@@ -33,6 +33,7 @@ error(const char * const format, ...)
   (void) vfprintf(stderr, format, ap);
   va_end(ap);
   (void) fprintf(stderr, "\n");
+  fflush(stderr);
 #ifdef ERROR_DOES_ABORT
   (void) abort();
 #else
