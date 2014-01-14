@@ -18,16 +18,32 @@ scripts/triangulateTimings
 
 SUBDIRS = IEEEFloatingpoint miscSupport featureFileIO mitk deepMLP tksrc tests
 
-.PHONY: rc revdist datedist hgdatedist autoclean
-rc:
-	make VERSION=`cat RELEASE`.`hg id -i | tr ' ()' _` dist
+.PHONY: beta revdist datedist hgdatedist release beta-release
+
+beta:
+	make VERSION=`cat RELEASE`+`date +%Y%m%d`.`hg id -i | tr -cd A-Za-z0-9` dist
+
+release: distcheck
+	echo "PRETEND: hg commit -m \"This is the "`cat RELEASE`" release"
+	echo "PRETEND: hg tag v"`cat RELEASE`
+	echo "PRETEND: hg push"
+	scp gmtk-`cat RELEASE`.tar.gz parrot:/g/melodi/html/web-pages/downloads/gmtk
+	ssh parrot /g/melodi/html/web-pages/downloads/gmtk/mkhtml.sh
+
+beta-release: distcheck
+	echo "PRETEND: hg commit -m \"This is the "`cat RELEASE`+`date +%Y%m%d`.`hg id -i | tr -cd A-Za-z0-9`" release\""
+	echo "PRETEND: hg tag v"`cat RELEASE`+`date +%Y%m%d`.`hg id -i | tr -cd A-Za-z0-9`
+	echo "PRETEND: hg push"
+	mv gmtk-`cat RELEASE`.tar.gz gmtk-`cat RELEASE`+`date +%Y%m%d`.`hg id -i | tr -cd A-Za-z0-9`.tar.gz
+	scp gmtk-`cat RELEASE`+`date +%Y%m%d`.`hg id -i | tr -cd A-Za-z0-9`.tar.gz parrot:/g/melodi/html/web-pages/downloads/gmtk
+	ssh parrot /g/melodi/html/web-pages/downloads/gmtk/mkhtml.sh
 
 revdist:
-	make VERSION=`hg id | tr ' ()' _` dist
+	make VERSION=`cat RELEASE`+`hg id | tr ' ()' _` dist
 
 datedist:
-	make VERSION=`date +"%Y-%m-%d_%H%M"` dist
+	make VERSION=`cat RELEASE`+`date +"%Y-%m-%d"` dist
 
 hgdatedist:
-	make VERSION=`date +"%Y-%m-%d"`.`hg id | tr ' ()' _` dist
+	make VERSION=`cat RELEASE`+`date +"%Y-%m-%d"`.`hg id | tr ' ()' _` dist
 
