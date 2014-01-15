@@ -18,7 +18,7 @@ main(int argc, char *argv[]) {
 
   MNISTData mnist(trainImageFile, trainLabelFile);
 
-  int inputSize = mnist.NumFeatures(), outputSize = 10, 
+  int //inputSize = mnist.NumFeatures(), outputSize = 10,  -- unused
       numInstances = mnist.NumImages();
 
   vector<unsigned char> labels = mnist.GetLabels();
