@@ -61,18 +61,16 @@ linPrint(double *A, int len) {
 int
 main(int argc, char *argv[]) {
 
-#if 0
-  // unused
+#if defined(USE_PHIPAC)
   char op = 'n';
   int M=3, K=3, N=3;
   double alpha = 1.0, beta = 1.0;
+  int Xstride = 3, Ystride = 3, Zstride = 3; 
 #endif
 
   double X[9] = {1,1,1,0,0,0,0,0,0};
   double Y[9] = {1,2,3,4,5,6,7,8,9};
   double Z[9] = {0,0,0,0,0,0,0,0,0};
-
-  // int Xstride = 3, Ystride = 3, Zstride = 3; unused
 
 #if defined(USE_PHIPAC)
   phipac_dgemm(&op, &op, 
