@@ -29,8 +29,8 @@ phipac_dgemm(char* transA, char* transB,
 
 void
 rowMajPrint(double *A, int M, int N, int stride) {
-  for (unsigned i=0; i < M; i+=1) {
-    for (unsigned j=0; j < N; j+=1) {
+  for (int i=0; i < M; i+=1) {
+    for (int j=0; j < N; j+=1) {
       printf("%f ", A[ i * stride + j ]);
     }
     printf("\n");
@@ -40,8 +40,8 @@ rowMajPrint(double *A, int M, int N, int stride) {
 
 void
 colMajPrint(double *A, int M, int N, int stride) {
-  for (unsigned i=0; i < M; i+=1) {
-    for (unsigned j=0; j < N; j+=1) {
+  for (int i=0; i < M; i+=1) {
+    for (int j=0; j < N; j+=1) {
       printf("%f ", A[ j * stride + i ]);
     }
     printf("\n");
@@ -51,7 +51,7 @@ colMajPrint(double *A, int M, int N, int stride) {
 
 void
 linPrint(double *A, int len) {
-  for (unsigned i=0; i < len; i+=1) {
+  for (int i=0; i < len; i+=1) {
     printf("%f ", A[i]);
   }
   printf("\n");
@@ -61,15 +61,18 @@ linPrint(double *A, int len) {
 int
 main(int argc, char *argv[]) {
 
+#if 0
+  // unused
   char op = 'n';
   int M=3, K=3, N=3;
   double alpha = 1.0, beta = 1.0;
+#endif
 
   double X[9] = {1,1,1,0,0,0,0,0,0};
   double Y[9] = {1,2,3,4,5,6,7,8,9};
   double Z[9] = {0,0,0,0,0,0,0,0,0};
 
-  int Xstride = 3, Ystride = 3, Zstride = 3;
+  // int Xstride = 3, Ystride = 3, Zstride = 3; unused
 
 #if defined(USE_PHIPAC)
   phipac_dgemm(&op, &op, 

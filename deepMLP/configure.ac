@@ -19,7 +19,7 @@ AC_CANONICAL_HOST
 AC_CONFIG_SRCDIR([DBN.h])
 AC_CONFIG_HEADERS([config.h])
 
-AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
+AM_INIT_AUTOMAKE([1.12 silent-rules -Wall -Werror foreign])
 AM_SILENT_RULES([yes])
 
 AC_ARG_ENABLE([cppIfASCII],
@@ -34,6 +34,7 @@ fi
 
 AC_PROG_CC
 AC_PROG_CXX
+AM_CONDITIONAL([USE_GCC_FLAGS],[test x$GCC = xyes -a x$GXX = xyes])
 AC_PROG_RANLIB
 m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 AC_PROG_AWK

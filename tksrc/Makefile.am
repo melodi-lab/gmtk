@@ -18,64 +18,73 @@ VERSIONFLAG =
 endif
 
 
-
-if MAKE_BUNDLE
-# Must be OSX, diddle the flags
-EXCCFLAGS = -m32
-EXCXXFLAGS = -m32
-EXLDDFLAGS = -m32
-OSXLDFLAGS = -dylib_file /System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib
-else
-OSXLDFLAGS =
-EXCCFLAGS =
-EXCXXFLAGS =
-EXLDFLAGS = 
-endif
-
-clean-local:
-	-rm -rf gmtkViz.app
-
-DEBUGFLAGS = -g
-if NO_ASSERTIONS
-DEBUGFLAGS += -DNDEBUG
-endif
-if NO_MODEL_CHECKS
-DEBUGFLAGS += -DNMODELCHECK
-endif
-OPTFLAGS = -O3 -march=native -mtune=native -mfpmath=sse -msse3
+DEBUGFLAGS =
 
 if CYGWIN_FLAGS
-ANSI = 
-PEDANTIC =
+  ANSI = 
 else
-ANSI = -ansi
-PEDANTIC = -pedantic
+  ANSI = -ansi -pedantic
 endif
 
-WALL = -Wall
-
-AM_CFLAGS = $(VERSIONFLAG) \
-$(DEBUGFLAGS) $(OPTFLAGS)  $(EXCCFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
-AM_CXXFLAGS = $(VERSIONFLAG) \
-$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
-
+# If configure determines we're using GCC C/C++ compilers, set flags appropriately
+if USE_GCC_FLAGS
+# Only used for GCC compilers
+  OPTFLAGS = -O3
 # extra optimization options for certain GMTK sources, used below.
-XOPTFLAGS = -funroll-loops -fargument-noalias-global
+  XOPTFLAGS = -funroll-loops -fargument-noalias-global
+  GCC_FLAGS = -Wall $(ANSI)
+else
+# unknown compiler
+  OPTFLAGS =
+  XOPTFLAGS =
+  GCC_FLAGS =
+endif
+
+DBFLAGS =
+if NO_ASSERTIONS
+DBFLAGS += -DNDEBUG
+endif
+if NO_MODEL_CHECKS
+DBFLAGS += -DNMODELCHECK
+endif
+
 
 AM_CPPFLAGS = \
 -I$(srcdir)/../miscSupport \
 -I$(builddir)/../IEEEFloatingpoint \
 -I$(srcdir)/../featureFileIO \
 -I$(srcdir)/../deepMLP \
+$(VERSIONFLAG) $(DBFLAGS) \
 -DBINDIR="\"$(bindir)\""
 # make BINDIR available for warning message in GMTK_FileParser.cc for ticket 320
+
+AM_CFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(GCC_FLAGS)
+AM_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(GCC_FLAGS)
+AM_LDFLAGS = 
+
+if MAKE_BUNDLE
+# Must be OSX, diddle the flags
+  AM_CFLAGS += -m32
+  AM_CXXFLAGS += -m32
+  AM_LDFLAGS += -m32
+  OSXLDFLAGS = -dylib_file /System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib
+else
+  OSXLDFLAGS =
+endif
+
+
+clean-local:
+	-rm -rf gmtkViz.app
+
+
 
 LDADD = libGMTK.a libXOPT.a \
 $(builddir)/../featureFileIO/libgmtkio.a \
 $(builddir)/../miscSupport/libmiscSupport.a \
 $(builddir)/../IEEEFloatingpoint/libIEEEsupport.a
 
-LIBS += $(LEXLIB)
+# should not be necessary -- flex sources should be such that no -lfl is required
+#LIBS += $(LEXLIB)
 
 noinst_LIBRARIES = libXOPT.a libGMTK.a
 
@@ -186,8 +195,8 @@ libXOPT_a_SOURCES = \
 GMTK_DiagGaussianOpt.cc \
 GMTK_LinMeanCondDiagGaussianOpt.cc \
 GMTK_PackCliqueValueOpt.cc
-libXOPT_a_CXXFLAGS = $(VERSIONFLAG) $(XOPTFLAGS) \
-$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+
+libXOPT_a_CXXFLAGS = $(AM_CXXFLAGS) $(XOPTFLAGS) 
 
 
 # include register_user_internal_cfunc_dts.cc and 
@@ -266,9 +275,8 @@ gmtkOnline_SOURCES = gmtkOnline.cc
 
 
 gmtkViz_SOURCES = gmtkViz.cc
-gmtkViz_CXXFLAGS = $(VERSIONFLAG) $(VIZCXXFLAGS) \
-$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(X_CFLAGS)
-gmtkViz_LDFLAGS = $(EXLDFLAGS) $(VIZLDFLAGS) $(X_PRE_LIBS) $(X_LIBS) $(X_EXTRA_LIBS) -lX11 $(OSXLDFLAGS)
+gmtkViz_CXXFLAGS = $(VERSIONFLAG) $(VIZCXXFLAGS) $(DEBUGFLAGS) $(OPTFLAGS) $(X_CFLAGS)
+gmtkViz_LDFLAGS = $(VIZLDFLAGS) $(X_PRE_LIBS) $(X_LIBS) $(X_EXTRA_LIBS) -lX11 $(OSXLDFLAGS)
 gmtkViz_app_SOURCES = Info.plist.in wxmac.icns
 
 if MAKE_BUNDLE
@@ -347,8 +355,8 @@ parserTest_SOURCES = parserTest.cc
 #$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 
 testPackCliqueValue_SOURCES = GMTK_PackCliqueValue.cc  GMTK_PackCliqueValue.h
-testPackCliqueValue_CXXFLAGS = -DMAIN $(VERSIONFLAG) \
-$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+testPackCliqueValue_CXXFLAGS = -DMAIN $(AM_CXXFLAGS)
+
 
 #testGMParms_SOURCES = GMTK_GMParms.cc GMTK_GMParms.h
 #	echo $(objs) > /tmp/gmparms_depts

@@ -17,28 +17,35 @@ VERSIONFLAG =
 endif
 .PHONY: testHashDrivers
 
-EXCCFLAGS = 
-EXCXXFLAGS = 
-EXLDFLAGS  = 
-DEBUGFLAGS = -g
-if NO_ASSERTIONS
-DEBUGFLAGS += -DNDEBUG
-endif
-if NO_MODEL_CHECKS
-DEBUGFLAGS += -DNMODELCHECK
-endif
-OPTFLAGS = -O3
-HASH = 
+DEBUGFLAGS =
+
 
 if CYGWIN_FLAGS
-ANSI = 
-PEDANTIC =
+  ANSI = 
 else
-ANSI = -ansi
-PEDANTIC = -pedantic
+  ANSI = -ansi -pedantic
 endif
 
-WALL = -Wall
+# If configure determines we're using GCC C/C++ compilers, set flags appropriately
+if USE_GCC_FLAGS
+# Only used for GCC compilers
+  OPTFLAGS = -O3
+  GCC_FLAGS = -Wall $(ANSI)
+else
+# unknown compiler
+  OPTFLAGS =
+  GCC_FLAGS =
+endif
+
+DBFLAGS =
+if NO_ASSERTIONS
+# -D is fairly standard accross all C/C++ compilers
+DBFLAGS += -DNDEBUG
+endif
+if NO_MODEL_CHECKS
+DBFLAGS += -DNMODELCHECK
+endif
+
 
 # used by clients of miscSupport
 noinst_HEADERS = machine-dependent.h
@@ -83,21 +90,22 @@ rls_filter.h rls_filter.cc \
 vhash_set.h \
 prime.h prime.c
 
-libmiscSupport_a_CPPFLAGS = -DDEFAULT_CPP="\"$(GMTKCPPCMD)\""
+# GMTKCPPCMD is set to an appropriate default CPP for GMTK
+# to process its ASCII input files
+libmiscSupport_a_CPPFLAGS = -DDEFAULT_CPP="\"$(GMTKCPPCMD)\"" $(VERSIONFLAG) $(DBFLAGS)
 
-# Compilation flags for miscSupport library objects (user's CXXFLAGS will
-# be appended)
-libmiscSupport_a_CXXFLAGS = $(VERSIONFLAG) \
-$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC) $(HASH)
-libmiscSupport_a_CFLAGS = $(VERSIONFLAG) \
-$(DEBUGFLAGS) $(OPTFLAGS) $(EXCCFLAGS) $(WALL) $(ANSI) $(PEDANTIC) $(HASH)
+# Compilation flags for miscSupport library objects (user's CXXFLAGS will be appended)
+libmiscSupport_a_CXXFLAGS = $(OPTFLAGS) $(DEBUGFLAGS) $(GCC_FLAGS)
+libmiscSupport_a_CFLAGS =   $(OPTFLAGS) $(DEBUGFLAGS) $(GCC_FLAGS)
 
 
 # Complilation flags for test programs (user's CXXFLAGS will be appended)
-AM_CXXFLAGS = $(VERSIONFLAG) $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC) $(HASH) -DMAIN
+AM_CPPFLAGS = $(VERSIONFLAG) $(DBFLAGS)
+AM_CXXFLAGS = $(OPTFLAGS) $(DEBUGFLAGS) $(GCC_FLAGS) -DMAIN
+AM_CCFLAGS =  $(OPTFLAGS) $(DEBUGFLAGS) $(GCC_FLAGS) -DMAIN
 
 # Linker flags for test programs (user's LDFLAGS will be appended)
-AM_LDFLAGS = $(EXLDFLAGS)
+AM_LDFLAGS = 
 
 # Link the test programs with libmiscSupport
 LDADD = libmiscSupport.a

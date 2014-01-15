@@ -7,35 +7,40 @@
 # See COPYING or http://opensource.org/licenses/OSL-3.0
 #
 
+DEBUGFLAGS = 
+
+
+# If configure determines we're using GCC C/C++ compilers, set flags appropriately
+if USE_GCC_FLAGS
+# Only used for GCC compilers
+  OPTFLAGS = -O3
+  GCC_FLAGS = -Wall -ansi -pedantic
+else
+# unknown compiler
+  OPTFLAGS =
+  GCC_FLAGS =
+endif
+
+DBFLAGS =
+if NO_ASSERTIONS
+DBFLAGS += -DNDEBUG
+endif
+if NO_MODEL_CHECKS
+DBFLAGS += -DNMODELCHECK
+endif
+
 
 AM_CPPFLAGS = \
 -I$(srcdir)/../../miscSupport \
 -I$(srcdir)/../../featureFileIO \
--I$(builddir)/../../IEEEFloatingpoint
+-I$(builddir)/../../IEEEFloatingpoint \
+$(DBFLAGS)
 
 LDADD = \
 $(builddir)/../../miscSupport/libmiscSupport.a \
 $(builddir)/../../featureFileIO/libgmtkio.a
 
-
-EXCCFLAGS = 
-EXCXXFLAGS = 
-EXLDFLAGS  = 
-DEBUGFLAGS = -g
-if NO_ASSERTIONS
-DEBUGFLAGS += -DNDEBUG
-endif
-if NO_MODEL_CHECKS
-DEBUGFLAGS += -DNMODELCHECK
-endif
-OPTFLAGS = -O3
-
-ANSI = -ansi 
-PEDANTIC = -pedantic
-WALL = -Wall
-
-AM_CXXFLAGS = \
-$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+AM_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(GCC_FLAGS)
 
 EXTRA_PROGRAMS = discrete-mi
 discrete_mi_SOURCES = \
