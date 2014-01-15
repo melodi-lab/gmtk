@@ -50,7 +50,7 @@ public:
     unsigned int header[4];
     imageStream.read((char*)header, 16);
 
-    int magic = SwapEndian(header[0]);
+    //int magic = SwapEndian(header[0]); - unused
     int numImages = SwapEndian(header[1]);
     _numRows = SwapEndian(header[2]);
     _numCols = SwapEndian(header[3]);
@@ -113,7 +113,7 @@ public:
     }
 
     labStream.read((char*)header, 8);
-    assert (SwapEndian(header[1]) == numImages);
+    assert (SwapEndian(header[1]) == (unsigned)numImages);
 
     _labels.resize(numImages);
     labStream.read((char*)&_labels[0], numImages);

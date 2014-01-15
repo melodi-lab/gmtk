@@ -19,7 +19,7 @@ AC_CANONICAL_HOST
 AC_CONFIG_SRCDIR([pfile.h])
 AC_CONFIG_HEADER([config.h])
 
-AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
+AM_INIT_AUTOMAKE([1.12 silent-rules -Wall -Werror foreign])
 AM_SILENT_RULES([yes])
 
 AC_ARG_ENABLE([assertions],
@@ -58,6 +58,7 @@ AM_CONDITIONAL([NO_MODEL_CHECKS],[test x$model_checks != xyes])
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
+AM_CONDITIONAL([USE_GCC_FLAGS],[test x$GCC = xyes -a x$GXX = xyes])
 AC_PROG_LEX
 m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 AC_PROG_INSTALL

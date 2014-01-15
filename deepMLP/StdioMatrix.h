@@ -141,7 +141,7 @@ public:
 	  error("ERROR: error duplicating temporary file '%s' to '%s'\n", that.fileName, fileName);
 	}
 	bwritten += write_result;
-      } while (bwritten < file_length);
+      } while (bwritten < (size_t)file_length);
       string fn(fileName);
       ref_count[fn] = 1;
       backed = true;
@@ -240,7 +240,7 @@ public:
     assert(backed);
     assert(destCol + numCols <= _numC);
     assert(numRows == _ld);
-    if (numRows > floatBuf.size()) {
+    if ((unsigned) numRows > floatBuf.size()) {
       floatBuf.resize(numRows);
     }
     // seek to destCol
@@ -252,9 +252,9 @@ public:
     // write input matrix column by column (converting to float)
     double *end = src + numCols * srcLd;
     do {
-      for (unsigned i=0; i < numRows; i+=1)
+      for (int i=0; i < numRows; i+=1)
 	floatBuf[i] = (float)src[i];
-      if (fwrite(&floatBuf[0], sizeof(float), numRows, f) != numRows) {
+      if (fwrite(&floatBuf[0], sizeof(float), numRows, f) != (size_t)numRows) {
 	perror(fileName);
 	error("ERROR: writing to temporary file '%s'\n", fileName);
       }
@@ -301,11 +301,11 @@ public:
       error("ERROR: failed to seek in temporary file '%s'\n", fileName);
     }
     float *fp = const_cast<float *>(&floatBuf[0]);
-    if (fread(fp, sizeof(float), _numR, f) != _numR) {
+    if (fread(fp, sizeof(float), _numR, f) != (size_t)_numR) {
       perror(fileName);
       error("ERROR: StdioMatrix::GetCol() failed to read from temporary file '%s'\n", fileName);
     }
-    if (doubleBuf.size() < _numR) doubleBuf.resize(_numR);
+    if (doubleBuf.size() < (size_t)_numR) doubleBuf.resize(_numR);
     for (int i=0; i < _numR; i+=1) doubleBuf[i] = (double)floatBuf[i];
     return Vector(&doubleBuf[0], _numR);
   }

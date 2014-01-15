@@ -63,7 +63,7 @@ public:
   enum PretrainType {
     NONE, // no pretraining
     AE, // denoising autoencoder
-    CD, // contrastive divergence
+    CD  // contrastive divergence
   };
 
 	// The type of training objective, either minimize squared error, or softmax regression
@@ -663,7 +663,8 @@ private:
 	    break;
 	    
 	  case Layer::ActFunc::CUBIC:
-	    transformed = x * (x * x / 3 + x);
+	    x = transformed;
+	    transformed = x * x * x / 3 + x;
 	    break;
 
 	  default:
