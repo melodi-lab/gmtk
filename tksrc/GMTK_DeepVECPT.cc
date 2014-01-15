@@ -359,6 +359,8 @@ DeepVECPT::applyNN(DiscRVType parentValue, DiscRV * drv) {
     if (prior) {
       logpr priorP(prior->p(curParentValue));
       if (priorP.essentially_zero()) {
+	infoMsg(IM::Inference, IM::Info, "DeepVECPT '%s' prior '%s' has zero value for %u\n",
+	  name().c_str(), prior->name().c_str(), curParentValue);
 	p.setFromLogP(LZERO);
       } else {
 	p /= priorP;
@@ -400,6 +402,8 @@ DeepVECPT::applyNN(DiscRVType parentValue, DiscRV * drv) {
   if (prior) {
     logpr priorP(prior->p(curParentValue));
     if (priorP.essentially_zero()) {
+      infoMsg(IM::Inference, IM::Info, "DeepVECPT '%s' prior '%s' has zero value for %u\n",
+        name().c_str(), prior->name().c_str(), curParentValue);
       p.setFromLogP(LZERO);
     } else {
       p /= priorP;
