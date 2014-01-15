@@ -16,40 +16,43 @@ else
 VERSIONFLAG = 
 endif
 
+DEBUGFLAGS = 
 
-
-EXCCFLAGS = 
-EXCXXFLAGS = 
-EXLDFLAGS = 
-DEBUGFLAGS = -g
-if NO_ASSERTIONS
-DEBUGFLAGS += -DNDEBUG
-endif
-if NO_MODEL_CHECKS
-DEBUGFLAGS += -DNMODELCHECK
-endif
-OPTFLAGS = -O3
 
 if CYGWIN_FLAGS
-ANSI = 
-PEDANTIC =
+  ANSI = 
 else
-ANSI = -ansi
-PEDANTIC = -pedantic
+  ANSI = -ansi -pedantic
 endif
 
-WALL = -Wall
+# If configure determines we're using GCC C/C++ compilers, set flags appropriately
+if USE_GCC_FLAGS
+# Only used for GCC compilers
+  OPTFLAGS = -O3
+  GCC_FLAGS = -Wall $(ANSI)
+else
+# unknown compiler
+  OPTFLAGS =
+  GCC_FLAGS =
+endif
 
 
-AM_CPPFLAGS = -I$(srcdir)/../miscSupport -I$(builddir)/../IEEEFloatingpoint
+DBFLAGS =
+if NO_ASSERTIONS
+DBFLAGS += -DNDEBUG
+endif
+if NO_MODEL_CHECKS
+DBFLAGS += -DNMODELCHECK
+endif
 
-AM_CFLAGS = \
-$(DEBUGFLAGS) $(OPTFLAGS) $(EXCCFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 
-AM_CXXFLAGS = \
-$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+AM_CPPFLAGS = -I$(srcdir)/../miscSupport -I$(builddir)/../IEEEFloatingpoint $(VERSIONFLAG) $(DBFLAGS)
 
-AM_LDFLAGS = $(EXLDFLAGS)
+AM_CFLAGS = $(OPTFLAGS) $(DEBUGFLAGS) $(GCC_FLAGS)
+
+AM_CXXFLAGS = $(OPTFLAGS) $(DEBUGFLAGS) $(GCC_FLAGS)
+
+AM_LDFLAGS =
 
 LDADD = \
 libgmtkio.a \

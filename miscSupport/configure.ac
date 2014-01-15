@@ -19,7 +19,7 @@ AC_CANONICAL_HOST
 AC_CONFIG_SRCDIR([adaptive_filter.h])
 AC_CONFIG_HEADER([config.h])
 
-AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
+AM_INIT_AUTOMAKE([1.12 silent-rules -Wall -Werror foreign])
 AM_SILENT_RULES([yes])
 
 AC_ARG_ENABLE([assertions],
@@ -72,8 +72,8 @@ AM_CONDITIONAL([NO_MODEL_CHECKS],[test x$model_checks != xyes])
 
 # We're going to fiddle with CPP and its arguments, so
 # remember what to reset them to when we're done
-AC_REQUIRE_CPP
 AC_LANG_PUSH([C])
+AC_REQUIRE_CPP
 gmtk_save_CPPFLAGS=${CPPFLAGS}
 CPPFLAGS="-x assembler-with-cpp $CPPFLAGS"
 #CPPFLAGS="-std=c89 $CPPFLAGS"
@@ -103,6 +103,7 @@ AC_ARG_WITH([cppCmd],
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
+AM_CONDITIONAL([USE_GCC_FLAGS],[test x$GCC = xyes -a x$GXX = xyes])
 AM_PROG_CC_C_O
 m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 AC_PROG_RANLIB

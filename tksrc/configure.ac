@@ -20,7 +20,7 @@ AC_CANONICAL_HOST
 AC_CONFIG_SRCDIR([GMTK_DlinkMatrix.h])
 AC_CONFIG_HEADERS([config.h])
 
-AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
+AM_INIT_AUTOMAKE([1.12 silent-rules -Wall -Werror foreign])
 AM_SILENT_RULES([yes])
 
 AC_ARG_ENABLE([assertions],
@@ -91,6 +91,7 @@ m4_include([../deepMLP/blas_args])
 
 AC_PROG_CXX
 AC_PROG_CC
+AM_CONDITIONAL([USE_GCC_FLAGS],[test x$GCC = xyes -a x$GXX = xyes])
 AM_PROG_LEX
 m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 AC_PROG_INSTALL

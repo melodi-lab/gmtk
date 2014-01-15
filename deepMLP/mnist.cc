@@ -27,7 +27,8 @@ main(int argc, char *argv[]) {
 
   MNISTData mnist(trainImageFile, trainLabelFile);
 
-  int inputSize = mnist.NumFeatures(), outputSize = 10, 
+  int //inputSize = mnist.NumFeatures(), 
+      outputSize = 10,
       numInstances = mnist.NumImages();
 
   AllocatingMatrix output(outputSize, numInstances);
