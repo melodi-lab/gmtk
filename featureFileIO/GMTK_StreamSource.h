@@ -35,7 +35,7 @@ class StreamSource : public ObservationSource {
 
  private:
 
-  // buffer to hold transfored frames - enough to do inference
+  // buffer to hold transformed frames - enough to do inference
   // for the current modified partition (possilby includes 
   // some "pseudo-future")
   Data32 *cookedBuffer;
@@ -157,8 +157,8 @@ class StreamSource : public ObservationSource {
 
   unsigned minPastFrames() {return _minPastFrames;}
   unsigned minFutureFrames() {return _minFutureFrames;}
-  void setMinPastFrames(unsigned n) {_minPastFrames = n;}
-  void setMinFutureFrames(unsigned n) {_minFutureFrames = n;}
+  void setMinPastFrames(unsigned n) {_minPastFrames = n > _minPastFrames ? n : _minPastFrames;}
+  void setMinFutureFrames(unsigned n) {_minFutureFrames = n > _minFutureFrames ? n : _minFutureFrames;}
 
   float *const floatVecAtFrame(unsigned f) {return (float *)loadFrames(f,1);}
 

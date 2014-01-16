@@ -134,7 +134,8 @@ JunctionTree::shiftCCtoPosition(int pos)
     assert ( cur_cc_shift == 0 );
     // we need to get CE back to zero.
     adjustFramesBy (cur_CE_rvs, -cur_ce_shift
-		    *gm_template.S*fp.numFramesInC());
+		    *gm_template.S*fp.numFramesInC(),
+		    !onlineViterbi);  // gmtkOnline can't observe old values - ticket #468
     cur_ce_shift = 0;
   }
   int delta = pos - cur_cc_shift;
@@ -174,7 +175,8 @@ JunctionTree::shiftCEtoPosition(int pos)
     assert ( cur_ce_shift == 0 );
     // we need to get CC back to zero.
     adjustFramesBy (cur_CC_rvs, -cur_cc_shift
-		    *gm_template.S*fp.numFramesInC());
+		    *gm_template.S*fp.numFramesInC(),
+                    !onlineViterbi);  // gmtkOnline can't observe old values - ticket #468
     cur_cc_shift = 0;
   }
   int delta = pos - cur_ce_shift;
@@ -3938,10 +3940,13 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 		   inference_it.cur_nm(),
 		   inference_it.pt_i());
 
-  // Set clique to most probable values given observations up to
-  // the current partition
-  cur_part_tab->maxCliques[inference_it.cur_ri()].
-    maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
+  // nothing to set if P is empty - ticket #468
+  if (!inference_it.at_p() || P1.cliques.size() > 0) { 
+    // Set clique to most probable values given observations up to
+    // the current partition
+    cur_part_tab->maxCliques[inference_it.cur_ri()].
+      maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
+  }
 
   // Send messages from the root clique to the rest of the cliques
   // in this partition so that they are consistant with the observations
@@ -4120,12 +4125,15 @@ printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
       currentMaxFrameNum = numPreloadFrames;
     }
 
-    // read in the same # of frames that we're about to consume to maintain
-    // enough queued frames to be sure we don't overshoot the C'->E' transition
-    unsigned nQueued = globalObservationMatrix->enqueueFrames(numNewFrames);
-
-    currentMaxFrameNum += nQueued;
-
+    // ticket #468 - skip enqueue on first iteration if P is empty to keep PCCE first
+    // C observation data available in the queue
+    if (part > 1 || fp.numFramesInP() > 0) { 
+      // read in the same # of frames that we're about to consume to maintain
+      // enough queued frames to be sure we don't overshoot the C'->E' transition
+      unsigned nQueued = globalObservationMatrix->enqueueFrames(numNewFrames);
+      
+      currentMaxFrameNum += nQueued;
+    }
     // update the ptps_iterator if we just found out the true length of the segment
     if (truePtLen == 0 && globalObservationMatrix->numFrames() != 0) {
 #if 0
