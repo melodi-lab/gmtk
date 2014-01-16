@@ -405,7 +405,7 @@ main(int argc,char*argv[])
 
 
   //  printf("Dlinks: min lag %d    max lag %d\n", Dlinks::globalMinLag(), Dlinks::globalMaxLag());
-  // FIXME - min past = min(dlinkPast, VECPTPast), likewise for future
+  // FIXME - min past = max(dlinkPast, VECPTPast), likewise for future
   int dlinkPast = Dlinks::globalMinLag();
   dlinkPast = (dlinkPast < 0) ? -dlinkPast : 0;
   gomSS->setMinPastFrames( dlinkPast );
