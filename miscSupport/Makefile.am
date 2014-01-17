@@ -116,10 +116,13 @@ check_PROGRAMS = \
 testPrime \
 testError \
 testBPRange \
+testPermute \
 testArguments testLogp testRand testsArray testcArray testmArray \
 fileParserTest testHashMapList testHashTree testVHashMap testSHashSet \
 testSHashMap testVSHashMap testRLS testLMS testLZERO testQSort
 # testVHashSet 
+
+testPermute_SOURCES = testPermute.cc
 
 testQSort_SOURCES = testQSort.cc
 
