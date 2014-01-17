@@ -223,6 +223,7 @@ public:
 	cur_pos = (cur_pos + 1) % p;
       } while (sigma >= length); // skip any extras since p >= length
       count += 1;
+      atEnd = count >= length;
       return myrange->index((int)sigma);
     }
 	
@@ -237,7 +238,7 @@ public:
 	sigma = (t * tt) % p;
 	i = (i + 1) % p;
       } while (sigma >= length); // skip any extras since p >= length
-      return myrange->index((int)i);
+      return myrange->index((int)sigma);
     }
 	
   public:
