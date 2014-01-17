@@ -45,6 +45,7 @@
 #include <cstdio>
 
 #include "rand.h"
+#include "prime.h"
 
 class RangeNode {
     // One node in a linked-list of matlab sequences
@@ -196,61 +197,93 @@ public:
       int operator >=(const iterator& it){ return (cur_value >= it.val());}
   };
 
-  // Like an iterator, but in permuted order. O(n) space
+  // Like an iterator, but in permuted order.
   class permuter {
   protected:
       bool atEnd;
       unsigned cur_pos;
-      int *permutation;
-      unsigned length;
+      unsigned length;       // # of elements in the range
       const Range* myrange;
+      uint32_t a, b, p;      // cubic residue permutation parameters
+      unsigned count;        // keep track of # dispensed for atEnd
+
+    // permutation determined by $\sigma(i) = (ai + b)^3 \bmod p$ where
+    //    $p$ is the smallest prime such that $p >= length$ and $p \equiv_3 2$
+    //    $a$ is a random integer in $[1, p)$
+    //    $b$ is a random integer in $[0, p)$
+
+    // return $\sigma(cur_pos)$
+    int ith() {
+      uint32_t sigma; // sigma(i) = (ai + b)^3 mod p
+      do {
+	uint64_t t = (a * cur_pos) % p;
+	t = (t + b) % p;
+	uint64_t tt = (t * t) % p;
+	sigma = (t * tt) % p;
+	cur_pos = (cur_pos + 1) % p;
+      } while (sigma >= length); // skip any extras since p >= length
+      count += 1;
+      return myrange->index((int)sigma);
+    }
+	
+    // return $\sigma(cur_pos)$
+    int ith(const unsigned ii) const {
+      unsigned i = ii;
+      uint32_t sigma; // sigma(i) = (ai + b)^3 mod p
+      do {
+	uint64_t t = (a * i) % p;
+	t = (t + b) % p;
+	uint64_t tt = (t * t) % p;
+	sigma = (t * tt) % p;
+	i = (i + 1) % p;
+      } while (sigma >= length); // skip any extras since p >= length
+      return myrange->index((int)i);
+    }
+	
   public:
-      permuter() : atEnd(true), permutation(NULL), length(0), myrange(NULL) { };
+      permuter() : atEnd(true), length(0), myrange(NULL), count(0) { };
 
-      permuter(const Range& rng) : atEnd(false), cur_pos(0), length(rng.length()), myrange(&rng) {
-	if (length > 0) {
-	  permutation = new int[length];
-	  // Knuth shuffle - http://en.wikipedia.org/wiki/Random_permutation
-	  for (unsigned i=0; i < length; i+=1) {
-	    unsigned j = rnd.uniform(i);
-	    permutation[i] = permutation[j];
-	    permutation[j] = myrange->index(i);
-	  }
-	} else permutation = NULL;
-      }
-
-      permuter(const permuter& perm) 
-        : atEnd(perm.atEnd), cur_pos(perm.cur_pos), length(perm.myrange->length()), myrange(perm.myrange)
+      permuter(const Range& rng) 
+        : atEnd(false), cur_pos(0), length(rng.length()), myrange(&rng), count(0) 
       {
 	if (length > 0) {
-	  permutation = new int[length];
-	  // Knuth shuffle - http://en.wikipedia.org/wiki/Random_permutation
-	  for (unsigned i=0; i < length; i+=1) {
-	    unsigned j = rnd.uniform(i);
-	    permutation[i] = permutation[j];
-	    permutation[j] = myrange->index(i);
-	  }
-	} else permutation = NULL;
+
+	  // find smallest prime p >= num_viable_units that is \equiv_3 2
+	  for (p = length + (2 - length % 3); !prime32(p); p += 3)
+	    ;
+	  a = rnd.uniform(1, p-1);     // pick a random a in [1,p)
+	  b = rnd.uniform(p-1);        // pick a random b in [0,p)
+	} else {
+	  atEnd = true;
+	}
       }
 
-     ~permuter(void) { if (permutation) delete[] permutation; }
+      int reset (const Range& rng) {
+	permuter perm(rng);
+	atEnd   = perm.atEnd;
+	cur_pos = 0;
+	length  = perm.length;
+	myrange = &rng;
+	a = perm.a; b = perm.b; p = perm.p;
+	count = 0;
+	return ith();
+      }
 
-      int reset (const Range& rng) { cur_pos = 0; return permutation[cur_pos]; }
-      int reset (void) { cur_pos = 0; return permutation[cur_pos]; } // reset to where we were before .. hope we were!
+      int reset (void) { cur_pos = 0; count=0; return ith(); } // reset to where we were before .. hope we were!
 
       int next_el(void) { 
-	if (cur_pos < length - 1) {
-	  cur_pos += 1;
-	  return permutation[cur_pos];
+	if (count < length) {
+	  return ith();
 	}
 	atEnd = true;
 	return 0;
       }
 
       int step_by(int n) {	// i.e. step on multiple steps
-	if (cur_pos < length - n) {
-	  cur_pos += n;
-	  return permutation[cur_pos];
+	if (count + n <= length) {
+	  for (int i=0; i < n-1; i+=1) 
+	    (void) ith();
+	  return ith();
 	}
 	atEnd = true;
 	return 0;
@@ -262,16 +295,16 @@ public:
 	  { next_el(); return *this; }
 
       bool at_end(void) const { return atEnd; }
-      int val(void) const    { return permutation[cur_pos]; }
-      const int operator *(void) const { return permutation[cur_pos]; }
-      operator int(void) const         { return permutation[cur_pos]; }
+      int val(void) const    { return ith(cur_pos); }
+      const int operator *(void) const { return ith(cur_pos); }
+      operator int(void) const         { return ith(cur_pos); }
 
-      int operator ==(const permuter& it){ return (permutation[cur_pos] == it.val());}
-      int operator !=(const permuter& it){ return (permutation[cur_pos] != it.val());}
-      int operator <(const permuter& it) { return (permutation[cur_pos] < it.val());}
-      int operator <=(const permuter& it){ return (permutation[cur_pos] <= it.val());}
-      int operator >(const permuter& it) { return (permutation[cur_pos] > it.val());}
-      int operator >=(const permuter& it){ return (permutation[cur_pos] >= it.val());}
+      int operator ==(const permuter& it){ return (ith(cur_pos) == it.val());}
+      int operator !=(const permuter& it){ return (ith(cur_pos) != it.val());}
+      int operator <(const permuter& it) { return (ith(cur_pos) < it.val());}
+      int operator <=(const permuter& it){ return (ith(cur_pos) <= it.val());}
+      int operator >(const permuter& it) { return (ith(cur_pos) > it.val());}
+      int operator >=(const permuter& it){ return (ith(cur_pos) >= it.val());}
   };
 
     friend class iterator;
