@@ -991,6 +991,17 @@ assert(d.NumC() == l.NumC());
 
     BatchSource *bs;
 
+
+    // unnormalize weights if dropout training was used
+    if (resumeTraining) {
+      if (hyperParams_bp.iDropP > 0) _W[0] *= 1.0 / (1 - hyperParams_bp.iDropP);
+      if (hyperParams_bp.hDropP > 0) {
+	for (unsigned l = 1; l < _W.size(); ++l) {
+	  _W[l] *= 1.0 / (1 - hyperParams_bp.hDropP);
+	}
+      }
+    }
+
     if (!resumeTraining) { // we only support resuming backprop, not pretraining
 
       // pretrain hidden layers
@@ -1085,17 +1096,16 @@ assert(d.NumC() == l.NumC());
       infoMsg(IM::Training, IM::Default, "Fine tuning\n");
       BPTrainingFunction bpFunc(batchSrc, *this, hyperParams_bp, objectiveType);
       TrainSGD(bpFunc, hyperParams_bp, epochFraction, annealEpochFraction, prevStepSize, curUpdate, curAnnealUpdate);
-      
-      // renormalize weights if dropout training was used -- only after all training is finished
-      if (curUpdate >= hyperParams_bp.numUpdates && curAnnealUpdate >= hyperParams_bp.numAnnealUpdates) {
-	if (hyperParams_bp.iDropP > 0) _W[0] *= (1 - hyperParams_bp.iDropP);
-	if (hyperParams_bp.hDropP > 0) {
-	  for (unsigned l = 1; l < _W.size(); ++l) {
-	    _W[l] *= (1 - hyperParams_bp.hDropP);
-	  }
-	}
+    }
+
+    // renormalize weights if dropout training was used
+    if (hyperParams_bp.iDropP > 0) _W[0] *= (1 - hyperParams_bp.iDropP);
+    if (hyperParams_bp.hDropP > 0) {
+      for (unsigned l = 1; l < _W.size(); ++l) {
+	_W[l] *= (1 - hyperParams_bp.hDropP);
       }
     }
+
     if (saveFilename) {
       saveFile = new oDataStreamFile(saveFilename, true);
       saveFile->write(prevStepSize, "previous backprop step size");
