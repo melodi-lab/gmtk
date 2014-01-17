@@ -109,6 +109,8 @@ public:
     const RangeList getRangeList(void) const { return rangeList; }
 
 protected:
+    bool permuted;
+
     int _parseNumber(int *pval);
     int _parseMatlabRange(int *pstart, int *pstep, int *pend);
     int _parseRange(int *pstart, int *pstep, int *pend);
@@ -140,62 +142,6 @@ protected:
     static const char *repeats;	// valid separators of repeat lists
 
 public:
-  class iterator {
-  protected:
-      int cur_value;
-      int atEnd;
-      const Range* myrange;
-
-      // Stuff for regular range lists
-      RangeNode* cur_node;
-
-      // stuff for file management
-      const char *filename;
-      FILE *file_handle;
-
-      // stuff for read_next()
-      int buflen;
-      char *buf;
-      int bufpos;
-      int bufline;
-
-  protected:
-      int read_next(int *val, FILE* file, const char *name);
-
-  public:
-      iterator () { };	// Ugly default constructor is DANGEROUS!
-      iterator (const Range& rng);
-      iterator (const iterator& it);
-      ~iterator(void);
-
-      int reset (const Range& rng);
-      int reset (void); // reset to where we were before .. hope we were!
-
-      int next_el(void);
-
-      int step_by(int n);	// i.e. step on multiple steps
-
-      iterator& operator ++(void) // prefix
-	  { next_el(); return *this; }
-      iterator& operator ++(int) // suffix (used to return a new it? (no &))
-	  { next_el(); return *this; }
-
-      int at_end(void) const { return atEnd; }
-      int val(void) const    { return cur_value; }
-      const int operator *(void) const { return cur_value; }
-      operator int(void) const         { return cur_value; }
-
-      // Does the range we're currently in end in a finite value, 
-      // or does it go to a default-like INT_MAX or INT_MIN?
-      int current_range_finite(void) const;
-
-      int operator ==(const iterator& it){ return (cur_value == it.val());}
-      int operator !=(const iterator& it){ return (cur_value != it.val());}
-      int operator <(const iterator& it) { return (cur_value < it.val());}
-      int operator <=(const iterator& it){ return (cur_value <= it.val());}
-      int operator >(const iterator& it) { return (cur_value > it.val());}
-      int operator >=(const iterator& it){ return (cur_value >= it.val());}
-  };
 
   // Like an iterator, but in permuted order.
   class permuter {
@@ -306,6 +252,65 @@ public:
       int operator <=(const permuter& it){ return (ith(cur_pos) <= it.val());}
       int operator >(const permuter& it) { return (ith(cur_pos) > it.val());}
       int operator >=(const permuter& it){ return (ith(cur_pos) >= it.val());}
+  };
+
+  class iterator {
+  protected:
+      int cur_value;
+      int atEnd;
+      const Range* myrange;
+
+      // Stuff for regular range lists
+      RangeNode* cur_node;
+
+      // stuff for file management
+      const char *filename;
+      FILE *file_handle;
+
+      // stuff for read_next()
+      int buflen;
+      char *buf;
+      int bufpos;
+      int bufline;
+
+      permuter *p;
+
+  protected:
+      int read_next(int *val, FILE* file, const char *name);
+
+  public:
+      iterator () { };	// Ugly default constructor is DANGEROUS!
+      iterator (const Range& rng);
+      iterator (const iterator& it);
+      ~iterator(void);
+
+      int reset (const Range& rng);
+      int reset (void); // reset to where we were before .. hope we were!
+
+      int next_el(void);
+
+      int step_by(int n);	// i.e. step on multiple steps
+
+      iterator& operator ++(void) // prefix
+	  { next_el(); return *this; }
+      iterator& operator ++(int) // suffix (used to return a new it? (no &))
+	  { next_el(); return *this; }
+
+      int at_end(void) const { if (p) return p->at_end(); else return atEnd; }
+      int val(void) const    { if (p) return p->val(); else return cur_value; }
+      const int operator *(void) const { if (p) return p->val(); else return cur_value; }
+      operator int(void) const         { if (p) return p->val(); else return cur_value; }
+
+      // Does the range we're currently in end in a finite value, 
+      // or does it go to a default-like INT_MAX or INT_MIN?
+      int current_range_finite(void) const;
+
+      int operator ==(const iterator& it){ return (val() == it.val());}
+      int operator !=(const iterator& it){ return (val() != it.val());}
+      int operator <(const iterator& it) { return (val() < it.val());}
+      int operator <=(const iterator& it){ return (val() <= it.val());}
+      int operator >(const iterator& it) { return (val() > it.val());}
+      int operator >=(const iterator& it){ return (val() >= it.val());}
   };
 
     friend class iterator;
