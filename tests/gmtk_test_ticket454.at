@@ -6,7 +6,7 @@
 AT_SETUP([Posterior setFrame assert (ticket 454)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/posteriors_assert])
 # takes too much memory to run on small machines
-AT_SKIP_IF([test `hostname` = "bluffon.ee.washington.edu" -o `hostname` = "xpc" -o `hostname` = "harlequin.ee.washington.edu" -o `hostname` = "PEACOCK"])
+AT_SKIP_IF([test `hostname` = "parrot.ee.washington.edu" -o `hostname` = "bluffon.ee.washington.edu" -o `hostname` = "xpc" -o `hostname` = "harlequin.ee.washington.edu" -o `hostname` = "PEACOCK"])
 AT_CHECK([(cd $TEST_AND_DEV/posteriors_assert &&
   gmtkJT -of1 ./posterior.list -iswp1 F -nf1 8 -ni1 0 -obsNAN F \
          -fmt1 binary -fr1 1:1,3:3,5:5,7:7 -trans1 A@./obs-stats.txt \
