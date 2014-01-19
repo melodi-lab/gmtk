@@ -15,7 +15,7 @@ DEBUGFLAGS =
 if USE_GCC_FLAGS
 # Only used for GCC compilers
   OPTFLAGS = -O3
-  GCC_FLAGS = -Wall -ansi -pedantic
+  GCC_FLAGS = -Wall -ansi -pedantic $(XOPEN)
 else
 # unknown compiler
   OPTFLAGS =
