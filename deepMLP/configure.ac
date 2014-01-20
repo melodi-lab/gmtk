@@ -39,11 +39,17 @@ AC_PROG_RANLIB
 m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 AC_PROG_AWK
 
+case "${host}" in
+*cygwin*) AC_SUBST([XOPEN],["-D_XOPEN_SOURCE=900 -D__USE_XOPEN2K"]) ;;
+esac
+AM_CONDITIONAL([CYGWIN_FLAGS],[test x"$XOPEN" != x])
+
+
 # Test if compiler accepts ISO C++ 2011.  This is required for
 # the DMLP training code.
 
 m4_include([m4/gmtk_cxx11])
-if test x$gmtk_cxx11 = xyes; then
+if test x$gmtk_cxx11 = xyes -a x$XOPEN = x; then
   AC_SUBST([dmlp_library],[libDMLP.a])
   AC_SUBST([check_programs],['dmlp mnist label dmlpTest orderTest phipacTest'])
 fi
