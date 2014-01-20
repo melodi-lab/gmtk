@@ -115,11 +115,25 @@ AC_CHECK_FILE([$srcdir/../.hg/dirstate],[
 ])
 AM_CONDITIONAL([HAVE_HG],[test  x$HAVE_HG = xyes])
 
+case "${host}" in
+*apple*)
+  if test x"$HAVE_WXWIDGETS" = x"yes"; then
+    AC_SUBST([OSXBUNDLE],[gmtkViz.app])
+
+#   The EnableTop() bug (ticket 64) is fixed in wxWidgets 2.9.2
+#   and gmtkViz souce checks if ENABLE_TOP_OFFSET is
+#   needed using wxCHECK_VERSION(2,9,2)
+    AC_DEFINE([GMTK_WX_OSX],[1],[Do we need to activate OSX fixes?])
+  fi ;;
+*-sun-solaris*) AC_CHECK_LIB([sunmath],[annuity]) ;;
+*cygwin*) AC_SUBST([XOPEN],[-D__USE_XOPEN2K]) ;;
+esac
+
 # Test if compiler accepts ISO C++ 2011.  This is required for
 # the DMLP training code.
 
 m4_include([../deepMLP/m4/gmtk_cxx11])
-if test x$gmtk_cxx11 = xyes; then
+if test x$gmtk_cxx11 = xyes -a x$XOPEN = x; then
   AC_SUBST([dmlp_libraries],[../deepMLP/libDMLP.a])
   AC_SUBST([dmlp_programs],[gmtkDMLPtrain])
   AC_SUBST([dmlp_check_programs],[abstest])
@@ -186,19 +200,6 @@ fi
        ]
      )
 
-case "${host}" in
-*apple*) 
-  if test x"$HAVE_WXWIDGETS" = x"yes"; then
-    AC_SUBST([OSXBUNDLE],[gmtkViz.app])
-
-#   The EnableTop() bug (ticket 64) is fixed in wxWidgets 2.9.2
-#   and gmtkViz souce checks if ENABLE_TOP_OFFSET is
-#   needed using wxCHECK_VERSION(2,9,2)
-    AC_DEFINE([GMTK_WX_OSX],[1],[Do we need to activate OSX fixes?])
-  fi ;;
-*-sun-solaris*) AC_CHECK_LIB([sunmath],[annuity]) ;;
-*cygwin*) AC_SUBST([XOPEN],[-D__USE_XOPEN2K]) ;;
-esac
 AM_CONDITIONAL([CYGWIN_FLAGS],[test x"$XOPEN" = x"-D__USE_XOPEN2K"])
 AM_CONDITIONAL([MAKE_BUNDLE],[test  x$OSXBUNDLE = xgmtkViz.app])
 AC_CHECK_LIB([m], [log])

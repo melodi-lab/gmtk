@@ -12,12 +12,18 @@ EXTRA_DIST = m4/gpl.txt
 DEBUGFLAGS =
 AM_LDFLAGS =
 
+if CYGWIN_FLAGS
+  ANSI=$(XOPEN)
+else
+  ANSI=-ansi -pedantic
+endif
+
 # If configure determines we're using GCC C/C++ compilers, set flags appropriately
 if USE_GCC_FLAGS
 # Only used for GCC compilers
   OPTFLAGS = -O3
 # OPTFLAGS = -O3 -march=native -mtune=native -mfpmath=sse -msse3 -flto
-  GCC_FLAGS = -Wall -ansi -pedantic $(ANSI)
+  GCC_FLAGS = -Wall $(ANSI) -msse2
 # AM_LDFLAGS += -static -fwhole-program -L. 
 else
 # unknown compiler
