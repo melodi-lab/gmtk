@@ -6,6 +6,11 @@ See COPYING or http://opensource.org/licenses/OSL-3.0
 
 Please report bugs at https://j.ee.washington.edu/trac/gmtk
 
+Version 1.0.1  2014-01-22
+
+        * Fixed Cygwin build issues
+
+
 Version 1.0.0  2014-01-16
 
 	* First source release!
