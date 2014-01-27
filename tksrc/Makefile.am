@@ -34,10 +34,16 @@ if USE_GCC_FLAGS
   XOPTFLAGS = -funroll-loops -fargument-noalias-global
   GCC_FLAGS = -Wall $(ANSI)
 else
+if USE_CLANG_FLAGS
+  OPTFLAGS = -O3
+  XOPTFLAGS =
+  GCC_FLAGS=
+else
 # unknown compiler
   OPTFLAGS =
   XOPTFLAGS =
   GCC_FLAGS =
+endif
 endif
 
 DBFLAGS =

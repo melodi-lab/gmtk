@@ -85,7 +85,7 @@ MDCPT::MDCPT()
  *
  *-----------------------------------------------------------------------
  */
-void MDCPT::setNumParents(const int _nParents)
+void MDCPT::setNumParents(const unsigned _nParents)
 {
   CPT::setNumParents(_nParents);
 
@@ -108,7 +108,7 @@ void MDCPT::setNumParents(const int _nParents)
  *
  *-----------------------------------------------------------------------
  */
-void MDCPT::setNumCardinality(const int var, const int card)
+void MDCPT::setNumCardinality(const unsigned var, const int card)
 {
   CPT::setNumCardinality(var,card);
   // assume that the basic stuff is not allocated.
@@ -186,9 +186,6 @@ MDCPT::read(iDataStreamFile& is)
 
   is.read(_numParents,"Can't read DenseCPT numParents");
 
-  if (_numParents < 0) 
-    error("ERROR: reading file '%s' line %d, DenseCPT '%s' trying to use negative (%d) num parents.",
-	  is.fileName(),is.lineNo(),name().c_str(),_numParents);
   if (_numParents >= warningNumParents)
     warning("WARNING: creating DenseCPT with %d parents in file '%s' line %d",
 	    _numParents,is.fileName(),is.lineNo());

@@ -356,10 +356,6 @@ RngDecisionTree::read(iDataStreamFile& is)
     // that a DT is non-iterable, so hopefully this will be safe.  - Richard
     
     dtFileName = is.fileName(); // for ticket #182
-    if (_numFeatures < 0) {
-      error("ERROR: in DT named '%s', file '%s' line %d, decision tree must have >= 0 features",
-      name().c_str(), is.fileName(),is.lineNo());
-    }
 
     if (root != NULL) {
       destructorRecurse(root);
@@ -2704,7 +2700,7 @@ void
 RngDecisionTree::writeIndexFile()
 {
   int      numDTs;
-  unsigned position;
+  int      position;
   int      i;
 
   assert(iterable()); 
