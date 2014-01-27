@@ -65,8 +65,8 @@ public:
   ///////////////////////////////////////////////////////////    
   // Semi-constructors: useful for debugging.
   // See parent class for further documention.
-  void setNumParents(const int _nParents);
-  void setNumCardinality(const int var, const int card);
+  void setNumParents(const unsigned _nParents);
+  void setNumCardinality(const unsigned var, const int card);
   void allocateBasicInternalStructures();
 
 

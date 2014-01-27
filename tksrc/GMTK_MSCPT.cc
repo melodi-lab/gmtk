@@ -79,7 +79,7 @@ MSCPT::MSCPT()
  *
  *-----------------------------------------------------------------------
  */
-void MSCPT::setNumParents(const int _nParents)
+void MSCPT::setNumParents(const unsigned _nParents)
 {
   CPT::setNumParents(_nParents);
   bitmask &= ~bm_basicAllocated;
@@ -99,7 +99,7 @@ void MSCPT::setNumParents(const int _nParents)
  *
  *-----------------------------------------------------------------------
  */
-void MSCPT::setNumCardinality(const int var, const int card)
+void MSCPT::setNumCardinality(const unsigned var, const int card)
 {
 
   CPT::setNumCardinality(var,card);
@@ -153,9 +153,6 @@ MSCPT::read(iDataStreamFile& is)
   NamedObject::read(is);
   is.read(_numParents,"Can't read SparseCPT number parents");
 
-  if (_numParents < 0) 
-    error("ERROR: reading file '%s' line %d, SparseCPT '%s' trying to use negative (%d) num parents.",
-	  is.fileName(),is.lineNo(),name().c_str(),_numParents);
   if (_numParents >= warningNumParents)
     warning("WARNING: creating SparseCPT with %d parents in file '%s' line %d",_numParents,
 	    is.fileName(),is.lineNo());

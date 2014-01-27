@@ -48,9 +48,13 @@ class MSCPT : public CPT {
   // mapping to spmfs).
   NameCollection* ncl;
 
+#if 0
+  // unused
+
   ///////////////////////////////////////
   // mapping from DT leaves to SPMFs
   NameCollection* spmfCollection;
+#endif
 
   ///////////////////////////////////////
   // Index of world's sparse mass function,
@@ -72,8 +76,8 @@ public:
   ~MSCPT() { }
 
   ///////////////////////////////////////////////////////////    
-  void setNumParents(const int _nParents);
-  void setNumCardinality(const int var, const int card);
+  void setNumParents(const unsigned _nParents);
+  void setNumCardinality(const unsigned var, const int card);
   void allocateBasicInternalStructures();
 
   //////////////////////////////////

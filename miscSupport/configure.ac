@@ -57,6 +57,27 @@ AM_CONDITIONAL([NO_ASSERTIONS],[test x$assertions != xyes])
 AM_CONDITIONAL([NO_MODEL_CHECKS],[test x$model_checks != xyes])
 
 
+
+# Checks for programs.
+AC_PROG_CXX
+AC_PROG_CC
+
+#check for Clang, which lies about being GCC
+AC_MSG_CHECKING([if compiling with clang])
+AC_COMPILE_IFELSE(
+[AC_LANG_PROGRAM([],[[
+#ifndef __clang__
+  not clang
+#endif
+]])],
+[CLANG=yes],[CLANG=no])
+AC_MSG_RESULT([$CLANG])
+AM_CONDITIONAL([USE_CLANG_FLAGS],[test x$CLANG = xyes])
+AM_CONDITIONAL([USE_GCC_FLAGS],[test x$GCC = xyes -a x$GXX = xyes -a x$CLANG = xno])
+AM_PROG_CC_C_O
+m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
+AC_PROG_RANLIB
+
 # The following is for ticket 192. It's somewhat of a kludge.
 # If the build cpp supports "-x assembler-with-cpp" (it's 
 # likely only GCC's cpp does), we make GMTK's default cpp 
@@ -99,14 +120,6 @@ AC_ARG_WITH([cppCmd],
             [AC_SUBST([GMTKCPPCMD],[$with_cppCmd])],
             [AC_SUBST([GMTKCPPCMD],[$gmtkCPP])])
 
-
-# Checks for programs.
-AC_PROG_CXX
-AC_PROG_CC
-AM_CONDITIONAL([USE_GCC_FLAGS],[test x$GCC = xyes -a x$GXX = xyes])
-AM_PROG_CC_C_O
-m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
-AC_PROG_RANLIB
 
 AC_CHECK_FILE([$srcdir/../.hg/dirstate],[
   AC_CHECK_PROG([HAVE_HG],[hg],[yes])

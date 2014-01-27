@@ -65,7 +65,8 @@ class JunctionTree;
 // from the corresponding clique when needed. Also, clique table
 // storage is currently (at least as of Jan 2009) more dense (and
 // probably more efficient) than separator table storage.
-struct PartitionTables {
+class PartitionTables {
+ public:
 
   MaxCliqueTable* maxCliques;
   ConditionalSeparatorTable* separatorCliques;

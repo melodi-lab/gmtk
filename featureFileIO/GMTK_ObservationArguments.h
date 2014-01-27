@@ -702,6 +702,12 @@ extern bool ObservationsAllowNan;
 
   static bool print_version_and_exit = false;
 
+#if HAVE_CONFIG_H
+static const char *gmtk_version_id = PACKAGE_STRING;
+#else
+static const char *gmtk_version_id = "unknown";
+#endif
+
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),

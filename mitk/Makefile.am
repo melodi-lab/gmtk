@@ -24,8 +24,13 @@ if USE_GCC_FLAGS
   GCC_FLAGS = -Wall $(ANSI)
 else
 # unknown compiler
+if USE_CLANG_FLAGS
+  OPTFLAGS = -O3
+  GCC_FLAGS = -Wno-c99-extensions
+else
   OPTFLAGS =
   GCC_FLAGS =
+endif
 endif
 
 DBFLAGS =
