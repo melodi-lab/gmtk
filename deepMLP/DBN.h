@@ -492,7 +492,8 @@ private:
     unsigned lastUpdate = t + numUpdates; // last update # for this invocation
     if (lastUpdate > (unsigned)hyperParams.numUpdates) lastUpdate = hyperParams.numUpdates;  // in case numUpdates doesn't divide evenly
     infoMsg(IM::Training, IM::Moderate, "Training updates %u to %u of %d\n", t, lastUpdate, hyperParams.numUpdates);
-    for (; t <= lastUpdate; t+=1) {
+    unsigned iterations = 0; // iterations since last check score
+    for (; t <= lastUpdate; t+=1, iterations += 1) {
       // momentum increases from 0.5 to max
       // using formula from Sutskever et al. 2013
       double tFrac = (double)t / hyperParams.numUpdates;
@@ -503,9 +504,13 @@ private:
 
       // output online training objective value regularly
       if (checkSignal || t % hyperParams.checkInterval == 0) {
-        double score = totalScore / hyperParams.checkInterval;
-	infoMsg(IM::Training, IM::Default, "Step: %d\nMomentum: %e\nNew score: %e\n\n", t, momentum, score);
+        double score;
+	if (iterations > 0) {
+	  score = totalScore / iterations;
+	  infoMsg(IM::Training, IM::Default, "Step: %d\nMomentum: %e\nNew score: %e\n\n", t, momentum, score);
+	}
         totalScore = 0;
+	iterations = 0;
 	checkSignal = false;
       }
     }
