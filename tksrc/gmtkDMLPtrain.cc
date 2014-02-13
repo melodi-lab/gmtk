@@ -275,6 +275,9 @@ main(int argc,char*argv[])
       if (i == numLayers - 1) {
 	error("ERROR: gmtkDMLPtrain only supports linear or softmax for the output layer\n");
       }
+      if (pretrainMode == DBN::CD) {
+	error("ERROR: gmtkDMLPtrain does not support rectified linear activation functions with -pretrainType CD\n");
+      }
       if (DBN::sparseInitLayer && !warned) {
 	warning("WARNING: Deep NN '%s' uses rectified linear, which may perform poorly without -sparseInitLayer F\n",
 		dnn->name().c_str());

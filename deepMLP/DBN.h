@@ -648,45 +648,45 @@ private:
       int miniBatchLD = miniBatch.Ld();
       double const *miniBatchP = miniBatch.Start();
       for (unsigned c=0; c < numCols; c+=1, miniBatchP += miniBatchLD) {
-				for (unsigned r=0; r < numRows; r+=1) {
-					inputBiases[r] += miniBatchP[r];
-				}
+	for (unsigned r=0; r < numRows; r+=1) {
+	  inputBiases[r] += miniBatchP[r];
+	}
       }
     }
     for (unsigned r=0; r < numRows; r+=1) {
       inputBiases[r] /= n;
     }
 		
-		for (unsigned r=0; r < numRows; r+=1) {
-			double x = inputBiases[r];
-			switch (actFunc.actType) {
-			case Layer::ActFunc::LOG_SIG:
-				x = eps + (1 - 2 * eps) * x;
-				if (x <= 0.0 || 1.0 <= x) {
-					error("ERROR: input %e is out of the allowed range (0,1) for the sigmoid input activation function\n", x);
-				}
-				x = log(x / (1-x));
-				break;
+    for (unsigned r=0; r < numRows; r+=1) {
+      double x = inputBiases[r];
+      switch (actFunc.actType) {
+      case Layer::ActFunc::LOG_SIG:
+	x = eps + (1 - 2 * eps) * x;
+	if (x <= 0.0 || 1.0 <= x) {
+	  error("ERROR: input %e is out of the allowed range (0,1) for the sigmoid input activation function\n", x);
+	}
+	x = log(x / (1-x));
+	break;
 				
-			case Layer::ActFunc::TANH:
-				x = (1 - eps) * x;
-				if (x <= -1.0 || 1.0 <= x) {
-					error("ERROR: input %e is out of the allowed range (-1,1) for the hyperbolic tangent input activation function\n", x);
-				}
-				x = atanh(x);
-				break;
+      case Layer::ActFunc::TANH:
+	x = (1 - eps) * x;
+	if (x <= -1.0 || 1.0 <= x) {
+	  error("ERROR: input %e is out of the allowed range (-1,1) for the hyperbolic tangent input activation function\n", x);
+	}
+	x = atanh(x);
+	break;
 				
-			case Layer::ActFunc::CUBIC:
-				x = x * x * x / 3 + x;
-				break;
+      case Layer::ActFunc::CUBIC:
+	x = x * x * x / 3 + x;
+	break;
 				
-			default:
-				// LINEAR and RECT_LIN require no transformation
-				break;
-			}
+      default:
+	// LINEAR and RECT_LIN require no transformation
+	break;
+      }
 
-			inputBiases[r] = x;
-		}
+      inputBiases[r] = x;
+    }
   }
 
 

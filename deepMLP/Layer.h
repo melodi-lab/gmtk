@@ -135,9 +135,9 @@ public:
       case CUBIC:
         {
           auto func = [&](double aVal, double xVal)->double {
-						double res = CubicSigmoid(aVal);
+	    double res = CubicSigmoid(aVal);
             negll += (res - xVal) * (res - xVal);
-						return res;
+	    return res;
           };
           inputs.Apply(func, labels);
           negll /= 2;
@@ -163,17 +163,17 @@ public:
         }
         break;
 
-			case RECT_LIN:
-				{
+      case RECT_LIN:
+	{
           auto func = [&](double aVal, double xVal)->double {
-						double res = max(aVal, 0.0);
+	    double res = max(aVal, 0.0);
             negll += (res - xVal) * (res - xVal);
-						return res;
+	    return res;
           };
           inputs.Apply(func, labels);
           negll /= 2;
-				}
-				break;
+	}
+	break;
 
       default:
         abort();
