@@ -175,8 +175,7 @@ main(int argc,char*argv[])
   ////////////////////////////////////////////
   // parse arguments
   bool parse_was_ok = Arg::parse(argc,(char**)argv,
-"\nThis program prints out some information about the number of variables\n"
-"in a model and which GMTK features the model uses\n");
+    "\nThis program trains deep neural networks for use with DeepVECPTs.\n");
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }
