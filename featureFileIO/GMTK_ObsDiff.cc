@@ -38,6 +38,7 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "debug.h"
 #include "arguments.h"
 #include "GMTK_WordOrganization.h"
+#include "rand.h"
 
 #include "GMTK_ObsPrint.h"
 #include "GMTK_ObsKLT.h"
@@ -90,7 +91,7 @@ extern size_t bin_search(float *array,
     ( strncasecmp(var, "full", 5) == 0 ) || \
     ( strlen(var) == 0 ) )
 
-
+RAND rnd(false);
 
 FileSource *
 openOneSourceFile(char *ofs,

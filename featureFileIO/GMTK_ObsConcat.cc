@@ -70,6 +70,7 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "GMTK_UpsampleFilter.h"
 #include "GMTK_UpsampleSmoothFilter.h"
 
+#include "rand.h"
 #include "range.h"
 #include "vbyteswapping.h"
 
@@ -93,6 +94,7 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "ObsArguments.h"
 #undef GMTK_ARGUMENTS_DEFINITION
 
+RAND rnd(false);
 
 char *output_fname = NULL; // Output pfile name.
 char * outputList = NULL;
