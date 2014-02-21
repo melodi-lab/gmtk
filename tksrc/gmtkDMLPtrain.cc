@@ -175,8 +175,7 @@ main(int argc,char*argv[])
   ////////////////////////////////////////////
   // parse arguments
   bool parse_was_ok = Arg::parse(argc,(char**)argv,
-"\nThis program prints out some information about the number of variables\n"
-"in a model and which GMTK features the model uses\n");
+    "\nThis program trains deep neural networks for use with DeepVECPTs.\n");
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }
@@ -275,8 +274,8 @@ main(int argc,char*argv[])
       if (i == numLayers - 1) {
 	error("ERROR: gmtkDMLPtrain only supports linear or softmax for the output layer\n");
       }
-      if (pretrainMode != DBN::NONE) {
-	error("ERROR: gmtkDMLPtrain only supports rectified linear activation functions with -pretrainType none\n");
+      if (pretrainMode == DBN::CD) {
+	error("ERROR: gmtkDMLPtrain does not support rectified linear activation functions with -pretrainType CD\n");
       }
       if (DBN::sparseInitLayer && !warned) {
 	warning("WARNING: Deep NN '%s' uses rectified linear, which may perform poorly without -sparseInitLayer F\n",

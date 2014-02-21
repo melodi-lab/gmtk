@@ -123,12 +123,23 @@ public:
         break;
 
       case LINEAR:
-      case CUBIC:
         {
           auto func = [&](double aVal, double xVal) {
             negll += (aVal - xVal) * (aVal - xVal);
           };
           inputs.Visit(func, labels);
+          negll /= 2;
+        }
+        break;
+
+      case CUBIC:
+        {
+          auto func = [&](double aVal, double xVal)->double {
+	    double res = CubicSigmoid(aVal);
+            negll += (res - xVal) * (res - xVal);
+	    return res;
+          };
+          inputs.Apply(func, labels);
           negll /= 2;
         }
         break;
@@ -151,6 +162,18 @@ public:
           inputs.Apply(func, labels);
         }
         break;
+
+      case RECT_LIN:
+	{
+          auto func = [&](double aVal, double xVal)->double {
+	    double res = max(aVal, 0.0);
+            negll += (res - xVal) * (res - xVal);
+	    return res;
+          };
+          inputs.Apply(func, labels);
+          negll /= 2;
+	}
+	break;
 
       default:
         abort();

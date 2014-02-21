@@ -233,7 +233,7 @@ main(int argc,char*argv[])
   ////////////////////////////////////////////
   // parse arguments
   bool parse_was_ok = Arg::parse(argc,(char**)argv,
-"\nThis program determines the most likely values of the hidden variabls\n");
+"\nThis program determines the most likely values of the hidden variables\n");
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }

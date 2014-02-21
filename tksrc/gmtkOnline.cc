@@ -217,8 +217,7 @@ main(int argc,char*argv[])
   ////////////////////////////////////////////
   // parse arguments
   bool parse_was_ok = Arg::parse(argc,(char**)argv,
-"\nThis program computes the probability of evidence, and can also\n"
-"compute the posterior distributions of the hidden variables\n");
+"\nThis program does filtering of online streams of observations.\n");
   if(!parse_was_ok) {
     // Arg::usage(); 
     exit(-1);
