@@ -1055,8 +1055,7 @@ assert(d.NumC() == l.NumC());
 	case NONE:
 	  break;
 	  
-	default:
-	  abort();
+	default: assert(false); // don't specify illegal pretraining types...
 	}
 	if (layer == 0) {
 	  // apply input layer to observation file data
