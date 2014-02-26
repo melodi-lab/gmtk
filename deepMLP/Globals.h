@@ -91,7 +91,7 @@ template<class C>
 void Serialize(const C & c, const string & filename) {
   ofstream outStream(filename, ios::out|ios::binary);
   if (!outStream.is_open()) {
-    error("Error: Couldn't open serialized file '%s'\n", filename.c_str());
+    error("Error: Couldn't open file '%s' to serialize to\n", filename.c_str());
   }
 
   c.Serialize(outStream);
@@ -106,8 +106,7 @@ template<class C>
 void Deserialize(C & c, const string & filename) {
   ifstream inStream(filename, ios::in|ios::binary);
   if (!inStream.is_open()) {
-    cout << "Couldn't open serialized file " << filename.c_str() << endl;
-    abort();
+    error("Error: Couldn't open serialized file '%s'\n", filename.c_str());
   }
 
   c.Deserialize(inStream);

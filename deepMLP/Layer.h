@@ -89,7 +89,7 @@ public:
         }
         break;
 
-      default: abort();
+      default: assert(false); // don't construct illegal NNs...
       }
     }
 
@@ -175,8 +175,7 @@ public:
 	}
 	break;
 
-      default:
-        abort();
+      default: assert(false); // don't construct illegal NNs...
       }
 
       return negll;
@@ -225,7 +224,7 @@ public:
         }
         break;
 
-      default: abort();
+      default: assert(false); // don't construct illegal NNs...
       }
     }
 
@@ -245,6 +244,7 @@ public:
         }
         break;
 
+      case RECT_LIN:
       case LINEAR:
       case CUBIC:
         {
@@ -253,8 +253,7 @@ public:
         }
         break;
 
-      default:
-        abort();
+      default: assert(false); // don't construct illegal NNs...
       }
     }
   };
