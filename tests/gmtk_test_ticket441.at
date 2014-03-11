@@ -11,7 +11,8 @@ AT_CHECK([
       -I$srcdir/../IEEEFloatingpoint -I$builddir/../IEEEFloatingpoint \
       -I$srcdir/../tksrc -I$builddir/../tksrc                         \
       $TEST_AND_DEV/didea_vesep_testCliquePrint/dlopen_cfunc_dts.cc
-  g++ -O3 -shared -o dlopen_cfunc_dts.so dlopen_cfunc_dts.o])
+  g++ -O3 -shared -o dlopen_cfunc_dts.so dlopen_cfunc_dts.o],
+  [], [ignore], [ignore])
 
 # gmtkJT will succeed if the bug is fixed
 
