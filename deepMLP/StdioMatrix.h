@@ -64,7 +64,7 @@ public:
       perror(fileName);
       error("ERROR: unable to create temporary file '%s'\n", fileName);
     }
-#if HAVE_FDOPEN
+#if HAVE_FDOPEN && !defined(__CYGWIN__)
     f = fdopen(fd, "r+b");
     if (!f) {
       perror(fileName);
@@ -104,7 +104,7 @@ public:
 	perror(fileName);
 	error("ERROR: unable to create temporary file '%s'\n", fileName);
       }
-#if HAVE_FDOPEN
+#if HAVE_FDOPEN && !defined(__CYGWIN__)
       f = fdopen(fd, "bw+");
       if (!f) {
 	perror(fileName);

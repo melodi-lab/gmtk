@@ -1752,6 +1752,8 @@ static float normalizeScoreEachClique = MaxClique::normalizeScoreEachClique;
 #if defined(GMTK_ARG_DMLP_TRAINING_PARAMS)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
+#include <strings.h>
+
 #include "DBN.h"
 
 static char const *DMLPName           = NULL;

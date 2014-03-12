@@ -139,13 +139,13 @@ private:
   AllocatingVector _params, _deltaParams, _savedParams;
 
   vector<MutableMatrix> _W; // weight matrices for each layer
-  vector<MutableVector> _B; // biases for each layer
+  vector<MutableVector> B; // biases for each layer
   vector<MutableMatrix> _deltaW; // cumulative weight update for each layer (with momentum)
   vector<MutableVector> _deltaB; // cumulative bias update for each layer (with momentum)
   vector<MutableMatrix> _savedW; // saved weights
   vector<MutableVector> _savedB; // saved biases
 
-	// vectors pointing to all parameters _W and _B for each layer (and deltas and saved)
+	// vectors pointing to all parameters _W and B for each layer (and deltas and saved)
   vector<MutableVector> _layerParams, _layerDeltaParams, _layerSavedParams;
 
   // space for temporary values during CD training
@@ -168,7 +168,7 @@ private:
   void InitLayer(int layer) {
     if (sparseInitLayer) {
       // sparse initialization strategy from Martens, 2010
-      _B[layer] *= 0;
+      B[layer] *= 0;
       MutableMatrix W = _W[layer];
       W *= 0;
       for (int c = 0; c < W.NumC(); ++c) {
@@ -180,7 +180,7 @@ private:
       }
     } else {
       // dense initialization strategy from Glorot & Bengio 2010
-      _B[layer] *= 0;
+      B[layer] *= 0;
       double max = 1.0 / sqrt(_W[layer].NumR());
       _W[layer].Vec().Replace([&]() { return (2 * rnd.drand48() - 1) * max; });
     }
@@ -286,7 +286,7 @@ private:
       _layer(layer)
     {
       if (resumeTraining) {
-        _inputBiases.CopyFrom(dbn._B[layer]);
+        _inputBiases.CopyFrom(dbn.B[layer]);
       } else {
 	DBN::InitializeInputBiases(batchSrc, _inputBiases, actFunc, 1e-3, epochFraction);
       }
@@ -695,7 +695,7 @@ private:
     Layer::ActFunc lowerActFunc = (layer == 0) ? _iActFunc : _hActFunc[layer-1];
 
     Matrix weights = _W[layer];
-    Vector topBiases = _B[layer];
+    Vector topBiases = B[layer];
     Layer & topLayer = _layers[layer];
 
     _tempBottomSample.Resize(input);
@@ -732,7 +732,7 @@ private:
     Layer::ActFunc lowerActFunc = (layer == 0) ? _iActFunc : _hActFunc[layer-1];
 
     Matrix weights = _W[layer];
-    Vector topBiases = _B[layer];
+    Vector topBiases = B[layer];
 
     Layer & topLayer = _layers[layer];
     Matrix topProbs = topLayer.ActivateUp(weights, topBiases, input, _hActFunc[layer]);
@@ -771,7 +771,7 @@ public:
     Initialize(numLayers, iSize, hSize, oSize, iActFunc, hActFunc);
     for (int i=0; i < numLayers; i+=1) {
       _W[i].CopyFrom(W[i]);
-      _B[i].CopyFrom(B[i]);
+      B[i].CopyFrom(B[i]);
     }
   }
 
@@ -798,7 +798,7 @@ public:
     _savedParams.Resize(numParams);
 
     _W.resize(numLayers);
-    _B.resize(numLayers);
+    B.resize(numLayers);
     _deltaW.resize(numLayers);
     _deltaB.resize(numLayers);
     _savedW.resize(numLayers);
@@ -814,7 +814,7 @@ public:
       _savedW[i] = _savedParams.SubVector(start, endW).AsMatrix(bSize, tSize);
 
       int endB = endW + tSize;
-      _B[i] = _params.SubVector(endW, endB);
+      B[i] = _params.SubVector(endW, endB);
       _deltaB[i] = _deltaParams.SubVector(endW, endB);
       _savedB[i] = _savedParams.SubVector(endW, endB);
 
@@ -836,7 +836,7 @@ public:
 
   Vector const &getBias(int layer) {
     assert(0 <= layer && layer < _numLayers);
-    return _B[layer];
+    return B[layer];
   }
 
 	// read all parameters from disk
@@ -909,12 +909,12 @@ public:
       warning("WARNING: -nnChunkSize %u MiB is too small. One training instances requires %u bytes\n",
 	      nnChunkSize, input.Ld() * sizeof(double));
     }
-    StdioMatrix output(_B[layer].Len(), input.NumC(), _B[layer].Len());
+    StdioMatrix output(B[layer].Len(), input.NumC(), B[layer].Len());
     int start=0, end, lastCol = input.NumC();
     for ( ; start < lastCol ; start += miniBatchSize) {
       end = (start + miniBatchSize <= lastCol) ? start + miniBatchSize : lastCol;
       Matrix const &m = input.GetCols(start, end);
-      Matrix const &activated = _layers[layer].ActivateUp(_W[layer], _B[layer], m, _hActFunc[layer]);
+      Matrix const &activated = _layers[layer].ActivateUp(_W[layer], B[layer], m, _hActFunc[layer]);
       output.PutColsM(activated, (int)start);
     }
     return output;
@@ -931,7 +931,7 @@ public:
 	      nnChunkSize, numRows * sizeof(double));
     }
     unsigned start, end, lastCol = min(numCols, batchSrc->epochSize());
-    StdioMatrix output(_B[layer].Len(), lastCol, _B[layer].Len());
+    StdioMatrix output(B[layer].Len(), lastCol, B[layer].Len());
     //    assert(batchSrcLabels.NumC() == (int)lastCol);
     for (start=0, end=miniBatchSize; start < lastCol ; start += miniBatchSize, end += miniBatchSize) {
       unsigned batchSize;
@@ -946,7 +946,7 @@ public:
       Matrix d, l; // instance data, labels
       batchSrc->getBatch(batchSize, d, l);
 assert(d.NumC() == l.NumC());
-      output.PutColsM( _layers[layer].ActivateUp(_W[layer], _B[layer], d, _hActFunc[layer]) , start);
+      output.PutColsM( _layers[layer].ActivateUp(_W[layer], B[layer], d, _hActFunc[layer]) , start);
       batchSrcLabels.PutColsM(l, start);
     }
     return output;
@@ -956,7 +956,7 @@ assert(d.NumC() == l.NumC());
 	// given an input matrix to a given layer, compute the output matrix
 	// by multiplying by weights and adding biases
   Matrix MapLayer(const Matrix & input, int layer) const {
-    return _layers[layer].ActivateUp(_W[layer], _B[layer], input, _hActFunc[layer]);
+    return _layers[layer].ActivateUp(_W[layer], B[layer], input, _hActFunc[layer]);
   }
 
 

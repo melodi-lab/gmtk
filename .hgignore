@@ -103,6 +103,8 @@ deepMLP/orderTest
 deepMLP/phipacTest
 tksrc/abstest
 tksrc/flat2vit
+tksrc/vitnorm.cc
+tksrc/vitnorm
 tksrc/unrevisioned
 tksrc/gmtkDTindex
 tksrc/gmtkEMtrain

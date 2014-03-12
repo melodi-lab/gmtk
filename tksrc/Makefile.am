@@ -224,7 +224,10 @@ gmtkTie \
 gmtkModelInfo \
 gmtkOnline \
 gmtkPrint \
-$(dmlp_programs) $(GMTKVIZ) $(OSXBUNDLE)
+$(dmlp_programs) \
+$(GMTKVIZ) \
+$(OSXBUNDLE)
+
 EXTRA_PROGRAMS = gmtkDMLPtrain gmtkViz gmtkViz.app abstest
 
 gmtkTie_SOURCES = gmtkTie.cc
@@ -236,17 +239,25 @@ gmtkTime_SOURCES = gmtkTime.cc
 gmtkEMtrain_SOURCES = gmtkEMtrain.cc
 
 
-gmtkDMLPtrain_SOURCES = gmtkDMLPtrain.cc
-gmtkDMLPtrain_CPPFLAGS = $(AM_CPPFLAGS) $(VERSIONFLAG)
-gmtkDMLPtrain_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(BLAS_CFLAGS) $(PTHREAD_CFLAGS) $(ISOCXX11FLAGS)
-gmtkDMLPtrain_LDADD = $(LDADD) $(PTHREAD_LIBS)
+gmtkDMLPtrain_CPPFLAGS=$(AM_CPPFLAGS) $(VERSIONFLAG)
+if CYGWIN_FLAGS
+  gmtkDMLPtrain_CPPFLAGS+=-D__USE_XOPEN2K -D_XOPEN_SOURCE=701
+endif
+  gmtkDMLPtrain_CXXFLAGS=$(DEBUGFLAGS) $(OPTFLAGS) $(BLAS_CFLAGS) $(PTHREAD_CFLAGS) $(ISOCXX11FLAGS)
+if CYGWIN_FLAGS
+  gmtkDMLPtrain_CXXFLAGS+=-msse2
+endif
+gmtkDMLPtrain_LDADD=$(LDADD) $(PTHREAD_LIBS)
 if BUILD_DMLP
-gmtkDMLPtrain_LDADD += $(builddir)/../deepMLP/libDMLP.a
+  gmtkDMLPtrain_LDADD+=$(builddir)/../deepMLP/libDMLP.a
 endif
 if BUILD_PHIPAC
-gmtkDMLPtrain_LDADD += $(builddir)/../deepMLP/libPHiPAC.a
+  gmtkDMLPtrain_LDADD+=$(builddir)/../deepMLP/libPHiPAC.a
 endif
-gmtkDMLPtrain_LDADD += $(BLAS_LIBS)
+gmtkDMLPtrain_LDADD+=$(BLAS_LIBS)
+gmtkDMLPtrain_SOURCES = gmtkDMLPtrain.cc
+
+gmtkDMLPtrain_exe_CPPFLAGS=$(gmtkDMLPtrain_CPPFLAGS)
 
 gmtkKernel_SOURCES = gmtkKernel.cc
 
@@ -313,7 +324,14 @@ vitnorm_SOURCES = vitnorm.ll
 
 abstest_SOURCES = abstest.cc
 abstest_CPPFLAGS = $(AM_CPPFLAGS) $(VERSIONFLAG)
+if CYGWIN_FLAGS
+#  abstest_CPPFLAGS+=-D__USE_XOPEN2K -D_XOPEN_SOURCE=701
+  abstest_CPPFLAGS+=-U__STRICT_ANSI__
+endif
 abstest_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(BLAS_CFLAGS) $(PTHREAD_CFLAGS) $(ISOCXX11FLAGS) 
+if CYGWIN_FLAGS
+  abstest_CXXFLAGS+=-msse2
+endif
 abstest_LDADD = $(LDADD) $(PTHREAD_LIBS)
 if BUILD_DMLP
 abstest_LDADD += $(builddir)/../deepMLP/libDMLP.a

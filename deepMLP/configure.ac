@@ -49,9 +49,9 @@ AM_CONDITIONAL([CYGWIN_FLAGS],[test x"$XOPEN" != x])
 # the DMLP training code.
 
 m4_include([m4/gmtk_cxx11])
-if test x$gmtk_cxx11 = xyes -a x$XOPEN = x; then
+if test x$gmtk_cxx11 = xyes; then
   AC_SUBST([dmlp_library],[libDMLP.a])
-  AC_SUBST([check_programs],['dmlp mnist label dmlpTest orderTest phipacTest'])
+  AC_SUBST([check_programs],['dmlp$(EXEEXT) mnist$(EXEEXT) label$(EXEEXT) dmlpTest$(EXEEXT) orderTest$(EXEEXT) phipacTest$(EXEEXT)'])
 fi
 
 # Checks for libraries.

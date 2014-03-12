@@ -133,10 +133,10 @@ esac
 # the DMLP training code.
 
 m4_include([../deepMLP/m4/gmtk_cxx11])
-if test x$gmtk_cxx11 = xyes -a x$XOPEN = x; then
+if test x$gmtk_cxx11 = xyes; then
   AC_SUBST([dmlp_libraries],[../deepMLP/libDMLP.a])
-  AC_SUBST([dmlp_programs],[gmtkDMLPtrain])
-  AC_SUBST([dmlp_check_programs],[abstest])
+  AC_SUBST([dmlp_programs],['gmtkDMLPtrain$(EXEEXT)'])
+  AC_SUBST([dmlp_check_programs],['abstest$(EXEEXT)'])
   AM_CONDITIONAL([BUILD_DMLP],[true])
 else
   AM_CONDITIONAL([BUILD_DMLP],[false])
