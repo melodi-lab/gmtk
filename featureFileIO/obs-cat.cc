@@ -31,6 +31,7 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "debug.h"
 #include "arguments.h"
 #include "vbyteswapping.h"
+#include "rand.h"
 
 #include "GMTK_WordOrganization.h"
 #include "GMTK_ObservationSource.h"
@@ -53,6 +54,7 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "GMTK_AffineFilter.h"
 #include "GMTK_Stream.h"
 
+RAND rnd(false);
 
 #define GMTK_ARG_CPP_CMD_OPTS
 #define GMTK_ARG_OBS_MATRIX_XFORMATION
