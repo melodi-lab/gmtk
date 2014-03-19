@@ -71,6 +71,7 @@ public:
 	const bool begin(iterator &it) {
 	  it.b = this->table.ptr;
 	  it.end_b = it.b + this->table.len();
+
 	  while ( it.b != it.end_b && (! it.b->active) ) {
 	    ++it.b;
 	  }

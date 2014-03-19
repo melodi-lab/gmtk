@@ -149,6 +149,22 @@ public:
 #endif
   }
 
+    //Do not clear the data, only reset the structure
+    void reset(unsigned approximateStartingSize = 
+	     hash_abstract::HashTableDefaultApproxStartingSize) {
+
+        table.reset(1);
+        numberUniqueEntriesInserted=0;
+        #if defined(HASH_PRIME_SIZE)
+            findPrimesArrayIndex(approximateStartingSize);
+            initialPrimesArrayIndex = primesArrayIndex;
+            resize(HashTable_PrimesArray[primesArrayIndex]);
+        #else
+            resize(nextPower2(approximateStartingSize));
+        #endif
+    }
+
+
 #ifdef COLLECT_COLLISION_STATISTICS
   // clear out the statistics
   void clearStats() {
@@ -167,6 +183,8 @@ public:
     numInserts++;
 #endif
 
+
+
     // compute the address
     unsigned a = entryOf(key,table);
 
@@ -176,7 +194,6 @@ public:
       table.ptr[a].key = key;
       table.ptr[a].active = true;
       table.ptr[a].item = val;
-
 
       // time to resize if getting too big.
       if (++numberUniqueEntriesInserted >= numEntriesToCauseResize) {

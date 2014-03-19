@@ -7,10 +7,15 @@
  * 
  *  $Header$
  * 
- * Copyright (C) 2001 Jeff Bilmes
- * Licensed under the Open Software License version 3.0
- * See COPYING or http://opensource.org/licenses/OSL-3.0
+ * Copyright (c) 2001, < fill in later >
  *
+ * Permission to use, copy, modify, and distribute this
+ * software and its documentation for any non-commercial purpose
+ * and without fee is hereby granted, provided that the above copyright
+ * notice appears in all copies.  The University of Washington,
+ * Seattle make no representations about
+ * the suitability of this software for any purpose.  It is provided
+ * "as is" without express or implied warranty.
  *
  */
 
@@ -24,6 +29,9 @@
 #include "fileParser.h"
 #include "shash_map_iter.h"
 #include "logp.h"
+
+
+#include <vector>
 
 
 /**
@@ -79,6 +87,9 @@ class LatticeADT : public NamedObject {
   friend class LatticeNodeCPT;
   friend class LatticeEdgeCPT;
 
+
+   
+
  protected:
   /**
    * lattice edge
@@ -95,7 +106,12 @@ class LatticeADT : public NamedObject {
     /** score used in GMTK */
     logpr gmtk_score;
 
-    LatticeEdge() : emissionId(0), gmtk_score(1.0) {}
+
+    //TODO: need to add more parameters
+    //length of an edge
+    unsigned length;
+
+    LatticeEdge() : emissionId(0), gmtk_score(1.0), length(0) {}
   };
 
   /*
@@ -131,10 +147,47 @@ class LatticeADT : public NamedObject {
     unsigned endFrame;
     /** possible out-going edges */
     shash_map_iter<unsigned, LatticeEdgeList > edges;
+    
+    /** hashed on different delta values */
+    //shash_map_iter<unsigned, shash_map_iter<unsigned, LatticeEdgeList> > larger_cpts;
+    /** cached instance */
+    shash_map_iter<unsigned, LatticeEdgeList>* larger_cpt;
 
-    LatticeNode() : startFrame(0), endFrame(0), edges(shash_map_iter<unsigned, LatticeEdgeList>(1)) {}
+    sArray <shash_map_iter<unsigned, LatticeEdgeList>* > larger_cpts;
+    //std::vector<shash_map_iter<unsigned, LatticeEdgeList> > larger_cpts;
+
+    unsigned max_delta;
+
+    LatticeNode() : startFrame(0), endFrame(0), edges(shash_map_iter<unsigned, LatticeEdgeList>(1)), 
+                    larger_cpt(NULL),
+                    larger_cpts(sArray<shash_map_iter<unsigned, LatticeEdgeList>* >(15)),
+                    //larger_cpts(15, shash_map_iter<unsigned, LatticeEdgeList>(1)),
+                    max_delta(99999999) {
+                        for(unsigned i=0; i<15; i++) larger_cpts[i] = NULL;
+                    }
     ~LatticeNode(); 
   };
+
+
+
+public:
+    void generateAllLargerCPTs();
+    void generateLargerCPTs(LatticeNode & node, unsigned delta);
+
+    void queryLargerCPT(LatticeNode & node, unsigned delta, shash_map_iter<unsigned, LatticeEdgeList> & result);
+    void addMap2Map(shash_map_iter<unsigned, LatticeEdgeList> & map1, shash_map_iter<unsigned, LatticeEdgeList> & map2);
+
+    void dfsOnNode(LatticeNode & cur_node, unsigned delta, shash_map_iter<unsigned, LatticeEdgeList> & result);
+
+    void addNodeEdge2Map(shash_map_iter<unsigned, LatticeEdgeList> & added, unsigned child_id, const LatticeEdge & edge);
+
+    void printLargerCPT(shash_map_iter<unsigned, LatticeEdgeList> & cpt, LatticeADT::LatticeNode & cur_node, unsigned cur_node_id);
+
+    void setGMTKScoresOnLargerCPT(LatticeNode & cur_node);
+
+
+
+protected:
 
 
   /**
@@ -189,6 +242,10 @@ class LatticeADT : public NamedObject {
   unsigned _timeCardinality;
 
   unsigned score_options;
+
+    //To enable multiple jumps, let user specify the cardinality for transition
+    unsigned _transitionCardinality;
+
 };
 
 

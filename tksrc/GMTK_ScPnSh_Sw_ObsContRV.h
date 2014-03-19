@@ -70,10 +70,12 @@ public:
 
   virtual logpr maxValue() {
     logpr p = Sw_ObsContRV::maxValue();
+    /*
     if (rv_info.rvWeightInfo.size() > 1) 
       modifyProbability(p,rv_info.rvWeightInfo[cachedSwitchingState],this);
     else 
       modifyProbability(p,rv_info.rvWeightInfo[0],this);
+    */
     return p;
   }
 
