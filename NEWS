@@ -8,6 +8,7 @@ Please report bugs at https://j.ee.washington.edu/trac/gmtk
 
 Version 1.X.Y  2014-??-??
 
+        * Fixed unoptimized build failure
         * Fixed some incorrect help messages
         * Fixed neural network training initialization bugs
         * Added support for autoencoder pretraining of rectified linear

@@ -85,6 +85,8 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "ObsArguments.h"
 #undef GMTK_ARGUMENTS_DEFINITION
 
+RAND rnd(false);
+
 FileSource *gomFS;
 
 void (*copy_swap_func_ptr)(size_t, const intv_int32_t*, intv_int32_t*)=NULL;

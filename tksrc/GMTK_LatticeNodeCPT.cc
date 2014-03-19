@@ -349,40 +349,48 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
 	  = new shash_map_iter<unsigned, LatticeADT::LatticeEdgeList>::iterator();
 
 
-        unsigned delta = RV2DRV(parents[1])->val;
-
-
+    unsigned delta = RV2DRV(parents[1])->val;
 
     unsigned node_id = RV2DRV(parents[0])->val;
-    unsigned target_id = node_id + delta;
 
 /*
+    unsigned target_id = node_id + delta;
+
     if(target_id > 12) {
         it.internalStatePtr = NULL;
         p.set_to_zero();
         return;
     }
+
 */
 
 
-    LatticeADT::LatticeNode &node_before = _latticeAdt->_latticeNodes[target_id - 1];
+    //printf("node id: %u, delta: %u, cpt size: %u, max_delta: %u\n", node_id, delta, node.larger_cpts.size(), node.max_delta);
 
-    //printf("%u, %u, delta %u, %u\n", node_id, target_id, delta, node_before.edges.totalNumberEntries());
+    if(delta >= node.max_delta || node.larger_cpts[delta] == NULL) {
+        it.internalStatePtr = NULL;
+        p.set_to_zero();
+        return;
+    }
 
-    bool new_cpt = false;
+
+
+
+    //LatticeADT::LatticeNode &node_before = _latticeAdt->_latticeNodes[target_id - 1];
+
     //if(node.larger_cpts[delta].totalNumberEntries() <= 0) {
+    
+
+    /*
+    bool new_cpt = false;
     if(node.larger_cpts[delta] == NULL) {
-        //addMap2Map(node_before.edges, node.larger_cpts[delta]);
 
         new_cpt = true;
-        //node.larger_cpt = &node.larger_cpts[delta];
         node.larger_cpt = node.larger_cpts[delta];
-
-
-        //if(new_cpt) setGMTKScoresOnLargerCPT(node);
 
         printf("one larger cpt size: %u\n", node.larger_cpt->totalNumberEntries());
     }
+    */
 
     
     //node.larger_cpt = &node.larger_cpts[delta];
@@ -392,7 +400,7 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
     
 
 
-        node.larger_cpt->begin(*pit);
+    node.larger_cpt->begin(*pit);
         
 
 
@@ -478,7 +486,13 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
 
         unsigned delta = RV2DRV(parents[1])->val;
 
-        
+        if(delta >= node.max_delta || node.larger_cpts[delta] == NULL) {
+            it.internalStatePtr = NULL;
+            p.set_to_zero();
+            return;
+        }
+
+        node.larger_cpt = node.larger_cpts[delta];        
         node.larger_cpt->begin(*pit);
 
 

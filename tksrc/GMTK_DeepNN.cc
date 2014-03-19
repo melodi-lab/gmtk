@@ -189,7 +189,7 @@ DeepNN::read(iDataStreamFile& is)
 	  if (option_name != matrixNum) {
 	    string error_message;
 	    stringprintf(error_message, "Expected 'matrix%u:name' but got '%s'",
-			 layer, layer, str.c_str());
+			 layer, str.c_str());
 	    throw(error_message);
 	  }
 	  layer_matrix_name[layer] = option_value;

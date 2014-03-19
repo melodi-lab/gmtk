@@ -150,7 +150,7 @@ usr1_handler(int arg) {
 /*
  * definition of needed global arguments
  */
-RAND rnd(false);
+RAND rnd(seedme);
 GMParms GM_Parms;
 #if 0
 ObservationMatrix globalObservationMatrix;

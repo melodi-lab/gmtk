@@ -306,7 +306,10 @@ parserTest \
 testPackCliqueValue \
 testViterbi \
 neghead \
-dlinktest
+dlinktest \
+vitnorm
+
+vitnorm_SOURCES = vitnorm.ll
 
 abstest_SOURCES = abstest.cc
 abstest_CPPFLAGS = $(AM_CPPFLAGS) $(VERSIONFLAG)

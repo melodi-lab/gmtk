@@ -33,6 +33,7 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "error.h"
 #include "debug.h"
 #include "arguments.h"
+#include "rand.h"
 
 #include "GMTK_ObservationSource.h"
 #include "GMTK_FileSource.h"
@@ -77,6 +78,7 @@ Arg Arg::Args[] = {
 
 #define TOO_SMALL (1e-10)
 
+RAND rnd(false);
 
 int 
 main(int argc, char *argv[]) {
