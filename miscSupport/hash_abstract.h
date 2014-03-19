@@ -535,6 +535,9 @@ public:
   {
      unsigned aa = hash_gmtk_d1((UInt32)key);
 
+
+printf("aa %u, key %u\n", aa, (unsigned)(key));
+
 #if defined(HASH_PRIME_SIZE)
      unsigned a = aa % a_table.size();
 #elif defined(HASH_LOC_FOLD)
@@ -545,6 +548,9 @@ public:
 #else
      unsigned a = aa & sizeMask;
 #endif
+
+
+printf("a %u, sizemask %u\n", a, sizeMask);
 
 
  #ifdef COLLECT_COLLISION_STATISTICS
