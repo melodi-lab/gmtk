@@ -140,7 +140,7 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab)
   // Read Lattice Header
   /////////////////////////
 
-  char *s_tmp, *ptr;
+  char *s_tmp, *ptr, *sub_ptr;
   do {
     ifs.read(s_tmp);
     if ( s_tmp == NULL )
@@ -324,6 +324,10 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab)
   // reading links
   double score;
   unsigned endNodeId = 0;
+
+    unsigned edge_global_id = 0;
+
+
   for ( unsigned i = 0; i < _numberOfLinks; i++ ) {
     ifs.readLine(line, linesize);
     ptr = strtok(line, seps);
@@ -386,12 +390,23 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab)
         if((ptr+2)[k] == '|') str_length ++;
     }
     edge.length = str_length;
+    edge.global_id = edge_global_id ++;
+
+    edge.path_labels.insert(1);
+
 
     //printf("%u\n", str_length);
 
 	break;
 
     }
+
+
+    case 'P':
+            //sub_ptr = strtok(ptr + 2, ",");
+            //printf("%s\n", sub_ptr);
+            //while( (sub_ptr = strtok(NULL, ",")) != NULL ) printf("%s\n", sub_ptr);
+    break;
 
 
       case 'a':
@@ -488,19 +503,28 @@ void LatticeADT::generateAllLargerCPTs() {
 
     printf("generating all larger cpts\n");
 
-    for(unsigned i=0; i<_numberOfNodes; i++) {
-        for(unsigned delta=1; delta<_numberOfNodes; delta++) {
-            generateLargerCPTs(_latticeNodes[i], delta);            
+
+    for(unsigned i=_numberOfNodes; i>=1; i--) {
+        //printf("===== %u\n", i);
+        for(unsigned delta=1; delta<_numberOfNodes - i + 1; delta++) {
+
+            //printf("delta %u\n", delta);
+if(delta > 5) break;
+            if(!generateLargerCPTs(_latticeNodes[i - 1], delta)) break;   
         }
     }
+
+    printf("done generating all larger cpts\n");
 }
 
 
 
-void LatticeADT::generateLargerCPTs(LatticeADT::LatticeNode & node, unsigned delta) {
+
+
+bool LatticeADT::generateLargerCPTs(LatticeADT::LatticeNode & node, unsigned delta) {
 
      if(delta >= node.max_delta) {
-            return;
+            return false;
     }
     else {
 
@@ -508,7 +532,7 @@ void LatticeADT::generateLargerCPTs(LatticeADT::LatticeNode & node, unsigned del
 
         //enlarge the cached hash table if necessary
         if(delta >= node.larger_cpts.size()) {
-            //printf("enlarge cpt array size: %u from orig_size: %u\n", delta, node.larger_cpts.size());
+//            printf("enlarge cpt array size: %u from orig_size: %u\n", delta, node.larger_cpts.size());
 
             unsigned last_size = node.larger_cpts.size();
             const float growth_rate = 1.25;
@@ -536,8 +560,11 @@ void LatticeADT::generateLargerCPTs(LatticeADT::LatticeNode & node, unsigned del
         
         //if we get invalid results, set max_delta
         if(node.larger_cpt->totalNumberEntries() <= 0) {
+//printf("zero found\n");
+
             node.max_delta = delta; //delta is gaurenteed to be less than node.max_delta
-            return;
+            node.larger_cpts[delta] = NULL;
+            return false;
         }
         else {
             //Valid new CPT
@@ -548,14 +575,32 @@ void LatticeADT::generateLargerCPTs(LatticeADT::LatticeNode & node, unsigned del
         }
     }
 
+    return true;
+
     //node.larger_cpt->begin(*pit);
 
 }
 
 
 
+void LatticeADT::queryLargerCPT(LatticeNode & node, unsigned delta, shash_map_iter<unsigned, LatticeEdgeList> & result, std::set<unsigned> & path_labels) {
 
-void LatticeADT::addMap2Map(shash_map_iter<unsigned, LatticeADT::LatticeEdgeList> & map1, shash_map_iter<unsigned, LatticeADT::LatticeEdgeList> & map2) {
+    if(delta > node.max_delta) return;
+    if(delta >= node.larger_cpts.size()) generateLargerCPTs(node, delta);
+    
+    if(delta > node.max_delta || delta >= node.larger_cpts.size()) return;
+
+    if(node.larger_cpts[delta] != NULL) {
+        addMap2Map(*node.larger_cpts[delta], result, path_labels);
+    }
+    
+}
+
+
+
+
+//map2 is the added one
+void LatticeADT::addMap2Map(shash_map_iter<unsigned, LatticeADT::LatticeEdgeList> & map1, shash_map_iter<unsigned, LatticeADT::LatticeEdgeList> & map2, std::set<unsigned> & path_labels) {
     shash_map_iter<unsigned, LatticeADT::LatticeEdgeList>::iterator it;
     map1.begin(it);
     
@@ -563,13 +608,35 @@ void LatticeADT::addMap2Map(shash_map_iter<unsigned, LatticeADT::LatticeEdgeList
         LatticeEdgeList outEdge = (LatticeEdgeList) (*it);
         unsigned child_id = it.key();
 
+        //printf("edge array size %u, child_id %u\n", outEdge.edge_array.size(), child_id);
+
         for(unsigned k=0; k<outEdge.edge_array.size(); k++) {
+
+            if(!pathLabelIntersect(path_labels, outEdge.edge_array[k].path_labels)) continue;
 
             addNodeEdge2Map(map2, child_id, outEdge.edge_array[k]);
         }
         
     } while(it.next());
 }
+
+
+bool LatticeADT::pathLabelIntersect(std::set<unsigned> &labels1, std::set<unsigned> &labels2) {
+    /*shash_map_iter<unsigned, unsigned >::iterator it;
+    labels1.begin(it);
+    do {
+        //if(labels2.find((unsigned)(*it)) != NULL) return true;
+    } while(it.next());*/
+
+    std::set<unsigned>::iterator it;
+    for(it = labels1.begin(); it != labels1.end(); ++it) {
+        if(labels2.find(*it) != labels2.end()) return true;
+    }
+
+
+    return false;
+}
+
 
 
 
@@ -593,10 +660,16 @@ void LatticeADT::dfsOnNode(LatticeADT::LatticeNode & cur_node, unsigned delta, s
 
             LatticeNode &child_node = _latticeNodes[child_id];
 
+            //if(child_id == _end && delta > length) continue;
+
+            
+
+
             //we can explore more nodes
             if(delta > length) {
-                dfsOnNode(child_node, delta-length, result);
-                //queryLargerCPT(child_node, delta-length, result);
+                //dfsOnNode(child_node, delta-length, result);
+                //printf("child id %u\n", child_id);
+                queryLargerCPT(child_node, delta-length, result, outEdge.edge_array[k].path_labels);
             }
             //we cannot go further beyond the child node
             else {
@@ -635,8 +708,10 @@ void LatticeADT::addNodeEdge2Map(shash_map_iter<unsigned, LatticeADT::LatticeEdg
         // edge list already there, add to the end.
         assert ( edge_listp->num_edges > 0 );
 
+
         for(unsigned i=0; i<edge_listp->num_edges; i++) {
-            if(&edge_listp->edge_array[i] == &edge) {
+            if(edge_listp->edge_array[i].global_id == edge.global_id) {
+                //printf("duplication\n");
                 return;
             }
         }
@@ -644,12 +719,14 @@ void LatticeADT::addNodeEdge2Map(shash_map_iter<unsigned, LatticeADT::LatticeEdg
         // make sure there is room for at least one more, use a
         // conservative growth rate
         const float growth_rate = 1.25;
-        edge_listp->edge_array.growByFIfNeededAndCopy(growth_rate,
+        edge_listp->edge_array.growByFIfNeededAndCopyShallowDeletion(growth_rate,
 						    edge_listp->num_edges+1);
 
         // place edge (using copy).
         edge_listp->edge_array[edge_listp->num_edges] = edge;
         edge_listp->num_edges++;
+        
+        //printf("edge list size: %u\n", edge_listp->num_edges);
     }
 }
 

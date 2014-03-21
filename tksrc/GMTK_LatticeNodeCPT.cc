@@ -367,7 +367,7 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
 
     //printf("node id: %u, delta: %u, cpt size: %u, max_delta: %u\n", node_id, delta, node.larger_cpts.size(), node.max_delta);
 
-    if(delta >= node.max_delta || node.larger_cpts[delta] == NULL) {
+    if(delta > 5 || delta >= node.max_delta || node.larger_cpts[delta] == NULL) {
         it.internalStatePtr = NULL;
         p.set_to_zero();
         return;
@@ -392,7 +392,7 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
     }
     */
 
-    
+
     //node.larger_cpt = &node.larger_cpts[delta];
     node.larger_cpt = node.larger_cpts[delta];
 
