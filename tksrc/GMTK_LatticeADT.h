@@ -31,8 +31,7 @@
 #include "logp.h"
 
 
-#include <vector>
-
+#include <set>
 
 /**
  * HTK lattice support
@@ -110,8 +109,10 @@ class LatticeADT : public NamedObject {
     //TODO: need to add more parameters
     //length of an edge
     unsigned length;
+    unsigned global_id;
+    std::set<unsigned> path_labels;
 
-    LatticeEdge() : emissionId(0), gmtk_score(1.0), length(0) {}
+    LatticeEdge() : emissionId(0), gmtk_score(1.0), length(0), global_id(0), path_labels(std::set<unsigned>()) {}
   };
 
   /*
@@ -172,10 +173,10 @@ class LatticeADT : public NamedObject {
 
 public:
     void generateAllLargerCPTs();
-    void generateLargerCPTs(LatticeNode & node, unsigned delta);
+    bool generateLargerCPTs(LatticeNode & node, unsigned delta);
 
-    void queryLargerCPT(LatticeNode & node, unsigned delta, shash_map_iter<unsigned, LatticeEdgeList> & result);
-    void addMap2Map(shash_map_iter<unsigned, LatticeEdgeList> & map1, shash_map_iter<unsigned, LatticeEdgeList> & map2);
+    void queryLargerCPT(LatticeNode & node, unsigned delta, shash_map_iter<unsigned, LatticeEdgeList> & result, std::set<unsigned>& path_labels);
+    void addMap2Map(shash_map_iter<unsigned, LatticeEdgeList> & map1, shash_map_iter<unsigned, LatticeEdgeList> & map2, std::set<unsigned>& path_labels);
 
     void dfsOnNode(LatticeNode & cur_node, unsigned delta, shash_map_iter<unsigned, LatticeEdgeList> & result);
 
@@ -184,6 +185,8 @@ public:
     void printLargerCPT(shash_map_iter<unsigned, LatticeEdgeList> & cpt, LatticeADT::LatticeNode & cur_node, unsigned cur_node_id);
 
     void setGMTKScoresOnLargerCPT(LatticeNode & cur_node);
+
+    bool pathLabelIntersect(std::set<unsigned> &labels1, std::set<unsigned> &labels2);
 
 
 
