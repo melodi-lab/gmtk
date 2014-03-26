@@ -97,7 +97,7 @@ GCC=gcc
 #GPP=/uns/bin/g++
 GPP=g++
 EXLDFLAGS=-static
-OF='-g -O3 -Wno-deprecated -march=pentium3 -mfpmath=sse'
+OF='-g -O3 -Wno-deprecated'
 # OF=''
 
 
