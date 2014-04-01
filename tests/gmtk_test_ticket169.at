@@ -1,0 +1,9 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/169 is fixed
+
+# gmtkEMtrain should not seg fault if it's fixed
+
+AT_SETUP([shared dlink crash (ticket 169)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/shared_dlink])
+AT_CHECK([(cd $TEST_AND_DEV/shared_dlink && gmtkEMtrain -of1 dfiles -fmt1 ascii -nf1 2 -inputTrainable initial_params -outputTrainable params -inputMaster master_file.master -strF train.str)],[0],[ignore],[ignore])
+AT_CLEANUP
