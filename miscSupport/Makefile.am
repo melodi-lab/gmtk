@@ -63,6 +63,7 @@ matrix.h \
 shash_map_iter.h \
 strhash_map.h \
 error.h error.cc \
+popen_err.h popen_err.c \
 bp_range.h bp_range.cc \
 range.h range.cc \
 arguments.h arguments.cc \
@@ -117,6 +118,7 @@ testPrime \
 testError \
 testBPRange \
 testPermute \
+testPopenErr \
 testArguments testLogp testRand testsArray testcArray testmArray \
 fileParserTest testHashMapList testHashTree testVHashMap testSHashSet \
 testSHashMap testVSHashMap testRLS testLMS testLZERO testQSort
