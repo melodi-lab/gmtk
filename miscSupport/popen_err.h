@@ -22,6 +22,7 @@ extern "C" {
 #endif
 
 #define POPEN_BUF_SIZE 4095
+#define POPEN_MAX_ARGC 1023
 
 /*
  * Normal popen() only gives us access to the forked process' stdout.

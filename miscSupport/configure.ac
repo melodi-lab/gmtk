@@ -165,7 +165,7 @@ AC_FUNC_MMAP
 AC_FUNC_FSEEKO
 AC_CHECK_FUNCS([floor pow sqrt strchr strerror strspn strtol strtoul log1p])
 AC_FUNC_FORK
-AC_CHECK_FUNCS([fdopen dup2 execvp pipe wait])
+AC_CHECK_FUNCS([fdopen dup2 execvp pipe wait strtok_r strcpy strdup])
 
 AC_ARG_WITH([logp], 
             [AS_HELP_STRING([--with-logp],

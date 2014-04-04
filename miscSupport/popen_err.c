@@ -19,13 +19,39 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include <assert.h>
 
 #include "popen_err.h"
 
-#if HAVE_WORKING_FORK && HAVE_WAIT && HAVE_FDOPEN && HAVE_DUP2 && HAVE_EXECVP && HAVE_PIPE
+#if HAVE_WORKING_FORK && HAVE_WAIT && HAVE_FDOPEN && HAVE_DUP2 && \
+    HAVE_EXECVP && HAVE_PIPE && HAVE_STRCPY && HAVE_STRTOK_R && HAVE_STRDUP
+
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <errno.h>
+
+static void
+parseArgs(char const *command, char *argv[]) {
+  char *s, *arg, *last;
+  int argc = 0;
+  assert(command);
+  assert(argv);
+  s = strdup(command); /* no need to free, process will end */
+  assert(s);
+  arg = strtok_r(s, " ", &last);
+  argv[argc++] = arg;
+  do {
+    if (argc >= POPEN_MAX_ARGC) {
+      fprintf(stderr, "too many arguments to popen_err('%s')\n", command);
+      _exit(EXIT_FAILURE);
+    }
+    arg = strtok_r(NULL, " ", &last);
+    argv[argc++] = arg;
+  } while (arg);
+}
+
 
 /*
  * Normal popen() only gives us access to the forked process' stdout.
@@ -36,72 +62,56 @@
  
 FILE *
 popen_err(char const *command, char const *type, char const *prefix) {
-  int pipefd[2], errfd[2];
+  int outfd[2], errfd[2];
   pid_t outid, errid;
-
-  int argc;
-  char const **argv = NULL;
+  char *argv[POPEN_MAX_ARGC+1];
 
   /* Create a pipe for the spawned process' stdout and another for stderr */
 
-  if (pipe(pipefd) == -1) {
-    perror("pipe");
-    exit(EXIT_FAILURE);
+  if (pipe(outfd) == -1) {
+    perror("popen_err(): failed to create stdout pipe");
+    return NULL;
   }
   if (pipe(errfd) == -1) {
-    perror("pipe");
-    exit(EXIT_FAILURE);
+    perror("popen_err(): failed to create stderr pipe");
+    return NULL;
   }
 
   /* fork off a child process to run the command */
 
   outid = fork();
   if (-1 == outid) {
-    perror("fork");
-    exit(EXIT_FAILURE);
+    perror("popen_err(): failed to create process to execute command");
+    return NULL;
   }
 
   if (0 == outid) { /* child process - run command */
 
     /* close unneeded read end of pipes */
-    if (close(pipefd[0]) || close(errfd[0])) {
-      perror("closing pipe");
+    if (close(outfd[0]) || close(errfd[0])) {
+      perror("popen_err(): failed to close read end of pipe in command process");
       _exit(EXIT_FAILURE);
     }
+
     /* make the pipes our stdout and stderr */
-    if (dup2(pipefd[1], 1) == -1 || dup2(errfd[1],2) == -1) {
-      perror("dup2");
+    if (dup2(outfd[1], 1) == -1 || dup2(errfd[1],2) == -1) {
+      perror("popen_err(): failed to connect command process stdout or stderr to pipe");
       _exit(EXIT_FAILURE);
     }
+
     /* now run command */
-#if 1 
-    argc = countArgs(command);
-    argv = (char const **)calloc(argc, sizeof(char const*));
-    getArgs(command, argv);
-    execvp(command, argv);
-    perror("execvp");
-    _exit(EXIT_FAILURE); /* only get here if execvp fails */ 
+    parseArgs(command, argv); 
+    execvp(argv[0], argv);
+    /* only get here if execvp fails */
+    perror("popen_err(): failed to execute command");
+    _exit(EXIT_FAILURE);
 
-#else
-    int i;
-    for (i=0; i < 10; i+=1) {
-      write(1, "12345\n", 6);
-      write(2, "67890\n", 6);
-    }
-
-    /* all done - cleanup */
-    if (close(pipefd[1]) || close(errfd[1])) {
-      perror("closing pipe");
-      _exit(EXIT_FAILURE);
-    }
-    _exit(EXIT_SUCCESS);
-#endif
   } else { /* parent process - echo stderr & return read end of stdout pipe */
 
     /* close unneeded write end of pipes */
-    if (close(pipefd[1]) || close(errfd[1])) {
-      perror("closing pipe");
-      exit(EXIT_FAILURE);
+    if (close(outfd[1]) || close(errfd[1])) {
+      perror("popen_err(): failed to close write end of stdout or stderr pipe(s)");
+      return NULL;
     }
     /* It would be painful for clients to have to read both stdout & stderr
      * (where do you read from them relative to each other?). So, we fork
@@ -110,23 +120,24 @@ popen_err(char const *command, char const *type, char const *prefix) {
      */
     errid = fork();
     if (-1 == errid) {
-      perror("fork");
-      _exit(EXIT_FAILURE);
+      perror("popen_err(): failed to create stderr echo process");
+      return NULL;
     }
     if (0 == errid) { /* child process - echo stderr with prefix */
       char buf[POPEN_BUF_SIZE+1];
       FILE *err = fdopen(errfd[0], "r");
       if (!err) {
-        perror("fdopen");
+        perror("popen_err(): openning stderr stream in echo process failed");
         _exit(EXIT_FAILURE);
       }
-      while (!feof(err) && !ferror(err)) {
+      while (1) {
         fgets(buf, POPEN_BUF_SIZE, err);
+        if (feof(err) || ferror(err)) break;
         fprintf(stderr,"%s%s", prefix, buf);
       }
       /* all done - cleanup */
       if (fclose(err)) {
-        perror("fclose");
+        perror("popen_err(): closing stderr stream in echo process failed");
         _exit(EXIT_FAILURE);
       }
       _exit(EXIT_SUCCESS);
@@ -135,7 +146,7 @@ popen_err(char const *command, char const *type, char const *prefix) {
     /* parent process - return the read end of the forked process' stdout
      * pipe to the client
      */ 
-    return fdopen(pipefd[0], "r");
+    return fdopen(outfd[0], "r");
   }
 
   return NULL;
@@ -143,13 +154,23 @@ popen_err(char const *command, char const *type, char const *prefix) {
 
 int 
 pclose_err(FILE *stream) {
-  int stat1, stat2;
+  int stat1, stat2, result;
   wait(&stat1); wait(&stat2); /* see how our children fared */
-  /* The second child process (the stderr echoer) should have closed
+  if (stat1 || stat2) {
+    fprintf(stderr,"pclose_err(): child process failed: %s\n", strerror(errno));
+    return -1;
+  }
+  /*
+   * The second child process (the stderr echoer) should have closed
    * the forked process' stderr fd. The only open file left should be
    * the forked process' stdout fd, so we close that.
    */
-  return fclose(stream);
+  result = fclose(stream);
+  if (result) {
+    perror("pclose_err(): closing stdout stream failed");
+    return -1;
+  }
+  return 0;
 }
 
 #else
