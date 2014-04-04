@@ -23,6 +23,7 @@
 #include "general.h"
 #include "error.h"
 #include "rand.h"
+#include "popen_err.h"
 
 #include "GMTK_FileParser.h"
 
@@ -73,12 +74,13 @@
 #endif
 VCID(HGID)
 
-
+#if 0
 #ifdef DECLARE_POPEN_FUNCTIONS_EXTERN_C
 extern "C" {
   FILE     *popen(const char *, const char *) __THROW;
   int pclose(FILE *stream) __THROW;
 }
+#endif
 #endif
 
 #define TRIFILE_END_OF_ID_STRING "@@@!!!TRIFILE_END_OF_ID_STRING!!!@@@"
@@ -521,7 +523,7 @@ FileParser::FileParser(const char*const file,
     cppCommand = cppCommand + string(" ") + cppCommandOptions;
 
   if (!strcmp("-",file)) {
-    f = ::popen(cppCommand.c_str(),"r");
+    f = popen_err(cppCommand.c_str(), "r", "CPP ERROR:");
     if (f == NULL) {
       error("ERROR: unable to open with standard input structure file");
     }
@@ -546,7 +548,7 @@ FileParser::FileParser(const char*const file,
     cppCommand = cppCommand + " -I.";
 
     cppCommand = cppCommand + string(" ") + (string)file;
-    f = ::popen(cppCommand.c_str(),"r");
+    f = popen_err(cppCommand.c_str(), "r", "CPP ERROR:");
     if (f == NULL)
       error("FileParser::FileParser, can't open file stream from (%s)",file);
   }
@@ -793,7 +795,9 @@ FileParser::parseGraphicalModel()
   }
 #endif
 
-  pclose(yyin);
+  if (pclose_err(yyin)) {
+    error("ERROR: unable to close structure file");
+  }
 
 }
 
