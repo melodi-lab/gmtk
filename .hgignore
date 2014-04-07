@@ -129,3 +129,5 @@ tksrc/testViterbi
 tksrc/testPackCliqueValue
 tksrc/dlinktest
 tksrc/parserTest
+tksrc/vitnorm
+tksrc/vitnorm.cc
