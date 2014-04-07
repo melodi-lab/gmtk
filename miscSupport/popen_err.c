@@ -24,13 +24,21 @@
 
 #include "popen_err.h"
 
-#if HAVE_WORKING_FORK && HAVE_WAIT && HAVE_FDOPEN && HAVE_DUP2 && \
+#if HAVE_WORKING_FORK && HAVE_WAIT && HAVE_FDOPEN && HAVE_DUP2 &&	\
     HAVE_EXECVP && HAVE_PIPE && HAVE_STRCPY && HAVE_STRTOK_R && HAVE_STRDUP
 
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <errno.h>
+
+static int
+allSpace(char const *s) {
+  for (; *s; s+=1) 
+    if (*s != ' ') 
+      return 0;
+  return -1;
+}
 
 static void
 parseArgs(char const *command, char *argv[]) {
@@ -40,14 +48,25 @@ parseArgs(char const *command, char *argv[]) {
   assert(argv);
   s = strdup(command); /* no need to free, process will end */
   assert(s);
+  /* turn line continuations into white space */
+  for (last = strstr(s, "\\\n"); last; last = strstr(last, "\\\n")) {
+    last[0]=' ';
+    last[1]=' ';
+  }
+  /* skip white space */
+  for ( ; *s == ' '; s+=1)
+    ;
   arg = strtok_r(s, " ", &last);
   argv[argc++] = arg;
   do {
     if (argc >= POPEN_MAX_ARGC) {
-      fprintf(stderr, "too many arguments to popen_err('%s')\n", command);
+      fprintf(stderr, "too many arguments to popen_err('%s'), there can be at most %d\n", 
+	      command, POPEN_MAX_ARGC);
       _exit(EXIT_FAILURE);
     }
     arg = strtok_r(NULL, " ", &last);
+    if (arg && allSpace(arg)) 
+      continue;
     argv[argc++] = arg;
   } while (arg);
 }
@@ -94,7 +113,7 @@ popen_err(char const *command, char const *type, char const *prefix) {
     }
 
     /* make the pipes our stdout and stderr */
-    if (dup2(outfd[1], 1) == -1 || dup2(errfd[1],2) == -1) {
+    if (dup2(outfd[1], STDOUT_FILENO) == -1 || dup2(errfd[1], STDERR_FILENO) == -1) {
       perror("popen_err(): failed to connect command process stdout or stderr to pipe");
       _exit(EXIT_FAILURE);
     }
@@ -107,7 +126,6 @@ popen_err(char const *command, char const *type, char const *prefix) {
     _exit(EXIT_FAILURE);
 
   } else { /* parent process - echo stderr & return read end of stdout pipe */
-
     /* close unneeded write end of pipes */
     if (close(outfd[1]) || close(errfd[1])) {
       perror("popen_err(): failed to close write end of stdout or stderr pipe(s)");
@@ -142,7 +160,6 @@ popen_err(char const *command, char const *type, char const *prefix) {
       }
       _exit(EXIT_SUCCESS);
     }
-
     /* parent process - return the read end of the forked process' stdout
      * pipe to the client
      */ 
