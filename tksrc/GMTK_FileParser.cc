@@ -74,17 +74,7 @@
 #endif
 VCID(HGID)
 
-#if 0
-#ifdef DECLARE_POPEN_FUNCTIONS_EXTERN_C
-extern "C" {
-  FILE     *popen(const char *, const char *) __THROW;
-  int pclose(FILE *stream) __THROW;
-}
-#endif
-#endif
-
 #define TRIFILE_END_OF_ID_STRING "@@@!!!TRIFILE_END_OF_ID_STRING!!!@@@"
-
 
 /*
 ***********************************************************************
