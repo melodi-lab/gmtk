@@ -33,6 +33,7 @@ extern "C" { char *index(const char* str, int c); }
 #include "general.h"
 VCID(HGID)
 #include "error.h"
+#include "popen_err.h"
 #include "fileParser.h"
 #include "sArray.h"
 
@@ -68,17 +69,6 @@ ioDataStreamFile::errorReturn(const char *from,const char *msg)
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 
-#ifdef PIPE_ASCII_FILES_THROUGH_CPP
-#ifndef DECLARE_POPEN_FUNCTIONS_EXTERN_C
-extern "C" {
-#ifdef __CYGWIN__
- FILE     *popen(const char *, const char *) __THROW;
- int pclose(FILE *stream) __THROW;
-#endif
-}
-#endif
-#endif
-
 #if defined(PIPE_ASCII_FILES_THROUGH_CPP) || defined(ENABLE_GZIP) || defined(ENABLE_BIZP2)
 
 void iDataStreamFile::initialize()
@@ -99,7 +89,7 @@ void iDataStreamFile::initialize()
 	fclose(fh);
 	string unzipCommand = gzip_Command() + string(" ") + path;
 	piped = true;
-	fh = ::popen(unzipCommand.c_str(), "r");
+	fh = popen_err(unzipCommand.c_str(), "r", "gzip error: ");
 	buff = new char[MAXLINSIZEPLUS1];
 	buffp = buff;
 	state = GetNextLine;
@@ -122,7 +112,7 @@ void iDataStreamFile::initialize()
 	fclose(fh);
 	string unzipCommand = bzip2_Command() + string(" ") + path;
 	piped = true;
-	fh = ::popen(unzipCommand.c_str(), "r");
+	fh = popen_err(unzipCommand.c_str(), "r", "bzip2 error:");
 	buff = new char[MAXLINSIZEPLUS1];
 	buffp = buff;
 	state = GetNextLine;
@@ -143,7 +133,7 @@ void iDataStreamFile::initialize()
 	cppCommand = cppCommand + string(" ") + string(cppCommandOptions);
       }
       if (!strcmp("-",_name)) {
-	fh = ::popen(cppCommand.c_str(),"r");
+	fh = popen_err(cppCommand.c_str(), "r", "cpp error");
 	if (fh == NULL) {
 	  error("ERROR: unable to open standard input via cpp");
 	}
@@ -170,7 +160,7 @@ void iDataStreamFile::initialize()
 	cppCommand = cppCommand + (" ") + path;
 
 	// printf("cppCommand = (%s)\n",cppCommand.c_str());
-	fh = ::popen(cppCommand.c_str(),"r");
+	fh = popen_err(cppCommand.c_str(), "r", "cpp error:");
 	if (fh == NULL)
 	  error("ERROR, can't open file stream from (%s)",_name);
       }
@@ -234,7 +224,7 @@ iDataStreamFile::~iDataStreamFile()
     // first, scan until end of file since sometimes it appears
     // that closing a pipe when not at the end causes an error (e.g., mac osx)
     freadUntilEOF(fh);
-    if (::pclose(fh) != 0) {
+    if (pclose_err(fh) != 0) {
       int err = errno;
       warning("WARNING: Can't close pipe '%s %s':  %s.",CPP_Command(),fileName(),strerror(err));
     }
