@@ -29,6 +29,7 @@ endif
 # If configure determines we're using GCC C/C++ compilers, set flags appropriately
 if USE_GCC_FLAGS
 # Only used for GCC compilers
+  FEATURE_FLAGS = -D _XOPEN_SOURCE=501
   OPTFLAGS = -O3
   GCC_FLAGS = -Wall $(ANSI)
 else
@@ -93,7 +94,7 @@ prime.h prime.c
 
 # GMTKCPPCMD is set to an appropriate default CPP for GMTK
 # to process its ASCII input files
-libmiscSupport_a_CPPFLAGS = -DDEFAULT_CPP="\"$(GMTKCPPCMD)\"" $(VERSIONFLAG) $(DBFLAGS)
+libmiscSupport_a_CPPFLAGS = -DDEFAULT_CPP="\"$(GMTKCPPCMD)\"" $(VERSIONFLAG) $(DBFLAGS) $(FEATURE_FLAGS)
 
 # Compilation flags for miscSupport library objects (user's CXXFLAGS will be appended)
 libmiscSupport_a_CXXFLAGS = $(OPTFLAGS) $(DEBUGFLAGS) $(GCC_FLAGS)
@@ -101,7 +102,7 @@ libmiscSupport_a_CFLAGS =   $(OPTFLAGS) $(DEBUGFLAGS) $(GCC_FLAGS)
 
 
 # Complilation flags for test programs (user's CXXFLAGS will be appended)
-AM_CPPFLAGS = $(VERSIONFLAG) $(DBFLAGS)
+AM_CPPFLAGS = $(VERSIONFLAG) $(DBFLAGS) $(FEATURE_FLAGS)
 AM_CXXFLAGS = $(OPTFLAGS) $(DEBUGFLAGS) $(GCC_FLAGS) -DMAIN
 AM_CCFLAGS =  $(OPTFLAGS) $(DEBUGFLAGS) $(GCC_FLAGS) -DMAIN
 

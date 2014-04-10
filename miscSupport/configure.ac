@@ -109,10 +109,6 @@ AM_PROG_CC_C_O
 m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 AC_PROG_RANLIB
 
-if test x$GCC = xyes; then
-  CFLAGS+=" -ansi -pedantic"
-fi
-
 AC_CHECK_FILE([$srcdir/../.hg/dirstate],[
   AC_CHECK_PROG([HAVE_HG],[hg],[yes])
   if test x$HAVE_HG = xyes; then

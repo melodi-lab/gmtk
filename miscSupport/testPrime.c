@@ -21,7 +21,7 @@
 #endif
 
 int
-main(int argc, char *argv) {
+main(int argc, char *argv[]) {
   uint8_t  *sieve   = (uint8_t *) calloc(SIEVE_MAX / 8 + 1, 1);
   uint8_t   mask[8] = {1,2,4,8,16,32,64,128};
   uint32_t  n;
