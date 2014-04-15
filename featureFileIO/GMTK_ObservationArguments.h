@@ -98,6 +98,7 @@
    unsigned nis[MAX_NUM_OBS_STREAMS] = {0};
    const char   *fmts[MAX_NUM_OBS_STREAMS] = {"binary"};
    unsigned ifmts[MAX_NUM_OBS_STREAMS] = {RAWBIN};
+   int streamStartSkip = 0;
 
 extern bool ObservationsAllowNan;
 
@@ -110,10 +111,14 @@ extern bool ObservationsAllowNan;
   Arg("nf",  Arg::Opt,nfs,"Number of floats in observation stream X",Arg::ARRAY,MAX_NUM_OBS_STREAMS),
   Arg("ni",  Arg::Opt,nis,"Number of ints in observation stream X",Arg::ARRAY,MAX_NUM_OBS_STREAMS),
   Arg("fmt", Arg::Opt,fmts,"Format (for files: htk,binary,ascii,flatascii,hdf5,pfile; for streams: binary,ascii) for observation stream X",Arg::ARRAY,MAX_NUM_OBS_STREAMS),
+  Arg("startSkip",Arg::Opt,streamStartSkip,"Frames to skip at beginning (i.e., first frame is buff[startSkip])"),
   Arg("obsNAN",   Arg::Opt, ObservationsAllowNan," True if observation files allow FP NAN values"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
+  if (streamStartSkip < 0) {
+    error("%s: startSkip=%d must be >= 0",argerr,streamStartSkip);
+  }
   if ( streamBufferSize < 1) {
     error("%s: streamBufferSize must be at least 1 (got %u)", streamBufferSize);
   }
