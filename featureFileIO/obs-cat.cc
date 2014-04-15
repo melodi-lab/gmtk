@@ -187,36 +187,11 @@ makeStream(unsigned ifmts[], unsigned i) {
 
 ObservationStream *
 makeFileSource() {
-#if 0
-  ObservationFile   *obsFile[MAX_NUM_OBS_FILES] = {NULL,NULL,NULL,NULL,NULL};
-  unsigned nFiles = 0;
-  unsigned nCont  = 0;
-  for (unsigned i=0; i < MAX_NUM_OBS_FILES && ofs[i] != NULL; i+=1, nFiles+=1) {
-    obsFile[i] = instantiateFile(ifmts[i], ofs[i], nfs[i], nis[i], i, iswp[i],
-				 Cpp_If_Ascii, cppCommandOptions, prefrs[i], preirs[i],
-				 prepr[i], sr[i]);
-    assert(obsFile[i]);
-    Filter *fileFilter = instantiateFilters(Per_Stream_Transforms[i],
-					    obsFile[i]->numContinuous());
-    if (fileFilter) {
-      obsFile[i] = new FilterFile(fileFilter, obsFile[i], frs[i], irs[i], postpr[i]);
-      nCont += obsFile[i]->numContinuous();
-    } else
-      error("current implementation requires filter\n");
-  }
-  if (nFiles == 0) {
-    error("ERROR: no input files specified");
-  }
-  FileSource *fileSrc = new FileSource();
-  fileSrc->initialize(nFiles, obsFile, fileBufferSize,
-		      Action_If_Diff_Num_Sents,
-		      Action_If_Diff_Num_Frames,
-		      gpr_str, startSkip, endSkip,
-		      instantiateFilters(Post_Transforms, nCont));
-  return new FileSrcStream(fileSrc);
-#else
-  return new FileSrcStream(instantiateFileSource());
-#endif
+  int oldStartSkip = startSkip; // The StreamSource will be handling startSkip
+  startSkip = 0;
+  ObservationStream * stream = new FileSrcStream(instantiateFileSource());
+  startSkip = oldStartSkip;
+  return stream;
 }
 
 
@@ -300,7 +275,7 @@ main(int argc, char *argv[]) {
   
   Data32 const *frame;
   for (; !source->EOS(); segNum += 1) {
-    source->preloadFrames(1);
+    source->preloadFrames( startSkip + 1 );  // + 1 because the first n are skipped!
     for (frmNum=0; source->numFrames() == 0 || frmNum < source->numFrames(); frmNum += 1) {
       frame = source->loadFrames(frmNum, 1);
       if (!frame) {

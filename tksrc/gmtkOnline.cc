@@ -105,9 +105,9 @@ VCID(HGID)
 #define GMTK_ARG_CLEAR_CLIQUE_VAL_MEM
 #define GMTK_ARG_MEM_GROWTH
 
-#define GMTK_ARG_START_END_SKIP
 #if 0
 /****************************      FILE RANGE OPTIONS             ***********************************************/
+#define GMTK_ARG_START_END_SKIP
 #define GMTK_ARG_FILE_RANGE_OPTIONS
 #define GMTK_ARG_DCDRNG
 #endif
@@ -253,7 +253,7 @@ main(int argc,char*argv[])
       error("ERROR: -fmt1 must be 'binary' or 'ascii', got '%s'", fmts[0]);
     }
     assert(stream);
-    gomSS = new StreamSource(1, &stream, streamBufferSize);
+    gomSS = new StreamSource(1, &stream, streamBufferSize, NULL, streamStartSkip);
     globalObservationMatrix = gomSS;
 
   const unsigned case_ignore = (vitCaseSensitiveRegexFilter? 0 : REG_ICASE);
