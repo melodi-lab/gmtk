@@ -3840,8 +3840,9 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 
   unsigned numNewFrames = fp.numFramesInC() * S;
 
-printf("preaload %u frames\n", numPreloadFrames);
+  infoMsg(IM::ObsStream, IM::Info, "preaload %u frames\n", numPreloadFrames);
   globalObservationMatrix->preloadFrames(numPreloadFrames);
+  fprintf(f,"========\nSegment %u\n", globalObservationMatrix->segmentNumber());
 
   unsigned truePtLen = 0; // 0 until we know the true number of modified partitions
   unsigned currentMaxFrameNum;
@@ -3880,7 +3881,7 @@ printf("preaload %u frames\n", numPreloadFrames);
       currentMaxFrameNum = numPreloadFrames;
     }
 
-printf("onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
+    infoMsg(IM::Inference, IM::Info, "onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
 
 
   viterbiScore = rememberedViterbiScore;  // do compute viterbi values in deScatterOutofRoot()? (max-product semiring)
