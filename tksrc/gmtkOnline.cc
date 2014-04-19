@@ -547,9 +547,9 @@ main(int argc,char*argv[])
 				  mVitValsFile,vitAlsoPrintObservedVariables, 
 				  vitPreg, vitCreg, vitEreg, NULL, pCliqueFile, 
 				  cliquePosteriorNormalize, cliquePosteriorUnlog);
-    printf("Segment %d, after Filtering: %u usable frames\n",
-	   gomSS->segmentNumber(),
-	   numUsableFrames);
+    infoMsg(IM::Printing,IM::Info,"Segment %d, after Filtering: %u usable frames\n",
+            gomSS->segmentNumber(),
+            numUsableFrames);
   }
   getrusage(RUSAGE_SELF,&rue);
   if (IM::messageGlb(IM::Default)) { 
