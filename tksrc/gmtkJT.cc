@@ -531,6 +531,7 @@ main(int argc,char*argv[])
 	       probe.val()/numUsableFrames);
 
 	if (doDistributeEvidence) {
+	  if (JunctionTree::viterbiScore) myjt.setRootToMaxCliqueValue(); // fix #529
 	  infoMsg(IM::Low,"Distributing Evidence\n");
 	  myjt.distributeEvidence();
 	  infoMsg(IM::Low,"Done Distributing Evidence\n");
