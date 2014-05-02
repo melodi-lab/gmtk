@@ -186,6 +186,10 @@ class StreamSource : public ObservationSource {
 
   bool active() { return true; }
 
+  // Always returns 0 for StreamSource since it's  not possible to know how 
+  // many segments are in a stream until the stream has been completely read
+  unsigned numSegments() { return 0; }
+
   unsigned segmentNumber() { return (unsigned)segmentNum; }
 
   bool openSegment(unsigned seg) {

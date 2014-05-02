@@ -81,6 +81,12 @@
 VCID(HGID)
 
 /////////////////////////////////
+// This is to allow dynamically loaded C mappers to get
+// access to the ObservationSource
+extern ObservationSource *globalObservationMatrix;
+
+
+/////////////////////////////////
 // an integer that specifies the maximum number of objects (such
 // as means, covariances, DTs, etc.) that may be specified at
 // one time in a file. This can be safely increased (to the
@@ -4108,6 +4114,13 @@ dlopenDeterministicMaps(char **dlopenFilenames, unsigned maxFilenames) {
 	error("Failed to find mapperNames in '%s': %s", dlopenFilenames[i], dlsym_error);
       }
       
+      dlerror(); // clear errors
+      ObservationSource **externalObsSrc = (ObservationSource **) dlsym(handle, "externalObsSrc");
+      if (dlsym_error) {
+	error("Failed to find external observation source in '%s': %s", dlopenFilenames[i], dlsym_error);
+      }
+      *externalObsSrc = globalObservationMatrix; // make GOM available to mapper functions
+
       for (unsigned j=0; j < mapperFunctions->size(); j+=1) {
 	infoMsg(IM::Moderate,"registering %s[%u] from %s\n", (*mapperNames)[j], (*mapperNumFeatures)[j], dlopenFilenames[i]);
 	GM_Parms.registerDeterministicCMapper((*mapperNames)[j], (*mapperNumFeatures)[j], (*mapperFunctions)[j]);
