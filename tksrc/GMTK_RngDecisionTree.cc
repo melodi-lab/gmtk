@@ -2794,6 +2794,7 @@ RngDecisionTree::write(oDataStreamFile& os)
   NamedObject::write(os);
   os.nl();
   if (!iterable()) {
+    if (LeafNodeCFunction == root->nodeType) return; // ticket #536
     os.write(_numFeatures,"RngDecisionTree:: write numFeatures");
     os.nl();
     writeRecurse(os,root,0);
