@@ -91,9 +91,11 @@ public:
       logpr tmp = conditionalCPTs[i]->maxValue();
       // switching weihts is either the same size as sw parents, or is size 1.
       if (rv_info.rvWeightInfo.size() > 1) 
-	modifyProbability(tmp,rv_info.rvWeightInfo[i],this);
+	if (safeToModifyProbability(rv_info.rvWeightInfo[i]))
+	  modifyProbability(tmp,rv_info.rvWeightInfo[i],this);
       else 
-	modifyProbability(tmp,rv_info.rvWeightInfo[0],this);
+	if (safeToModifyProbability(rv_info.rvWeightInfo[0]))
+	  modifyProbability(tmp,rv_info.rvWeightInfo[0],this);
       if (tmp > p)
 	p = tmp;
     }
