@@ -15,6 +15,5 @@ AT_CLEANUP
 AT_SETUP([switching_weight_debug: jtcommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/switching_weight_debug/jtcommand])
 # https://j.ee.washington.edu/trac/gmtk/ticket/6
-AT_XFAIL_IF([test x"$GMTK_NOXFAIL" = x""])
 AT_CHECK([(cd $TEST_AND_DEV/switching_weight_debug && ulimit -v ${GMTK_MEMLIMT-8000000} &&            ulimit -t ${GMTK_TIMELIMIT-120} && ./jtcommand)], [], [ignore], [ignore])
 AT_CLEANUP

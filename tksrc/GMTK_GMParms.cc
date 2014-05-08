@@ -2798,10 +2798,15 @@ GMParms::write(const char *const outputFileFormat, const char * const cppCommand
     } else if (keyword == "DETERMINISTIC_CPT_OUT_FILE") {
       writeMtCpts(*((*it).second));
 
-    } else if (keyword == "DT_OUT_FILE") {
+    }
+#if 0
+    // ticket 536: don't write out DTs
+     else if (keyword == "DT_OUT_FILE") {
       writeDTs(*((*it).second));
 
-    } else if (keyword == "MC_OUT_FILE") {
+    } 
+#endif
+    else if (keyword == "MC_OUT_FILE") {
       writeComponents(*((*it).second));
 
     } else if (keyword == "MX_OUT_FILE") {
