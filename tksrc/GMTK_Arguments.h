@@ -31,6 +31,9 @@
 #endif
 #endif
 
+#include <sys/time.h>
+#include <sys/resource.h>
+
 #include "GMTK_Filter.h"
 #include "GMTK_ProgramDefaultParms.h"
 
@@ -2223,7 +2226,6 @@ static bool writeLogVals = false;
   static int rlimitSlop = 2;
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
-
   Arg("seconds",Arg::Opt,seconds,"Number of seconds to run and then exit."),
   Arg("times",Arg::Opt,numTimes,"Number of times to run program seconds seconds long (not multitest mode)."),
   Arg("multiTest",Arg::Opt,multiTest,"Run gmtkTime in multi-test mode, taking triangulation file names from command line."),
@@ -2516,6 +2518,110 @@ static char *loadCmdFile = NULL;
 /****************************************************************************************************************/
 /****************************************************************************************************************/
 /****************************                                     ***********************************************/
+/****************************     RESOURCE LIMITNG OPTIONS        ***********************************************/
+/****************************                                     ***********************************************/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
+
+#if defined(GMTK_ARG_RLIMIT_PARAMS)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+  static int rlimitMaxMem = 0;
+  static int rlimitMaxTime = 0;
+  static int rlimitMaxCore = -1;
+
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+  Arg("\n*** Resource limiting options ***\n"),
+  Arg("maxMem",Arg::Opt,rlimitMaxMem,  "Maximum virtual memory  (Bytes); 0 means 'unlimited'"), 
+  Arg("maxTime",Arg::Opt,rlimitMaxTime,"Maximum CPU time      (seconds); 0 means 'unlimited'"), 
+  Arg("maxCore",Arg::Opt,rlimitMaxCore,"Maximum core file size  (Bytes);-1 means 'unlimited'"), 
+
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#if defined(HAVE_SETRLIMIT)
+    if (rlimitMaxMem > 0) {
+      infoMsg(IM::Tiny,"Setting max allowed virtual memory\n");
+      struct rlimit rl;
+      rl.rlim_cur = rlimitMaxMem;
+      rl.rlim_max = rlimitMaxMem;
+#if   defined(RLIMIT_AS)
+      if (setrlimit(RLIMIT_AS,&rl) != 0)
+	error("Error: tried to set max memory beyond the allowed maximum");
+#elif defined(RLIMIT_RSS)
+      if (setrlimit(RLIMIT_RSS,&rl) != 0)
+	error("Error: tried to set max memory beyond the allowed maximum");
+#else
+      warning("-maxMem is not supported on this machine");
+#endif
+    }
+
+    if (rlimitMaxTime > 0) {
+      infoMsg(IM::Tiny,"Setting max allowed CPU time\n");
+      struct rlimit rl;
+
+      // soft limit
+      rl.rlim_cur = rlimitMaxTime;
+
+      // hard limit must be higher than soft limit, otherwise an
+      // immediate SIGKILL is sent which doesn't allow an orderly
+      // exit; so, simply add 10 seconds to allow time for the SIGXCPU
+      // handler to be called
+      rl.rlim_max = rlimitMaxTime + 10; 
+#if   defined(RLIMIT_CPU)
+      if (setrlimit(RLIMIT_CPU,&rl) != 0)
+	error("Error: tried to set max CPU time beyond the allowed maximum");
+#else
+      warning("-maxTime is not supported on this machine");
+#endif
+    };
+
+    if (rlimitMaxCore >= 0) {
+      infoMsg(IM::Tiny,"Setting max allowed core file size\n");
+      struct rlimit rl;
+      rl.rlim_cur = rlimitMaxCore;
+      rl.rlim_max = rlimitMaxCore;
+#if   defined(RLIMIT_CORE)
+      if (setrlimit(RLIMIT_CORE,&rl) != 0)
+	error("Error: tried to set max core file size beyond the allowed maximum");
+#else
+      warning("-maxCore is not supported on this machine");
+#endif
+    }
+#else
+    if (rlimitMaxMem > 0) {
+      warning("-maxMem is not supported on this machine");
+    }
+
+    if (rlimitMaxTime > 0) {
+      warning("-maxTime is not supported on this machine");
+    };
+
+    if (rlimitMaxCore >= 0) {
+      warning("-maxCore is not supported on this machine");
+    }
+#endif
+
+#else
+#endif
+#endif // defined(GMTK_ARG_RLIMIT_PARAMS)
+
+
+
+
+/*==============================================================================================================*/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+/****************************                                     ***********************************************/
 /****************************         LATTICE OPTIONS             ***********************************************/
 /****************************                                     ***********************************************/
 /****************************************************************************************************************/
@@ -2550,81 +2656,6 @@ static char *loadCmdFile = NULL;
 #endif // defined(GMTK_ARG_LATTICE_PARAMS)
 
 
-
-
-/*==============================================================================================================*/
-/****************************************************************************************************************/
-/****************************************************************************************************************/
-/****************************                                     ***********************************************/
-/****************************     RESOURCE LIMITNG OPTIONS        ***********************************************/
-/****************************                                     ***********************************************/
-/****************************************************************************************************************/
-/****************************************************************************************************************/
-/****************************************************************************************************************/
-
-#if defined(GMTK_ARG_RESOURCE_OPTIONS)
-#if defined(GMTK_ARGUMENTS_DOCUMENTATION)
-  Arg("\n*** Resource limiting options ***\n"),
-#endif
-#endif
-
-/*-----------------------------------------------------------------------------------------------------------*/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-
-
-#if defined(GMTK_ARG_RLIMIT_PARAMS)
-#if defined(GMTK_ARGUMENTS_DEFINITION)
-  static int rlimitMaxMem = 0;
-  static int rlimitMaxTime = 0;
-  static int rlimitMaxCore = -1;
-
-
-#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
-  Arg("maxMem",Arg::Opt,rlimitMaxMem,  "Maximum virtual memory  (Bytes); 0 means 'unlimited'"), 
-  Arg("maxTime",Arg::Opt,rlimitMaxTime,"Maximum CPU time      (seconds); 0 means 'unlimited'"), 
-  Arg("maxCore",Arg::Opt,rlimitMaxCore,"Maximum core file size  (Bytes);-1 means 'unlimited'"), 
-
-
-#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
-    if (rlimitMaxMem > 0) {
-      infoMsg(IM::Tiny,"Setting max allowed virtual memory\n");
-      struct rlimit rl;
-      rl.rlim_cur = rlimitMaxMem;
-      rl.rlim_max = rlimitMaxMem;
-      if (setrlimit(RLIMIT_AS,&rl) != 0)
-	error("Error: tried to set max memory beyond the allowed maximum");
-    }
-
-    if (rlimitMaxTime > 0) {
-      infoMsg(IM::Tiny,"Setting max allowed CPU time\n");
-      struct rlimit rl;
-
-      // soft limit
-      rl.rlim_cur = rlimitMaxTime;
-
-      // hard limit must be higher than soft limit, otherwise an
-      // immediate SIGKILL is sent which doesn't allow an orderly
-      // exit; so, simply add 10 seconds to allow time for the SIGXCPU
-      // handler to be called
-      rl.rlim_max = rlimitMaxTime + 10; 
-      if (setrlimit(RLIMIT_CPU,&rl) != 0)
-	error("Error: tried to set max CPU time beyond the allowed maximum");
-    };
-
-    if (rlimitMaxCore >= 0) {
-      infoMsg(IM::Tiny,"Setting max allowed core file size\n");
-      struct rlimit rl;
-      rl.rlim_cur = rlimitMaxCore;
-      rl.rlim_max = rlimitMaxCore;
-      if (setrlimit(RLIMIT_CORE,&rl) != 0)
-	error("Error: tried to set max core file size beyond the allowed maximum");
-    }
-
-#else
-#endif
-#endif // defined(GMTK_ARG_RLIMIT_PARAMS)
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/

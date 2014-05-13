@@ -93,6 +93,10 @@ VCID(HGID)
 #define GMTK_ARG_VERB
 #define GMTK_ARG_HELP
 
+/*************************   RESOURCE LIMITING OPTIONS                *******************************************/
+
+#define GMTK_ARG_RLIMIT_PARAMS
+
 #define GMTK_ARGUMENTS_DEFINITION
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_DEFINITION
