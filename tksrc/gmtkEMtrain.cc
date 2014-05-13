@@ -155,6 +155,10 @@ VCID(HGID)
 #define GMTK_ARG_OBS_MATRIX_OPTIONS
 #define GMTK_ARG_OBS_MATRIX_XFORMATION
 
+/*************************   RESOURCE LIMITING OPTIONS                *******************************************/
+
+#define GMTK_ARG_RLIMIT_PARAMS
+
 
 #define GMTK_ARGUMENTS_DEFINITION
 #include "GMTK_Arguments.h"

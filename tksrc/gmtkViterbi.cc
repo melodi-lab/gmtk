@@ -181,8 +181,8 @@ VCID(HGID)
 #define GMTK_VITERBI_FILE_WRITE
 #define GMTK_ARG_NEW_DECODING_OPTIONS
 
-// should be made conditional on having setrlimit available
-#define GMTK_ARG_RESOURCE_OPTIONS
+/*************************   RESOURCE LIMITING OPTIONS                *******************************************/
+
 #define GMTK_ARG_RLIMIT_PARAMS
 
 #define GMTK_ARGUMENTS_DEFINITION
