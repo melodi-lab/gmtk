@@ -65,6 +65,10 @@ public:
     modifyProbability(p,rv_info.rvWeightInfo[0],this);
   }
 
+  // See https://j.ee.washington.edu/trac/gmtk/ticket/6#comment:25
+  // maxValue() is inherited from a base class, so the scale, shift, and penalty
+  // are not applied. I'm not sure if that matters since the RV is observed. - RR
+
   virtual ScPnSh_ObsDiscRV* cloneRVShell() {
     return (ScPnSh_ObsDiscRV*)ObsDiscRV::cloneRVShell();
   }
