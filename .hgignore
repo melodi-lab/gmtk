@@ -20,7 +20,7 @@ version.info
 Makefile
 aclocal.m4
 autom4te.cache
-config.{guess,h,log,status,sub}
+config.{guess,h,log,status,sub,cache}
 configure
 depcomp
 install-sh

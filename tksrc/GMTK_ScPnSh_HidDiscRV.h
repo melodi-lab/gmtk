@@ -73,6 +73,9 @@ public:
     modifyProbability(p,rv_info.rvWeightInfo[0],this);
   }
 
+  // See https://j.ee.washington.edu/trac/gmtk/ticket/6#comment:25
+  // As coded now, it finds the "max" before applying the scale, penalty, and shift.
+  // That may be OK as long as the scale and penalty are non-negative
   virtual logpr maxValue() {
     logpr p = HidDiscRV::maxValue();
     if (safeToModifyProbability(rv_info.rvWeightInfo[0])) {
