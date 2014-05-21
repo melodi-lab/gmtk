@@ -29,6 +29,7 @@
  */
 
 
+
 #ifndef GMTK_RNG_DECISION_TREE_H
 #define GMTK_RNG_DECISION_TREE_H
 
@@ -691,7 +692,8 @@ public:
   // will evaluate to 0.
   leafNodeValType query(const vector < RV* >& arr,
 			const RV* rv) {
-    assert ( unsigned(arr.size()) == _numFeatures );
+    if (_numFeatures != ~0x0U)  //  ~0x0U means variable # features
+      assert ( unsigned(arr.size()) == _numFeatures );
     return queryRecurse(arr,root,rv);
   }
 
