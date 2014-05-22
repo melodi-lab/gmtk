@@ -34,7 +34,9 @@
 #include <iostream>
 #include <errno.h>
 #include <cstring>
+#ifdef HAVE_VALUES_H
 #include <values.h>
+#endif
 #include <cmath>
 #include <cassert>
 #include <ctime>
