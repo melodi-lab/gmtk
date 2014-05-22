@@ -83,6 +83,7 @@ mitk/multivariate-mi
 mitk/mvnrnd
 mitk/test-matrix-ops
 mitk/testReadRange
+mitk/discrete-mi/discrete-mi
 tests/atconfig
 tests/atlocal
 tests/gmtk_tests.at
@@ -128,3 +129,4 @@ tksrc/testViterbi
 tksrc/testPackCliqueValue
 tksrc/dlinktest
 tksrc/parserTest
+tksrc/vitnorm.cc
