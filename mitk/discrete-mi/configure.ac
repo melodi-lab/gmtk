@@ -14,7 +14,7 @@ AC_PREREQ(2.69)
 AC_INIT(GMTK, 0.0, https://j.ee.washington.edu/trac/gmtk/newticket)
 : ${CXXFLAGS=""}
 AC_CONFIG_SRCDIR([mixNormalCollection.cc])
-AC_CONFIG_HEADER([ac_config.h])
+AC_CONFIG_HEADER([config.h])
 
 AM_INIT_AUTOMAKE([1.12 silent-rules -Wall -Werror foreign])
 AM_SILENT_RULES([yes])
