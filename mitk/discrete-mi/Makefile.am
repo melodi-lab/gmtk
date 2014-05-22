@@ -42,7 +42,7 @@ $(builddir)/../../featureFileIO/libgmtkio.a
 
 AM_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(GCC_FLAGS)
 
-EXTRA_PROGRAMS = discrete-mi
+bin_PROGRAMS = discrete-mi
 discrete_mi_SOURCES = \
 mixNormalCollection.h mixNormalCollection.cc \
 discrete_mi.cc \

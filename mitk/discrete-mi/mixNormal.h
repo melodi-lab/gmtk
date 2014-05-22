@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "data_processing.h"
-#include "config.h"
+#include "discrete_mi_config.h"
 #include "error.h"
 
 #ifndef DATA_TYPE_DEFINED

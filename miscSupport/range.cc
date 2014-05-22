@@ -929,6 +929,7 @@ Range::iterator::iterator (const iterator& it) {
     p = new permuter(*(it.p));
     return;
   }
+  p = NULL;
     // Copy constructor.  Tricky if we've got an open file
     cur_value = it.cur_value;
     atEnd = it.atEnd;
