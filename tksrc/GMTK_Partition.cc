@@ -175,7 +175,7 @@ writeMaxCliques(oDataStreamFile& os)
       os.writeComment("   %s(%d)\n",rv->name().c_str(),rv->frame());
     }
   }
-  os.writeComment("Maximum clique state space = 10e%f, total state space = 1e%f\n",maxWeight,totalWeight);
+  os.writeComment("Maximum clique state space = 10e%f, total state space = 10e%f\n",maxWeight,totalWeight);
   // Then write out the same information in a less human-readable but more machine
   // readable format.
 
