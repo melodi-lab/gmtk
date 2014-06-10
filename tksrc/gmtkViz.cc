@@ -787,14 +787,14 @@ public:
   DECLARE_EVENT_TABLE()
 };
 BEGIN_EVENT_TABLE(vizNotebook, wxNotebook)
-#if 0
+#if 1
   EVT_CHAR(vizNotebook::OnChar)
 #endif
 END_EVENT_TABLE()
 
 void 
 vizNotebook::OnChar(wxKeyEvent &event) {
-  wxLogDebug(wxT("vizNotebook::OnChar"));
+  //wxLogDebug(wxT("vizNotebook::OnChar"));
   StructPage *curPage = dynamic_cast<StructPage*> (GetCurrentPage());
   if (curPage) {
     curPage->OnChar(event);
@@ -2085,7 +2085,7 @@ END_EVENT_TABLE()
 
 void 
 GFrame::OnChar(wxKeyEvent &event) {
-  wxLogDebug(wxT("GFrame::OnChar"));
+  //wxLogDebug(wxT("GFrame::OnChar"));
   StructPage *curPage = dynamic_cast<StructPage*> (struct_notebook->GetCurrentPage());
   if (curPage) {
     curPage->OnChar(event);
@@ -2136,7 +2136,9 @@ GFrame::file(wxString &fileName, bool gvpFormat)
 		// the front, so we'll just pretend we did
 		wxNotebookEvent dummy;
 		OnNotebookPageChanged(dummy);
+#if 0
 		page->ticket71();
+#endif
 	} else {
 		delete page;
 	}
