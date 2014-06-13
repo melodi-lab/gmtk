@@ -43,8 +43,11 @@ public:
 
 private:
   const unsigned _numMis;  
+#if 0
+  // appears to be unused
   const unsigned _numVars;
   const unsigned _dimX;
+#endif
   MixNormal * const _ftrMI;
   MixNormal * const _ftrMI_endp;
 };
