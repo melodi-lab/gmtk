@@ -6,6 +6,7 @@
  *
  * Copyright (C) 2001 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  *
  */
@@ -530,6 +531,7 @@ main(int argc,char*argv[])
 	       probe.val()/numUsableFrames);
 
 	if (doDistributeEvidence) {
+	  if (JunctionTree::viterbiScore) myjt.setRootToMaxCliqueValue(); // fix #529
 	  infoMsg(IM::Low,"Distributing Evidence\n");
 	  myjt.distributeEvidence();
 	  infoMsg(IM::Low,"Done Distributing Evidence\n");
@@ -567,8 +569,7 @@ main(int argc,char*argv[])
 	    pCliqueFile = instantiateWriteFile(cliqueListName, cliqueOutputName, cliquePrintSeparator,
 					       cliquePrintFormat, cliqueSize, 0, cliquePrintSwap);
 	  }
-	  myjt.printAllCliques(stdout,cliquePosteriorNormalize,cliquePosteriorUnlog,cliquePrintOnlyEntropy, 
-			       pCliqueFile, pCliqueFile, pCliqueFile);
+	  myjt.printAllCliques(stdout,cliquePosteriorNormalize,cliquePosteriorUnlog,cliquePrintOnlyEntropy, pCliqueFile);
 	  
 	  if (pCliqueFile)
 	    pCliqueFile->endOfSegment();

@@ -8,6 +8,7 @@
  *
  * Copyright (C) 2001 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  *
  *
@@ -72,6 +73,9 @@ public:
     modifyProbability(p,rv_info.rvWeightInfo[0],this);
   }
 
+  // See https://j.ee.washington.edu/trac/gmtk/ticket/6#comment:25
+  // As coded now, it finds the "max" before applying the scale, penalty, and shift.
+  // That may be OK as long as the scale and penalty are non-negative
   virtual logpr maxValue() {
     logpr p = HidDiscRV::maxValue();
     // TODO: we might want to cache this value rather than modifying it all the time.
@@ -79,7 +83,9 @@ public:
     // funciton is monotonic. If it is not the case (e.g., if scale could be negative) then
     // this would be false, and we'd need to compute the maximum over the modified
     // values rather than the modification of the max as we are doing here.
-    modifyProbability(p,rv_info.rvWeightInfo[0],this);    
+    if (safeToModifyProbability(rv_info.rvWeightInfo[0])) {
+      modifyProbability(p,rv_info.rvWeightInfo[0],this);    
+    }
     return p;
   }
 

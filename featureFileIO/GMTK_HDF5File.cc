@@ -6,6 +6,7 @@
  *
  * Copyright (C) 2012 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  * 
  *
  */
@@ -154,12 +155,14 @@ HDF5File::HDF5File(const char *name, unsigned num,
 		   char const *contFeatureRangeStr_, 
 		   char const *discFeatureRangeStr_, 
 		   char const *preFrameRangeStr_, 
-		   char const *segRangeStr_)
+		   char const *segRangeStr_,
+		   unsigned leftPad, unsigned rightPad)
   : ObservationFile(name, num,
 		    contFeatureRangeStr_, 
 		    discFeatureRangeStr_, 
 		    preFrameRangeStr_,
-		    segRangeStr_),
+		    segRangeStr_,
+		    leftPad, rightPad),
     cppIfAscii(cppIfAscii),
     cppCommandOptions(cppCommandOptions),
     buffer(NULL), bufSize(0),

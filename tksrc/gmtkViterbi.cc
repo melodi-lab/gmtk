@@ -29,6 +29,7 @@
  *
  * Copyright (C) 2001 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  *
  */
@@ -232,7 +233,7 @@ main(int argc,char*argv[])
   ////////////////////////////////////////////
   // parse arguments
   bool parse_was_ok = Arg::parse(argc,(char**)argv,
-"\nThis program determines the most likely values of the hidden variabls\n");
+"\nThis program determines the most likely values of the hidden variables\n");
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }
@@ -407,8 +408,9 @@ main(int argc,char*argv[])
 	error("Can't open file '%s' for writing\n",vitValsFileName);
     }
   }
-  if (!mVitValsFile && !vitValsFile && !JunctionTree::binaryViterbiFile) {
-    error("Argument Error: Missing REQUIRED argument: -mVitValsFile <str>  OR  -vitValsFile <str> OR -binaryVitFile <str>\n");
+  if (!mVitValsFile && !vitValsFile && !JunctionTree::binaryViterbiFile && !JunctionTree::vitObsFileName) {
+    error("Argument Error: Missing REQUIRED argument: -mVitValsFile <str>  OR  -vitValsFile <str> OR "
+	  "-binaryVitFile <str> OR -vitObsFileName <str>\n");
   }
 #endif
 
@@ -676,7 +678,7 @@ main(int argc,char*argv[])
 	    pCliqueFile = instantiateWriteFile(cliqueListName, cliqueOutputName, cliquePrintSeparator,
 					       cliquePrintFormat, cliqueSize, 0, cliquePrintSwap);
 	  }
-	  myjt.printAllCliques(stdout,cliquePosteriorNormalize, cliquePosteriorUnlog, cliquePrintOnlyEntropy, pCliqueFile, pCliqueFile, pCliqueFile);
+	  myjt.printAllCliques(stdout,cliquePosteriorNormalize, cliquePosteriorUnlog, cliquePrintOnlyEntropy, pCliqueFile);
 	  
 	  if (pCliqueFile)
 	    pCliqueFile->endOfSegment();
@@ -707,6 +709,10 @@ main(int argc,char*argv[])
 	warning("Segment %d: Not printing Viterbi values since segment has zero probability\n",
 		segment);
       else {
+
+	if (myjt.vitObsFileName) {
+	  myjt.viterbiValuesToObsFile(numFrames, vitValsFile, segment, vitPreg, vitCreg, vitEreg, vitFrameRangeFilter);
+	}
 
 	if (mVitValsFile) {
 	  fprintf(mVitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
@@ -743,7 +749,9 @@ main(int argc,char*argv[])
     }
     (*dcdrng_it)++;
   }
-  
+
+  if (JunctionTree::vitObsFile) delete JunctionTree::vitObsFile;
+
   if (pCliqueFile) delete pCliqueFile;
 #if 0
   if (cCliqueFile) delete cCliqueFile;

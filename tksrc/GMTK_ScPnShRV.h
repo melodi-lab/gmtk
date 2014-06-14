@@ -8,6 +8,7 @@
  *
  * Copyright (C) 2001 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  *
  *
@@ -64,6 +65,38 @@ public:
 
   ScPnShRV() {}
   ~ScPnShRV() {}
+
+  // For ticket #6: returns true iff it's "safe" to call modifyProbability()
+  // with the specified WeightInfo at this time. Safe means that all the
+  // information needed to modify the probability is currently available.
+  // In particular, if data from the globalObservationMatrix is required, the
+  // globalObservationMatrix must be non-NULL and ready to provide data.
+
+  // modifyProbability() can be called early in the course of GMTK setup to
+  // prepare for cpbeam pruning, before the globalObservationMatrix has been
+  // instantiated. That is why this check is necessary.
+
+  bool safeToModifyProbability(RVInfo::WeightInfo &wi) {
+    if (wi.penalty.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Constant) {
+      // this is safe; the penalty is known
+    } else if (wi.penalty.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Observation) {
+      if (!globalObservationMatrix) return false; // need observations, but they're not here yet
+      if (!globalObservationMatrix->active()) return false; // GOM exists, but not ready yet
+    }
+    if (wi.scale.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Constant) {
+      // this is safe; the scale is known
+    } else if (wi.scale.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Observation) {
+      if (!globalObservationMatrix) return false; // need observations, but they're not here yet
+      if (!globalObservationMatrix->active()) return false; // GOM exists, but not ready yet
+    }
+    if (wi.shift.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Constant) {
+      // this is safe; the shift is known
+    } else if (wi.shift.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Observation) {
+      if (!globalObservationMatrix) return false; // need observations, but they're not here yet
+      if (!globalObservationMatrix->active()) return false; // GOM exists, but not ready yet
+    }
+    return true; // everything we need is available
+  }
 
   // Version with branches.
   // Given a p, modify p according to:

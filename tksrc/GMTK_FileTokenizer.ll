@@ -5,10 +5,13 @@
  *
  * Copyright (C) 2001 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  */
 
 %option nounput
+%option noyywrap
+
 %{
 /* need this for the call to atof() below */
 #include <math.h>
@@ -63,7 +66,7 @@ int_rng {int}:{int}
  * and with kw_table[] in FileParser.cc   
 */
 
-keyword GRAPHICAL_MODEL|frame|variable|factor|type|cardinality|switchingparents|conditionalparents|discrete|continuous|hidden|observed|observation|weight|scale|penalty|shift|value|nil|using|mapping|collection|DenseCPT|SparseCPT|DeterministicCPT|NGramCPT|FNGramCPT|VirtualEvidenceCPT|LatticeNodeCPT|LatticeEdgeCPT|mixture|gausSwitchMixture|logitSwitchMixture|mlpSwitchMixture|chunk|elimination_hint|frameNum|numFrames|segmentNum|numSegments|variables|symmetricConstraint|allVarsEqual|allVarsUnequal|varsNotEqual|varsSumTo|varsMultiplyTo|varsSumMod|varsSatisfy|directionalConstraint|functionOf|softConstraint|table|logLinear|emarfNum|symboltable|DeepVirtualEvidenceCPT
+keyword GRAPHICAL_MODEL|frame|variable|factor|type|cardinality|switchingparents|conditionalparents|discrete|continuous|hidden|observed|observation|weight|scale|penalty|shift|value|nil|using|mapping|collection|DenseCPT|SparseCPT|DeterministicCPT|NGramCPT|FNGramCPT|VirtualEvidenceCPT|LatticeNodeCPT|LatticeEdgeCPT|mixture|gausSwitchMixture|logitSwitchMixture|mlpSwitchMixture|chunk|elimination_hint|frameNum|numFrames|segmentNum|numSegments|variables|symmetricConstraint|allVarsEqual|allVarsUnequal|varsNotEqual|varsSumTo|varsMultiplyTo|varsSumMod|varsSatisfy|directionalConstraint|functionOf|softConstraint|table|logLinear|emarfNum|symboltable|DeepVirtualEvidenceCPT|DeepCPT
 
 separator ":"|";"|"{"|"}"|"("|")"|"|"|","|"="
 

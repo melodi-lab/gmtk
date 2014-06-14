@@ -7,6 +7,7 @@
  *
  * Copyright (C) 2001 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  *
  */
@@ -41,12 +42,12 @@
 #include "GMTK_MeanVector.h"
 #include "GMTK_DiagCovarVector.h"
 #include "GMTK_RealMatrix.h"
+#include "GMTK_DoubleMatrix.h"
 #include "GMTK_GammaComponent.h"
 #include "GMTK_BetaComponent.h"
 #include "GMTK_MissingFeatureScaledDiagGaussian.h"
 #include "GMTK_DlinkMatrix.h"
 #include "GMTK_Dlinks.h"
-#include "GMTK_RealMatrix.h"
 #include "GMTK_DirichletTable.h"
 #include "GMTK_MDCPT.h"
 #include "GMTK_MSCPT.h"
@@ -55,7 +56,9 @@
 #include "GMTK_NGramCPT.h"
 #include "GMTK_FNGramCPT.h"
 #include "GMTK_VECPT.h"
+#include "GMTK_DeepNN.h"
 #include "GMTK_DeepVECPT.h"
+#include "GMTK_DeepCPT.h"
 #include "GMTK_Vocab.h"
 #include "GMTK_LatticeADT.h"
 #include "GMTK_LatticeNodeCPT.h"
@@ -77,6 +80,12 @@
 #include "GMTK_CFunctionDeterministicMappings.h"
 
 VCID(HGID)
+
+/////////////////////////////////
+// This is to allow dynamically loaded C mappers to get
+// access to the ObservationSource
+extern ObservationSource *globalObservationMatrix;
+
 
 /////////////////////////////////
 // an integer that specifies the maximum number of objects (such
@@ -124,6 +133,7 @@ GMParms::~GMParms()
   deleteObsInVector(covars);
   deleteObsInVector(dLinkMats);
   deleteObsInVector(realMats);
+  deleteObsInVector(doubleMats);
   deleteObsInVector(dirichletTabs);
   deleteObsInVector(components);
   deleteObsInVector(mdCpts);
@@ -136,6 +146,7 @@ GMParms::~GMParms()
   deleteObsInVector(latticeNodeCpts);
   deleteObsInVector(veCpts);
   deleteObsInVector(deepVECpts);
+  deleteObsInVector(deepNNs);
   deleteObsInVector(mixtures);
   // deleteObsInVector(gausSwitchingMixtures);
   // deleteObsInVector(logitSwitchingMixtures);
@@ -156,6 +167,7 @@ void GMParms::add(MeanVector* ob){ add(ob,means,meansMap); }
 void GMParms::add(DiagCovarVector* ob){ add(ob,covars,covarsMap); }
 void GMParms::add(DlinkMatrix* ob) { add(ob,dLinkMats,dLinkMatsMap); }
 void GMParms::add(RealMatrix*ob) { add(ob,realMats,realMatsMap); }
+void GMParms::add(DoubleMatrix*ob) { add(ob,doubleMats,doubleMatsMap); }
 void GMParms::add(DirichletTable*ob) { add(ob,dirichletTabs,dirichletTabsMap); }
 void GMParms::add(Component*ob){ add(ob,
 				     components,
@@ -175,6 +187,7 @@ void GMParms::add(LatticeADT* ob) {
 void GMParms::add(LatticeNodeCPT* ob) { add(ob,latticeNodeCpts,latticeNodeCptsMap); }
 void GMParms::add(LatticeEdgeCPT* ob) { add(ob,latticeEdgeCpts,latticeEdgeCptsMap); }
 void GMParms::add(VECPT*ob) { add(ob,veCpts,veCptsMap); }
+void GMParms::add(DeepNN*ob) { add(ob,deepNNs,deepNNsMap); }
 void GMParms::add(DeepVECPT*ob) { add(ob,deepVECpts,deepVECptsMap); }
 void GMParms::add(Mixture*ob) { add(ob,mixtures,mixturesMap); }
 void GMParms::add(GausSwitchingMixture*ob) { assert (0); }
@@ -466,6 +479,43 @@ GMParms::readDLinks(iDataStreamFile& is, bool reset)
 	    ob->name().c_str(),is.fileName(),is.lineNo());
     dLinks[i+start] = ob;
     dLinksMap[ob->name()] = i+start;
+  }
+}
+
+
+void 
+GMParms::readDoubleMats(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
+
+  is.read(num,"Cant' read num double matrices");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of double matrices (%d) in file '%s' line %d exceeds maximum",
+				   num,is.fileName(),is.lineNo());
+  if (reset) {
+    start = 0;
+    doubleMats.resize(num);
+  } else {
+    start = doubleMats.size();
+    doubleMats.resize(start+num);
+  }
+  for (unsigned i=0;i<num;i++) {
+    // first read the count
+    DoubleMatrix* ob;
+
+    is.read(cnt,"Can't read double mat num");
+    if (cnt != i) 
+      error("ERROR: double matrix count (%d), out of order in file '%s' line %d, expecting %d",
+	    cnt,is.fileName(),is.lineNo(),i);
+
+    ob = new DoubleMatrix;
+    ob->read(is);
+    if (doubleMatsMap.find(ob->name()) != doubleMatsMap.end())
+      error("ERROR: double matrix named '%s' already defined but is specified for a second time in file '%s' line %d",
+	    ob->name().c_str(),is.fileName(),is.lineNo());
+    doubleMats[i+start] = ob;
+    doubleMatsMap[ob->name()] = i+start;
   }
 }
 
@@ -857,6 +907,42 @@ void GMParms::readVECpts(iDataStreamFile& is, bool reset)
 }
 
 
+void GMParms::readDeepCpts(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
+
+  is.read(num, "Can't read num DeepCPTs");
+  if ( num > GMPARMS_MAX_NUM )
+    error("ERROR: number of DeepCPTs (%d) exceeds maximum", num);
+  if ( reset ) {
+    start = 0;
+    deepCpts.resize(num);
+  } else {
+    start = deepCpts.size();
+    deepCpts.resize(start + num);
+  }
+  for ( unsigned i = 0; i <num; i++ ) {
+    // first read the count
+    DeepCPT* ob;
+
+    is.read(cnt, "Can't read DeepCPT num");
+    if ( cnt != i )
+      error("ERROR: DeepCPT count (%d), out of order in file '%s' line %d, expecting %d", 
+	    cnt, is.fileName(), is.lineNo(),i);
+
+    ob = new DeepCPT();
+    ob->read(is);
+    if ( deepCptsMap.find(ob->name()) != deepCptsMap.end() )
+      error("ERROR: DeepCPT named '%s' already defined but is specified for a second time in file '%s' line %d",
+	    ob->name().c_str(), is.fileName(),is.lineNo());
+    deepCpts[i + start] = ob;
+    deepCptsMap[ob->name()] = i + start;
+  }
+}
+
+
 void GMParms::readDeepVECpts(iDataStreamFile& is, bool reset)
 {
   unsigned num;
@@ -892,6 +978,42 @@ void GMParms::readDeepVECpts(iDataStreamFile& is, bool reset)
   }
 }
 
+
+
+void GMParms::readDeepNNs(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
+
+  is.read(num, "Can't read num DeepNNs");
+  if ( num > GMPARMS_MAX_NUM )
+    error("ERROR: number of Deep Neural Networks (%d) exceeds maximum", num);
+  if ( reset ) {
+    start = 0;
+    deepNNs.resize(num);
+  } else {
+    start = deepNNs.size();
+    deepNNs.resize(start + num);
+  }
+  for ( unsigned i = 0; i <num; i++ ) {
+    // first read the count
+    DeepNN* ob;
+
+    is.read(cnt, "Can't read DeepNN num");
+    if ( cnt != i )
+      error("ERROR: DeepNN count (%d), out of order in file '%s' line %d, expecting %d", 
+	    cnt, is.fileName(), is.lineNo(),i);
+
+    ob = new DeepNN();
+    ob->read(is);
+    if ( deepNNsMap.find(ob->name()) != deepNNsMap.end() )
+      error("ERROR: DeepNN named '%s' already defined but is specified for a second time in file '%s' line %d",
+	    ob->name().c_str(), is.fileName(),is.lineNo());
+    deepNNs[i + start] = ob;
+    deepNNsMap[ob->name()] = i + start;
+  }
+}
 
 
 
@@ -1190,6 +1312,9 @@ GMParms::readAll(iDataStreamFile& is)
   readCovars(is);
   readDLinkMats(is);
   readRealMats(is);
+#if DOUBLEMATS_EVERYWHERE
+  readDoubleMats(is);
+#endif
   readDirichletTabs(is);
   readMdCpts(is);
   readMsCpts(is);
@@ -1199,6 +1324,7 @@ GMParms::readAll(iDataStreamFile& is)
   readFNgramImps(is);
   readLatticeAdts(is);
   readVECpts(is);
+  readDeepNNs(is);
   readDeepVECpts(is);
   // next read definitional items
   readComponents(is);
@@ -1249,6 +1375,10 @@ GMParms::readTrainable(iDataStreamFile& is)
   readDLinkMats(is);
   infoMsg(Low+9,"Reading Real Mats\n");
   readRealMats(is);  
+#if DOUBLEMATS_EVERYWHERE
+  infoMsg(Low+9,"Reading Double Mats\n");
+  readDoubleMats(is);  
+#endif
   infoMsg(Low+9,"Reading Dense CPTs\n");
   readMdCpts(is);
 
@@ -1310,6 +1440,8 @@ GMParms::readNonTrainable(iDataStreamFile& is)
   readFNgramImps(is);
   infoMsg(Low+9,"Reading VirtualEvidenceCPTs\n");
   readVECpts(is);
+  infoMsg(Low+9,"Reading DeepNNss\n");
+  readDeepNNs(is);
   infoMsg(Low+9,"Reading DeepVirtualEvidenceCPTs\n");
   readDeepVECpts(is);
 }
@@ -1396,6 +1528,9 @@ GMParms::read(
     } else if (keyword == "REAL_MAT_IN_FILE") {
       readRealMats(*((*it).second),false);
 
+    } else if (keyword == "DOUBLE_MAT_IN_FILE") {
+      readDoubleMats(*((*it).second),false);
+
     } else if (keyword == "DIRICHLET_TAB_IN_FILE") {
       readDirichletTabs(*((*it).second),false);
 
@@ -1423,8 +1558,14 @@ GMParms::read(
     } else if (keyword == "VE_CPT_IN_FILE") {
       readVECpts(*((*it).second),false);
 
+    } else if (keyword == "DEEP_NN_IN_FILE") {
+      readDeepNNs(*((*it).second),false);
+
     } else if (keyword == "DEEP_VE_CPT_IN_FILE") {
       readDeepVECpts(*((*it).second),false);
+
+    } else if (keyword == "DEEP_CPT_IN_FILE") {
+      readDeepCpts(*((*it).second),false);
 
     } else if (keyword == "DT_IN_FILE") {
       readDTs(*((*it).second),false);
@@ -1927,6 +2068,53 @@ GMParms::writeRealMats(oDataStreamFile& os)
 
 /*-
  *-----------------------------------------------------------------------
+ * writeDoubleMats
+ *      writes out the double mats
+ * 
+ * Preconditions:
+ *      markUsedMixtureComponents() should have been called immediately before.
+ *
+ * Postconditions:
+ *      one
+ *
+ * Side Effects:
+ *      all "used" parameters are written out.
+ *
+ * Results:
+ *      nil.
+ *
+ *-----------------------------------------------------------------------
+ */
+void 
+GMParms::writeDoubleMats(oDataStreamFile& os)
+{
+  os.nl(); os.writeComment("double valued N_i x M_i matrices");os.nl();
+  unsigned used = 0;
+  for (unsigned i=0;i<doubleMats.size();i++) {
+    if (doubleMats[i]->emUsedBitIsSet())
+      used++;
+  }
+  if (used != doubleMats.size())
+    warning("NOTE: saving only %d used double matrices out of a total of %d",
+	    used,doubleMats.size());
+  os.write(used,"num double mats"); os.nl();
+  unsigned index = 0;
+  for (unsigned i=0;i<doubleMats.size();i++) {
+    if (doubleMats[i]->emUsedBitIsSet()) {
+      // first write the count
+      os.write(index++,"double mat cnt");
+      os.nl();
+      doubleMats[i]->write(os);
+    }
+  }
+  assert ( used == index );
+  os.nl();
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
  * writeDiricletTabs
  *      writes out the Dirichlet Tables
  * 
@@ -2411,6 +2599,9 @@ GMParms::writeAll(oDataStreamFile& os, bool remove_unnamed)
   writeCovars(os);
   writeDLinkMats(os);
   writeRealMats(os);  
+#if DOUBLEMATS_EVERYWHERE
+  writeDoubleMats(os);  
+#endif
   writeMdCpts(os);
   writeMsCpts(os);
   writeMtCpts(os);
@@ -2459,6 +2650,9 @@ GMParms::writeTrainable(oDataStreamFile& os, bool remove_unnamed)
   writeCovars(os);
   writeDLinkMats(os);
   writeRealMats(os);  
+#if DOUBLEMATS_EVERYWHERE
+  writeDoubleMats(os);  
+#endif
   writeMdCpts(os);
 
   // next write definitional items
@@ -2598,6 +2792,9 @@ GMParms::write(const char *const outputFileFormat, const char * const cppCommand
     } else if (keyword == "REAL_MAT_OUT_FILE") {
       writeRealMats(*((*it).second));
 
+    } else if (keyword == "DOUBLE_MAT_OUT_FILE") {
+      writeDoubleMats(*((*it).second));
+
     } else if (keyword == "DIRICHLET_TAB_OUT_FILE") {
       writeDirichletTabs(*((*it).second));
 
@@ -2610,10 +2807,15 @@ GMParms::write(const char *const outputFileFormat, const char * const cppCommand
     } else if (keyword == "DETERMINISTIC_CPT_OUT_FILE") {
       writeMtCpts(*((*it).second));
 
-    } else if (keyword == "DT_OUT_FILE") {
+    }
+#if 0
+    // ticket 536: don't write out DTs
+     else if (keyword == "DT_OUT_FILE") {
       writeDTs(*((*it).second));
 
-    } else if (keyword == "MC_OUT_FILE") {
+    } 
+#endif
+    else if (keyword == "MC_OUT_FILE") {
       writeComponents(*((*it).second));
 
     } else if (keyword == "MX_OUT_FILE") {
@@ -2947,6 +3149,8 @@ unsigned GMParms::totalNumberParameters()
     sum += fngramCpts[i]->totalNumberParameters();
   for (unsigned i=0;i<veCpts.size();i++)
     sum += veCpts[i]->totalNumberParameters();
+  for (unsigned i=0;i<deepNNs.size();i++)
+    sum += deepNNs[i]->totalNumberParameters();
   for (unsigned i=0;i<deepVECpts.size();i++)
     sum += deepVECpts[i]->totalNumberParameters();
   return sum;
@@ -3089,6 +3293,8 @@ void GMParms::markUsedMixtureComponents(bool remove_unnamed)
     dLinkMats[i]->recursivelyClearUsedBit();
   for (unsigned i=0;i<realMats.size();i++)
     realMats[i]->recursivelyClearUsedBit();
+  for (unsigned i=0;i<doubleMats.size();i++)
+    doubleMats[i]->recursivelyClearUsedBit();
   for (unsigned i=0;i<components.size();i++)
     components[i]->recursivelyClearUsedBit();
   for (unsigned i=0;i<mixtures.size();i++)
@@ -3104,6 +3310,12 @@ void GMParms::markUsedMixtureComponents(bool remove_unnamed)
     for (unsigned i=0;i<mixtures.size();i++)
       mixtures[i]->recursivelySetUsedBit();
 
+  for (unsigned i=0; i < deepNNs.size(); i+=1) {
+    vector<DoubleMatrix *> mats = deepNNs[i]->getMatrices();
+    for (unsigned m=0; m < mats.size(); m += 1) {
+      mats[m]->recursivelySetUsedBit();
+    }
+  }
 }
 
 
@@ -3182,6 +3394,8 @@ void GMParms::markObjectsToNotTrain(const char*const fileName,
       EMCLEARAMTRAININGBIT_CODE(realMatsMap,realMats);
     } else if (objType == "REALMAT") {
       EMCLEARAMTRAININGBIT_CODE(realMatsMap,realMats);
+    } else if (objType == "DOUBLEMAT") {
+      EMCLEARAMTRAININGBIT_CODE(doubleMatsMap,doubleMats);
     } else if (objType == "COMPONENT") {
       EMCLEARAMTRAININGBIT_CODE(componentsMap,components);
     } else if (objType == "DENSECPT") {
@@ -3242,6 +3456,8 @@ void GMParms::markObjectsToNotTrain(const char*const fileName,
      dLinkMats[i]->makeRandom();
    for (unsigned i=0;i<realMats.size();i++)
      realMats[i]->makeRandom();
+   for (unsigned i=0;i<doubleMats.size();i++)
+     doubleMats[i]->makeRandom();
 
    // components
    for (unsigned i=0;i<components.size();i++)
@@ -3279,6 +3495,8 @@ GMParms::makeUniform()
     dLinkMats[i]->makeUniform();
   for (unsigned i=0;i<realMats.size();i++)
     realMats[i]->makeUniform();
+  for (unsigned i=0;i<doubleMats.size();i++)
+    doubleMats[i]->makeUniform();
 
    // components
   for (unsigned i=0;i<components.size();i++)
@@ -3496,6 +3714,10 @@ GMParms::emStoreAccumulators(oDataStreamFile& ofile)
     dLinkMats[i]->emStoreAccumulators(ofile);
   for (unsigned i=0;i<realMats.size();i++)
     realMats[i]->emStoreAccumulators(ofile);
+#if DOUBLEMATS_EVERYWHERE
+  for (unsigned i=0;i<doubleMats.size();i++)
+    doubleMats[i]->emStoreAccumulators(ofile);
+#endif
 
    // components
   for (unsigned i=0;i<components.size();i++)
@@ -3574,6 +3796,10 @@ GMParms::emLoadAccumulators(iDataStreamFile& ifile)
     dLinkMats[i]->emLoadAccumulators(ifile);
   for (unsigned i=0;i<realMats.size();i++)
     realMats[i]->emLoadAccumulators(ifile);
+#if DOUBLEMATS_EVERYWHERE
+  for (unsigned i=0;i<doubleMats.size();i++)
+    doubleMats[i]->emLoadAccumulators(ifile);
+#endif
 
   // components
   for (unsigned i=0;i<components.size();i++)
@@ -3618,6 +3844,10 @@ GMParms::emAccumulateAccumulators(iDataStreamFile& ifile)
     dLinkMats[i]->emAccumulateAccumulators(ifile);
   for (unsigned i=0;i<realMats.size();i++)
     realMats[i]->emAccumulateAccumulators(ifile);
+#if DOUBLEMATS_EVERYWHERE
+  for (unsigned i=0;i<doubleMats.size();i++)
+    doubleMats[i]->emAccumulateAccumulators(ifile);
+#endif
 
   // components
   for (unsigned i=0;i<components.size();i++)
@@ -3700,6 +3930,8 @@ GMParms::emInitAccumulators(bool startEMIteration)
     dLinkMats[i]->emInitAccumulators();
   for (unsigned i=0;i<realMats.size();i++)
     realMats[i]->emInitAccumulators();
+  for (unsigned i=0;i<doubleMats.size();i++)
+    doubleMats[i]->emInitAccumulators();
 
   // components
   for (unsigned i=0;i<components.size();i++)
@@ -3745,6 +3977,10 @@ GMParms::emWriteUnencodedAccumulators(oDataStreamFile& ofile, bool writeLogVals)
     dLinkMats[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
   for (unsigned i=0;i<realMats.size();i++)
     realMats[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+#if DOUBLEMATS_EVERYWHERE
+  for (unsigned i=0;i<doubleMats.size();i++)
+    doubleMats[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+#endif
 
    // components
   for (unsigned i=0;i<components.size();i++)
@@ -3886,6 +4122,13 @@ dlopenDeterministicMaps(char **dlopenFilenames, unsigned maxFilenames) {
 	error("Failed to find mapperNames in '%s': %s", dlopenFilenames[i], dlsym_error);
       }
       
+      dlerror(); // clear errors
+      ObservationSource **externalObsSrc = (ObservationSource **) dlsym(handle, "externalObsSrc");
+      if (dlsym_error) {
+	error("Failed to find external observation source in '%s': %s", dlopenFilenames[i], dlsym_error);
+      }
+      *externalObsSrc = globalObservationMatrix; // make GOM available to mapper functions
+
       for (unsigned j=0; j < mapperFunctions->size(); j+=1) {
 	infoMsg(IM::Moderate,"registering %s[%u] from %s\n", (*mapperNames)[j], (*mapperNumFeatures)[j], dlopenFilenames[i]);
 	GM_Parms.registerDeterministicCMapper((*mapperNames)[j], (*mapperNumFeatures)[j], (*mapperFunctions)[j]);

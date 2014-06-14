@@ -8,6 +8,7 @@
  *
  * Copyright (C) 2001 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  *
  *
@@ -21,6 +22,8 @@
 
 #include "GMTK_Sw_ObsContRV.h"
 #include "GMTK_ScPnShRV.h"
+#include "GMTK_MixtureCommon.h"
+#include "GMTK_Mixture.h"
 
 class ScPnSh_Sw_ObsContRV : public Sw_ObsContRV, public ScPnShRV {
   friend class FileParser;
@@ -72,13 +75,42 @@ public:
   }
 
   virtual logpr maxValue() {
-    logpr p = Sw_ObsContRV::maxValue();
-    if (rv_info.rvWeightInfo.size() > 1) 
-      modifyProbability(p,rv_info.rvWeightInfo[cachedSwitchingState],this);
-    else 
-      modifyProbability(p,rv_info.rvWeightInfo[0],this);
-    return p;
-  }
+    // ticket 6: This code is copied from ObsContRV::maxValue(), but 
+    // modified to include the scale/penalty/shift if they are available.
+    logpr mval, tmp;
+    for (unsigned i=0; i< conditionalMixtures.size(); i++) { // i is the switching state
+      RVInfo::WeightInfo &wi = (rv_info.rvWeightInfo.size() > 1) ?
+	  rv_info.rvWeightInfo[i]
+	: rv_info.rvWeightInfo[0];
+      if (conditionalMixtures[i].direct) {
+	tmp = conditionalMixtures[i].mixture->maxValue();
+	if (safeToModifyProbability(wi)) 
+	  modifyProbability(tmp, wi, this);
+	if (tmp > mval)
+	  mval = tmp;
+      } else {
+	for (unsigned j=0; j < conditionalMixtures[i].mapping.collection->mxSize(); j++) {
+	  tmp = conditionalMixtures[i].mapping.collection->mx(j)->maxValue();
+	  if (safeToModifyProbability(wi)) 
+	    modifyProbability(tmp, wi, this);
+	  if (tmp > mval)
+	    mval = tmp;
+	}
+      }
+    }
+    return mval;
+#if 0
+      // ticket 6: cachedSwitchingState may not be initialized before maxValue() is called
+      // modifyProbability() may require observation data that's not available yet
+      // modifyProbability() should be done before taking the max
+      logpr p = Sw_ObsContRV::maxValue();
+      if (rv_info.rvWeightInfo.size() > 1) 
+	modifyProbability(p,rv_info.rvWeightInfo[cachedSwitchingState],this);
+      else 
+	modifyProbability(p,rv_info.rvWeightInfo[0],this);
+      return p;
+#endif
+    }
 
   virtual ScPnSh_Sw_ObsContRV* cloneRVShell() {
     return (ScPnSh_Sw_ObsContRV*)Sw_ObsContRV::cloneRVShell();

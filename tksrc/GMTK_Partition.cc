@@ -6,6 +6,7 @@
  *
  * Copyright (C) 2009 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  *
  */
@@ -174,7 +175,7 @@ writeMaxCliques(oDataStreamFile& os)
       os.writeComment("   %s(%d)\n",rv->name().c_str(),rv->frame());
     }
   }
-  os.writeComment("Maximum clique state space = 1e%f, total state space = 1e%f\n",maxWeight,totalWeight);
+  os.writeComment("Maximum clique state space = 10e%f, total state space = 10e%f\n",maxWeight,totalWeight);
   // Then write out the same information in a less human-readable but more machine
   // readable format.
 

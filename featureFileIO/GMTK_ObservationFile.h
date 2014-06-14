@@ -6,6 +6,7 @@
  *
  * Copyright (C) 2011 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  * 
  *
  */
@@ -53,6 +54,14 @@
 // format supports a better implementation than the simple-minded
 // one ObservationFile provides.
 // 
+//
+// Note that padding (-leftPad, -rightPad) is applied before the
+// frame range (-prepr). Padding frames are 0s.
+//
+// physical frames:        0 1 2
+// padded   frames:    P P 0 1 2 P P P     # -leftPad 2 -rightPad 3
+// virtual  frames:          0 1           # -preprX 3:4
+//
 // Subclasses:
 //   ASCIIFile     -   ASCII files (reads segment entirely into memory)
 //   FlatAsciiFile -   seg #   frame #   f_0 ... f_n i_0 ... i_m
@@ -95,6 +104,10 @@ class ObservationFile {
   unsigned _numLogicalDiscreteFeatures;
   unsigned _numLogicalFeatures;
 
+  // non-existant frames before/after the real frames
+  // to align labels with input features in DMLP training
+  unsigned _leftPad, _rightPad;
+
  public:
 
  ObservationFile(char const *observationFileName=NULL,
@@ -102,14 +115,16 @@ class ObservationFile {
 		 char const *contFeatureRangeStr_=NULL, 
 		 char const *discFeatureRangeStr_=NULL,
 		 char const *preFrameRangeStr_=NULL, 
-		 char const *segRangeStr_=NULL)
+		 char const *segRangeStr_=NULL,
+		 unsigned leftPad=0, unsigned rightPad=0)
     : observationFileName(observationFileName), 
       observationFileNum(observationFileNum),
       contFeatureRangeStr(contFeatureRangeStr_), contFeatureRange(NULL),
       discFeatureRangeStr(discFeatureRangeStr_), discFeatureRange(NULL),
       preFrameRangeStr(preFrameRangeStr_), preFrameRange(NULL),
       segRangeStr(segRangeStr_), segRange(NULL), 
-      logicalObservationBuffer(NULL), logicalObsBufSize(0)
+      logicalObservationBuffer(NULL), logicalObsBufSize(0),
+      _leftPad(leftPad), _rightPad(rightPad)
     {
     }
 
@@ -170,7 +185,7 @@ class ObservationFile {
   // Must be called before any other operations are performed on a segment.
   virtual bool openSegment(unsigned seg) = 0;
 
-  // The number of physical frames (before -preprX) in the currently open segment.
+  // The number of physical frames (before -preprX -(left|right)Pad) in the currently open segment.
   virtual unsigned numFrames() = 0;
 
   // Load count frames of observed data, starting from first (physical),
@@ -194,9 +209,9 @@ class ObservationFile {
  
   virtual bool openLogicalSegment(unsigned seg); // after -srX
 
-  virtual unsigned numLogicalFrames();   // after -preprX
+  virtual unsigned numLogicalFrames();   // after -preprX -(left|right)Pad
 
-  virtual Data32 const *getLogicalFrames(unsigned first, unsigned count); // after -preprX
+  virtual Data32 const *getLogicalFrames(unsigned first, unsigned count); // after -preprX -(left|right)Pad
 
   virtual unsigned numLogicalContinuous();   // after -frX
 
@@ -217,7 +232,8 @@ ObservationFile *
 instantiateFile(unsigned ifmt, char *ofs, unsigned nfs, unsigned nis,
 		unsigned number, bool iswp, bool Cpp_If_Ascii, 
 		char *cppCommandOptions, char const *frs, char const *irs, 
-		char const *prepr, char const *sr, char const *ifmtStr);
+		char const *prepr, char const *sr, char const *ifmtStr,
+		unsigned leftPad, unsigned rightPad);
 
 ObservationFile *
 instantiateWriteFile(char *listFileName, char *outputFileName, char *outputNameSeparator,

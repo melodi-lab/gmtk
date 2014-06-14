@@ -6,6 +6,7 @@
  *
  * Copyright (C) 2003 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  *
  */
@@ -91,6 +92,13 @@ off_t  JunctionTree::binaryViterbiOffset;
 off_t  JunctionTree::nextViterbiOffset;
 bool JunctionTree::normalizePrintedCliques = true;
 
+ObservationFile *JunctionTree::vitObsFile = NULL;
+char *JunctionTree::vitObsFileName = NULL;
+char *JunctionTree::vitObsListName = NULL;
+const char *JunctionTree::vitObsNameSeparator = "_";
+const char *JunctionTree::vitObsFileFmt = "pfile";
+bool  JunctionTree::vitObsFileSwap = false;
+
 // default names of the three partitions for printing/debugging messages.
 const char* JunctionTree::P1_n = "P'";
 const char* JunctionTree::Co_n = "C'";
@@ -123,11 +131,8 @@ void
 JunctionTree::printAllCliques(FILE* f,
 			      const bool normalize, const bool unlog,
 			      const bool justPrintEntropy,
-			      ObservationFile *pFile,
-			      ObservationFile *cFile,
-			      ObservationFile *eFile)
+			      ObservationFile *obsFile)
 {
-
   ptps_iterator ptps_it(*this);
   ptps_it.set_to_first_entry();
 
@@ -135,16 +140,17 @@ JunctionTree::printAllCliques(FILE* f,
   if (pPartCliquePrintRange != NULL) {
     setCurrentInferenceShiftTo(ptps_it.pt_i());
     BP_Range::iterator it = pPartCliquePrintRange->begin();
+    if (obsFile)
+      obsFile->setFrame(0);
     while (!it.at_end()) {
       const unsigned cliqueNum = (unsigned)(*it);
       if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
-	if (pFile) {
-	  pFile->setFrame(0);
+	if (obsFile) {
 	  partitionTableArray[ptps_it.pt_i()]
 	    .maxCliques[cliqueNum]
 	    .printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
 				.maxCliquesSharedStructure[cliqueNum],
-				pFile,normalize, unlog);
+				obsFile,normalize, unlog);
 	} else {
 	  sprintf(buff,"Partition %d (P), Clique %d:",ptps_it.pt_i(),cliqueNum); 
 	  partitionTableArray[ptps_it.pt_i()]
@@ -164,16 +170,17 @@ JunctionTree::printAllCliques(FILE* f,
       int currentPartition = ptps_it.pt_i();
       BP_Range::iterator it = cPartCliquePrintRange->begin();
       setCurrentInferenceShiftTo(currentPartition);
+      if (obsFile)
+	obsFile->setFrame(ptps_it.pt_i());
       while (!it.at_end()) {
 	const unsigned cliqueNum = (unsigned)(*it);
 	if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
-	  if (cFile) {
-	    cFile->setFrame(ptps_it.pt_i());
+	  if (obsFile) {
 	    partitionTableArray[ptps_it.pt_i()].
 	      maxCliques[cliqueNum].
               printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
 				 .maxCliquesSharedStructure[cliqueNum],
-				 cFile,normalize,unlog);
+				 obsFile,normalize,unlog);
 	  } else {
 	    sprintf(buff,"Partition %d (C), Clique %d:",currentPartition,cliqueNum); 
 	    partitionTableArray[ptps_it.pt_i()].
@@ -194,16 +201,17 @@ JunctionTree::printAllCliques(FILE* f,
   if (ePartCliquePrintRange != NULL) {
     setCurrentInferenceShiftTo(ptps_it.pt_i());
     BP_Range::iterator it = ePartCliquePrintRange->begin();
+    if (obsFile)
+      obsFile->setFrame(ptps_it.pt_i());
     while (!it.at_end()) {
       const unsigned cliqueNum = (unsigned)(*it);
       if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
-	if (eFile) {
-	  eFile->setFrame(ptps_it.pt_i());
+	if (obsFile) {
 	  partitionTableArray[ptps_it.pt_i()]
 	    .maxCliques[cliqueNum]
             .printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
 				.maxCliquesSharedStructure[cliqueNum],
-				eFile,normalize,unlog);
+				obsFile,normalize,unlog);
 	} else {
 	  sprintf(buff,"Partition %d (E), Clique %d:",ptps_it.pt_i(),cliqueNum); 
 	  partitionTableArray[ptps_it.pt_i()]

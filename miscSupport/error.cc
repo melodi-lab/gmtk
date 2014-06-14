@@ -3,6 +3,7 @@
 
 //  Copyright (C) 2001 Jeff Bilmes
 //  Licensed under the Open Software License version 3.0
+//  See COPYING or http://opensource.org/licenses/OSL-3.0
 //
   
     Simple fatal error function.
@@ -32,6 +33,7 @@ error(const char * const format, ...)
   (void) vfprintf(stderr, format, ap);
   va_end(ap);
   (void) fprintf(stderr, "\n");
+  fflush(stderr);
 #ifdef ERROR_DOES_ABORT
   (void) abort();
 #else

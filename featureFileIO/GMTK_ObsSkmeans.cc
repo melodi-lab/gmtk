@@ -3,6 +3,7 @@
  *
  * Copyright (C) 2004 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
   
     This program computes utterance specific segmental k-means.
@@ -83,6 +84,8 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #define GMTK_ARGUMENTS_DEFINITION
 #include "ObsArguments.h"
 #undef GMTK_ARGUMENTS_DEFINITION
+
+RAND rnd(false);
 
 FileSource *gomFS;
 

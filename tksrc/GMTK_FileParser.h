@@ -7,6 +7,7 @@
  *
  * Copyright (C) 2001 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  */
 
@@ -182,7 +183,8 @@ public:
     KW_LogLinear=52,
     KW_EmarfNum=53,
     KW_SymbolTable=54,
-    KW_DeepVECPT=55
+    KW_DeepVECPT=55,
+    KW_DeepCPT=56
   };
 
   // list of token keyword strings.

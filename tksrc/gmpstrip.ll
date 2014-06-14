@@ -1,4 +1,4 @@
-%option nounput
+%option nounput noyywrap
 
 %{
 

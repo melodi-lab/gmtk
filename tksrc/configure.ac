@@ -5,11 +5,12 @@
 #
 # Copyright (C) 2010 Jeff Bilmes
 # Licensed under the Open Software License version 3.0
+# See COPYING or http://opensource.org/licenses/OSL-3.0
 #
 
 # Process this file with autoconf to produce a configure script.
 
-AC_PREREQ([2.65])
+AC_PREREQ([2.69])
 AC_INIT([GMTK], m4_esyscmd(printf %s `head -n 1 ../RELEASE`), 
         [https://j.ee.washington.edu/trac/gmtk/newticket])
 : ${CXXFLAGS=""}
@@ -19,7 +20,7 @@ AC_CANONICAL_HOST
 AC_CONFIG_SRCDIR([GMTK_DlinkMatrix.h])
 AC_CONFIG_HEADERS([config.h])
 
-AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
+AM_INIT_AUTOMAKE([1.12 silent-rules -Wall -Werror foreign])
 AM_SILENT_RULES([yes])
 
 AC_ARG_ENABLE([assertions],
@@ -84,18 +85,22 @@ if test x"$badLZERO" = x"bad"; then
 fi 
 AC_DEFINE_UNQUOTED([LZERO], [(${with_LZERO})], [smallest log value that we represent])
 
+m4_include([../deepMLP/blas_args])
+
 # Checks for programs.
+
 AC_PROG_CXX
 AC_PROG_CC
+AM_CONDITIONAL([USE_GCC_FLAGS],[test x$GCC = xyes -a x$GXX = xyes])
 AM_PROG_LEX
 m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 AC_PROG_INSTALL
 AC_PROG_RANLIB
 
-AC_CHECK_FILE([../.hg/dirstate],[
+AC_CHECK_FILE([$srcdir/../.hg/dirstate],[
   AC_CHECK_PROG([HAVE_HG],[hg],[yes])
   if test x$HAVE_HG = xyes; then
-    HGREVID=`hg id ..`  
+    HGREVID=`hg id $srcdir/..`  
     HGDATE=`hg parents --template '{date|date}'`
     printf "#ifndef HGID\n#define HGID \"$HGREVID\"\n#define HGDATE \"$HGDATE\"\n#endif\n" > hgstamp.h
     AC_DEFINE([HAVE_HG_H],[1],[Live Mercurial revision id header available?])
@@ -110,7 +115,38 @@ AC_CHECK_FILE([../.hg/dirstate],[
 ])
 AM_CONDITIONAL([HAVE_HG],[test  x$HAVE_HG = xyes])
 
+case "${host}" in
+*apple*)
+  if test x"$HAVE_WXWIDGETS" = x"yes"; then
+    AC_SUBST([OSXBUNDLE],[gmtkViz.app])
+
+#   The EnableTop() bug (ticket 64) is fixed in wxWidgets 2.9.2
+#   and gmtkViz souce checks if ENABLE_TOP_OFFSET is
+#   needed using wxCHECK_VERSION(2,9,2)
+    AC_DEFINE([GMTK_WX_OSX],[1],[Do we need to activate OSX fixes?])
+  fi ;;
+*-sun-solaris*) AC_CHECK_LIB([sunmath],[annuity]) ;;
+*cygwin*) AC_SUBST([XOPEN],[-D__USE_XOPEN2K]) ;;
+esac
+
+# Test if compiler accepts ISO C++ 2011.  This is required for
+# the DMLP training code.
+
+m4_include([../deepMLP/m4/gmtk_cxx11])
+if test x$gmtk_cxx11 = xyes -a x$XOPEN = x; then
+  AC_SUBST([dmlp_libraries],[../deepMLP/libDMLP.a])
+  AC_SUBST([dmlp_programs],[gmtkDMLPtrain])
+  AC_SUBST([dmlp_check_programs],[abstest])
+  AM_CONDITIONAL([BUILD_DMLP],[true])
+else
+  AM_CONDITIONAL([BUILD_DMLP],[false])
+fi
+
 # Checks for libraries.
+
+# AX_PTHREAD comes from m4/m4_ax_pthread.m4 which is not distributed with GMTK
+# See http://www.gnu.org/software/autoconf-archive/ax_pthread.html
+AX_PTHREAD
 
 AC_ARG_ENABLE([gmtkViz], 
               [AS_HELP_STRING([--disable-gmtkViz],
@@ -164,19 +200,6 @@ fi
        ]
      )
 
-case "${host}" in
-*apple*) 
-  if test x"$HAVE_WXWIDGETS" = x"yes"; then
-    AC_SUBST([OSXBUNDLE],[gmtkViz.app])
-
-#   The EnableTop() bug (ticket 64) is fixed in wxWidgets 2.9.2
-#   and gmtkViz souce checks if ENABLE_TOP_OFFSET is
-#   needed using wxCHECK_VERSION(2,9,2)
-    AC_DEFINE([GMTK_WX_OSX],[1],[Do we need to activate OSX fixes?])
-  fi ;;
-*-sun-solaris*) AC_CHECK_LIB([sunmath],[annuity]) ;;
-*cygwin*) AC_SUBST([XOPEN],[-D__USE_XOPEN2K]) ;;
-esac
 AM_CONDITIONAL([CYGWIN_FLAGS],[test x"$XOPEN" = x"-D__USE_XOPEN2K"])
 AM_CONDITIONAL([MAKE_BUNDLE],[test  x$OSXBUNDLE = xgmtkViz.app])
 AC_CHECK_LIB([m], [log])
@@ -225,6 +248,8 @@ AC_SEARCH_LIBS([dlopen], [dl dld], [], [
   AC_MSG_ERROR([unable to find the dlopen() function])
 ])
 
+m4_include([../deepMLP/blas_check])
+
 # Checks for header files.
 AC_PATH_XTRA
 AC_CHECK_HEADERS([float.h stdlib.h string.h sys/time.h unistd.h dlfcn.h])
@@ -252,6 +277,7 @@ AC_FUNC_REALLOC
 AC_FUNC_STRTOD
 AC_CHECK_FUNCS([alarm floor memset pow regcomp sqrt strchr strerror strstr strtol log1p getline])
 AC_FUNC_FSEEKO
+AC_SYS_LARGEFILE
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

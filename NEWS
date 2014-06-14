@@ -1,0 +1,149 @@
+GMTK NEWS -- history of user-visible changes.
+
+Copyright (C) 2001-2014 Jeff Bilmes.
+Licensed under the Open Software License version 3.0
+See COPYING or http://opensource.org/licenses/OSL-3.0
+
+Please report bugs at https://j.ee.washington.edu/trac/gmtk
+
+Version 1.X.Y  2014-??-??
+        * Fixed crash caused by switching weights
+        * Improvements and bug fixes for gmtkOnline
+        * Fixed unoptimized build failure
+        * Fixed some incorrect help messages
+        * Fixed neural network training initialization bugs
+        * Added support for autoencoder pretraining of rectified linear
+          activation functions
+
+
+Version 1.0.1  2014-01-22
+
+        * Fixed Cygwin build issues
+
+
+Version 1.0.0  2014-01-16
+
+	* First source release!
+
+	* Added DeepVECPT, DeepCPT, and gmtkDMLPtrain to support 
+	hybrid dynamic graphical models / deep neural network
+
+	* Added gmtkOnline to support filtering & smoothing
+
+	* Added option to print Viterbi results according to original
+	sections
+
+	* Viterbi results can now be saved in any of the observation file
+	formats, as well a binary format for output with the new gmtkPrint
+	command
+
+	* Added separate Viterbi regular expression filters for the prolog,
+	chunk, and epilog. They can be applied to the original or modified
+	sections
+
+	* Added Viterbi output filters that use the decision tree leaf
+	node expression syntax and Viterbi output run-length compression
+
+	* Added option to save clique posteriors to any of the observation 
+	file formats
+
+	* New constant space observation code supports island algorithm
+	to do true log space inference
+
+	* The island algorithm supports arbitrary roots as the logarithm base
+
+	* Added support for HDF5 observation files
+
+	* Added option to left-, right- or center-justify the observation
+	frames used when the number of usable frames is less than the number
+	of frames in a segment
+
+	* Added an option to skip zero probability segments rather than
+	terminating the GMTK command
+
+	* Added support for external compiled decision trees
+
+	* FNGram and NGram CPTs can now be read from compressed files
+
+	* You can now specify different verbosity levels for each component
+	(inference, I/O, training, etc.)
+
+	* Many bug fixes
+ 
+2010-08-08
+
+	* speedups: Various speedups and bug fixes.
+
+	* island: new implementation of island algorithm and data 
+        structures, it is much cleaner now.
+
+	* pruning: New pruning options: diversity/cluster pruning, and
+	predictive pruning (the predictie pruning stuff is published in
+	interspeech 2010). Diversity pruning has not yet been published or
+	described.
+
+	* significant speedups to Gaussian evaluation.
+
+	* random variables can now have symbol tables.
+
+	* gmtkViterbiNew is deprecated, gmtkViterbi is the new gmtkViterbi
+	program. As a result, the output file format is significantly
+	changed.
+	
+	* added and changed quite a bit of code since the previous
+	version. Essentially re-wrote the core data structures and
+	unrolling strategy so that now, there is no long delay waiting for
+	STL to unroll a large graph - now there is no unrolling at all,
+	and the only thing that happens is data structures are allocated
+	as we go forward in the collect evidence phase.
+
+
+2008-11-21
+
+	* added: lots has happened since 05, but this file unfortunately
+	has not been kept up to date. I hope to keep it up to date now.
+
+
+2005-08-28
+
+	* added -cusample option, uniformaly at random sample from pruned 
+        clique entries during CE.
+
+2005-08-27
+
+	* new -deterministiChildrenStore option to inference programs, to 
+        optionally not store determinisitc variables in cliques. Saves memory 
+        but 10-20% slower.
+
+2005-06-20
+
+	* added new beam options, -cmbeam, -cmmin 
+	* new arguments ability (makes it easy to change arguments in one go)
+
+2005-05-31
+
+	* added HTK lattice support (Gang Ji)
+	* added faster hash tables.
+	* E_root_clique now is maxweight clique.
+	
+2005-04-21
+
+	* fixed bug with static (1 frame) graphs on E1 partition.
+
+2005-03-26
+
+	* fixed bug with dispositions not being re-sorted with variables in 
+        clique.
+	* removed extraneous var in clique packer structure.
+	
+2005-03-09
+
+	* gmtkTime supports file line version of vcap,vpap,jcap,icap, and 
+        trifile
+
+2005-03-08
+
+	* speedup: faster Gaussian evaluation
+	* cpbeam applies to separators as well as clique
+	* started ChangeLog
+

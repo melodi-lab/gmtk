@@ -6,6 +6,7 @@
  *
  * Copyright (C) 2001 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  *
  */
@@ -2793,6 +2794,7 @@ RngDecisionTree::write(oDataStreamFile& os)
   NamedObject::write(os);
   os.nl();
   if (!iterable()) {
+    if (LeafNodeCFunction == root->nodeType) return; // ticket #536
     os.write(_numFeatures,"RngDecisionTree:: write numFeatures");
     os.nl();
     writeRecurse(os,root,0);

@@ -7,6 +7,7 @@
 // 
 //  Copyright (C) 2001 Jeff Bilmes
 //  Licensed under the Open Software License version 3.0
+//  See COPYING or http://opensource.org/licenses/OSL-3.0
 //
 
  Modified by Karim Filali (karim@cs.washington.edu) to handle the following:
@@ -227,7 +228,7 @@ class Arg {
   ~Arg();
 
   static ArgsRetCode parseArgsFromCommandLine(int,char**);
-  static ArgsRetCode parseArgsFromFile(char*f="argsFile");
+  static ArgsRetCode parseArgsFromFile(char const *f="argsFile");
   static bool parse(int i,char**c, const char *programDescription=NULL);
   static void usage(const char* filter=NULL, bool stdErrPrint = true, const char *programDescription=NULL);
   static void printArgs(Arg*args,FILE*f);

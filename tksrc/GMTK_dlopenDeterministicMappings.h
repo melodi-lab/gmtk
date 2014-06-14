@@ -7,6 +7,7 @@
  * 
  * Copyright (C) 2012 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  *
  */
@@ -17,6 +18,7 @@
 
 #include "GMTK_DiscRV.h"
 #include "GMTK_GMParms.h"
+#include "GMTK_ObservationSource.h"
 
 // this defines the name of the routine in the C++ namespace
 #define DETERMINISTIC_MAPPER_C_CODE_NAME(name) cFunctionDeterministicMapping_##name
@@ -126,5 +128,20 @@ cFunctionDeterministicMapping_##name(const vector< RV* >& parent_variables,const
 
 // child cardinality
 #define cc (RV2DRV(child_rv)->cardinality)
+
+// Grab parent's frame number
+#define FRAMENUM(i) (RV2DRV(parent_variables[(i)])->frame())
+
+
+// externalObsSrc gets set to the globalObservationMatrix when
+// GMParms loads the .so
+ObservationSource *externalObsSrc; 
+
+// Grab parent's emarf
+#define EMARF(i) (externalObsSrc->numFrames() - ((RV2DRV(parent_variables[(i)]))->frame()))
+
+#define NUMSEGMENTS (externalObsSrc->numSegments())
+#define SEGMENTNUM  (externalObsSrc->segmentNumber())
+#define NUMFRAMES   (externalObsSrc->numFrames())
 
 #endif 

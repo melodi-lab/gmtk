@@ -4,8 +4,10 @@
 #
 # Copyright (C) 2010 Jeff Bilmes
 # Licensed under the Open Software License version 3.0
+# See COPYING or http://opensource.org/licenses/OSL-3.0
 #
 
+ACLOCAL_AMFLAGS = -I m4
 
 if HAVE_HG
 # this will keep the Mercurial revision id current if you're building 
@@ -16,63 +18,73 @@ VERSIONFLAG =
 endif
 
 
-
-if MAKE_BUNDLE
-# Must be OSX, diddle the flags
-EXCCFLAGS = -m32
-EXCXXFLAGS = -m32
-EXLDDFLAGS = -m32
-OSXLDFLAGS = -dylib_file /System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib
-else
-OSXLDFLAGS =
-EXCCFLAGS =
-EXCXXFLAGS =
-EXLDFLAGS = 
-endif
-
-clean-local:
-	-rm -rf gmtkViz.app
-
-DEBUGFLAGS = -g
-if NO_ASSERTIONS
-DEBUGFLAGS += -DNDEBUG
-endif
-if NO_MODEL_CHECKS
-DEBUGFLAGS += -DNMODELCHECK
-endif
-OPTFLAGS = -O3
+DEBUGFLAGS =
 
 if CYGWIN_FLAGS
-ANSI = 
-PEDANTIC =
+  ANSI = 
 else
-ANSI = -ansi
-PEDANTIC = -pedantic
+  ANSI = -ansi -pedantic
 endif
 
-WALL = -Wall
-
-AM_CFLAGS = $(VERSIONFLAG) \
-$(DEBUGFLAGS) $(OPTFLAGS)  $(EXCCFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
-AM_CXXFLAGS = $(VERSIONFLAG) \
-$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
-
+# If configure determines we're using GCC C/C++ compilers, set flags appropriately
+if USE_GCC_FLAGS
+# Only used for GCC compilers
+  OPTFLAGS = -O3
 # extra optimization options for certain GMTK sources, used below.
-XOPTFLAGS = -funroll-loops -fargument-noalias-global
+  XOPTFLAGS = -funroll-loops -fargument-noalias-global
+  GCC_FLAGS = -Wall $(ANSI)
+else
+# unknown compiler
+  OPTFLAGS =
+  XOPTFLAGS =
+  GCC_FLAGS =
+endif
+
+DBFLAGS =
+if NO_ASSERTIONS
+DBFLAGS += -DNDEBUG
+endif
+if NO_MODEL_CHECKS
+DBFLAGS += -DNMODELCHECK
+endif
+
 
 AM_CPPFLAGS = \
 -I$(srcdir)/../miscSupport \
 -I$(builddir)/../IEEEFloatingpoint \
 -I$(srcdir)/../featureFileIO \
+-I$(srcdir)/../deepMLP \
+$(VERSIONFLAG) $(DBFLAGS) \
 -DBINDIR="\"$(bindir)\""
 # make BINDIR available for warning message in GMTK_FileParser.cc for ticket 320
+
+AM_CFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(GCC_FLAGS)
+AM_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(GCC_FLAGS)
+AM_LDFLAGS = 
+
+if MAKE_BUNDLE
+# Must be OSX, diddle the flags
+  AM_CFLAGS += -m32
+  AM_CXXFLAGS += -m32
+  AM_LDFLAGS += -m32
+  OSXLDFLAGS = -dylib_file /System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib
+else
+  OSXLDFLAGS =
+endif
+
+
+clean-local:
+	-rm -rf gmtkViz.app
+
+
 
 LDADD = libGMTK.a libXOPT.a \
 $(builddir)/../featureFileIO/libgmtkio.a \
 $(builddir)/../miscSupport/libmiscSupport.a \
 $(builddir)/../IEEEFloatingpoint/libIEEEsupport.a
 
-LIBS += $(LEXLIB)
+# should not be necessary -- flex sources should be such that no -lfl is required
+#LIBS += $(LEXLIB)
 
 noinst_LIBRARIES = libXOPT.a libGMTK.a
 
@@ -83,6 +95,7 @@ GMTK_Sparse1DPMF.h GMTK_Sparse1DPMF.cc \
 GMTK_MeanVector.h GMTK_MeanVector.cc \
 GMTK_DiagCovarVector.h GMTK_DiagCovarVector.cc \
 GMTK_RealMatrix.h GMTK_RealMatrix.cc \
+GMTK_DoubleMatrix.h GMTK_DoubleMatrix.cc \
 GMTK_DlinkMatrix.h GMTK_DlinkMatrix.cc \
 GMTK_DirichletTable.h GMTK_DirichletTable.cc \
 GMTK_DirichletPrior.h GMTK_DirichletPrior.cc \
@@ -129,7 +142,9 @@ GMTK_Sw_HidDiscRV.h GMTK_Sw_HidDiscRV.cc \
 GMTK_Sw_ObsContRV.h GMTK_Sw_ObsContRV.cc \
 GMTK_Sw_ObsDiscRV.h GMTK_Sw_ObsDiscRV.cc \
 GMTK_VECPT.h GMTK_VECPT.cc \
+GMTK_DeepNN.h GMTK_DeepNN.cc \
 GMTK_DeepVECPT.h GMTK_DeepVECPT.cc \
+GMTK_DeepCPT.h GMTK_DeepCPT.cc \
 GMTK_NetworkFlow.h GMTK_NetworkFlow.cc \
 GMTK_NetworkFlowTriangulate.h GMTK_NetworkFlowTriangulate.cc \
 GMTK_LatticeADT.h GMTK_LatticeADT.cc GMTK_LatticeADT.h GMTK_LatticeNodeCPT.h \
@@ -179,13 +194,14 @@ libXOPT_a_SOURCES = \
 GMTK_DiagGaussianOpt.cc \
 GMTK_LinMeanCondDiagGaussianOpt.cc \
 GMTK_PackCliqueValueOpt.cc
-libXOPT_a_CXXFLAGS = $(VERSIONFLAG) $(XOPTFLAGS) \
-$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+
+libXOPT_a_CXXFLAGS = $(AM_CXXFLAGS) $(XOPTFLAGS) 
 
 
 # include register_user_internal_cfunc_dts.cc and 
 #   user_internal_cfunc_dts.cc in the tar ball
 EXTRA_DIST = \
+m4/gpl.txt \
 GMTK_dlopenDeterministicMappings.h \
 register_user_internal_cfunc_dts.cc \
 user_internal_cfunc_dts.cc \
@@ -207,22 +223,48 @@ gmtkTie \
 gmtkModelInfo \
 gmtkOnline \
 gmtkPrint \
-$(GMTKVIZ) $(OSXBUNDLE)
-EXTRA_PROGRAMS = gmtkViz gmtkViz.app
+$(dmlp_programs) $(GMTKVIZ) $(OSXBUNDLE)
+EXTRA_PROGRAMS = gmtkDMLPtrain gmtkViz gmtkViz.app abstest
 
 gmtkTie_SOURCES = gmtkTie.cc
+
 gmtkJT_SOURCES = gmtkJT.cc
+
 gmtkTime_SOURCES = gmtkTime.cc
+
 gmtkEMtrain_SOURCES = gmtkEMtrain.cc
+
+
+gmtkDMLPtrain_SOURCES = gmtkDMLPtrain.cc
+gmtkDMLPtrain_CPPFLAGS = $(AM_CPPFLAGS) $(VERSIONFLAG)
+gmtkDMLPtrain_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(BLAS_CFLAGS) $(PTHREAD_CFLAGS) $(ISOCXX11FLAGS)
+gmtkDMLPtrain_LDADD = $(LDADD) $(PTHREAD_LIBS)
+if BUILD_DMLP
+gmtkDMLPtrain_LDADD += $(builddir)/../deepMLP/libDMLP.a
+endif
+if BUILD_PHIPAC
+gmtkDMLPtrain_LDADD += $(builddir)/../deepMLP/libPHiPAC.a
+endif
+gmtkDMLPtrain_LDADD += $(BLAS_LIBS)
+
 gmtkKernel_SOURCES = gmtkKernel.cc
+
 gmtkViterbi_SOURCES = gmtkViterbi.cc
+
 gmtkPrint_SOURCES = gmtkPrint.cc
+
 gmtkTriangulate_SOURCES = gmtkTriangulate.cc
+
 gmtkParmConvert_SOURCES = gmtkParmConvert.cc
+
 gmtkModelInfo_SOURCES = gmtkModelInfo.cc
+
 gmtkTFmerge_SOURCES = gmtkTFmerge.cc
+
 gmtkDTindex_SOURCES = gmtkDTindex.cc
+
 gmtkNGramIndex_SOURCES = gmtkNGramIndex.cc
+
 gmtkOnline_SOURCES = gmtkOnline.cc
 
 #gmtkUnroll_SOURCES = gmtkUnroll.o  libGMTK.a ../miscSupport/libmiscSupport.a .NOEXPORT
@@ -232,16 +274,15 @@ gmtkOnline_SOURCES = gmtkOnline.cc
 
 
 gmtkViz_SOURCES = gmtkViz.cc
-gmtkViz_CXXFLAGS = $(VERSIONFLAG) $(VIZCXXFLAGS) \
-$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(X_CFLAGS)
-gmtkViz_LDFLAGS = $(EXLDFLAGS) $(VIZLDFLAGS) $(X_PRE_LIBS) $(X_LIBS) $(X_EXTRA_LIBS) -lX11 $(OSXLDFLAGS)
+gmtkViz_CXXFLAGS = $(VERSIONFLAG) $(VIZCXXFLAGS) $(DEBUGFLAGS) $(OPTFLAGS) $(X_CFLAGS)
+gmtkViz_LDFLAGS = $(VIZLDFLAGS) $(X_PRE_LIBS) $(X_LIBS) $(X_EXTRA_LIBS) -lX11 $(OSXLDFLAGS)
 gmtkViz_app_SOURCES = Info.plist.in wxmac.icns
 
 if MAKE_BUNDLE
 gmtkViz.app: gmtkViz.app/Contents/PkgInfo
 
-app_verbose   = $(app_verbose_$(V))
-app_verbose_  = $(app_verbose_$(AM_DEFAULT_VERBOSITY))
+app_verbose   = $(app_verbose_@AM_V@)
+app_verbose_  = $(app_verbose_@AM_DEFAULT_V@)
 app_verbose_0 = @echo "  APP\t gmtkViz.app";
 
 gmtkViz.app/Contents/PkgInfo: gmtkViz$(EXEEXT) $(srcdir)/Info.plist.in \
@@ -258,12 +299,29 @@ gmtkViz.app/Contents/PkgInfo: gmtkViz$(EXEEXT) $(srcdir)/Info.plist.in \
 endif
 
 check_PROGRAMS =  \
+$(dmlp_check_programs) \
 gmpstrip \
+flat2vit \
 parserTest \
 testPackCliqueValue \
 testViterbi \
 neghead \
-dlinktest
+dlinktest \
+vitnorm
+
+vitnorm_SOURCES = vitnorm.ll
+
+abstest_SOURCES = abstest.cc
+abstest_CPPFLAGS = $(AM_CPPFLAGS) $(VERSIONFLAG)
+abstest_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(BLAS_CFLAGS) $(PTHREAD_CFLAGS) $(ISOCXX11FLAGS) 
+abstest_LDADD = $(LDADD) $(PTHREAD_LIBS)
+if BUILD_DMLP
+abstest_LDADD += $(builddir)/../deepMLP/libDMLP.a
+endif
+if BUILD_PHIPAC
+abstest_LDADD += $(builddir)/../deepMLP/libPHiPAC.a
+endif
+abstest_LDADD += $(BLAS_LIBS)
 
 # testMDCPT testMTCPT
 #testRngDecisionTree testGMParms testFileParser lex.yy
@@ -301,8 +359,8 @@ parserTest_SOURCES = parserTest.cc
 #$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
 
 testPackCliqueValue_SOURCES = GMTK_PackCliqueValue.cc  GMTK_PackCliqueValue.h
-testPackCliqueValue_CXXFLAGS = -DMAIN $(VERSIONFLAG) \
-$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+testPackCliqueValue_CXXFLAGS = -DMAIN $(AM_CXXFLAGS)
+
 
 #testGMParms_SOURCES = GMTK_GMParms.cc GMTK_GMParms.h
 #	echo $(objs) > /tmp/gmparms_depts

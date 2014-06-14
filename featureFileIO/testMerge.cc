@@ -9,6 +9,7 @@
  *
  * Copyright (C) 2012 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  */
 
@@ -103,7 +104,7 @@ main(int argc, char *argv[]) {
 
     obsFile[i] = instantiateFile(ifmts[i], ofs[i], nfs[i], nis[i], i, iswp[i],
 				 Cpp_If_Ascii, cppCommandOptions, prefrs[i], preirs[i],
-				 prepr[i], sr[i], fmts[i]);
+				 prepr[i], sr[i], fmts[i], leftPad[i], rightPad[i]);
     assert(obsFile[i]);
     Filter *fileFilter = instantiateFilters(Per_Stream_Transforms[i],
 					    obsFile[i]->numLogicalContinuous(),
