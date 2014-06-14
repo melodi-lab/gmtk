@@ -6,19 +6,33 @@
 
 			 How to compile GMTK
 
-			  Updated: March, 2011
+			  Updated: December, 2013
  
 
 GMTK uses a simple GNU Autotools build process. The familiar
 
    ./configure && make && make install
 
-should work on the target platforms (Linux, OSX, and Windows/Cygwin).
+should work on the target platforms (Linux, Mac OS X, and Windows/Cygwin).
 Other POSIX-like platforms might work too. See
 
    ./configure --help
 
 for full information on the available configure options.
+
+
+gmtkDMLPtrain requires a compiler with ISO C++ 2011 support. The configure
+script will enable support for GCC 4.5 or later. This may also work for
+other compilers that enable ISO C++ 2011 support with -std=c++0x or -std=c++11.
+For compilers for which that doesn't work, you may need to specify the 
+required command line arguments with something like
+
+  ./configure CXXFLAGS='<arguments to enable C++ 2011>' ...
+
+If you build GMTK with a compiler that does not support ISO C++ 2011,
+the gmtkDMLPtrain program will not be compiled. You will also want to 
+use a good CBLAS implementation like MKL or ATLAS to get the best
+performance with gmtkDMLPtrain. See the relevant options in ./configure --help
 
 
 gmtkViz requires wxWidgets 2.9.1 or later. On most platforms, it
@@ -27,6 +41,10 @@ To build gmtkViz on OSX, use a 32-bit wxOSX_CARBON build of
 wxWidgets and do:
 
    ./configure CFLAGS=-m32 CXXFLAGS=-m32 LDFLAGS=-m32 && make && make install
+
+wxWidgets 3.0 was recently released and claims that wxOSX_COCOA is
+now production ready and supports 64-bit builds. We're still trying to
+figure out how to build gmtkViz with it.
 
 Note that the main development compiler used for GMTK is GNU
 gcc/g++. Other compilers have also been tested (such as the Intel C++
@@ -76,9 +94,10 @@ installed, do
 
 Note, many of the above options can be combined.
 
-Don't forget to read the documentation. It can be found at:
+Don't forget to read the documentation. It can be found along with the latest
+GMTK source distribution at:
 
-       http://ssli.ee.washington.edu/~bilmes/gmtk
+       http://melodi.ee.washington.edu/gmtk
 
 and will be updated in the near future. To build gmtkViz (which is a
 graphical user interface for taking an existing graph structure
@@ -109,8 +128,8 @@ enjoy!!
 	-- Jeff Bilmes
 
      For general questions:
-        -- gmtk-users@ssli.ee.washington.edu
-        -- gmtk-users-request@ssli.ee.washington.edu
+        -- gmtk-users@melodi.ee.washington.edu
+        -- gmtk-users-request@melodi.ee.washington.edu
 
      For bugs:
         -- https://j.ee.washington.edu/trac/gmtk/newticket

@@ -6,6 +6,7 @@
  *
  * Copyright (C) 2004 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  */
 
@@ -19,7 +20,7 @@
 #include <vector>
 
 #include "data_processing.h"
-#include "config.h"
+#include "discrete_mi_config.h"
 #include "error.h"
 
 #ifndef DATA_TYPE_DEFINED

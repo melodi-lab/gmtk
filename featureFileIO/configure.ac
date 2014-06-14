@@ -5,11 +5,12 @@
 #
 # Copyright (C) 2010 Jeff Bilmes
 # Licensed under the Open Software License version 3.0
+# See COPYING or http://opensource.org/licenses/OSL-3.0
 #
 
 # Process this file with autoconf to produce a configure script.
 
-AC_PREREQ(2.59)
+AC_PREREQ(2.69)
 AC_INIT([GMTK], m4_esyscmd(printf %s `head -n 1 ../RELEASE`),
         [https://j.ee.washington.edu/trac/gmtk/newticket])
 : ${CXXFLAGS=""}
@@ -18,7 +19,7 @@ AC_CANONICAL_HOST
 AC_CONFIG_SRCDIR([pfile.h])
 AC_CONFIG_HEADER([config.h])
 
-AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
+AM_INIT_AUTOMAKE([1.12 silent-rules -Wall -Werror foreign])
 AM_SILENT_RULES([yes])
 
 AC_ARG_ENABLE([assertions],
@@ -57,15 +58,16 @@ AM_CONDITIONAL([NO_MODEL_CHECKS],[test x$model_checks != xyes])
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
+AM_CONDITIONAL([USE_GCC_FLAGS],[test x$GCC = xyes -a x$GXX = xyes])
 AC_PROG_LEX
 m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 AC_PROG_INSTALL
 AC_PROG_RANLIB
 
-AC_CHECK_FILE([../.hg/dirstate],[
+AC_CHECK_FILE([$srcdir/../.hg/dirstate],[
   AC_CHECK_PROG([HAVE_HG],[hg],[yes])
   if test x$HAVE_HG = xyes; then
-    HGREVID=`hg id ..`  
+    HGREVID=`hg id $srcdir/..`  
     HGDATE=`hg parents --template '{date|date}'`
     printf "#ifndef HGID\n#define HGID \"$HGREVID\"\n#define HGDATE \"$HGDATE\"\n#endif\n" > hgstamp.h
     AC_DEFINE([HAVE_HG_H],[1],[Live Mercurial revision id header available?])

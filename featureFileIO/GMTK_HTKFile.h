@@ -6,6 +6,7 @@
  *
  * Copyright (C) 2011 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  * 
  *
  */
@@ -65,12 +66,14 @@ class HTKFile: public ObservationFile {
 	  char const *contFeatureRangeStr_=NULL, 
 	  char const *discFeatureRangeStr_=NULL, 
 	  char const *preFrameRangeStr_=NULL, 
-	  char const *segRangeStr_=NULL)  
+	  char const *segRangeStr_=NULL,
+	  unsigned leftPad=0, unsigned rightPad=0)  
     : ObservationFile(name, num, 
 		      contFeatureRangeStr_, 
 		      discFeatureRangeStr_, 
 		      preFrameRangeStr_,
-		      segRangeStr_)
+		      segRangeStr_,
+		      leftPad, rightPad)
   {
     listFile = NULL;
     writeFile = NULL;

@@ -5,11 +5,12 @@
 #
 # Copyright (C) 2010 Jeff Bilmes
 # Licensed under the Open Software License version 3.0
+# See COPYING or http://opensource.org/licenses/OSL-3.0
 #
 
 # Process this file with autoconf to produce a configure script.
 
-AC_PREREQ([2.65])
+AC_PREREQ([2.69])
 AC_INIT([GMTK], m4_esyscmd(printf %s `head -n 1 ../RELEASE`),
         [https://j.ee.washington.edu/trac/gmtk/newticket])
 : ${CXXFLAGS=""}
@@ -19,7 +20,7 @@ AC_CANONICAL_HOST
 AC_CONFIG_SRCDIR([data-points.cc])
 AC_CONFIG_HEADERS([config.h])
 
-AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
+AM_INIT_AUTOMAKE([1.12 silent-rules -Wall -Werror foreign])
 AM_SILENT_RULES([yes])
 
 AC_ARG_ENABLE([assertions],
@@ -38,6 +39,7 @@ AM_CONDITIONAL([NO_MODEL_CHECKS],[test x$model_checks != xyes])
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
+AM_CONDITIONAL([USE_GCC_FLAGS],[test x$GCC = xyes -a x$GXX = xyes])
 m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 
 # Checks for libraries.

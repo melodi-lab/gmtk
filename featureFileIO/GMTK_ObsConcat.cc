@@ -2,6 +2,7 @@
  *
  * Copyright (C) 2004 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
   
     This program reads one or more input files (in pfile, htk, binary,
@@ -69,6 +70,7 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "GMTK_UpsampleFilter.h"
 #include "GMTK_UpsampleSmoothFilter.h"
 
+#include "rand.h"
 #include "range.h"
 #include "vbyteswapping.h"
 
@@ -92,6 +94,7 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "ObsArguments.h"
 #undef GMTK_ARGUMENTS_DEFINITION
 
+RAND rnd(false);
 
 char *output_fname = NULL; // Output pfile name.
 char * outputList = NULL;
@@ -301,7 +304,8 @@ openOneSourceFile(char *ofs,
 		  unsigned fileWindowDelta,
 		  unsigned justification,
 		  unsigned fileNum,
-		  const char *ifmtStr)
+		  const char *ifmtStr,
+		  unsigned leftPad, unsigned rightPad)
 {
   // range selection is much more efficient if "all" is replaced with NULL
   // since the logical <-> physical mapping step can be skipped
@@ -318,7 +322,7 @@ openOneSourceFile(char *ofs,
   
   obsFile = instantiateFile(ifmt, ofs, nfs, nis, fileNum, iswp,
 			    Cpp_If_Ascii, cppCommandOptions, prefrs, preirs,
-			    prepr, sr, ifmtStr);
+			    prepr, sr, ifmtStr, leftPad, rightPad);
   assert(obsFile);
   if (Per_Stream_Transforms || frs || irs || postpr) {
     Filter *fileFilter = instantiateFilters(Per_Stream_Transforms,
@@ -375,7 +379,7 @@ static void obsConcat(FILE *out_fp,
 			    postpr[0], Post_Transforms, gpr_str,
 			    constantSpace, startSkip, endSkip,
 			    fileBufferSize, fileWindowSize, fileWindowDelta, 
-			    justification, 0, fmts[0]);
+			    justification, 0, fmts[0], leftPad[0], rightPad[0]);
   unsigned n_ftrs = gomFS->numContinuous();
   unsigned n_labs = gomFS->numDiscrete();
     
@@ -399,7 +403,7 @@ static void obsConcat(FILE *out_fp,
 			      postpr[file_ix], Post_Transforms, gpr_str,
 			      constantSpace, startSkip, endSkip,
 			      fileBufferSize, fileWindowSize, fileWindowDelta, 
-			      justification, file_ix, fmts[file_ix]);
+			      justification, file_ix, fmts[file_ix], leftPad[file_ix], rightPad[file_ix]);
     unsigned check_n_ftrs = gomFS->numContinuous();
     unsigned check_n_labs = gomFS->numDiscrete();
 

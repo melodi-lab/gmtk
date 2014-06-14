@@ -17,10 +17,11 @@ tksrc/GMTK_FileTokenizer.cc
 tksrc/testViterbi.cc
 tksrc/gmpstrip.cc
 hgstamp.h
+version.info
 Makefile
 aclocal.m4
 autom4te.cache
-config.{guess,h,log,status,sub}
+config.{guess,h,log,status,sub,cache}
 configure
 depcomp
 install-sh
@@ -73,6 +74,8 @@ miscSupport/testcArray
 miscSupport/testsArray
 miscSupport/testmArray
 miscSupport/testQSort
+miscSupport/testPrime
+miscSupport/testPermute
 mitk/bivariate-mi
 mitk/mvnrnd
 mitk/test-matrix-ops
@@ -81,6 +84,7 @@ mitk/multivariate-mi
 mitk/mvnrnd
 mitk/test-matrix-ops
 mitk/testReadRange
+mitk/discrete-mi/discrete-mi
 tests/atconfig
 tests/atlocal
 tests/gmtk_tests.at
@@ -93,9 +97,18 @@ tests/testanddev
 tests/testanddev.at
 tests/testanddev.dir
 tests/testanddev.log
+deepMLP/dmlp
+deepMLP/mnist
+deepMLP/label
+deepMLP/dmlpTest
+deepMLP/orderTest
+deepMLP/phipacTest
+tksrc/abstest
+tksrc/flat2vit
 tksrc/unrevisioned
 tksrc/gmtkDTindex
 tksrc/gmtkEMtrain
+tksrc/gmtkDMLPtrain
 tksrc/gmtkJT
 tksrc/gmtkKernel
 tksrc/gmtkModelInfo
@@ -118,3 +131,4 @@ tksrc/gmpstrip
 tksrc/testPackCliqueValue
 tksrc/dlinktest
 tksrc/parserTest
+tksrc/vitnorm.cc

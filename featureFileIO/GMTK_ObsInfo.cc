@@ -7,6 +7,7 @@
  *
  * Copyright (C) 2003 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
 */
 
 #ifdef HAVE_CONFIG_H
@@ -26,6 +27,7 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #  include "GMTK_ObservationMatrix.h"
 #else
 //#  include "GMTK_ObservationSource.h"
+#  include "rand.h"
 #  include "GMTK_FileSource.h"
 #  include "GMTK_CreateFileSource.h"
 #  include "GMTK_ASCIIFile.h"
@@ -38,6 +40,7 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #  include "GMTK_Stream.h"
 #endif
 
+RAND rnd(false);
 
 #if 0
 ObservationMatrix globalObservationMatrix;

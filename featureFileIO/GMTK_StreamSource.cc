@@ -5,6 +5,7 @@
  *
  * Copyright (C) 2012 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  * 
  *
  */
@@ -96,7 +97,7 @@ StreamSource::preloadFrames(unsigned nFrames) {
     Data32 const *newFrame = stream->getNextLogicalFrame();
     if (!newFrame) {
       // discovered segment length
-      numFramesInSegment = currentCookedFrames;
+      numFramesInSegment = currentCookedFrames - _startSkip;
       break;
     }
     memcpy(newFrameDest, newFrame, nFeatures*sizeof(Data32));
@@ -188,7 +189,7 @@ StreamSource::enqueueFrames(unsigned nFrames) {
     Data32 const *newFrame = stream->getNextLogicalFrame();
     if (!newFrame) {
       // discovered segment length
-      numFramesInSegment = firstCookedFrameNum + currentCookedFrames;
+      numFramesInSegment = firstCookedFrameNum + currentCookedFrames - _startSkip;
       break;
     }
     if (IM::messageGlb(IM::ObsStream,IM::High)) {

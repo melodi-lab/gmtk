@@ -6,6 +6,7 @@
  *
  * Copyright (C) 2011 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  * 
  *
  */
@@ -31,12 +32,14 @@ ASCIIFile::ASCIIFile(const char *name, unsigned nfloats, unsigned nints,
 		     char const *contFeatureRangeStr_, 
 		     char const *discFeatureRangeStr_, 
 		     char const *preFrameRangeStr_, 
-		     char const *segRangeStr_)
+		     char const *segRangeStr_,
+		     unsigned leftPad, unsigned rightPad)
   : ObservationFile(name, num,
 		    contFeatureRangeStr_, 
 		    discFeatureRangeStr_, 
 		    preFrameRangeStr_,
-		    segRangeStr_),
+		    segRangeStr_, 
+		    leftPad, rightPad),
     cppIfAscii(cppIfAscii),
     cppCommandOptions(cppCommandOptions)
 {
@@ -153,14 +156,14 @@ ASCIIFile::openSegment(unsigned seg) {
   // num_floats and num_ints > 0 for each frame.
   for(unsigned s=0; s < n_samples; ++s) {
     lineNum++;
-    for (unsigned n = 0; n < _numContinuousFeatures; n+=1) {
-      if (fscanf(curDataFile,"%e", (float *)(dest++)) != 1) {
+    for (unsigned n = 0; n < _numContinuousFeatures; n+=1, dest+=1) {
+      if (fscanf(curDataFile,"%e", (float *)(dest)) != 1) {
 	error("ERROR: ASCIIFile::openSegment: observation file %u '%s' segment %u: couldn't read %u'th item in frame %u\n",
 	      observationFileNum, observationFileName, seg, n, s);
       }
     }
-    for (unsigned n = 0; n < _numDiscreteFeatures; n+=1) {
-      if (fscanf(curDataFile,"%d", (Int32 *)(dest++)) != 1) {
+    for (unsigned n = 0; n < _numDiscreteFeatures; n+=1, dest+=1) {
+      if (fscanf(curDataFile,"%d", (Int32 *)(dest)) != 1) {
 	error("ERROR: ASCIIFile::openSegment: observation file %u '%s' segment %u: couldn't read %u'th item in frame %u\n",
 	      observationFileNum, observationFileName, seg, _numContinuousFeatures+n, s);
       }
@@ -194,7 +197,6 @@ ASCIIFile::writeSegment(Data32 const *segment, unsigned nFrames) {
 
   for (unsigned frame_no=0; frame_no < nFrames ; frame_no+=1) {
 
-    fprintf(writeFile, "%u %u", currSegment, frame_no);
     /// Print continuous part of frame /////////////////////////////
     for (unsigned frit=0; frit < _numContinuousFeatures; frit+=1) {
       fprintf(writeFile, " %.8e", cont_buf_p[frit]);

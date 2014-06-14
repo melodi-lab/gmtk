@@ -5,6 +5,7 @@
  *
  * Copyright (C) 2011 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  * 
  *
  */
@@ -78,6 +79,12 @@ class ObservationSource {
   // Returns the number of the currently active segment (most recent
   // openSegment() argument for FileStream).
   virtual unsigned segmentNumber() = 0;
+
+  // Returns the number of segments in the ObservationSource. Note
+  // that numSegments() always returns 0 for StreamSource since it's
+  // not possible to know how many segments are in a stream until the
+  // stream has been completely read.
+  virtual unsigned numSegments() = 0;
 
   // Returns the number of frames in the currently active segment. Note
   // that numFrames() returns 0 for StreamSource until the length of the

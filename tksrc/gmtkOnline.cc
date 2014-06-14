@@ -7,6 +7,7 @@
  *
  * Copyright (C) 2012 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  * 
  *
  */
@@ -104,9 +105,9 @@ VCID(HGID)
 #define GMTK_ARG_CLEAR_CLIQUE_VAL_MEM
 #define GMTK_ARG_MEM_GROWTH
 
-#define GMTK_ARG_START_END_SKIP
 #if 0
 /****************************      FILE RANGE OPTIONS             ***********************************************/
+#define GMTK_ARG_START_END_SKIP
 #define GMTK_ARG_FILE_RANGE_OPTIONS
 #define GMTK_ARG_DCDRNG
 #endif
@@ -216,8 +217,7 @@ main(int argc,char*argv[])
   ////////////////////////////////////////////
   // parse arguments
   bool parse_was_ok = Arg::parse(argc,(char**)argv,
-"\nThis program computes the probability of evidence, and can also\n"
-"compute the posterior distributions of the hidden variables\n");
+"\nThis program does filtering of online streams of observations.\n");
   if(!parse_was_ok) {
     // Arg::usage(); 
     exit(-1);
@@ -253,7 +253,7 @@ main(int argc,char*argv[])
       error("ERROR: -fmt1 must be 'binary' or 'ascii', got '%s'", fmts[0]);
     }
     assert(stream);
-    gomSS = new StreamSource(1, &stream, streamBufferSize);
+    gomSS = new StreamSource(1, &stream, streamBufferSize, NULL, streamStartSkip);
     globalObservationMatrix = gomSS;
 
   const unsigned case_ignore = (vitCaseSensitiveRegexFilter? 0 : REG_ICASE);
@@ -404,7 +404,7 @@ main(int argc,char*argv[])
 
 
   //  printf("Dlinks: min lag %d    max lag %d\n", Dlinks::globalMinLag(), Dlinks::globalMaxLag());
-  // FIXME - min past = min(dlinkPast, VECPTPast), likewise for future
+  // FIXME - min past = max(dlinkPast, VECPTPast), likewise for future
   int dlinkPast = Dlinks::globalMinLag();
   dlinkPast = (dlinkPast < 0) ? -dlinkPast : 0;
   gomSS->setMinPastFrames( dlinkPast );
@@ -547,9 +547,9 @@ main(int argc,char*argv[])
 				  mVitValsFile,vitAlsoPrintObservedVariables, 
 				  vitPreg, vitCreg, vitEreg, NULL, pCliqueFile, 
 				  cliquePosteriorNormalize, cliquePosteriorUnlog);
-    printf("Segment %d, after Filtering: %u usable frames\n",
-	   gomSS->segmentNumber(),
-	   numUsableFrames);
+    infoMsg(IM::Printing,IM::Info,"Segment %d, after Filtering: %u usable frames\n",
+            gomSS->segmentNumber(),
+            numUsableFrames);
   }
   getrusage(RUSAGE_SELF,&rue);
   if (IM::messageGlb(IM::Default)) { 

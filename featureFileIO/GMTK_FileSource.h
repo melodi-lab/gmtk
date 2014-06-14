@@ -5,6 +5,7 @@
  *
  * Copyright (C) 2011 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  * 
  *
  */
@@ -51,7 +52,7 @@
  *            |       ...      |                                
  *            |                |                                
  *         HDF5File        BinaryFile     -ofX -fmtX -niX -nfX -iswpX -srX 
- *                                        -prefrX -preirX -preprX
+ *                                        -prefrX -preirX -preprX -leftPad -rightPad
  *
  *
  */
@@ -61,6 +62,10 @@
 // consistancy, the instantiateFileSource() function (see GMTK_CreateFileSource.h)
 // instantiates the above object hierarchy according to the command
 // line arguments given to a GMTK program.
+
+
+#define WARNING_ON_NAN 1
+
 
 class FileSource: public ObservationSource {
 

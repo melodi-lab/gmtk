@@ -6,6 +6,7 @@
  *
  * Copyright (C) 2001 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  *
  */
@@ -253,7 +254,7 @@ main(int argc,char*argv[])
   // parse arguments
   bool parse_was_ok = Arg::parse(argc,(char**)argv,
 "\nThis program analyzes the graphical structure of a model to determine\n"
-"a efficient way to perform inference on it.\n");
+"an efficient way to perform inference on it.\n");
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }

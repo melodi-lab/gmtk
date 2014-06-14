@@ -8,6 +8,7 @@
  *
  * Copyright (C) 2003 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  *
  */
@@ -1775,7 +1776,7 @@ MaxClique::sortAndAssignDispositions(const char *varCliqueAssignmentPrior)
   // continuation score than there are sorted assigned nodes because
   // we may want to do pruning at the very last node.
   sortedAssignedContinuationScores.resize(sortedAssignedNodes.size()+1);
-  if (cliqueBeamContinuationHeuristic) {
+  if (cliqueBeamContinuationHeuristic && cliqueBeamBuildBeam != (-LZERO) /* ie, default -cpbeam meaning no pruning */ ) {
     // TODO: do something better than just using global max value, like local max value
     // of the current rv.
     sortedAssignedContinuationScores.ptr[sortedAssignedNodes.size()] = 1.0;
@@ -6495,7 +6496,12 @@ printf("\n");
     float   R;
   } feature;
 
+  // We don't need to handle printing zero cliques, since they either
+  // throw an exception or terminate the program. Thus it should be
+  // safe to assume at least 1 value in the clique at this point.
+
   unsigned skip = cliqueValueMagnitude(sharedStructure, index[0].index);
+  assert(skip < cliqueDomainSize(sharedStructure));  // there must be at least 1 non-zero clique value
   for (unsigned i=0; i < skip; i+=1) {
     if (unlog) {
       f->writeFeature(0);
@@ -6520,11 +6526,12 @@ printf("\n");
   }
   feature.R = x;
   f->writeFeature(feature.d);
-  unsigned prevIdx = 0;
-  for (unsigned cvnIdx=1;cvnIdx<numCliqueValuesUsed;cvnIdx++) {
-    unsigned cvn = index[cvnIdx].index;
-    skip = cliqueValueDistance(sharedStructure, cvn, prevIdx) - 1;
-    prevIdx = cvn;
+  unsigned cvn = index[0].index;
+  for (unsigned cvnIdx = 1; cvnIdx < numCliqueValuesUsed; cvnIdx++) {
+    unsigned prev = cvn;
+    cvn = index[cvnIdx].index;
+    skip = (int)cliqueValueDistance(sharedStructure, cvn, prev) - 1;
+    assert(0 <= skip && skip < cliqueDomainSize(sharedStructure));
     for (unsigned i=0; i < skip; i+=1) {
       if (unlog) {
         f->writeFeature(0);
@@ -6550,8 +6557,9 @@ printf("\n");
     feature.R = x;
     f->writeFeature(feature.d);
   }
-
-  skip = cliqueDomainSize(sharedStructure) - cliqueValueMagnitude(sharedStructure,index[numCliqueValuesUsed-1].index) - 1;
+  skip = cliqueDomainSize(sharedStructure) - 
+    cliqueValueMagnitude(sharedStructure,index[numCliqueValuesUsed-1].index) - 1;
+  assert(0 <= skip && skip < cliqueDomainSize(sharedStructure));
   for (unsigned i=0; i < skip; i+=1) {
     if (unlog) {
       f->writeFeature(0);

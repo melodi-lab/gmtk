@@ -22,7 +22,7 @@
  *   virtual online evidence to variable A.  In this way, the actual
  *   floats in the file need not even be probabilties, they can be
  *   arbitrary scores. If C is hidden, however, then the values of
- *   P(C=0|A=a) are taken to be 1-P(C=0|A=a), so in such a case (when
+ *   P(C=0|A=a) are taken to be 1-P(C=1|A=a), so in such a case (when
  *   C is hidden) it is more sensible for the scores for each a to be
  *   actual values between 0 and 1.
  *
@@ -32,6 +32,7 @@
  * 
  * Copyright (C) 2004 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  *
  */
@@ -102,6 +103,8 @@ class VECPT : public CPT {
   string fmt;
   // Endian swap condition for observation files.
   bool iswp;
+  // Frame padding
+  unsigned leftPad, rightPad;
 
   // Observation Matrix transforms
   char* preTransforms;

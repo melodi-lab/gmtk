@@ -12,7 +12,7 @@
  *   virtual online evidence to variable A.  In this way, the actual
  *   deep model outputs need not even be probabilties, they can be
  *   arbitrary scores. If C is hidden, however, then the values of
- *   P(C=0|A=a) are taken to be 1-P(C=0|A=a), so in such a case (when
+ *   P(C=0|A=a) are taken to be 1-P(C=1|A=a), so in such a case (when
  *   C is hidden) it is more sensible for the scores for each a to be
  *   actual values between 0 and 1.
  *
@@ -21,6 +21,7 @@
  * 
  * Copyright (C) 2013 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  */
 
@@ -39,7 +40,8 @@
 #include "GMTK_NamedObject.h"
 #include "GMTK_ObservationSource.h"
 #include "GMTK_FileSource.h"
-#include "GMTK_RealMatrix.h"
+#include "GMTK_DeepNN.h"
+#include "GMTK_Dense1DPMF.h"
 
 // we need to interface to the external global observation
 // matrix object to get some parametes (such as start skip, end skip,
@@ -58,7 +60,7 @@ class DeepVECPT : public CPT {
   // to the deep model for frame t
   unsigned window_radius; 
 
-  // number of floats expeced in the file
+  // number of floats per frame taken from the file
   unsigned nfs;
 
   // these variables are used in case that we
@@ -77,49 +79,60 @@ class DeepVECPT : public CPT {
   // the value
   int _val;
 
- public:
-  enum SquashFunction {
-    SOFTMAX,
-    LOGISTIC,
-    TANH,
-    ODDROOT
-  };
+  ////////////////
+  // the Deep Multi-Layer Perceptron
+  DeepNN *dmlp;
 
- private:
-  unsigned max_outputs;
-  unsigned num_matrices;
+  ////////////////
+  // optional Dense1DPMF to divide NN output by
+  Dense1DPMF *prior;
 
-  vector<unsigned>       layer_output_count;
-  vector<string>         layer_matrix_name;
-  vector<string>         layer_squash_name;
-  vector<SquashFunction> layer_squash_func;
-  vector<float>          layer_logistic_beta;
-  vector<RealMatrix *>   layer_matrix;
-
+  ////////////////
   // remember the computed CPT so we don't have to recompute it
   unsigned  cached_segment; 
   unsigned  cached_frame;
-  float    *cached_CPT;
+  double   *cached_CPT;
 
-  logpr applyDeepModel(DiscRVType parentValue, DiscRV * drv);
+  float    *input_vector;
+
+  // Apply the deep neural network to get the probability
+  logpr applyNN(DiscRVType parentValue, DiscRV * drv);
 
 public:
 
   ///////////////////////////////////////////////////////////  
   // General constructor, 
   // VECPTs always have one parent, and a binary child.
-  DeepVECPT() : CPT(di_DeepVECPT), num_matrices(0),
-    cached_segment(0xFFFFFFFF), cached_frame(0xFFFFFFFF)
+  DeepVECPT() : CPT(di_DeepVECPT), dmlp(NULL),
+    cached_segment(0xFFFFFFFF), cached_frame(0xFFFFFFFF), cached_CPT(NULL), input_vector(NULL)
   { 
     _numParents = 1; _card = 2; cardinalities.resize(_numParents); 
-    cached_CPT = new float[parentCardinality(0)];
   }
-  ~DeepVECPT() { if (cached_CPT) delete[] cached_CPT; }
+
+  ~DeepVECPT() { 
+    if (cached_CPT) delete[] cached_CPT; 
+    if (input_vector) delete[] input_vector;
+  }
+
+
+  DeepNN *getDeepNN() { return dmlp; }
 
   // a VECPT is considered iterable since its implementation can
   // change not only from segment to segment, but even within a
   // segment.
   bool iterable() { return true; }
+
+
+  // Number of input features taken from a single obs file frame
+  unsigned numFeaturesPerFrame() { return nfs; }
+
+
+  // Number of past/future frames included in the input
+  unsigned windowRadius() { return window_radius; }
+
+
+  unsigned obsOffset() { return obs_file_foffset; }
+  
 
   ///////////////////////////////////////////////////////////    
   // Semi-constructors: useful for debugging.
@@ -170,6 +183,12 @@ public:
   // sense.
   unsigned totalNumberParameters() { return 0; }
 
+  // The above is true for EM training, but gmtkDMLPtrain actually
+  // learns the deep VE CPT parameters, so count them
+  unsigned totalNumberDMLPParameters() {
+    return dmlp->totalNumberParameters();
+  }
+
   ///////////////////////////////////////////////////////////  
   // These routines are no-ops in this case since all
   // distributions come from files.
@@ -192,7 +211,7 @@ public:
   void emEndIteration() {}
   void emSwapCurAndNew() {}
 
-  // parallel training (DeepVECPTs are never trained)
+  // parallel training (DeepVECPTs are never EM trained)
   void emStoreObjectsAccumulators(oDataStreamFile& ofile,
 				  bool writeLogVals = true,
 				  bool writeZeros = false) {}
