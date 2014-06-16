@@ -38,7 +38,8 @@
 VCID(HGID)
 
 
-
+// TODO: move this to a .h separate from GMTK_dlopenDeterministicMappings.h
+#define CDT_VARIABLE_NUMBER_FEATURES (~0x0U)
 
 
 ////////////////////////////////////////////////////////////////////
@@ -189,7 +190,7 @@ MTCPT::read(iDataStreamFile& is)
 
   dt = GM_Parms.dts[dtIndex];
   
-  if (_numParents != dt->numFeatures())
+  if (_numParents != dt->numFeatures() && dt->numFeatures() != CDT_VARIABLE_NUMBER_FEATURES)
     error("ERROR: reading file '%s' line %d, DeterministicCPT '%s' with %d parents specifies DT '%s' with %d features that does not match",
 	  is.fileName(),is.lineNo(),_name.c_str(),_numParents,str.c_str(),dt->numFeatures());
 
