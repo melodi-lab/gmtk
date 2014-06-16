@@ -1,0 +1,83 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/104 is fixed
+
+# The internal:allParents[Un]Equal mappers only work with var args support
+
+AT_SETUP([variable argument C function DTs (ticket 104)])
+AT_DATA([alleq.str],[
+GRAPHICAL_MODEL alleq
+
+frame: 0 {
+
+variable: A {
+  type: discrete observed value 0 cardinality 2;
+  conditionalparents: nil using DenseCPT("Auniform");
+}
+
+variable: B {
+  type: discrete observed value 1 cardinality 2;
+  conditionalparents: nil using DenseCPT("Buniform");
+}
+
+variable: allEq2 {
+  type: discrete hidden cardinality 2;
+  conditionalparents: A(0), B(0) using DeterministicCPT("TwoEqual");
+}
+
+
+variable: C {
+  type: discrete observed value 0 cardinality 2;
+  conditionalparents: nil using DenseCPT("Cuniform");
+}
+
+variable: D {
+  type: discrete observed value 1 cardinality 2;
+  conditionalparents: nil using DenseCPT("Duniform");
+}
+
+variable: E {
+  type: discrete observed value 1 cardinality 2;
+  conditionalparents: nil using DenseCPT("Euniform");
+}
+
+variable: allEq3 {
+  type: discrete hidden cardinality 2;
+  conditionalparents: C(0), D(0), E(0) using DeterministicCPT("ThreeEqual");
+}
+}
+
+chunk 0:0
+])
+AT_DATA([alleq.mtr],[
+DETERMINISTIC_CPT_IN_FILE inline
+2
+
+0
+TwoEqual
+2
+2 2 2
+internal:allParentsEqual
+
+1
+ThreeEqual
+3
+2 2 2 2
+internal:allParentsEqual
+])
+AT_DATA([fake.flat],[
+0 0 0
+0 1 0
+0 2 0
+0 3 0
+0 4 0
+0 5 0
+0 6 0
+0 7 0
+0 8 0
+0 9 0
+])
+AT_CHECK([gmtkTriangulate -strF alleq.str],[],[ignore])
+AT_CHECK([gmtkJT \
+  -strF alleq.str -inputMaster alleq.mtr  -allocateDenseCpts 2  \
+  -of1 fake.flat -fmt1 flatascii -ni1 1],[],[ignore])
+AT_CLEANUP
