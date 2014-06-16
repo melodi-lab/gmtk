@@ -6,6 +6,7 @@ gmtk_test_newViterbi-3.at \
 gmtk_test_newViterbi-4.at \
 gmtk_test_padding.at \
 gmtk_test_ticket006.at \
+gmtk_test_ticket104.at \
 gmtk_test_ticket125.at \
 gmtk_test_ticket127.at \
 gmtk_test_ticket130.at \
