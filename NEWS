@@ -7,6 +7,8 @@ See COPYING or http://opensource.org/licenses/OSL-3.0
 Please report bugs at https://j.ee.washington.edu/trac/gmtk
 
 Version 1.X.Y  2014-??-??
+        * Added support for no-parent iterable decision trees
+        * Added support for variable # parent C mapper functions
         * Fixed crash caused by switching weights
         * Improvements and bug fixes for gmtkOnline
         * Fixed unoptimized build failure
