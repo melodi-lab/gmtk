@@ -18,13 +18,11 @@ AT_CLEANUP
 AT_SETUP([hoffman_switching_weight_issue: traincommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/hoffman_switching_weight_issue/traincommand])
 # https://j.ee.washington.edu/trac/gmtk/ticket/6
-AT_XFAIL_IF([test x"$GMTK_NOXFAIL" = x""])
 AT_CHECK([(cd $TEST_AND_DEV/hoffman_switching_weight_issue && ulimit -v ${GMTK_MEMLIMT-8000000} &&            ulimit -t ${GMTK_TIMELIMIT-120} && ./traincommand)], [], [ignore], [ignore])
 AT_CLEANUP
 
 AT_SETUP([hoffman_switching_weight_issue: jtcommand])
 AT_SKIP_IF([test ! -x $TEST_AND_DEV/hoffman_switching_weight_issue/jtcommand])
 # https://j.ee.washington.edu/trac/gmtk/ticket/6
-AT_XFAIL_IF([test x"$GMTK_NOXFAIL" = x""])
 AT_CHECK([(cd $TEST_AND_DEV/hoffman_switching_weight_issue && ulimit -v ${GMTK_MEMLIMT-8000000} &&            ulimit -t ${GMTK_TIMELIMIT-120} && ./jtcommand)], [], [ignore], [ignore])
 AT_CLEANUP

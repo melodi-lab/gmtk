@@ -14,7 +14,7 @@ AC_PREREQ(2.69)
 AC_INIT(GMTK, 0.0, https://j.ee.washington.edu/trac/gmtk/newticket)
 : ${CXXFLAGS=""}
 AC_CONFIG_SRCDIR([mixNormalCollection.cc])
-AC_CONFIG_HEADER([ac_config.h])
+AC_CONFIG_HEADER([config.h])
 
 AM_INIT_AUTOMAKE([1.12 silent-rules -Wall -Werror foreign])
 AM_SILENT_RULES([yes])
@@ -42,7 +42,7 @@ AC_CHECK_LIB([m], [log])
 
 # Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS([stdlib.h string.h values.h])
+AC_CHECK_HEADERS([stdlib.h string.h values.h inttypes.h stdint.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
