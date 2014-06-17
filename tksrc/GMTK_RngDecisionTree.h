@@ -66,6 +66,9 @@ class JunctionTree;
 // The maximum range value
 #define MAX_BP_RANGE_VALUE 100000000
 
+/////////////////////////////////////////////////
+// The maximum number of DT parents
+#define MAX_DT_PARENTS 32
 
 /////////////////////////////////////////////////
 // The string that is used to specify the 'fail' case
