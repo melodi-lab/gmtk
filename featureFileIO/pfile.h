@@ -16,6 +16,9 @@
 #  ifndef __STDC_FORMAT_MACROS
 #    define __STDC_FORMAT_MACROS 1
 #  endif
+#  ifndef __STDC_CONSTANT_MACROS
+#    define __STDC_CONSTANT_MACROS 1
+#endif
 #  include <inttypes.h>
 #endif
 #if HAVE_STDINT_H

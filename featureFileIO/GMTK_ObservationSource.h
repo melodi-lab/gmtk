@@ -36,6 +36,7 @@ class ObservationSource {
 
  public:
 
+  virtual ~ObservationSource() {};
 
   // The number of continuous, discrete, total features in the observed data
   virtual unsigned numContinuous() = 0;
