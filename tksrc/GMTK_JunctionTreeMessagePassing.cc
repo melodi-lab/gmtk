@@ -2700,6 +2700,138 @@ JunctionTree::collectEvidence()
 
 
 
+void
+JunctionTree::collectEvidenceHMM()
+{
+  // This routine handles all of:
+  // 
+  //    unrolled 0 times: (so there is a single P1, and E1)  
+  //    unrolled 1 time: so there is a P1, C1, C3, E1
+  //    unrolled 2 or more times: so there is a P1 C1 [C2 ...] C3, E1
+  //    etc.
+
+  // Set up our iterator, write over the member island iterator since
+  // we assume the member does not have any dynamc sub-members.
+  new (&inference_it) ptps_iterator(*this);
+
+  init_CC_CE_rvs(inference_it);
+
+  PartitionTables* prev_part_tab = NULL;
+  PartitionTables* cur_part_tab
+    = new PartitionTables(inference_it.cur_jt_partition());
+
+  // we skip the first Co's LI separator if there is no P1
+  // partition, since otherwise we'll get zero probability.
+  if (inference_it.at_first_c() && P1.cliques.size() == 0)
+    Co.skipLISeparator();
+  // gather into the root of the current  partition
+  ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
+		   *cur_part_tab,
+		   inference_it.cur_ri(),
+		   inference_it.cur_message_order(),
+		   inference_it.cur_nm(),
+		   inference_it.pt_i());
+
+  if (sectionDoDist) {
+  // Send messages from the root clique to the rest of the cliques
+  // in this partition so that they are consistant with the observations
+  // in this partition. We originally wanted to send messages only to
+  // the cliques actually being printed, but deScatterToOutgoingSeparators()
+  // sends messages to all of a clique's outgoing separators (rather
+  // than just those on the path to a printing clique) and we decided
+  // not to implement a "subset" scatter. We think that in the common
+  // cases there won't be much extra work from the full scatter.
+    deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
+		       *cur_part_tab, 
+		       inference_it.cur_ri(),
+		       inference_it.cur_message_order(),
+		       inference_it.cur_nm(),
+		       inference_it.pt_i());
+  }
+  
+  // possibly print the P or C partition information
+  if (inference_it.cur_part_clique_print_range() != NULL)
+    printAllCliques(partitionStructureArray[inference_it.ps_i()],
+		    *cur_part_tab,
+		    inference_it.pt_i(),
+		    inference_it.cur_nm(),
+		    inference_it.cur_part_clique_print_range(),
+		    stdout,
+		    cliquePosteriorNormalize,cliquePosteriorUnlog,
+		    false, posteriorFile);
+// if the LI separator was turned off, we need to turn it back on.
+  if (inference_it.at_first_c() && P1.cliques.size() == 0)
+    Co.useLISeparator();
+
+  for (unsigned part=1;part < inference_it.pt_len(); part ++ ) {
+    delete prev_part_tab;
+    prev_part_tab = cur_part_tab;
+
+    setCurrentInferenceShiftTo(part);
+
+    // send from previous to current
+    ceSendForwardsCrossPartitions(// previous partition
+			  partitionStructureArray[inference_it.ps_prev_i()],
+			  *prev_part_tab,
+			  inference_it.prev_ri(),
+			  inference_it.prev_nm(),
+			  inference_it.pt_prev_i(),
+			  // current partition
+			  partitionStructureArray[inference_it.ps_i()],
+			  partitionTableArray[inference_it.pt_i()],
+			  inference_it.cur_li(),
+			  inference_it.cur_nm(),
+			  inference_it.pt_i());
+
+
+    // we skip the first Co's LI separator if there is no P1
+    // partition, since otherwise we'll get zero probability.
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.skipLISeparator();
+
+    // it might be that E is the first partition as well, say if this is
+    // a static graph, and in this case we need in this case to skip the
+    // incomming separator, which doesn't exist.
+    if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      E1.skipLISeparator();
+    // next, gather into the root of the final E partition
+    ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
+		     partitionTableArray[inference_it.pt_i()],
+		     inference_it.cur_ri(),
+		     inference_it.cur_message_order(),
+		     inference_it.cur_nm(),
+		     inference_it.pt_i());
+
+    if (sectionDoDist) {
+      // Send messages from the root clique to the rest of the cliques
+      // in this partition so that they are consistant with the observations
+      // in this partition. We originally wanted to send messages only to
+      // the cliques actually being printed, but deScatterToOutgoingSeparators()
+      // sends messages to all of a clique's outgoing separators (rather
+      // than just those on the path to a printing clique) and we decided
+      // not to implement a "subset" scatter. We think that in the common
+      // cases there won't be much extra work from the full scatter.
+      deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
+			 partitionTableArray[inference_it.pt_i()],
+			 inference_it.cur_ri(),
+			 inference_it.cur_message_order(),
+			 inference_it.cur_nm(),
+			 inference_it.pt_i());
+    }
+    
+    if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      E1.useLISeparator();
+
+    // if the LI separator was turned off, we need to turn it back on.
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.useLISeparator();
+
+  }
+  assert ( inference_it.at_e() );
+}
+
+
+
 ///////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////
 //   Backwards Messages

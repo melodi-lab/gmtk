@@ -1146,6 +1146,10 @@ public:
   // basic collect evidence phase on basic structures.
   void collectEvidence();
   void distributeEvidence();
+
+  void collectEvidenceHMM();
+
+
   // compute P(E), probability of the evidence, after collect evidence has been run.
   logpr probEvidence();
 

@@ -215,6 +215,7 @@ gmtkJT \
 gmtkEMtrain \
 gmtkKernel \
 gmtkViterbi \
+gmtkHMM \
 gmtkTriangulate \
 gmtkParmConvert \
 gmtkTFmerge \
@@ -251,6 +252,7 @@ gmtkDMLPtrain_LDADD += $(BLAS_LIBS)
 gmtkKernel_SOURCES = gmtkKernel.cc
 
 gmtkViterbi_SOURCES = gmtkViterbi.cc
+gmtkHMM_SOURCES = gmtkHMM.cc
 
 gmtkPrint_SOURCES = gmtkPrint.cc
 
