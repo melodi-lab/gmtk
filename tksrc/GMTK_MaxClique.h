@@ -295,6 +295,93 @@ class MaxClique : public IM {
 
   // forced max number of states in a clique. Set to 0 to turn it off.
   static unsigned cliqueBeamMaxNumStates;
+
+
+    //Dynamic *K* Beam
+    //Max number of dynamic beam fractions
+    const static unsigned MAX_NUM_DBEAM = 99;
+
+    static double dynamicMaxNumStatesFraction[MAX_NUM_DBEAM];
+    static unsigned dynamicMaxNumStatesValue[MAX_NUM_DBEAM];
+    static unsigned dynamicCKBeamValidFractionNum;
+
+    static unsigned numFrames;
+    static void setNumFrames(const unsigned numFramesInput) {
+        numFrames = numFramesInput;
+    }
+
+    static bool checkDynamicCKBeamError() {
+        for(unsigned i=0; i<MAX_NUM_DBEAM; i++) {
+            if(dynamicMaxNumStatesFraction[i] < 0 || dynamicMaxNumStatesValue[i] < 0) {
+                error("ERROR: -dckbeam arguments incorrectly specified; fractions or num states cannot be negative");
+                return true;
+            }
+            if(dynamicMaxNumStatesFraction[i] == 0 && dynamicMaxNumStatesValue[i] > 0) {
+                error("ERROR: -dckbeam arguments incorrectly specified; kbeam cannot be positive if fraction is 0.0");
+                return true;
+            }
+            if(dynamicMaxNumStatesFraction[i] == 0 && dynamicMaxNumStatesValue[i] == 0) {
+                dynamicCKBeamValidFractionNum = i;
+                break;
+            }
+        }
+        if(dynamicCKBeamValidFractionNum == 0) dynamicCKBeamValidFractionNum = MAX_NUM_DBEAM;
+        
+        return false;
+    }
+
+    static void dynamicBeamFractionNormalization(double* dynamic_fraction, unsigned num_fractions) {
+        double frac_sum = 0.0;
+        for(unsigned i=0; i<num_fractions; i++) {
+            frac_sum += dynamic_fraction[i];
+        }
+
+        double frac_cumulative = 0.0;
+
+        for(unsigned i=0; i<num_fractions; i++) {
+            frac_cumulative += dynamic_fraction[i];
+            dynamic_fraction[i] = frac_cumulative / frac_sum;
+        }
+    }
+
+    static void dynamicCKBeamFractionNormalization() {
+        dynamicBeamFractionNormalization(dynamicMaxNumStatesFraction, dynamicCKBeamValidFractionNum);
+    }
+
+    
+
+    //Dynamic Beam
+    static double dynamicCliqueBeamFraction[MAX_NUM_DBEAM];
+    static double dynamicCliqueBeamValue[MAX_NUM_DBEAM];
+    static unsigned dynamicCBeamValidFractionNum;
+
+    static bool checkDynamicCBeamError() {
+        for(unsigned i=0; i<MAX_NUM_DBEAM; i++) {
+            if(dynamicCliqueBeamFraction[i] < 0 || dynamicCliqueBeamValue[i] < 0.0) {
+                error("ERROR: -dcbeam arguments incorrectly specified; fractions or beam widths cannot be negative");
+                return true;
+            }
+            if(dynamicCliqueBeamFraction[i] == 0 && dynamicCliqueBeamValue[i] > 0.0) {
+                error("ERROR: -dcbeam arguments incorrectly specified; beam width cannot be positive if fraction is 0.0");
+                return true;
+            }
+            if(dynamicCliqueBeamFraction[i] == 0 && dynamicCliqueBeamValue[i] == 0) {
+                dynamicCBeamValidFractionNum = i;
+                break;
+            }
+        }
+        if(dynamicCBeamValidFractionNum == 0) dynamicCBeamValidFractionNum = MAX_NUM_DBEAM;
+        
+        return false;
+    }
+
+    static void dynamicCBeamFractionNormalization() {
+        dynamicBeamFractionNormalization(dynamicCliqueBeamFraction, dynamicCBeamValidFractionNum);
+    }
+
+
+
+
   // fraction of clique to retain, forcibly pruning away everything else. Must be
 
   // between 0 and 1 (i.e., 0 < v <= 1).
@@ -1805,8 +1892,8 @@ public:
   // Pruning
   /////////////////////////////////////////
 
-  void ceDoAllPruning(MaxClique& origin,logpr maxCEValue);
-  void ceCliqueBeamPrune(MaxClique& origin,logpr maxCEValue);
+  void ceDoAllPruning(MaxCliqueTable::SharedLocalStructure& sharedStructure,logpr maxCEValue);
+  void ceCliqueBeamPrune(MaxCliqueTable::SharedLocalStructure& sharedStructure,logpr maxCEValue);
   unsigned ceCliqueStatePrune(const unsigned k,
 			      CliqueValue*,
 			      const unsigned);

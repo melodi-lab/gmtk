@@ -111,6 +111,9 @@ VCID(HGID)
 #define GMTK_ARG_CMBEAM
 #define GMTK_ARG_SBEAM
 
+#define GMTK_ARG_DCKBEAM
+#define GMTK_ARG_DCBEAM
+
 /*************************          MEMORY MANAGEMENT OPTIONS         *******************************************/
 #define GMTK_ARG_MEMORY_MANAGEMENT_OPTIONS
 #define GMTK_ARG_HASH_LOAD_FACTOR
@@ -411,6 +414,7 @@ main(int argc,char*argv[])
 
     infoMsg(IM::Max,"Loading segment %d ...\n",segment);
     const unsigned numFrames = GM_Parms.setSegment(segment);
+    MaxClique::setNumFrames(numFrames);
     infoMsg(IM::Max,"Finished loading segment %d with %d frames.\n",segment,numFrames);
 
     try {
