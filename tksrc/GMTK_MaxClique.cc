@@ -338,6 +338,26 @@ unsigned MaxClique::cliqueBeamClusterMaxNumStates = NO_PRUNING_CLIQUEBEAMCLUSTER
 unsigned
 MaxClique::cliqueBeamMaxNumStates = 0;
 
+
+/*
+ * Dyanmic ckbeam
+ */
+    const unsigned MaxClique::MAX_NUM_DBEAM;
+    double MaxClique::dynamicMaxNumStatesFraction[];
+    unsigned MaxClique::dynamicMaxNumStatesValue[];
+    unsigned MaxClique::dynamicCKBeamValidFractionNum = 0;
+
+    unsigned MaxClique::numFrames = 0;
+
+
+/*
+ * Dynamic cbeam
+ */
+    double MaxClique::dynamicCliqueBeamFraction[];
+    double MaxClique::dynamicCliqueBeamValue[];
+    unsigned MaxClique::dynamicCBeamValidFractionNum = 0;
+
+
 /*
  * Fraction of clique to retain. Default (1.0) means prune nothing.
  *
@@ -2559,7 +2579,7 @@ ceGatherFromIncommingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStru
   // being used, we prune here, *before* we copy things out of the
   // temporary pool so that pruned entries are not inserted into
   // permanent locations.
-  ceDoAllPruning(origin,maxCEValue);
+  ceDoAllPruning(sharedStructure, maxCEValue);
 
 
 #ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
@@ -4493,11 +4513,14 @@ ceSendToOutgoingSeparator(MaxCliqueTable::SharedLocalStructure& sharedStructure,
  */
 
 void 
-MaxCliqueTable::ceCliqueBeamPrune(MaxClique& origin,
+MaxCliqueTable::ceCliqueBeamPrune(MaxCliqueTable::SharedLocalStructure& sharedStructure,
 				  logpr maxCEValue)
 {
+
+    MaxClique& origin = *(sharedStructure.origin);
+
   // return immediately if beam pruning is turned off.
-  if (origin.cliqueBeam == (-LZERO))
+  if (origin.cliqueBeam == (-LZERO) && origin.dynamicCBeamValidFractionNum == 0)
     return;
 
   // create an ininitialized variable
@@ -4511,6 +4534,43 @@ MaxCliqueTable::ceCliqueBeamPrune(MaxClique& origin,
     // set beam threshold to a value that will never cause pruning.
     beamThreshold.set_to_zero();
   }
+
+
+    //Dynamic beam pruning
+    if(origin.dynamicCBeamValidFractionNum > 0) {
+
+        unsigned frame_min = sharedStructure.rv_w_min_frame_num->frame();
+        unsigned frame_max = sharedStructure.rv_w_max_frame_num->frame();
+        double frac_min = frame_min * 1.0 / MaxClique::numFrames;
+        double frac_max = frame_max * 1.0 / MaxClique::numFrames;
+
+        double local_max = 0;
+
+        //get the minimum beam between frame_min and frame_max
+        for(unsigned i=0; i<origin.dynamicCBeamValidFractionNum; i++) {
+            if(frac_min < origin.dynamicCliqueBeamFraction[i]) {
+                local_max = origin.dynamicCliqueBeamValue[i];
+                break;
+            }
+        }
+
+        for(unsigned i=0; i<origin.dynamicCBeamValidFractionNum; i++) {
+            if(frac_max < origin.dynamicCliqueBeamFraction[i]) {
+                local_max = min(local_max, origin.dynamicCliqueBeamValue[i]);
+                break;
+            }
+        }
+        //no pruning
+        if(local_max == 0 || local_max == (-LZERO)) {
+            if(origin.cliqueBeam == (-LZERO)) return;
+        }
+        else {
+            logpr dynamicThreshold((void*)0);
+            dynamicThreshold.valref() = maxCEValue.valref() - local_max;
+            if(beamThreshold > dynamicThreshold || beamThreshold.zero()) beamThreshold = dynamicThreshold;
+        }
+    }
+
 
   const unsigned origNumCliqueValuesUsed = numCliqueValuesUsed;
   for (unsigned cvn=0;cvn<numCliqueValuesUsed;) {
@@ -4570,10 +4630,12 @@ MaxCliqueTable::ceCliqueBeamPrune(MaxClique& origin,
  *-----------------------------------------------------------------------
  */
 void 
-MaxCliqueTable::ceDoAllPruning(MaxClique& origin,
+MaxCliqueTable::ceDoAllPruning(MaxCliqueTable::SharedLocalStructure& sharedStructure,
 			       logpr maxCEValue)
 {
 
+
+    MaxClique& origin = *(sharedStructure.origin);
 
   // if all observed and/or deterministic clique, then only one state,
   // so nothing to prune.
@@ -4604,6 +4666,36 @@ MaxCliqueTable::ceDoAllPruning(MaxClique& origin,
   // origin.cliqueBeamRetainFraction,numCliqueValuesUsed,k);
   // printf("starting k pruning with state space %d\n",numCliqueValuesUsed); fflush(stdout);
 
+
+    //Dynamic kbeam pruning
+    if(origin.dynamicCKBeamValidFractionNum > 0) {
+
+        unsigned frame_min = sharedStructure.rv_w_min_frame_num->frame();
+        unsigned frame_max = sharedStructure.rv_w_max_frame_num->frame();
+        double frac_min = frame_min * 1.0 / MaxClique::numFrames;
+        double frac_max = frame_max * 1.0 / MaxClique::numFrames;
+
+        unsigned local_max = 0;
+
+        //get the minimum beam between frame_min and frame_max
+        for(unsigned i=0; i<origin.dynamicCKBeamValidFractionNum; i++) {
+            if(frac_min < origin.dynamicMaxNumStatesFraction[i]) {
+                local_max = max(local_max, origin.dynamicMaxNumStatesValue[i]);
+                break;
+            }
+        }
+
+        for(unsigned i=0; i<origin.dynamicCKBeamValidFractionNum; i++) {
+            if(frac_max < origin.dynamicMaxNumStatesFraction[i]) {
+                local_max = max(local_max, origin.dynamicMaxNumStatesValue[i]);
+                break;
+            }
+        }
+
+        k = min(k, local_max);
+        if(k == 0) k = local_max;
+    }
+
   if (k < numCliqueValuesUsed) {
     infoMsg(IM::Inference, IM::Med,"Clique k-beam pruning with k=%d: Original clique state space = %d\n",k,
 	    numCliqueValuesUsed);
@@ -4621,7 +4713,7 @@ MaxCliqueTable::ceDoAllPruning(MaxClique& origin,
 					  numCliqueValuesUsed);
 
   // next, do normal beam pruning.
-  ceCliqueBeamPrune(origin,maxCEValue);
+  ceCliqueBeamPrune(sharedStructure, maxCEValue);
 
   // do diversity pruning.
   // printf("starting diversity pruning with state space %d\n",numCliqueValuesUsed); fflush(stdout);

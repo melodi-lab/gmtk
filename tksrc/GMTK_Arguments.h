@@ -578,6 +578,34 @@ Arg("map",Arg::Opt,dlopenFilenames,"Deterministic mapping dynamic library file. 
 #endif
 #endif // defined(GMTK_ARG_CBEAM)
 
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+//Dynamic Cbeam
+
+#if defined(GMTK_ARG_DCBEAM)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+    Arg("dcbeam_frac",Arg::Opt,MaxClique::dynamicCliqueBeamFraction,"Fractions for dynamic cbeam pruning of the beam width", Arg::ARRAY, MaxClique::MAX_NUM_DBEAM),
+    Arg("dcbeam_value",Arg::Opt,MaxClique::dynamicCliqueBeamValue,"Values for dynamic cbeam pruning of the beam width (log value)", Arg::ARRAY, MaxClique::MAX_NUM_DBEAM),
+    
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+    if (MaxClique::checkDynamicCBeamError()) {
+    }
+    else {
+        MaxClique::dynamicCBeamFractionNormalization();
+    }
+
+#else
+#endif
+#endif  // defined(GMTK_ARG_DCBEAM)
+
+
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
 /*************************************************************************************************************/
@@ -633,6 +661,34 @@ Arg("map",Arg::Opt,dlopenFilenames,"Deterministic mapping dynamic library file. 
 #else
 #endif
 #endif // defined(GMTK_ARG_CKBEAM)
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+//Dynamic Ckbeam
+
+
+#if defined(GMTK_ARG_DCKBEAM)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+    Arg("dckbeam_frac",Arg::Opt,MaxClique::dynamicMaxNumStatesFraction,"Fractions for dynamic ckbeam pruning of the max state space (0 = no pruning)", Arg::ARRAY, MaxClique::MAX_NUM_DBEAM),
+    Arg("dckbeam_value",Arg::Opt,MaxClique::dynamicMaxNumStatesValue,"Values for dynamic ckbeam pruning of the max state space (0 = no pruning)", Arg::ARRAY, MaxClique::MAX_NUM_DBEAM),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+    if (MaxClique::checkDynamicCKBeamError()) {
+    }
+    else {
+        MaxClique::dynamicCKBeamFractionNormalization();
+    }
+
+#else
+#endif
+#endif  // defined(GMTK_ARG_DCKBEAM)
 
 
 /*-----------------------------------------------------------------------------------------------------------*/
