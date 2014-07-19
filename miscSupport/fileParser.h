@@ -242,6 +242,11 @@ class oDataStreamFile : public ioDataStreamFile {
   bool write(const float* fp,unsigned len,const char *msg=NULL) { return writeFloatVec(fp,len,msg); }
   bool write(const double* dp,unsigned len,const char *msg=NULL) { return writeDoubleVec(dp,len,msg); }
 
+  // For https://j.ee.washington.edu/trac/gmtk/ticket/375
+  // Write x as float or double according to type of the dummy argument
+  bool write(const float  dummy, const double x,const char *msg=NULL) { return writeFloat((float)x,msg); }
+  bool write(const double dummy, const double x,const char *msg=NULL) { return writeDouble(x,msg); }
+
 
   template <class T>
   bool writeArray(T* location, const int length, const char *msg = NULL) 

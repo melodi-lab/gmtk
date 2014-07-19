@@ -693,10 +693,10 @@ MissingFeatureScaledDiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& of
   if (writeZeros) {
     const unsigned totalLen = nextMeans.len() + nextDiagCovars.len();
     for (unsigned i=0;i<totalLen;i++) {
-      ofile.write(0.0,"MissingFeatureScaledDiagGaussian store accums nm + nc.");
+      ofile.write(nextMeans[0], 0.0,"MissingFeatureScaledDiagGaussian store accums nm + nc.");
     }
     for (int i=0;i<elementAccumulatedProbability.len();i++) {
-      ofile.write(elementAccumulatedProbability[0].valref()*0.0,"El Acc Prob 0.0");
+      ofile.write(elementAccumulatedProbability[0].valref(), elementAccumulatedProbability[0].valref()*0.0,"El Acc Prob 0.0");
     }
   } else {
     for (int i=0;i<nextMeans.len();i++) {
