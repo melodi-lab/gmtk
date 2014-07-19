@@ -106,7 +106,7 @@ public:
 
     if (p<0) // check regardless
       coredump("logp: negagive constructor argument.");
-    v = (p<MINLARG?LZERO:log(p));
+    v = (p<(FT)MINLARG?LZERO:log(p));
     // Note: LZERO is the smallest log that we represent
     // and LZERO < log(MINLARG), but we can't take
     // the log of anything smaller than MINLARG. Therefore,
@@ -120,7 +120,7 @@ public:
     assert ( p >= 0.0 );
     if (p<0)
       coredump("logp: negagive constructor argument.");
-    v = (p<MINLARG?LZERO:log(p));
+    v = (p<(FT)MINLARG?LZERO:log(p));
   }
 
   // No arguments causes zero value.
@@ -135,7 +135,7 @@ public:
   // A constructor to initialize from a log probability value
   // stored in a floating point value.
   inline logp(void *dummy_not_used,const float logpval) {
-    if (logpval < LSMALL)
+    if (logpval < (FT)LSMALL)
       v = LZERO;
     else 
       v = logpval;
@@ -143,7 +143,7 @@ public:
   // Have an extra double version since we can then
   // check if (logpval < LSMALL) before conv. to float.
   inline logp(void *dummy_not_used,const double logpval) {
-    if (logpval < LSMALL)
+    if (logpval < (FT)LSMALL)
       v = LZERO;
     else 
       v = logpval;
@@ -151,10 +151,10 @@ public:
 
   // these are here for quick use so as to avoid compiler temporaries
   // and/or conversion with comparing with float values
-  inline bool zero() const { return (v == LZERO); }
-  inline bool essentially_zero() const { return (v < LSMALL); }
-  inline bool not_essentially_zero() const { return (v >= LSMALL); }
-  inline bool almost_zero() const { return (v == LSMALL); }
+  inline bool zero() const { return (v == (FT)LZERO); }
+  inline bool essentially_zero() const { return (v < (FT)LSMALL); }
+  inline bool not_essentially_zero() const { return (v >= (FT)LSMALL); }
+  inline bool almost_zero() const { return (v == (FT)LSMALL); }
   inline void set_to_zero() { v = LZERO; }
   inline void set_to_infty() { v = -LZERO; }
   inline void set_to_almost_zero() { v = LSMALL; }
@@ -171,7 +171,7 @@ public:
     iFT diff = y.v-x.v;
     // We now have that (diff <= 0).
     // TODO: fix zero + zero case, it should add exactly to zero. 
-    if (diff<logp_minLogExp) {
+    if (diff<(iFT)logp_minLogExp) {
       // logp_minLogExp == -log(-LZERO)
       // So, if y-x = log(Py/Px) < -log(-LZERO)
       //              log(Px/Py) > log(-LZERO)
@@ -180,7 +180,7 @@ public:
       //                  Px > Inf*Py
       // If this condition is true, than x is *much* larger
       // than y, so we don't even bother adding y.
-      if (x.v<LSMALL) {
+      if (x.v<(FT)LSMALL) {
 	// Since x is so small, we return x's value but
 	// changed to what we call zero.
 	x.v = LZERO;
@@ -245,10 +245,10 @@ public:
       coredump("logp::operator-: result would be negative probability.");
     // now y<=x
     iFT diff = y.v-x.v;
-    if (diff<logp_minLogExp) {
+    if (diff<(iFT)logp_minLogExp) {
       // then x is *much* greater than y, so we don't
       // even bother subtracting off y.
-      if (x.v < LSMALL)
+      if (x.v < (FT)LSMALL)
 	x.v = LZERO;
       return x;
     } else {
@@ -256,7 +256,7 @@ public:
       //             x + log[1 - exp(y-x)] 
       iFT tmp = 1.0 - exp(diff);
       logp<FT,iFT> z((void*)0);
-      if (tmp<MINLARG) 
+      if (tmp<(iFT)MINLARG) 
 	// then y ~== x, return zero.
 	z.v = LZERO;
       else 
@@ -330,14 +330,14 @@ public:
 
   // unlog support: Convert log(x) to double, result is
   // floored to 0.0 if x < MINEARG
-  inline iFT unlog() const { return (v<MINEARG) ? 0.0 : exp(v); }
+  inline iFT unlog() const { return (v<(FT)MINEARG) ? 0.0 : exp(v); }
   // return true if we can safely call unlog() on this object.
-  bool unlogable() { return (v < MAXEARG); }
+  bool unlogable() { return (v < (FT)MAXEARG); }
   // return true if we can safely call unlog() on the inverse of
   // this object. This can also be used as a weaker check for zero
   // than the zero() function (i.e., if zero(), then 
   // inverseUnlogable() will be true)
-  bool inverseUnlogable() { return (-v < MAXEARG); }
+  bool inverseUnlogable() { return (-v < (FT)MAXEARG); }
 
   inline FT val() const { return v; }
 
@@ -348,13 +348,13 @@ public:
   logp<FT,iFT>& setFromP (FT p) {   
     if (p<0)
       coredump("logp: negagive constructor argument.");
-    v = (p<MINLARG?LZERO:log(p));
+    v = (p<(FT)MINLARG?LZERO:log(p));
     return *this;
   }
   // Set our internal value from a log'ed probability lp
   logp<FT,iFT>& setFromLogP (FT lp) {   
-    if (lp < LSMALL)
-      v = LZERO;
+    if (lp < (FT)LSMALL)
+      v = (FT)LZERO;
     else 
       v = lp;
     return *this;
@@ -362,20 +362,20 @@ public:
 
   // floor self to zero.
   void floor() {
-    if (v < LSMALL)
+    if (v < (FT)LSMALL)
       v = LZERO;
   }
 
   logp<FT,iFT>& operator = (float p) { 
     if (p<0)
       coredump("logp: negagive constructor argument.");
-    v = (p<MINLARG?LZERO:log(p));
+    v = (p<(FT)MINLARG?LZERO:log(p));
     return *this;
   }
   logp<FT,iFT>& operator = (double p) { 
     if (p<0)
       coredump("logp: negagive constructor argument.");
-    v = (p<MINLARG?LZERO:log(p));
+    v = (p<(FT)MINLARG?LZERO:log(p));
     return *this;
   }
 

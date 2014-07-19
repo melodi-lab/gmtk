@@ -639,11 +639,11 @@ void Dense1DPMF::emStoreObjectsAccumulators(oDataStreamFile& ofile,
       logpr z;
       z.set_to_zero();
       for (int i=0;i<nextPmf.len();i++) {
-	ofile.write(z.val(),"DPMF store accums");
+	ofile.write(nextPmf[0].val(), z.val(),"DPMF store accums");
       }   
     } else {
       for (int i=0;i<nextPmf.len();i++) {
-	ofile.write(0.0,"DPMF store accums");
+	ofile.write(nextPmf[0].val(), 0.0,"DPMF store accums");
       }   
     } 
   } else {

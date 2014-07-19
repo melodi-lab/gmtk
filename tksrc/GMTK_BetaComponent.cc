@@ -648,7 +648,7 @@ BetaComponent::emStoreObjectsAccumulators(oDataStreamFile& ofile,
   // these values since they are continuous. etc.
   if (writeZeros) {
     for (unsigned i=0;i<2*_dim;i++) {
-      ofile.write(0.0,"Beta Component store accum.");
+      ofile.write(sumx.ptr[0], 0.0,"Beta Component store accum.");
     }
   } else {
     for (unsigned i = 0; i < _dim; i++) {
