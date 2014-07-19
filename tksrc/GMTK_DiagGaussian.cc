@@ -478,18 +478,29 @@ DiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& ofile,
   // since this is a Gaussian, we ignore the writeLogVals
   // argument since it doesn't make sense to take log of
   // these values since they are continuous, could be negative, etc.
+  ofile.writeComment("%s nextMeans.len %u  nextDiagCovars.len %u\n", name().c_str(), nextMeans.len(), nextDiagCovars.len());
   if (writeZeros) {
-    const unsigned totalLen = nextMeans.len() + nextDiagCovars.len();
-    for (unsigned i=0;i<totalLen;i++) {
-      ofile.write(nextMeans[0],0.0,"Diag Gaussian store accums nm + nc.");
+    ofile.writeComment("  ... nextMeans[i] ... \n");
+    for (unsigned i=0; i < nextMeans.len(); i++) {
+      ofile.write(nextMeans[0], 0.0, "Diag Gaussian store accums nm + nc.");
     }
+    ofile.nl();
+    ofile.writeComment("  ... nextDiagCovars[i] ... \n");
+    for (int i=0; i < nextDiagCovars.len(); i++) {
+      ofile.write(nextDiagCovars[0], 0.0, "Diag Gaussian store accums nm + nc.");
+    }
+    ofile.nl();
   } else {
+    ofile.writeComment("  ... nextMeans[i] ... \n");
     for (int i=0;i<nextMeans.len();i++) {
       ofile.write(nextMeans[i],"Diag Gaussian store accums nm.");
     }
+    ofile.nl();
+    ofile.writeComment("  ... nextDiagCovars[i] ... \n");
     for (int i=0;i<nextDiagCovars.len();i++) {
       ofile.write(nextDiagCovars[i],"Diag Gaussian store accums nc.");
     }
+    ofile.nl();
   }
 }
 
