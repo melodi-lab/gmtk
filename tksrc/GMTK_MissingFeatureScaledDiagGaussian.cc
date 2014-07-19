@@ -690,24 +690,40 @@ MissingFeatureScaledDiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& of
   // since this is a Gaussian, we ignore the writeLogVals
   // argument since it doesn't make sense to take log of
   // these values since they are continuous, could be negative, etc.
+  ofile.writeComment("%s  nextMeans.len %u  nextDiagCovars.len %u  elementAccumulatedProbability.len %u\n",
+		     name().c_str(), nextMeans.len(), nextDiagCovars.len(), elementAccumulatedProbability.len());
   if (writeZeros) {
-    const unsigned totalLen = nextMeans.len() + nextDiagCovars.len();
-    for (unsigned i=0;i<totalLen;i++) {
-      ofile.write(nextMeans[0], 0.0,"MissingFeatureScaledDiagGaussian store accums nm + nc.");
+    ofile.writeComment("  ... nextMeans[i] ...\n");
+    for (unsigned i=0; i < nextMeans.len(); i++) {
+      ofile.write(nextMeans[0], 0.0, "MissingFeatureScaledDiagGaussian store accums nm + nc.");
     }
-    for (int i=0;i<elementAccumulatedProbability.len();i++) {
+    ofile.nl();
+    ofile.writeComment("  ... nextDiagCovars[i] ...\n");
+    for (unsigned i=0; i < nextDiagCovars.len(); i++) {
+      ofile.write(nextDiagCovars[0], 0.0, "MissingFeatureScaledDiagGaussian store accums nm + nc.");
+    }
+    ofile.nl();
+    ofile.writeComment("  ... elementAccumulatedProbability[i] ...\n");
+    for (int i=0; i < elementAccumulatedProbability.len(); i++) {
       ofile.write(elementAccumulatedProbability[0].valref(), elementAccumulatedProbability[0].valref()*0.0,"El Acc Prob 0.0");
     }
+    ofile.nl();
   } else {
+    ofile.writeComment("  ... nextMeans[i] ...\n");
     for (int i=0;i<nextMeans.len();i++) {
       ofile.write(nextMeans[i],"MissingFeatureScaledDiagGaussian store accums nm.");
     }
+    ofile.nl();
+    ofile.writeComment("  ... nextDiagCovars[i] ...\n");
     for (int i=0;i<nextDiagCovars.len();i++) {
       ofile.write(nextDiagCovars[i],"MissingFeatureScaledDiagGaussian store accums nc.");
     }
+    ofile.nl();
+    ofile.writeComment("  ... elementAccumulatedProbability[i] ...\n");
     for (int i=0;i<elementAccumulatedProbability.len();i++) {
       ofile.write(elementAccumulatedProbability[i].valref(),"El Acc Prob i");
     }
+    ofile.nl();
   }
 }
 

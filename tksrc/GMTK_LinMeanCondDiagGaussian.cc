@@ -1167,6 +1167,9 @@ LinMeanCondDiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& ofile,
   // since this is a Gaussian, we ignore the writeLogVals
   // argument since it doesn't make sense to take log of
   // these values since they are continuous, could be negative, etc.
+  ofile.writeComment("%s xAcc len %u  xxAcc len %u  xzAcc len %u  zzAcc len %u  zAcc len %u\n", 
+		     name().c_str(), xAccumulators.len(), xxAccumulators.len(), xzAccumulators.len(),
+		     zzAccumulators.len(), zAccumulators.len());
   if (writeZeros) {
     const unsigned totalLen = 
       xAccumulators.len()+ 
