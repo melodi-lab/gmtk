@@ -908,11 +908,11 @@ MDCPT::emStoreObjectsAccumulators(oDataStreamFile& ofile,
       logpr v;
       v.set_to_zero();
       for (int i=0;i<nextMdcpt.len();i++) {
-	ofile.write(v.val(),"DenseCPT store accums");
+	ofile.write(nextMdcpt[0].val(), v.val(),"DenseCPT store accums");
       }
     } else {
       for (int i=0;i<nextMdcpt.len();i++) {
-	ofile.write(0.0,"DenseCPT store accums");
+	ofile.write(nextMdcpt[0].val(), 0.0,"DenseCPT store accums");
       }
     }
   } else {

@@ -698,7 +698,7 @@ GammaComponent::emStoreObjectsAccumulators(oDataStreamFile& ofile,
   // these values since they are continuous. etc.
   if (writeZeros) {
     for (unsigned i=0;i<3*_dim;i++) {
-      ofile.write(0.0,"Gamma Component store accum.");
+      ofile.write(sumx.ptr[0], 0.0,"Gamma Component store accum.");
     }
   } else {
     for (unsigned i = 0; i < _dim; i++) {
