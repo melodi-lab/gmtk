@@ -1,9 +1,29 @@
+
+/* The ISO C99 standard specifies that in C++ implementations some
+   macros should only be defined if explicitly requested.  */
+#define __STDC_LIMIT_MACROS 1
+#define __STDC_CONSTANT_MACROS 1
+   // The ISO C99 standard specifies that the macros in inttypes.h must
+   //  only be defined if explicitly requested. 
+#define __STDC_FORMAT_MACROS 1
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_INTTYPES_H
+#  include <inttypes.h>
+#endif
+#if HAVE_STDINT_H
+#  include <stdint.h>
+#endif
+
 #include <assert.h>
 #include <cctype>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+
 
 #include "vbyteswapping.h"
 
