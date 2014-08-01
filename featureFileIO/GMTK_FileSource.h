@@ -189,6 +189,9 @@ class FileSource: public ObservationSource {
     if (file) delete file;
   }
 
+  // Am I a random access source or not?
+  virtual bool randomAccess() { return true; }
+
   // Turn an invalid FileSource created by the no-arg ctor into a
   // valid FileSource.
   void initialize(ObservationFile *file,

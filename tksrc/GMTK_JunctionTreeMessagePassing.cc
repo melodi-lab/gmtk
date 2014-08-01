@@ -60,6 +60,7 @@
 #include "GMTK_JunctionTree.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_Dlinks.h"
+#include "GMTK_DeepVECPT.h"
 #include "GMTK_BinaryViterbiFileUtils.h"
 
 #include "GMTK_RngDecisionTree.h"
@@ -3798,9 +3799,12 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
   unsigned M = gm_template.M;
   unsigned S = gm_template.S;
 
-  if ((unsigned) Dlinks::globalMinLag() > globalObservationMatrix->startSkip()) {
-    error("ERROR: -startSkip must be at least %d\n", Dlinks::globalMinLag());
-  }
+  // GMParms has checked that -startSkip is big enough
+
+  // The StreamSource doesn't implement -endSkip since the
+  // stream's length is unknown, but ObservationSource::minFutureFrames()
+  // has the correct number of frames to skip at the end
+
   if (fp.numFramesInC() == 0) {
     error("ERROR: gmtkOnline does not support empty chunks\n");
   }
@@ -3830,7 +3834,7 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
     fp.numFramesInP() + 
     ( (3+tau) * S + M ) * fp.numFramesInC() + 
     fp.numFramesInE() +
-    Dlinks::globalMaxLag();
+    globalObservationMatrix->minFutureFrames();
   // Assume the above won't over-flow with just 5 partitions
 
   unsigned numNewFrames = fp.numFramesInC() * S;
@@ -3849,6 +3853,8 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
     viterbiScore = false; // avoid allocating space for O(T) viterbi values in unroll()
 
     if (T > 0) {
+      T -= globalObservationMatrix->minFutureFrames(); // fake -endSkip
+
       // We already know the length of this segment (it's probably
       // very short, since we only try to pre-load enough frames to
       // process P' C' C' C' E'), so we can pass the true number of
@@ -4141,7 +4147,15 @@ printf("learned T=%u at %u %u\n", globalObservationMatrix->numFrames(), part, in
       int      modTempMinUnrollAmnt;
       unsigned numUsableFrm;
       unsigned frmStart;
-      if (!gm_template.computeUnrollParameters(globalObservationMatrix->numFrames(),
+      unsigned T;
+
+      if ( globalObservationMatrix->numFrames() <= globalObservationMatrix->minFutureFrames() )
+	error("Segment of %d frames too short as model requires at least %d frames\n", 
+	      globalObservationMatrix->numFrames() + globalObservationMatrix->minPastFrames(), 
+	      globalObservationMatrix->minPastFrames() + fp.numFramesInP() + fp.numFramesInE() + globalObservationMatrix->minFutureFrames());
+    
+      T  = globalObservationMatrix->numFrames() - globalObservationMatrix->minFutureFrames();
+      if (!gm_template.computeUnrollParameters(T,
 					       basicTempMaxUnrollAmnt,
 					       basicTempMinUnrollAmnt,
 					       modTempMaxUnrollAmnt,
@@ -4149,7 +4163,7 @@ printf("learned T=%u at %u %u\n", globalObservationMatrix->numFrames(), part, in
 					       numUsableFrm,
 					       frmStart))
 	error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, different template, or decrease M,S if >1.\n",
-	      globalObservationMatrix->numFrames(),
+	      T,
 	      fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
 	      fp.numFrames(),
 	      gm_template.M,gm_template.S);
