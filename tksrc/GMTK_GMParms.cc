@@ -3085,11 +3085,18 @@ GMParms::checkConsistentWithGlobalObservationStream()
 	  globalObservationMatrix->startSkip(),
 	  Dlinks::_globalMinLag);
 
-    if ((int)globalObservationMatrix->endSkip() < (int)Dlinks::_globalMaxLag)
-      error("ERROR: an end skip of %d is invalid for a maximum dlink lag of %d\n",
-	    globalObservationMatrix->endSkip(),
-	    Dlinks::_globalMaxLag);
+  if (globalObservationMatrix->startSkip() < DeepVECPT::minSkip())
+    error("ERROR: start skip must be at least %u due to DeepVECPT radii\n", DeepVECPT::minSkip());
+
+  if ((int)globalObservationMatrix->endSkip() < (int)Dlinks::_globalMaxLag)
+    error("ERROR: an end skip of %d is invalid for a maximum dlink lag of %d\n",
+	  globalObservationMatrix->endSkip(),
+	  Dlinks::_globalMaxLag);
   
+  if (globalObservationMatrix->randomAccess() && globalObservationMatrix->endSkip() < DeepVECPT::minSkip())
+    error("ERROR: end skip must be at least %u due to DeepVECPT radii\n", DeepVECPT::minSkip());
+
+
   if ((int)globalObservationMatrix->numContinuous() <= (int)Dlinks::_globalMaxOffset)
     error("ERROR: there is a dlink ofset of value %d which is too large for the observation matrix with only %d continuous features.",
 	  Dlinks::_globalMaxOffset,

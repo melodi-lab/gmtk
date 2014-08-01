@@ -60,6 +60,10 @@ class DeepVECPT : public CPT {
   // to the deep model for frame t
   unsigned window_radius; 
 
+  // max over all DVECPT window radii. this is the minimum
+  // required -startSkip
+  static unsigned globalMinSkip;
+
   // number of floats per frame taken from the file
   unsigned nfs;
 
@@ -133,6 +137,7 @@ public:
 
   unsigned obsOffset() { return obs_file_foffset; }
   
+  static unsigned minSkip() { return globalMinSkip; }
 
   ///////////////////////////////////////////////////////////    
   // Semi-constructors: useful for debugging.
