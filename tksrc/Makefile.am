@@ -65,10 +65,10 @@ AM_LDFLAGS =
 
 if MAKE_BUNDLE
 # Must be OSX, diddle the flags
-  AM_CFLAGS += -m32
-  AM_CXXFLAGS += -m32
-  AM_LDFLAGS += -m32
-  OSXLDFLAGS = -dylib_file /System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib
+#  AM_CFLAGS += -m32
+#  AM_CXXFLAGS += -m32
+#  AM_LDFLAGS += -m32
+#  OSXLDFLAGS = -dylib_file /System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib
 else
   OSXLDFLAGS =
 endif
