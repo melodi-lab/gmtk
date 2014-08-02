@@ -481,7 +481,7 @@ DiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& ofile,
   ofile.writeComment("%s nextMeans.len %u  nextDiagCovars.len %u\n", name().c_str(), nextMeans.len(), nextDiagCovars.len());
   if (writeZeros) {
     ofile.writeComment("  ... nextMeans[i] ... \n");
-    for (unsigned i=0; i < nextMeans.len(); i++) {
+    for (int i=0; i < nextMeans.len(); i++) {
       ofile.write(nextMeans[0], 0.0, "Diag Gaussian store accums nm + nc.");
     }
     ofile.nl();
