@@ -141,12 +141,14 @@ public:
   // Public interface support for EM
   //////////////////////////////////
   void emStartIteration(sArray<float>&);
+  using EMable::emIncrement;
   void emIncrement(const logpr prob,
 		   const float fprob,
 		   const float* f,
 		   const Data32* const base,
 		   const int stride,
 		   float *const partialAccumulatedNextCovars);
+  using EMable::emEndIteration;
   void emEndIteration(const float*const c);
   void emEndIteration(const logpr prob,const float*const m,const float*const v);
   void emEndIterationNoSharing(const float*const m,const float*const v);
