@@ -11,17 +11,11 @@
 DEBUGFLAGS = 
 
 
-if CYGWIN_FLAGS
-  ANSI=$(XOPEN)
-else
-  ANSI=-ansi -pedantic
-endif
-
 # If configure determines we're using GCC C/C++ compilers, set flags appropriately
 if USE_GCC_FLAGS
 # Only used for GCC compilers
   OPTFLAGS = -O3
-  GCC_FLAGS = -Wall $(ANSI)
+  GCC_FLAGS = -Wall
 else
 # unknown compiler
 if USE_CLANG_FLAGS

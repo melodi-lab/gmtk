@@ -20,19 +20,13 @@ endif
 
 DEBUGFLAGS =
 
-if CYGWIN_FLAGS
-  ANSI = 
-else
-  ANSI = -ansi -pedantic
-endif
-
 # If configure determines we're using GCC C/C++ compilers, set flags appropriately
 if USE_GCC_FLAGS
 # Only used for GCC compilers
   OPTFLAGS = -O3
 # extra optimization options for certain GMTK sources, used below.
   XOPTFLAGS = -funroll-loops -fargument-noalias-global
-  GCC_FLAGS = -Wall $(ANSI)
+  GCC_FLAGS = -Wall
 else
 if USE_CLANG_FLAGS
   OPTFLAGS = -O3
@@ -345,24 +339,24 @@ parserTest_SOURCES = parserTest.cc
 
 #testMDCPT_SOURCES = GMTK_MDCPT.cc GMTK_MDCPT.h
 #testMDCPT_CXXFLAGS = -DMAIN \
-#$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+#$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) 
 
 #testMTCPT_SOURCES = GMTK_MTCPT.cc GMTK_MTCPT.h  
 #testMTCPT_CXXFLAGS = -DMAIN \
-#$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+#$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL)
 
 #testHash_SOURCES = GMTK_Hash.cc 
 #testHash_CXXFLAGS = -DMAIN \
-#$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+#$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL)
 
 #testHashTree_SOURCES = GMTK_HashTree.cc 
 #testHashTree_CXXFLAGS = -DMAIN \
-#$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+#$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL)
 
 #testRngDecisionTree_SOURCES = GMTK_RngDecisionTree.cc \
 #GMTK_RngDecisionTree.h GMTK_RV.cc GMTK_RV.h GMTK_DiscRV.cc GMTK_DiscRV.h
 #testRngDecisionTree_CXXFLAGS = -DMAIN \
-#$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+#$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL)
 
 testPackCliqueValue_SOURCES = GMTK_PackCliqueValue.cc  GMTK_PackCliqueValue.h
 testPackCliqueValue_CXXFLAGS = -DMAIN $(AM_CXXFLAGS)
@@ -372,18 +366,18 @@ testPackCliqueValue_CXXFLAGS = -DMAIN $(AM_CXXFLAGS)
 #	echo $(objs) > /tmp/gmparms_depts
 #	$(compile.cc.link) -Wall -g -DMAIN  -o $@ GMTK_GMParms.cc `sed s,GMTK_GMParms.o,, < /tmp/gmparms_depts` $(LIBS)
 #testGMParms_CXXFLAGS = -DMAIN \
-#$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+#$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL)
 
 
 AM_LFLAGS = -B
 #lex_yy_SOURCES = GMTK_FileTokenizer.ll
 #lex_yy_CXXFLAGS = -DMAIN \
-#$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+#$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL)
 
 
 #testFileParser_SOURCES = \
 #GMTK_FileParser.cc GMTK_FileParser.h GMTK_FileTokenizer.ll
 #testFileParser_LFLAGS = -B
 #testFileParser_CXXFLAGS = -DMAIN \
-#$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+#$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL)
 
