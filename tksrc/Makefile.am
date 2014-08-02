@@ -34,10 +34,17 @@ if USE_GCC_FLAGS
   XOPTFLAGS = -funroll-loops -fargument-noalias-global
   GCC_FLAGS = -Wall $(ANSI)
 else
+if USE_CLANG_FLAGS
+  OPTFLAGS = -O3
+  XOPTFLAGS =
+  WARNING_FLAGS= -Wno-deprecated-register
+  GCC_FLAGS= $(WARNING_FLAGS)
+else
 # unknown compiler
   OPTFLAGS =
   XOPTFLAGS =
   GCC_FLAGS =
+endif
 endif
 
 DBFLAGS =
@@ -238,7 +245,7 @@ gmtkEMtrain_SOURCES = gmtkEMtrain.cc
 
 gmtkDMLPtrain_SOURCES = gmtkDMLPtrain.cc
 gmtkDMLPtrain_CPPFLAGS = $(AM_CPPFLAGS) $(VERSIONFLAG)
-gmtkDMLPtrain_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(BLAS_CFLAGS) $(PTHREAD_CFLAGS) $(ISOCXX11FLAGS)
+gmtkDMLPtrain_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(BLAS_CFLAGS) $(PTHREAD_CFLAGS) $(ISOCXX11FLAGS) $(WARNING_FLAGS)
 gmtkDMLPtrain_LDADD = $(LDADD) $(PTHREAD_LIBS)
 if BUILD_DMLP
 gmtkDMLPtrain_LDADD += $(builddir)/../deepMLP/libDMLP.a

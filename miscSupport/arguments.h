@@ -203,8 +203,6 @@ class Arg {
   // if a user provided priority number is higher than the below.
   unsigned priority;
 
-  char* category;
-
   unsigned count;  // keeps track of how many command line instances of this flag there are.  
 
  public:
