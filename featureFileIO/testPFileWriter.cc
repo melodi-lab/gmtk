@@ -56,6 +56,7 @@ Arg Arg::Args[] = {
   Arg()
 };
 
+RAND rnd(false);
 
 int 
 main(int argc, char *argv[]) {
