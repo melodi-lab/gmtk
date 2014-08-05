@@ -76,6 +76,10 @@ sentRange:all
  */
 
 
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 
 #include <math.h>
 #include <stdlib.h>
@@ -655,7 +659,7 @@ logpr VECPT::probGivenParents(vector <RV *>& parents,
 {
   assert ( bitmask & bm_basicAllocated );
   curParentValue = RV2DRV(parents[0])->val;
-  register DiscRVType val = drv->val;
+  REGISTER DiscRVType val = drv->val;
 
   logpr p((void*)NULL);
   if (veMode == VE_Dense) {
