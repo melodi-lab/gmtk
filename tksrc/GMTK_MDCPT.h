@@ -13,6 +13,10 @@
 #ifndef GMTK_MDCPT_H
 #define GMTK_MDCPT_H
 
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 #include "fileParser.h"
 #include "logp.h"
 
@@ -81,7 +85,7 @@ public:
     it.internalStatePtr = (void*)mdcpt_ptr;
     it.drv = drv;
 
-    register DiscRVType value = 0;
+    REGISTER DiscRVType value = 0;
     while (mdcpt_ptr[value].essentially_zero()) {
       value++;
       // We keep the following check as we must have that at least one
@@ -104,13 +108,13 @@ public:
 			 DiscRV* drv) {
     assert ( bitmask & bm_basicAllocated );
     MDCPT::becomeAwareOfParentValues(parents,drv);
-    register DiscRVType val = drv->val;
+    REGISTER DiscRVType val = drv->val;
     assert ( val < card() );
     return *(mdcpt_ptr + val);
   }
   bool next(iterator &it,logpr& p) {
-    register logpr* const loc_mdcpt_ptr = (logpr*)it.internalStatePtr;
-    register DiscRVType value = it.drv->val;
+    REGISTER logpr* const loc_mdcpt_ptr = (logpr*)it.internalStatePtr;
+    REGISTER DiscRVType value = it.drv->val;
     do {
       value++;
       // don't increment past the last value.

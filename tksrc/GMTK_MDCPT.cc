@@ -11,6 +11,10 @@
  *
  */
 
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 
 
 #include <math.h>
@@ -495,13 +499,13 @@ MDCPT::becomeAwareOfParentValuesAndIterBegin( vector< RV * >& parents,
 	    ((DiscRV*)parents[i])->val,cardinalities[i]);
     offset += ((DiscRV*)parents[i])->val*cumulativeCardinalities[i];
   }
-  register logpr* const mdcpt_ptr = mdcpt.ptr + offset;
+  REGISTER logpr* const mdcpt_ptr = mdcpt.ptr + offset;
 
   it.setCPT(this);
   it.internalStatePtr = (void*)mdcpt_ptr;
   it.drv = drv;
 
-  register DiscRVType value = 0;
+  REGISTER DiscRVType value = 0;
   while (mdcpt_ptr[value].essentially_zero()) {
     value++;
     // We keep the following check as we must have that at least one
