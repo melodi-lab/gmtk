@@ -68,6 +68,10 @@ public:
   public:
   };
 
+  class iterator;
+  class iterator_vector;
+  class iterator_vectorp;
+
   //////////////////////////////////////////////////////
   // A DataItem for the terminal nodes in the tree. This node contains
   // a true item values.

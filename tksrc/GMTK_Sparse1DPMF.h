@@ -118,6 +118,7 @@ public:
   // Public interface support for EM
   //////////////////////////////////
   void emStartIteration();
+  using EMable::emIncrement;
   void emIncrement(logpr prob,const unsigned val);
   void emEndIteration();
   void emSwapCurAndNew();

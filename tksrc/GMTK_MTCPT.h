@@ -16,6 +16,10 @@
 #ifndef GMTK_MTCPT_H
 #define GMTK_MTCPT_H
 
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 #include <vector>
 
 #include "fileParser.h"
@@ -55,8 +59,8 @@ public:
   ~MTCPT() { }
 
   ///////////////////////////////////////////////////////////    
-  void setNumParents(const int _nParents);
-  void setNumCardinality(const int var, const int card);
+  void setNumParents(const unsigned _nParents);
+  void setNumCardinality(const unsigned var, const int card);
   void allocateBasicInternalStructures();
   ///////////////////////////////////////////////////////////    
 
@@ -117,7 +121,7 @@ public:
 			 DiscRV* drv) {
     assert ( bitmask & bm_basicAllocated );
     becomeAwareOfParentValues(parents,drv);
-    register DiscRVType val = drv->val;
+    REGISTER DiscRVType val = drv->val;
     assert ( val <= card() );
     if (val == _val)
       return 1.0;
