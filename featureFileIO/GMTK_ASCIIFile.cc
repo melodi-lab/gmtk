@@ -254,6 +254,7 @@ ASCIIFile::writeFrame(Data32 const *frame) {
     fprintf(writeFile, " %u", disc_buf_p[lrit]);
   }
   fprintf(writeFile, "\n");
+  fflush(writeFile);
   currFrame += 1;
   currFeature = 0;
 }
@@ -289,6 +290,7 @@ ASCIIFile::writeFeature(Data32 x) {
   currFeature += 1;
   if (currFeature == _numFeatures) {
     fprintf(writeFile, "\n");
+    fflush(writeFile);
     currFrame += 1;
     currFeature = 0;
   }
