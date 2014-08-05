@@ -7,7 +7,7 @@ AT_SKIP_IF([test `hostname` = "xpc"])
 
 AT_CHECK([
   if test x${CXX} = x; then
-    if test -x `which g++`; then
+    if test x`which g++` != x -a -x `which g++`; then
       export CXX=g++
     else
       export CXX=c++

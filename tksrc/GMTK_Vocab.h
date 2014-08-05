@@ -17,6 +17,10 @@
 #ifndef GMTK_VOCAB_H
 #define GMTK_VOCAB_H
 
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 #include "debug.h"
 #include "GMTK_NamedObject.h"
  
@@ -79,7 +83,7 @@ protected:
 	///////////////////////////////////////////////////////////
 	// hash function
 	inline unsigned hash(const char* key) const {
-		register unsigned hashValue = 0;
+		REGISTER unsigned hashValue = 0;
 		// a simple string hash function.
 		while ( *key )
 		  hashValue += (hashValue << 7) + *key++;   // this is more efficient

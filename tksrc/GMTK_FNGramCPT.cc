@@ -23,6 +23,10 @@
  *
  */
 
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 
 #include <cstring>
 #include <string>
@@ -2142,7 +2146,7 @@ void FNGramCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV*>& parents,
 
 	it.drv = drv;
 	it.internalStatePtr = ptr;
-	register DiscRVType value = 0;
+	REGISTER DiscRVType value = 0;
 	p = _fngram->probBackingOff(value, _startNode, ptr, _parentsValues);
 
 	while ( p.essentially_zero() ) {

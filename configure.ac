@@ -16,6 +16,11 @@ AC_INIT([GMTK],m4_esyscmd([printf %s `head -n 1 RELEASE`]),
 AM_INIT_AUTOMAKE([1.11 tar-ustar silent-rules -Wall -Werror foreign])
 AM_SILENT_RULES([yes])
 
+AC_ARG_ENABLE([register],
+              [AS_HELP_STRING([--enable-register],
+                              [use the deprecated register keyword @<:@default: no@:>@])],
+              [register=${enableval}],[register=no])
+
 AC_ARG_ENABLE([gmtkViz], 
               [AS_HELP_STRING([--disable-gmtkViz],
                               [disable gmtkViz @<:@default: no@:>@])],
