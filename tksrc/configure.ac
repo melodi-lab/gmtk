@@ -23,6 +23,17 @@ AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([1.12 silent-rules -Wall -Werror foreign])
 AM_SILENT_RULES([yes])
 
+AC_ARG_ENABLE([register],
+              [AS_HELP_STRING([--enable-register],
+                              [use the deprecated register keyword @<:@default: no@:>@])],
+              [register=${enableval}],[register=no])
+
+if test x${register} = xno; then
+  AC_DEFINE([REGISTER],[],[don't use the register keyword])
+else
+  AC_DEFINE([REGISTER],[register],[use the register keyword])
+fi
+
 AC_ARG_ENABLE([assertions],
               [AS_HELP_STRING([--disable-assertions],
                               [disable assertion checking @<:@default: no@:>@])],
@@ -91,7 +102,20 @@ m4_include([../deepMLP/blas_args])
 
 AC_PROG_CXX
 AC_PROG_CC
-AM_CONDITIONAL([USE_GCC_FLAGS],[test x$GCC = xyes -a x$GXX = xyes])
+
+#check for Clang, which lies about being GCC
+AC_MSG_CHECKING([if compiling with clang])
+AC_COMPILE_IFELSE(
+[AC_LANG_PROGRAM([],[[
+#ifndef __clang__
+  not clang
+#endif
+]])],
+[CLANG=yes],[CLANG=no])
+AC_MSG_RESULT([$CLANG])
+AM_CONDITIONAL([USE_GCC_FLAGS],[test x$GCC = xyes -a x$GXX = xyes -a x$CLANG = xno])
+AM_CONDITIONAL([USE_CLANG_FLAGS],[test x$CLANG = xyes])
+
 AM_PROG_LEX
 m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 AC_PROG_INSTALL
@@ -114,6 +138,35 @@ AC_CHECK_FILE([$srcdir/../.hg/dirstate],[
   ])
 ])
 AM_CONDITIONAL([HAVE_HG],[test  x$HAVE_HG = xyes])
+
+AC_ARG_ENABLE([gmtkViz], 
+              [AS_HELP_STRING([--disable-gmtkViz],
+                              [disable gmtkViz @<:@default: no@:>@])],
+              [gmtkViz=${enableval}], [gmtkViz=yes])
+if test x"$gmtkViz" = x"yes"; then
+   AC_CHECK_PROG([HAVE_WXCONFIG],[wx-config],[yes])
+   if test x"$HAVE_WXCONFIG" = x"yes"; then
+     AC_LANG_PUSH([C++])
+     wx_check_save_CXXFLAGS=${CXXFLAGS}
+     CXXFLAGS=`wx-config --cxxflags`
+     wx_check_save_LIBS=${LIBS}
+     LIBS=`wx-config --libs`
+     AC_LINK_IFELSE([AC_LANG_PROGRAM([#include "wx/wx.h"],
+                                     [wxString s("foo");s.Capitalize()])],
+        AC_SUBST([HAVE_WXWIDGETS],[yes]),
+        AC_MSG_WARN(
+	 [wx-config found but not wxWidgets >= 2.9. gmtkViz will not be built.])
+     )
+     LIBS=${wx_check_save_LIBS}
+     CXXFLAGS=${wx_check_save_CXXFLAGS}
+     AC_LANG_POP([C++])
+   fi
+fi
+if test x"$HAVE_WXWIDGETS" = x"yes"; then
+   AC_SUBST([GMTKVIZ],[gmtkViz])
+   AC_SUBST([VIZCXXFLAGS],[`wx-config --cxxflags`])
+   AC_SUBST([VIZLDFLAGS],[`wx-config --libs`])
+fi
 
 case "${host}" in
 *apple*)
@@ -147,35 +200,6 @@ fi
 # AX_PTHREAD comes from m4/m4_ax_pthread.m4 which is not distributed with GMTK
 # See http://www.gnu.org/software/autoconf-archive/ax_pthread.html
 AX_PTHREAD
-
-AC_ARG_ENABLE([gmtkViz], 
-              [AS_HELP_STRING([--disable-gmtkViz],
-                              [disable gmtkViz @<:@default: no@:>@])],
-              [gmtkViz=${enableval}], [gmtkViz=yes])
-if test x"$gmtkViz" = x"yes"; then
-   AC_CHECK_PROG([HAVE_WXCONFIG],[wx-config],[yes])
-   if test x"$HAVE_WXCONFIG" = x"yes"; then
-     AC_LANG_PUSH([C++])
-     wx_check_save_CXXFLAGS=${CXXFLAGS}
-     CXXFLAGS=`wx-config --cxxflags`
-     wx_check_save_LIBS=${LIBS}
-     LIBS=`wx-config --libs`
-     AC_LINK_IFELSE([AC_LANG_PROGRAM([#include "wx/wx.h"],
-                                     [wxString s("foo");s.Capitalize()])],
-        AC_SUBST([HAVE_WXWIDGETS],[yes]),
-        AC_MSG_WARN(
-	 [wx-config found but not wxWidgets >= 2.9. gmtkViz will not be built.])
-     )
-     LIBS=${wx_check_save_LIBS}
-     CXXFLAGS=${wx_check_save_CXXFLAGS}
-     AC_LANG_POP([C++])
-   fi
-fi
-if test x"$HAVE_WXWIDGETS" = x"yes"; then
-   AC_SUBST([GMTKVIZ],[gmtkViz])
-   AC_SUBST([VIZCXXFLAGS],[`wx-config --cxxflags`])
-   AC_SUBST([VIZLDFLAGS],[`wx-config --libs`])
-fi
 
      AC_ARG_WITH(
        [ps2eps],
