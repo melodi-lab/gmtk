@@ -259,6 +259,7 @@ FlatASCIIFile::writeFrame(Data32 const *frame) {
     fprintf(writeFile, " %u", *((unsigned *)frame++));
   }
   fprintf(writeFile, "\n");
+  fflush(writeFile);
   currFeature = 0;
 }
 
@@ -281,6 +282,7 @@ FlatASCIIFile::writeFeature(Data32 x) {
   currFeature += 1;
   if (currFeature == _numFeatures) {
     fprintf(writeFile, "\n");
+    fflush(writeFile);
     currFrame += 1;
     currFeature = 0;
   }
