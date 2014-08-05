@@ -885,16 +885,21 @@ computeVarOrder(vector<RV *> &sectionRVs, regex_t *preg, char sectionLabel, int 
       }
     }
   }
+printf("%c :", sectionLabel);
   names.resize(0); // empty it
   // now add the selected names to the vector in output order
   for (unsigned i=0; i < sectionRVs.size(); i+=1) {
-    if (names.size() == nameSet.size()) return; // got all the allowed names
+    if (names.size() == nameSet.size()) {
+      return; // got all the allowed names
+    }
     string name = sectionRVs[i]->name();
     if (nameSet.find(name) != nameSet.end()) {
+      printf(" %s", name.c_str());
       names.push_back(name);
     }
   }
   assert(names.size() == nameSet.size());
+printf("\n");
 }
 
 
@@ -928,6 +933,77 @@ JunctionTree::storeToObsFile(int frame, unsigned segment,
     vitObsFile = instantiateWriteFile(vitObsListName, vitObsFileName, const_cast<char *>(vitObsNameSeparator), 
 				      const_cast<char *>(vitObsFileFmt), 0, vitObsVariableNames.size(), vitObsFileSwap);
   }
+
+  set<string> nameSet;
+  for (unsigned i=0; i < rvs.size(); i+=1) {
+    unsigned f = rvs[i]->frame();
+    assert(f <= 2147483647);
+    if (f == (unsigned)frame) {
+      if (!reg || !regexec(reg,rvs[i]->name().c_str(),0,0,0)) {
+	if (std::find(vitObsVariableNames.begin(), vitObsVariableNames.end(), rvs[i]->name()) == vitObsVariableNames.end()) {
+	  error("extra RV %s in %c\n", rvs[i]->name().c_str(), sectionLabel);
+	  // error - extra rv selected for output in sectionLabel
+	}
+	nameSet.insert(rvs[i]->name());
+      }
+    }
+  }
+  if (nameSet.size() != vitObsVariableNames.size()) {
+    error("missing rvs in %c\n", sectionLabel);
+    // error - missing rvs ... from sectionLabel
+  }
+#if 1
+
+
+  // actual output. number written must be a multiple of vitObsVariableNames.size()
+#if 0
+printf("RVS <");
+for (unsigned i=0; i < rvs.size(); i+=1) {
+  unsigned f = rvs[i]->frame();
+  if (f == (unsigned)frame) {
+    if (!reg || !regexec(reg,rvs[i]->name().c_str(),0,0,0)) {
+      printf(" %s(%u)", rvs[i]->name().c_str(), f);
+    }
+  }
+}
+printf(" >\n%c   <", sectionLabel);
+for (unsigned j=0; j < vitObsVariableNames.size(); j+=1) {
+  printf(" %s", vitObsVariableNames[j].c_str());
+}
+printf(" >\n");
+printf("writing <");
+#endif
+  for (unsigned i=0; i < vitObsVariableNames.size(); i+=1) {
+    unsigned j;
+    for (j=0; vitObsVariableNames[i].compare( rvs[j]->name() ); j+=1)
+      ;
+//printf(" %s", rvs[j]->name().c_str());
+    vitObsFile->writeFeature(  (Data32) ( dynamic_cast<DiscRV *>(rvs[j])->val )  );
+  }
+//printf(" >\n");
+
+
+#else
+  printf("RVS <");
+  for (unsigned i=0; i < rvs.size(); i+=1) {
+    unsigned f = rvs[i]->frame();
+    if (f == (unsigned)frame) {
+      if (!reg || !regexec(reg,rvs[i]->name().c_str(),0,0,0)) {
+	printf(" %s(%u)", rvs[i]->name().c_str(), f);
+      }
+    }
+  }
+  printf(" >\n%c   <", sectionLabel);
+  for (unsigned j=0; j < vitObsVariableNames.size(); j+=1) {
+    printf(" %s", vitObsVariableNames[j].c_str());
+  }
+  printf(" >\n");
+
+
+  // output variables in the same order for P' C' E' sections even though they
+  // may not come in the same order.
+
+
   // actual output. number written must be a multiple of vitObsVariableNames.size()
   unsigned writtenCount = 0;
   for (unsigned i=0; i < rvs.size(); i+=1) {
@@ -976,6 +1052,7 @@ JunctionTree::storeToObsFile(int frame, unsigned segment,
 	  "Perhaps the -%cVitRegexFilter is incorrect.\n", 
 	  vitObsVariableNames[writtenCount % vitObsVariableNames.size()].c_str(), frame, segment, nameStr.c_str(), sectionLabel);
   }
+#endif
 }
 
 
@@ -1281,6 +1358,7 @@ void JunctionTree::createUnpackingMap(
   //       the number of C's in the unrolled model is known at map
   //       creation time. Thus we should be able to construct only
   //       the E' mapping for only the relevant C'E' transition 
+  //       (Might not apply for gmtkOnline though!)
 
   infoMsg(IM::Printing, IM::Moderate, "\nP':\n");
   vector<RV*> P = partitionStructureArray[0].allrvs_vec;
