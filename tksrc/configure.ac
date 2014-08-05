@@ -23,6 +23,17 @@ AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([1.12 silent-rules -Wall -Werror foreign])
 AM_SILENT_RULES([yes])
 
+AC_ARG_ENABLE([register],
+              [AS_HELP_STRING([--enable-register],
+                              [use the deprecated register keyword @<:@default: no@:>@])],
+              [register=${enableval}],[register=no])
+
+if test x${register} = xno; then
+  AC_DEFINE([REGISTER],[],[don't use the register keyword])
+else
+  AC_DEFINE([REGISTER],[register],[use the register keyword])
+fi
+
 AC_ARG_ENABLE([assertions],
               [AS_HELP_STRING([--disable-assertions],
                               [disable assertion checking @<:@default: no@:>@])],

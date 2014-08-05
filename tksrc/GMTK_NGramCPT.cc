@@ -16,6 +16,10 @@
  *
  */
 
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 
 #include <vector>
 #include <queue>
@@ -174,7 +178,7 @@ void NGramCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parents, ite
 
     it.drv = drv;
     it.internalStatePtr = ptr;
-    register DiscRVType value = 0;
+    REGISTER DiscRVType value = 0;
 
     p = probBackingOff(value, ptr, it.uInternalState);
     while ( p.essentially_zero() ) {

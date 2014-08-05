@@ -16,6 +16,10 @@
 #ifndef GMTK_MSCPT_H
 #define GMTK_MSCPT_H
 
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 #include <vector>
 
 #include "fileParser.h"
@@ -192,7 +196,7 @@ public:
 			 DiscRV* drv) {
     assert ( bitmask & bm_basicAllocated );
     becomeAwareOfParentValues(parents,drv);
-    register DiscRVType val = drv->val;
+    REGISTER DiscRVType val = drv->val;
     assert ( val <= card() );
     return spmf->prob(val);
   }
