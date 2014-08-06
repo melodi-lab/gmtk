@@ -38,6 +38,7 @@ featureFileIO/obs-concat
 featureFileIO/obs-create
 featureFileIO/obs-diff
 featureFileIO/obs-info
+featureFileIO/obs-window
 featureFileIO/obs-print
 featureFileIO/obs-skmeans
 featureFileIO/obs-cat

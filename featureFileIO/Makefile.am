@@ -134,8 +134,9 @@ testObsFile_SOURCES = testObsFile.cc
 testStreamSource_SOURCES = testStreamSource.cc
 testMerge_SOURCES = testMerge.cc
 
-bin_PROGRAMS = obs-print obs-info obs-skmeans \
+bin_PROGRAMS = obs-print obs-info obs-skmeans obs-window \
                obs-concat obs-diff obs-stats obs-cat
+
 #check_PROGRAMS = gmtest
 
 #gmtest_SOURCES = gmtest.cc
@@ -161,3 +162,4 @@ obs_concat_SOURCES = GMTK_ObsConcat.cc
 
 obs_diff_SOURCES = GMTK_ObsDiff.cc
 
+obs_window_SOURCES = obs-window.cc
