@@ -99,10 +99,10 @@ class DeepVECPT : public CPT {
 
   float    *input_vector;
 
+public:
+
   // Apply the deep neural network to get the probability
   logpr applyNN(DiscRVType parentValue, DiscRV * drv);
-
-public:
 
   ///////////////////////////////////////////////////////////  
   // General constructor, 

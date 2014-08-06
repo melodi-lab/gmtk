@@ -15,6 +15,7 @@ mitk/discrete-mi/ac_config.h
 mitk/discrete-mi/ac_config.h.in
 tksrc/GMTK_FileTokenizer.cc
 tksrc/testViterbi.cc
+tksrc/dmlp
 hgstamp.h
 version.info
 Makefile
