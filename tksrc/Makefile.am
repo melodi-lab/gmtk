@@ -225,7 +225,7 @@ gmtkModelInfo \
 gmtkOnline \
 gmtkPrint \
 $(dmlp_programs) $(GMTKVIZ) $(OSXBUNDLE)
-EXTRA_PROGRAMS = gmtkDMLPtrain gmtkViz gmtkViz.app abstest
+EXTRA_PROGRAMS = gmtkDMLPtrain gmtkViz gmtkViz.app abstest dmlp
 
 gmtkTie_SOURCES = gmtkTie.cc
 
@@ -247,6 +247,12 @@ if BUILD_PHIPAC
 gmtkDMLPtrain_LDADD += $(builddir)/../deepMLP/libPHiPAC.a
 endif
 gmtkDMLPtrain_LDADD += $(BLAS_LIBS)
+
+dmlp_SOURCES = dmlp.cc
+dmlp_CPPFLAGS = $(AM_CPPFLAGS) $(VERSIONFLAG)
+dmlp_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(PTHREAD_CFLAGS)
+dmlp_LDADD = $(LDADD) $(PTHREAD_LIBS) 
+
 
 gmtkKernel_SOURCES = gmtkKernel.cc
 
