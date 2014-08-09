@@ -548,6 +548,14 @@ class JunctionTree {
 	return jt.Co;
     }
 
+    JT_Partition& prev_jt_partition() {
+      assert(!at_first_entry());
+      if (at_first_c())
+	return jt.P1;
+      else 
+	return jt.Co;
+    }
+
     BP_Range* cur_part_clique_print_range() {
       if (at_p())
 	return jt.pPartCliquePrintRange;
@@ -1146,8 +1154,15 @@ public:
   // basic collect evidence phase on basic structures.
   void collectEvidence();
   void distributeEvidence();
+
+  logpr collectEvidenceHMM();
+  void distributeEvidenceHMM();
+
+
   // compute P(E), probability of the evidence, after collect evidence has been run.
   logpr probEvidence();
+
+  logpr probEvidence(PartitionTables *part_tab);
 
   // the same, but don't unroll to length of segment.
   //   cliquePosteriorNormalize = true normalizes the posterior scores to sum to 1 (in log space)
