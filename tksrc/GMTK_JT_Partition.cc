@@ -193,9 +193,11 @@ JT_Partition::JT_Partition(
  * clear all memory in the origin clique and separator objects that
  * are associated with this object.
  */
+extern bool debugHMM;
 void
 JT_Partition::clearCliqueAndIncommingSeparatorMemoryForClique(unsigned cliqueNo)
 {
+if (debugHMM) printf("clearCliqueAndIncomingSeparatorMemoryForClique\n");
   MaxClique& clique = cliques[cliqueNo];
   // first do the separators
   for (unsigned sepNumber=0;sepNumber<clique.ceReceiveSeparators.size();sepNumber++) {
