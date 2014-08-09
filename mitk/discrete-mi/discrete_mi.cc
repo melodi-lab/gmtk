@@ -58,6 +58,8 @@
 
 #define MIN(a,b) ((a)<(b)?(a):(b))
 
+RAND rnd(false);
+
 static const char* program_name;
 ObservationMatrix globalObservationMatrix;
 ObservationMatrix globalLabelMatrix;

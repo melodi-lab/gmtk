@@ -15,6 +15,7 @@
  *
  */
 
+RAND rnd(false);
 
 // testASCIIStream file nf ni
 int
