@@ -38,6 +38,10 @@
  *
  */
 
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 
 #include <math.h>
 #include <stdlib.h>
@@ -3809,7 +3813,7 @@ MaxCliqueTable::ceIterateAssignedNodesNoRecurse(MaxCliqueTable::SharedLocalStruc
 	    // continue going until we get one that is unfinished and within beam.
 	    unfinished = cur_rv->next(cur_p);
 	    if (unfinished) {
-	      register logpr tmp = parray[nodeNumber-1]*cur_p;
+	      REGISTER logpr tmp = parray[nodeNumber-1]*cur_p;
 	      if (tmp*origin.sortedAssignedContinuationScores[nodeNumber]  
 		  > cliqueBeamThresholdEstimate) {
 		parray[nodeNumber] = tmp;
@@ -3887,7 +3891,7 @@ MaxCliqueTable::ceIterateAssignedNodesNoRecurse(MaxCliqueTable::SharedLocalStruc
 	  cur_rv->begin(cur_p);
 	  // might get a zero probability, check condition here.
 	  // TODO: keep result in temp and only write back out if need be. @@@
-	  register logpr tmp =  parray[nodeNumber-1]*cur_p;
+	  REGISTER logpr tmp =  parray[nodeNumber-1]*cur_p;
 	  if (tmp*origin.sortedAssignedContinuationScores[nodeNumber] 
 	      <= cliqueBeamThresholdEstimate) {
 	    // We just did a begin and got zero on the first try. 
@@ -3904,7 +3908,7 @@ MaxCliqueTable::ceIterateAssignedNodesNoRecurse(MaxCliqueTable::SharedLocalStruc
 	{
 	  cur_rv->probGivenParents(cur_p);
 	  // might get a zero probability, check condition here.
-	  register logpr tmp = parray[nodeNumber-1]*cur_p;
+	  REGISTER logpr tmp = parray[nodeNumber-1]*cur_p;
 	  if (tmp*origin.sortedAssignedContinuationScores[nodeNumber] 
 	      <= cliqueBeamThresholdEstimate) {
 	    // Since we have zero here, we cancel iterations of all
@@ -6044,10 +6048,10 @@ printf("\n");
   // since max is bad for ilp.
 
   // check for empty clique and if so, return zero.
-  register logpr mx0 = cliqueValues.ptr[0].p;
+  REGISTER logpr mx0 = cliqueValues.ptr[0].p;
   if (numCliqueValuesUsed == 1)
     return mx0;
-  register logpr mx1 = cliqueValues.ptr[1].p;
+  REGISTER logpr mx1 = cliqueValues.ptr[1].p;
   // find the max score clique entry
   unsigned end_loc = numCliqueValuesUsed & ~0x1;
   for (unsigned cvn=2;cvn<end_loc;cvn+=2) {

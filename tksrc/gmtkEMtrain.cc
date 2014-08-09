@@ -32,7 +32,6 @@
 #include "rand.h"
 #include "arguments.h"
 #include "ieeeFPsetup.h"
-#include "version.h"
 
 #include "GMTK_WordOrganization.h"
 

@@ -21,5 +21,8 @@
 #include "GMTK_RV.h"
 #include "GMTK_RVInfo.h"
 
+// ticket 90: get rid of a warning from the OS X ranlib
+char make_osx_ranlib_shutup_about_no_symbols_ScPnSh_HidDiscRv;
+
 
 

@@ -72,14 +72,8 @@ double CPT::normalizationThreshold = 1e-2;
  */
 void CPT::setNumParents(const unsigned _nParents)
 {
-
-  if (_nParents < 0) 
-    error("CPT: setNumParents, trying to use negative (%d) num parents.",
-	  _nParents);
-
   _numParents = _nParents;
   cardinalities.resize(_numParents);
-
 }
 
 
@@ -100,10 +94,6 @@ void CPT::setNumParents(const unsigned _nParents)
  */
 void CPT::setNumCardinality(const unsigned var, const int card)
 {
-
-  if (var < 0)
-    error("CPT: setNumCardinality, trying to use negative (%d) var.",
-	  var);
   if (var > _numParents) 
     error("CPT: setNumCardinality, trying to use illegal (%d) var.",
 	  var);

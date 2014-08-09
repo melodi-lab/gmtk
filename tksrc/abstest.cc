@@ -24,7 +24,6 @@
 #include "rand.h"
 #include "arguments.h"
 #include "debug.h"
-#include "version.h"
 
 #include "GMTK_RV.h"
 #include "GMTK_GMParms.h"
