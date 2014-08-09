@@ -349,7 +349,7 @@ DeepVECPT::becomeAwareOfParentValues( vector <RV *>& parents, const RV* rv ) {
 
 logpr
 DeepVECPT::applyNN(DiscRVType parentValue, DiscRV * drv) {
-  register DiscRVType val = drv->val;
+  REGISTER DiscRVType val = drv->val;
 
   logpr p((void*)NULL);
 

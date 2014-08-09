@@ -12,6 +12,10 @@
  *
  */
 
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 
 #include <math.h>
 #include <stdlib.h>
@@ -466,10 +470,10 @@ MissingFeatureScaledDiagGaussian::emIncrementMeanDiagCovar(
 				       float *meanAccumulator,
 				       float *diagCovarAccumulator)
 {
-  register const float * f_p = f;
-  register const float *const f_p_endp = f + len;
-  register float *meanAccumulator_p = meanAccumulator;
-  register float *diagCovarAccumulator_p = diagCovarAccumulator;
+  REGISTER const float * f_p = f;
+  REGISTER const float *const f_p_endp = f + len;
+  REGISTER float *meanAccumulator_p = meanAccumulator;
+  REGISTER float *diagCovarAccumulator_p = diagCovarAccumulator;
   logpr* acp = elementAccumulatedProbability.ptr;
 
   do {
@@ -478,8 +482,8 @@ MissingFeatureScaledDiagGaussian::emIncrementMeanDiagCovar(
     // meanAccumulator_p so the compiler can probably optimize better.
     
     if (!isnan(*f_p)) {
-      register float tmp = (*f_p)*fprob;
-      register float tmp2 = tmp*(*f_p);
+      REGISTER float tmp = (*f_p)*fprob;
+      REGISTER float tmp2 = tmp*(*f_p);
 
       *meanAccumulator_p += tmp;
       *diagCovarAccumulator_p += tmp2;
@@ -538,26 +542,26 @@ MissingFeatureScaledDiagGaussian::fkIncrementMeanDiagCovar(
 				       float *meanAccumulator,
 				       float *diagCovarAccumulator)
 {
-  register const float * f_p = f;
-  register const float *const f_p_endp = f + len;
+  REGISTER const float * f_p = f;
+  REGISTER const float *const f_p_endp = f + len;
 
-  register float *mean_p = curMeans;
-  register float *diagCovar_p = curDiagCovars;
+  REGISTER float *mean_p = curMeans;
+  REGISTER float *diagCovar_p = curDiagCovars;
 
-  register float *meanAccumulator_p = meanAccumulator;
-  register float *diagCovarAccumulator_p = diagCovarAccumulator;
+  REGISTER float *meanAccumulator_p = meanAccumulator;
+  REGISTER float *diagCovarAccumulator_p = diagCovarAccumulator;
 
   logpr* acp = elementAccumulatedProbability.ptr;
 
   do {
     if (!isnan(*f_p)) {
-      register float tmp = (*f_p - *mean_p)/(*diagCovar_p);
+      REGISTER float tmp = (*f_p - *mean_p)/(*diagCovar_p);
 
       // store the values in temporaries so that the
       // compiler knows that there is no aliasing.
-      register float mean_val = fprob*tmp;
+      REGISTER float mean_val = fprob*tmp;
       tmp = tmp*tmp;
-      register float covar_val = 0.5*fprob*(-1.0/(*diagCovar_p) + tmp);
+      REGISTER float covar_val = 0.5*fprob*(-1.0/(*diagCovar_p) + tmp);
       
       // increment the actual accumulators
       *meanAccumulator_p += mean_val;

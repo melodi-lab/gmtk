@@ -52,9 +52,6 @@ class FlatASCIIFile: public ObservationFile {
   unsigned          currFrame;     // just used for writeFrame
   unsigned          currFeature;
 
-  bool        cppIfAscii;
-  char const *cppCommandOptions;
-
   Data32     *buffer;              // data for current segment
   Data32    **segment;             // the frames for the ith segment start at segment[i]
 
