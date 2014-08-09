@@ -76,6 +76,8 @@
 #include <string>
 #include <map>
 
+extern bool debugHMM;
+
 class PartitionStructures;
 class PartitionTables;
 class SeparatorClique;
@@ -975,6 +977,7 @@ class MaxClique : public IM {
   // Clears or resets to initial status all memory that was created
   // for this clque during an inference run.
   void clearInferenceMemory() {
+if (debugHMM) printf("clearInferenceMemory 1\n");
     valueHolder.prepare();
     cliqueValueHashSet.clear();
 #ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
@@ -1201,6 +1204,7 @@ public:
   void clearSeparatorValueCache(bool force=false);
 
   void clearInferenceMemory() {
+if (debugHMM) printf("clearInferenceMemory 2\n");
     accSepValHashSet.clear();
     remSepValHashSet.clear();
     // could change to makeEmpty if running on a static graph only 
@@ -1449,7 +1453,10 @@ public:
     clearInferenceMemory();
   }
 
+static bool OTnMemory;
+
   void clearInferenceMemory() {
+if (debugHMM) printf("clearInferenceMemory 3   separatorValues size = %u\n", separatorValues ? separatorValues->size() : 0);
     // only delete when not a VE separator, since when it is these
     // guys are shared accross multiple ConditionalSeparatorTables.
     // Note: the 'mother' VE ConditionalSeparatorTable is actually a
@@ -1457,10 +1464,13 @@ public:
     // containing SeparatorClique is deleted.
     if (veSeparator())
       return;
+if (!OTnMemory) {
     delete iAccHashMap;
     iAccHashMap = NULL;
     delete separatorValues;
     separatorValues = NULL;
+} else {
+}
   }
 
 
@@ -1793,6 +1803,7 @@ public:
   /////////////////////////////////////////
   // memory clearing.
   void clearInferenceMemory() {
+if(debugHMM)printf("clearInferenceMemory 4\n");
     // clear out all memory used by this inference clique.
     cliqueValues.clear();
   }

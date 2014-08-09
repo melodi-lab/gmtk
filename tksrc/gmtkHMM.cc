@@ -101,6 +101,7 @@ VCID(HGID)
 #include "GMTK_Signals.h"
 
 
+
 /*****************************   OBSERVATION INPUT FILE HANDLING   **********************************************/
 #define GMTK_ARG_OBS_FILES
 
@@ -216,9 +217,13 @@ ObservationMatrix globalObservationMatrix;
 FileSource *gomFS;
 ObservationSource *globalObservationMatrix;
 
+extern bool debugHMM;
+
 int
 main(int argc,char*argv[])
 {
+ConditionalSeparatorTable::OTnMemory = true;
+
 
   ////////////////////////////////////////////
   // set things up so that if an FP exception
@@ -638,9 +643,13 @@ main(int argc,char*argv[])
 	gomFS->justifySegment(numUsableFrames);
 
 	infoMsg(IM::Inference, IM::Med,"Collecting Evidence\n");
-	myjt.collectEvidenceHMM();
+	probe = myjt.collectEvidenceHMM();
 	infoMsg(IM::Inference, IM::Med,"Done Collecting Evidence\n");
-	probe = myjt.probEvidence();
+#if 1
+	//	probe = myjt.probEvidence();
+#else
+	probe.set_to_one();
+#endif
 	infoMsg(IM::Default,"Segment %d, after CE, viterbi log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
 		segment,
 		probe.val(),
@@ -653,7 +662,9 @@ main(int argc,char*argv[])
 	  myjt.setRootToMaxCliqueValue();
 	  total_data_prob *= probe;
 	  infoMsg(IM::Inference, IM::Low,"Distributing Evidence\n");
-	  myjt.distributeEvidence();
+printf("---------------------- distribute evidence ----------------------\n");
+debugHMM=true;
+	  myjt.distributeEvidenceHMM();
 	  infoMsg(IM::Inference, IM::Low,"Done Distributing Evidence\n");
 	}
 
