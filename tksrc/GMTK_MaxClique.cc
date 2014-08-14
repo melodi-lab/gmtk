@@ -343,20 +343,31 @@ MaxClique::cliqueBeamMaxNumStates = 0;
  * Dyanmic ckbeam
  */
     const unsigned MaxClique::MAX_NUM_DBEAM;
-    double MaxClique::dynamicMaxNumStatesFraction[];
-    unsigned MaxClique::dynamicMaxNumStatesValue[];
-    unsigned MaxClique::dynamicCKBeamValidFractionNum = 0;
+    //double MaxClique::dynamicMaxNumStatesFraction[];
+    //unsigned MaxClique::dynamicMaxNumStatesValue[];
+    //unsigned MaxClique::dynamicCKBeamValidFractionNum = 0;
 
     unsigned MaxClique::numFrames = 0;
 
+    std::vector<double> MaxClique::dynamicMaxNumStatesFractionVector;
+    std::vector<unsigned> MaxClique::dynamicMaxNumStatesValueVector;
+
+    char* MaxClique::dynamicMaxNumStatesChars;
+    std::string MaxClique::dynamicMaxNumStatesString;
 
 /*
  * Dynamic cbeam
  */
-    double MaxClique::dynamicCliqueBeamFraction[];
-    double MaxClique::dynamicCliqueBeamValue[];
-    unsigned MaxClique::dynamicCBeamValidFractionNum = 0;
+    //double MaxClique::dynamicCliqueBeamFraction[];
+    //double MaxClique::dynamicCliqueBeamValue[];
+    //unsigned MaxClique::dynamicCBeamValidFractionNum = 0;
 
+
+    std::vector<double> MaxClique::dynamicCliqueBeamFractionVector;
+    std::vector<double> MaxClique::dynamicCliqueBeamValueVector;
+
+    char* MaxClique::dynamicCliqueBeamChars;
+    std::string MaxClique::dynamicCliqueBeamString;
 
 /*
  * Fraction of clique to retain. Default (1.0) means prune nothing.
@@ -4520,7 +4531,7 @@ MaxCliqueTable::ceCliqueBeamPrune(MaxCliqueTable::SharedLocalStructure& sharedSt
     MaxClique& origin = *(sharedStructure.origin);
 
   // return immediately if beam pruning is turned off.
-  if (origin.cliqueBeam == (-LZERO) && origin.dynamicCBeamValidFractionNum == 0)
+  if (origin.cliqueBeam == (-LZERO) && origin.dynamicCliqueBeamValueVector.size() == 0)
     return;
 
   // create an ininitialized variable
@@ -4537,7 +4548,8 @@ MaxCliqueTable::ceCliqueBeamPrune(MaxCliqueTable::SharedLocalStructure& sharedSt
 
 
     //Dynamic beam pruning
-    if(origin.dynamicCBeamValidFractionNum > 0) {
+    //if(origin.dynamicCBeamValidFractionNum > 0) {
+    if(origin.dynamicCliqueBeamFractionVector.size() > 0) {
 
         unsigned frame_min = sharedStructure.rv_w_min_frame_num->frame();
         unsigned frame_max = sharedStructure.rv_w_max_frame_num->frame();
@@ -4546,20 +4558,43 @@ MaxCliqueTable::ceCliqueBeamPrune(MaxCliqueTable::SharedLocalStructure& sharedSt
 
         double local_max = 0;
 
+        unsigned vec_length = origin.dynamicCliqueBeamValueVector.size();
+        unsigned large_index = 9999999;
+        unsigned max_index = large_index, min_index = large_index;
+
         //get the minimum beam between frame_min and frame_max
-        for(unsigned i=0; i<origin.dynamicCBeamValidFractionNum; i++) {
-            if(frac_min < origin.dynamicCliqueBeamFraction[i]) {
-                local_max = origin.dynamicCliqueBeamValue[i];
+        for(unsigned i=0; i<vec_length; i++) {
+            if(frac_max < origin.dynamicCliqueBeamFractionVector[i]) {
+                //local_max = origin.dynamicCliqueBeamValue[i];
+                max_index = i;
                 break;
             }
         }
 
-        for(unsigned i=0; i<origin.dynamicCBeamValidFractionNum; i++) {
-            if(frac_max < origin.dynamicCliqueBeamFraction[i]) {
-                local_max = min(local_max, origin.dynamicCliqueBeamValue[i]);
+        for(unsigned i=0; i<vec_length; i++) {
+            if(frac_min < origin.dynamicCliqueBeamFractionVector[i]) {
+                //local_max = min(local_max, origin.dynamicCliqueBeamValue[i]);
+                min_index = i;
                 break;
             }
         }
+
+        
+        if(max_index == 0) local_max = origin.dynamicCliqueBeamValueVector[0];
+        else if(max_index == large_index) local_max = origin.dynamicCliqueBeamValueVector[vec_length - 1];
+        else {
+            double alpha = (frac_max - origin.dynamicCliqueBeamFractionVector[max_index - 1]) / (origin.dynamicCliqueBeamFractionVector[max_index] - origin.dynamicCliqueBeamFractionVector[max_index - 1]);
+            local_max = origin.dynamicCliqueBeamValueVector[max_index - 1] * (1 - alpha) + origin.dynamicCliqueBeamValueVector[max_index] * alpha;
+        }
+
+        if(min_index == 0) local_max = min(local_max, origin.dynamicCliqueBeamValueVector[0]);
+        else if(min_index == large_index) local_max = min(local_max, origin.dynamicCliqueBeamValueVector[vec_length - 1]);
+        else {
+            double alpha = (frac_min - origin.dynamicCliqueBeamFractionVector[min_index - 1]) / (origin.dynamicCliqueBeamFractionVector[min_index] - origin.dynamicCliqueBeamFractionVector[min_index - 1]);
+            local_max = min(local_max, origin.dynamicCliqueBeamValueVector[min_index - 1] * (1 - alpha) + origin.dynamicCliqueBeamValueVector[min_index] * alpha);
+        }
+        
+
         //no pruning
         if(local_max == 0 || local_max == (-LZERO)) {
             if(origin.cliqueBeam == (-LZERO)) return;
@@ -4668,7 +4703,7 @@ MaxCliqueTable::ceDoAllPruning(MaxCliqueTable::SharedLocalStructure& sharedStruc
 
 
     //Dynamic kbeam pruning
-    if(origin.dynamicCKBeamValidFractionNum > 0) {
+    if(origin.dynamicMaxNumStatesValueVector.size() > 0) {
 
         unsigned frame_min = sharedStructure.rv_w_min_frame_num->frame();
         unsigned frame_max = sharedStructure.rv_w_max_frame_num->frame();
@@ -4677,19 +4712,40 @@ MaxCliqueTable::ceDoAllPruning(MaxCliqueTable::SharedLocalStructure& sharedStruc
 
         unsigned local_max = 0;
 
+        unsigned vec_length = origin.dynamicMaxNumStatesValueVector.size();
+        unsigned large_index = 9999999;
+        unsigned max_index = large_index, min_index = large_index;
+
         //get the minimum beam between frame_min and frame_max
-        for(unsigned i=0; i<origin.dynamicCKBeamValidFractionNum; i++) {
-            if(frac_min < origin.dynamicMaxNumStatesFraction[i]) {
-                local_max = max(local_max, origin.dynamicMaxNumStatesValue[i]);
+        for(unsigned i=0; i<vec_length; i++) {
+            if(frac_min < origin.dynamicMaxNumStatesFractionVector[i]) {
+                //local_max = max(local_max, origin.dynamicMaxNumStatesValue[i]);
+                max_index = i;
                 break;
             }
         }
 
-        for(unsigned i=0; i<origin.dynamicCKBeamValidFractionNum; i++) {
-            if(frac_max < origin.dynamicMaxNumStatesFraction[i]) {
-                local_max = max(local_max, origin.dynamicMaxNumStatesValue[i]);
+        for(unsigned i=0; i<vec_length; i++) {
+            if(frac_max < origin.dynamicMaxNumStatesFractionVector[i]) {
+                //local_max = max(local_max, origin.dynamicMaxNumStatesValue[i]);
+                min_index = i;
                 break;
             }
+        }
+
+
+        if(max_index == 0) local_max = origin.dynamicMaxNumStatesValueVector[0];
+        else if(max_index == large_index) local_max = origin.dynamicMaxNumStatesValueVector[vec_length - 1];
+        else {
+            double alpha = (frac_max - origin.dynamicMaxNumStatesFractionVector[max_index - 1]) / (origin.dynamicMaxNumStatesFractionVector[max_index] - origin.dynamicMaxNumStatesFractionVector[max_index - 1]);
+            local_max = (unsigned)(origin.dynamicMaxNumStatesValueVector[max_index - 1] * (1 - alpha) + origin.dynamicMaxNumStatesValueVector[max_index] * alpha);
+        }
+
+        if(min_index == 0) local_max = min(local_max, origin.dynamicMaxNumStatesValueVector[0]);
+        else if(min_index == large_index) local_max = min(local_max, origin.dynamicMaxNumStatesValueVector[vec_length - 1]);
+        else {
+            double alpha = (frac_min - origin.dynamicMaxNumStatesFractionVector[min_index - 1]) / (origin.dynamicMaxNumStatesFractionVector[min_index] - origin.dynamicMaxNumStatesFractionVector[min_index - 1]);
+            local_max = min(local_max, (unsigned)(origin.dynamicMaxNumStatesValueVector[min_index - 1] * (1 - alpha) + origin.dynamicMaxNumStatesValueVector[min_index] * alpha));
         }
 
         k = min(k, local_max);
