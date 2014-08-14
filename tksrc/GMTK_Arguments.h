@@ -593,7 +593,7 @@ Arg("map",Arg::Opt,dlopenFilenames,"Deterministic mapping dynamic library file. 
     //Arg("dcbeam_frac",Arg::Opt,MaxClique::dynamicCliqueBeamFraction,"Fractions for dynamic cbeam pruning of the beam width", Arg::ARRAY, MaxClique::MAX_NUM_DBEAM),
     //Arg("dcbeam_value",Arg::Opt,MaxClique::dynamicCliqueBeamValue,"Values for dynamic cbeam pruning of the beam width (log value)", Arg::ARRAY, MaxClique::MAX_NUM_DBEAM),
     
-    Arg("dcbeam",Arg::Opt,MaxClique::dynamicCliqueBeamChars,"Dynamic cbeam pruning. Should be of the form: {(f1,b1), (f2,b2),...}. f stands for the fraction and b stands for the beam value."),
+    Arg("dcbeam",Arg::Opt,MaxClique::dynamicCliqueBeamChars,"Dynamic cbeam pruning. Should be of the form: {(f1,b1);(f2,b2);...}. f stands for the fraction and b stands for the beam value."),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
