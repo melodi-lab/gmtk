@@ -693,12 +693,12 @@ MissingFeatureScaledDiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& of
   ofile.writeComment("%s  nextMeans.len %u  nextDiagCovars.len %u  elementAccumulatedProbability.len %u\n",
 		     name().c_str(), nextMeans.len(), nextDiagCovars.len(), elementAccumulatedProbability.len());
   if (writeZeros) {
-    ofile.writeComment("  ... nextMeans[i] ...\n");
+    ofile.writeComment("MeanVector %s:  ... nextMeans[i] ...\n", mean->name().c_str());
     for (unsigned i=0; i < nextMeans.len(); i++) {
       ofile.write(nextMeans[0], 0.0, "MissingFeatureScaledDiagGaussian store accums nm + nc.");
     }
     ofile.nl();
-    ofile.writeComment("  ... nextDiagCovars[i] ...\n");
+    ofile.writeComment("DiagCovarVector %s:  ... nextDiagCovars[i] ...\n", covar->name().c_str());
     for (unsigned i=0; i < nextDiagCovars.len(); i++) {
       ofile.write(nextDiagCovars[0], 0.0, "MissingFeatureScaledDiagGaussian store accums nm + nc.");
     }
@@ -709,12 +709,12 @@ MissingFeatureScaledDiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& of
     }
     ofile.nl();
   } else {
-    ofile.writeComment("  ... nextMeans[i] ...\n");
+    ofile.writeComment("MeanVector %s:  ... nextMeans[i] ...\n", mean->name().c_str());
     for (int i=0;i<nextMeans.len();i++) {
       ofile.write(nextMeans[i],"MissingFeatureScaledDiagGaussian store accums nm.");
     }
     ofile.nl();
-    ofile.writeComment("  ... nextDiagCovars[i] ...\n");
+    ofile.writeComment("DiagCovarVector %s:  ... nextDiagCovars[i] ...\n", covar->name().c_str());
     for (int i=0;i<nextDiagCovars.len();i++) {
       ofile.write(nextDiagCovars[i],"MissingFeatureScaledDiagGaussian store accums nc.");
     }

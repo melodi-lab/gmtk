@@ -1170,6 +1170,7 @@ LinMeanCondDiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& ofile,
   ofile.writeComment("%s xAcc len %u  xxAcc len %u  xzAcc len %u  zzAcc len %u  zAcc len %u\n", 
 		     name().c_str(), xAccumulators.len(), xxAccumulators.len(), xzAccumulators.len(),
 		     zzAccumulators.len(), zAccumulators.len());
+  ofile.writeComment("LinMeanCondDiagGaussian %s: ... xAcc[i] ... xxAcc[i] ... xzAcc[i] ... zzAcc[i] ... zAcc[i] ...\n", name().c_str());
   if (writeZeros) {
     const unsigned totalLen = 
       xAccumulators.len()+ 

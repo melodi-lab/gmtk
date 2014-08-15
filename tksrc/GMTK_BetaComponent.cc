@@ -647,7 +647,7 @@ BetaComponent::emStoreObjectsAccumulators(oDataStreamFile& ofile,
   // argument since it doesn't make sense to take log of
   // these values since they are continuous. etc.
   ofile.writeComment("%s dim %u\n", name().c_str(), _dim);
-  ofile.writeComment("   ... sumx[i] sumxx[i] ... \n");
+  ofile.writeComment("BetaComponent %s:   ... sumx[i] sumxx[i] ... \n", name().c_str());
   if (writeZeros) {
     for (unsigned i=0; i < 2*_dim; i++) {
       ofile.write(sumx.ptr[0], 0.0,"Beta Component store accum.");
