@@ -3085,11 +3085,18 @@ GMParms::checkConsistentWithGlobalObservationStream()
 	  globalObservationMatrix->startSkip(),
 	  Dlinks::_globalMinLag);
 
-    if ((int)globalObservationMatrix->endSkip() < (int)Dlinks::_globalMaxLag)
-      error("ERROR: an end skip of %d is invalid for a maximum dlink lag of %d\n",
-	    globalObservationMatrix->endSkip(),
-	    Dlinks::_globalMaxLag);
+  if (globalObservationMatrix->startSkip() < DeepVECPT::minSkip())
+    error("ERROR: start skip must be at least %u due to DeepVECPT radii\n", DeepVECPT::minSkip());
+
+  if ((int)globalObservationMatrix->endSkip() < (int)Dlinks::_globalMaxLag)
+    error("ERROR: an end skip of %d is invalid for a maximum dlink lag of %d\n",
+	  globalObservationMatrix->endSkip(),
+	  Dlinks::_globalMaxLag);
   
+  if (globalObservationMatrix->randomAccess() && globalObservationMatrix->endSkip() < DeepVECPT::minSkip())
+    error("ERROR: end skip must be at least %u due to DeepVECPT radii\n", DeepVECPT::minSkip());
+
+
   if ((int)globalObservationMatrix->numContinuous() <= (int)Dlinks::_globalMaxOffset)
     error("ERROR: there is a dlink ofset of value %d which is too large for the observation matrix with only %d continuous features.",
 	  Dlinks::_globalMaxOffset,
@@ -3962,36 +3969,53 @@ void
 GMParms::emWriteUnencodedAccumulators(oDataStreamFile& ofile, bool writeLogVals)
 {
   // first do the basic objects
+  if (EMable::fisherKernelMode) {
+    ofile.writeComment("Fisher kernel accumulators\n");
+  } else {
+    ofile.writeComment("EM accumulators\n");
+  }
+  ofile.writeComment("%u dPmfs (there may be fewer due to -objsNotToUTilize)\n", dPmfs.size());
   for (unsigned i=0;i<dPmfs.size();i++)
     dPmfs[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+  ofile.writeComment("%u sPmfs (there may be fewer due to -objsNotToUTilize)\n", sPmfs.size());
   for (unsigned i=0;i<sPmfs.size();i++)
     sPmfs[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+  ofile.writeComment("%u means (there may be fewer due to -objsNotToUTilize)\n", means.size());
   for (unsigned i=0;i<means.size();i++)
     means[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+  ofile.writeComment("%u covars (there may be fewer due to -objsNotToUTilize)\n", covars.size());
   for (unsigned i=0;i<covars.size();i++)
     covars[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+  ofile.writeComment("%u dLinkMats (there may be fewer due to -objsNotToUTilize)\n", dLinkMats.size());
   for (unsigned i=0;i<dLinkMats.size();i++)
     dLinkMats[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+  ofile.writeComment("%u realMats (there may be fewer due to -objsNotToUTilize)\n", realMats.size());
   for (unsigned i=0;i<realMats.size();i++)
     realMats[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
 #if DOUBLEMATS_EVERYWHERE
+  ofile.writeComment("%u doubleMats (there may be fewer due to -objsNotToUTilize)\n", doubleMats.size());
   for (unsigned i=0;i<doubleMats.size();i++)
     doubleMats[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
 #endif
 
    // components
+  ofile.writeComment("%u components (there may be fewer due to -objsNotToUTilize)\n", components.size());
   for (unsigned i=0;i<components.size();i++)
     components[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
 
    // for discrete RVs
+  ofile.writeComment("%u mdCpts (there may be fewer due to -objsNotToUTilize)\n", mdCpts.size());
   for (unsigned i=0;i<mdCpts.size();i++)
     mdCpts[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+  ofile.writeComment("%u msCpts (there may be fewer due to -objsNotToUTilize)\n", msCpts.size());
   for (unsigned i=0;i<msCpts.size();i++)
     msCpts[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+  ofile.writeComment("%u mtCpts (there may be fewer due to -objsNotToUTilize)\n", mtCpts.size());
   for (unsigned i=0;i<mtCpts.size();i++)
     mtCpts[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
 
    // for continuous RVs
+  ofile.writeComment("%u mixtrues (there may be fewer due to -objsNotToUTilize)\n", mixtures.size());
   for (unsigned i=0;i<mixtures.size();i++)
     mixtures[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
 #if 0

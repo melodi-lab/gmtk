@@ -88,6 +88,7 @@ bool liswps[] = {false };
 //
 //}; 
 
+RAND rnd(false);
 
 int readFeatures(Range::iterator krit, size_t &n_frames,
 		 size_t &n_samps,

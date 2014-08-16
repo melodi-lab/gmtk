@@ -443,7 +443,9 @@ main(int argc,char*argv[])
 	  outf.write(buff);
 	  outf.nl();
 	};
+	outf.writeComment("segment %d  log(PE) %f\n", segment, data_prob.val());
 	outf.write(data_prob.val());
+	outf.nl();
 	GM_Parms.emWriteUnencodedAccumulators(outf,writeLogVals);
 	outf.nl();
       } catch (ZeroCliqueException &e) {
