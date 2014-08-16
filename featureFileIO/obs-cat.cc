@@ -115,6 +115,7 @@ sendFrame(Data32 const *frame, unsigned segNum, unsigned frameNum,
       printf(" %d", *((int *)(buf++)));
     printf("\n");
   }
+  fflush(stdout);
 }
 
 

@@ -6331,6 +6331,7 @@ printCliqueEntries(MaxCliqueTable::SharedLocalStructure& sharedStructure,
       }
     }
     printRVSetAndValues(f,sharedStructure.fNodes);
+    fflush(f);
   }
 }
 
