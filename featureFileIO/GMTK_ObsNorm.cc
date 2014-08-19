@@ -89,9 +89,9 @@ void obsNorm(FILE*  out_fp,
       const size_t n_frames = obs_mat->numFrames();
    
       if (debug_level > 0) 
-	printf("Processing sentence %d\n",(*srit));
+	printf("Processing segment %d\n",(*srit));
       else if (!quiet && (*srit) % 100 == 0)
-	printf("Processing sentence %d\n",(*srit));
+	printf("Processing segment %d\n",(*srit));
       
       // Increase size of buffers if needed.
       if (n_frames > buf_size) {
@@ -160,9 +160,9 @@ void obsNorm(FILE*  out_fp,
       const size_t n_frames = obs_mat->numFrames();
 
       if (debug_level > 0) 
-	printf("Processing sentence %d\n",(*srit2));
+	printf("Processing segment %d\n",(*srit2));
       else if (!quiet && (*srit2) % 100 == 0)
-	printf("Processing sentence %d\n",(*srit2));
+	printf("Processing segment %d\n",(*srit2));
 	
       // Increase size of buffers if needed.
       if (n_frames > buf_size) {

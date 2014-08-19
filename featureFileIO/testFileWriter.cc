@@ -85,7 +85,7 @@ Arg Arg::Args[] = {
   Arg("o",      Arg::Req, output_fname,"output file"),
   Arg("ofmt",      Arg::Opt, ofmtStr,"format of output file (htk, binary, ascii, pfile, flatbin, flatasc)"),
   Arg("olist",      Arg::Opt, outputList,"output list-of-files name.  Only meaningful if used with the RAW or HTK formats."),
-  Arg("sep",      Arg::Opt, outputNameSeparatorStr,"String to use as separator when outputting raw ascii or binary files (one sentence per file)."),
+  Arg("sep",      Arg::Opt, outputNameSeparatorStr,"String to use as separator when outputting raw ascii or binary files (one segment per file)."),
   Arg("oswp",Arg::Opt, oswap,"do byte swapping on the output file"),
   Arg("ns",    Arg::Opt, dontPrintFrameID,"Don't print the frame IDs (i.e., sent and frame #)"),
 
@@ -148,7 +148,7 @@ main(int argc, char *argv[]) {
 
   for (unsigned j=0; j < f->numSegments(); j+=1) {
     assert(f->openSegment(j));
-    printf("Processing sentence %u\n", j);
+    printf("Processing segment %u\n", j);
 #if 0
     for (unsigned i=0; i < f->numFrames(); i+=1) {
 #if 0

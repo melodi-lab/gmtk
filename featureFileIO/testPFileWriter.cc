@@ -95,7 +95,7 @@ main(int argc, char *argv[]) {
 
   for (unsigned j=0; j < f->numSegments(); j+=1) {
     assert(f->openSegment(j));
-    printf("Processing sentence %u\n", j);
+    printf("Processing segment %u\n", j);
     int k;
     for (k=f->numFrames()-1; k >= 0; k-=2) {
       //for (k=0; k < f->numFrames(); k+=1) {
