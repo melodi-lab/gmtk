@@ -176,7 +176,7 @@ void obsInfo(FILE* out_fp, FileSource* obs_mat, bool dont_print_info, bool print
   }
   
   if (!dont_print_info) {
-    fprintf(out_fp,"%d stream(s), %d sentences, %d frames, %d discrete feature(s), %d continuous feature(s)\n",
+    fprintf(out_fp,"%d stream(s), %d segments, %d frames, %d discrete feature(s), %d continuous feature(s)\n",
 	    num_streams,
 	    num_segments,
             total_num_frames,
@@ -362,7 +362,7 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
 
     if (!quiet) {
       if (srit % 100 == 0)
-	printf("Processing sentence %d\n",srit);
+	printf("Processing segment %d\n",srit);
     }
     
     if(ofmt==PFILE) {
@@ -567,7 +567,7 @@ Arg Arg::Args[] = {
   Arg("o",    Arg::Opt, output_fname,"output file"),
   Arg("ofmt", Arg::Opt, ofmtStr,"format of output file"),
   Arg("olist",Arg::Opt, outputList,"output list-of-files name.  Only meaningful if used with the RAW or HTK formats."),
-  Arg("sep",  Arg::Opt, outputNameSeparatorStr,"String to use as separator when outputting raw ascii or binary files (one sentence per file).",Arg::SINGLE,0,false,PRIORITY_2),
+  Arg("sep",  Arg::Opt, outputNameSeparatorStr,"String to use as separator when outputting raw ascii or binary files (one segment per file).",Arg::SINGLE,0,false,PRIORITY_2),
   Arg("oswp", Arg::Opt, oswap,"do byte swapping on the output file",Arg::SINGLE,0,false,PRIORITY_2),
   Arg("ns",    Arg::Opt, dontPrintFrameID,"Don't print the frame IDs (i.e., sent and frame #)"),
   Arg("oHtkKind",         Arg::Opt, HTK_Param_Kind,"Kind of output HTK parameters",Arg::SINGLE,0,false,PRIORITY_3),
@@ -578,7 +578,7 @@ Arg Arg::Args[] = {
   Arg("info",      Arg::Tog, Info, "Print Observation files info ans exit"),
   Arg("infoNoPrint",      Arg::Tog, Info_Dont_Print_Info, "Do not print anything.  Pretty useless but is here for historical reasons.",Arg::SINGLE,0,true),
   Arg("infoStreams",      Arg::Tog, Info_Print_Stream_Info, "Also print individual stream info.",Arg::SINGLE,0,true),
-  Arg("infoNumFrames",      Arg::Tog, Info_Print_Sent_Frames, "Also print # frames for each sentence.",Arg::SINGLE,0,true),
+  Arg("infoNumFrames",      Arg::Tog, Info_Print_Sent_Frames, "Also print # frames for each segment.",Arg::SINGLE,0,true),
 
   Arg("norm",      Arg::Tog, Normalize, "Normalize the observation file"),
   Arg("normMean",  Arg::Opt, Norm_Mean, "NORM: Mean of the resulting output file",Arg::SINGLE,0,true),
@@ -602,11 +602,11 @@ Arg Arg::Args[] = {
   Arg("stats",           Arg::Tog, Get_Stats,"Output statistics of the form:\nfeatnum mean std max @sent# @frame# min @sent# @frame# max/stds min/stds [histogram]"),
   Arg("bins",   Arg::Opt, Num_Hist_Bins,"STATS/GAUSS: number of histogram bins",Arg::SINGLE,0,false,PRIORITY_2),
 
-  Arg("addsil",          Arg::Tog, Add_Sil,"Add silence frames at the begining and end each sentence"), 
+  Arg("addsil",          Arg::Tog, Add_Sil,"Add silence frames at the begining and end each segment"), 
   Arg("addsilNumBeg",    Arg::Opt, Add_Sil_Num_Beg_Frames,"Number of new beginning silence frames",Arg::SINGLE,0,true), 
-  Arg("addsilPrb",       Arg::Opt, Add_Sil_Beg_Rng_Str,"Per-sentence range to compute beginning silence",Arg::SINGLE,0,true), 
+  Arg("addsilPrb",       Arg::Opt, Add_Sil_Beg_Rng_Str,"Per-segment range to compute beginning silence",Arg::SINGLE,0,true), 
   Arg("addsilNumEnd",    Arg::Opt, Add_Sil_Num_End_Frames,"Number of new ending silence frames",Arg::SINGLE,0,true), 
-  Arg("addsilPre",       Arg::Opt, Add_Sil_End_Rng_Str,"Per-sentence range to compute ending silence",Arg::SINGLE,0,true), 
+  Arg("addsilPre",       Arg::Opt, Add_Sil_End_Rng_Str,"Per-segment range to compute ending silence",Arg::SINGLE,0,true), 
   Arg("addsilMMF",       Arg::Opt, Add_Sil_MMF,"Mean multiplicative factor",Arg::SINGLE,0,true), 
   Arg("addsilMAF",       Arg::Opt, Add_Sil_MAF,"Mean additive factor",Arg::SINGLE,0,true),
   Arg("addsilSMF",       Arg::Opt, Add_Sil_SMF,"Standard deviation multiplicative factor",Arg::SINGLE,0,true),  

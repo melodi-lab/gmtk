@@ -134,7 +134,7 @@ void ObservationMatrix::filter(float* x, unsigned vec_size, unsigned stride, uns
  assert(num_frames>0);
 
  if(filter_len > num_frames) {
-   error("ERROR: ObservationMatrix::filter: The filter length (%d) is greater than the total number of frames (%d) in sentence.\n",filter_len,num_frames);
+   error("ERROR: ObservationMatrix::filter: The filter length (%d) is greater than the total number of frames (%d) in segment.\n",filter_len,num_frames);
  }
 
  if(filter_len < MIN_FILTER_LEN) {
