@@ -738,7 +738,7 @@ void ObservationMatrix::loadSegment(unsigned segno) {
     // Used to before the above section of code that modifies segno.  It seems obvious it should follow it instead, but the coment is here just in case there was a reason for that I don't see now.
     _segmentNumber = logicalSegNo;
 
-    DBGFPRINTF((stderr,"In loadSegment(): Reading sentence. prrng->length()=%d.\n",prrng->length()));
+    DBGFPRINTF((stderr,"In loadSegment(): Reading segment. prrng->length()=%d.\n",prrng->length()));
 
     switch(s->dataFormat) {
     case RAWBIN:
@@ -1288,7 +1288,7 @@ void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,
 	    ; // do nothing
 	  } else {
 #ifdef WARNING_ON_NAN
-	    warning("WARNING: Found NaN or +/-INF at %i'th float in frame %i, sentence %i  and observation file '%s'\n",*it,*pr_it,_segmentNumber,_inStreams[stream_no]->fofName);
+	    warning("WARNING: Found NaN or +/-INF at %i'th float in frame %i, segment %i  and observation file '%s'\n",*it,*pr_it,_segmentNumber,_inStreams[stream_no]->fofName);
 #else
 	    error("ERROR: Found NaN or +/-INF at %i'th float in frame %i, segment %i and observation file '%s'\n",*it,*pr_it,_segmentNumber,_inStreams[stream_no]->fofName);
 #endif
@@ -1392,7 +1392,7 @@ void ObservationMatrix::copyAndAdjustLengthToFinalBuffer(unsigned stream_no,
        _repeat[4]=-1;  //we stop here
        break;
      default:
-       error("ObservationMatrix:::copyAndAdjustLengthToFinalBuffer: Invalid action (%d) for when the number of frames in sentences is different across streams",_actionIfDiffNumFrames[stream_no]);
+       error("ObservationMatrix:::copyAndAdjustLengthToFinalBuffer: Invalid action (%d) for when the number of frames in segments is different across streams",_actionIfDiffNumFrames[stream_no]);
      }
   }
   else {
@@ -1987,12 +1987,12 @@ void ObservationMatrix::parseSentenceSpec(const string& sentLoc, int* startFrame
 	  //have a subrange spec
 	  fNameLen=sentLoc.find_last_of('[');
 	  if (fNameLen==string::npos){
-		    error("ERROR: ObservationMatrix::parseSentenceSpec: '%s' is an invalid sentence location.  Must be of the form 'filename[startFrame:endFrame]'",sentLoc.c_str());		  
+		    error("ERROR: ObservationMatrix::parseSentenceSpec: '%s' is an invalid segment location.  Must be of the form 'filename[startFrame:endFrame]'",sentLoc.c_str());		  
 	  }
 
 	  string range= sentLoc.substr(fNameLen+1,sentLoc.length()-2-fNameLen);
 	  if (sscanf(range.c_str(),"%d:%d",startFrame,endFrame) != 2)
-	  	error("ERROR: ObservationMatrix::parseSentenceSpec: '%s' is an invalid sentence location.  Must be of the form 'filename[startFrame:endFrame]'",sentLoc.c_str());		  
+	  	error("ERROR: ObservationMatrix::parseSentenceSpec: '%s' is an invalid segment location.  Must be of the form 'filename[startFrame:endFrame]'",sentLoc.c_str());		  
   
 	  if(*endFrame<*startFrame)
 	  	error("ERROR: ObservationMatrix::parseSentenceSpec: %s has the last frame smaller than first frame.\n",sentLoc.c_str());	  
@@ -2465,7 +2465,7 @@ bool ObservationMatrix::readAsciiSentence(float* float_buffer, unsigned num_floa
 
   // could be made a bit more efficient since we check whether
   // num_floats and num_ints > 0 for each frame.
-  DBGFPRINTF((stderr,"Reading ascii sentence...\n"));
+  DBGFPRINTF((stderr,"Reading ascii segment...\n"));
   for(unsigned s=0; s < n_samples; ++s) {
     DBGFPRINTF((stderr,"%d:  ",lineNum));
     lineNum++;
@@ -2488,7 +2488,7 @@ bool ObservationMatrix::readAsciiSentence(float* float_buffer, unsigned num_floa
     DBGFPRINTF((stderr,"\n"));
   }
 
-  DBGFPRINTF((stderr,"Done reading ascii sentence.\n"));
+  DBGFPRINTF((stderr,"Done reading ascii segment.\n"));
   return true;
 }
 
