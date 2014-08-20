@@ -7,6 +7,7 @@ See COPYING or http://opensource.org/licenses/OSL-3.0
 Please report bugs at https://j.ee.washington.edu/trac/gmtk
 
 Version 1.X.Y  2014-??-??
+        * Added dynamic beam pruning
         * Fixed issues in Fisher kernel output, added annotations
           to ASCII output format
         * Added support for no-parent iterable decision trees

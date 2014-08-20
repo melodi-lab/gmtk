@@ -143,7 +143,7 @@ void obsKLT(FILE* out_fp, FileSource* obs_mat, FILE *in_st_fp,FILE *out_st_fp, R
       const size_t n_frames = obs_mat->numFrames();
       
       if ((*srit) % 100 == 0)
-	printf("Processing sentence %d\n",(*srit));
+	printf("Processing segment %d\n",(*srit));
       
       if (n_frames > max_n_frames)
 	max_n_frames = n_frames;
@@ -292,7 +292,7 @@ void obsKLT(FILE* out_fp, FileSource* obs_mat, FILE *in_st_fp,FILE *out_st_fp, R
       const size_t n_frames = obs_mat->numFrames();
       
       if ((*srit) % 100 == 0)
-	printf("Processing sentence %d\n",(*srit));
+	printf("Processing segment %d\n",(*srit));
       
       // Increase size of buffers if needed.
       if (n_frames > buf_size) {
