@@ -157,7 +157,7 @@ SentIdStream_File::next()
       char *p = strchr(buf,'\n'); // Get pos. of newline character.
       if (p==NULL)
         {
-	  error("Sentence id too long.");
+	  error("Segment id too long.");
         }
       else
         {
@@ -261,7 +261,7 @@ static void uniformSkmeans(FileSource *obs_mat,
 
 	  if (!quiet_mode) {
 	    if ((sent_no) % SENTS_PER_PRINT == 0)
-	      printf("Processing sentence %ld\n",(unsigned long)(sent_no));
+	      printf("Processing segment %ld\n",(unsigned long)(sent_no));
 	  }
 
 	  //	  const size_t n_read = in_streamp->read_ftrslabs(sent_no,ftr_buf, lab_buf);
@@ -388,7 +388,7 @@ static void uniformSkmeans(FileSource *obs_mat,
 
 	if (!quiet_mode) {
 	  if ((sent_no) % SENTS_PER_PRINT == 0)
-	    printf("Processing sentence %ld\n",(unsigned long)(sent_no));
+	    printf("Processing segment %ld\n",(unsigned long)(sent_no));
 	}
 
 	//	const size_t n_read = in_streamp->read_ftrslabs(sent_no, ftr_buf, lab_buf);
@@ -507,7 +507,7 @@ viterbiSkmeans(FileSource *obs_mat,
 
     //    if (in_lstreamp != NULL) {
     //      if (in_lstreamp->n_segs() != in_streamp->n_segs())
-    //	error("Feature and label pfile have differing number of sentences.");
+    //	error("Feature and label pfile have differing number of segments.");
     //}
     
     for (int epoch=0;epoch<numRandomReStarts;epoch++) {
@@ -548,12 +548,12 @@ viterbiSkmeans(FileSource *obs_mat,
 	  const size_t n_frames = obs_mat->numFrames();
 	  //if (in_lstreamp != NULL) {
 	  //if (in_lstreamp->n_frms(sent_no) != n_frames)
-	  //  error("Feature and label pfile have differing number of frames at sentence %d.",sent_no);
+	  //  error("Feature and label pfile have differing number of frames at segment %d.",sent_no);
 	  //}
 
 	  if (!quiet_mode) {
 	    if ((sent_no) % 1 == 0)
-	      printf("Processing sentence %ld\n",(unsigned long)(sent_no));
+	      printf("Processing segment %ld\n",(unsigned long)(sent_no));
 	  }
 
 	  //	  const size_t n_read = in_streamp->read_ftrslabs(sent_no,ftr_buf, lab_buf);
@@ -602,7 +602,7 @@ viterbiSkmeans(FileSource *obs_mat,
 
 	    const size_t curLab = lab_buf[(*prit)];
 	    if ((int)curLab >= num_labels)
-	      error("Label at sentence %d, frame %d is %d and is >= %d.",
+	      error("Label at segment %d, frame %d is %d and is >= %d.",
 		    sent_no,(*prit),curLab,num_labels);
 
 	    if (!kms[curLab].done) {
@@ -674,12 +674,12 @@ viterbiSkmeans(FileSource *obs_mat,
 
 	//	if (in_lstreamp != NULL) {
 	//if (in_lstreamp->n_frms(sent_no) != n_frames)
-	//  error("Feature and label pfile have differing number of frames at sentence %d.",sent_no);
+	//  error("Feature and label pfile have differing number of frames at segment %d.",sent_no);
 	//}
 
 	if (!quiet_mode) {
 	  if ((sent_no) % SENTS_PER_PRINT == 0)
-	    printf("Processing sentence %ld\n",(unsigned long)(sent_no));
+	    printf("Processing segment %ld\n",(unsigned long)(sent_no));
 	}
 
 
@@ -789,7 +789,7 @@ Arg Arg::Args[] = {
 #include "ObsArguments.h"
 #undef GMTK_ARGUMENTS_DOCUMENTATION
 
-  Arg("gsr",       Arg::Opt, sr_str,       "Sentence range"),
+  Arg("gsr",       Arg::Opt, sr_str,       "Segment range"),
   Arg("o",        Arg::Opt, output_fname, "Output file"),
   Arg("b",        Arg::Opt, binary,       "Binary rather than ascii output"),
   Arg("q",        Arg::Tog, quiet,        "Quiet."),
@@ -803,7 +803,7 @@ Arg Arg::Args[] = {
   Arg("n",        Arg::Opt, num_words,    "Total number of different words if uniform skmeans (-u option) is used. Otherwise (viterbi skmeans, -v option, denotes the maximum number of labels (range [0:n-1])"),  
   Arg("f",        Arg::Opt, input_uname,  "Input utterance-ID file. (with -u option only)"),
   Arg("s",        Arg::Opt, num_segments, "Number of segments/words. (with -u option only)"),
-  Arg("prefetch", Arg::Opt, prefetch,     "Prefetch next sentence at each iteration"),
+  Arg("prefetch", Arg::Opt, prefetch,     "Prefetch next segment at each iteration"),
   Arg("initmg",   Arg::Opt, Init_MG,      "Create an initialization .mg file for bivariate-mi.cc"), 
   Arg("initmgCfr",Arg::Opt, Init_MG_CFR,  "Range of past/future context frames to use when initializing an .mg file"), 
   // The argumentless argument marks the end of the above list.

@@ -464,7 +464,7 @@ void gaussianNorm(FILE* out_fp,
 	  const size_t n_frames = obs_mat->numFrames();
 
 	    if ((*srit) % 100 == 0)
-	      printf("Processing sentence %d\n",(*srit));
+	      printf("Processing segment %d\n",(*srit));
 
 	    // Increase size of buffers if needed.
 	    if (n_frames > buf_size)
@@ -562,7 +562,7 @@ void gaussianNorm(FILE* out_fp,
 	   const size_t n_frames = obs_mat->numFrames();
 
 	  if ((*srit1) % 100 == 0)
-	    printf("Processing sentence %d\n",(*srit1));
+	    printf("Processing segment %d\n",(*srit1));
 
 	  for(unsigned frame_no = 0;  frame_no < n_frames; ++frame_no) {
 	    float* start_of_frame = obs_mat->floatVecAtFrame(frame_no);
@@ -704,7 +704,7 @@ void gaussianNorm(FILE* out_fp,
       const size_t n_frames = obs_mat->numFrames();
 
       if ((*srit2) % 100 == 0)
-	  printf("Processing sentence %d\n",(*srit2));
+	  printf("Processing segment %d\n",(*srit2));
 
       for(unsigned frame_no = 0;  frame_no < n_frames; ++frame_no) {
 	const float* start_of_frame = obs_mat->floatVecAtFrame(frame_no);

@@ -61,7 +61,7 @@ void obsInfo(FILE* out_fp, FileSource* obs_mat, bool dont_print_info, bool print
   }
   
   if (!dont_print_info) {
-    fprintf(out_fp,"%d stream(s), %d sentences, %d frames, %d discrete feature(s), %d continuous feature(s)\n",
+    fprintf(out_fp,"%d stream(s), %d segments, %d frames, %d discrete feature(s), %d continuous feature(s)\n",
 	    num_streams,
 	    num_segments,
             total_num_frames,
@@ -132,7 +132,7 @@ Arg Arg::Args[] = {
   Arg("\n*** ObsInfo options ***\n"),
   Arg("o",        Arg::Opt, output_fname,"output file"),
   Arg("s",        Arg::Opt, Print_Stream_Info,"Also print individual stream info."),
-  Arg("p",        Arg::Opt, Print_Sent_Frames,"Also print # frames for each sentence."),
+  Arg("p",        Arg::Opt, Print_Sent_Frames,"Also print # frames for each segment."),
   Arg("q",        Arg::Tog, quiet,"Don't print the normal info (i.e., useful with -p option)."),
 #define GMTK_ARGUMENTS_DOCUMENTATION
 #include "ObsArguments.h"

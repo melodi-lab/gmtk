@@ -138,6 +138,9 @@ VCID(HGID)
 #define GMTK_ARG_CMBEAM
 #define GMTK_ARG_SBEAM
 
+#define GMTK_ARG_DCKBEAM
+#define GMTK_ARG_DCBEAM
+
 /*************************          MEMORY MANAGEMENT OPTIONS         *******************************************/
 #define GMTK_ARG_MEMORY_MANAGEMENT_OPTIONS
 #define GMTK_ARG_HASH_LOAD_FACTOR
@@ -567,6 +570,7 @@ main(int argc,char*argv[])
 	    0,gomFS->numSegments()-1);
 
     const unsigned numFrames = GM_Parms.setSegment(segment);
+    MaxClique::setNumFrames(numFrames);
 
     try {
       logpr probe;
