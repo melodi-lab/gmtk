@@ -4549,7 +4549,7 @@ MaxCliqueTable::ceCliqueBeamPrune(MaxCliqueTable::SharedLocalStructure& sharedSt
     double local_max = 0;
       
     unsigned vec_length = origin.dynamicCliqueBeamValueVector.size();
-    unsigned large_index = 9999999;
+    unsigned large_index = vec_length+1;
     unsigned max_index = large_index, min_index = large_index;
       
     //get the minimum beam between frame_min and frame_max
@@ -4699,7 +4699,7 @@ MaxCliqueTable::ceDoAllPruning(MaxCliqueTable::SharedLocalStructure& sharedStruc
     unsigned local_max = 0;
 
     unsigned vec_length = origin.dynamicMaxNumStatesValueVector.size();
-    unsigned large_index = 9999999;
+    unsigned large_index = vec_length+1;
     unsigned max_index = large_index, min_index = large_index;
 
     //get the minimum beam between frame_min and frame_max
