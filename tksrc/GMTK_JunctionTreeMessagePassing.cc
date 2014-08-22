@@ -2364,11 +2364,11 @@ JunctionTree::ceGatherIntoRoot(PartitionStructures& ps,
 			       const bool clearWhenDone,
 			       const bool alsoClearOrigins)
 {
-if (debugHMM) printf("reGatherInitoRoot\n");
+//if (debugHMM) printf("reGatherInitoRoot\n");
   // first check that this is not an empty partition.
   if (ps.maxCliquesSharedStructure.size() == 0)
     return;
-if (debugHMM) printf("reGather clique size = %u\n", ps.maxCliquesSharedStructure.size());
+//if (debugHMM) printf("reGather clique size = %u\n", ps.maxCliquesSharedStructure.size());
   unsigned inferenceDebugLevel = IM::glbMsgLevel(IM::Inference);
   unsigned inferenceMemoryDebugLevel = IM::glbMsgLevel(IM::InferenceMemory);
 
@@ -2383,7 +2383,7 @@ if (debugHMM) printf("reGather clique size = %u\n", ps.maxCliquesSharedStructure
 
   bool zeroClique = false;
   try {
-if (debugHMM) printf("reGatherInitoRoot trying; msg order size %lu\n", message_order.size());
+//if (debugHMM) printf("reGatherInitoRoot trying; msg order size %lu\n", message_order.size());
     // Now, do partition messages.
     for (unsigned msgNo=0;msgNo < message_order.size(); msgNo ++) {
       const unsigned from = message_order[msgNo].first;
@@ -2391,8 +2391,10 @@ if (debugHMM) printf("reGatherInitoRoot trying; msg order size %lu\n", message_o
       infoMsg(IM::Inference, IM::Med+5,
 	      "CE: gathering into %s,part[%d]: clique %d\n",
 	      part_type_name,part_num,from);
+/*
 if (debugHMM) printf("ceGIR %u -> %u   cwd %c  aco %c\n", from, to,
 		     clearWhenDone ? 'T' : 'F', alsoClearOrigins ? 'T' : 'F'); fflush(stdout);
+*/
       // this may now throw an exception on zero clique errors - RR
       pt.maxCliques[from].
 	ceGatherFromIncommingSeparators(ps.maxCliquesSharedStructure[from],
@@ -2412,7 +2414,7 @@ if (debugHMM) printf("ceGIR %u -> %u   cwd %c  aco %c\n", from, to,
       // we should not keep the cliques around at all, only the outgoing
       // separator.
       if (clearWhenDone) {
-if (debugHMM) printf("clearing clique %u\n", from);
+//if (debugHMM) printf("clearing clique %u\n", from);
 	pt.maxCliques[from].
 	  clearCliqueAndIncommingSeparatorMemory(ps.maxCliquesSharedStructure[from],
 						 pt.separatorCliques,
@@ -2428,18 +2430,18 @@ if (debugHMM) printf("clearing clique %u\n", from);
     zeroClique = true; // abort this partition & segment
   }
   if (!zeroClique) {
-if (debugHMM) printf("regather into root clique\n");
+//if (debugHMM) printf("regather into root clique\n");
     // collect to partition's root clique
     infoMsg(IM::Inference, IM::Med+5,
 	    "CE: gathering into partition root %s,part[%d]: clique %d\n",
 	    part_type_name,part_num,root);
     try {
-if (debugHMM) printf("  starting regather from incomming seps\n");
+//if (debugHMM) printf("  starting regather from incomming seps\n");
       pt.maxCliques[root].
 	ceGatherFromIncommingSeparators(ps.maxCliquesSharedStructure[root],
 					pt.separatorCliques,
 					ps.separatorCliquesSharedStructure.ptr);
-if (debugHMM) printf("  finished regather from incomming seps\n");
+//if (debugHMM) printf("  finished regather from incomming seps\n");
     } catch (ZeroCliqueException &e) {
       zeroClique = true; // abort this partition & segment
     }
@@ -2717,6 +2719,10 @@ JunctionTree::collectEvidence()
     if (inference_it.at_first_c() && P1.cliques.size() == 0)
       Co.useLISeparator();
 
+
+logpr probe = partitionTableArray[inference_it.pt_i()].maxCliques[inference_it.cur_ri()].sumProbabilities();
+printf("collectEvidence(): probE[%u] %f\n", part, probe.val());
+
   }
   assert ( inference_it.at_e() );
 
@@ -2790,7 +2796,7 @@ JunctionTree::collectEvidence()
 logpr
 JunctionTree::collectEvidenceHMM()
 {
-bool clearIncommingSeps = true;
+bool clearIncommingSeps = false;
 bool clearCliqueMem = false;
 
   // This routine handles all of:
@@ -2805,20 +2811,29 @@ bool clearCliqueMem = false;
   new (&inference_it) ptps_iterator(*this);
 
   init_CC_CE_rvs(inference_it);
-#if 0
+
   PartitionTables* prev_part_tab = NULL;
   PartitionTables* cur_part_tab
     = new PartitionTables(inference_it.cur_jt_partition());
-#endif
+
+  OTnTemp.resize(inference_it.pt_len());
 
   // we skip the first Co's LI separator if there is no P1
   // partition, since otherwise we'll get zero probability.
-  if (inference_it.at_first_c() && P1.cliques.size() == 0)
+  if (inference_it.at_first_c() && P1.cliques.size() == 0) {
     Co.skipLISeparator();
+  }
+#if 0
+  else {
+    OTnTemp[inference_it.pt_i()] = 
+      cur_part_tab->separatorCliques[ inference_it.cur_jt_partition().separators.size()-1 ];
+  }
+#endif
+
   // gather into the root of the current  partition
 //printf("ceGatherIntoRoot P'\n");
   ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
-		   partitionTableArray[inference_it.pt_i()],
+		   *cur_part_tab,
 		   inference_it.cur_ri(),
 		   inference_it.cur_message_order(),
 		   inference_it.cur_nm(),
@@ -2833,7 +2848,8 @@ bool clearCliqueMem = false;
   // ceSendForwardCrossPartitons to E'. The distributeEvidenceHMM() call
   // will do the ceGatherIntoRoot() for E'.
   unsigned part;
-  for (part=1; part < inference_it.pt_len(); part ++ ) {
+  for (part=1; part < inference_it.pt_len()-1; part ++ ) {
+
 if (part == 2 || part >=109) {
   debugHMM = true; 
   printf("  ==== part %u\n", part);
@@ -2841,28 +2857,32 @@ if (part == 2 || part >=109) {
   debugHMM = false;
  }
 
-    //    delete prev_part_tab;
+    delete prev_part_tab;
+    prev_part_tab = cur_part_tab;
 
     setCurrentInferenceShiftTo(part);
-#if 0
-    prev_part_tab = cur_part_tab;
     cur_part_tab = new PartitionTables(inference_it.cur_jt_partition());
-#endif
+      
     // send from previous to current
 //printf("ceGatherIntoRoot C'[%u]\n", part);
     ceSendForwardsCrossPartitions(// previous partition
 			  partitionStructureArray[inference_it.ps_prev_i()],
-			  partitionTableArray[inference_it.pt_prev_i()],
+			  *prev_part_tab,
 			  inference_it.prev_ri(),
 			  inference_it.prev_nm(),
 			  inference_it.pt_prev_i(),
 			  // current partition
 			  partitionStructureArray[inference_it.ps_i()],
-			  partitionTableArray[inference_it.pt_i()],
+			  *cur_part_tab,
 			  inference_it.cur_li(),
 			  inference_it.cur_nm(),
 			  inference_it.pt_i());
 
+    // remember the incoming separator so the forward pass can be re-done in the backward pass
+    OTnTemp[ inference_it.pt_i() ] = 
+      cur_part_tab->separatorCliques[ 
+        partitionStructureArray[inference_it.ps_i()].separatorCliquesSharedStructure.size()-1
+      ];
 
     // we skip the first Co's LI separator if there is no P1
     // partition, since otherwise we'll get zero probability.
@@ -2876,7 +2896,7 @@ if (part == 2 || part >=109) {
       E1.skipLISeparator();
     // next, gather into the root of the final E partition
     ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
-		     partitionTableArray[inference_it.pt_i()],
+		     *cur_part_tab,
 		     inference_it.cur_ri(),
 		     inference_it.cur_message_order(),
 		     inference_it.cur_nm(),
@@ -2891,10 +2911,13 @@ if (part == 2 || part >=109) {
     if (inference_it.at_first_c() && P1.cliques.size() == 0)
       Co.useLISeparator();
 
+logpr probe = cur_part_tab->maxCliques[inference_it.cur_ri()].sumProbabilities();
+printf("collectEvidenceHMM(): probE[%u] %f\n", part, probe.val());
+
   }
   printf("finished CE: gather -> root part 0 -- %u / %u\n", part-1, inference_it.pt_len());
-#if 0
-//    delete prev_part_tab;
+
+  delete prev_part_tab;
   prev_part_tab = cur_part_tab;
 
   setCurrentInferenceShiftTo(part);
@@ -2913,18 +2936,55 @@ if (part == 2 || part >=109) {
 				inference_it.cur_li(),
 				inference_it.cur_nm(),
 				inference_it.pt_i());
-#endif
   assert ( inference_it.at_e() );
-#if 0
-  logpr probe = probEvidence(cur_part_tab);
-#else
-  logpr probe = probEvidence(&(partitionTableArray[inference_it.pt_i()]));
+
+  // remember the incoming separator so the forward pass can be re-done in the backward pass
+  OTnTemp[ inference_it.pt_i() ] = 
+    cur_part_tab->separatorCliques[ 
+      partitionStructureArray[inference_it.ps_i()].separatorCliquesSharedStructure.size()-1
+    ];
+
+
+#if 1
+
+  // deHMM should do this, just here to compute probe
+
+    // we skip the first Co's LI separator if there is no P1
+    // partition, since otherwise we'll get zero probability.
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.skipLISeparator();
+
+    // it might be that E is the first partition as well, say if this is
+    // a static graph, and in this case we need in this case to skip the
+    // incomming separator, which doesn't exist.
+    if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      E1.skipLISeparator();
+    // next, gather into the root of the final E partition
+    ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
+		     *cur_part_tab,
+		     inference_it.cur_ri(),
+		     inference_it.cur_message_order(),
+		     inference_it.cur_nm(),
+		     inference_it.pt_i(),
+		     clearIncommingSeps, clearCliqueMem);
+
+    
+    if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      E1.useLISeparator();
+
+    // if the LI separator was turned off, we need to turn it back on.
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.useLISeparator();
 #endif
+
+
+  //  logpr probe = probEvidence(cur_part_tab);
+  logpr probe = cur_part_tab->maxCliques[E_root_clique].sumProbabilities();
 printf("collectEvidenceHMM(): maxProb() %f\n", probe.val());
-#if 0
+
   delete cur_part_tab;
   delete prev_part_tab;
-#endif
+
   return probe;
 }
 
@@ -3388,39 +3448,49 @@ void
 JunctionTree::distributeEvidenceHMM()
 {
 printf("distributeEvidenceHMM()\n");
+  bool clearIncommingSeps = false;
+  bool clearCliqueMem = false;
+
   setCurrentInferenceShiftTo(inference_it.pt_len()-1);
-  PartitionTables* cur_part_tab  = NULL;
-  PartitionTables* prev_part_tab = new PartitionTables(inference_it.cur_jt_partition());
+
+  PartitionTables* prev_part_tab = NULL;
+  PartitionTables* cur_part_tab  = new PartitionTables(inference_it.cur_jt_partition());
+
+  if (!inference_it.at_first_entry()) {
+    cur_part_tab->separatorCliques[ 
+      partitionStructureArray[inference_it.ps_i()].separatorCliquesSharedStructure.size()-1
+    ] = OTnTemp[ inference_it.pt_i() ];
+  }
+
+  if (inference_it.at_first_c() && P1.cliques.size() == 0)
+    Co.skipLISeparator();
+  else  if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+    E1.skipLISeparator();
+  
+  ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
+		   *cur_part_tab,
+		   inference_it.cur_ri(),
+		   inference_it.cur_message_order(),
+		   inference_it.cur_nm(),
+		   inference_it.pt_i(),
+		   clearIncommingSeps, clearCliqueMem);
 
   for (unsigned part= (inference_it.pt_len()-1) ; part > 0 ; part -- ) {
 
     setCurrentInferenceShiftTo(part);
-#if 0
-    delete cur_part_tab;
-    cur_part_tab  = prev_part_tab;
-    prev_part_tab = new PartitionTables(inference_it.prev_jt_partition());
-#endif
+
     if (inference_it.at_first_c() && P1.cliques.size() == 0)
-      Co.skipLISeparator();    
-    else if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      Co.skipLISeparator();
+    else  if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
       E1.skipLISeparator();
-    
-    // redo the forward pass we didn't save 
-printf("attempt to regather %u\n", part);
-    ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
-		       partitionTableArray[inference_it.pt_i()],
-		       inference_it.cur_ri(),
-		       inference_it.cur_message_order(),
-		       inference_it.cur_nm(),
-		       inference_it.pt_i());
-printf("regathered %u\n", part);
+
     deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
-		       partitionTableArray[inference_it.pt_i()],
+		       *cur_part_tab,
 		       inference_it.cur_ri(),
 		       inference_it.cur_message_order(),
 		       inference_it.cur_nm(),
 		       inference_it.pt_i());
-printf("scattered %u\n", part);
+
     if (inference_it.at_first_c() && P1.cliques.size() == 0)
       Co.useLISeparator();
     else if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
@@ -3429,43 +3499,58 @@ printf("scattered %u\n", part);
     if (viterbiScore)
       recordPartitionViterbiValue(inference_it);
 
+    // reconstruct previous partition
+
+    setCurrentInferenceShiftTo(part-1);
+    prev_part_tab = new PartitionTables(inference_it.cur_jt_partition());
+
+    if (!inference_it.at_first_entry()) {
+      prev_part_tab->separatorCliques[ 
+          partitionStructureArray[inference_it.ps_i()].separatorCliquesSharedStructure.size()-1
+      ] = OTnTemp[ inference_it.pt_i() ];
+    }
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.skipLISeparator();
+    else  if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      E1.skipLISeparator();
+
+    ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
+		     *prev_part_tab,
+		     inference_it.cur_ri(),
+		     inference_it.cur_message_order(),
+		     inference_it.cur_nm(),
+		     inference_it.pt_i(),
+		     clearIncommingSeps, clearCliqueMem);
+
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.useLISeparator();
+    else if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      E1.useLISeparator();
+    setCurrentInferenceShiftTo(part);
+
     // send backwads message to previous partition
     deSendBackwardsCrossPartitions(partitionStructureArray[inference_it.ps_prev_i()],
-				   partitionTableArray[inference_it.pt_prev_i()],
+                                   *prev_part_tab,
 				   inference_it.prev_ri(),
 				   inference_it.prev_nm(),
 				   inference_it.pt_prev_i(),
 				   //
 				   partitionStructureArray[inference_it.ps_i()],
-				   partitionTableArray[inference_it.pt_i()],
+				   *cur_part_tab,
 				   inference_it.cur_li(),
 				   inference_it.cur_nm(),
 				   inference_it.pt_i());
-printf("sent backwards %u\n", part);
+    partitionTableArray[inference_it.pt_i()] = *cur_part_tab;
+
+    delete cur_part_tab;
+    cur_part_tab = prev_part_tab;
   }
 
   setCurrentInferenceShiftTo(0);
 
-  // redo the forward pass we didn't save for initial P partition
-
-  // we skip the first Co's LI separator if there is no P1
-  // partition, since otherwise we'll get zero probability.
-  if (inference_it.at_first_c() && P1.cliques.size() == 0)
-    Co.skipLISeparator();
-  ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
-		   partitionTableArray[inference_it.pt_i()],
-		   inference_it.cur_ri(),
-		   inference_it.cur_message_order(),
-		   inference_it.cur_nm(),
-		   inference_it.pt_i());
-  // if the LI separator was turned off, we need to turn it back on.
-  if (inference_it.at_first_c() && P1.cliques.size() == 0)
-    Co.useLISeparator();
-
-  
   // do the final scatter out of root of initial P partition.
   deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
-		     partitionTableArray[inference_it.pt_i()],
+		     *cur_part_tab,
 		     inference_it.cur_ri(),
 		     inference_it.cur_message_order(),
 		     inference_it.cur_nm(),
