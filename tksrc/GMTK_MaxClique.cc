@@ -2443,7 +2443,7 @@ ceGatherFromIncommingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStru
 	&& origin.maxCEValuePredictor.ptr() != NULL
 	&& origin.maxCEValuePredictor->readyToMakePrediction()) {
 
-if (debugHMM) printf("  building clique beam\n");
+//if (debugHMM) printf("  building clique beam\n");
 
       double currentCliqueBeamBuildBeam = 
 	origin.cliqueBeamBuildBeam * (::pow(origin.cliqueBeamBuildExpansionFactor,cliqueExpansionTry));
@@ -2475,7 +2475,7 @@ if (debugHMM) printf("  building clique beam\n");
 	origin.prevFixedPrediction = fixedPrediction;
       }
     } else {
-if (debugHMM) printf("  set clique beam to almost 0\n");
+//if (debugHMM) printf("  set clique beam to almost 0\n");
 
       // always prune if we fall below or equal to almost zero.
       cliqueBeamThresholdEstimate.set_to_almost_zero(); 
@@ -2486,18 +2486,18 @@ if (debugHMM) printf("  set clique beam to almost 0\n");
     maxCEValue.set_to_zero();
     // next, do the actual collect message.
     if (origin.hashableNodes.size() == 0) {
-if (debugHMM) printf("  regathering from separators (observed)\n");
+//if (debugHMM) printf("  regathering from separators (observed)\n");
       ceGatherFromIncommingSeparatorsCliqueObserved(sharedStructure,
 						    separatorTableArray,
 						    sepSharedStructureArray,
 						    maxCEValue);
     } else {
-if (debugHMM) printf("  regathering from separators (separator driven)\n");
+//if (debugHMM) printf("  regathering from separators (separator driven)\n");
       // if we're still here, we do regular separator driven inference.
       logpr p = 1.0;
       if (origin.ceReceiveSeparators.size() == 0) {
 	if (origin.unassignedIteratedNodes.size() == 0) {
-if (debugHMM) printf("    iterating assigned nodes\n");
+//if (debugHMM) printf("    iterating assigned nodes\n");
 
 	  ceIterateAssignedNodes(sharedStructure,
 				 cliqueBeamThresholdEstimate,
@@ -2505,7 +2505,7 @@ if (debugHMM) printf("    iterating assigned nodes\n");
 				 0, // initial node number
 				 p);
 	} else {
-if (debugHMM) printf("    iterating unassigned nodes\n");
+//if (debugHMM) printf("    iterating unassigned nodes\n");
 	  ceIterateUnassignedIteratedNodes(sharedStructure,
 					   cliqueBeamThresholdEstimate,
 					   maxCEValue,
@@ -2513,9 +2513,10 @@ if (debugHMM) printf("    iterating unassigned nodes\n");
 					   p);
 	}
       } else {
+/*
 if (debugHMM) printf("    iterating separators  cliqueBeamBuildMaxExpansions %u\n",
 		     sharedStructure.origin->cliqueBeamBuildMaxExpansions);
-
+*/
 	ceIterateSeparators(sharedStructure,
 			    separatorTableArray,
 			    sepSharedStructureArray,
@@ -2539,7 +2540,7 @@ if (debugHMM) printf("    iterating separators  cliqueBeamBuildMaxExpansions %u\
     }
     cliqueExpansionTry ++;
   }
-if (debugHMM) printf("    numCliqueValuesUsed = %u\n", numCliqueValuesUsed);
+//if (debugHMM) printf("    numCliqueValuesUsed = %u\n", numCliqueValuesUsed);
   // check if we have a zero clique, and if we do, print message and exit.
   // TODO: rather than exit, pop back to the top and allow continuation and/or
   // beam expansion.
@@ -2850,7 +2851,7 @@ MaxCliqueTable::ceIterateSeparatorsRecurse(MaxCliqueTable::SharedLocalStructure&
 					   const unsigned sepNumber,
 					   const logpr p)
 {
-if (debugHMM) printf("    ceIterateSeps recurse  ~ 0 = %c\n",p.essentially_zero() ? 'T' :'F' );
+//if (debugHMM) printf("    ceIterateSeps recurse  ~ 0 = %c\n",p.essentially_zero() ? 'T' :'F' );
   if (p.essentially_zero())
     return;
 
@@ -2892,7 +2893,7 @@ if (debugHMM) printf("    ceIterateSeps recurse  ~ 0 = %c\n",p.essentially_zero(
   }
 
   if (sepOrigin.skipMe) {
-if (debugHMM) printf("    skip origin\n");
+//if (debugHMM) printf("    skip origin\n");
     // then we completely skip this separator passing onto the next
     // one.
     ceIterateSeparators(sharedStructure,
@@ -2908,7 +2909,7 @@ if (debugHMM) printf("    skip origin\n");
 
   unsigned sepValueNumber;  
   if (sepOrigin.hAccumulatedIntersection.size() > 0) {
-if (debugHMM) printf("    checking for intersection\n");
+//if (debugHMM) printf("    checking for intersection\n");
     // look up existing intersected values to see if we have a match
     // and only proceed if we do.
 
@@ -2917,7 +2918,7 @@ if (debugHMM) printf("    checking for intersection\n");
 			     (unsigned*)key);
     unsigned* indexp = sep.iAccHashMap->find(key);
     if (indexp == NULL) {
-      if (debugHMM) printf("    pruned value %u\n", *key);
+//if (debugHMM) printf("    pruned value %u\n", *key);
 
       // Then not found in this separator, so it must have (pruned) zero
       // probability. We continue with the next value of the previous
@@ -2942,7 +2943,7 @@ if (debugHMM) printf("    checking for intersection\n");
     // that we will always have at least one entry.
     // TODO: probably ok to remove this assertion.
     assert ( sep.separatorValues->size() == 1);
-if (debugHMM) printf("    |separatorValues| == 1\n");
+//if (debugHMM) printf("    |separatorValues| == 1\n");
     sepValueNumber = 0;
   }
 
@@ -2950,7 +2951,7 @@ if (debugHMM) printf("    |separatorValues| == 1\n");
   // NOTE: we could do some online pruning here as well, but instead
   // we do it in a special separator prune routine, called ceSeparatorPrune().
   if (sepOrigin.hRemainder.size() == 0) {
-if (debugHMM) printf("    empty hRemainder\n");
+//if (debugHMM) printf("    empty hRemainder\n");
     // Only one remainder entry (in position 0) and also no need to
     // unpack since all has been covered by accumulated intersection
     // set above in a previous separator. Just continue on with single
@@ -2997,17 +2998,18 @@ if (debugHMM) printf("    empty hRemainder\n");
 
     // TODO: this assertion should be redundant (check above)
     assert ( sepOrigin.remPacker.packedLen() > 0 );
-if (debugHMM) printf("    |hRemainder| > 0\n");
+//if (debugHMM) printf("    |hRemainder| > 0\n");
 
     // TODO: perhaps special case for VE seps, since all probs are == 1, so no need to multiply.
+/*
 if (debugHMM) printf("    sepOrigin.remPacker.packedLen() = %u    ISC_NWWOH_RM=%u\n",
 		     sepOrigin.remPacker.packedLen(),ISC_NWWOH_RM);
-
+*/
     if (sepOrigin.remPacker.packedLen() <= ISC_NWWOH_RM) {
-
+/*
 if (debugHMM) printf("    sepSeparatorValuesPtr[sepValueNumber].numRemValuesUsed = %u\n", 
 		     sepSeparatorValuesPtr[sepValueNumber].numRemValuesUsed);
-
+*/
       for (unsigned i=0;i< sepSeparatorValuesPtr[sepValueNumber].numRemValuesUsed; i++) {
 
 //if (debugHMM) printf("    unpacking separator rem <= ISC_NWWOH_RM\n");
@@ -3039,9 +3041,9 @@ if (debugHMM) printf("    sepSeparatorValuesPtr[sepValueNumber].numRemValuesUsed
 			    sepNumber+1,
 			    p*sepSeparatorValuesPtr[sepValueNumber].remValues.ptr[i].p);
       }
-if (debugHMM) printf("    finished separator value unpacking loop\n");
+//if (debugHMM) printf("    finished separator value unpacking loop\n");
     } else {
-if (debugHMM) printf("    unpacking separator rem > ISC_NWWOH_RM\n");
+//if (debugHMM) printf("    unpacking separator rem > ISC_NWWOH_RM\n");
       for (unsigned i=0;i< sepSeparatorValuesPtr[sepValueNumber].numRemValuesUsed; i++) {
 
 	// TODO: optimize this, pre-compute base array outside of loop.
@@ -3070,7 +3072,7 @@ if (debugHMM) printf("    unpacking separator rem > ISC_NWWOH_RM\n");
 			    p*sepSeparatorValuesPtr[sepValueNumber].remValues.ptr[i].p);
       }
     }
-if (debugHMM) printf("ceIterateSeparators here\n");
+//if (debugHMM) printf("ceIterateSeparators here\n");
   }
 
  ceIterateSeparatorsFinished:
@@ -4019,7 +4021,7 @@ MaxCliqueTable::clearCliqueAndIncommingSeparatorMemory(MaxCliqueTable::SharedLoc
 						       ConditionalSeparatorTable* separatorTableArray,
 						       ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray)
 {
-if (debugHMM) printf("clearCliqueAndIncomingSeparatorMemory\n");
+//if (debugHMM) printf("clearCliqueAndIncomingSeparatorMemory\n");
   MaxClique& origin = *(sharedStructure.origin);
   // first do the separators
   for (unsigned sepNumber=0;sepNumber<origin.ceReceiveSeparators.size();sepNumber++) {

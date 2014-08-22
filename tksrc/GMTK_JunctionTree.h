@@ -120,6 +120,9 @@ class JunctionTree {
   // for a DGM. This might be much longer than the
   // partitionStructureArray but is certainly no shorter.
   sArray <PartitionTables> partitionTableArray;
+
+  sArray <ConditionalSeparatorTable> OTnTemp;
+
   // the evidence probability used during island algorithm.
   logpr cur_prob_evidence;
   // the EM training beam used for island training (TODO:, move this elsewhere, perhaps in clique)
