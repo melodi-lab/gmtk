@@ -2794,10 +2794,30 @@ printf("collectEvidence(): probE[%u] %f\n", part, probe.val());
 
 
 logpr
-JunctionTree::collectEvidenceHMM()
+JunctionTree::collectEvidenceHMM(const unsigned int numFrames,
+				 unsigned* numUsableFrames)
 {
 bool clearIncommingSeps = false;
 bool clearCliqueMem = false;
+
+  FileSource *gomFS;
+  // This should be safe since gmtkOnline is the only program
+  // that does inference and doesn't use FileSource and gmtkOnline
+  // only uses onlineFixedUnroll
+  gomFS= static_cast<FileSource *>(globalObservationMatrix);
+  assert(typeid(*globalObservationMatrix) == typeid(*gomFS));
+
+  // Unroll, but do not use the long table array (2nd parameter is
+  // false) for allocation, but get back the long table length
+  // in a local variable for use in our iterator.
+  unsigned totalNumberPartitions;
+  {
+    unsigned tmp = unroll(numFrames,ZeroTable,&totalNumberPartitions);
+    gomFS->justifySegment(tmp);
+    if (numUsableFrames) 
+      *numUsableFrames = tmp;
+    // limit scope of tmp.
+  }
 
   // This routine handles all of:
   // 
@@ -2808,7 +2828,7 @@ bool clearCliqueMem = false;
 
   // Set up our iterator, write over the member island iterator since
   // we assume the member does not have any dynamc sub-members.
-  new (&inference_it) ptps_iterator(*this);
+  new (&inference_it) ptps_iterator(*this, totalNumberPartitions);
 
   init_CC_CE_rvs(inference_it);
 
@@ -2823,12 +2843,6 @@ bool clearCliqueMem = false;
   if (inference_it.at_first_c() && P1.cliques.size() == 0) {
     Co.skipLISeparator();
   }
-#if 0
-  else {
-    OTnTemp[inference_it.pt_i()] = 
-      cur_part_tab->separatorCliques[ inference_it.cur_jt_partition().separators.size()-1 ];
-  }
-#endif
 
   // gather into the root of the current  partition
 //printf("ceGatherIntoRoot P'\n");
@@ -2849,13 +2863,6 @@ bool clearCliqueMem = false;
   // will do the ceGatherIntoRoot() for E'.
   unsigned part;
   for (part=1; part < inference_it.pt_len()-1; part ++ ) {
-
-if (part == 2 || part >=109) {
-  debugHMM = true; 
-  printf("  ==== part %u\n", part);
- } else {
-  debugHMM = false;
- }
 
     delete prev_part_tab;
     prev_part_tab = cur_part_tab;
@@ -2902,8 +2909,16 @@ if (part == 2 || part >=109) {
 		     inference_it.cur_nm(),
 		     inference_it.pt_i(),
 		     clearIncommingSeps, clearCliqueMem);
-
-    
+#if 0
+printAllCliques(partitionStructureArray[inference_it.ps_i()],
+		*cur_part_tab,
+		inference_it.pt_i(),
+		inference_it.cur_nm(),
+		inference_it.cur_part_clique_print_range(),
+		stdout,
+		true, true,
+		false, NULL);
+#endif
     if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
       E1.useLISeparator();
 
@@ -3475,6 +3490,10 @@ printf("distributeEvidenceHMM()\n");
 		   inference_it.pt_i(),
 		   clearIncommingSeps, clearCliqueMem);
 
+cur_part_tab->maxCliques[inference_it.cur_ri()].
+  maxProbability(partitionStructureArray[inference_it.ps_i()].maxCliquesSharedStructure[inference_it.cur_ri()],
+		   true);
+
   for (unsigned part= (inference_it.pt_len()-1) ; part > 0 ; part -- ) {
 
     setCurrentInferenceShiftTo(part);
@@ -3540,7 +3559,7 @@ printf("distributeEvidenceHMM()\n");
 				   inference_it.cur_li(),
 				   inference_it.cur_nm(),
 				   inference_it.pt_i());
-    partitionTableArray[inference_it.pt_i()] = *cur_part_tab;
+    //    partitionTableArray[inference_it.pt_i()] = *cur_part_tab;
 
     delete cur_part_tab;
     cur_part_tab = prev_part_tab;
@@ -4021,6 +4040,10 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 		       inference_it.cur_message_order(),
 		       inference_it.cur_nm(),
 		       inference_it.pt_i());
+
+logpr probe = cur_part_tab->maxCliques[inference_it.cur_ri()].sumProbabilities();
+printf("collectEvidenceHMM(): probE[%u] %f\n", part, probe.val());
+
       if (sectionDoDist) {
 	deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
 			   *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
