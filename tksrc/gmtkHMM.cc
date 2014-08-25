@@ -638,11 +638,13 @@ ConditionalSeparatorTable::OTnMemory = true;
 	}
       } else {
 	// linear space inference
+#if 0
 	unsigned numUsableFrames = myjt.unroll(numFrames);
 	gomFS->justifySegment(numUsableFrames);
-
+#endif
 	infoMsg(IM::Inference, IM::Med,"Collecting Evidence\n");
-	probe = myjt.collectEvidenceHMM();
+	unsigned numUsableFrames;
+	probe = myjt.collectEvidenceHMM(numFrames, &numUsableFrames);
 	infoMsg(IM::Inference, IM::Med,"Done Collecting Evidence\n");
 #if 1
 	//	probe = myjt.probEvidence();
@@ -658,7 +660,7 @@ ConditionalSeparatorTable::OTnMemory = true;
 	  infoMsg(IM::Default,"Skipping segment %d since probability is essentially zero\n",
 		  segment);
 	} else {
-	  myjt.setRootToMaxCliqueValue();
+// myjt.setRootToMaxCliqueValue();
 	  total_data_prob *= probe;
 	  infoMsg(IM::Inference, IM::Low,"Distributing Evidence\n");
 printf("---------------------- distribute evidence ----------------------\n");

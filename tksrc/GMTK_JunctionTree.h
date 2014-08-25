@@ -1158,7 +1158,8 @@ public:
   void collectEvidence();
   void distributeEvidence();
 
-  logpr collectEvidenceHMM();
+  logpr collectEvidenceHMM(const unsigned int numFrames,
+			   unsigned* numUsableFrames);
   void distributeEvidenceHMM();
 
 
