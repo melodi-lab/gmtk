@@ -2503,6 +2503,8 @@ JunctionTree::ceSendForwardsCrossPartitions(// previous partition
  *       JunctionTree::probEvidence()
  *    2) log space version of collect/distribute evidence  
  *       JunctionTree::collectDistributeIsland()
+ *    3) O(Tn) memory version of collect/distribute evidence
+ *       JunctionTree::collectEvidenceLinear / JunctionTree::distributeEvidenceLinear
  *
  * Preconditions:
  *   The parititons must have been created and placed in the array partitionStructureArray.
@@ -2698,6 +2700,227 @@ JunctionTree::collectEvidence()
 #endif
 
 }
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::collectEvidenceLinear()
+ *   
+ *   Collect Evidence: This routine performes a collect evidence pass 
+ *   similar to the constant memory JunctionTree::probEvidenceFixedUnroll(),
+ *   but it keeps the separator cliques around for use in the corresponding
+ *   JunctionTree::distributeEvidenceLinear() backwards pass.
+ *
+ * See Also:
+ *    1) contant memory (not dept. on time T) version of collect evidence
+ *       JunctionTree::probEvidence()
+ *    2) log space version of collect/distribute evidence  
+ *       JunctionTree::collectDistributeIsland()
+ *
+ * Preconditions:
+ *   The parititons must have been created and placed in the array partitionStructureArray.
+ *
+ * Postconditions:
+ *     All cliques in the partition have all messages but one sent to it.
+ *     The separator cliques are remembered in interfaceTemp for later use
+ *     in JunctionTree::distributeEvidenceLinear()
+ *
+ * Side Effects:
+ *     all partitions will have been instantiated to the extent that the messages (with
+ *     the current pruning ratios)  have been created.
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+
+void
+JunctionTree::collectEvidenceLinear(const unsigned int numFrames,
+				    unsigned* numUsableFrames)
+{
+  FileSource *gomFS;
+  // This should be safe since gmtkOnline is the only program
+  // that does inference and doesn't use FileSource and gmtkOnline
+  // only uses onlineFixedUnroll
+  gomFS= static_cast<FileSource *>(globalObservationMatrix);
+  assert(typeid(*globalObservationMatrix) == typeid(*gomFS));
+
+  // Unroll, but do not use the long table array (2nd parameter is
+  // false) for allocation, but get back the long table length
+  // in a local variable for use in our iterator.
+  unsigned totalNumberPartitions;
+  {
+    unsigned tmp = unroll(numFrames,ZeroTable,&totalNumberPartitions);
+    gomFS->justifySegment(tmp);
+    if (numUsableFrames) 
+      *numUsableFrames = tmp;
+    // limit scope of tmp.
+  }
+
+  // This routine handles all of:
+  // 
+  //    unrolled 0 times: (so there is a single P1, and E1)  
+  //    unrolled 1 time: so there is a P1, C1, C3, E1
+  //    unrolled 2 or more times: so there is a P1 C1 [C2 ...] C3, E1
+  //    etc.
+
+  // Set up our iterator, write over the member island iterator since
+  // we assume the member does not have any dynamc sub-members.
+  new (&inference_it) ptps_iterator(*this, totalNumberPartitions);
+
+  init_CC_CE_rvs(inference_it);
+
+  PartitionTables* prev_part_tab = NULL;
+  PartitionTables* cur_part_tab = new PartitionTables(inference_it.cur_jt_partition());
+
+  interfaceTemp.resize(inference_it.pt_len());
+
+  // we skip the first Co's LI separator if there is no P1
+  // partition, since otherwise we'll get zero probability.
+  if (inference_it.at_first_c() && P1.cliques.size() == 0) {
+    Co.skipLISeparator();
+  }
+
+  // gather into the root of the current  partition
+  ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
+		   *cur_part_tab,
+		   inference_it.cur_ri(),
+		   inference_it.cur_message_order(),
+		   inference_it.cur_nm(),
+		   inference_it.pt_i());
+
+  // if the LI separator was turned off, we need to turn it back on.
+  if (inference_it.at_first_c() && P1.cliques.size() == 0)
+    Co.useLISeparator();
+
+  unsigned part;
+  for (part=1; part < inference_it.pt_len(); part ++ ) {
+
+    delete prev_part_tab;
+    prev_part_tab = cur_part_tab;
+
+    setCurrentInferenceShiftTo(part);
+    cur_part_tab = new PartitionTables(inference_it.cur_jt_partition());
+      
+    // send from previous to current
+    ceSendForwardsCrossPartitions(// previous partition
+			  partitionStructureArray[inference_it.ps_prev_i()],
+			  *prev_part_tab,
+			  inference_it.prev_ri(),
+			  inference_it.prev_nm(),
+			  inference_it.pt_prev_i(),
+			  // current partition
+			  partitionStructureArray[inference_it.ps_i()],
+			  *cur_part_tab,
+			  inference_it.cur_li(),
+			  inference_it.cur_nm(),
+			  inference_it.pt_i());
+
+    // remember the incoming separator so the forward pass can be re-done in the backward pass
+    interfaceTemp[ inference_it.pt_i() ] = 
+      cur_part_tab->separatorCliques[ 
+        partitionStructureArray[inference_it.ps_i()].separatorCliquesSharedStructure.size()-1
+      ];
+
+    // we skip the first Co's LI separator if there is no P1
+    // partition, since otherwise we'll get zero probability.
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.skipLISeparator();
+
+    // it might be that E is the first partition as well, say if this is
+    // a static graph, and in this case we need in this case to skip the
+    // incomming separator, which doesn't exist.
+    if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      E1.skipLISeparator();
+    // next, gather into the root of the partition
+    ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
+		     *cur_part_tab,
+		     inference_it.cur_ri(),
+		     inference_it.cur_message_order(),
+		     inference_it.cur_nm(),
+		     inference_it.pt_i());
+
+    if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      E1.useLISeparator();
+    // if the LI separator was turned off, we need to turn it back on.
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.useLISeparator();
+  }
+
+#if 0
+  delete prev_part_tab;
+  prev_part_tab = cur_part_tab;
+
+  setCurrentInferenceShiftTo(part);
+  cur_part_tab = new PartitionTables(inference_it.cur_jt_partition());
+
+// send from previous to current
+  ceSendForwardsCrossPartitions(// previous partition
+				partitionStructureArray[inference_it.ps_prev_i()],
+				*prev_part_tab,
+				inference_it.prev_ri(),
+				inference_it.prev_nm(),
+				inference_it.pt_prev_i(),
+				// current partition
+				partitionStructureArray[inference_it.ps_i()],
+				*cur_part_tab,
+				inference_it.cur_li(),
+				inference_it.cur_nm(),
+				inference_it.pt_i());
+  assert ( inference_it.at_e() );
+
+  // remember the incoming separator so the forward pass can be re-done in the backward pass
+  OTnTemp[ inference_it.pt_i() ] = 
+    cur_part_tab->separatorCliques[ 
+      partitionStructureArray[inference_it.ps_i()].separatorCliquesSharedStructure.size()-1
+    ];
+
+
+#if 1
+
+  // deHMM should do this, just here to compute probe
+
+    // we skip the first Co's LI separator if there is no P1
+    // partition, since otherwise we'll get zero probability.
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.skipLISeparator();
+
+    // it might be that E is the first partition as well, say if this is
+    // a static graph, and in this case we need in this case to skip the
+    // incomming separator, which doesn't exist.
+    if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      E1.skipLISeparator();
+    // next, gather into the root of the final E partition
+    ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
+		     *cur_part_tab,
+		     inference_it.cur_ri(),
+		     inference_it.cur_message_order(),
+		     inference_it.cur_nm(),
+		     inference_it.pt_i(),
+		     clearIncommingSeps, clearCliqueMem);
+
+    
+    if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      E1.useLISeparator();
+
+    // if the LI separator was turned off, we need to turn it back on.
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.useLISeparator();
+#endif
+
+
+  //  logpr probe = probEvidence(cur_part_tab);
+  logpr probe = cur_part_tab->maxCliques[E_root_clique].sumProbabilities();
+printf("collectEvidenceHMM(): maxProb() %f\n", probe.val());
+#endif
+  delete cur_part_tab;
+  delete prev_part_tab;
+}
+
+
+
 
 
 
@@ -3101,6 +3324,161 @@ JunctionTree::distributeEvidence()
     recordPartitionViterbiValue(ptps_it);
 
 #endif
+}
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::distributeEvidence()
+ *   
+ *   Distribute Evidence: This routine performs a complete distribute
+ *   evidence pass for this series of partitions that have run
+ *   JunctionTree::collectEvidenceLinear()
+ *
+ *   After distributeEvidence() is called, all cliques in all
+ *   partitions will be locally (& globally if it is a JT) consistant, and so will
+ *   be ready for EM training, etc.
+ *
+ * See Also:
+ *    0) collectEvidence()
+ *    1) contant memory (not dept. on time T) version of collect evidence
+ *       JunctionTree::probEvidence()
+ *    2) log space version of collect/distribute evidence  
+ *       JunctionTree::collectDistributeIsland()
+ *
+ * Preconditions:
+ *   - collectEvidenceLinear() must have been called right before this.
+ *   - The parititons must have been created and placed in the array partitionStructureArray.
+ *   - inference_it must be initialized to the current segment
+ *   - the pair of partition RVS set up correct.
+ * 
+ *
+ * Postconditions:
+ *     All cliques are now locally consistant, and will be globally consistant
+ *     if we have a junction tree. 
+ *
+ * Side Effects:
+ *     all partitions will have been instantiated to the extent that the messages (with
+ *     the current pruning ratios)  have been created.
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+
+void
+JunctionTree::distributeEvidenceLinear()
+{
+  setCurrentInferenceShiftTo(inference_it.pt_len()-1);
+
+  PartitionTables* prev_part_tab = NULL;
+  PartitionTables* cur_part_tab  = new PartitionTables(inference_it.cur_jt_partition());
+
+  // re-do E' gather into root using remembered separator clique
+  if (!inference_it.at_first_entry()) {
+    cur_part_tab->separatorCliques[ 
+      partitionStructureArray[inference_it.ps_i()].separatorCliquesSharedStructure.size()-1
+    ] = interfaceTemp[ inference_it.pt_i() ];
+  }
+
+  if (inference_it.at_first_c() && P1.cliques.size() == 0)
+    Co.skipLISeparator();
+  else  if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+    E1.skipLISeparator();
+  
+  ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
+		   *cur_part_tab,
+		   inference_it.cur_ri(),
+		   inference_it.cur_message_order(),
+		   inference_it.cur_nm(),
+		   inference_it.pt_i());
+
+  cur_part_tab->maxCliques[inference_it.cur_ri()].
+    maxProbability(partitionStructureArray[inference_it.ps_i()].maxCliquesSharedStructure[inference_it.cur_ri()], true);
+
+  for (unsigned part= (inference_it.pt_len()-1) ; part > 0 ; part -- ) {
+
+    setCurrentInferenceShiftTo(part);
+
+    // distribute evidence to the current partition
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.skipLISeparator();
+    else  if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      E1.skipLISeparator();
+
+    deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
+		       *cur_part_tab,
+		       inference_it.cur_ri(),
+		       inference_it.cur_message_order(),
+		       inference_it.cur_nm(),
+		       inference_it.pt_i());
+
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.useLISeparator();
+    else if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      E1.useLISeparator();
+
+    if (viterbiScore)
+      recordPartitionViterbiValue(inference_it);
+
+    // reconstruct previous partition
+
+    setCurrentInferenceShiftTo(part-1);
+    prev_part_tab = new PartitionTables(inference_it.cur_jt_partition());
+
+    if (!inference_it.at_first_entry()) {
+      prev_part_tab->separatorCliques[ 
+          partitionStructureArray[inference_it.ps_i()].separatorCliquesSharedStructure.size()-1
+      ] = interfaceTemp[ inference_it.pt_i() ];
+    }
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.skipLISeparator();
+    else  if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      E1.skipLISeparator();
+
+    ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
+		     *prev_part_tab,
+		     inference_it.cur_ri(),
+		     inference_it.cur_message_order(),
+		     inference_it.cur_nm(),
+		     inference_it.pt_i());
+
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.useLISeparator();
+    else if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      E1.useLISeparator();
+    setCurrentInferenceShiftTo(part);
+
+    // send backwads message to previous partition
+    deSendBackwardsCrossPartitions(partitionStructureArray[inference_it.ps_prev_i()], // previous
+                                   *prev_part_tab,
+				   inference_it.prev_ri(),
+				   inference_it.prev_nm(),
+				   inference_it.pt_prev_i(),
+				   // current partition
+				   partitionStructureArray[inference_it.ps_i()],
+				   *cur_part_tab,
+				   inference_it.cur_li(),
+				   inference_it.cur_nm(),
+				   inference_it.pt_i());
+    //    partitionTableArray[inference_it.pt_i()] = *cur_part_tab;
+
+    delete cur_part_tab;
+    cur_part_tab = prev_part_tab;
+  }
+
+  setCurrentInferenceShiftTo(0);
+
+  // do the final scatter out of root of initial P partition.
+  deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
+		     *cur_part_tab,
+		     inference_it.cur_ri(),
+		     inference_it.cur_message_order(),
+		     inference_it.cur_nm(),
+		     inference_it.pt_i());
+
+  if (viterbiScore)
+    recordPartitionViterbiValue(inference_it);
 }
 
 
