@@ -7,6 +7,13 @@ AT_SKIP_IF([test `hostname` = "xpc"])
 AT_SKIP_IF([test x$CXX = x])
 
 AT_CHECK([
+  if test x${CXX} = x; then
+    if test x`which g++` != x -a -x `which g++`; then
+      export CXX=g++
+    else
+      export CXX=c++
+    fi
+  fi
   $CXX -O3 -DHAVE_CONFIG_H -fPIC -c -o dlopen_cfunc_dts.o             \
       -I$srcdir/../miscSupport -I$builddir/../miscSupport             \
       -I$srcdir/../featureFileIO -I$builddir/../featureFileIO         \

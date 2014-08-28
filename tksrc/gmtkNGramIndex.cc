@@ -46,7 +46,6 @@
 #include "arguments.h"
 #include "ieeeFPsetup.h"
 #include "error.h"
-#include "version.h"
 
 VCID(HGID)
 

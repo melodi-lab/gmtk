@@ -888,7 +888,9 @@ computeVarOrder(vector<RV *> &sectionRVs, regex_t *preg, char sectionLabel, int 
   names.resize(0); // empty it
   // now add the selected names to the vector in output order
   for (unsigned i=0; i < sectionRVs.size(); i+=1) {
-    if (names.size() == nameSet.size()) return; // got all the allowed names
+    if (names.size() == nameSet.size()) {
+      return; // got all the allowed names
+    }
     string name = sectionRVs[i]->name();
     if (nameSet.find(name) != nameSet.end()) {
       names.push_back(name);
@@ -928,53 +930,36 @@ JunctionTree::storeToObsFile(int frame, unsigned segment,
     vitObsFile = instantiateWriteFile(vitObsListName, vitObsFileName, const_cast<char *>(vitObsNameSeparator), 
 				      const_cast<char *>(vitObsFileFmt), 0, vitObsVariableNames.size(), vitObsFileSwap);
   }
-  // actual output. number written must be a multiple of vitObsVariableNames.size()
-  unsigned writtenCount = 0;
+
+  set<string> nameSet;
   for (unsigned i=0; i < rvs.size(); i+=1) {
     unsigned f = rvs[i]->frame();
     assert(f <= 2147483647);
     if (f == (unsigned)frame) {
       if (!reg || !regexec(reg,rvs[i]->name().c_str(),0,0,0)) {
-	if (rvs[i]->name().compare( vitObsVariableNames[writtenCount % vitObsVariableNames.size()]) != 0) {
-	  string nameStr("<");
-	  if (vitObsVariableNames.size()) {
-	    nameStr += vitObsVariableNames[0];
-	    for (unsigned j=1; j < vitObsVariableNames.size(); j+=1) {
-	      nameStr += ", ";
-	      nameStr += vitObsVariableNames[j];
-	    }
-	    nameStr += ">";
-	  }
-	  // Cannot tell if there are missing variables before a correct variable or
-	  // there's an extra variable without diffing the list of correct and selected variables
-	  error("ERROR: Viterbi output to observation file expected to output variable '%s' but got '%s' instead at frame %d in segment %u. "
-		"All sections must output the same sequence of variables %s to the Viterbi observation file. "
-		"'%s' might be an extra variable, or there might be variables missing before it. "
-		"Perhaps the -%cVitRegexFilter is incorrect.\n",
-		vitObsVariableNames[writtenCount % vitObsVariableNames.size()].c_str(), rvs[i]->name().c_str(), frame, segment, 
-		nameStr.c_str(), rvs[i]->name().c_str(), sectionLabel);
+	if (std::find(vitObsVariableNames.begin(), vitObsVariableNames.end(), rvs[i]->name()) == vitObsVariableNames.end()) {
+	  error("ERROR: extra RV %s selected for output in section %c\n", rvs[i]->name().c_str(), sectionLabel);
 	}
-	vitObsFile->writeFeature(  (Data32) ( dynamic_cast<DiscRV *>(rvs[i])->val )  );
-	writtenCount+=1;
+	nameSet.insert(rvs[i]->name());
       }
     }
   }
-  if ( (vitObsVariableNames.size() > 0) && (writtenCount % vitObsVariableNames.size() != 0) ) {
-    // If we get here, we wrote some number of variables in the correct order, but not enough.
-    // There weren't any extras, so the rest must be missing.
-    string nameStr("<");
-    if (vitObsVariableNames.size()) {
-      nameStr += vitObsVariableNames[0];
-      for (unsigned j=1; j < vitObsVariableNames.size(); j+=1) {
-	nameStr += ", ";
-	nameStr += vitObsVariableNames[j];
+  if (nameSet.size() != vitObsVariableNames.size()) {
+    string missingVars("");
+    for (vector<string>::iterator it=vitObsVariableNames.begin(); it != vitObsVariableNames.end(); ++it) {
+      if (nameSet.find(*it) == nameSet.end()) {
+	missingVars.append(*it);
+	missingVars.append(" ");
       }
-      nameStr += ">";
     }
-    error("ERROR: Viterbi output variable '%s' at frame %d in segment %u is missing. "
-	  "All sections must output the same sequence of variables %s to the Viterbi observation file. "
-	  "Perhaps the -%cVitRegexFilter is incorrect.\n", 
-	  vitObsVariableNames[writtenCount % vitObsVariableNames.size()].c_str(), frame, segment, nameStr.c_str(), sectionLabel);
+    error("ERROR: missing RVs %sin %c\n", missingVars.c_str(), sectionLabel);
+  }
+  // actual output. number written must be a multiple of vitObsVariableNames.size()
+  for (unsigned i=0; i < vitObsVariableNames.size(); i+=1) {
+    unsigned j;
+    for (j=0; vitObsVariableNames[i].compare( rvs[j]->name() ); j+=1)
+      ;
+    vitObsFile->writeFeature(  (Data32) ( dynamic_cast<DiscRV *>(rvs[j])->val )  );
   }
 }
 
@@ -1281,6 +1266,7 @@ void JunctionTree::createUnpackingMap(
   //       the number of C's in the unrolled model is known at map
   //       creation time. Thus we should be able to construct only
   //       the E' mapping for only the relevant C'E' transition 
+  //       (Might not apply for gmtkOnline though!)
 
   infoMsg(IM::Printing, IM::Moderate, "\nP':\n");
   vector<RV*> P = partitionStructureArray[0].allrvs_vec;

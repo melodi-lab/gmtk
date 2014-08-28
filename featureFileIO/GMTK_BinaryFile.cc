@@ -42,9 +42,7 @@ BinaryFile::BinaryFile(const char *name, unsigned nfloats, unsigned nints,
 		    preFrameRangeStr_,
 		    segRangeStr_,
 		    leftPad, rightPad),
-    swap(swap),
-    cppIfAscii(cppIfAscii),
-    cppCommandOptions(cppCommandOptions)
+    swap(swap)
 {
   buffer = NULL;
   buffSize = 0;
