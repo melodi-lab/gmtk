@@ -769,3 +769,14 @@ void adjustFramesBy(set <RV*>& rvs,
 }
 
 
+// true iff first < second with name as major key, frame as minor
+bool 
+rvcompare(RV *first, RV *second) {
+  int order = first->name().compare(second->name());
+  if (order < 0)
+    return true;
+  else if (order == 0)
+    return first->frame() < second->frame();
+  else
+    return false;
+}
