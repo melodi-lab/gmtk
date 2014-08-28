@@ -1364,6 +1364,10 @@ void JunctionTree::createUnpackingMap(
 	  infoMsg(IM::Printing, IM::Moderate, "C(%u) C'[%u] : %s(%u)\n", t, i, target.first.c_str(), target.second);
 	}
     }
+    // sort C_rvs[i] to ensure the variables end up in the same order as P_rvs and E_rvs
+    for (unsigned i=0; i < nCprimes; i+=1) {
+      sort(C_rvs[i].begin(), C_rvs[i].end(), rvcompare);
+    }
     for (unsigned i=0; i < nCprimes; i+=1) {
       CprimeValuePtrs[i].resize(hidCprime_rvs[i].size());
       for (unsigned j=0; j < hidCprime_rvs[i].size(); j+=1) {
