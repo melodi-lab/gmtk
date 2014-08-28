@@ -885,7 +885,6 @@ computeVarOrder(vector<RV *> &sectionRVs, regex_t *preg, char sectionLabel, int 
       }
     }
   }
-printf("%c :", sectionLabel);
   names.resize(0); // empty it
   // now add the selected names to the vector in output order
   for (unsigned i=0; i < sectionRVs.size(); i+=1) {
@@ -894,12 +893,10 @@ printf("%c :", sectionLabel);
     }
     string name = sectionRVs[i]->name();
     if (nameSet.find(name) != nameSet.end()) {
-      printf(" %s", name.c_str());
       names.push_back(name);
     }
   }
   assert(names.size() == nameSet.size());
-printf("\n");
 }
 
 
@@ -941,118 +938,29 @@ JunctionTree::storeToObsFile(int frame, unsigned segment,
     if (f == (unsigned)frame) {
       if (!reg || !regexec(reg,rvs[i]->name().c_str(),0,0,0)) {
 	if (std::find(vitObsVariableNames.begin(), vitObsVariableNames.end(), rvs[i]->name()) == vitObsVariableNames.end()) {
-	  error("extra RV %s in %c\n", rvs[i]->name().c_str(), sectionLabel);
-	  // error - extra rv selected for output in sectionLabel
+	  error("ERROR: extra RV %s selected for output in section %c\n", rvs[i]->name().c_str(), sectionLabel);
 	}
 	nameSet.insert(rvs[i]->name());
       }
     }
   }
   if (nameSet.size() != vitObsVariableNames.size()) {
-    error("missing rvs in %c\n", sectionLabel);
-    // error - missing rvs ... from sectionLabel
-  }
-#if 1
-
-
-  // actual output. number written must be a multiple of vitObsVariableNames.size()
-#if 0
-printf("RVS <");
-for (unsigned i=0; i < rvs.size(); i+=1) {
-  unsigned f = rvs[i]->frame();
-  if (f == (unsigned)frame) {
-    if (!reg || !regexec(reg,rvs[i]->name().c_str(),0,0,0)) {
-      printf(" %s(%u)", rvs[i]->name().c_str(), f);
+    string missingVars("");
+    for (vector<string>::iterator it=vitObsVariableNames.begin(); it != vitObsVariableNames.end(); ++it) {
+      if (nameSet.find(*it) == nameSet.end()) {
+	missingVars.append(*it);
+	missingVars.append(" ");
+      }
     }
+    error("ERROR: missing RVs %sin %c\n", missingVars.c_str(), sectionLabel);
   }
-}
-printf(" >\n%c   <", sectionLabel);
-for (unsigned j=0; j < vitObsVariableNames.size(); j+=1) {
-  printf(" %s", vitObsVariableNames[j].c_str());
-}
-printf(" >\n");
-printf("writing <");
-#endif
+  // actual output. number written must be a multiple of vitObsVariableNames.size()
   for (unsigned i=0; i < vitObsVariableNames.size(); i+=1) {
     unsigned j;
     for (j=0; vitObsVariableNames[i].compare( rvs[j]->name() ); j+=1)
       ;
-//printf(" %s", rvs[j]->name().c_str());
     vitObsFile->writeFeature(  (Data32) ( dynamic_cast<DiscRV *>(rvs[j])->val )  );
   }
-//printf(" >\n");
-
-
-#else
-  printf("RVS <");
-  for (unsigned i=0; i < rvs.size(); i+=1) {
-    unsigned f = rvs[i]->frame();
-    if (f == (unsigned)frame) {
-      if (!reg || !regexec(reg,rvs[i]->name().c_str(),0,0,0)) {
-	printf(" %s(%u)", rvs[i]->name().c_str(), f);
-      }
-    }
-  }
-  printf(" >\n%c   <", sectionLabel);
-  for (unsigned j=0; j < vitObsVariableNames.size(); j+=1) {
-    printf(" %s", vitObsVariableNames[j].c_str());
-  }
-  printf(" >\n");
-
-
-  // output variables in the same order for P' C' E' sections even though they
-  // may not come in the same order.
-
-
-  // actual output. number written must be a multiple of vitObsVariableNames.size()
-  unsigned writtenCount = 0;
-  for (unsigned i=0; i < rvs.size(); i+=1) {
-    unsigned f = rvs[i]->frame();
-    assert(f <= 2147483647);
-    if (f == (unsigned)frame) {
-      if (!reg || !regexec(reg,rvs[i]->name().c_str(),0,0,0)) {
-	if (rvs[i]->name().compare( vitObsVariableNames[writtenCount % vitObsVariableNames.size()]) != 0) {
-	  string nameStr("<");
-	  if (vitObsVariableNames.size()) {
-	    nameStr += vitObsVariableNames[0];
-	    for (unsigned j=1; j < vitObsVariableNames.size(); j+=1) {
-	      nameStr += ", ";
-	      nameStr += vitObsVariableNames[j];
-	    }
-	    nameStr += ">";
-	  }
-	  // Cannot tell if there are missing variables before a correct variable or
-	  // there's an extra variable without diffing the list of correct and selected variables
-	  error("ERROR: Viterbi output to observation file expected to output variable '%s' but got '%s' instead at frame %d in segment %u. "
-		"All sections must output the same sequence of variables %s to the Viterbi observation file. "
-		"'%s' might be an extra variable, or there might be variables missing before it. "
-		"Perhaps the -%cVitRegexFilter is incorrect.\n",
-		vitObsVariableNames[writtenCount % vitObsVariableNames.size()].c_str(), rvs[i]->name().c_str(), frame, segment, 
-		nameStr.c_str(), rvs[i]->name().c_str(), sectionLabel);
-	}
-	vitObsFile->writeFeature(  (Data32) ( dynamic_cast<DiscRV *>(rvs[i])->val )  );
-	writtenCount+=1;
-      }
-    }
-  }
-  if ( (vitObsVariableNames.size() > 0) && (writtenCount % vitObsVariableNames.size() != 0) ) {
-    // If we get here, we wrote some number of variables in the correct order, but not enough.
-    // There weren't any extras, so the rest must be missing.
-    string nameStr("<");
-    if (vitObsVariableNames.size()) {
-      nameStr += vitObsVariableNames[0];
-      for (unsigned j=1; j < vitObsVariableNames.size(); j+=1) {
-	nameStr += ", ";
-	nameStr += vitObsVariableNames[j];
-      }
-      nameStr += ">";
-    }
-    error("ERROR: Viterbi output variable '%s' at frame %d in segment %u is missing. "
-	  "All sections must output the same sequence of variables %s to the Viterbi observation file. "
-	  "Perhaps the -%cVitRegexFilter is incorrect.\n", 
-	  vitObsVariableNames[writtenCount % vitObsVariableNames.size()].c_str(), frame, segment, nameStr.c_str(), sectionLabel);
-  }
-#endif
 }
 
 
