@@ -78,4 +78,9 @@ cblas_dnrm2(int n, double const *x, int incx) {
   } while (x != end);
   return nrm;
 }
+#else
+
+// ticket 90: get rid of a warning from the OS X ranlib
+char make_osx_ranlib_shutup_about_no_symbols_miniblas;
+
 #endif

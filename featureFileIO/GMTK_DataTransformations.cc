@@ -145,7 +145,7 @@ void ObservationMatrix::filter(float* x, unsigned vec_size, unsigned stride, uns
 
   double sum=0.0;
   unsigned half_filter_len=filter_len/2;
-  unsigned window_sample;
+  int window_sample;
 
   // copy buffer into a temporary one
   for(unsigned i=0;i<num_frames;++i)  
@@ -156,7 +156,7 @@ void ObservationMatrix::filter(float* x, unsigned vec_size, unsigned stride, uns
   // Use leading zeros at the beginning of the data buffer
   for (unsigned sample = 0; sample < half_filter_len ; ++sample)     {
     sum = 0.0;
-    window_sample= sample - half_filter_len;
+    window_sample= (int)sample - (int)half_filter_len;
     for (unsigned i = 0; i < filter_len ;++i) 
          sum += filter_coeffs[i] * ((window_sample<0)? 0.0 : tmp_buf[window_sample++]) ;
     // Do something about saturation?

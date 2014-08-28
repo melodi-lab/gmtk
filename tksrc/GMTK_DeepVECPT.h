@@ -79,9 +79,13 @@ class DeepVECPT : public CPT {
   // current parent value
   unsigned curParentValue;
 
+#if 0
+  // unused
+
   ////////////////
   // the value
   int _val;
+#endif
 
   ////////////////
   // the Deep Multi-Layer Perceptron
@@ -142,12 +146,12 @@ public:
   ///////////////////////////////////////////////////////////    
   // Semi-constructors: useful for debugging.
   // See parent class for further documention.
-  void setNumParents(const int _nParents) {
+  void setNumParents(const unsigned _nParents) {
     assert ( _nParents == 1 );
     CPT::setNumParents(_nParents);
     bitmask &= ~bm_basicAllocated;
   }
-  void setNumCardinality(const int var, const int card) {
+  void setNumCardinality(const unsigned var, const int card) {
     if (var == 1) {
       // setting child card.
       assert ( card == 2);

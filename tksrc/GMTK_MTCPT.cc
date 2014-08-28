@@ -81,7 +81,7 @@ MTCPT::MTCPT()
  *
  *-----------------------------------------------------------------------
  */
-void MTCPT::setNumParents(const int _nParents)
+void MTCPT::setNumParents(const unsigned _nParents)
 {
   CPT::setNumParents(_nParents);
   bitmask &= ~bm_basicAllocated;
@@ -101,7 +101,7 @@ void MTCPT::setNumParents(const int _nParents)
  *
  *-----------------------------------------------------------------------
  */
-void MTCPT::setNumCardinality(const int var, const int card)
+void MTCPT::setNumCardinality(const unsigned var, const int card)
 {
 
   CPT::setNumCardinality(var,card);
@@ -155,9 +155,6 @@ MTCPT::read(iDataStreamFile& is)
   NamedObject::read(is);
   is.read(_numParents,"Can't read DeterministicCPT numParents");
 
-  if (_numParents < 0) 
-    error("ERROR: reading file '%s' line %d, DeterministicCPT '%s' trying to use negative (%d) num parents.",
-	  is.fileName(),is.lineNo(),name().c_str(),_numParents);
   if (_numParents >= warningNumParents)
     warning("WARNING: creating DeterministicCPT '%s' with %d parents in file '%s' line %d",
 	    _numParents,name().c_str(),is.fileName(),is.lineNo());

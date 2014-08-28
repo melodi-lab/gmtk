@@ -17,6 +17,10 @@
 #ifndef HASH_ABSTRACT_H
 #define HASH_ABSTRACT_H
 
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 #include "debug.h"
 #include "error.h"
 #include "general.h"
@@ -147,12 +151,12 @@ You can use this free for any purpose.  It has no warranty.
     -- that the length be the number of UInt32's in the key
     --------------------------------------------------------------------
   */
-  inline UInt32 hash_jenkens( register UInt32 *k,  /* the key */
-			      register unsigned ksize, /* the length of the key, in UInt32s */
-			      register UInt32 initval /* the previous hash, or an arbitrary value */
+  inline UInt32 hash_jenkens( REGISTER UInt32 *k,  /* the key */
+			      REGISTER unsigned ksize, /* the length of the key, in UInt32s */
+			      REGISTER UInt32 initval /* the previous hash, or an arbitrary value */
 			      )
   {
-    register UInt32 a,b,c,len;
+    REGISTER UInt32 a,b,c,len;
 
     /* Set up the internal state */
     len = ksize;
@@ -186,11 +190,11 @@ You can use this free for any purpose.  It has no warranty.
   ////////////////////////////////////////////////////////////////////////////////////
   // FNV style hash function.
   ////////////////////////////////////////////////////////////////////////////////////
-  inline UInt32 hash_fnv1( register UInt32 * k,
-			   register unsigned ksize,
-			   register UInt32 hval )
+  inline UInt32 hash_fnv1( REGISTER UInt32 * k,
+			   REGISTER unsigned ksize,
+			   REGISTER UInt32 hval )
   {
-    register UInt32* ke= k+ksize;
+    REGISTER UInt32* ke= k+ksize;
     do {
       hval ^= *k++;
       // hval += (hval<<1) + (hval<<4) + (hval<<7) + (hval<<8) + (hval<<24);
@@ -198,11 +202,11 @@ You can use this free for any purpose.  It has no warranty.
     } while (k!=ke);
     return hval;
   }
-  inline UInt32 hash_fnv2 ( register UInt32 * k,
-			    register unsigned ksize,
-			    register UInt32  hval )
+  inline UInt32 hash_fnv2 ( REGISTER UInt32 * k,
+			    REGISTER unsigned ksize,
+			    REGISTER UInt32  hval )
   {
-    register UInt32*ke=k+ksize;
+    REGISTER UInt32*ke=k+ksize;
     do {
       // hval += (hval<<1) + (hval<<4) + (hval<<7) + (hval<<8) + (hval<<24);
       hval *= 16777619; // 32 bit prime
@@ -267,7 +271,7 @@ You can use this free for any purpose.  It has no warranty.
   inline unsigned hash_gmtk_b1(UInt32* key, 
 			       const unsigned ksize)
   {
-    register unsigned long a = 0;
+    REGISTER unsigned long a = 0;
     const UInt32* keyp = key + ksize;
     do {
       a += (a <<3) + (*key++);
@@ -278,7 +282,7 @@ You can use this free for any purpose.  It has no warranty.
 			       const unsigned ksize, 
 			       const unsigned start = 0)
   {
-    register unsigned long a=start;
+    REGISTER unsigned long a=start;
     const UInt32* keyp = key + ksize;
     do {
       a += (a <<3) + (*key++);
@@ -291,7 +295,7 @@ You can use this free for any purpose.  It has no warranty.
   ////////////////////////////////////////////////////////////////////////////////////
   inline unsigned hash_gmtk_c1(UInt32* key, const unsigned ksize)
   {
-    register unsigned long a = ksize;
+    REGISTER unsigned long a = ksize;
     const UInt32* keyp = key + ksize;
     do {
       a += (a <<3) + (a>>(8*sizeof(unsigned)-3)) + (*key++);
@@ -302,7 +306,7 @@ You can use this free for any purpose.  It has no warranty.
 			       const unsigned ksize, 
 			       const unsigned start = 0)
   {
-    register unsigned long a=start;
+    REGISTER unsigned long a=start;
     const UInt32* keyp = key + ksize;
     do {
       a += (a <<3) + (a>>(8*sizeof(unsigned)-3)) + (*key++);

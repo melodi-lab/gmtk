@@ -127,6 +127,7 @@ public:
   void emStartIteration(sArray<float>& xzAccumulators,
 			sArray<float>& zzAccumulators,
 			sArray<float>& zAccumulators);
+  using EMable::emIncrement;
   void emIncrement(const logpr prob,
 		   const float fprob,
 		   const float* const f,

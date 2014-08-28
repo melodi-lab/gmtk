@@ -13,8 +13,9 @@
  *
  */
 
-
 #include "GMTK_BinStream.h"
+
+RAND rnd(false);
 
 // testBinStream file nf ni netorder
 int
