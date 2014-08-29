@@ -1152,7 +1152,7 @@ public:
   void distributeEvidence();
 
   // O(Tn) memory collect/distribute evidence
-  void collectEvidenceLinear(const unsigned int numFrames, unsigned* numUsableFrames);
+  logpr collectEvidenceLinear(const unsigned int numFrames, unsigned* numUsableFrames);
   void distributeEvidenceLinear();
 
   // compute P(E), probability of the evidence, after collect evidence has been run.

@@ -8472,14 +8472,14 @@ reportMemoryUsageTo(FILE *f)
  */
 ConditionalSeparatorTable::
 ConditionalSeparatorTable(SeparatorClique& origin)
-  : separatorValues(NULL),iAccHashMap(NULL)
+  : separatorValues(NULL),iAccHashMap(NULL),preserve(false)
 {
   init(origin);
 }
 
 void ConditionalSeparatorTable::init(SeparatorClique& origin) 
 {
-
+  preserve=false;
   if (origin.veSeparator) {
     // For VE separators, our origin contains the separator tables
     // already pre-generated and constant accross all instances of

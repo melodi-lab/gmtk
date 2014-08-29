@@ -137,6 +137,7 @@ VCID(HGID)
 
 /****************************         INFERENCE OPTIONS           ***********************************************/
 #define GMTK_ARG_INFERENCE_OPTIONS
+#define GMTK_ARG_LINEAR_SPACE
 #define GMTK_ARG_ISLAND
 #define GMTK_ARG_CLIQUE_TABLE_NORMALIZE
 #define GMTK_ARG_CE_SEP_DRIVEN
@@ -413,6 +414,23 @@ main(int argc,char*argv[])
 		 myjt.curProbEvidenceIsland().val()/numFrames,
 		 myjt.curProbEvidenceIsland().val()/numUsableFrames);
 	  data_prob = myjt.curProbEvidenceIsland();
+	} else if (linearSpace) {
+
+	  infoMsg(IM::Low,"Collecting Evidence (linear space)\n");
+	  data_prob = myjt.collectEvidenceLinear(numFrames, &numUsableFrames);
+	  infoMsg(IM::Low,"Done Collecting Evidence\n");
+
+	  infoMsg(IM::Low,"Distributing Evidence\n");
+	  myjt.distributeEvidenceLinear();
+	  infoMsg(IM::Low,"Done Distributing Evidence\n");
+
+	  printf("Segment %d, after CE/DE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f, ",
+		 segment,
+		 data_prob.val(),
+		 data_prob.val()/numFrames,
+		 data_prob.val()/numUsableFrames);
+      
+	  myjt.emIncrement(data_prob,localCliqueNormalization);
 	} else {
 	  numUsableFrames = myjt.unroll(numFrames);
 	  gomFS->justifySegment(numUsableFrames);

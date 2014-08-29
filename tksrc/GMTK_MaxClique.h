@@ -1425,6 +1425,9 @@ class ConditionalSeparatorTable : public IM
 
 public:
 
+  // Preserve separator for later use in linear space inference
+  bool preserve;
+
   // Memory management options set by -memoryGrowth
   static unsigned remHashMapStartingSize;
 
@@ -1432,7 +1435,7 @@ public:
   // non-functional reference objects (in order to create an array of
   // these objects and then initialize them later with appropriate
   // references). Do not use until after proper re-constructor.
-  ConditionalSeparatorTable()  
+  ConditionalSeparatorTable() : preserve(false)
   { iAccHashMap = NULL; separatorValues = NULL; }
   // normal (or re-)constructor.
   ConditionalSeparatorTable(SeparatorClique& origin);
@@ -1457,10 +1460,12 @@ public:
     // containing SeparatorClique is deleted.
     if (veSeparator())
       return;
-    delete iAccHashMap;
-    iAccHashMap = NULL;
-    delete separatorValues;
-    separatorValues = NULL;
+    if (!preserve) {
+      delete iAccHashMap;
+      iAccHashMap = NULL;
+      delete separatorValues;
+      separatorValues = NULL;
+    }
   }
 
 
