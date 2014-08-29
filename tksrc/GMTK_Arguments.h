@@ -1546,6 +1546,52 @@ static const char* varCliqueAssignmentPrior = "COT";
 
 
 
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
+#if defined(GMTK_ARG_LINEAR_SPACE)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+  static bool linearSpace=false;
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("linearSpace",Arg::Opt,linearSpace,"Use linear space but slower inference"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#if defined(GMTK_ARG_DO_DIST_EVIDENCE)
+  if (!doDistributeEvidence && linearSpace) {
+    error("ERROR: don't use -linearSpace T without -doDistributeEvidence T\n");
+  }
+#endif
+
+#if defined(GMTK_ARG_PROB_EVIDENCE)
+  if (probE && linearSpace) {
+    error("ERROR: -probE T is not compatible with -linearSpace T\n");
+  }
+#endif 
+
+  if (JunctionTree::sectionDoDist && linearSpace) {
+    error("ERROR: -sectionPartialDoDist T is not compatible with -linearSpace T\n");
+  }
+ 
+#if defined(GMTK_ARG_ISLAND)
+  if (linearSpace && island) {
+    error("ERROR: -linearSpace T is not compatible with -island T\n");
+  }
+#endif
+
+
+#else
+#endif
+#endif // defined(GMTK_ARG_DO_DIST_EVIDENCE)
+
+
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
 /*************************************************************************************************************/

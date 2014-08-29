@@ -137,6 +137,7 @@ VCID(HGID)
 /****************************         INFERENCE OPTIONS           ***********************************************/
 #define GMTK_ARG_INFERENCE_OPTIONS
 #define GMTK_ARG_ISLAND
+#define GMTK_ARG_LINEAR_SPACE
 #define GMTK_ARG_DEBUG_PART_RNG
 #define GMTK_ARG_DEBUG_INCREMENT
 #define GMTK_ARG_CLIQUE_TABLE_NORMALIZE
@@ -455,6 +456,38 @@ main(int argc,char*argv[])
 	    if (myjt.curProbEvidenceIsland().not_essentially_zero()) {
 	      total_data_prob *= myjt.curProbEvidenceIsland();
 	    }
+	  } else if (linearSpace) {
+
+	    unsigned numUsableFrames;
+
+	    infoMsg(IM::Low,"Collecting Evidence (linear space)\n");
+	    logpr probe = myjt.collectEvidenceLinear(numFrames, &numUsableFrames);
+	    infoMsg(IM::Low,"Done Collecting Evidence\n");
+	    total_num_frames += numUsableFrames;
+
+	    printf("Segment %d, after CE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+		   segment,
+		   probe.val(),
+		   probe.val()/numFrames,
+		   probe.val()/numUsableFrames);
+	    if (probe.essentially_zero()) {
+	      infoMsg(IM::Default,"Not training segment since probability is essentially zero\n");
+	    } else {
+	      total_data_prob *= probe;
+	      infoMsg(IM::Low,"Distributing Evidence\n");
+	      myjt.distributeEvidenceLinear();
+	      infoMsg(IM::Low,"Done Distributing Evidence\n");
+	    
+	      if (IM::messageGlb(IM::Huge)) {
+		// print out all the clique probabilities. In the ideal
+		// case, they should be the same.
+		myjt.printProbEvidenceAccordingToAllCliques();
+	      }
+	      // And actually train with EM.
+	      infoMsg(IM::Low,"Incrementing EM Accumulators\n");
+	      myjt.emIncrement(probe,localCliqueNormalization,emTrainingBeam);
+	    }
+
 	  } else {
 	    unsigned numUsableFrames = myjt.unroll(numFrames);
 	    gomFS->justifySegment(numUsableFrames);

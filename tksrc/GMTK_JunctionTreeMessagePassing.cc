@@ -2736,7 +2736,7 @@ JunctionTree::collectEvidence()
  *-----------------------------------------------------------------------
  */
 
-void
+logpr
 JunctionTree::collectEvidenceLinear(const unsigned int numFrames,
 				    unsigned* numUsableFrames)
 {
@@ -2819,10 +2819,10 @@ JunctionTree::collectEvidenceLinear(const unsigned int numFrames,
 			  inference_it.pt_i());
 
     // remember the incoming separator so the forward pass can be re-done in the backward pass
-    interfaceTemp[ inference_it.pt_i() ] = 
-      cur_part_tab->separatorCliques[ 
-        partitionStructureArray[inference_it.ps_i()].separatorCliquesSharedStructure.size()-1
-      ];
+    unsigned interfaceCliqueNum = 
+      partitionStructureArray[inference_it.ps_i()].separatorCliquesSharedStructure.size()-1;
+    cur_part_tab->separatorCliques[ interfaceCliqueNum ].preserve = true;
+    interfaceTemp[ inference_it.pt_i() ] = cur_part_tab->separatorCliques[ interfaceCliqueNum ];
 
     // we skip the first Co's LI separator if there is no P1
     // partition, since otherwise we'll get zero probability.
@@ -2848,78 +2848,16 @@ JunctionTree::collectEvidenceLinear(const unsigned int numFrames,
     if (inference_it.at_first_c() && P1.cliques.size() == 0)
       Co.useLISeparator();
   }
-
-#if 0
-  delete prev_part_tab;
-  prev_part_tab = cur_part_tab;
-
-  setCurrentInferenceShiftTo(part);
-  cur_part_tab = new PartitionTables(inference_it.cur_jt_partition());
-
-// send from previous to current
-  ceSendForwardsCrossPartitions(// previous partition
-				partitionStructureArray[inference_it.ps_prev_i()],
-				*prev_part_tab,
-				inference_it.prev_ri(),
-				inference_it.prev_nm(),
-				inference_it.pt_prev_i(),
-				// current partition
-				partitionStructureArray[inference_it.ps_i()],
-				*cur_part_tab,
-				inference_it.cur_li(),
-				inference_it.cur_nm(),
-				inference_it.pt_i());
-  assert ( inference_it.at_e() );
-
-  // remember the incoming separator so the forward pass can be re-done in the backward pass
-  OTnTemp[ inference_it.pt_i() ] = 
-    cur_part_tab->separatorCliques[ 
-      partitionStructureArray[inference_it.ps_i()].separatorCliquesSharedStructure.size()-1
-    ];
-
-
-#if 1
-
-  // deHMM should do this, just here to compute probe
-
-    // we skip the first Co's LI separator if there is no P1
-    // partition, since otherwise we'll get zero probability.
-    if (inference_it.at_first_c() && P1.cliques.size() == 0)
-      Co.skipLISeparator();
-
-    // it might be that E is the first partition as well, say if this is
-    // a static graph, and in this case we need in this case to skip the
-    // incomming separator, which doesn't exist.
-    if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
-      E1.skipLISeparator();
-    // next, gather into the root of the final E partition
-    ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
-		     *cur_part_tab,
-		     inference_it.cur_ri(),
-		     inference_it.cur_message_order(),
-		     inference_it.cur_nm(),
-		     inference_it.pt_i(),
-		     clearIncommingSeps, clearCliqueMem);
-
-    
-    if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
-      E1.useLISeparator();
-
-    // if the LI separator was turned off, we need to turn it back on.
-    if (inference_it.at_first_c() && P1.cliques.size() == 0)
-      Co.useLISeparator();
-#endif
-
-
-  //  logpr probe = probEvidence(cur_part_tab);
-  logpr probe = cur_part_tab->maxCliques[E_root_clique].sumProbabilities();
-printf("collectEvidenceHMM(): maxProb() %f\n", probe.val());
-#endif
+  logpr probE;
+  if (viterbiScore) {
+    probE = cur_part_tab->maxCliques[E_root_clique].maxProb();
+  } else {
+    probE = cur_part_tab->maxCliques[E_root_clique].sumProbabilities();
+  }
   delete cur_part_tab;
   delete prev_part_tab;
+  return probE;
 }
-
-
 
 
 
@@ -3374,11 +3312,13 @@ JunctionTree::distributeEvidenceLinear()
   PartitionTables* prev_part_tab = NULL;
   PartitionTables* cur_part_tab  = new PartitionTables(inference_it.cur_jt_partition());
 
+  unsigned interfaceCliqueNum;
+
   // re-do E' gather into root using remembered separator clique
   if (!inference_it.at_first_entry()) {
-    cur_part_tab->separatorCliques[ 
-      partitionStructureArray[inference_it.ps_i()].separatorCliquesSharedStructure.size()-1
-    ] = interfaceTemp[ inference_it.pt_i() ];
+    interfaceCliqueNum = partitionStructureArray[inference_it.ps_i()].separatorCliquesSharedStructure.size()-1;
+    cur_part_tab->separatorCliques[ interfaceCliqueNum ] = interfaceTemp[ inference_it.pt_i() ];
+    interfaceTemp[ inference_it.pt_i() ].preserve = false;
   }
 
   if (inference_it.at_first_c() && P1.cliques.size() == 0)
@@ -3391,7 +3331,7 @@ JunctionTree::distributeEvidenceLinear()
 		   inference_it.cur_ri(),
 		   inference_it.cur_message_order(),
 		   inference_it.cur_nm(),
-		   inference_it.pt_i());
+		   inference_it.pt_i(), false, false);
 
   cur_part_tab->maxCliques[inference_it.cur_ri()].
     maxProbability(partitionStructureArray[inference_it.ps_i()].maxCliquesSharedStructure[inference_it.cur_ri()], true);
@@ -3427,9 +3367,9 @@ JunctionTree::distributeEvidenceLinear()
     prev_part_tab = new PartitionTables(inference_it.cur_jt_partition());
 
     if (!inference_it.at_first_entry()) {
-      prev_part_tab->separatorCliques[ 
-          partitionStructureArray[inference_it.ps_i()].separatorCliquesSharedStructure.size()-1
-      ] = interfaceTemp[ inference_it.pt_i() ];
+      interfaceCliqueNum = partitionStructureArray[inference_it.ps_i()].separatorCliquesSharedStructure.size()-1;
+      prev_part_tab->separatorCliques[ interfaceCliqueNum ] = interfaceTemp[ inference_it.pt_i() ];
+      interfaceTemp[ inference_it.pt_i() ].preserve = false;
     }
     if (inference_it.at_first_c() && P1.cliques.size() == 0)
       Co.skipLISeparator();
@@ -3480,7 +3420,6 @@ JunctionTree::distributeEvidenceLinear()
   if (viterbiScore)
     recordPartitionViterbiValue(inference_it);
 }
-
 
 
 /*-
