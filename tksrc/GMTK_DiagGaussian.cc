@@ -478,25 +478,24 @@ DiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& ofile,
   // since this is a Gaussian, we ignore the writeLogVals
   // argument since it doesn't make sense to take log of
   // these values since they are continuous, could be negative, etc.
-  ofile.writeComment("%s nextMeans.len %u  nextDiagCovars.len %u\n", name().c_str(), nextMeans.len(), nextDiagCovars.len());
   if (writeZeros) {
-    ofile.writeComment("MeanVector %s:  ... nextMeans[i] ... \n", mean->name().c_str());
+    ofile.writeComment("MeanVector %s len %u:  ... nextMeans[i] ... \n", mean->name().c_str(), nextMeans.len());
     for (int i=0; i < nextMeans.len(); i++) {
       ofile.write(nextMeans[0], 0.0, "Diag Gaussian store accums nm + nc.");
     }
     ofile.nl();
-    ofile.writeComment("DiagCovarVector %s:  ... nextDiagCovars[i] ... \n", covar->name().c_str());
+    ofile.writeComment("DiagCovarVector %s len %u:  ... nextDiagCovars[i] ... \n", covar->name().c_str(), nextDiagCovars.len());
     for (int i=0; i < nextDiagCovars.len(); i++) {
       ofile.write(nextDiagCovars[0], 0.0, "Diag Gaussian store accums nm + nc.");
     }
     ofile.nl();
   } else {
-    ofile.writeComment("MeanVector %s:    ... nextMeans[i] ... \n", mean->name().c_str());
+    ofile.writeComment("MeanVector %s len %u:    ... nextMeans[i] ... \n", mean->name().c_str(), nextMeans.len());
     for (int i=0;i<nextMeans.len();i++) {
       ofile.write(nextMeans[i],"Diag Gaussian store accums nm.");
     }
     ofile.nl();
-    ofile.writeComment("DiagCovarVector %s:  ... nextDiagCovars[i] ... \n", covar->name().c_str());
+    ofile.writeComment("DiagCovarVector %s len %u:  ... nextDiagCovars[i] ... \n", covar->name().c_str(), nextDiagCovars.len());
     for (int i=0;i<nextDiagCovars.len();i++) {
       ofile.write(nextDiagCovars[i],"Diag Gaussian store accums nc.");
     }
