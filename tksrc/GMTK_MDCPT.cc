@@ -903,8 +903,7 @@ MDCPT::emStoreObjectsAccumulators(oDataStreamFile& ofile,
 				  bool writeLogVals,
 				  bool writeZeros)
 {
-  ofile.writeComment("%s len %u\n", name().c_str(), nextMdcpt.len());
-  ofile.writeComment("MDCPT %s:  ... nextMdcpt[i] ...\n", name().c_str());
+  ofile.writeComment("MDCPT %s len %u:  ... nextMdcpt[i] ...\n", name().c_str(), nextMdcpt.len());
   if (writeZeros) {
     if (writeLogVals) {
       logpr v;

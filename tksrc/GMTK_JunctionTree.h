@@ -120,6 +120,10 @@ class JunctionTree {
   // for a DGM. This might be much longer than the
   // partitionStructureArray but is certainly no shorter.
   sArray <PartitionTables> partitionTableArray;
+
+  // hold the separator cliques between collectEvidenceLinear and distributeEvidenceLinear
+  sArray <ConditionalSeparatorTable> interfaceTemp;
+
   // the evidence probability used during island algorithm.
   logpr cur_prob_evidence;
   // the EM training beam used for island training (TODO:, move this elsewhere, perhaps in clique)
@@ -1146,6 +1150,11 @@ public:
   // basic collect evidence phase on basic structures.
   void collectEvidence();
   void distributeEvidence();
+
+  // O(Tn) memory collect/distribute evidence
+  logpr collectEvidenceLinear(const unsigned int numFrames, unsigned* numUsableFrames);
+  void distributeEvidenceLinear();
+
   // compute P(E), probability of the evidence, after collect evidence has been run.
   logpr probEvidence();
 
