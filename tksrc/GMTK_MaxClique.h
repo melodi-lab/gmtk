@@ -75,6 +75,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <sstream>
 
 class PartitionStructures;
 class PartitionTables;
@@ -295,6 +296,233 @@ class MaxClique : public IM {
 
   // forced max number of states in a clique. Set to 0 to turn it off.
   static unsigned cliqueBeamMaxNumStates;
+
+
+    static unsigned numFrames;
+    static void setNumFrames(const unsigned numFramesInput) {
+      numFrames = numFramesInput;
+    }
+
+
+    static void dynamicBeamFractionNormalization(double* dynamic_fraction, unsigned num_fractions) {
+      double frac_sum = 0.0;
+      for (unsigned i=0; i<num_fractions; i++) {
+	frac_sum += dynamic_fraction[i];
+      }
+      
+      double frac_cumulative = 0.0;
+      
+      for (unsigned i=0; i<num_fractions; i++) {
+	frac_cumulative += dynamic_fraction[i];
+	dynamic_fraction[i] = frac_cumulative / frac_sum;
+      }
+    }
+
+    static void dynamicBeamFractionNormalization(std::vector<double> & df_vec) {
+      if (df_vec.size() == 0) return;
+      if (df_vec[df_vec.size() - 1] <= 1.0) return;
+      for (unsigned i=0; i<df_vec.size(); i++) {
+	df_vec[i] = df_vec[i] / df_vec[df_vec.size() - 1];
+      }
+    }
+
+    
+    static std::vector<std::string> &splitStr(const std::string &s, char delim, std::vector<std::string> &result) {
+      std::stringstream ss(s);
+      std::string item;
+      while (std::getline(ss, item, delim)) {
+	result.push_back(item);
+      }
+      return result;
+    }
+
+    static std::vector<std::string> splitStr(const std::string &s, char delim) {
+      std::vector<std::string> result;
+      splitStr(s, delim, result);
+      return result;
+    }
+
+    static bool checkInteger(const std::string & s) {
+      for (unsigned i=0; i<s.length(); i++) {
+	if (!isdigit(s[i])) return false;
+      }
+      return true;
+    }
+
+    static bool checkFloat(const std::string & s) {
+      bool found_dot = false;
+      for (unsigned i=0; i<s.length(); i++) {
+	if (s[i] == '.') {
+	  if (found_dot) return false;
+	  found_dot = true;
+	} else if (!isdigit(s[i])) {
+	  return false;
+	}
+      }
+      return true;
+    }
+
+
+
+    
+    static bool parseDynamicString2vec(std::string & d_str, std::vector<double> & f_vec, std::vector<double> & v_vec) {
+      unsigned d_length = d_str.length();
+      if (d_str[0] != '{' || d_str[d_length - 1] != '}') {
+	error("ERROR: dynamic beam arguments must start with { and end with }");
+	return true;
+      }
+      std::string d_str2 = d_str.substr(1, d_length - 2);
+        
+      std::vector<std::string> d_tokens = splitStr(d_str2, ';');
+
+      if (d_tokens.size() <= 0) {
+	error("ERROR: dynamic beam arguments syntax error. Must be of the form {(f1,b1);(f2,b2);...}. f stands for the fraction and b stands for the beam value.");
+	return true;
+      }
+
+      if (d_tokens.size() <= 1) {
+	error("ERROR: dynamic beam arguments syntax error. Should have at least two pairs of fractions and beam values.");
+	return true;
+      }
+
+      for (unsigned i=0; i<d_tokens.size(); i++) {
+	std::string& s = d_tokens[i];
+	if (s[0] != '(' || s[s.length() - 1] != ')') {
+	  error("ERROR: dynamic beam arguments syntax error. Must be of the form {(f1,b1);(f2,b2);...}. f stands for the fraction and b stands for the beam value.");
+	  return true;
+	}
+	std::string s2 = s.substr(1, s.length() - 2);
+	vector<std::string> values = splitStr(s2, ',');
+	if (values.size() != 2) {
+	  error("ERROR: dynamic beam arguments syntax error. Must be of the form {(f1,b1);(f2,b2);...}. f stands for the fraction and b stands for the beam value.");
+	  return true;
+	}
+	if (!checkFloat(values[0]) || !checkFloat(values[1])) {
+	  error("ERROR: dynamic cbeam fractions and beam values must be valid numbers.");
+	  return true;
+	}
+
+	f_vec.push_back(strtod(values[0].c_str(), NULL));
+	v_vec.push_back(strtod(values[1].c_str(), NULL));
+      }
+
+      for (unsigned i=0; i<f_vec.size() - 1; i++) {
+	if (f_vec[i] >= f_vec[i + 1]) {
+	  error("ERROR: dynamic beam arguments syntax error. Fraction values should be increasing (no ties).");
+	  return true;
+	}
+	if (f_vec[i] < 0 || f_vec[i + 1] < 0 || v_vec[i] < 0 || v_vec[i + 1] < 0) {
+	  error("ERROR: dynamic beam arguments syntax error. Fraction and beam values should be non-negative.");
+	  return true;
+	}
+      }
+      return false;
+    }
+
+
+    static bool parseDynamicString2vec(std::string & d_str, std::vector<double> & f_vec, std::vector<unsigned> & v_vec) {
+      unsigned d_length = d_str.length();
+      if (d_str[0] != '{' || d_str[d_length - 1] != '}') {
+	error("ERROR: dynamic beam arguments must start with { and end with }");
+	return true;
+      }
+      std::string d_str2 = d_str.substr(1, d_length - 2);
+        
+      std::vector<std::string> d_tokens = splitStr(d_str2, ';');
+      if (d_tokens.size() <= 0) {
+	error("ERROR: dynamic beam arguments syntax error. Must be of the form {(f1,b1);(f2,b2);...}. f stands for the fraction and b stands for the beam value.");
+	return true;
+      }
+
+      if (d_tokens.size() <= 1) {
+	error("ERROR: dynamic beam arguments syntax error. Should have at least two pairs of fractions and beam values.");
+	return true;
+      }
+      for (unsigned i=0; i<d_tokens.size(); i++) {
+	std::string& s = d_tokens[i];
+	//fprintf(stderr, "%s\n", s.c_str());
+	if (s[0] != '(' || s[s.length() - 1] != ')') {
+	  error("ERROR: dynamic beam arguments syntax error. Must be of the form {(f1,b1);(f2,b2);...}. f stands for the fraction and b stands for the beam value.");
+	  return true;
+	}
+	std::string s2 = s.substr(1, s.length() - 2);
+	vector<std::string> values = splitStr(s2, ',');
+	if (values.size() != 2) {
+	  error("ERROR: dynamic beam arguments syntax error. Must be of the form {(f1,b1);(f2,b2);...}. f stands for the fraction and b stands for the beam value.");
+	  return true;
+	}
+	//fprintf(stderr, "%s %s\n", values[0].c_str(), values[1].c_str());
+	if (!checkFloat(values[0]) || !checkInteger(values[1])) {
+	  error("ERROR: fractions must be valid numbers. For kbeam, the beam value shoud be non-negative integers.");
+	  return true;
+	}
+
+	f_vec.push_back(strtod(values[0].c_str(), NULL));
+	int k_value = atoi(values[1].c_str());
+	if (k_value < 0) {
+	  error("ERROR: dynamic kbeam values should be non-negative integers.");
+	}
+	v_vec.push_back((unsigned)(k_value));
+      }
+
+      for (unsigned i=0; i<f_vec.size() - 1; i++) {
+	if (f_vec[i] >= f_vec[i + 1]) {
+	  error("ERROR: dynamic beam arguments syntax error. Fraction values should be increasing (no ties).");
+	  return true;
+	}
+	if (f_vec[i] < 0 || f_vec[i + 1] < 0 || v_vec[i] < 0 || v_vec[i + 1] < 0) {
+	  error("ERROR: dynamic beam arguments syntax error. Fraction and beam values should be non-negative.");
+	  return true;
+	}
+      }
+      return false;
+    }
+
+
+    //Dynamic *K* Beam
+    //Max number of dynamic beam fractions
+    const static unsigned MAX_NUM_DBEAM = 99;
+
+    static char* dynamicMaxNumStatesChars;
+    static std::string dynamicMaxNumStatesString;
+
+    static std::vector<double> dynamicMaxNumStatesFractionVector;
+    static std::vector<unsigned> dynamicMaxNumStatesValueVector;
+
+
+    static bool checkDynamicCKBeamError() {
+      if (dynamicMaxNumStatesChars == NULL) return true;
+      dynamicMaxNumStatesString = std::string(dynamicMaxNumStatesChars);
+      return parseDynamicString2vec(dynamicMaxNumStatesString, dynamicMaxNumStatesFractionVector, dynamicMaxNumStatesValueVector);
+    }
+
+
+    static void dynamicCKBeamFractionNormalization() {
+      dynamicBeamFractionNormalization(dynamicMaxNumStatesFractionVector);
+    }
+
+
+    //Dynamic Beam
+
+    static char* dynamicCliqueBeamChars;
+    static std::string dynamicCliqueBeamString;
+
+    static std::vector<double> dynamicCliqueBeamFractionVector;
+    static std::vector<double> dynamicCliqueBeamValueVector;
+
+    static bool checkDynamicCBeamError() {
+      if (dynamicCliqueBeamChars == NULL) return true;
+      dynamicCliqueBeamString = std::string(dynamicCliqueBeamChars);
+      return parseDynamicString2vec(dynamicCliqueBeamString, dynamicCliqueBeamFractionVector, dynamicCliqueBeamValueVector);
+    }
+
+    static void dynamicCBeamFractionNormalization() {
+      dynamicBeamFractionNormalization(dynamicCliqueBeamFractionVector);
+    }
+
+
+
+
   // fraction of clique to retain, forcibly pruning away everything else. Must be
 
   // between 0 and 1 (i.e., 0 < v <= 1).
@@ -1805,8 +2033,8 @@ public:
   // Pruning
   /////////////////////////////////////////
 
-  void ceDoAllPruning(MaxClique& origin,logpr maxCEValue);
-  void ceCliqueBeamPrune(MaxClique& origin,logpr maxCEValue);
+  void ceDoAllPruning(MaxCliqueTable::SharedLocalStructure& sharedStructure,logpr maxCEValue);
+  void ceCliqueBeamPrune(MaxCliqueTable::SharedLocalStructure& sharedStructure,logpr maxCEValue);
   unsigned ceCliqueStatePrune(const unsigned k,
 			      CliqueValue*,
 			      const unsigned);
