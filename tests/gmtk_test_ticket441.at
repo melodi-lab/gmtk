@@ -5,6 +5,7 @@ AT_SETUP([infinite loop in posterior output (ticket 441)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/didea_vesep_testCliquePrint])
 AT_SKIP_IF([test `hostname` = "xpc"])
 AT_SKIP_IF([test x$CXX = x])
+AT_SKIP_IF([test `hostname` = "PEACOCK"])
 
 AT_CHECK([
   $CXX -O3 -DHAVE_CONFIG_H -fPIC -c -o dlopen_cfunc_dts.o             \
