@@ -138,7 +138,7 @@ VCID(HGID)
 #define GMTK_ARG_INFERENCE_OPTIONS
 #define GMTK_ARG_DO_DIST_EVIDENCE
 #define GMTK_ARG_PROB_EVIDENCE
-#define GMTK_ARG_LINEAR_SPACE
+#define GMTK_ARG_ONLY_KEEP_SEPS
 #define GMTK_ARG_ISLAND
 #define GMTK_ARG_DEBUG_PART_RNG
 #define GMTK_ARG_DEBUG_INCREMENT
@@ -460,11 +460,11 @@ main(int argc,char*argv[])
 	       probe.val(),
 	       probe.val()/numFrames,
 	       probe.val()/numUsableFrames);
-      } else if (linearSpace) {
+      } else if (onlyKeepSeparators) {
 
 	infoMsg(IM::Inference, IM::Med,"Collecting Evidence (linear space)\n");
 	unsigned numUsableFrames;
-	logpr probe = myjt.collectEvidenceLinear(numFrames, &numUsableFrames);
+	logpr probe = myjt.collectEvidenceOnlyKeepSeps(numFrames, &numUsableFrames);
 	infoMsg(IM::Inference, IM::Med,"Done Collecting Evidence\n");
 
 	infoMsg(IM::Default,"Segment %d, after CE, viterbi log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
@@ -478,7 +478,7 @@ main(int argc,char*argv[])
 	} else {
 
 	  infoMsg(IM::Inference, IM::Low,"Distributing Evidence\n");
-	  myjt.distributeEvidenceLinear();
+	  myjt.distributeEvidenceOnlyKeepSeps();
 	  infoMsg(IM::Inference, IM::Low,"Done Distributing Evidence\n");
 	}
 

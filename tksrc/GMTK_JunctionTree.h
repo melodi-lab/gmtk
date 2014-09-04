@@ -121,7 +121,7 @@ class JunctionTree {
   // partitionStructureArray but is certainly no shorter.
   sArray <PartitionTables> partitionTableArray;
 
-  // hold the separator cliques between collectEvidenceLinear and distributeEvidenceLinear
+  // hold the separator cliques between collectEvidenceOnlyKeepSeps and distributeEvidenceOnlyKeepSeps
   sArray <ConditionalSeparatorTable> interfaceTemp;
 
   // the evidence probability used during island algorithm.
@@ -1152,8 +1152,8 @@ public:
   void distributeEvidence();
 
   // O(Tn) memory collect/distribute evidence
-  logpr collectEvidenceLinear(const unsigned int numFrames, unsigned* numUsableFrames);
-  void distributeEvidenceLinear();
+  logpr collectEvidenceOnlyKeepSeps(const unsigned int numFrames, unsigned* numUsableFrames);
+  void distributeEvidenceOnlyKeepSeps();
 
   // compute P(E), probability of the evidence, after collect evidence has been run.
   logpr probEvidence();

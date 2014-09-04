@@ -1553,43 +1553,43 @@ static const char* varCliqueAssignmentPrior = "COT";
 /*************************************************************************************************************/
 
 
-#if defined(GMTK_ARG_LINEAR_SPACE)
+#if defined(GMTK_ARG_ONLY_KEEP_SEPS)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
-  static bool linearSpace=false;
+  static bool onlyKeepSeparators=false;
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("linearSpace",Arg::Opt,linearSpace,"Use linear space but slower inference"),
+  Arg("keepOnlyInterfaceSeparatorMemory",Arg::Opt,onlyKeepSeparators,"Use a slower but more memory efficient (O(Tn) vs O(Tn^2)) inference implementation"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
 #if defined(GMTK_ARG_DO_DIST_EVIDENCE)
-  if (!doDistributeEvidence && linearSpace) {
-    error("ERROR: don't use -linearSpace T without -doDistributeEvidence T\n");
+  if (!doDistributeEvidence && onlyKeepSeparators) {
+    error("ERROR: It doesn't make sense to use -keepOnlyInterfaceSeparatorMemory T without -doDistributeEvidence T. Perhaps you want -probE T for constant memory collect evidence\n");
   }
 #endif
 
 #if defined(GMTK_ARG_PROB_EVIDENCE)
-  if (probE && linearSpace) {
-    error("ERROR: -probE T is not compatible with -linearSpace T\n");
+  if (probE && onlyKeepSeparators) {
+    error("ERROR: -probE T is not compatible with -keepOnlyInterfaceSeparatorMemory T\n");
   }
 #endif 
 
-  if (JunctionTree::sectionDoDist && linearSpace) {
-    error("ERROR: -sectionPartialDoDist T is not compatible with -linearSpace T\n");
+  if (JunctionTree::sectionDoDist && onlyKeepSeparators) {
+    error("ERROR: -sectionPartialDoDist T is not compatible with -keepOnlyInterfaceSeparatorMemory T\n");
   }
  
 #if defined(GMTK_ARG_ISLAND)
-  if (linearSpace && island) {
-    error("ERROR: -linearSpace T is not compatible with -island T\n");
+  if (onlyKeepSeparators && island) {
+    error("ERROR: -keepOnlyInterfaceSeparatorMemory T is not compatible with -island T\n");
   }
 #endif
 
 
 #else
 #endif
-#endif // defined(GMTK_ARG_DO_DIST_EVIDENCE)
+#endif // defined(GMTK_ARG_ONLY_KEEP_SEPS)
 
 
 /*-----------------------------------------------------------------------------------------------------------*/
