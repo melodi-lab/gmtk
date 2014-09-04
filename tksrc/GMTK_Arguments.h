@@ -1546,6 +1546,52 @@ static const char* varCliqueAssignmentPrior = "COT";
 
 
 
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
+#if defined(GMTK_ARG_ONLY_KEEP_SEPS)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+  static bool onlyKeepSeparators=false;
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("keepOnlyInterfaceSeparatorMemory",Arg::Opt,onlyKeepSeparators,"Use a slower but more memory efficient inference implementation"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#if defined(GMTK_ARG_DO_DIST_EVIDENCE)
+  if (!doDistributeEvidence && onlyKeepSeparators) {
+    error("ERROR: It doesn't make sense to use -keepOnlyInterfaceSeparatorMemory T without -doDistributeEvidence T. Perhaps you want -probE T for constant memory collect evidence\n");
+  }
+#endif
+
+#if defined(GMTK_ARG_PROB_EVIDENCE)
+  if (probE && onlyKeepSeparators) {
+    error("ERROR: -probE T is not compatible with -keepOnlyInterfaceSeparatorMemory T\n");
+  }
+#endif 
+
+  if (JunctionTree::sectionDoDist && onlyKeepSeparators) {
+    error("ERROR: -sectionPartialDoDist T is not compatible with -keepOnlyInterfaceSeparatorMemory T\n");
+  }
+ 
+#if defined(GMTK_ARG_ISLAND)
+  if (onlyKeepSeparators && island) {
+    error("ERROR: -keepOnlyInterfaceSeparatorMemory T is not compatible with -island T\n");
+  }
+#endif
+
+
+#else
+#endif
+#endif // defined(GMTK_ARG_ONLY_KEEP_SEPS)
+
+
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
 /*************************************************************************************************************/
