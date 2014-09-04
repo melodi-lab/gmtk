@@ -1560,7 +1560,7 @@ static const char* varCliqueAssignmentPrior = "COT";
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("keepOnlyInterfaceSeparatorMemory",Arg::Opt,onlyKeepSeparators,"Use a slower but more memory efficient (O(Tn) vs O(Tn^2)) inference implementation"),
+  Arg("keepOnlyInterfaceSeparatorMemory",Arg::Opt,onlyKeepSeparators,"Use a slower but more memory efficient inference implementation"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
