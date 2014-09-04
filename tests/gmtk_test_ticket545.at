@@ -12,7 +12,7 @@ AT_CHECK([(export GMTK_TEST_DIR=`pwd` &&
     -inputTrainable PARAMS/highly_trained.gmp        \
     -str PARAMS/aurora_decode.str                    \
     -mVitVals $GMTK_TEST_DIR/vit.norm                \
-    -linearSpace F)
+    -keepOnlyInterfaceSeparatorMemory F)
  (export GMTK_TEST_DIR=`pwd` && 
   cd $TEST_AND_DEV/auroraTutorial &&
   gmtkViterbi -of1 DATA/small.pfile -iswp1 T         \
@@ -20,7 +20,7 @@ AT_CHECK([(export GMTK_TEST_DIR=`pwd` &&
     -inputTrainable PARAMS/highly_trained.gmp        \
     -str PARAMS/aurora_decode.str                    \
     -mVitVals $GMTK_TEST_DIR/vit.OTn                 \
-    -linearSpace T)
+    -keepOnlyInterfaceSeparatorMemory T)
   cmp vit.norm vit.OTn],[0],[ignore],[ignore])
 AT_CLEANUP
 

@@ -2494,7 +2494,7 @@ JunctionTree::ceSendForwardsCrossPartitions(// previous partition
  *    2) log space version of collect/distribute evidence  
  *       JunctionTree::collectDistributeIsland()
  *    3) O(Tn) memory version of collect/distribute evidence
- *       JunctionTree::collectEvidenceLinear / JunctionTree::distributeEvidenceLinear
+ *       JunctionTree::collectEvidenceOnlyKeepSeps / JunctionTree::distributeEvidenceOnlyKeepSeps
  *
  * Preconditions:
  *   The parititons must have been created and placed in the array partitionStructureArray.
@@ -2695,12 +2695,12 @@ JunctionTree::collectEvidence()
 
 /*-
  *-----------------------------------------------------------------------
- * JunctionTree::collectEvidenceLinear()
+ * JunctionTree::collectEvidenceOnlyKeepSeps()
  *   
  *   Collect Evidence: This routine performes a collect evidence pass 
  *   similar to the constant memory JunctionTree::probEvidenceFixedUnroll(),
  *   but it keeps the separator cliques around for use in the corresponding
- *   JunctionTree::distributeEvidenceLinear() backwards pass.
+ *   JunctionTree::distributeEvidenceOnlyKeepSeps() backwards pass.
  *
  * See Also:
  *    1) contant memory (not dept. on time T) version of collect evidence
@@ -2714,7 +2714,7 @@ JunctionTree::collectEvidence()
  * Postconditions:
  *     All cliques in the partition have all messages but one sent to it.
  *     The separator cliques are remembered in interfaceTemp for later use
- *     in JunctionTree::distributeEvidenceLinear()
+ *     in JunctionTree::distributeEvidenceOnlyKeepSeps()
  *
  * Side Effects:
  *     all partitions will have been instantiated to the extent that the messages (with
@@ -2727,7 +2727,7 @@ JunctionTree::collectEvidence()
  */
 
 logpr
-JunctionTree::collectEvidenceLinear(const unsigned int numFrames,
+JunctionTree::collectEvidenceOnlyKeepSeps(const unsigned int numFrames,
 				    unsigned* numUsableFrames)
 {
   FileSource *gomFS;
@@ -3260,7 +3260,7 @@ JunctionTree::distributeEvidence()
  *   
  *   Distribute Evidence: This routine performs a complete distribute
  *   evidence pass for this series of partitions that have run
- *   JunctionTree::collectEvidenceLinear()
+ *   JunctionTree::collectEvidenceOnlyKeepSeps()
  *
  *   After distributeEvidence() is called, all cliques in all
  *   partitions will be locally (& globally if it is a JT) consistant, and so will
@@ -3274,7 +3274,7 @@ JunctionTree::distributeEvidence()
  *       JunctionTree::collectDistributeIsland()
  *
  * Preconditions:
- *   - collectEvidenceLinear() must have been called right before this.
+ *   - collectEvidenceOnlyKeepSeps() must have been called right before this.
  *   - The parititons must have been created and placed in the array partitionStructureArray.
  *   - inference_it must be initialized to the current segment
  *   - the pair of partition RVS set up correct.
@@ -3295,7 +3295,7 @@ JunctionTree::distributeEvidence()
  */
 
 void
-JunctionTree::distributeEvidenceLinear()
+JunctionTree::distributeEvidenceOnlyKeepSeps()
 {
   setCurrentInferenceShiftTo(inference_it.pt_len()-1);
 
