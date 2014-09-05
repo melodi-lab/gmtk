@@ -1856,6 +1856,7 @@ Arg("radius", Arg::Opt, radius, "Number of frames comprising one input instance 
 Arg("labelOffset", Arg::Req, labelOffset, "Offset in observation file where output labels start"),
 Arg("oneHot", Arg::Opt, oneHot, "If true, labelOffset is the single discrete correct parent value, "
                                 "else the parent distribution starts ate labelOffset"),
+Arg("randomInitLayer", Arg::Opt, DBN::randomInitLayer, "Initialize weights randomly (according to sparse or dense strategy specified by -sparseInitLayer)"),
 Arg("sparseInitLayer", Arg::Opt, DBN::sparseInitLayer, "Use sparse or dense initilization strategy (dense is better for rectified linear)"),
 
 Arg("trainingSchedule", Arg::Opt, trainingSchedule, "Order to process training data (linear, random, permute, shuffle)"),

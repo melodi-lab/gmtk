@@ -18,6 +18,8 @@ Version 1.1.0  2014-09-05
         * Fixed unoptimized build failure
         * Fixed some incorrect help messages
         * Fixed neural network training initialization bugs
+        * Added support for starting neural network training from a
+          specified matrix
         * Added support for autoencoder pretraining of rectified linear
           activation functions
 
