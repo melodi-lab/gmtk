@@ -470,7 +470,7 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
   max_num_samples=cur_n_samps;  // i.e. 0
   prrng_max_num_samples=cur_prrng_n_samps;  // i.e. 0
 
-  if (segno < 0 || segno >= _numSegments)
+  if (segno >= _numSegments)
     error("ObservationMatrix:::checkIfSameNumSamples: segment number (%li) outside range of 0 - %li\n",segno,_numSegments);
 
   ////////////////////////////////////
@@ -1785,7 +1785,7 @@ void ObservationMatrix::printFrame(FILE *stream, size_t absoluteFrameno) {
 size_t ObservationMatrix::openPFile(StreamInfo *f, size_t sentno) {
 
   unsigned long pfile_size=f->getFullFofSize();
-  if((sentno < 0) || (sentno >= pfile_size)) {
+  if(sentno >= pfile_size) {
     error("ERROR: Requested segment no %li of observation file '%s' but the max num of segments in pfile is %li",sentno,f->fofName,pfile_size);
   }
   //  assert(sentno >= 0 && sentno < _numSegments);
@@ -1822,7 +1822,7 @@ size_t ObservationMatrix::openBinaryFile(StreamInfo *f, size_t sentno) {
 
     DBGFPRINTF((stderr,"In ObservationMatrix::openBinaryFile, sentno %d\n",sentno));
     unsigned long binfile_size=f->getFullFofSize();
-    if(sentno < 0 || sentno >= binfile_size) {
+    if(sentno >= binfile_size) {
         error("ObservationMatrix::openBinaryFile: Requested segment no %li of observation file '%s' but the max num of segments in list of binary files is %li",sentno,f->fofName,binfile_size);
     }
     
@@ -2213,7 +2213,7 @@ size_t ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
 
   DBGFPRINTF((stderr,"In ObservationMatrix::openHTKFile, sentno %d\n",sentno));
   unsigned long htkfile_size=f->getFullFofSize();
-  if(sentno < 0 || sentno >= htkfile_size) {
+  if(sentno >= htkfile_size) {
     error("ERROR: ObservationMatrix::openHTKFile: Requested segment no %li of observation file '%s' but the max num of segments in list of HTK files is %li",sentno,f->fofName,htkfile_size);
   }
 
