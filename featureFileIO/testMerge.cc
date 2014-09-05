@@ -132,7 +132,7 @@ main(int argc, char *argv[]) {
 
   for (unsigned j=0; j < mf->numSegments(); j+=1) {
     assert(mf->openSegment(j));
-printf("Processing sentence %u\n", j);
+printf("Processing segment %u\n", j);
     for (unsigned k=0; k < mf->numFrames(); k+=1) {
       //      printf("%03u %03u", j, k);
       printf("%u %u", j, k);

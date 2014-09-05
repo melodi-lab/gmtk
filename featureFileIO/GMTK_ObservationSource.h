@@ -36,6 +36,10 @@ class ObservationSource {
 
  public:
 
+  virtual ~ObservationSource() {};
+
+  // Am I a random access source or not?
+  virtual bool randomAccess() = 0;
 
   // The number of continuous, discrete, total features in the observed data
   virtual unsigned numContinuous() = 0;
@@ -79,6 +83,12 @@ class ObservationSource {
   // Returns the number of the currently active segment (most recent
   // openSegment() argument for FileStream).
   virtual unsigned segmentNumber() = 0;
+
+  // Returns the number of segments in the ObservationSource. Note
+  // that numSegments() always returns 0 for StreamSource since it's
+  // not possible to know how many segments are in a stream until the
+  // stream has been completely read.
+  virtual unsigned numSegments() = 0;
 
   // Returns the number of frames in the currently active segment. Note
   // that numFrames() returns 0 for StreamSource until the length of the

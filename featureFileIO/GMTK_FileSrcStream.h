@@ -46,9 +46,7 @@ class FileSrcStream: public ObservationStream {
   FileSrcStream(FileSource *file)
     :ObservationStream(), obsFile(file)
   {
-    if (!file) {
-      error("ERROR: no observation input source specified\n");
-    }
+    assert(file);
     nFloat      = file->numContinuous();
     nInt        = file->numDiscrete();
     numSegments = file->numSegments();

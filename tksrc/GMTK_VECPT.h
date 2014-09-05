@@ -22,7 +22,7 @@
  *   virtual online evidence to variable A.  In this way, the actual
  *   floats in the file need not even be probabilties, they can be
  *   arbitrary scores. If C is hidden, however, then the values of
- *   P(C=0|A=a) are taken to be 1-P(C=0|A=a), so in such a case (when
+ *   P(C=0|A=a) are taken to be 1-P(C=1|A=a), so in such a case (when
  *   C is hidden) it is more sensible for the scores for each a to be
  *   actual values between 0 and 1.
  *

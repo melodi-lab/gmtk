@@ -99,7 +99,7 @@ main(int argc, char *argv[]) {
   FileSource *f = instantiateFileSource();
   for (unsigned j=0; j < f->numSegments(); j+=1) {
     assert(f->openSegment(j));
-    printf("Processing sentence %u\n", j);
+    printf("Processing segment %u\n", j);
     unsigned k;
     for (k=0; k < f->numFrames() % chunkSize; k+=1) {
       //      printf("%03u %03u", j, k);

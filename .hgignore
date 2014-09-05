@@ -20,7 +20,7 @@ version.info
 Makefile
 aclocal.m4
 autom4te.cache
-config.{guess,h,log,status,sub}
+config.{guess,h,log,status,sub,cache}
 configure
 depcomp
 install-sh
@@ -83,6 +83,7 @@ mitk/multivariate-mi
 mitk/mvnrnd
 mitk/test-matrix-ops
 mitk/testReadRange
+mitk/discrete-mi/discrete-mi
 tests/atconfig
 tests/atlocal
 tests/gmtk_tests.at
@@ -128,3 +129,5 @@ tksrc/testViterbi
 tksrc/testPackCliqueValue
 tksrc/dlinktest
 tksrc/parserTest
+tksrc/vitnorm.cc
+tksrc/vitnorm

@@ -5,6 +5,8 @@ gmtk_test_newViterbi-2.at \
 gmtk_test_newViterbi-3.at \
 gmtk_test_newViterbi-4.at \
 gmtk_test_padding.at \
+gmtk_test_ticket006.at \
+gmtk_test_ticket104.at \
 gmtk_test_ticket125.at \
 gmtk_test_ticket127.at \
 gmtk_test_ticket130.at \
@@ -15,7 +17,10 @@ gmtk_test_ticket150.at \
 gmtk_test_ticket162.at \
 gmtk_test_ticket164.at \
 gmtk_test_ticket166.at \
+gmtk_test_ticket169.at \
+gmtk_test_ticket173.at \
 gmtk_test_ticket174.at \
+gmtk_test_ticket183.at \
 gmtk_test_ticket191.at \
 gmtk_test_ticket192.at \
 gmtk_test_ticket213.at \
@@ -53,6 +58,7 @@ gmtk_test_ticket455.at \
 gmtk_test_ticket460.at \
 gmtk_test_ticket461.at \
 gmtk_test_ticket52.at \
+gmtk_test_ticket545.at \
 gmtk_tests.at
 LOCAL_TEST_AND_DEV = \
 test_and_dev_scripts/test_and_dev_20090526.at \

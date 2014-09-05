@@ -10,15 +10,15 @@ AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial && \
                        -str PARAMS/aurora_decode.str                        \
 		       -vitSectionRange ^0:-2:0                             \
                        -mVitValsFile - |                                    \
-              grep Ptn > $GMTK_TEST_DIR/vit.ascii)], 
-         [], [ignore])
+              vitnorm - > $GMTK_TEST_DIR/vit.ascii)], 
+         [], [ignore],[ignore])
 AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial && \
            gmtkViterbi -of1 DATA/small.pfile -iswp1 -nf1 42 -ni1 0 -dcdrng 0  \
                        -inputMasterFile PARAMS/nonTrainable.master          \
                        -inputTrainable PARAMS/highly_trained.gmp            \
                        -str PARAMS/aurora_decode.str                        \
                        -binaryVitFile $GMTK_TEST_DIR/vit.bin)], 
-         [], [ignore])
+         [], [ignore],[ignore])
 AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
            gmtkPrint -of1 DATA/small.pfile -iswp1 -nf1 42 -ni1 0 -dcdrng 0    \
                      -inputMasterFile PARAMS/nonTrainable.master              \
@@ -26,6 +26,6 @@ AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
                      -str PARAMS/aurora_decode.str                            \
 	             -vitSectionRange ^0:-2:0                                 \
                -binaryVitFile $GMTK_TEST_DIR/vit.bin -mVitValsFile -)   |     \
-           grep Ptn | diff vit.ascii -],
-         [], [ignore])
+           vitnorm - | diff vit.ascii -],
+         [], [ignore],[ignore])
 AT_CLEANUP

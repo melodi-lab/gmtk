@@ -42,11 +42,11 @@ $(builddir)/../../featureFileIO/libgmtkio.a
 
 AM_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(GCC_FLAGS)
 
-EXTRA_PROGRAMS = discrete-mi
-discrete_mi_SOURCES = \
+bin_PROGRAMS = discrete-mi
+discrete_mi_SOURCES = discrete_mi.cc \
 mixNormalCollection.h mixNormalCollection.cc \
-discrete_mi.cc \
 mixNormal.h mixNormal.cc \
 readRange.h readRange.cc \
-rangeSetCollection.cc
-
+rangeSetCollection.cc \
+data_processing.h data_processing.cc \
+discrete_mi_config.h

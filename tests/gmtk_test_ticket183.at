@@ -1,0 +1,71 @@
+
+# Verify that http://j.ee.washington.edu/trac/gmtk/ticket/183 is fixed
+
+# If it's fixed, frames 0:4,8,10 should have Viterbi value 1, the rest 0
+
+AT_SETUP([commas in DTs (ticket 183)])
+AT_DATA([foo.str],[
+GRAPHICAL_MODEL foo
+
+frame: 0 {
+
+  variable: foo {
+    type: discrete observed 0:0 cardinality 11;
+    conditionalparents: nil using DenseCPT("uniform");
+  }
+
+  variable: bar {
+    type: discrete hidden cardinality 2;
+    conditionalparents: foo(0) using DeterministicCPT("fooCPT");
+  }
+}
+chunk 0:0
+])
+AT_DATA([foo.mtr],[
+DT_IN_FILE inline 1
+
+0
+fooDT
+1
+0 2 0:4,8,10 default
+  -1 1
+  -1 0
+
+DETERMINISTIC_CPT_IN_FILE inline 1
+
+0
+fooCPT
+1
+11 2
+fooDT
+])
+AT_DATA([foo.ascii],[
+0 0 0
+0 1 1
+0 2 2
+0 3 3
+0 4 4
+0 5 5
+0 6 6
+0 7 7
+0 8 8
+0 9 9
+0 10 10
+])
+AT_DATA([foo.tru],[Ptn-1 C: bar(0)=1
+Ptn-2 C: bar(1)=1
+Ptn-3 C: bar(2)=1
+Ptn-4 C: bar(3)=1
+Ptn-5 C: bar(4)=1
+Ptn-6 C: bar(5)=0
+Ptn-7 C: bar(6)=0
+Ptn-8 C: bar(7)=0
+Ptn-9 C: bar(8)=1
+Ptn-10 C: bar(9)=0
+Ptn-11 C: bar(10)=1
+])
+AT_CHECK([gmtkTriangulate -strF foo.str],[0],[ignore],[ignore])
+AT_CHECK([gmtkViterbi -strF foo.str -inputM foo.mtr -allocateDense 2 \
+            -of1 foo.ascii -fmt1 flatascii -ni1 1 -vitValsF - | \
+          grep Ptn - | cmp foo.tru -],[0],[ignore],[ignore])
+AT_CLEANUP

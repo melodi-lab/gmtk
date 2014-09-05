@@ -696,9 +696,10 @@ GammaComponent::emStoreObjectsAccumulators(oDataStreamFile& ofile,
   // since this is a Gamma, we ignore the writeLogVals
   // argument since it doesn't make sense to take log of
   // these values since they are continuous. etc.
+  ofile.writeComment("GammaComponent %s dim %u:  ... sumx[i] sumxx[i] sumlogx[i] ...\n", name().c_str(), _dim);
   if (writeZeros) {
     for (unsigned i=0;i<3*_dim;i++) {
-      ofile.write(0.0,"Gamma Component store accum.");
+      ofile.write(sumx.ptr[0], 0.0,"Gamma Component store accum.");
     }
   } else {
     for (unsigned i = 0; i < _dim; i++) {
@@ -707,6 +708,7 @@ GammaComponent::emStoreObjectsAccumulators(oDataStreamFile& ofile,
       ofile.write(sumlogx.ptr[i],"Gamma Component store accum.");
     }
   }
+  ofile.nl();
 }
 
 

@@ -279,7 +279,7 @@ public:
       int read_next(int *val, FILE* file, const char *name);
 
   public:
-      iterator () { };	// Ugly default constructor is DANGEROUS!
+      iterator() : p(NULL)  { };	// Ugly default constructor is DANGEROUS!
       iterator (const Range& rng);
       iterator (const iterator& it);
       ~iterator(void);
