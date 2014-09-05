@@ -16,6 +16,10 @@
 #ifndef GMTK_MSCPT_H
 #define GMTK_MSCPT_H
 
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 #include <vector>
 
 #include "fileParser.h"
@@ -48,9 +52,13 @@ class MSCPT : public CPT {
   // mapping to spmfs).
   NameCollection* ncl;
 
+#if 0
+  // unused
+
   ///////////////////////////////////////
   // mapping from DT leaves to SPMFs
   NameCollection* spmfCollection;
+#endif
 
   ///////////////////////////////////////
   // Index of world's sparse mass function,
@@ -72,8 +80,8 @@ public:
   ~MSCPT() { }
 
   ///////////////////////////////////////////////////////////    
-  void setNumParents(const int _nParents);
-  void setNumCardinality(const int var, const int card);
+  void setNumParents(const unsigned _nParents);
+  void setNumCardinality(const unsigned var, const int card);
   void allocateBasicInternalStructures();
 
   //////////////////////////////////
@@ -188,7 +196,7 @@ public:
 			 DiscRV* drv) {
     assert ( bitmask & bm_basicAllocated );
     becomeAwareOfParentValues(parents,drv);
-    register DiscRVType val = drv->val;
+    REGISTER DiscRVType val = drv->val;
     assert ( val <= card() );
     return spmf->prob(val);
   }

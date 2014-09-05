@@ -20,7 +20,6 @@
 
 #include <string.h>
 #include <stdio.h>
-using namespace std;
 
 #include "machine-dependent.h"
 #include "vbyteswapping.h"

@@ -51,7 +51,6 @@ class ASCIIFile: public ObservationFile {
   FILE       *listFile;       // list of files
   char const *outputFileName;
   char const *outputNameSeparatorStr;
-  bool        oswap;
 
   unsigned    currSegment;
   unsigned    currFrame;

@@ -32,9 +32,14 @@ if USE_GCC_FLAGS
   OPTFLAGS = -O3
   GCC_FLAGS = -Wall $(ANSI)
 else
+if USE_CLANG_FLAGS
+  OPTFLAGS = -O3
+  GCC_FLAGS =
+else
 # unknown compiler
   OPTFLAGS =
   GCC_FLAGS =
+endif
 endif
 
 DBFLAGS =

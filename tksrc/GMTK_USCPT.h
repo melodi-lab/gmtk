@@ -55,8 +55,8 @@ public:
   ///////////////////////////////////////////////////////////    
   // Semi-constructors: useful for debugging.
   // See parent class for further documention.
-  void setNumParents(const int _nParents) {}
-  void setNumCardinality(const int var, const int card) {}
+  void setNumParents(const unsigned _nParents) {}
+  void setNumCardinality(const unsigned var, const int card) {}
   void allocateBasicInternalStructures() {}
 
   ///////////////////////////////////////////////////////////  
@@ -64,6 +64,7 @@ public:
   // iterator support.  See GMTK_CPT.h for documentation.
   void becomeAwareOfParentValues( vector <RV *>& parents, const RV* rv ) 
   { /* a USCPT has no parents so do nothing */ }
+  using MDCPT::begin;
   void begin(iterator& it,DiscRV* drv,logpr* p) {
     // this routine should never be called for this object, since the variable
     // is always observed.
