@@ -544,6 +544,7 @@ bool firstRVSetContainedInSecond(set <RV*>& firstSet,
 
 void adjustFramesBy(set <RV*>& rvs,int adjustment,bool resetObservedValues = true);
 
-
+// true iff first < second with name as major key, frame as minor
+bool rvcompare(RV *first, RV *second);
 
 #endif

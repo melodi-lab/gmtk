@@ -11,13 +11,32 @@
  * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  */
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
+#if HAVE_INTTYPES_H
+   // The ISO C99 standard specifies that the macros in inttypes.h must
+   //  only be defined if explicitly requested. 
+#  ifndef __STDC_FORMAT_MACROS
+#    define __STDC_FORMAT_MACROS 1
+#  endif
+#  include <inttypes.h>
+#endif
+#if HAVE_STDINT_H
+#  include <stdint.h>
+#endif
 
 #include <cstdlib>
 #include <cstdio>
 #include <iostream>
 #include <errno.h>
 #include <cstring>
+#ifdef HAVE_VALUES_H
 #include <values.h>
+#endif
 #include <cmath>
 #include <cassert>
 #include <ctime>
@@ -69,6 +88,7 @@ bool liswps[] = {false };
 //
 //}; 
 
+RAND rnd(false);
 
 int readFeatures(Range::iterator krit, size_t &n_frames,
 		 size_t &n_samps,
@@ -114,7 +134,10 @@ static void usage(const char* message = 0) {
 	  "[-labpos int] Position of the label.  Default: last discrete feature.\n"
 	  "-b              print raw binary data (ints and floats)\n"
 	  "-ns             Don't print the frame IDs (i.e., sent and frame #)\n"
+#if 0
+	  // debug level appears to be unused
 	  "-debug <level>  number giving level of debugging output to produce 0=none.\n"
+#endif
 	  "[-mlps d]    Minimum consecutive labels per segment to compute CMI with.\n"
   );
   exit(EXIT_FAILURE);
@@ -313,12 +336,16 @@ int main(int argc, const char *argv[]) {
   const char *lr_str = 0;   // label range string    
   Range *lr_rng;
 
+#if 0
+  // appear to be unused
   int debug_level = 0;
+  bool gotLabs = false;
+#endif
+
   bool print_frameid = true;
   bool quiet = false;
   bool binary=false;
 
-  bool gotLabs = false;
   bool lswap = false;
   int labpos = -1;  //default: last postion used as the label
 
@@ -415,14 +442,19 @@ int main(int argc, const char *argv[]) {
 	argc--;
       } else
 	usage("No output filename given.");
-    }  else if ( strcmp(argp, "-debug") == 0 ) {
+    } 
+    /*
+// debug_level appears to be unused
+      else if ( strcmp(argp, "-debug") == 0 ) {
       if ( argc > 0 ) {
 	// Next argument is debug level.
 	debug_level = (int) parse_long(*argv++);
 	argc--;
       } else
 	usage("No debug level given.");
-    } else if ( strcmp(argp, "-sr" )==0) {
+    }
+    */
+    else if ( strcmp(argp, "-sr" )==0) {
       if (argc>0) {
 	sr_str = *argv++;
 	argc--;
@@ -436,7 +468,8 @@ int main(int argc, const char *argv[]) {
 	usage("No range given.");
     } else if ( strcmp(argp, "-lr")==0 ) {
       if (argc>0) {
-	gotLabs = true;
+	// gotLabs appears to be unused
+	//	gotLabs = true;
 	lr_str = *argv++;
 	argc--;
       } else

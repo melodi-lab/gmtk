@@ -206,13 +206,13 @@ parseSentenceSpec(char const *sentLoc, int &startFrame, int &endFrame, string &f
     //have a subrange spec
     fNameLen=ssentLoc.find_last_of('[');
     if (fNameLen==string::npos){
-      error("ERROR: parseSentenceSpec: '%s' is an invalid sentence location.  "
+      error("ERROR: parseSentenceSpec: '%s' is an invalid segment location.  "
 	    "Must be of the form 'filename[startFrame:endFrame]'",ssentLoc.c_str());		  
     }
     
     string range= ssentLoc.substr(fNameLen+1,ssentLoc.length()-2-fNameLen);
     if (sscanf(range.c_str(),"%d:%d",&startFrame,&endFrame) != 2)
-      error("ERROR: parseSentenceSpec: '%s' is an invalid sentence location.  "
+      error("ERROR: parseSentenceSpec: '%s' is an invalid segment location.  "
 	    "Must be of the form 'filename[startFrame:endFrame]'",ssentLoc.c_str());
     if(endFrame < startFrame)
       error("ERROR: parseSentenceSpec: '%s' has the last frame smaller than first frame.\n",

@@ -1776,7 +1776,7 @@ MaxClique::sortAndAssignDispositions(const char *varCliqueAssignmentPrior)
   // continuation score than there are sorted assigned nodes because
   // we may want to do pruning at the very last node.
   sortedAssignedContinuationScores.resize(sortedAssignedNodes.size()+1);
-  if (cliqueBeamContinuationHeuristic) {
+  if (cliqueBeamContinuationHeuristic && cliqueBeamBuildBeam != (-LZERO) /* ie, default -cpbeam meaning no pruning */ ) {
     // TODO: do something better than just using global max value, like local max value
     // of the current rv.
     sortedAssignedContinuationScores.ptr[sortedAssignedNodes.size()] = 1.0;
@@ -6200,6 +6200,7 @@ printCliqueEntries(MaxCliqueTable::SharedLocalStructure& sharedStructure,
       }
     }
     printRVSetAndValues(f,sharedStructure.fNodes);
+    fflush(f);
   }
 }
 
@@ -8471,14 +8472,14 @@ reportMemoryUsageTo(FILE *f)
  */
 ConditionalSeparatorTable::
 ConditionalSeparatorTable(SeparatorClique& origin)
-  : separatorValues(NULL),iAccHashMap(NULL)
+  : separatorValues(NULL),iAccHashMap(NULL),preserve(false)
 {
   init(origin);
 }
 
 void ConditionalSeparatorTable::init(SeparatorClique& origin) 
 {
-
+  preserve=false;
   if (origin.veSeparator) {
     // For VE separators, our origin contains the separator tables
     // already pre-generated and constant accross all instances of

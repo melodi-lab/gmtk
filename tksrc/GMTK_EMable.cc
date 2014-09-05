@@ -1,3 +1,4 @@
+
 /*-
  * GMTK_EMable.cc
  *     A vector used for means of Gaussians.

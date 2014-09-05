@@ -76,6 +76,9 @@ class StreamSource : public ObservationSource {
     if (stream) delete stream;
   }
 
+  // Am I a random access source or not?
+  virtual bool randomAccess() { return false; }
+
   void initialize(unsigned queueLength, unsigned startSkip=0); 
 
   // Resets queue state for starting a new segment & preloads
@@ -185,6 +188,10 @@ class StreamSource : public ObservationSource {
   }
 
   bool active() { return true; }
+
+  // Always returns 0 for StreamSource since it's  not possible to know how 
+  // many segments are in a stream until the stream has been completely read
+  unsigned numSegments() { return 0; }
 
   unsigned segmentNumber() { return (unsigned)segmentNum; }
 

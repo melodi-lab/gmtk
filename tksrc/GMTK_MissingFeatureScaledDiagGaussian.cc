@@ -691,23 +691,39 @@ MissingFeatureScaledDiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& of
   // argument since it doesn't make sense to take log of
   // these values since they are continuous, could be negative, etc.
   if (writeZeros) {
-    const unsigned totalLen = nextMeans.len() + nextDiagCovars.len();
-    for (unsigned i=0;i<totalLen;i++) {
-      ofile.write(0.0,"MissingFeatureScaledDiagGaussian store accums nm + nc.");
+    ofile.writeComment("MFSDG MeanVector %s len %u:  ... nextMeans[i] ...\n", mean->name().c_str(), nextMeans.len());
+    for (unsigned i=0; i < nextMeans.len(); i++) {
+      ofile.write(nextMeans[0], 0.0, "MissingFeatureScaledDiagGaussian store accums nm + nc.");
     }
-    for (int i=0;i<elementAccumulatedProbability.len();i++) {
-      ofile.write(elementAccumulatedProbability[0].valref()*0.0,"El Acc Prob 0.0");
+    ofile.nl();
+    ofile.writeComment("MFSDG DiagCovarVector %s len %u:  ... nextDiagCovars[i] ...\n", covar->name().c_str(), nextDiagCovars.len());
+    for (unsigned i=0; i < nextDiagCovars.len(); i++) {
+      ofile.write(nextDiagCovars[0], 0.0, "MissingFeatureScaledDiagGaussian store accums nm + nc.");
     }
+    ofile.nl();
+    ofile.writeComment("MFSDG elementAccumulatedProbability len %u:  ... elementAccumulatedProbability[i] ...\n",
+		       elementAccumulatedProbability.len());
+    for (int i=0; i < elementAccumulatedProbability.len(); i++) {
+      ofile.write(elementAccumulatedProbability[0].valref(), elementAccumulatedProbability[0].valref()*0.0,"El Acc Prob 0.0");
+    }
+    ofile.nl();
   } else {
+    ofile.writeComment("MFSDG MeanVector %s len %u:  ... nextMeans[i] ...\n", mean->name().c_str(), nextMeans.len());
     for (int i=0;i<nextMeans.len();i++) {
       ofile.write(nextMeans[i],"MissingFeatureScaledDiagGaussian store accums nm.");
     }
+    ofile.nl();
+    ofile.writeComment("MFSDG DiagCovarVector %s len %u:  ... nextDiagCovars[i] ...\n", covar->name().c_str(), nextDiagCovars.len());
     for (int i=0;i<nextDiagCovars.len();i++) {
       ofile.write(nextDiagCovars[i],"MissingFeatureScaledDiagGaussian store accums nc.");
     }
+    ofile.nl();
+    ofile.writeComment("MFSDG elementAccumulatedProbability len %u:  ... elementAccumulatedProbability[i] ...\n",
+		       elementAccumulatedProbability.len());
     for (int i=0;i<elementAccumulatedProbability.len();i++) {
       ofile.write(elementAccumulatedProbability[i].valref(),"El Acc Prob i");
     }
+    ofile.nl();
   }
 }
 
