@@ -119,7 +119,7 @@ main(int argc, char *argv[]) {
 	break;
       }
     }
-    if (!fclose(yyin)) {
+    if (fclose(yyin) != 0) {
       perror(argv[i]);
     }
   }

@@ -8422,6 +8422,7 @@ StructPage::rightMostItemX( void )
 {
 	long xMax = 0;
 	int numNodes = nodes.size();
+	long dummy;
 	// check all nodes (and associated control points)
 	for (int i = 0; i < numNodes; i++) {
 		xMax = ( nodes[i]->center.x <= xMax ? xMax : nodes[i]->center.x );
@@ -8439,7 +8440,7 @@ StructPage::rightMostItemX( void )
 				int end = arcs[i][j]->cps->size() - 1;
 				assert(end > 0);
 				for ( int k = 1; k < end; k++ ) {
-					( (*arcs[i][j]->cps)[k]->pos.x <= xMax
+					dummy = ( (*arcs[i][j]->cps)[k]->pos.x <= xMax
 					  ? xMax
 					  : (*arcs[i][j]->cps)[k]->pos.x );
 				}
@@ -8477,6 +8478,7 @@ StructPage::bottomMostItemY( void )
 {
 	long yMax = 0;
 	int numNodes = nodes.size();
+	long dummy;
 	// check all nodes (and associated control points)
 	for (int i = 0; i < numNodes; i++) {
 		yMax = ( nodes[i]->center.y <= yMax ? yMax : nodes[i]->center.y );
@@ -8494,7 +8496,7 @@ StructPage::bottomMostItemY( void )
 				int end = arcs[i][j]->cps->size() - 1;
 				assert(end > 0);
 				for ( int k = 1; k < end; k++ ) {
-					( (*arcs[i][j]->cps)[k]->pos.y <= yMax
+					dummy = ( (*arcs[i][j]->cps)[k]->pos.y <= yMax
 					  ? yMax
 					  : (*arcs[i][j]->cps)[k]->pos.y );
 				}

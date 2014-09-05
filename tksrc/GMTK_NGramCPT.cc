@@ -16,6 +16,10 @@
  *
  */
 
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 
 #include <vector>
 #include <queue>
@@ -174,7 +178,7 @@ void NGramCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parents, ite
 
     it.drv = drv;
     it.internalStatePtr = ptr;
-    register DiscRVType value = 0;
+    REGISTER DiscRVType value = 0;
 
     p = probBackingOff(value, ptr, it.uInternalState);
     while ( p.essentially_zero() ) {
@@ -373,9 +377,6 @@ void NGramCPT::read(iDataStreamFile &is) {
     NamedObject::read(is);
     is.read(_numParents,"Can't read NGramCPT's num parents");
 
-    if ( _numParents < 0 ) 
-        error("ERROR: reading file '%s' line %d, NGramCPT '%s' trying to use negative (%d) num parents.",
-              is.fileName(),is.lineNo(),name().c_str(),_numParents);
     if ( _numParents >= warningNumParents )
         warning("WARNING: creating NGramCPT '%s' with %d parents in file '%s' line %d", 
             _numParents,name().c_str(),is.fileName(),is.lineNo());

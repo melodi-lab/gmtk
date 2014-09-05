@@ -128,12 +128,14 @@ public:
   // Public interface support for EM
   //////////////////////////////////
   void emStartIteration(sArray<float>& componentsNextMeans);
+  using EMable::emIncrement;
   void emIncrement(const logpr prob,
 		   const float fprob,
 		   const float *f,
 		   const Data32* const base,
 		   const int stride,
 		   float *const partialAccumulatedNextMeans);
+  using EMable::emEndIteration;
   void emEndIteration(const float *const partialAccumulatedNextMeans);
   void emEndIterationSharedMeansCovars(const logpr parentsAccumulatedProbability,
 					     const float*const partialAccumulatedNextMeans,

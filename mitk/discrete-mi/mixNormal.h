@@ -90,7 +90,7 @@ private:
   double _MI;
 
   /** number of samples used in LLN calculation by using "real" data */
-  unsigned _nSamplesMI;
+  // unsigned _nSamplesMI;  appears to be unused
 }; // end class MixNormal
 
 
