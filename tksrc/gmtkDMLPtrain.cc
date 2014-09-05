@@ -37,7 +37,6 @@
 #include "arguments.h"
 #include "ieeeFPsetup.h"
 #include "debug.h"
-#include "version.h"
 
 
 #include "GMTK_FileParser.h"

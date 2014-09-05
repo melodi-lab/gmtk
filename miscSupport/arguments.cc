@@ -74,8 +74,6 @@
  *-----------------------------------------------------------------------
  */
 
-using namespace std;
-
 #include <iostream>
 #include <fstream>
 #include <cstddef>
@@ -89,6 +87,8 @@ using namespace std;
 #if HAVE_CONFIG_H
 #include <config.h>
 #endif
+using namespace std;
+
 
 #if HAVE_HG_H
 #include "hgstamp.h"

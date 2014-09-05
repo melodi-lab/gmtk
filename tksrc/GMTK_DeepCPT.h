@@ -75,13 +75,13 @@ public:
   ///////////////////////////////////////////////////////////    
   // Semi-constructors: useful for debugging.
   // See parent class for further documention.
-  void setNumParents(const int _nParents) {
+  void setNumParents(const unsigned _nParents) {
     assert ( _nParents == 1 );
     CPT::setNumParents(_nParents);
     curParentValues.resize(_nParents);
     bitmask &= ~bm_basicAllocated;
   }
-  void setNumCardinality(const int var, const int card) {
+  void setNumCardinality(const unsigned var, const int card) {
     CPT::setNumCardinality(var,card);
     bitmask &= ~bm_basicAllocated;
   }

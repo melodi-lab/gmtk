@@ -55,9 +55,9 @@ union union_double_int64 {
 // 32-bit unsigned Endian byte swap
 intv_int32_t swapb_i32_i32(intv_int32_t val)
 {
-  register intv_uint32_t uval;
-  register intv_uint32_t res;
-  register intv_int32_t b0, b1, b2, b3;
+  REGISTER intv_uint32_t uval;
+  REGISTER intv_uint32_t res;
+  REGISTER intv_int32_t b0, b1, b2, b3;
 
   uval = (intv_uint32_t) val;
   b0 = uval >> 24;
@@ -73,9 +73,9 @@ intv_int32_t swapb_i32_i32(intv_int32_t val)
 // 64-bit unsigned Endian byte swap
 intv_int64_t swapb_i64_i64(intv_int64_t val)
 {
-  register intv_uint64_t uval;
-  register intv_uint64_t res;
-  register intv_int64_t b0, b1, b2, b3, b4, b5, b6, b7;
+  REGISTER intv_uint64_t uval;
+  REGISTER intv_uint64_t res;
+  REGISTER intv_int64_t b0, b1, b2, b3, b4, b5, b6, b7;
 
   uval = (intv_uint64_t) val;
   b0 =  uval >> 56;

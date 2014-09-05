@@ -49,8 +49,21 @@ AC_CONFIG_SRCDIR([ieeeFPsetup_ANY_ANY.cc])
 AC_CONFIG_HEADER([config.h])
 
 # Checks for programs.
+AC_PROG_CC
 AC_PROG_CXX
-AM_CONDITIONAL([USE_GXX_FLAGS],[test x$GXX = xyes])
+
+#check for Clang, which lies about being GCC
+AC_MSG_CHECKING([if compiling with clang])
+AC_COMPILE_IFELSE(
+[AC_LANG_PROGRAM([],[[
+#ifndef __clang__
+  not clang
+#endif
+]])],
+[CLANG=yes],[CLANG=no])
+AC_MSG_RESULT([$CLANG])
+AM_CONDITIONAL([USE_GXX_FLAGS],[test x$GXX = xyes -a x$CLANG = xno])
+AM_CONDITIONAL([USE_CLANG_FLAGS],[test x$CLANG = xyes])
 
 m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 AC_PROG_RANLIB
