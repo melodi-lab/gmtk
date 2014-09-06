@@ -53,12 +53,14 @@ compile any of GMTK.
 
 gmtkViz requires wxWidgets 2.9.1 or later. On most platforms, it
 will build automatically if a suitable wx-config in in your PATH.
+
 To build gmtkViz on OSX 10.8 or later: We haven't had much success
 building a wxWidgets with GCC that will work with gmtkViz. (If you've 
 had any luck, shoot us an email and let us know how you did it.)
-We suggest installing wxWidgets 3.0.1 via MacPorts and building GMTK
-with Clang (e.g, ./configure CC=clang CXX=clang++). Make sure wx-config
-is in your PATH; it seems to be in 
+We suggest installing wxWidgets 3.0.1 via MacPorts https://www.macports.org/
+and building GMTK with Clang (e.g, ./configure CC=clang CXX=clang++).
+You may also need to install XQuartz http://xquartz.macosforge.org/landing/
+Make sure wx-config is in your PATH; it seems to be in 
 /opt/local/Library/Frameworks/wxWidgets.framework/Versions/wxWidgets/3.0/bin
 when installed via MacPorts.
 
