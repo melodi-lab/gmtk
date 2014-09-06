@@ -35,10 +35,6 @@ use a good CBLAS implementation like MKL or ATLAS to get the best
 performance with gmtkDMLPtrain. See the relevant options in ./configure --help
 
 
-To build gmtkViz , see the following documentation:
-
-https://j.ee.washington.edu/trac/gmtk/wiki/GmtkVizBuildHowTo
-
 gmtkViz (which is a graphical user interface for taking an 
 existing graph structure specified using a .str file, and quickly 
 producing a nice layout of that graph, and a resulting .eps/.pdf file 
