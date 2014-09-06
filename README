@@ -6,7 +6,7 @@
 
 			 How to compile GMTK
 
-			  Updated: December, 2013
+			  Updated: September, 2014
  
 
 GMTK uses a simple GNU Autotools build process. The familiar
@@ -131,9 +131,9 @@ enjoy!!
 
 	-- Jeff Bilmes
 
-     For general questions:
-        -- gmtk-users@melodi.ee.washington.edu
-        -- gmtk-users-request@melodi.ee.washington.edu
+     For general questions:  gmtk-users@u.washington.edu
+     Subscribe to the email list at 
+       http://mailman.u.washington.edu/mailman/listinfo/gmtk-users
 
      For bugs:
         -- https://j.ee.washington.edu/trac/gmtk/newticket
