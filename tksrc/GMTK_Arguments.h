@@ -2229,7 +2229,7 @@ static bool writeLogVals = false;
   }
 
   if (JunctionTree::vitObsFileName && (vitValsFileName || mVitValsFileName) ) {
-    error("%s: -vitValsFileName cannot be used with -vitValsFileName or -mVitValsFileName\n", argerr);
+    error("%s: -vitObsFileName cannot be used with -vitValsFileName or -mVitValsFileName\n", argerr);
   }
 #else
 #endif
