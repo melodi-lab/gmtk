@@ -14,7 +14,9 @@ GMTK uses a simple GNU Autotools build process. The familiar
    ./configure && make && make install
 
 should work on the target platforms (Linux, Mac OS X, and Windows/Cygwin).
-Other POSIX-like platforms might work too. See
+Other POSIX-like platforms might work too. By default, the GMTK programs
+will be installed to /usr/local/bin. You can change that with the --prefix
+option to the configure script. See
 
    ./configure --help
 
@@ -39,7 +41,7 @@ gmtkViz (which is a graphical user interface for taking an
 existing graph structure specified using a .str file, and quickly 
 producing a nice layout of that graph, and a resulting .eps/.pdf file 
 for, say, inclusion in a paper) is only built if a suitable wxWidgets 
-(http://www.wxwidgets.org/) installation (version 2.9 or later) is 
+(http://www.wxwidgets.org/) installation version 2.9 or later is 
 detected at configure time. The "Print to EPS file" option under the 
 file menu does not work with wxWidgets 2.9.2 or earlier due to bugs in 
 wxWidgets. You can use the native OS print-to-file driver to produce 
@@ -47,18 +49,22 @@ a PDF file, but on Linux it seems to generate bitmap rather than vector
 output. Note that wxWidgets is the only external dependence needed to 
 compile any of GMTK. 
 
-gmtkViz requires wxWidgets 2.9.1 or later. On most platforms, it
-will build automatically if a suitable wx-config in in your PATH.
+On most platforms, gmtkViz will be built automatically if a suitable 
+wx-config is available under your PATH environment variable. If a suitable
+wxWidgets installation is not found, gmtkViz will be skipped but the rest 
+of GMTK will build & work fine.
 
 To build gmtkViz on OSX 10.8 or later: We haven't had much success
 building a wxWidgets with GCC that will work with gmtkViz. (If you've 
 had any luck, shoot us an email and let us know how you did it.)
-We suggest installing wxWidgets 3.0.1 via MacPorts https://www.macports.org/
+We suggest installing wxWidgets 3.0.1 via MacPorts https://www.macports.org
 and building GMTK with Clang (e.g, ./configure CC=clang CXX=clang++).
-You may also need to install XQuartz http://xquartz.macosforge.org/landing/
 Make sure wx-config is in your PATH; it seems to be in 
 /opt/local/Library/Frameworks/wxWidgets.framework/Versions/wxWidgets/3.0/bin
-when installed via MacPorts.
+when installed via MacPorts. 
+
+You will also need to install X11 on OSX 10.8 and later in order for gmtkViz
+to build. We recommend installing XQuartz http://xquartz.macosforge.org
 
 gmtkViz is not supported on Cygwin. (If you've had any luck building
 with wxWidgets on Cygwin, shoot us an email and let us in on the
@@ -67,11 +73,11 @@ secret!)
 Note that the main development compiler used for GMTK is GNU
 gcc/g++. Other compilers have also been tested (such as the Clang,
 LLVM-GCC, and the Intel C++ compiler) but not nearly as extensively 
-as gcc/g++. In the below, we will assume gcc/g++.
+as GNU gcc/g++. In the below, we will assume gcc/g++.
 
 GMTK should compile with almost no warnings with the development
-compilers. There is a warning in GMTK_FNGramCPT.cc that we are 
-looking into. 
+compilers. There are a couple of warnings in GMTK_FNGramCPT.cc that
+we are looking into. 
 
 There are a few variables that control the flags passed to the C++
 compiler. You may want to specify them to the make command, though
