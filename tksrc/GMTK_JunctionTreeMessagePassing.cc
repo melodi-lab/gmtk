@@ -60,6 +60,7 @@
 #include "GMTK_JunctionTree.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_Dlinks.h"
+#include "GMTK_DeepVECPT.h"
 #include "GMTK_BinaryViterbiFileUtils.h"
 
 #include "GMTK_RngDecisionTree.h"
@@ -887,7 +888,9 @@ computeVarOrder(vector<RV *> &sectionRVs, regex_t *preg, char sectionLabel, int 
   names.resize(0); // empty it
   // now add the selected names to the vector in output order
   for (unsigned i=0; i < sectionRVs.size(); i+=1) {
-    if (names.size() == nameSet.size()) return; // got all the allowed names
+    if (names.size() == nameSet.size()) {
+      return; // got all the allowed names
+    }
     string name = sectionRVs[i]->name();
     if (nameSet.find(name) != nameSet.end()) {
       names.push_back(name);
@@ -927,53 +930,36 @@ JunctionTree::storeToObsFile(int frame, unsigned segment,
     vitObsFile = instantiateWriteFile(vitObsListName, vitObsFileName, const_cast<char *>(vitObsNameSeparator), 
 				      const_cast<char *>(vitObsFileFmt), 0, vitObsVariableNames.size(), vitObsFileSwap);
   }
-  // actual output. number written must be a multiple of vitObsVariableNames.size()
-  unsigned writtenCount = 0;
+
+  set<string> nameSet;
   for (unsigned i=0; i < rvs.size(); i+=1) {
     unsigned f = rvs[i]->frame();
     assert(f <= 2147483647);
     if (f == (unsigned)frame) {
       if (!reg || !regexec(reg,rvs[i]->name().c_str(),0,0,0)) {
-	if (rvs[i]->name().compare( vitObsVariableNames[writtenCount % vitObsVariableNames.size()]) != 0) {
-	  string nameStr("<");
-	  if (vitObsVariableNames.size()) {
-	    nameStr += vitObsVariableNames[0];
-	    for (unsigned j=1; j < vitObsVariableNames.size(); j+=1) {
-	      nameStr += ", ";
-	      nameStr += vitObsVariableNames[j];
-	    }
-	    nameStr += ">";
-	  }
-	  // Cannot tell if there are missing variables before a correct variable or
-	  // there's an extra variable without diffing the list of correct and selected variables
-	  error("ERROR: Viterbi output to observation file expected to output variable '%s' but got '%s' instead at frame %d in segment %u. "
-		"All sections must output the same sequence of variables %s to the Viterbi observation file. "
-		"'%s' might be an extra variable, or there might be variables missing before it. "
-		"Perhaps the -%cVitRegexFilter is incorrect.\n",
-		vitObsVariableNames[writtenCount % vitObsVariableNames.size()].c_str(), rvs[i]->name().c_str(), frame, segment, 
-		nameStr.c_str(), rvs[i]->name().c_str(), sectionLabel);
+	if (std::find(vitObsVariableNames.begin(), vitObsVariableNames.end(), rvs[i]->name()) == vitObsVariableNames.end()) {
+	  error("ERROR: extra RV %s selected for output in section %c\n", rvs[i]->name().c_str(), sectionLabel);
 	}
-	vitObsFile->writeFeature(  (Data32) ( dynamic_cast<DiscRV *>(rvs[i])->val )  );
-	writtenCount+=1;
+	nameSet.insert(rvs[i]->name());
       }
     }
   }
-  if ( (vitObsVariableNames.size() > 0) && (writtenCount % vitObsVariableNames.size() != 0) ) {
-    // If we get here, we wrote some number of variables in the correct order, but not enough.
-    // There weren't any extras, so the rest must be missing.
-    string nameStr("<");
-    if (vitObsVariableNames.size()) {
-      nameStr += vitObsVariableNames[0];
-      for (unsigned j=1; j < vitObsVariableNames.size(); j+=1) {
-	nameStr += ", ";
-	nameStr += vitObsVariableNames[j];
+  if (nameSet.size() != vitObsVariableNames.size()) {
+    string missingVars("");
+    for (vector<string>::iterator it=vitObsVariableNames.begin(); it != vitObsVariableNames.end(); ++it) {
+      if (nameSet.find(*it) == nameSet.end()) {
+	missingVars.append(*it);
+	missingVars.append(" ");
       }
-      nameStr += ">";
     }
-    error("ERROR: Viterbi output variable '%s' at frame %d in segment %u is missing. "
-	  "All sections must output the same sequence of variables %s to the Viterbi observation file. "
-	  "Perhaps the -%cVitRegexFilter is incorrect.\n", 
-	  vitObsVariableNames[writtenCount % vitObsVariableNames.size()].c_str(), frame, segment, nameStr.c_str(), sectionLabel);
+    error("ERROR: missing RVs %sin %c\n", missingVars.c_str(), sectionLabel);
+  }
+  // actual output. number written must be a multiple of vitObsVariableNames.size()
+  for (unsigned i=0; i < vitObsVariableNames.size(); i+=1) {
+    unsigned j;
+    for (j=0; vitObsVariableNames[i].compare( rvs[j]->name() ); j+=1)
+      ;
+    vitObsFile->writeFeature(  (Data32) ( dynamic_cast<DiscRV *>(rvs[j])->val )  );
   }
 }
 
@@ -1280,6 +1266,7 @@ void JunctionTree::createUnpackingMap(
   //       the number of C's in the unrolled model is known at map
   //       creation time. Thus we should be able to construct only
   //       the E' mapping for only the relevant C'E' transition 
+  //       (Might not apply for gmtkOnline though!)
 
   infoMsg(IM::Printing, IM::Moderate, "\nP':\n");
   vector<RV*> P = partitionStructureArray[0].allrvs_vec;
@@ -1362,6 +1349,10 @@ void JunctionTree::createUnpackingMap(
 	  }
 	  infoMsg(IM::Printing, IM::Moderate, "C(%u) C'[%u] : %s(%u)\n", t, i, target.first.c_str(), target.second);
 	}
+    }
+    // sort C_rvs[i] to ensure the variables end up in the same order as P_rvs and E_rvs
+    for (unsigned i=0; i < nCprimes; i+=1) {
+      sort(C_rvs[i].begin(), C_rvs[i].end(), rvcompare);
     }
     for (unsigned i=0; i < nCprimes; i+=1) {
       CprimeValuePtrs[i].resize(hidCprime_rvs[i].size());
@@ -2502,6 +2493,8 @@ JunctionTree::ceSendForwardsCrossPartitions(// previous partition
  *       JunctionTree::probEvidence()
  *    2) log space version of collect/distribute evidence  
  *       JunctionTree::collectDistributeIsland()
+ *    3) O(Tn) memory version of collect/distribute evidence
+ *       JunctionTree::collectEvidenceOnlyKeepSeps / JunctionTree::distributeEvidenceOnlyKeepSeps
  *
  * Preconditions:
  *   The parititons must have been created and placed in the array partitionStructureArray.
@@ -2697,6 +2690,165 @@ JunctionTree::collectEvidence()
 #endif
 
 }
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::collectEvidenceOnlyKeepSeps()
+ *   
+ *   Collect Evidence: This routine performes a collect evidence pass 
+ *   similar to the constant memory JunctionTree::probEvidenceFixedUnroll(),
+ *   but it keeps the separator cliques around for use in the corresponding
+ *   JunctionTree::distributeEvidenceOnlyKeepSeps() backwards pass.
+ *
+ * See Also:
+ *    1) contant memory (not dept. on time T) version of collect evidence
+ *       JunctionTree::probEvidence()
+ *    2) log space version of collect/distribute evidence  
+ *       JunctionTree::collectDistributeIsland()
+ *
+ * Preconditions:
+ *   The parititons must have been created and placed in the array partitionStructureArray.
+ *
+ * Postconditions:
+ *     All cliques in the partition have all messages but one sent to it.
+ *     The separator cliques are remembered in interfaceTemp for later use
+ *     in JunctionTree::distributeEvidenceOnlyKeepSeps()
+ *
+ * Side Effects:
+ *     all partitions will have been instantiated to the extent that the messages (with
+ *     the current pruning ratios)  have been created.
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+
+logpr
+JunctionTree::collectEvidenceOnlyKeepSeps(const unsigned int numFrames,
+				    unsigned* numUsableFrames)
+{
+  FileSource *gomFS;
+  // This should be safe since gmtkOnline is the only program
+  // that does inference and doesn't use FileSource and gmtkOnline
+  // only uses onlineFixedUnroll
+  gomFS= static_cast<FileSource *>(globalObservationMatrix);
+  assert(typeid(*globalObservationMatrix) == typeid(*gomFS));
+
+  // Unroll, but do not use the long table array (2nd parameter is
+  // false) for allocation, but get back the long table length
+  // in a local variable for use in our iterator.
+  unsigned totalNumberPartitions;
+  {
+    unsigned tmp = unroll(numFrames,ZeroTable,&totalNumberPartitions);
+    gomFS->justifySegment(tmp);
+    if (numUsableFrames) 
+      *numUsableFrames = tmp;
+    // limit scope of tmp.
+  }
+
+  // This routine handles all of:
+  // 
+  //    unrolled 0 times: (so there is a single P1, and E1)  
+  //    unrolled 1 time: so there is a P1, C1, C3, E1
+  //    unrolled 2 or more times: so there is a P1 C1 [C2 ...] C3, E1
+  //    etc.
+
+  // Set up our iterator, write over the member island iterator since
+  // we assume the member does not have any dynamc sub-members.
+  new (&inference_it) ptps_iterator(*this, totalNumberPartitions);
+
+  init_CC_CE_rvs(inference_it);
+
+  PartitionTables* prev_part_tab = NULL;
+  PartitionTables* cur_part_tab = new PartitionTables(inference_it.cur_jt_partition());
+
+  interfaceTemp.resize(inference_it.pt_len());
+
+  // we skip the first Co's LI separator if there is no P1
+  // partition, since otherwise we'll get zero probability.
+  if (inference_it.at_first_c() && P1.cliques.size() == 0) {
+    Co.skipLISeparator();
+  }
+
+  // gather into the root of the current  partition
+  ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
+		   *cur_part_tab,
+		   inference_it.cur_ri(),
+		   inference_it.cur_message_order(),
+		   inference_it.cur_nm(),
+		   inference_it.pt_i());
+
+  // if the LI separator was turned off, we need to turn it back on.
+  if (inference_it.at_first_c() && P1.cliques.size() == 0)
+    Co.useLISeparator();
+
+  unsigned part;
+  for (part=1; part < inference_it.pt_len(); part ++ ) {
+
+    delete prev_part_tab;
+    prev_part_tab = cur_part_tab;
+
+    setCurrentInferenceShiftTo(part);
+    cur_part_tab = new PartitionTables(inference_it.cur_jt_partition());
+      
+    // send from previous to current
+    ceSendForwardsCrossPartitions(// previous partition
+			  partitionStructureArray[inference_it.ps_prev_i()],
+			  *prev_part_tab,
+			  inference_it.prev_ri(),
+			  inference_it.prev_nm(),
+			  inference_it.pt_prev_i(),
+			  // current partition
+			  partitionStructureArray[inference_it.ps_i()],
+			  *cur_part_tab,
+			  inference_it.cur_li(),
+			  inference_it.cur_nm(),
+			  inference_it.pt_i());
+
+    // remember the incoming separator so the forward pass can be re-done in the backward pass
+    unsigned interfaceCliqueNum = 
+      partitionStructureArray[inference_it.ps_i()].separatorCliquesSharedStructure.size()-1;
+    cur_part_tab->separatorCliques[ interfaceCliqueNum ].preserve = true;
+    interfaceTemp[ inference_it.pt_i() ] = cur_part_tab->separatorCliques[ interfaceCliqueNum ];
+
+    // we skip the first Co's LI separator if there is no P1
+    // partition, since otherwise we'll get zero probability.
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.skipLISeparator();
+
+    // it might be that E is the first partition as well, say if this is
+    // a static graph, and in this case we need in this case to skip the
+    // incomming separator, which doesn't exist.
+    if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      E1.skipLISeparator();
+    // next, gather into the root of the partition
+    ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
+		     *cur_part_tab,
+		     inference_it.cur_ri(),
+		     inference_it.cur_message_order(),
+		     inference_it.cur_nm(),
+		     inference_it.pt_i());
+
+    if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      E1.useLISeparator();
+    // if the LI separator was turned off, we need to turn it back on.
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.useLISeparator();
+  }
+  logpr probE;
+  if (viterbiScore) {
+    probE = cur_part_tab->maxCliques[E_root_clique].maxProb();
+  } else {
+    probE = cur_part_tab->maxCliques[E_root_clique].sumProbabilities();
+  }
+  delete cur_part_tab;
+  delete prev_part_tab;
+  return probE;
+}
+
 
 
 
@@ -3102,6 +3254,162 @@ JunctionTree::distributeEvidence()
 #endif
 }
 
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::distributeEvidence()
+ *   
+ *   Distribute Evidence: This routine performs a complete distribute
+ *   evidence pass for this series of partitions that have run
+ *   JunctionTree::collectEvidenceOnlyKeepSeps()
+ *
+ *   After distributeEvidence() is called, all cliques in all
+ *   partitions will be locally (& globally if it is a JT) consistant, and so will
+ *   be ready for EM training, etc.
+ *
+ * See Also:
+ *    0) collectEvidence()
+ *    1) contant memory (not dept. on time T) version of collect evidence
+ *       JunctionTree::probEvidence()
+ *    2) log space version of collect/distribute evidence  
+ *       JunctionTree::collectDistributeIsland()
+ *
+ * Preconditions:
+ *   - collectEvidenceOnlyKeepSeps() must have been called right before this.
+ *   - The parititons must have been created and placed in the array partitionStructureArray.
+ *   - inference_it must be initialized to the current segment
+ *   - the pair of partition RVS set up correct.
+ * 
+ *
+ * Postconditions:
+ *     All cliques are now locally consistant, and will be globally consistant
+ *     if we have a junction tree. 
+ *
+ * Side Effects:
+ *     all partitions will have been instantiated to the extent that the messages (with
+ *     the current pruning ratios)  have been created.
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+
+void
+JunctionTree::distributeEvidenceOnlyKeepSeps()
+{
+  setCurrentInferenceShiftTo(inference_it.pt_len()-1);
+
+  PartitionTables* prev_part_tab = NULL;
+  PartitionTables* cur_part_tab  = new PartitionTables(inference_it.cur_jt_partition());
+
+  unsigned interfaceCliqueNum;
+
+  // re-do E' gather into root using remembered separator clique
+  if (!inference_it.at_first_entry()) {
+    interfaceCliqueNum = partitionStructureArray[inference_it.ps_i()].separatorCliquesSharedStructure.size()-1;
+    cur_part_tab->separatorCliques[ interfaceCliqueNum ] = interfaceTemp[ inference_it.pt_i() ];
+    interfaceTemp[ inference_it.pt_i() ].preserve = false;
+  }
+
+  if (inference_it.at_first_c() && P1.cliques.size() == 0)
+    Co.skipLISeparator();
+  else  if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+    E1.skipLISeparator();
+  
+  ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
+		   *cur_part_tab,
+		   inference_it.cur_ri(),
+		   inference_it.cur_message_order(),
+		   inference_it.cur_nm(),
+		   inference_it.pt_i(), false, false);
+
+  cur_part_tab->maxCliques[inference_it.cur_ri()].
+    maxProbability(partitionStructureArray[inference_it.ps_i()].maxCliquesSharedStructure[inference_it.cur_ri()], true);
+
+  for (unsigned part= (inference_it.pt_len()-1) ; part > 0 ; part -- ) {
+
+    setCurrentInferenceShiftTo(part);
+
+    // distribute evidence to the current partition
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.skipLISeparator();
+    else  if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      E1.skipLISeparator();
+
+    deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
+		       *cur_part_tab,
+		       inference_it.cur_ri(),
+		       inference_it.cur_message_order(),
+		       inference_it.cur_nm(),
+		       inference_it.pt_i());
+
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.useLISeparator();
+    else if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      E1.useLISeparator();
+
+    if (viterbiScore)
+      recordPartitionViterbiValue(inference_it);
+
+    // reconstruct previous partition
+
+    setCurrentInferenceShiftTo(part-1);
+    prev_part_tab = new PartitionTables(inference_it.cur_jt_partition());
+
+    if (!inference_it.at_first_entry()) {
+      interfaceCliqueNum = partitionStructureArray[inference_it.ps_i()].separatorCliquesSharedStructure.size()-1;
+      prev_part_tab->separatorCliques[ interfaceCliqueNum ] = interfaceTemp[ inference_it.pt_i() ];
+      interfaceTemp[ inference_it.pt_i() ].preserve = false;
+    }
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.skipLISeparator();
+    else  if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      E1.skipLISeparator();
+
+    ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
+		     *prev_part_tab,
+		     inference_it.cur_ri(),
+		     inference_it.cur_message_order(),
+		     inference_it.cur_nm(),
+		     inference_it.pt_i());
+
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.useLISeparator();
+    else if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      E1.useLISeparator();
+    setCurrentInferenceShiftTo(part);
+
+    // send backwads message to previous partition
+    deSendBackwardsCrossPartitions(partitionStructureArray[inference_it.ps_prev_i()], // previous
+                                   *prev_part_tab,
+				   inference_it.prev_ri(),
+				   inference_it.prev_nm(),
+				   inference_it.pt_prev_i(),
+				   // current partition
+				   partitionStructureArray[inference_it.ps_i()],
+				   *cur_part_tab,
+				   inference_it.cur_li(),
+				   inference_it.cur_nm(),
+				   inference_it.pt_i());
+    //    partitionTableArray[inference_it.pt_i()] = *cur_part_tab;
+
+    delete cur_part_tab;
+    cur_part_tab = prev_part_tab;
+  }
+
+  setCurrentInferenceShiftTo(0);
+
+  // do the final scatter out of root of initial P partition.
+  deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
+		     *cur_part_tab,
+		     inference_it.cur_ri(),
+		     inference_it.cur_message_order(),
+		     inference_it.cur_nm(),
+		     inference_it.pt_i());
+
+  if (viterbiScore)
+    recordPartitionViterbiValue(inference_it);
+}
 
 
 /*-
@@ -3524,11 +3832,6 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
     if (inference_it.at_first_c() && P1.cliques.size() == 0)
       Co.skipLISeparator();
 
-    // we skip the first Co's LI separator if there is no P1
-    // partition, since otherwise we'll get zero probability.
-    if (inference_it.at_first_c() && P1.cliques.size() == 0)
-      Co.skipLISeparator();
-
     // it might be that E is the first partition as well, say if this is
     // a static graph, and in this case we need in this case to skip the
     // incomming separator, which doesn't exist.
@@ -3803,9 +4106,12 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
   unsigned M = gm_template.M;
   unsigned S = gm_template.S;
 
-  if ((unsigned) Dlinks::globalMinLag() > globalObservationMatrix->startSkip()) {
-    error("ERROR: -startSkip must be at least %d\n", Dlinks::globalMinLag());
-  }
+  // GMParms has checked that -startSkip is big enough
+
+  // The StreamSource doesn't implement -endSkip since the
+  // stream's length is unknown, but ObservationSource::minFutureFrames()
+  // has the correct number of frames to skip at the end
+
   if (fp.numFramesInC() == 0) {
     error("ERROR: gmtkOnline does not support empty chunks\n");
   }
@@ -3835,7 +4141,7 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
     fp.numFramesInP() + 
     ( (3+tau) * S + M ) * fp.numFramesInC() + 
     fp.numFramesInE() +
-    Dlinks::globalMaxLag();
+    globalObservationMatrix->minFutureFrames();
   // Assume the above won't over-flow with just 5 partitions
 
   unsigned numNewFrames = fp.numFramesInC() * S;
@@ -3854,6 +4160,8 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
     viterbiScore = false; // avoid allocating space for O(T) viterbi values in unroll()
 
     if (T > 0) {
+      T -= globalObservationMatrix->minFutureFrames(); // fake -endSkip
+
       // We already know the length of this segment (it's probably
       // very short, since we only try to pre-load enough frames to
       // process P' C' C' C' E'), so we can pass the true number of
@@ -4146,7 +4454,15 @@ printf("learned T=%u at %u %u\n", globalObservationMatrix->numFrames(), part, in
       int      modTempMinUnrollAmnt;
       unsigned numUsableFrm;
       unsigned frmStart;
-      if (!gm_template.computeUnrollParameters(globalObservationMatrix->numFrames(),
+      unsigned T;
+
+      if ( globalObservationMatrix->numFrames() <= globalObservationMatrix->minFutureFrames() )
+	error("Segment of %d frames too short as model requires at least %d frames\n", 
+	      globalObservationMatrix->numFrames() + globalObservationMatrix->minPastFrames(), 
+	      globalObservationMatrix->minPastFrames() + fp.numFramesInP() + fp.numFramesInE() + globalObservationMatrix->minFutureFrames());
+    
+      T  = globalObservationMatrix->numFrames() - globalObservationMatrix->minFutureFrames();
+      if (!gm_template.computeUnrollParameters(T,
 					       basicTempMaxUnrollAmnt,
 					       basicTempMinUnrollAmnt,
 					       modTempMaxUnrollAmnt,
@@ -4154,7 +4470,7 @@ printf("learned T=%u at %u %u\n", globalObservationMatrix->numFrames(), part, in
 					       numUsableFrm,
 					       frmStart))
 	error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, different template, or decrease M,S if >1.\n",
-	      globalObservationMatrix->numFrames(),
+	      T,
 	      fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
 	      fp.numFrames(),
 	      gm_template.M,gm_template.S);

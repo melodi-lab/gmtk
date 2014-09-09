@@ -31,8 +31,6 @@ using namespace std;
 class BinaryFile: public ObservationFile {
 
   bool        swap;
-  bool        cppIfAscii;
-  char const *cppCommandOptions;
   unsigned    numFileNames;             // number of filenames
 
   char      *fofName;
@@ -77,7 +75,6 @@ class BinaryFile: public ObservationFile {
 	     char const *outputNameSeparatorStr, bool swap, unsigned nfloats, unsigned nints) 
     : outputFileName(outputFileName), outputNameSeparatorStr(outputNameSeparatorStr), oswap(swap)
   {
-    cppCommandOptions = NULL;
     fofName = NULL;
     fofFile = NULL;
     curDataFile = NULL;

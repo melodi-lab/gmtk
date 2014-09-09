@@ -1167,6 +1167,9 @@ LinMeanCondDiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& ofile,
   // since this is a Gaussian, we ignore the writeLogVals
   // argument since it doesn't make sense to take log of
   // these values since they are continuous, could be negative, etc.
+  ofile.writeComment("LinMeanCondDiagGaussian %s xAcc len %u  xxAcc len %u  xzAcc len %u  zzAcc len %u  zAcc len %u:"
+		     " ... xAcc[i] ... xxAcc[i] ... xzAcc[i] ... zzAcc[i] ... zAcc[i] ...\n", name().c_str(), 
+		     xAccumulators.len(), xxAccumulators.len(), xzAccumulators.len(), zzAccumulators.len(), zAccumulators.len());
   if (writeZeros) {
     const unsigned totalLen = 
       xAccumulators.len()+ 
@@ -1175,7 +1178,7 @@ LinMeanCondDiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& ofile,
       zzAccumulators.len()+ 
       zAccumulators.len();
     for (unsigned i=0;i<totalLen;i++) {
-      ofile.write(0.0,"LMDG zero accums x.");
+      ofile.write(xAccumulators[0], 0.0,"LMDG zero accums x.");
     }
   } else {
     for (int i=0;i<xAccumulators.len();i++) {

@@ -1,17 +1,30 @@
 #! /bin/sh
 
 echo PATH is $PATH
-echo autoconf is `which autoconf`
-autoconf --version
-echo 
-echo automake is `which automake`
-automake --version
-echo 
-echo gcc is `which gcc`
+echo
+if [ -d .hg ]; then
+  echo autoconf is `which autoconf`
+  autoconf --version
+  echo 
+  echo automake is `which automake`
+  automake --version
+  echo
+fi
+echo gcc is at `which gcc`
 gcc --version
 echo 
-echo g++ is `which g++`
+echo g++ is at `which g++`
 g++ --version
 echo
-echo CC is $CC
-echo CXX is $CXX 
+if [ x$CC != x ]; then
+  echo CC is $CC at `which $CC`
+  $CC --version
+  echo
+fi
+if [ x$CXX != x ]; then
+  echo CXX is $CXX at `which $CXX`
+  $CXX --version
+  echo
+fi
+echo wx-config is at `which wx-config`
+wx-config --version

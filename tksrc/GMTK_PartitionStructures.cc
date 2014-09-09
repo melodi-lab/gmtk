@@ -25,6 +25,7 @@
 #include <iterator>
 #include <map>
 #include <set>
+#include <string>
 #include <algorithm>
 #include <new>
 
@@ -156,6 +157,7 @@ PartitionStructures::PartitionStructures(JT_Partition& from_part,
       }
     }
     assert(allrvs_vec.size() == allrvs.size());
+    sort(allrvs_vec.begin(), allrvs_vec.end(), rvcompare);
 
     // now need to create the packer for the hidden variables.
     hidRVVector.clear();

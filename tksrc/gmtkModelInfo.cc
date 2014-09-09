@@ -23,7 +23,6 @@
 #include "ieeeFPsetup.h"
 #include "debug.h"
 //#include "spi.h"
-#include "version.h"
 
 #if HAVE_CONFIG_H
 #include <config.h>

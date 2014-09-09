@@ -57,7 +57,8 @@ public:
 
   static bool     resumeTraining;  // should this invocation resume where the last left off?
   static bool     checkSignal;     // if true, print status as if end of check interval
-  static bool     sparseInitLayer; // select layer initialization method
+  static bool     randomInitLayer; // randomly initialize layers if true, else use existing weights from master file
+  static bool     sparseInitLayer; // select sparse or dense layer initialization method
   static unsigned nnChunkSize;     // O(1) space to use for (non-minibatch) incremental processing
 
   enum PretrainType {
@@ -1018,7 +1019,7 @@ assert(d.NumC() == l.NumC());
       unsigned layer;
       for (layer = 0; layer < _layers.size() - 1; ++layer) {
 	const HyperParams & hyperParams = hyperParams_pt[layer];
-	InitLayer(layer);
+	if (randomInitLayer) InitLayer(layer);
 	
 	Layer::ActFunc lowerActFunc = (layer == 0) ? _iActFunc : _hActFunc[layer-1];
 	if (layer == 0) {
@@ -1068,7 +1069,7 @@ assert(d.NumC() == l.NumC());
 	if (layer > 0) _layers[layer - 1].Clear(); // save some memory
       }
 
-      InitLayer(_layers.size() - 1);
+      if (randomInitLayer) InitLayer(_layers.size() - 1);
       
       if (hyperParams_pt.back().pretrainType != NONE) {
 	// pretrain output layer

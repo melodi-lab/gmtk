@@ -1,9 +1,29 @@
+
+/* The ISO C99 standard specifies that in C++ implementations some
+   macros should only be defined if explicitly requested.  */
+#define __STDC_LIMIT_MACROS 1
+#define __STDC_CONSTANT_MACROS 1
+   // The ISO C99 standard specifies that the macros in inttypes.h must
+   //  only be defined if explicitly requested. 
+#define __STDC_FORMAT_MACROS 1
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_INTTYPES_H
+#  include <inttypes.h>
+#endif
+#if HAVE_STDINT_H
+#  include <stdint.h>
+#endif
+
 #include <assert.h>
 #include <cctype>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+
 
 #include "vbyteswapping.h"
 
@@ -35,9 +55,9 @@ union union_double_int64 {
 // 32-bit unsigned Endian byte swap
 intv_int32_t swapb_i32_i32(intv_int32_t val)
 {
-  register intv_uint32_t uval;
-  register intv_uint32_t res;
-  register intv_int32_t b0, b1, b2, b3;
+  REGISTER intv_uint32_t uval;
+  REGISTER intv_uint32_t res;
+  REGISTER intv_int32_t b0, b1, b2, b3;
 
   uval = (intv_uint32_t) val;
   b0 = uval >> 24;
@@ -53,18 +73,18 @@ intv_int32_t swapb_i32_i32(intv_int32_t val)
 // 64-bit unsigned Endian byte swap
 intv_int64_t swapb_i64_i64(intv_int64_t val)
 {
-  register intv_uint64_t uval;
-  register intv_uint64_t res;
-  register intv_int64_t b0, b1, b2, b3, b4, b5, b6, b7;
+  REGISTER intv_uint64_t uval;
+  REGISTER intv_uint64_t res;
+  REGISTER intv_int64_t b0, b1, b2, b3, b4, b5, b6, b7;
 
   uval = (intv_uint64_t) val;
   b0 =  uval >> 56;
-  b1 = (uval >> 40) & 0x000000000000ff00;
-  b2 = (uval >> 24) & 0x0000000000ff0000;
-  b3 = (uval >>  8) & 0x00000000ff000000;
-  b4 = (uval <<  8) & 0x000000ff00000000;
-  b5 = (uval << 24) & 0x0000ff0000000000;
-  b6 = (uval << 40) & 0x00ff000000000000;
+  b1 = (uval >> 40) & INT64_C(0x000000000000ff00);
+  b2 = (uval >> 24) & INT64_C(0x0000000000ff0000);
+  b3 = (uval >>  8) & INT64_C(0x00000000ff000000);
+  b4 = (uval <<  8) & INT64_C(0x000000ff00000000);
+  b5 = (uval << 24) & INT64_C(0x0000ff0000000000);
+  b6 = (uval << 40) & INT64_C(0x00ff000000000000);
   b7 =  uval << 56;
 
   res = b0 | b1 | b2 | b3 | b4 | b5 | b6 | b7;

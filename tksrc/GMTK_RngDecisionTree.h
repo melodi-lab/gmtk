@@ -29,6 +29,7 @@
  */
 
 
+
 #ifndef GMTK_RNG_DECISION_TREE_H
 #define GMTK_RNG_DECISION_TREE_H
 
@@ -65,6 +66,9 @@ class JunctionTree;
 // The maximum range value
 #define MAX_BP_RANGE_VALUE 100000000
 
+/////////////////////////////////////////////////
+// The maximum number of DT parents
+#define MAX_DT_PARENTS 32
 
 /////////////////////////////////////////////////
 // The string that is used to specify the 'fail' case
@@ -691,7 +695,8 @@ public:
   // will evaluate to 0.
   leafNodeValType query(const vector < RV* >& arr,
 			const RV* rv) {
-    assert ( unsigned(arr.size()) == _numFeatures );
+    if (_numFeatures != ~0x0U)  //  ~0x0U means variable # features
+      assert ( unsigned(arr.size()) == _numFeatures );
     return queryRecurse(arr,root,rv);
   }
 

@@ -479,7 +479,7 @@ class ObservationMatrix {
   }
 
   bool elementIsContinuous(unsigned el) {
-    return (el >= 0 && el < _numContinuous);
+    return (el < _numContinuous);
   }
   /////////////////////////////////////////////////////////////
 

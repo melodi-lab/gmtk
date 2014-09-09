@@ -60,6 +60,10 @@ class DeepVECPT : public CPT {
   // to the deep model for frame t
   unsigned window_radius; 
 
+  // max over all DVECPT window radii. this is the minimum
+  // required -startSkip
+  static unsigned globalMinSkip;
+
   // number of floats per frame taken from the file
   unsigned nfs;
 
@@ -75,9 +79,13 @@ class DeepVECPT : public CPT {
   // current parent value
   unsigned curParentValue;
 
+#if 0
+  // unused
+
   ////////////////
   // the value
   int _val;
+#endif
 
   ////////////////
   // the Deep Multi-Layer Perceptron
@@ -133,16 +141,17 @@ public:
 
   unsigned obsOffset() { return obs_file_foffset; }
   
+  static unsigned minSkip() { return globalMinSkip; }
 
   ///////////////////////////////////////////////////////////    
   // Semi-constructors: useful for debugging.
   // See parent class for further documention.
-  void setNumParents(const int _nParents) {
+  void setNumParents(const unsigned _nParents) {
     assert ( _nParents == 1 );
     CPT::setNumParents(_nParents);
     bitmask &= ~bm_basicAllocated;
   }
-  void setNumCardinality(const int var, const int card) {
+  void setNumCardinality(const unsigned var, const int card) {
     if (var == 1) {
       // setting child card.
       assert ( card == 2);

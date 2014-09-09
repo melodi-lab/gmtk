@@ -1,0 +1,27 @@
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/6 is fixed
+
+
+# If it's fixed, the switching_weight_debug and dual_accumulator.sp_bug
+# should work without crashing, even in the presence of cpbeam pruning
+
+# It would be good to add a test case that gets the weights from the observations too
+
+AT_SETUP([switching weights for continuous RVs (ticket 6)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/switching_weight_debug])
+AT_CHECK([(cd $TEST_AND_DEV/switching_weight_debug && \
+  gmtkJT -strFile model.str -of1 spectrum-sid1.pfile  \
+    -of2 pep-lengths-sid1.pfile -fdiffact2 rl \
+  -inputMasterFile model.mtr -inputTrainableParameters \
+   trained.params -viterbiScore T -cpbeam 1000)],[],[ignore],[ignore])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/dual_accumulator.sp_bug])
+AT_CHECK([(cd $TEST_AND_DEV/dual_accumulator.sp_bug && \
+  gmtkEMtrain -strFile dual_accumulator.str \
+      -triFile dual_accumulator.str.trifile \
+      -inputMasterFile dual_accumulator.master \
+      -outputMasterFile out.master \
+      -objsNotToTrain params.notrain \
+      -of1 data/strict-orbitrap-processed-spectrum.pfile \
+      -of2 data/strict-orbitrap-processed-peptide.pfile  \
+      -fdiffact1 rl -dirichletPriors T -cbeam 0.5e10 \
+      -maxEmIters 5)], [], [ignore], [ignore])
+AT_CLEANUP

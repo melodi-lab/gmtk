@@ -268,8 +268,12 @@ registerAllCFunctionDeterministicMappings(GMParms& gmp)
   gmp.registerDeterministicCMapper("internal:conditionalLimitedDecrement",
 				   CONDITIONAL_LIMITED_DECREMENT_NUM_FEATURES,
 				   DETERMINISTIC_MAPPER_C_CODE_NAME(conditionalLimitedDecrement));
-  // TODO: add the variable parent deterministic mappers once the DT code can accept variable numbers of parens.
-  // ...
+  gmp.registerDeterministicCMapper("internal:allParentsEqual",
+				   CDT_VARIABLE_NUMBER_FEATURES,
+				   DETERMINISTIC_MAPPER_C_CODE_NAME(allParentsEqual));
+  gmp.registerDeterministicCMapper("internal:allParentsUnEqual",
+				   CDT_VARIABLE_NUMBER_FEATURES,
+				   DETERMINISTIC_MAPPER_C_CODE_NAME(allParentsUnEqual));
   // DO NOT CHANGE ANYTHING IN THE ABOVE FEW LINES ENDING HERE.
   ///////////////////////////////////////////////////////////////////////
 

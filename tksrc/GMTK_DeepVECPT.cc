@@ -72,6 +72,7 @@ radius:0   % use a single frame as input to the model
 
 VCID(HGID)
 
+unsigned DeepVECPT::globalMinSkip = 0;
 
 ////////////////////////////////////////////////////////////////////
 //        General create, read, destroy routines 
@@ -208,6 +209,7 @@ DeepVECPT::read(iDataStreamFile& is)
 	if (obs->minFutureFrames() < window_radius) {
 	  obs->setMinFutureFrames(window_radius);
 	}
+	if (window_radius > globalMinSkip) globalMinSkip = window_radius;
       }
       else if(option_name == "prior_1dpmf") {
 	if (prior) {
@@ -347,7 +349,7 @@ DeepVECPT::becomeAwareOfParentValues( vector <RV *>& parents, const RV* rv ) {
 
 logpr
 DeepVECPT::applyNN(DiscRVType parentValue, DiscRV * drv) {
-  register DiscRVType val = drv->val;
+  REGISTER DiscRVType val = drv->val;
 
   logpr p((void*)NULL);
 

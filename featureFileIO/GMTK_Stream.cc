@@ -204,7 +204,7 @@ StreamInfo::StreamInfo(const char *name, const char *crng_str,
    srRng= new Range(sr_range_str,0,fullFofSize);
    assert(srRng != NULL);
    if(!fullFofSize || (unsigned) srRng->last() >= (unsigned) fullFofSize)
-     error("ERROR: Specified per-stream sentence range (%s) exceeds total number of sentences (%d).",srRng->GetDefStr(),fullFofSize);
+     error("ERROR: Specified per-stream segment range (%s) exceeds total number of segments (%d).",srRng->GetDefStr(),fullFofSize);
    
    fofSize = srRng->length();
 }
