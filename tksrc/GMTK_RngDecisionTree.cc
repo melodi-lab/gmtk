@@ -356,9 +356,9 @@ RngDecisionTree::read(iDataStreamFile& is)
     // that a DT is non-iterable, so hopefully this will be safe.  - Richard
     
     dtFileName = is.fileName(); // for ticket #182
-    if (_numFeatures < 0) {
-      error("ERROR: in DT named '%s', file '%s' line %d, decision tree must have >= 0 features",
-      name().c_str(), is.fileName(),is.lineNo());
+    if (_numFeatures > MAX_DT_PARENTS) {
+      error("ERROR: in DT named '%s', file '%s' line %d, decision tree must have <= %u features",
+	    name().c_str(), is.fileName(),is.lineNo(), MAX_DT_PARENTS);
     }
 
     if (root != NULL) {
@@ -2668,11 +2668,12 @@ RngDecisionTree::nextIterableDT()
   // read in the rest of the DT.
   dtFile->read(curName,"cur name");
   dtFile->read(_numFeatures,"num feats");
-  if (_numFeatures <= 0)
-    error("ERROR: reading dynamic decision tree '%s' with current name '%s' from file '%s', but decision tree must have > 0 features",
+  if (_numFeatures > MAX_DT_PARENTS)
+    error("ERROR: reading dynamic decision tree '%s' with current name '%s' from file '%s', but decision tree must have <= %u features",
 	  name().c_str(),
 	  curName.c_str(),
-	  dtFile->fileName());
+	  dtFile->fileName(),
+	  MAX_DT_PARENTS);
   root = new Node;
   readRecurse(*dtFile,*root);
 }
@@ -2704,7 +2705,7 @@ void
 RngDecisionTree::writeIndexFile()
 {
   int      numDTs;
-  unsigned position;
+  int      position;
   int      i;
 
   assert(iterable()); 
@@ -2756,9 +2757,9 @@ RngDecisionTree::writeIndexFile()
     // read in the rest of the DT.
     dtFile->read(curName,"cur name");
     dtFile->read(_numFeatures,"num feats");
-    if (_numFeatures <= 0) {
-      error("ERROR: reading dynamic decision tree '%s' with current name '%s' from file '%s', but decision tree must have > 0 features", 
-        name().c_str(), curName.c_str(), dtFile->fileName());
+    if (_numFeatures > MAX_DT_PARENTS) {
+      error("ERROR: reading dynamic decision tree '%s' with current name '%s' from file '%s', but decision tree must have <= %u features", 
+	    name().c_str(), curName.c_str(), dtFile->fileName(), MAX_DT_PARENTS);
     } 
 
 
@@ -2794,6 +2795,7 @@ RngDecisionTree::write(oDataStreamFile& os)
   NamedObject::write(os);
   os.nl();
   if (!iterable()) {
+    if (LeafNodeCFunction == root->nodeType) return; // ticket #536
     os.write(_numFeatures,"RngDecisionTree:: write numFeatures");
     os.nl();
     writeRecurse(os,root,0);

@@ -634,16 +634,21 @@ void Dense1DPMF::emStoreObjectsAccumulators(oDataStreamFile& ofile,
 					    bool writeLogVals,
 					    bool writeZeros)
 {
+  if (writeLogVals) {
+    ofile.writeComment("Dense1DPMF %s len %u:  ... log(nextPmf[i]) ... ", name().c_str(), nextPmf.len());
+  } else {
+    ofile.writeComment("Dense1DPMF %s len %u:  ... nextPmf[i] ... ", name().c_str(), nextPmf.len());
+  }
   if (writeZeros) {
     if (writeLogVals) {
       logpr z;
       z.set_to_zero();
       for (int i=0;i<nextPmf.len();i++) {
-	ofile.write(z.val(),"DPMF store accums");
+	ofile.write(nextPmf[0].val(), z.val(),"DPMF store accums");
       }   
     } else {
       for (int i=0;i<nextPmf.len();i++) {
-	ofile.write(0.0,"DPMF store accums");
+	ofile.write(nextPmf[0].val(), 0.0,"DPMF store accums");
       }   
     } 
   } else {
@@ -657,6 +662,7 @@ void Dense1DPMF::emStoreObjectsAccumulators(oDataStreamFile& ofile,
       }
     }
   }
+  ofile.nl();
 }
 
 void Dense1DPMF::emLoadObjectsDummyAccumulators(iDataStreamFile& ifile)

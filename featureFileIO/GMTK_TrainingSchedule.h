@@ -111,7 +111,7 @@ class TrainingSchedule {
 		   bool one_hot, unsigned window_radius, unsigned unit_size, 
 		   FileSource *obs_source, char const *trrng_str);
 
-  ~TrainingSchedule() {
+  virtual ~TrainingSchedule() {
     if (trrng) delete trrng;
     if (unit_data) delete[] unit_data;
     if (heated_labels) delete[] heated_labels;

@@ -17,14 +17,9 @@
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-static const char * gmtk_version_id = PACKAGE_STRING;
 #  ifdef HAVE_HG_H
 #    include "hgstamp.h"
 #  endif
-
-#else 
-// TODO: automate the process of updating this string.
-static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 2004";
 #endif
 
 #include "general.h"
@@ -68,6 +63,7 @@ Arg Arg::Args[] = {
   Arg()
 };
 
+RAND rnd(false);
 
 int 
 main(int argc, char *argv[]) {
@@ -99,7 +95,7 @@ main(int argc, char *argv[]) {
   FileSource *f = instantiateFileSource();
   for (unsigned j=0; j < f->numSegments(); j+=1) {
     assert(f->openSegment(j));
-    printf("Processing sentence %u\n", j);
+    printf("Processing segment %u\n", j);
     unsigned k;
     for (k=0; k < f->numFrames() % chunkSize; k+=1) {
       //      printf("%03u %03u", j, k);

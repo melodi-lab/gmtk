@@ -6400,7 +6400,6 @@ unrollAndTriangulate(// triangulate heuristics
   parseTriHeuristicString(tri_heur_str,tri_heur);
   const set <RV*> emptySet;
 
-  if (numTimes >= 0) {
     vector <RV*> rvs;
     map < RVInfo::rvParent, unsigned > pos;
     set <RV*> rvsSet;
@@ -6465,7 +6464,6 @@ unrollAndTriangulate(// triangulate heuristics
 	   maxWeightCliqueSize,
 	   totalWeight);
     printf("\n");
-  }
 }
 
 

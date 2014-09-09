@@ -224,13 +224,13 @@ static void obsDiff(FileSource *obs_mat1,
        const size_t n2_frames = obs_mat2->numFrames();
 
 	if (print_count ++ % 100 == 0) 
-	  printf("Processing sentence %d and %d\n",(*srit1),(*srit2));
+	  printf("Processing segment %d and %d\n",(*srit1),(*srit2));
 
 	Range pr1rng(pr1_str,0,n1_frames);
 	Range pr2rng(pr2_str,0,n2_frames);
 
 	if (pr1rng.length() != pr2rng.length()) {
-	  error("Num frames of per-sentence ranges in sentences %d of file1 and %d of file2 different. pf1 = %d, pf2 = %d\n", 
+	  error("Num frames of per-segment ranges in segments %d of file1 and %d of file2 different. pf1 = %d, pf2 = %d\n", 
 		(*srit1),(*srit2),pr1rng.length(),pr2rng.length());
 	}
 
@@ -414,15 +414,15 @@ Arg Arg::Args[] = {
   Arg("fmt2", Arg::Opt,ifmtStr[1] ,"Format of 2nd input file"),
   Arg("iswp1",  Arg::Tog, iswap[0],"Byte-swap file 1"),
   Arg("iswp2",  Arg::Tog, iswap[1],"Byte-swap file 2"),
-  Arg("sr",     Arg::Opt, sr_str,"Sentence range for both files"),
-  Arg("sr1",     Arg::Opt, sr1_str,"Sentence range for 1st file"),
-  Arg("sr2",     Arg::Opt, sr2_str,"sentence range for 2nd file"),
+  Arg("sr",     Arg::Opt, sr_str,"Segment range for both files"),
+  Arg("sr1",     Arg::Opt, sr1_str,"Segment range for 1st file"),
+  Arg("sr2",     Arg::Opt, sr2_str,"segment range for 2nd file"),
   Arg("fr",     Arg::Opt, fr_str,"Range of features selected.  Applies to both files"),
   Arg("fr1",     Arg::Opt, fr1_str,"Range of features selected from 1st file"),
   Arg("fr2",     Arg::Opt, fr2_str,"Range of features selected from 2nd file"),
-  Arg("pr",     Arg::Opt, pr_str,"Per-sentence frame range for both files"),
-  Arg("pr1",     Arg::Opt, pr1_str,"Per-sentence frame range for 1st file"),
-  Arg("pr2",     Arg::Opt, pr2_str,"Per-sentence frame range for 2nd file"),
+  Arg("pr",     Arg::Opt, pr_str,"Per-segment frame range for both files"),
+  Arg("pr1",     Arg::Opt, pr1_str,"Per-segment frame range for 1st file"),
+  Arg("pr2",     Arg::Opt, pr2_str,"Per-segment frame range for 2nd file"),
   Arg("ir",     Arg::Opt, lr_str,"Int range for both files"),
   Arg("ir1",     Arg::Opt, lr1_str,"Int range for 1st file"),
   Arg("ir2",     Arg::Opt, lr2_str,"Int range for 2nd file"),

@@ -18,8 +18,6 @@
 #include <config.h>
 #endif
 
-using namespace std;
-
 // added this to keep gcc -pedantic flag from complaining
 // about incompatibilities with not defining certain
 // extern "C" functions with the 'throw()' directive
@@ -36,6 +34,8 @@ using namespace std;
 
 #include <vector>
 #include <string>
+using namespace std;
+
 
 #include "machine-dependent.h"
 

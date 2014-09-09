@@ -87,8 +87,11 @@ class MixBiNormal {
   double *cur_alphas; // mixing coefficents
   Mean  *cur_means;
   CoVar *cur_covars;
+#if 0
+  // seems to be unused
   bool curParmsAreRandom; // true when the cur_* values are random.
-  
+#endif
+
   
   CoVarHelp *cur_covars_help;
   CholCoVar *cur_chol; // used for sampling

@@ -902,6 +902,7 @@ oDataStreamFile::oDataStreamFile(const char *const _name,bool _Binary, bool _App
 
 oDataStreamFile::~oDataStreamFile()
 {
+  fflush(fh);
   if (fclose(fh) != 0) {
     warning("WARNING: Can't close file '%s'.",fileName());
   }
@@ -1076,6 +1077,7 @@ bool oDataStreamFile::writeComment(const char *comment, ...)
     va_start(ap,comment);
     (void) vfprintf(fh, comment, ap);
     va_end(ap);
+    return flush("writeComment");
   }
   return true;
 }
@@ -1118,7 +1120,7 @@ bool oDataStreamFile::nl(const char *msg)
   if (Binary) {
   } else {
     if (fprintf(fh,"\n") == 0) 
-      return errorReturn("indent",msg);
+      return errorReturn("nl",msg);
   }
   _curLineNo++;
   return true;

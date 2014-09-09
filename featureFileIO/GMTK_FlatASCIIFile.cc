@@ -40,8 +40,6 @@ FlatASCIIFile::FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints,
 		    preFrameRangeStr_,
 		    segRangeStr_,
 		    leftPad, rightPad),
-    cppIfAscii(cppIfAscii),
-    cppCommandOptions(cppCommandOptions),
     close(true)
 {
   buffer = NULL;
@@ -198,8 +196,7 @@ FlatASCIIFile::FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints,
 
 
 FlatASCIIFile::FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints) 
-  : ObservationFile(NULL, 0, NULL, NULL, NULL, NULL),
-    cppIfAscii(false), cppCommandOptions(NULL)
+  : ObservationFile(NULL, 0, NULL, NULL, NULL, NULL)
 {
   _numContinuousFeatures = _numLogicalContinuousFeatures = nfloats;
   _numDiscreteFeatures   = _numLogicalDiscreteFeatures   = nints;
@@ -262,6 +259,7 @@ FlatASCIIFile::writeFrame(Data32 const *frame) {
     fprintf(writeFile, " %u", *((unsigned *)frame++));
   }
   fprintf(writeFile, "\n");
+  fflush(writeFile);
   currFeature = 0;
 }
 
@@ -284,6 +282,7 @@ FlatASCIIFile::writeFeature(Data32 x) {
   currFeature += 1;
   if (currFeature == _numFeatures) {
     fprintf(writeFile, "\n");
+    fflush(writeFile);
     currFrame += 1;
     currFeature = 0;
   }

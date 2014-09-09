@@ -38,6 +38,10 @@
  *
  */
 
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 
 #include <math.h>
 #include <stdlib.h>
@@ -1776,7 +1780,7 @@ MaxClique::sortAndAssignDispositions(const char *varCliqueAssignmentPrior)
   // continuation score than there are sorted assigned nodes because
   // we may want to do pruning at the very last node.
   sortedAssignedContinuationScores.resize(sortedAssignedNodes.size()+1);
-  if (cliqueBeamContinuationHeuristic) {
+  if (cliqueBeamContinuationHeuristic && cliqueBeamBuildBeam != (-LZERO) /* ie, default -cpbeam meaning no pruning */ ) {
     // TODO: do something better than just using global max value, like local max value
     // of the current rv.
     sortedAssignedContinuationScores.ptr[sortedAssignedNodes.size()] = 1.0;
@@ -3777,7 +3781,7 @@ MaxCliqueTable::ceIterateAssignedNodesNoRecurse(MaxCliqueTable::SharedLocalStruc
 	    // continue going until we get one that is unfinished and within beam.
 	    unfinished = cur_rv->next(cur_p);
 	    if (unfinished) {
-	      register logpr tmp = parray[nodeNumber-1]*cur_p;
+	      REGISTER logpr tmp = parray[nodeNumber-1]*cur_p;
 	      if (tmp*origin.sortedAssignedContinuationScores[nodeNumber]  
 		  > cliqueBeamThresholdEstimate) {
 		parray[nodeNumber] = tmp;
@@ -3855,7 +3859,7 @@ MaxCliqueTable::ceIterateAssignedNodesNoRecurse(MaxCliqueTable::SharedLocalStruc
 	  cur_rv->begin(cur_p);
 	  // might get a zero probability, check condition here.
 	  // TODO: keep result in temp and only write back out if need be. @@@
-	  register logpr tmp =  parray[nodeNumber-1]*cur_p;
+	  REGISTER logpr tmp =  parray[nodeNumber-1]*cur_p;
 	  if (tmp*origin.sortedAssignedContinuationScores[nodeNumber] 
 	      <= cliqueBeamThresholdEstimate) {
 	    // We just did a begin and got zero on the first try. 
@@ -3872,7 +3876,7 @@ MaxCliqueTable::ceIterateAssignedNodesNoRecurse(MaxCliqueTable::SharedLocalStruc
 	{
 	  cur_rv->probGivenParents(cur_p);
 	  // might get a zero probability, check condition here.
-	  register logpr tmp = parray[nodeNumber-1]*cur_p;
+	  REGISTER logpr tmp = parray[nodeNumber-1]*cur_p;
 	  if (tmp*origin.sortedAssignedContinuationScores[nodeNumber] 
 	      <= cliqueBeamThresholdEstimate) {
 	    // Since we have zero here, we cancel iterations of all
@@ -6009,10 +6013,10 @@ maxProb()
   // since max is bad for ilp.
 
   // check for empty clique and if so, return zero.
-  register logpr mx0 = cliqueValues.ptr[0].p;
+  REGISTER logpr mx0 = cliqueValues.ptr[0].p;
   if (numCliqueValuesUsed == 1)
     return mx0;
-  register logpr mx1 = cliqueValues.ptr[1].p;
+  REGISTER logpr mx1 = cliqueValues.ptr[1].p;
   // find the max score clique entry
   unsigned end_loc = numCliqueValuesUsed & ~0x1;
   for (unsigned cvn=2;cvn<end_loc;cvn+=2) {
@@ -6200,6 +6204,7 @@ printCliqueEntries(MaxCliqueTable::SharedLocalStructure& sharedStructure,
       }
     }
     printRVSetAndValues(f,sharedStructure.fNodes);
+    fflush(f);
   }
 }
 
@@ -8471,14 +8476,14 @@ reportMemoryUsageTo(FILE *f)
  */
 ConditionalSeparatorTable::
 ConditionalSeparatorTable(SeparatorClique& origin)
-  : separatorValues(NULL),iAccHashMap(NULL)
+  : separatorValues(NULL),iAccHashMap(NULL),preserve(false)
 {
   init(origin);
 }
 
 void ConditionalSeparatorTable::init(SeparatorClique& origin) 
 {
-
+  preserve=false;
   if (origin.veSeparator) {
     // For VE separators, our origin contains the separator tables
     // already pre-generated and constant accross all instances of

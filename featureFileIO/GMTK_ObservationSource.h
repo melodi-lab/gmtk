@@ -36,6 +36,10 @@ class ObservationSource {
 
  public:
 
+  virtual ~ObservationSource() {};
+
+  // Am I a random access source or not?
+  virtual bool randomAccess() = 0;
 
   // The number of continuous, discrete, total features in the observed data
   virtual unsigned numContinuous() = 0;

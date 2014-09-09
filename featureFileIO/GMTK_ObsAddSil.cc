@@ -90,14 +90,14 @@ void addSil(FILE* out_fp,
 	Range prerng(pre_str,0,n_frames);
 
 	if (prbrng.length() == 0 && nb != 0)
-	  error("No frames to compute beginning silence, sentence %d\n",
+	  error("No frames to compute beginning silence, segment %d\n",
 		(*srit));
 	if (prerng.length() == 0 && ne != 0)
-	  error("No frames to compute beginning silence, sentence %d\n",
+	  error("No frames to compute beginning silence, segment %d\n",
 		(*srit));
 
 	if ((*srit) % 100 == 0)
-	  printf("Processing sentence %d\n",(*srit));
+	  printf("Processing segment %d\n",(*srit));
 
         // Increase size of buffers if needed.
         if (n_frames > buf_size)

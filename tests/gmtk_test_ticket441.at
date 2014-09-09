@@ -4,15 +4,24 @@
 AT_SETUP([infinite loop in posterior output (ticket 441)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/didea_vesep_testCliquePrint])
 AT_SKIP_IF([test `hostname` = "xpc"])
+AT_SKIP_IF([test x$CXX = x])
+AT_SKIP_IF([test `hostname` = "PEACOCK" -o `hostname` = "jbltv"])
 
 AT_CHECK([
-  g++ -O3 -DHAVE_CONFIG_H -fPIC -c -o dlopen_cfunc_dts.o              \
+  if test x${CXX} = x; then
+    if test x`which g++` != x -a -x `which g++`; then
+      export CXX=g++
+    else
+      export CXX=c++
+    fi
+  fi
+  $CXX -O3 -DHAVE_CONFIG_H -fPIC -c -o dlopen_cfunc_dts.o             \
       -I$srcdir/../miscSupport -I$builddir/../miscSupport             \
       -I$srcdir/../featureFileIO -I$builddir/../featureFileIO         \
       -I$srcdir/../IEEEFloatingpoint -I$builddir/../IEEEFloatingpoint \
       -I$srcdir/../tksrc -I$builddir/../tksrc                         \
       $TEST_AND_DEV/didea_vesep_testCliquePrint/dlopen_cfunc_dts.cc
-  g++ -O3 -shared -o dlopen_cfunc_dts.so dlopen_cfunc_dts.o],
+  $CXX -O3 -shared -o dlopen_cfunc_dts.so dlopen_cfunc_dts.o],
   [], [ignore], [ignore])
 
 # gmtkJT will succeed if the bug is fixed

@@ -57,8 +57,6 @@ class StreamSource : public ObservationSource {
   // low-level stream driver (ASCII, binary, merge, filter)
   ObservationStream *stream;
 
-  unsigned curFrame;
-
   unsigned _startSkip;
 
   unsigned _minPastFrames;
@@ -75,6 +73,9 @@ class StreamSource : public ObservationSource {
     if (cookedBuffer) delete[] cookedBuffer;
     if (stream) delete stream;
   }
+
+  // Am I a random access source or not?
+  virtual bool randomAccess() { return false; }
 
   void initialize(unsigned queueLength, unsigned startSkip=0); 
 
