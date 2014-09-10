@@ -6,6 +6,11 @@ See COPYING or http://opensource.org/licenses/OSL-3.0
 
 Please report bugs at https://j.ee.washington.edu/trac/gmtk
 
+Version 1.1.1  2014-09-10
+        * Fixed wxWidgets key press handling regression in 
+          gmtkViz on Linux
+        * Added buildhelp.sh to assist in diagnosing build problems
+
 Version 1.1.0  2014-09-05
         * Added support for building on OS X 10.9 / Clang
         * Added new space-efficient inference mode
