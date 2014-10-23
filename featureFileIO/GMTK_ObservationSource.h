@@ -109,13 +109,13 @@ class ObservationSource {
   // Return the vector/feature @ the specified frame. Note that these use
   // loadFrames() internally, and so are subject to the same restrictions
   // discussed above.
-  virtual float *const floatVecAtFrame(unsigned f) = 0;
-  virtual float *const floatVecAtFrame(unsigned f, const unsigned startFeature) = 0;
+  virtual float  const * floatVecAtFrame(unsigned f) = 0;
+  virtual float  const * floatVecAtFrame(unsigned f, const unsigned startFeature) = 0;
 
-  virtual unsigned *const unsignedVecAtFrame(unsigned f) = 0;
+  virtual unsigned  const * unsignedVecAtFrame(unsigned f) = 0;
   virtual unsigned &unsignedAtFrame(const unsigned frame, const unsigned feature) = 0;
 
-  virtual Data32 const * const baseAtFrame(unsigned f) = 0;
+  virtual Data32 const * baseAtFrame(unsigned f) = 0;
 
   // Returns true iff the specified element is discrete
   virtual bool elementIsDiscrete(unsigned el) {

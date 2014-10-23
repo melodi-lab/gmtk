@@ -457,15 +457,15 @@ FileSource::active() {
 // The following all just use loadFrames() to ensure the requested frame
 // is present in the cookedBuffer.
 
-float *const 
+float  const * 
 FileSource::floatVecAtFrame(unsigned f) {
   assert(0 <= f && f < numFrames());
   Data32 const * buf = loadFrames(f, 1);
-  return(float *const) buf;
+  return(float  const *) buf;
 }
 
 
-unsigned *const 
+unsigned  const * 
 FileSource::unsignedVecAtFrame(unsigned f) {
   assert(0 <=f && f < numFrames());
   return (unsigned *)(loadFrames(f,1) + numContinuous());
@@ -480,7 +480,7 @@ FileSource::unsignedAtFrame(const unsigned frame, const unsigned feature) {
 }
 
 
-float *const 
+float  const * 
 FileSource::floatVecAtFrame(unsigned f, const unsigned startFeature) {
   assert (0 <= f && f < numFrames());
   float *result = (float*)(loadFrames(f,1) + startFeature);
@@ -488,7 +488,7 @@ FileSource::floatVecAtFrame(unsigned f, const unsigned startFeature) {
 }
 
 
-Data32 const * const
+Data32 const *
 FileSource::baseAtFrame(unsigned f) {
   assert(0 <= f && f < numFrames());
   Data32 const * featuresBase = loadFrames(f,1);

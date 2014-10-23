@@ -324,15 +324,15 @@ class FileSource: public ObservationSource {
 
   // Note that the following call loadFrames() internally
 
-  float *const floatVecAtFrame(unsigned f);
+  float  const * floatVecAtFrame(unsigned f);
 
-  float *const floatVecAtFrame(unsigned f, const unsigned startFeature);
+  float  const * floatVecAtFrame(unsigned f, const unsigned startFeature);
 
-  unsigned *const unsignedVecAtFrame(unsigned f);
+  unsigned  const * unsignedVecAtFrame(unsigned f);
 
   unsigned &unsignedAtFrame(const unsigned frame, const unsigned feature);
 
-  Data32 const * const baseAtFrame(unsigned f);
+  Data32 const * baseAtFrame(unsigned f);
 
 };
 

@@ -161,14 +161,14 @@ class StreamSource : public ObservationSource {
   void setMinPastFrames(unsigned n) {_minPastFrames = n > _minPastFrames ? n : _minPastFrames;}
   void setMinFutureFrames(unsigned n) {_minFutureFrames = n > _minFutureFrames ? n : _minFutureFrames;}
 
-  float *const floatVecAtFrame(unsigned f) {return (float *)loadFrames(f,1);}
+  float  const * floatVecAtFrame(unsigned f) {return (float *)loadFrames(f,1);}
 
-  float *const floatVecAtFrame(unsigned f, const unsigned startFeature) {
+  float  const * floatVecAtFrame(unsigned f, const unsigned startFeature) {
     assert(startFeature < numContinuous());
     return floatVecAtFrame(f)+startFeature;
   }
 
-  unsigned *const unsignedVecAtFrame(unsigned f) {
+  unsigned  const * unsignedVecAtFrame(unsigned f) {
     return (unsigned *)loadFrames(f,1) + numContinuous();
   }
 
@@ -177,7 +177,7 @@ class StreamSource : public ObservationSource {
     return ((unsigned *)baseAtFrame(frame))[feature];
   }
 
-  Data32 const * const baseAtFrame(unsigned f) {
+  Data32 const * baseAtFrame(unsigned f) {
     return loadFrames(f,1);
   }
 

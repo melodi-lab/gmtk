@@ -108,7 +108,7 @@ public:
     iterator& operator --();  // prefix
     iterator operator --(int) { iterator tmp=*this; --*this; return tmp; }
     
-    const int operator *() { return cur_value; }
+    int operator *() { return cur_value; }
     operator int() { return cur_value; }
 
     bool operator ==(const iterator& it){ return (cur_value == it.cur_value);}
@@ -149,7 +149,7 @@ public:
 
   ////////////////////////////////////////////////////////
   // returns a pointer to the range string.
-  char*const rangeStr  () const { return range_str; };
+  char const *rangeStr  () const { return range_str; };
 
   // returns true if r has any overlap with this (i.e., if
   // the intersection is non-null)

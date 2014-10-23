@@ -106,7 +106,11 @@ public:
 
     int full(void);	// is this the range of "all"?
 
+#if 0
     const RangeList getRangeList(void) const { return rangeList; }
+#else
+    RangeNode const * getRangeList(void) const { return rangeList; }
+#endif
 
 protected:
     bool permuted;
@@ -243,7 +247,7 @@ public:
 
       bool at_end(void) const { return atEnd; }
       int val(void) const    { return ith(cur_pos); }
-      const int operator *(void) const { return ith(cur_pos); }
+      int operator *(void) const { return ith(cur_pos); }
       operator int(void) const         { return ith(cur_pos); }
 
       int operator ==(const permuter& it){ return (ith(cur_pos) == it.val());}
@@ -261,7 +265,7 @@ public:
       const Range* myrange;
 
       // Stuff for regular range lists
-      RangeNode* cur_node;
+      RangeNode const * cur_node;
 
       // stuff for file management
       const char *filename;
@@ -298,7 +302,7 @@ public:
 
       int at_end(void) const { if (p) return p->at_end(); else return atEnd; }
       int val(void) const    { if (p) return p->val(); else return cur_value; }
-      const int operator *(void) const { if (p) return p->val(); else return cur_value; }
+      int operator *(void) const { if (p) return p->val(); else return cur_value; }
       operator int(void) const         { if (p) return p->val(); else return cur_value; }
 
       // Does the range we're currently in end in a finite value, 

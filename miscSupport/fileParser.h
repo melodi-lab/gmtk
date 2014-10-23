@@ -48,7 +48,7 @@ class ioDataStreamFile {
   ~ioDataStreamFile() { }
 
   bool binary() { return Binary; }
-  const char *const fileName() { return _fileName.c_str(); }
+  char const *fileName() { return _fileName.c_str(); }
   int lineNo() { return _curLineNo; }
 
   gmtk_off_t ftell() const { return(gmtk_ftell(fh)); }

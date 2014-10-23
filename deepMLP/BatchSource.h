@@ -174,8 +174,8 @@ class MatrixBatchSource : public BatchSource {
 // Stream batches from a TrainingSchedule
 class ScheduleBatchSource : public BatchSource {
   TrainingSchedule *schedule;
-  float            *TSfeatures;   // current unit's instance data
-  float            *TSlabels;     // current unit's label data
+  float const      *TSfeatures;   // current unit's instance data
+  float const      *TSlabels;     // current unit's label data
   unsigned          unitSize;     // # instances in current training unit
   unsigned          curInstance;  // index of current instance within current unit
 

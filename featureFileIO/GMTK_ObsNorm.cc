@@ -187,8 +187,8 @@ void obsNorm(FILE*  out_fp,
       UInt32* olab_buf_p = olab_buf;
       
       for(unsigned frame_no = 0;  frame_no < n_frames; ++frame_no) {
-	float* start_of_frame = obs_mat->floatVecAtFrame(frame_no);
-	UInt32* lab_buf_p =  obs_mat->unsignedVecAtFrame(frame_no);
+	float  const *start_of_frame = obs_mat->floatVecAtFrame(frame_no);
+	UInt32 const *lab_buf_p =  obs_mat->unsignedVecAtFrame(frame_no);
 	ftr_means_p = ftr_means;
 	ftr_stds_p = ftr_stds;
 	for(unsigned feat_no = 0;  feat_no < n_ftrs; ++feat_no) {

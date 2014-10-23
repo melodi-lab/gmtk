@@ -75,7 +75,7 @@ class TrainingSchedule {
 
   // Returns floatVecAtFrame(frame) - window_radius * stride + feature_offset
   // Ensures data for frames [frame - window_radius, frame + length + window_radius) are in memory
-  virtual float *getObservations(unsigned segment, unsigned frame, unsigned &length) {
+  virtual float const *getObservations(unsigned segment, unsigned frame, unsigned &length) {
     segment = trrng->index(segment);
     if (!obs_source->openSegment(segment)) {
 	error("ERROR: Unable to open observation file segment %u\n", segment);
@@ -145,8 +145,9 @@ class TrainingSchedule {
 
   virtual float *getFeatures(unsigned segment, unsigned frame, unsigned &length) {
     unsigned frames_per_instance = 2 * window_radius + 1;
-    float *obsData = getObservations(segment, frame, length);
-    float *dest = unit_data, *src;
+    float const *obsData = getObservations(segment, frame, length);
+    float *dest = unit_data;
+    float const *src;
     for (unsigned b=0; b < length; b+=1) {    // loop over instances in unit
       src = obsData + b * stride;             //   first frame of current instance
       for (unsigned w=0; w < frames_per_instance; w+=1) { // loop over frames in instance
@@ -181,7 +182,7 @@ class TrainingSchedule {
   // for every element of the domain.
   // length is set to the number of training instances it contains.
   // Note that some training schedules may return units shorter than unit_size.
-  virtual float *getLabels(unsigned segment, unsigned frame, unsigned &length);
+  virtual float const *getLabels(unsigned segment, unsigned frame, unsigned &length);
 
 
   // Describes the label matrix returned by getLabels()
