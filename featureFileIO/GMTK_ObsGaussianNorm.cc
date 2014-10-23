@@ -482,7 +482,7 @@ void gaussianNorm(FILE* out_fp,
 	    }
 
 	    for(unsigned frame_no = 0;  frame_no < n_frames; ++frame_no) {
-	      float* start_of_frame = obs_mat->floatVecAtFrame(frame_no);
+	      float const * start_of_frame = obs_mat->floatVecAtFrame(frame_no);
 	      for(unsigned feat_no = 0;  feat_no < n_ftrs; ++feat_no) {
 		ftr_buf[frame_no * n_ftrs + feat_no] = *(start_of_frame  + feat_no);
 	      }
@@ -565,7 +565,7 @@ void gaussianNorm(FILE* out_fp,
 	    printf("Processing segment %d\n",(*srit1));
 
 	  for(unsigned frame_no = 0;  frame_no < n_frames; ++frame_no) {
-	    float* start_of_frame = obs_mat->floatVecAtFrame(frame_no);
+	    float const* start_of_frame = obs_mat->floatVecAtFrame(frame_no);
 	    for(unsigned feat_no = 0;  feat_no < n_ftrs; ++feat_no) {
 	      ftr_buf[frame_no * n_ftrs + feat_no] = *(start_of_frame  + feat_no);
 	    }

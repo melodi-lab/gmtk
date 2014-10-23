@@ -424,22 +424,22 @@ class ObservationMatrix {
     _numFrames -= n;
   }
 
-  Data32*const baseAtFrame(unsigned f) {
+  Data32 const * baseAtFrame(unsigned f) {
     assert (f >= 0 && f < _numFrames);
     return featuresBase + _stride*f;
   }
 
-  float*const floatVecAtFrame(unsigned f) {
+  float const * floatVecAtFrame(unsigned f) {
     assert (f >= 0 && f < _numFrames);
     return (float*)(featuresBase + _stride*f);
   }
   
-  float*const floatAtFrame(unsigned f) {
+  float const * floatAtFrame(unsigned f) {
     assert (f >= 0 && f < _numFrames);
     return (float*)(featuresBase + _stride*f);
   }
 
-  float*const floatVecAtFrame(unsigned f, 
+  float const * floatVecAtFrame(unsigned f, 
 			      const unsigned startFeature,
 			      const unsigned len) {
     assert (f >= 0 && f < _numFrames);
@@ -448,7 +448,7 @@ class ObservationMatrix {
   }
 
 
-  float*const floatVecAtFrame(unsigned f, 
+  float const * floatVecAtFrame(unsigned f, 
 			      const unsigned startFeature) {
     assert (f >= 0 && f < _numFrames);
     return (float*)(featuresBase + _stride*f + startFeature);
@@ -461,7 +461,7 @@ class ObservationMatrix {
   }
 
   // TODO: change name to unsignedVecAtFrame
-  unsigned*const unsignedAtFrame(unsigned f) {
+  unsigned const * unsignedAtFrame(unsigned f) {
     assert (f >= 0 && f < _numFrames);
     return (unsigned*)(featuresBase + _stride*f + _numContinuous);
   }

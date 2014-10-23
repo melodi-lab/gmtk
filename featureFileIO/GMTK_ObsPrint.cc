@@ -321,8 +321,8 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
   const size_t n_labs = gomFS->numDiscrete();
   const size_t n_ftrs = gomFS->numContinuous();
 
-  float *ftr_buf_p;
-  UInt32* lab_buf_p;
+  float  const *ftr_buf_p;
+  UInt32 const *lab_buf_p;
   
   float *oftr_buf=NULL,*oftr_buf_p=NULL;
   UInt32* olab_buf=NULL,* olab_buf_p=NULL;

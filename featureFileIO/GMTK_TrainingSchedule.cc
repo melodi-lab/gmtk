@@ -81,7 +81,7 @@ TrainingSchedule::TrainingSchedule(unsigned feature_offset, unsigned features_pe
 }
 
 
-float *
+float const *
 TrainingSchedule::getLabels(unsigned segment, unsigned frame, unsigned &length) {
   segment = trrng->index(segment);
   if (!obs_source->openSegment(segment)) {
@@ -92,7 +92,7 @@ TrainingSchedule::getLabels(unsigned segment, unsigned frame, unsigned &length) 
   (void) obs_source->loadFrames(frame, length); // ensure necessary data is in memory
   if (one_hot) {
     memset(heated_labels, 0, label_domain_size * unit_size * sizeof(float));
-    unsigned *labels = obs_source->unsignedVecAtFrame(frame) + 
+    unsigned const *labels = obs_source->unsignedVecAtFrame(frame) + 
       label_offset - obs_source->numContinuous();
     float *dest = heated_labels;
     for (unsigned i=0; i < length; i+=1, labels += stride, dest += label_domain_size) {
