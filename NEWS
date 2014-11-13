@@ -6,6 +6,11 @@ See COPYING or http://opensource.org/licenses/OSL-3.0
 
 Please report bugs at https://j.ee.washington.edu/trac/gmtk
 
+For general questions:  gmtk-users@u.washington.edu
+Subscribe to the email list at
+  http://mailman.u.washington.edu/mailman/listinfo/gmtk-users
+
+
 Version 1.1.1  2014-09-10
         * Fixed wxWidgets key press handling regression in 
           gmtkViz on Linux
