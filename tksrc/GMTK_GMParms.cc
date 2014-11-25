@@ -124,6 +124,161 @@ GMParms::GMParms()
 }
 
 
+
+void GMParms::clearParms() {
+    mdCpts.clear();
+    mdCptsMap.clear();
+
+    msCpts.clear();
+    msCptsMap.clear();
+
+    mtCpts.clear();
+    mtCptsMap.clear();
+
+    dts.clear();
+    dtsMap.clear();
+
+    ncls.clear();
+    nclsMap.clear();
+
+    dPmfs.clear();
+    dPmfsMap.clear();
+
+    means.clear();
+    meansMap.clear();
+
+    covars.clear();
+    covarsMap.clear();
+
+    components.clear();
+    componentsMap.clear();
+
+    mixtures.clear();
+    mixturesMap.clear();
+
+    registerAllCFunctionDeterministicMappings(*this);
+}
+
+
+
+GMParms & GMParms::operator=(const GMParms & that) {
+        if(this  == &that) return *this;
+
+        //registerAllCFunctionDeterministicMappings(*this);
+        this->dPmfs = that.dPmfs;
+        this->dPmfsMap = that.dPmfsMap;
+
+        this->sPmfs = that.sPmfs;
+        this->sPmfsMap = that.sPmfsMap;
+
+        this->means = that.means;
+        this->meansMap = that.meansMap;
+        
+        this->covars = that.covars;
+        this->covarsMap = that.covarsMap;
+
+        this->dLinkMats = that.dLinkMats;
+        this->dLinkMatsMap = that.dLinkMatsMap;
+
+        this->realMats = that.realMats;
+        this->realMatsMap = that.realMatsMap;
+
+        this->doubleMats = that.doubleMats;
+        this->doubleMatsMap = that.doubleMatsMap;
+
+        this->dirichletTabs = that.dirichletTabs;
+        this->dirichletTabsMap = that.dirichletTabsMap;
+
+        this->components = that.components;
+        this->componentsMap = that.componentsMap;
+
+
+
+        this->mdCpts = that.mdCpts;
+        this->mdCptsMap = that.mdCptsMap;
+
+        this->msCpts = that.msCpts;
+        this->msCptsMap = that.msCptsMap;
+
+        this->mtCpts = that.mtCpts;
+        this->mtCptsMap = that.mtCptsMap;
+
+        this->vocabs = that.vocabs;
+        this->vocabsMap = that.vocabsMap;
+
+
+
+        this->ngramCpts = that.ngramCpts;
+        this->ngramCptsMap = that.ngramCptsMap;
+
+        this->fngramCpts = that.fngramCpts;
+        this->fngramCptsMap = that.fngramCptsMap;
+
+        this->fngramImps = that.fngramImps;
+        this->fngramImpsMap = that.fngramImpsMap;
+
+
+
+        this->latticeAdts = that.latticeAdts;
+        this->latticeAdtsMap = that.latticeAdtsMap;
+
+        this->iterableLatticeAdts = that.iterableLatticeAdts;
+
+        this->latticeNodeCpts = that.latticeNodeCpts;
+        this->latticeNodeCptsMap = that.latticeNodeCptsMap;
+
+        this->latticeEdgeCpts = that.latticeEdgeCpts;
+        this->latticeEdgeCptsMap = that.latticeEdgeCptsMap;
+
+
+
+        this->veCpts = that.veCpts;
+        this->veCptsMap = that.veCptsMap;
+
+        this->deepVECpts = that.deepVECpts;
+        this->deepVECptsMap = that.deepVECptsMap;
+
+        this->deepCpts = that.deepCpts;
+        this->deepCptsMap = that.deepCptsMap;
+
+        this->deepNNs = that.deepNNs;
+        this->deepNNsMap = that.deepNNsMap;
+
+
+
+        this->mixtures = that.mixtures;
+        this->mixturesMap = that.mixturesMap;
+
+        this->gausSwitchingMixtures = that.gausSwitchingMixtures;
+        this->gausSwitchingMixturesMap = that.gausSwitchingMixturesMap;
+
+        this->logitSwitchingMixtures = that.logitSwitchingMixtures;
+        this->logitSwitchingMixturesMap = that.logitSwitchingMixturesMap;
+
+        this->mlpSwitchingMixtures = that.mlpSwitchingMixtures;
+        this->mlpSwitchingMixturesMap = that.mlpSwitchingMixturesMap;
+
+
+
+        this->dts = that.dts;
+        this->dtsMap = that.dtsMap;
+
+        this->iterableDts = that.iterableDts;
+
+        this->dLinks = that.dLinks;
+        this->dLinksMap = that.dLinksMap;
+        
+        this->ncls = that.ncls;
+        this->nclsMap = that.nclsMap;
+    
+        this->gm = that.gm;
+
+        this->firstUtterance = that.firstUtterance;
+
+        return *this;
+    }
+
+
 GMParms::~GMParms()
 {
   deleteObsInVector(dPmfs);
@@ -1035,6 +1190,7 @@ GMParms::readDTs(
     // if you ever call this function with 'reset = true'.
     start = 0;
     dts.resize(num);
+    //dtsMap.clear();
   } else {
     start = dts.size();
     dts.resize(start+num);
@@ -1059,7 +1215,7 @@ GMParms::readDTs(
     if (ob->iterable()) {
       iterableDts.push_back(ob);
     } 
-  }   
+  }
 }
 
 
@@ -1205,6 +1361,7 @@ GMParms::readNameCollections(iDataStreamFile& is, bool reset)
   if (reset) {
     start = 0;
     ncls.resize(num);
+    //nclsMap.clear();
   } else {
     start = ncls.size();
     ncls.resize(start+num);
@@ -1604,6 +1761,170 @@ GMParms::read(
   }
 
 }
+
+
+
+void 
+GMParms::readReset(
+  iDataStreamFile& is, bool reset
+  )
+{
+  // read a file consisting of a list of keyword,filename
+  // pairs. the keyword says which structure to read in,
+  // and the filename says where to get it.
+  string keyword;
+  string fileName;
+  string binStatus;
+
+  const string INLINE_FILE_KEYWORD("inline");
+  
+  map<string,iDataStreamFile*> fileNameMap;
+  fileNameMap[INLINE_FILE_KEYWORD] = &is;
+
+  while (is.readString(keyword)) {
+
+    // fprintf(stderr,"read keyword '%s'\n",keyword.c_str());
+
+    if (!is.readString(fileName)) {
+      error("ERROR: while reading file '%s' line %d , got keyword '%s' without a filename",
+	    is.fileName(),is.lineNo(),keyword.c_str());
+    }
+
+    bool binary_p = is.binary();
+    if (fileName != INLINE_FILE_KEYWORD) {
+      // read binary status of file if this is not an inline declarator
+      if (!is.readString(binStatus)) {
+	error("ERROR: while reading file '%s' line %d, got keyword '%s' and filename '%s' without a binary status",
+	      is.fileName(),is.lineNo(),keyword.c_str(),fileName.c_str());
+      }
+      if (binStatus == "ascii" || binStatus == "ASCII")
+	binary_p = false;
+      else if (binStatus == "binary" || binStatus == "BINARY")
+	binary_p = true;
+      else {
+	error("ERROR: while reading file '%s' line %d, got string '%s' when expecting 'ascii'/'binary' keyword",
+	      is.fileName(),is.lineNo(),binStatus.c_str());
+      }
+      infoMsg(Low+9,"Reading keyword '%s' from %s file '%s'.\n",
+	      keyword.c_str(),(binary_p?"binary":"ASCII"),
+	      fileName.c_str());
+    } else {
+      infoMsg(Low+9,"Reading keyword '%s' from inline.\n",keyword.c_str());
+    }
+
+    map<string,iDataStreamFile*>::iterator it = fileNameMap.find(fileName);
+    if (it == fileNameMap.end()) {
+      fileNameMap[fileName] = new iDataStreamFile(fileName.c_str(),binary_p);
+      it = fileNameMap.find(fileName);
+    } else if (((*it).second)->binary() != binary_p) {
+      error("ERROR: reading '%s'. File '%s' line %d had binary status = %d, now binary status = %d. Can't mix binary and ASCII files",
+	    is.fileName(),is.lineNo(),fileName.c_str(),((*it).second)->binary(),binary_p);
+    }
+
+    if (keyword == "DPMF_IN_FILE") {
+      readDPmfs(*((*it).second),reset);
+
+    } else if (keyword == "SPMF_IN_FILE") {
+      readSPmfs(*((*it).second),reset);
+
+    } else if (keyword == "MEAN_IN_FILE") {
+      readMeans(*((*it).second),reset);
+
+    } else if (keyword == "COVAR_IN_FILE") {
+      readCovars(*((*it).second),reset);
+
+    } else if (keyword == "DLINK_MAT_IN_FILE") {
+      readDLinkMats(*((*it).second),reset);
+
+    } else if (keyword == "DLINK_IN_FILE") {
+      readDLinks(*((*it).second),reset);
+
+    } else if (keyword == "WEIGHT_MAT_IN_FILE") {
+      // TODO: evenually remove this backwards compatibility case. 
+      readRealMats(*((*it).second),reset);
+    } else if (keyword == "REAL_MAT_IN_FILE") {
+      readRealMats(*((*it).second),reset);
+
+    } else if (keyword == "DOUBLE_MAT_IN_FILE") {
+      readDoubleMats(*((*it).second),reset);
+
+    } else if (keyword == "DIRICHLET_TAB_IN_FILE") {
+      readDirichletTabs(*((*it).second),reset);
+
+    } else if (keyword == "DENSE_CPT_IN_FILE") {
+      readMdCpts(*((*it).second),reset);
+
+    } else if (keyword == "SPARSE_CPT_IN_FILE") {
+      readMsCpts(*((*it).second),reset);
+
+    } else if (keyword == "DETERMINISTIC_CPT_IN_FILE") {
+      readMtCpts(*((*it).second),reset);
+
+    } else if (keyword == "VOCAB_IN_FILE") {
+      readVocabs(*((*it).second),reset);
+
+    } else if (keyword == "NGRAM_CPT_IN_FILE") {
+      readNgramCpts(*((*it).second),reset);
+
+    } else if (keyword == "FNGRAM_CPT_IN_FILE") {
+      readFNgramImps(*((*it).second),reset);
+
+    } else if (keyword == "LATTICE_CPT_IN_FILE") {
+	    readLatticeAdts(*((*it).second),reset);
+
+    } else if (keyword == "VE_CPT_IN_FILE") {
+      readVECpts(*((*it).second),reset);
+
+    } else if (keyword == "DEEP_NN_IN_FILE") {
+      readDeepNNs(*((*it).second),reset);
+
+    } else if (keyword == "DEEP_VE_CPT_IN_FILE") {
+      readDeepVECpts(*((*it).second),reset);
+
+    } else if (keyword == "DEEP_CPT_IN_FILE") {
+      readDeepCpts(*((*it).second),reset);
+
+    } else if (keyword == "DT_IN_FILE") {
+      readDTs(*((*it).second),reset);
+
+    } else if (keyword == "MC_IN_FILE") {
+      readComponents(*((*it).second),reset);
+
+    } else if (keyword == "MX_IN_FILE") {
+      readMixtures(*((*it).second),reset);
+
+    } else if (keyword == "NAME_COLLECTION_IN_FILE") {
+      readNameCollections(*((*it).second),reset);
+
+    } else if (keyword == "GSMG_IN_FILE") {
+      error("GSMG_IN_FILE in file '%s' line %d, not implemented",
+	    is.fileName(),is.lineNo());
+
+    } else if (keyword == "LSMG_IN_FILE") {
+      error("LSMG_IN_FILE in file '%s' line %d, not implemented",
+	    is.fileName(),is.lineNo());
+
+    } else if (keyword == "MSMG_IN_FILE") {
+      error("MSMG_IN_FILE in file '%s' line %d, not implemented",
+	    is.fileName(),is.lineNo());
+
+    } else {
+      error("ERROR: encountered unknown file type '%s' in file '%s' line %d",
+	    keyword.c_str(),is.fileName(),is.lineNo());
+    }
+  }
+
+  // now go through and delete all the input files
+  for (map<string,iDataStreamFile*>::iterator it = fileNameMap.begin();
+       it != fileNameMap.end(); it++) {
+    if ((*it).first != INLINE_FILE_KEYWORD) {
+      // don't delete is
+      delete ((*it).second);
+    }
+  }
+
+}
+
 
 
 /*-
