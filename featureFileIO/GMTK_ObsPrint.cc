@@ -333,7 +333,12 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
     oftr_buf = new float[buf_size *  n_ftrs];
     olab_buf = new UInt32[buf_size * n_labs];
   }
-  
+
+  HDF5File *hdf5 = NULL;
+  if (ofmt==HDF5) {
+    hdf5 = new HDF5File(outputList, output_fname, n_ftrs, n_labs);
+  }
+
   // Go through input pfile to get the initial statistics,
   // i.e., max, min, mean, std, etc.
   unsigned n_segments = gomFS->numSegments();
@@ -428,6 +433,9 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
 	  if (ns) fprintf(out_fp," ");
 	  fprintf(out_fp,"%f",ftr_buf_p[frit]);
 	  ns = true;
+	} 
+	else if (ofmt==HDF5) {
+	  hdf5->writeFeature((Data32)ftr_buf_p[frit]);
 	}
       }
       for (unsigned lrit=0;lrit<gomFS->numDiscrete(); ++lrit) {
@@ -459,6 +467,9 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
 	  fprintf(out_fp,"%d",lab_buf_p[lrit]);
 	  ns = true;
 	}
+	else if (ofmt == HDF5) {
+	  hdf5->writeFeature((Data32)lab_buf_p[lrit]);
+	}
       }
       if (ofmt==FLATASC || ofmt==RAWASC)
 	fprintf(out_fp,"\n");
@@ -469,6 +480,9 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
     }
     if(ofmt==RAWASC || ofmt==RAWBIN || ofmt==HTK) {
       if (fclose(out_fp)) error("Couldn't close output file.");
+    }
+    if (ofmt==HDF5) {
+      hdf5->endOfSegment();
     }
   }
   
@@ -559,10 +573,10 @@ Arg Arg::Args[] = {
 #undef GMTK_ARGUMENTS_DOCUMENTATION
 
   Arg("\n*** Output arguments ***\n"),
-
+ 
   Arg("o",    Arg::Opt, output_fname,"output file"),
-  Arg("ofmt", Arg::Opt, ofmtStr,"format of output file"),
-  Arg("olist",Arg::Opt, outputList,"output list-of-files name.  Only meaningful if used with the RAW or HTK formats."),
+  Arg("ofmt", Arg::Opt, ofmtStr,"format of output file (htk, hdf5, binary, ascii, pfile, flatbin, flatasc)"),
+  Arg("olist",Arg::Opt, outputList,"output list-of-files name.  Only meaningful if used with the RAW, HTK, HDF5 formats."),
   Arg("sep",  Arg::Opt, outputNameSeparatorStr,"String to use as separator when outputting raw ascii or binary files (one segment per file).",Arg::SINGLE,0,false,PRIORITY_2),
   Arg("oswp", Arg::Opt, oswap,"do byte swapping on the output file",Arg::SINGLE,0,false,PRIORITY_2),
   Arg("ns",    Arg::Opt, dontPrintFrameID,"Don't print the frame IDs (i.e., sent and frame #)"),
@@ -671,6 +685,8 @@ int main(int argc, const char *argv[]) {
  
  if (strcmp(ofmtStr,"htk") == 0)
    ofmt = HTK;
+ else if (strcmp(ofmtStr, "hdf5") == 0)
+   ofmt = HDF5;
  else if (strcmp(ofmtStr,"binary") == 0)
    ofmt = RAWBIN;
  else if (strcmp(ofmtStr,"ascii") == 0)
@@ -687,13 +703,13 @@ int main(int argc, const char *argv[]) {
 
  FILE *out_fp=NULL;
  if (output_fname==0 || !strcmp(output_fname,"-")) {
-   if(ofmt==RAWASC || ofmt==RAWBIN || ofmt==HTK) {
-     error("Need to specify output filename when output type is RAWBIN, RAWASC, or HTK.\n");
+   if(ofmt==RAWASC || ofmt==RAWBIN || ofmt==HTK || ofmt==HDF5) {
+     error("Need to specify output filename when output type is RAWBIN, RAWASC, HDF5, or HTK.\n");
    }
    out_fp = stdout;
  }
  else {
-   if(ofmt != RAWASC && ofmt != RAWBIN && ofmt != HTK) {
+   if(ofmt != RAWASC && ofmt != RAWBIN && ofmt != HTK && ofmt != HDF5) {
      if ((out_fp = fopen(output_fname, "w")) == NULL) {
        error("Couldn't open output file for writing.\n");
      }
@@ -701,7 +717,7 @@ int main(int argc, const char *argv[]) {
  }
 
 
- if(outputList != NULL) {
+ if(outputList != NULL && ofmt != HDF5) {
    if ((outputListFp = fopen(outputList, "w")) == NULL) {
      error("Couldn't open output list (%s) for writing.\n",outputList);
    }
@@ -817,7 +833,7 @@ int main(int argc, const char *argv[]) {
     // Clean up and exit.
     //////////////////////////////////////////////////////////////////////
 
-    if(ofmt != RAWASC && ofmt != RAWBIN && ofmt != HTK) {
+    if(ofmt != RAWASC && ofmt != RAWBIN && ofmt != HTK && ofmt != HDF5) {
       if (fclose(out_fp)) error("Couldn't close output file.");
     }
 
