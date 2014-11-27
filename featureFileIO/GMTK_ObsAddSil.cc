@@ -35,6 +35,7 @@ RAND rnd(true);
 
 
 void addSil(FILE* out_fp, 
+	    HDF5File *hdf5,
 	     FileSource* obs_mat,
 	     //InFtrLabStream_PFile in_stream,
 	     //OutFtrLabStream_PFile out_stream,
@@ -220,7 +221,7 @@ void addSil(FILE* out_fp,
 	}
 
 	// Write output.
-	 printSegment(*srit, out_fp, oftr_buf,n_ftrs,lab_buf,n_labs,n_frames+nb+ne, dontPrintFrameID,quiet, ofmt, debug_level, oswap, out_stream);
+	printSegment(*srit, out_fp, hdf5, oftr_buf,n_ftrs,lab_buf,n_labs,n_frames+nb+ne, dontPrintFrameID,quiet, ofmt, debug_level, oswap, out_stream);
 
     }
 

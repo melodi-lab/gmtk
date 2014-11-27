@@ -202,8 +202,23 @@ void obsInfo(FILE* out_fp, FileSource* obs_mat, bool dont_print_info, bool print
 }
 
 
-void printSegment(unsigned sent_no, FILE* out_fp, float* cont_buf, unsigned num_continuous, UInt32* disc_buf, unsigned num_discrete, unsigned num_frames, const bool dontPrintFrameID,const bool quiet,unsigned ofmt,int debug_level,bool oswap, OutFtrLabStream_PFile* out_stream) {
+void printSegment(unsigned sent_no, FILE* out_fp, HDF5File *hdf5, float* cont_buf, unsigned num_continuous, UInt32* disc_buf, unsigned num_discrete, unsigned num_frames, const bool dontPrintFrameID,const bool quiet,unsigned ofmt,int debug_level,bool oswap, OutFtrLabStream_PFile* out_stream) {
 
+  if (ofmt==HDF5) {
+    assert(hdf5);
+    Data32 * cont_buf_p = (Data32*)cont_buf;
+    Data32* disc_buf_p = (Data32 *)disc_buf;
+    for (unsigned frame=0; frame < num_frames; frame+=1) {
+      for (unsigned i=0; i < num_continuous; i+=1) {
+	hdf5->writeFeature(*(cont_buf_p++));
+      }
+      for (unsigned i=0; i < num_discrete; i+=1) {
+	hdf5->writeFeature(*(disc_buf_p++));
+      }
+    }
+    hdf5->endOfSegment();
+    return;
+  }
 
     if(ofmt==RAWASC || ofmt==RAWBIN || ofmt==HTK) {
       char* current_output_fname = new char[strlen(output_fname)+strlen(outputNameSeparatorStr)+50];
@@ -314,7 +329,7 @@ void printSegment(unsigned sent_no, FILE* out_fp, float* cont_buf, unsigned num_
     }
 }
 
-void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrintFrameID,const bool quiet,unsigned ofmt,int debug_level,bool oswap) {
+void obsPrint(FILE* out_fp, HDF5File *hdf5, Range& srrng,const char * pr_str,const bool dontPrintFrameID,const bool quiet,unsigned ofmt,int debug_level,bool oswap) {
 
   // Feature and label buffers are dynamically grown as needed.
   size_t buf_size = 300;      // Start with storage for 300 frames.
@@ -332,11 +347,6 @@ void obsPrint(FILE* out_fp,Range& srrng,const char * pr_str,const bool dontPrint
     out_stream = new OutFtrLabStream_PFile(debug_level,"",out_fp,n_ftrs,n_labs,1,oswap);
     oftr_buf = new float[buf_size *  n_ftrs];
     olab_buf = new UInt32[buf_size * n_labs];
-  }
-
-  HDF5File *hdf5 = NULL;
-  if (ofmt==HDF5) {
-    hdf5 = new HDF5File(outputList, output_fname, n_ftrs, n_labs);
   }
 
   // Go through input pfile to get the initial statistics,
@@ -778,13 +788,18 @@ int main(int argc, const char *argv[]) {
      }
 
 
+     HDF5File *hdf5 = NULL;
+     if (ofmt==HDF5) {
+       hdf5 = new HDF5File(outputList, output_fname, gomFS->numContinuous(), gomFS->numDiscrete());
+     }
+
      Range  srrng(NULL,0,gomFS->numSegments());
      Range fr_rng(NULL,0,gomFS->numContinuous());
      if(Get_Stats) {
        obsStats(out_fp, gomFS, srrng, fr_rng,NULL, Num_Hist_Bins, quiet);
      }
      else if(Normalize) {
-       obsNorm(out_fp,gomFS,srrng, Norm_Mean, Norm_Std, Norm_Segment_Group_Len_File, Norm_Segment_Group_Len, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
+       obsNorm(out_fp,hdf5,gomFS,srrng, Norm_Mean, Norm_Std, Norm_Segment_Group_Len_File, Norm_Segment_Group_Len, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
      }
      else if(Gaussian_Norm) {
        FILE* os_fp=NULL, * is_fp=NULL;
@@ -798,7 +813,7 @@ int main(int argc, const char *argv[]) {
 	   error("Could not open input stat file, %s, for writing.",Gauss_Norm_Input_Stat_File_Name);
 	 }
        }
-       gaussianNorm(out_fp,gomFS,is_fp,os_fp, srrng, fr_rng, NULL, Num_Hist_Bins, Gaussian_Num_Stds, Gaussian_Uniform, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
+       gaussianNorm(out_fp,hdf5,gomFS,is_fp,os_fp, srrng, fr_rng, NULL, Num_Hist_Bins, Gaussian_Num_Stds, Gaussian_Uniform, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
        if(Gauss_Norm_Output_Stat_File_Name != NULL) fclose(os_fp);
        if(Gauss_Norm_Input_Stat_File_Name  != NULL) fclose(is_fp);
      }
@@ -817,17 +832,17 @@ int main(int argc, const char *argv[]) {
 	 }
        }
        
-       obsKLT(out_fp,gomFS,is_fp,os_fp,*ofr_rng,KLT_Unity_Variance, KLT_Ascii_Stat_Files, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
+       obsKLT(out_fp,hdf5,gomFS,is_fp,os_fp,*ofr_rng,KLT_Unity_Variance, KLT_Ascii_Stat_Files, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
        
        delete ofr_rng;
        if(KLT_Output_Stat_File_Name != NULL) fclose(os_fp);
        if(KLT_Input_Stat_File_Name != NULL) fclose(is_fp);
      }
      else if (Add_Sil) {
-       addSil(out_fp,gomFS,srrng,Add_Sil_Num_Beg_Frames,Add_Sil_Beg_Rng_Str, Add_Sil_Num_End_Frames,Add_Sil_End_Rng_Str, Add_Sil_MMF, Add_Sil_MAF, Add_Sil_SMF, Add_Sil_SAF, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
+       addSil(out_fp,hdf5,gomFS,srrng,Add_Sil_Num_Beg_Frames,Add_Sil_Beg_Rng_Str, Add_Sil_Num_End_Frames,Add_Sil_End_Rng_Str, Add_Sil_MMF, Add_Sil_MAF, Add_Sil_SMF, Add_Sil_SAF, dontPrintFrameID,quiet,ofmt,debug_level,oswap);
      }
      else {
-       obsPrint(out_fp,srrng,NULL,dontPrintFrameID,quiet,ofmt,debug_level,oswap);
+       obsPrint(out_fp,hdf5,srrng,NULL,dontPrintFrameID,quiet,ofmt,debug_level,oswap);
      }
     //////////////////////////////////////////////////////////////////////
     // Clean up and exit.
