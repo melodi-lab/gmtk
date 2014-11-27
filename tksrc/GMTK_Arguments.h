@@ -1202,10 +1202,10 @@ static bool  cliquePrintSwap       = false;
   Arg("cliquePosteriorNormalize",Arg::Opt,cliquePosteriorNormalize,"Normalize posterior probabilities to sum to 1."),
   Arg("cliquePosteriorUnlog",Arg::Opt,cliquePosteriorUnlog,"Output probabilities instead of log probabilities."),
   Arg("cliqueOutputFileName",Arg::Opt,cliqueOutputName,"Output filename for clique posteriors."),
-  Arg("cliqueListFileName",Arg::Opt,cliqueListName,"Output list filename for clique posteriors (HTK, ASCII, Binary)."),
+  Arg("cliqueListFileName",Arg::Opt,cliqueListName,"Output list filename for clique posteriors (HDF5, HTK, ASCII, Binary)."),
   Arg("cliquePrintSeparator",Arg::Opt,cliquePrintSeparator,"String to use as separator when outputting HTK, ASCII, or binary clique posteriors."),
   Arg("cliquePrintSwap",Arg::Opt,cliquePrintSwap,"Do byte swapping when outputting PFile, HTK, or binary clique posteriors."),
-  Arg("cliquePrintFormat",Arg::Opt,cliquePrintFormat,"Output file format for clique posteriors (htk,binary,ascii,flatascii,pfile)."),
+  Arg("cliquePrintFormat",Arg::Opt,cliquePrintFormat,"Output file format for clique posteriors (hdf5, htk,binary,ascii,flatascii,pfile)."),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
@@ -2149,9 +2149,9 @@ static bool writeLogVals = false;
   Arg("\n*** Decoding options ***\n"),
 
   Arg("vitObsFileName", Arg::Opt, JunctionTree::vitObsFileName, "Output filename for Viterbi observation file"),
-  Arg("vitObsListFileName", Arg::Opt, JunctionTree::vitObsListName, "Output list filename for Viterbi observation file (HTK, ASCII, Binary)"),
+  Arg("vitObsListFileName", Arg::Opt, JunctionTree::vitObsListName, "Output list filename for Viterbi observation file (HDF5, HTK, ASCII, Binary)"),
   Arg("vitObsNameSeparator", Arg::Opt, JunctionTree::vitObsNameSeparator, "String to use as separator when outputting HTK, ASCII, or binary Viterbi observation file"),
-  Arg("vitObsFileFormat", Arg::Opt, JunctionTree::vitObsFileFmt, "Output Viterbi observation file format (htk,binary,ascii,flatascii,pfile)"),
+  Arg("vitObsFileFormat", Arg::Opt, JunctionTree::vitObsFileFmt, "Output Viterbi observation file format (hdf5,htk,binary,ascii,flatascii,pfile)"),
   Arg("vitObsFileSwap", Arg::Opt, JunctionTree::vitObsFileSwap, "Do byte swapping when outputting PFile, HTK, or binary Viterbi observation file"),
 
   Arg("mVitValsFile",Arg::Opt,mVitValsFileName,"Modified Section Vit: file to print viterbi values in ASCII, '-' for stdout"),

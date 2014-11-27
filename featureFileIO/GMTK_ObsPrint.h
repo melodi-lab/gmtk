@@ -25,7 +25,7 @@
 #  include "GMTK_Stream.h"
 #endif
 
-void printSegment(unsigned sent_no, FILE* out_fp, float* cont_buf, unsigned num_continuous, UInt32* disc_buf, unsigned num_discrete, unsigned num_frames, const bool dontPrintFrameID,const bool quiet,unsigned ofmt,int debug_level,bool oswap, OutFtrLabStream_PFile* out_stream);
+void printSegment(unsigned sent_no, FILE* out_fp, HDF5File *hdf5, float* cont_buf, unsigned num_continuous, UInt32* disc_buf, unsigned num_discrete, unsigned num_frames, const bool dontPrintFrameID,const bool quiet,unsigned ofmt,int debug_level,bool oswap, OutFtrLabStream_PFile* out_stream);
 
 void printHTKHeader(FILE* ofp, bool oswap, int numInts, int numFloats, int numSamples, short parameterKInd, Int32 samplePeriod);
 
