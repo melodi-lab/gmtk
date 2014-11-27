@@ -1205,7 +1205,7 @@ static bool  cliquePrintSwap       = false;
   Arg("cliqueListFileName",Arg::Opt,cliqueListName,"Output list filename for clique posteriors (HDF5, HTK, ASCII, Binary)."),
   Arg("cliquePrintSeparator",Arg::Opt,cliquePrintSeparator,"String to use as separator when outputting HTK, ASCII, or binary clique posteriors."),
   Arg("cliquePrintSwap",Arg::Opt,cliquePrintSwap,"Do byte swapping when outputting PFile, HTK, or binary clique posteriors."),
-  Arg("cliquePrintFormat",Arg::Opt,cliquePrintFormat,"Output file format for clique posteriors (hdf5, htk,binary,ascii,flatascii,pfile)."),
+  Arg("cliquePrintFormat",Arg::Opt,cliquePrintFormat,"Output file format for clique posteriors (hdf5,htk,binary,ascii,flatascii,pfile)."),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
