@@ -445,7 +445,8 @@ void obsPrint(FILE* out_fp, HDF5File *hdf5, Range& srrng,const char * pr_str,con
 	  ns = true;
 	} 
 	else if (ofmt==HDF5) {
-	  hdf5->writeFeature((Data32)ftr_buf_p[frit]);
+	  Data32 *d32p = (Data32 *)ftr_buf_p;
+	  hdf5->writeFeature(d32p[frit]);
 	}
       }
       for (unsigned lrit=0;lrit<gomFS->numDiscrete(); ++lrit) {
@@ -478,7 +479,8 @@ void obsPrint(FILE* out_fp, HDF5File *hdf5, Range& srrng,const char * pr_str,con
 	  ns = true;
 	}
 	else if (ofmt == HDF5) {
-	  hdf5->writeFeature((Data32)lab_buf_p[lrit]);
+	  Data32 *d32p = (Data32 *)lab_buf_p;
+	  hdf5->writeFeature(lab_buf_p[lrit]);
 	}
       }
       if (ofmt==FLATASC || ofmt==RAWASC)
