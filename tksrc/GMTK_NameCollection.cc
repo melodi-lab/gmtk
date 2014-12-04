@@ -58,10 +58,7 @@ VCID(HGID)
  *
  *-----------------------------------------------------------------------
  */
-NameCollection::NameCollection()
-{
- _is_sorted=false;
-}
+NameCollection::NameCollection() : _is_sorted(false), type(CT_Unknown) {}
 
 
 ////////////////////////////////////////////////////////////////////
@@ -153,6 +150,7 @@ NameCollection::write(oDataStreamFile& os)
 void
 NameCollection::fillMxTable()
 {
+  type = CT_MX;
   if (mxTable.size() >= table.size())
     return;
 
@@ -190,6 +188,7 @@ NameCollection::fillMxTable()
 void
 NameCollection::fillSpmfTable()
 {
+  type = CT_SPMF;
   if (spmfTable.size() >= table.size())
     return;
 
@@ -333,10 +332,11 @@ NameCollection::unsort()
   mxTable.clear();
   spmfTable.clear();
 
-  fillMxTable();
-  //fillSpmfTable(); call one or the other, but not both ... but how
-  //on earth do we know which?
-
+  switch(type) {
+  case CT_MX: fillMxTable(); break;
+  case CT_SPMF: fillSpmfTable(); break;
+  case CT_Unknown: break; // These aren't the names you're looking for. Move along...
+  }
 }
 
 
