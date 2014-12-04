@@ -70,6 +70,10 @@ class NameCollection : public NamedObject  {
   // and a place to remember how to unsort it again
   vector<unsigned> unsort_mapping;
   
+  // keep track of what kind of thing we're collecting: mixtures, SPMFs, or other
+  enum CollectionType { CT_Unknown, CT_MX, CT_SPMF };
+  CollectionType type;
+
   // direct pointers to those objects
   // for which this might refer to.
   vector<Mixture*> mxTable;
