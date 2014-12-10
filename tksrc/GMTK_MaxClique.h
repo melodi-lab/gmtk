@@ -297,6 +297,33 @@ class MaxClique : public IM {
   static unsigned cliqueBeamMaxNumStates;
   // fraction of clique to retain, forcibly pruning away everything else. Must be
 
+
+    //Adaptive Pruning parameters
+    static bool useAdaptiveKPrune;
+
+    static unsigned kbeam_window;
+    static double kbeam_up_rate;
+    static double kbeam_down_rate;
+    static double up_threshold;
+    static double down_threshold;
+    static unsigned initial_k;
+    static unsigned kbeam_cap;
+
+    static bool useAdaptiveCPrune;    
+
+    static double adaptiveCliqueBeamInitialValue;
+    static double cbeam_up_rate;
+    static double cbeam_down_rate;
+    
+    static std::vector<double> num_states;
+    static std::vector<double> cbeams;
+
+    static unsigned cbeam_window;
+
+    static bool adap_c_beam_init;
+    static double origin_cbeam;
+
+
   // between 0 and 1 (i.e., 0 < v <= 1).
   static float cliqueBeamRetainFraction;
   // a version for clustered states
@@ -1809,6 +1836,15 @@ public:
   /////////////////////////////////////////
   // Pruning
   /////////////////////////////////////////
+
+
+    double entropyOfScores();
+    double slopeEstimationFromEnd(vector<double> v, unsigned m);
+
+    unsigned adaptiveKBeamSlope();
+    void ceCliqueBeamAdaptivePrune(MaxClique& origin,logpr maxCEValue);
+
+
 
   void ceDoAllPruning(MaxClique& origin,logpr maxCEValue);
   void ceCliqueBeamPrune(MaxClique& origin,logpr maxCEValue);

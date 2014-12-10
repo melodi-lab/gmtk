@@ -4550,6 +4550,211 @@ MaxCliqueTable::ceCliqueBeamPrune(MaxClique& origin,
 
 
 
+
+
+double MaxClique::adaptiveCliqueBeamInitialValue = 50.0;
+
+std::vector<double> MaxClique::num_states;
+std::vector<double> MaxClique::cbeams;
+
+double MaxClique::cbeam_down_rate = 0.925;
+double MaxClique::cbeam_up_rate = 0.95;
+
+unsigned MaxClique::cbeam_window = 5;
+
+bool MaxClique::adap_c_beam_init = false;
+double MaxClique::origin_cbeam = 0.0;
+
+//with slope
+void
+MaxCliqueTable::ceCliqueBeamAdaptivePrune(MaxClique& origin,
+				  logpr maxCEValue)
+{
+  // return immediately if beam pruning is turned off.
+  if (origin.cliqueBeam == (-LZERO)) {
+    origin.cliqueBeam = MaxClique::adaptiveCliqueBeamInitialValue;
+    }
+
+    if(!MaxClique::adap_c_beam_init) {
+        MaxClique::adap_c_beam_init = true;
+        MaxClique::origin_cbeam = origin.cliqueBeam;
+        origin.cliqueBeam = MaxClique::adaptiveCliqueBeamInitialValue;
+    }
+
+  // create an ininitialized variable
+  logpr beamThreshold((void*)0);
+  if (origin.cliqueBeam != (-LZERO)) {
+    // then we do clique table pruning right here rather
+    // than a separate call to ceCliqueBeamPrune().
+    // break into the logp to avoid unnecessary zero checking.
+    beamThreshold.valref() = maxCEValue.valref() - origin.cliqueBeam;
+  } else {
+    // set beam threshold to a value that will never cause pruning.
+    beamThreshold.set_to_zero();
+  }
+
+  const unsigned origNumCliqueValuesUsed = numCliqueValuesUsed;
+  for (unsigned cvn=0;cvn<numCliqueValuesUsed;) {
+    if (cliqueValues.ptr[cvn].p < beamThreshold) {
+      // swap with last entry, and decrease numCliqueValuesUsed by one. We
+      // swap so that entries at the end can be added back in by a future stage.
+      swap(cliqueValues.ptr[cvn],cliqueValues.ptr[numCliqueValuesUsed-1]);
+      numCliqueValuesUsed--;
+    } else {
+      cvn++;
+    }
+  }
+
+    if(MaxClique::num_states.size() == 0) {
+        
+    }
+    else {
+     
+        double est_slope = slopeEstimationFromEnd(MaxClique::num_states, MaxClique::cbeam_window);
+
+        if(est_slope > 0) {
+            origin.cliqueBeam = (MaxClique::cbeams[MaxClique::cbeams.size() - 1] * MaxClique::cbeam_down_rate) + 0.5;
+        } else if(est_slope < 0) {
+            origin.cliqueBeam = (MaxClique::cbeams[MaxClique::cbeams.size() - 1] / MaxClique::cbeam_up_rate) + 0.5;
+        }
+        else origin.cliqueBeam = MaxClique::cbeams[MaxClique::cbeams.size() - 1];
+
+        if(origin.cliqueBeam > MaxClique::origin_cbeam) origin.cliqueBeam = MaxClique::origin_cbeam;
+   
+    }
+    MaxClique::num_states.push_back(numCliqueValuesUsed);
+    MaxClique::cbeams.push_back(origin.cliqueBeam);
+
+
+  infoMsg(IM::Inference, IM::Med,"Clique beam pruning: Max cv = %f, thres = %f. Original clique state space = %d, new clique state space = %d, %2.2f%% reduction\n",
+	  maxCEValue.valref(),
+	  beamThreshold.valref(),
+	  origNumCliqueValuesUsed,
+	  numCliqueValuesUsed,
+	  100*(1.0 - (double)numCliqueValuesUsed/(double)(origNumCliqueValuesUsed>0?origNumCliqueValuesUsed:1)) );
+
+}
+
+
+double slopeEstimation(vector<double> v, unsigned t, unsigned m) {
+    unsigned start = 0, end = t + m;
+    if(t > m) start = t - m;
+    if(v.size() < end) end = v.size();
+
+    double nume = 0.0;
+    double deno = 0.0;
+
+    for(unsigned i=start; i<end; i++) {
+        nume += v[i] * (i - t);
+        deno += (i - t) * (i - t) * 1.0;
+    }
+
+    return nume / deno;
+}
+
+
+double MaxCliqueTable::slopeEstimationFromEnd(vector<double> v, unsigned m) {
+    if(v.size() == 1) return v[0];
+
+    unsigned start = 0, end = v.size();
+    if(end > m) start = end - m;
+
+    double nume = 0.0;
+    double deno = 0.0;
+    for(unsigned i=start; i<end; i++) {
+        int diff = ((int)(i - start) - (m / 2));
+        nume += v[i] * diff;
+        deno += 1.0 * diff * diff;
+    }
+
+    return nume / deno;
+}
+
+
+
+double MaxCliqueTable::entropyOfScores() {
+    //CliqueValue* curCliqueVals = cliqueValues.ptr;
+    double sum_prob = 0.0;
+
+    vector<double> scores;
+
+    double largest = cliqueValues.ptr[0].p.val();
+    for(unsigned cvn = 1; cvn < numCliqueValuesUsed; ++ cvn) {
+        if(cliqueValues.ptr[cvn].p.val() > largest) largest = cliqueValues.ptr[cvn].p.val();
+    }
+
+
+    for (unsigned cvn=0;cvn<numCliqueValuesUsed; ++ cvn) {
+        //double score = exp(cliqueValues.ptr[cvn].p.val() / frame_count + 20.0);
+        //double score = exp( (cliqueValues.ptr[cvn].p.val() - largest) / frame_count);
+        double score = exp(cliqueValues.ptr[cvn].p.val() - largest);
+
+        if(score <= 1e-30) continue;
+        sum_prob += score;
+        scores.push_back(score);
+    }
+
+
+    double entropy = 0.0;
+    for(unsigned i=0; i<scores.size(); ++ i) {
+        double p = scores[i] / sum_prob;
+        entropy -= p * log(p);
+    }
+
+    return entropy;
+}
+
+
+
+unsigned MaxClique::initial_k = 1000;
+unsigned MaxClique::kbeam_cap = 1000;
+
+
+std::vector<double> entropies;
+std::vector<unsigned> kbeams;
+unsigned MaxClique::kbeam_window = 5;    //should be an odd number
+
+double MaxClique::kbeam_down_rate = 0.90;
+double MaxClique::kbeam_up_rate = 0.98;
+
+double MaxClique::up_threshold = 0.005;
+double MaxClique::down_threshold = -0.005;
+
+unsigned MaxCliqueTable::adaptiveKBeamSlope() {
+    
+    double n_entropy = entropyOfScores();
+
+    entropies.push_back(n_entropy);
+    if(kbeams.size() == 0) kbeams.push_back(MaxClique::initial_k);
+
+
+    double est_slope = slopeEstimationFromEnd(entropies, MaxClique::kbeam_window);
+    //double est_entropy = n_entropy + est_slope;
+
+
+    unsigned n_k = 10;
+
+    if(est_slope > MaxClique::up_threshold) {
+        n_k = (unsigned)(kbeams[kbeams.size() - 1] / MaxClique::kbeam_up_rate);
+    } else if(est_slope < MaxClique::down_threshold) {
+        n_k = (unsigned)(kbeams[kbeams.size() - 1] * MaxClique::kbeam_down_rate);
+    }
+    else n_k = kbeams[kbeams.size() - 1];
+
+    if(n_k <= 10) n_k = 10;
+    if(n_k >= MaxClique::kbeam_cap) n_k = MaxClique::kbeam_cap;
+
+    fprintf(stderr, " %u", n_k);
+    kbeams.push_back(n_k);
+    return n_k;
+}
+
+
+
+
+
+
+
 /*-
  *-----------------------------------------------------------------------
  * MaxCliqueTable::ceDoAllPruning()
@@ -4573,6 +4778,12 @@ MaxCliqueTable::ceCliqueBeamPrune(MaxClique& origin,
  *
  *-----------------------------------------------------------------------
  */
+
+
+bool MaxClique::useAdaptiveKPrune = false;
+bool MaxClique::useAdaptiveCPrune = false;
+
+
 void 
 MaxCliqueTable::ceDoAllPruning(MaxClique& origin,
 			       logpr maxCEValue)
@@ -4608,6 +4819,9 @@ MaxCliqueTable::ceDoAllPruning(MaxClique& origin,
   // origin.cliqueBeamRetainFraction,numCliqueValuesUsed,k);
   // printf("starting k pruning with state space %d\n",numCliqueValuesUsed); fflush(stdout);
 
+
+    if(MaxClique::useAdaptiveKPrune) k = adaptiveKBeamSlope();
+
   if (k < numCliqueValuesUsed) {
     infoMsg(IM::Inference, IM::Med,"Clique k-beam pruning with k=%d: Original clique state space = %d\n",k,
 	    numCliqueValuesUsed);
@@ -4625,7 +4839,8 @@ MaxCliqueTable::ceDoAllPruning(MaxClique& origin,
 					  numCliqueValuesUsed);
 
   // next, do normal beam pruning.
-  ceCliqueBeamPrune(origin,maxCEValue);
+    if(MaxClique::useAdaptiveCPrune) ceCliqueBeamAdaptivePrune(origin, maxCEValue);
+    ceCliqueBeamPrune(origin,maxCEValue);
 
   // do diversity pruning.
   // printf("starting diversity pruning with state space %d\n",numCliqueValuesUsed); fflush(stdout);
