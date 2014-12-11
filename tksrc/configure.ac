@@ -151,16 +151,16 @@ AC_ARG_ENABLE([gmtkViz],
                               [disable gmtkViz @<:@default: no@:>@])],
               [gmtkViz=${enableval}], [gmtkViz=yes])
 if test x"$gmtkViz" = x"yes"; then
-   AC_CHECK_PROG([HAVE_WXCONFIG],[wx-config],[yes])
-   if test x"$HAVE_WXCONFIG" = x"yes"; then
+   AC_CHECK_PROGS([WXCONFIG],[wx-config wx-config-3.0],[])
+   if test x"$WXCONFIG" != x; then
      AC_MSG_CHECKING([for working wxWidgets 2.9 or later])
      AC_LANG_PUSH([C++])
      wx_check_save_CPPFLAGS=${CPPFLAGS}
      CPPFLAGS=
      wx_check_save_CXXFLAGS=${CXXFLAGS}
-     CXXFLAGS=`wx-config --cxxflags`
+     CXXFLAGS=`$WXCONFIG --cxxflags`
      wx_check_save_LIBS=${LIBS}
-     LIBS=`wx-config --libs`
+     LIBS=`$WXCONFIG --libs`
      AC_LINK_IFELSE([AC_LANG_PROGRAM([#include "wx/wx.h"],[wxString s("foo");s.Capitalize()])],
        [AC_MSG_RESULT([yes])
         AC_MSG_CHECKING([whether wxWidgets works without -D_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_])
@@ -195,8 +195,8 @@ if test x"$gmtkViz" = x"yes"; then
 fi
 if test x"$HAVE_WXWIDGETS" = x"yes"; then
    AC_SUBST([GMTKVIZ],[gmtkViz])
-   AC_SUBST([VIZCXXFLAGS],[`wx-config --cxxflags`])
-   AC_SUBST([VIZLDFLAGS],[`wx-config --libs`])
+   AC_SUBST([VIZCXXFLAGS],[`$WXCONFIG --cxxflags`])
+   AC_SUBST([VIZLDFLAGS],[`$WXCONFIG --libs`])
 fi
 
 case "${host}" in
@@ -262,7 +262,7 @@ AC_CHECK_LIB([m], [log])
 
 AC_LANG_PUSH([C++])
 hdf_check_save_LIBS=${LIBS}
-LIBS="${LIBS} -lhdf5_cpp"
+LIBS="${LIBS} -lhdf5_cpp -lhdf5"
 AC_LINK_IFELSE([AC_LANG_PROGRAM([#include <H5Cpp.h>
 #ifndef H5_NO_NAMESPACE
 using namespace H5;
@@ -272,7 +272,7 @@ using namespace H5;
 LIBS=${hdf_check_save_LIBS}
 AC_LANG_POP([C++])
 if test x"$HAVE_HDF5" = x"yes"; then 
-  LIBS="-lhdf5_cpp $LIBS"
+  LIBS="-lhdf5_cpp -lhdf5 $LIBS"
   AC_DEFINE([HAVE_LIBHDF5_CPP],[1],[Are the C++ bindings for HDF5 available?])
 fi
 

@@ -68,7 +68,7 @@ AC_CHECK_HEADERS([float.h math.h limits.h stdlib.h string.h sys/time.h values.h]
 
 AC_LANG_PUSH([C++])
 hdf_check_save_LIBS=${LIBS}
-LIBS="${LIBS} -lhdf5_cpp"
+LIBS="${LIBS} -lhdf5_cpp -lhdf5"
 AC_LINK_IFELSE([AC_LANG_PROGRAM([#include <H5Cpp.h>
 #ifndef H5_NO_NAMESPACE
 using namespace H5;
@@ -78,7 +78,7 @@ using namespace H5;
 LIBS=${hdf_check_save_LIBS}
 AC_LANG_POP([C++])
 if test x"$HAVE_HDF5" = x"yes"; then 
-  LIBS="-lhdf5_cpp $LIBS"
+  LIBS="-lhdf5_cpp -lhdf5 $LIBS"
   AC_DEFINE([HAVE_LIBHDF5_CPP],[1],[Are the C++ bindings for HDF5 available?])
 fi
 
