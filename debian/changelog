@@ -1,0 +1,5 @@
+gmtk (1.1.1-1) unstable; urgency=low
+
+  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+
+ -- Richard Rogers <rprogers@uw.edu>  Thu, 11 Dec 2014 11:30:59 -0800
