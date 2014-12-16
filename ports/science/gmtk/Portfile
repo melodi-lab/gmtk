@@ -2,6 +2,7 @@
 # $Id$
 
 PortSystem        1.0
+PortGroup         wxWidgets 1.0
 
 name              gmtk
 version           1.1.1
@@ -18,5 +19,3 @@ checksums         rmd160 b677d2ff2f86e73ad71d1033b7b03d0c5038794a \
                   sha256 30bfa33a43f2d4827dacf839fc31f593eb8f87c56d8705c51a7e53a0feafee80
 depends_lib       port:hdf5 \
                   port:wxWidgets-3.0
-configure.env-append PATH=${prefix}/Library/Frameworks/wxWidgets.framework/Versions/wxWidgets/3.0/bin:$env(PATH)
-build.env-append     PATH=${prefix}/Library/Frameworks/wxWidgets.framework/Versions/wxWidgets/3.0/bin:$env(PATH)
