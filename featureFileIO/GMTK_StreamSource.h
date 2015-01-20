@@ -57,8 +57,6 @@ class StreamSource : public ObservationSource {
   // low-level stream driver (ASCII, binary, merge, filter)
   ObservationStream *stream;
 
-  unsigned curFrame;
-
   unsigned _startSkip;
 
   unsigned _minPastFrames;

@@ -24,11 +24,19 @@ if USE_GCC_FLAGS
   OPTFLAGS = -O3
 # OPTFLAGS = -O3 -march=native -mtune=native -mfpmath=sse -msse3 -flto
   GCC_FLAGS = -Wall $(ANSI) -msse2
+  PHIPAC_FLAGS = -Wno-implicit-int
 # AM_LDFLAGS += -static -fwhole-program -L. 
+else
+if USE_CLANG_FLAGS
+  OPTFLAGS = -O3
+  GCC_FLAGS = 
+  PHIPAC_FLAGS = -Wno-implicit-int
 else
 # unknown compiler
   OPTFLAGS =
   GCC_FLAGS =
+  PHIPAC_FLAGS =
+endif
 endif
 
 AM_CPPFLAGS = \
@@ -37,7 +45,7 @@ AM_CPPFLAGS = \
 $(DBFLAGS) $(BLAS_CFLAGS) 
 
 AM_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(GCC_FLAGS) $(ISOCXX11FLAGS)
-AM_CFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) 
+AM_CFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(GCC_FLAGS) $(PHIPAC_FLAGS)
 #$(GCC_FLAGS) PHiPAC is generating warnings
 
 AM_LDFLAGS += -L.

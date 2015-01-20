@@ -634,11 +634,10 @@ void Dense1DPMF::emStoreObjectsAccumulators(oDataStreamFile& ofile,
 					    bool writeLogVals,
 					    bool writeZeros)
 {
-  ofile.writeComment("%s len %u\n", name().c_str(), nextPmf.len());
   if (writeLogVals) {
-    ofile.writeComment("  ... log(nextPmf[i]) ... ");
+    ofile.writeComment("Dense1DPMF %s len %u:  ... log(nextPmf[i]) ... ", name().c_str(), nextPmf.len());
   } else {
-    ofile.writeComment("  ... nextPmf[i] ... ");
+    ofile.writeComment("Dense1DPMF %s len %u:  ... nextPmf[i] ... ", name().c_str(), nextPmf.len());
   }
   if (writeZeros) {
     if (writeLogVals) {

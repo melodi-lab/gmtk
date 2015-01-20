@@ -35,3 +35,6 @@ VCID(HGID)
 #include "GMTK_Component.h"
 #include "rand.h"
 
+// ticket 90: get rid of a warning from the OS X ranlib
+char make_osx_ranlib_shutup_about_no_symbols_Component;
+

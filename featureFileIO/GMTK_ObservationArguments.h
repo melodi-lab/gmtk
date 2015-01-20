@@ -259,7 +259,7 @@ extern bool ObservationsAllowNan;
   Arg("preir",  Arg::Opt,preirs,"Int range for observation file X",Arg::ARRAY,MAX_NUM_OBS_STREAMS),
   Arg("fr",  Arg::Opt,frs,"Float range for observation stream X (after transforms)",Arg::ARRAY,MAX_NUM_OBS_STREAMS),
   Arg("ir",  Arg::Opt,irs,"Int range for observation stream X",Arg::ARRAY,MAX_NUM_OBS_STREAMS),
-  Arg("sr",  Arg::Opt,sr,"Sentence range for observation file X",Arg::ARRAY,MAX_NUM_OBS_STREAMS),
+  Arg("sr",  Arg::Opt,sr,"Segment range for observation file X",Arg::ARRAY,MAX_NUM_OBS_STREAMS),
   Arg("leftPad", Arg::Opt,leftPad,"Prepend padding frames to file X", Arg::ARRAY,MAX_NUM_OBS_STREAMS),
   Arg("rightPad", Arg::Opt,rightPad,"Append padding frames to file X", Arg::ARRAY,MAX_NUM_OBS_STREAMS),
   Arg("prepr", Arg::Opt, prepr,"Pre Per-segment frame Range for obs file X before any transforms are applied",Arg::ARRAY,MAX_NUM_OBS_STREAMS),
@@ -484,7 +484,7 @@ extern bool ObservationsAllowNan;
   Arg("preir",  Arg::Opt,preirs,"Int range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("fr",  Arg::Opt,frs,"Float range for observation file X (after transforms)",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("ir",  Arg::Opt,irs,"Int range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("sr",  Arg::Opt,sr,"Sentence range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("sr",  Arg::Opt,sr,"Segment range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("leftPad", Arg::Opt,leftPad,"Prepend padding frames to file X", Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("rightPad", Arg::Opt,rightPad,"Append padding frames to file X", Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("prepr", Arg::Opt, prepr,"Pre Per-segment frame Range for obs file X before any transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
@@ -707,6 +707,12 @@ extern bool ObservationsAllowNan;
 
   static bool print_version_and_exit = false;
 
+#if HAVE_CONFIG_H
+static const char *gmtk_version_id = PACKAGE_STRING;
+#else
+static const char *gmtk_version_id = "unknown";
+#endif
+
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
@@ -778,7 +784,7 @@ unsigned Ftr_Combo=FTROP_NONE;
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   Arg("fdiffact",  Arg::Opt, Action_If_Diff_Num_Frames_Str ,"Action if different number of frames in streams: error (er), repeat last frame (rl), first frame (rf), segmentally expand (se), truncate from start (ts), truncate from end (te)",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("sdiffact",  Arg::Opt, Action_If_Diff_Num_Sents_Str ,"Action if different number of sentences in streams: error (er), truncate from end (te), repeat last sent (rl), and wrap around (wa).",Arg::ARRAY,MAX_NUM_OBS_FILES),
+  Arg("sdiffact",  Arg::Opt, Action_If_Diff_Num_Sents_Str ,"Action if different number of segments in streams: error (er), truncate from end (te), repeat last sent (rl), and wrap around (wa).",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("cppifascii",Arg::Tog, Cpp_If_Ascii,"Pre-process ASCII files using CPP"),
   Arg("trans",     Arg::Opt,Per_Stream_Transforms ,"per stream transformations string",Arg::ARRAY,MAX_NUM_OBS_FILES),
   Arg("posttrans", Arg::Opt,Post_Transforms ,"Final global transformations string"),
@@ -812,7 +818,7 @@ unsigned Ftr_Combo=FTROP_NONE;
       else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"rl") == 0) Action_If_Diff_Num_Sents[i] = SEGMATCH_REPEAT_LAST;
       else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"wa") == 0) Action_If_Diff_Num_Sents[i] = SEGMATCH_WRAP_AROUND;
       else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"te") == 0) Action_If_Diff_Num_Sents[i] = SEGMATCH_TRUNCATE_FROM_END;
-      else error("%s: Unknown action when diff num of sentences: '%s'\n",argerr,
+      else error("%s: Unknown action when diff num of segments: '%s'\n",argerr,
 		 Action_If_Diff_Num_Sents_Str[i]);
     }
   }

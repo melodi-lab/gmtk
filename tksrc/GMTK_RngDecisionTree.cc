@@ -2705,7 +2705,7 @@ void
 RngDecisionTree::writeIndexFile()
 {
   int      numDTs;
-  unsigned position;
+  int      position;
   int      i;
 
   assert(iterable()); 

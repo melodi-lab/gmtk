@@ -23,9 +23,14 @@ if USE_GXX_FLAGS
   OPTFLAGS = -O3
   GXX_FLAGS = -Wall -ansi -pedantic
 else
+if USE_CLANG_FLAGS
+  OPTFLAGS = -O3
+  GXX_FLAGS =
+else
 # unknown compiler
   OPTFLAGS = 
   GXX_FLAGS = 
+endif
 endif
 
 DBFLAGS =

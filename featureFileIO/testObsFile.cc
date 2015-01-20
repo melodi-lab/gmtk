@@ -17,14 +17,9 @@
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-static const char * gmtk_version_id = PACKAGE_STRING;
 #  ifdef HAVE_HG_H
 #    include "hgstamp.h"
 #  endif
-
-#else 
-// TODO: automate the process of updating this string.
-static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 2004";
 #endif
 
 #include "general.h"
@@ -62,6 +57,7 @@ Arg Arg::Args[] = {
   Arg()
 };
 
+RAND rnd(false);
 
 int 
 main(int argc, char *argv[]) {
