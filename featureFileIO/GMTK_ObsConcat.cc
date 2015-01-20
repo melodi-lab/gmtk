@@ -19,14 +19,10 @@
 #ifdef HAVE_CONFIG_H
 
 #include <config.h>
-static const char * gmtk_version_id = PACKAGE_STRING;
 #ifdef HAVE_HG_H
 #include "hgstamp.h"
 #endif
 
-#else 
-// TODO: automate the process of updating this string.
-static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 2004";
 #endif
 
 
@@ -423,7 +419,7 @@ static void obsConcat(FILE *out_fp,
       const size_t n_frames = gomFS->numFrames();
 			
       if (!quiet && (*srit) % 100 == 0)
-	printf("Processing sentence %d of file %s\n",
+	printf("Processing segment %d of file %s\n",
 	       (*srit), file_name);
 			
       // Increase size of buffers if needed.
@@ -490,7 +486,7 @@ Arg Arg::Args[] = {
   Arg("o",      Arg::Opt, output_fname,"output file"),
   Arg("ofmt",      Arg::Opt, ofmtStr,"format of output file (htk, binary, ascii, pfile, flatbin, flatasc)"),
   Arg("olist",      Arg::Opt, outputList,"output list-of-files name.  Only meaningful if used with the RAW or HTK formats."),
-  Arg("sep",      Arg::Opt, outputNameSeparatorStr,"String to use as separator when outputting raw ascii or binary files (one sentence per file)."),
+  Arg("sep",      Arg::Opt, outputNameSeparatorStr,"String to use as separator when outputting raw ascii or binary files (one segment per file)."),
   Arg("oswp",Arg::Opt, oswap,"do byte swapping on the output file"),
   Arg("ns",    Arg::Opt, dontPrintFrameID,"Don't print the frame IDs (i.e., sent and frame #)"),
 

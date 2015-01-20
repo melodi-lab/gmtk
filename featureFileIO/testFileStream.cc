@@ -42,6 +42,8 @@ unsigned    Action_If_Diff_Num_Frames[1];
 unsigned    Action_If_Diff_Num_Sents[1];
 unsigned Ftr_Combo;
 
+RAND rnd(false);
+
 // testFileStream file nf ni
 int
 main(int argc, char *argv[]) {

@@ -74,7 +74,7 @@ AT_DATA([obs2.flat],
 # no padding
 AT_CHECK([obs-print -of1 obs1.flat -fmt1 flatascii -nf1 3 \
                     -of2 obs2.flat -fmt2 flatascii -nf2 1 -ni2 1],
-[],[Processing sentence 0
+[],[Processing segment 0
 0 0 0.799279 0.199117 0.465240 0.000000 0
 0 1 0.827937 0.915163 0.056923 0.000000 1
 0 2 0.808103 0.511985 0.348996 0.000000 2
@@ -108,7 +108,7 @@ AT_CHECK([obs-print -of1 obs1.flat -fmt1 flatascii -nf1 3 \
 ])
 AT_CHECK([obs-print -of1 obs1.flat -fmt1 flatascii -nf1 3        -leftPad1 2 \
                     -of2 obs2.flat -fmt2 flatascii -nf2 1 -ni2 1 -rightPad2 2],
-[],[Processing sentence 0
+[],[Processing segment 0
 0 0 0.000000 0.000000 0.000000 0.000000 0 
 0 1 0.000000 0.000000 0.000000 0.000000 1
 0 2 0.799279 0.199117 0.465240 0.000000 2
@@ -152,7 +152,7 @@ obs-print -of1 obs2.flat -fmt1 flatascii -nf1 1 -ni1 1 -o obs2.pfile -ofmt pfile
 AT_CHECK([
 obs-print -of1 obs1.pfile -leftPad1 2 \
           -of2 obs2.pfile -rightPad2 2],
-[],[Processing sentence 0
+[],[Processing segment 0
 0 0 0.000000 0.000000 0.000000 0.000000 0 
 0 1 0.000000 0.000000 0.000000 0.000000 1
 0 2 0.799279 0.199117 0.465240 0.000000 2
@@ -196,7 +196,7 @@ obs-print -of1 obs2.flat -fmt1 flatascii -nf1 1 -ni1 1 -o obs2.bin -ofmt binary 
 AT_CHECK([
 obs-print -of1 obs1.bin -fmt1 binary -nf1 3         -leftPad1 2 \
           -of2 obs2.bin -fmt2 binary -nf2 1 -ni2 1 -rightPad2 2],
-[],[Processing sentence 0
+[],[Processing segment 0
 0 0 0.000000 0.000000 0.000000 0.000000 0 
 0 1 0.000000 0.000000 0.000000 0.000000 1
 0 2 0.799279 0.199117 0.465240 0.000000 2
@@ -240,7 +240,7 @@ obs-print -of1 obs2.flat -fmt1 flatascii -nf1 1 -ni1 1 -o obs2.asc -ofmt ascii -
 AT_CHECK([
 obs-print -of1 obs1.asc -fmt1 ascii -nf1 3         -leftPad1 2 \
           -of2 obs2.asc -fmt2 ascii -nf2 1 -ni2 1 -rightPad2 2],
-[],[Processing sentence 0
+[],[Processing segment 0
 0 0 0.000000 0.000000 0.000000 0.000000 0 
 0 1 0.000000 0.000000 0.000000 0.000000 1
 0 2 0.799279 0.199117 0.465240 0.000000 2

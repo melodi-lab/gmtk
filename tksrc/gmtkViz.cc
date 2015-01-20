@@ -787,14 +787,14 @@ public:
   DECLARE_EVENT_TABLE()
 };
 BEGIN_EVENT_TABLE(vizNotebook, wxNotebook)
-#if 0
+#if 1
   EVT_CHAR(vizNotebook::OnChar)
 #endif
 END_EVENT_TABLE()
 
 void 
 vizNotebook::OnChar(wxKeyEvent &event) {
-  wxLogDebug(wxT("vizNotebook::OnChar"));
+  //wxLogDebug(wxT("vizNotebook::OnChar"));
   StructPage *curPage = dynamic_cast<StructPage*> (GetCurrentPage());
   if (curPage) {
     curPage->OnChar(event);
@@ -2085,7 +2085,7 @@ END_EVENT_TABLE()
 
 void 
 GFrame::OnChar(wxKeyEvent &event) {
-  wxLogDebug(wxT("GFrame::OnChar"));
+  //wxLogDebug(wxT("GFrame::OnChar"));
   StructPage *curPage = dynamic_cast<StructPage*> (struct_notebook->GetCurrentPage());
   if (curPage) {
     curPage->OnChar(event);
@@ -2136,7 +2136,9 @@ GFrame::file(wxString &fileName, bool gvpFormat)
 		// the front, so we'll just pretend we did
 		wxNotebookEvent dummy;
 		OnNotebookPageChanged(dummy);
+#if 0
 		page->ticket71();
+#endif
 	} else {
 		delete page;
 	}
@@ -8422,6 +8424,7 @@ StructPage::rightMostItemX( void )
 {
 	long xMax = 0;
 	int numNodes = nodes.size();
+	long dummy;
 	// check all nodes (and associated control points)
 	for (int i = 0; i < numNodes; i++) {
 		xMax = ( nodes[i]->center.x <= xMax ? xMax : nodes[i]->center.x );
@@ -8439,7 +8442,7 @@ StructPage::rightMostItemX( void )
 				int end = arcs[i][j]->cps->size() - 1;
 				assert(end > 0);
 				for ( int k = 1; k < end; k++ ) {
-					( (*arcs[i][j]->cps)[k]->pos.x <= xMax
+					dummy = ( (*arcs[i][j]->cps)[k]->pos.x <= xMax
 					  ? xMax
 					  : (*arcs[i][j]->cps)[k]->pos.x );
 				}
@@ -8477,6 +8480,7 @@ StructPage::bottomMostItemY( void )
 {
 	long yMax = 0;
 	int numNodes = nodes.size();
+	long dummy;
 	// check all nodes (and associated control points)
 	for (int i = 0; i < numNodes; i++) {
 		yMax = ( nodes[i]->center.y <= yMax ? yMax : nodes[i]->center.y );
@@ -8494,7 +8498,7 @@ StructPage::bottomMostItemY( void )
 				int end = arcs[i][j]->cps->size() - 1;
 				assert(end > 0);
 				for ( int k = 1; k < end; k++ ) {
-					( (*arcs[i][j]->cps)[k]->pos.y <= yMax
+					dummy = ( (*arcs[i][j]->cps)[k]->pos.y <= yMax
 					  ? yMax
 					  : (*arcs[i][j]->cps)[k]->pos.y );
 				}

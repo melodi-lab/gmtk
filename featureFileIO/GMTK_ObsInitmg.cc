@@ -100,7 +100,7 @@ void initmg(FileSource *obs_mat,
 
 	  if (!quiet_mode) {
 	    if ((sent_no) % 1000 == 0)
-	      printf("Processing sentence %ld\n",(unsigned long)(sent_no));
+	      printf("Processing segment %ld\n",(unsigned long)(sent_no));
 	  }
 
 	  //const int n_read =  in_streamp->read_ftrslabs(sent_no, ftr_buf, lab_buf);
@@ -196,7 +196,7 @@ void initmg(FileSource *obs_mat,
 
 	if (!quiet_mode) {
 	  if ((sent_no) % 1000 == 0)
-	    printf("Processing sentence %ld\n",(unsigned long)(sent_no));
+	    printf("Processing segment %ld\n",(unsigned long)(sent_no));
 	}
 
 	 for(unsigned frame_no = 0;  frame_no < n_frames; ++frame_no) {

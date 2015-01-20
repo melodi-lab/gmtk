@@ -1,0 +1,130 @@
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/545 is implemented
+
+# If it's working, the inference results with -keepOnlyInterfaceSeparatorMemory T 
+# should match those with -keepOnlyInterfaceSeparatorMemory F
+
+AT_SETUP([O(Tn) space aurora Viterbi (ticket 545)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
+AT_CHECK([(export GMTK_TEST_DIR=`pwd` && 
+  cd $TEST_AND_DEV/auroraTutorial &&
+  gmtkViterbi -of1 DATA/small.pfile -iswp1 T         \
+    -inputMasterFile PARAMS/nonTrainable.master      \
+    -inputTrainable PARAMS/highly_trained.gmp        \
+    -str PARAMS/aurora_decode.str                    \
+    -mVitVals $GMTK_TEST_DIR/vit.norm                \
+    -keepOnlyInterfaceSeparatorMemory F)
+ (export GMTK_TEST_DIR=`pwd` && 
+  cd $TEST_AND_DEV/auroraTutorial &&
+  gmtkViterbi -of1 DATA/small.pfile -iswp1 T         \
+    -inputMasterFile PARAMS/nonTrainable.master      \
+    -inputTrainable PARAMS/highly_trained.gmp        \
+    -str PARAMS/aurora_decode.str                    \
+    -mVitVals $GMTK_TEST_DIR/vit.OTn                 \
+    -keepOnlyInterfaceSeparatorMemory T)
+  cmp vit.norm vit.OTn],[0],[ignore],[ignore])
+AT_CLEANUP
+
+AT_SETUP([O(Tn) space TIMIT Viterbi (ticket 545)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/timit/system])
+AT_CHECK([(export GMTK_TEST_DIR=`pwd` && 
+  cd $TEST_AND_DEV/timit/system &&
+  gmtkViterbi  \
+    -of1 ./LISTS/test_mfcc_noSA.scp -nf1 39 -fmt1 htk -iswp1 T \
+    -strF ./PARAMS/timit_phone_decode.str  \
+    -inputM ./PARAMS/masterFileDecode.params \
+    -inputT tmpdir/learned_params1comp.gmtk \
+    -binInputT T -ckbeam 10000 \
+    -vitVals  $GMTK_TEST_DIR/vit.norm \
+    -cppComm '-DLM_SCALE=$LM_SCALE -DLM_PENALTY=$LM_PENALTY -DAM_SCALE=$AM_SCALE -IPARAMS -I../PARAMS -DROOT_DIR=$SVITCHBOARD_PROJ_ROOT' \
+    -keepOnlyInterfaceSeparatorMemory F)
+ (export GMTK_TEST_DIR=`pwd` && 
+  cd $TEST_AND_DEV/timit/system &&
+  gmtkViterbi  \
+    -of1 ./LISTS/test_mfcc_noSA.scp -nf1 39 -fmt1 htk -iswp1 T \
+    -strF ./PARAMS/timit_phone_decode.str  \
+    -inputM ./PARAMS/masterFileDecode.params \
+    -inputT tmpdir/learned_params1comp.gmtk \
+    -binInputT T -ckbeam 10000 \
+    -vitVals  $GMTK_TEST_DIR/vit.OTn \
+    -cppComm '-DLM_SCALE=$LM_SCALE -DLM_PENALTY=$LM_PENALTY -DAM_SCALE=$AM_SCALE -IPARAMS -I../PARAMS -DROOT_DIR=$SVITCHBOARD_PROJ_ROOT' \
+    -keepOnlyInterfaceSeparatorMemory T)
+  cmp vit.norm vit.OTn],[0],[ignore],[ignore])
+AT_CLEANUP
+
+AT_SETUP([O(Tn) space 7-word Viterbi (ticket 545)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/7-word])
+AT_XFAIL_IF([true])
+AT_CHECK([(export GMTK_TEST_DIR=`pwd` && 
+  cd $TEST_AND_DEV/7-word &&
+  gmtkViterbi  \
+    -strF ./params/model_3t3c7Wa.str \
+    -triFile ./params/my7Wa.str.trifile \
+    -inputMasterFile ./params/master.3t3c7W \
+    -of1 ./params/augFiles.list \
+    -fmt1 ascii -nf1 0 -ni1 27 -dcdrng 0:8 \
+    -cbeam 5 -cpbeam 5 -vcap I \
+    -mVitValsFile  $GMTK_TEST_DIR/vit.norm \
+    -keepOnlyInterfaceSeparatorMemory F)
+ (export GMTK_TEST_DIR=`pwd` && 
+  cd $TEST_AND_DEV/7-word &&
+  gmtkViterbi  \
+    -strF ./params/model_3t3c7Wa.str \
+    -triFile ./params/my7Wa.str.trifile \
+    -inputMasterFile ./params/master.3t3c7W \
+    -of1 ./params/augFiles.list \
+    -fmt1 ascii -nf1 0 -ni1 27 -dcdrng 0:8 \
+    -cbeam 5 -cpbeam 5 -vcap I \
+    -mVitValsFile  $GMTK_TEST_DIR/vit.OTn \
+    -keepOnlyInterfaceSeparatorMemory T)
+  cmp vit.norm vit.OTn],[0],[ignore],[ignore])
+AT_CLEANUP
+
+AT_SETUP([O(Tn) space static Viterbi (ticket 545)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/static_example])
+AT_CHECK([(export GMTK_TEST_DIR=`pwd` && 
+  cd $TEST_AND_DEV/static_example &&
+  gmtkViterbi \
+    -iswp1 F -of1 data_list_one_utt_20_frames \
+    -fmt1 ascii -nf1 0 -ni1 1 -allocateDenseCpts 2 \
+    -strF random_0.str -inputM random_0.master \
+    -mVitValsFile $GMTK_TEST_DIR/vit.norm \
+    -keepOnlyInterfaceSeparatorMemory F)
+ (export GMTK_TEST_DIR=`pwd` && 
+  cd $TEST_AND_DEV/static_example &&
+  gmtkViterbi \
+    -iswp1 F -of1 data_list_one_utt_20_frames \
+    -fmt1 ascii -nf1 0 -ni1 1 -allocateDenseCpts 2 \
+    -strF random_0.str -inputM random_0.master \
+    -mVitVals $GMTK_TEST_DIR/vit.OTn                 \
+    -keepOnlyInterfaceSeparatorMemory T)
+  cmp vit.norm vit.OTn],[0],[ignore],[ignore])
+AT_CLEANUP
+
+AT_SETUP([O(Tn) space triphone Viterbi (ticket 545)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/triphone_hmm])
+AT_CHECK([(export GMTK_TEST_DIR=`pwd` && 
+  cd $TEST_AND_DEV/triphone_hmm &&
+  gmtkViterbi \
+    -of1 misc/stream1.0:1546 -nf1 60 -dcdrng 0:19 \
+    -fmt1 htk -iswp1 true -of2 misc/stream2.0:1546 \
+    -ni2 2 -fmt2 ascii -inputM misc/masterFile.0:1546.train \
+    -strFile misc/nsh5_train_phoneT.str \
+    -triFile misc/nsh5_train_phoneT.tri \
+    -componentCache false \
+    -cppCommandOptions "-x assembler-with-cpp -w -DMISC=misc\/ -DLEARNED_PARAMS=misc\/learnedParams.22" \
+    -mVitValsFile $GMTK_TEST_DIR/vit.norm \
+    -keepOnlyInterfaceSeparatorMemory F)
+ (export GMTK_TEST_DIR=`pwd` && 
+  cd $TEST_AND_DEV/triphone_hmm &&
+  gmtkViterbi \
+    -of1 misc/stream1.0:1546 -nf1 60 -dcdrng 0:19 \
+    -fmt1 htk -iswp1 true -of2 misc/stream2.0:1546 \
+    -ni2 2 -fmt2 ascii -inputM misc/masterFile.0:1546.train \
+    -strFile misc/nsh5_train_phoneT.str \
+    -triFile misc/nsh5_train_phoneT.tri \
+    -componentCache false \
+    -cppCommandOptions "-x assembler-with-cpp -w -DMISC=misc\/ -DLEARNED_PARAMS=misc\/learnedParams.22" \
+    -mVitVals $GMTK_TEST_DIR/vit.OTn                 \
+    -keepOnlyInterfaceSeparatorMemory T)
+  cmp vit.norm vit.OTn],[0],[ignore],[ignore])
+AT_CLEANUP

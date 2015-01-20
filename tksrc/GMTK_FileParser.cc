@@ -1820,8 +1820,7 @@ FileParser::parseRandomVariableWeightOptionList()
       curWtItem->lastFeatureElement = tokenInfo.int_val;	
 
       if ((curWtItem->firstFeatureElement !=
-	   curWtItem->lastFeatureElement)
-	  || (curWtItem->lastFeatureElement < 0))
+	   curWtItem->lastFeatureElement))
 	parseError("first range num must be == second range num for observation file weight");
       
       consumeToken();
@@ -2789,8 +2788,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		       ]];
       } else if  (rvInfoVector[i].switchMapping.liType ==
 		  RVInfo::ListIndex::li_Index) {
-	if ((rvInfoVector[i].switchMapping.intIndex < 0) ||
-	    (rvInfoVector[i].switchMapping.intIndex > GM_Parms.dts.size()))
+	if ((rvInfoVector[i].switchMapping.intIndex > GM_Parms.dts.size()))
 	  error("Error: RV \"%s\" at frame %d (line %d), switching parent num %d out of range\n",
 		rvInfoVector[i].name.c_str(),
 		rvInfoVector[i].frame,

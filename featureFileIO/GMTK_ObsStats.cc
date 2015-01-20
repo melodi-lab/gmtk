@@ -74,7 +74,7 @@ void obsStats(FILE *out_fp, FileSource* obs_mat,Range& srrng, Range& frrng, cons
 
 	if (!quiet_mode) {
 	  if ((*srit) % 100 == 0)
-	    printf("Processing sentence %d\n",(*srit));
+	    printf("Processing segment %d\n",(*srit));
 	}
 
         // Increase size of buffers if needed.
@@ -177,7 +177,7 @@ void obsStats(FILE *out_fp, FileSource* obs_mat,Range& srrng, Range& frrng, cons
 	
 	if (!quiet_mode) {
 	    if ((*srit) % 100 == 0)
-	      printf("Processing sentence %d\n",(*srit));
+	      printf("Processing segment %d\n",(*srit));
 	  }
 
 	  for(unsigned frame_no = 0;  frame_no < n_frames; ++frame_no) {
