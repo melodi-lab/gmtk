@@ -11,6 +11,6 @@
 
 void readStats(FILE*f, size_t N, bool ascii, double *cor, double *means, double *vecs, double *vals);
 void writeStats(FILE*f, size_t N, bool ascii, double *cor, double *means, double *vecs, double *vals);
-void obsKLT(FILE* out_fp, FileSource* obs_mat, FILE *in_st_fp,FILE *out_st_fp, Range& ofrrng,const bool unity_variance,const bool ascii,const bool dontPrintFrameID,const bool quiet,unsigned ofmt,int debug_level,bool oswap);
+void obsKLT(FILE* out_fp, HDF5File *hdf5, FileSource* obs_mat, FILE *in_st_fp,FILE *out_st_fp, Range& ofrrng,const bool unity_variance,const bool ascii,const bool dontPrintFrameID,const bool quiet,unsigned ofmt,int debug_level,bool oswap);
 
 #endif
