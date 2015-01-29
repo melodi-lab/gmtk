@@ -78,8 +78,8 @@ Arg Arg::Args[] = {
   Arg("\n*** Output arguments ***\n"),
 
   Arg("o",      Arg::Req, output_fname,"output file"),
-  Arg("ofmt",      Arg::Opt, ofmtStr,"format of output file (htk, binary, ascii, pfile, flatbin, flatasc)"),
-  Arg("olist",      Arg::Opt, outputList,"output list-of-files name.  Only meaningful if used with the RAW or HTK formats."),
+  Arg("ofmt",      Arg::Opt, ofmtStr,"format of output file (htk, hdf5, binary, ascii, pfile, flatbin, flatasc)"),
+  Arg("olist",      Arg::Opt, outputList,"output list-of-files name.  Only meaningful if used with the RAW, HTK, or HDF5 formats."),
   Arg("sep",      Arg::Opt, outputNameSeparatorStr,"String to use as separator when outputting raw ascii or binary files (one segment per file)."),
   Arg("oswp",Arg::Opt, oswap,"do byte swapping on the output file"),
   Arg("ns",    Arg::Opt, dontPrintFrameID,"Don't print the frame IDs (i.e., sent and frame #)"),
@@ -134,7 +134,8 @@ main(int argc, char *argv[]) {
     obsFile = new HTKFile(outputList, output_fname, outputNameSeparatorStr, oswap, f->numContinuous(), f->numDiscrete());
     break;
   case HDF5:
-    error("ERROR: Unsupported observation file format type: '%s'\n", ofmtStr);
+    obsFile = new HDF5File(outputList, output_fname, f->numContinuous(), f->numDiscrete());
+    break;
   case RAWBIN:
     obsFile = new BinaryFile(outputList, output_fname, outputNameSeparatorStr, oswap, f->numContinuous(), f->numDiscrete());
     break;
