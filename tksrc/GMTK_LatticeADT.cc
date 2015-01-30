@@ -348,6 +348,10 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab)
       case 'E':
 	// ending link
 	endNodeId = atoi(ptr+2);
+	if (endNodeId >= _numberOfNodes) {
+	  error("Error in lattice '%s', line %d, node id %u is bigger than number of lattice nodes %d",
+		ifs.fileName(), ifs.lineNo(), id, _numberOfNodes);
+	}
 	break;
       case 'W':
 	// word token

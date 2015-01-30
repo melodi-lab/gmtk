@@ -1,0 +1,15 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/559 is fixed
+
+AT_SETUP([check illegal lattice end nodes (ticket 559)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/wetlab_train_gmtk_crash])
+
+# We should see an error message about the illegal end node id
+
+AT_CHECK([(cd $TEST_AND_DEV/wetlab_train_gmtk_crash &&            \
+  gmtkModelInfo -strF models_revised/wetlab_lattice_gmm_train.str \
+                -inputM models_revised/wetlab_lattice_gmm.mtr     \
+                -of1 ../pfiles/ex_short.pfile )],
+         [1],[ignore],[Error in lattice 'models_revised/lv1038_lat', line 14, node id 2 is bigger than number of lattice nodes 4
+])
+AT_CLEANUP
