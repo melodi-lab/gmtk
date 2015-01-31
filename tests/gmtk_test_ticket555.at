@@ -1,7 +1,7 @@
 
-# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/559 is fixed
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/555 is fixed
 
-AT_SETUP([check illegal lattice end nodes (ticket 559)])
+AT_SETUP([check illegal lattice end nodes (ticket 555)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/wetlab_train_gmtk_crash])
 
 # We should see an error message about the illegal end node id
