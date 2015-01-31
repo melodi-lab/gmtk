@@ -174,7 +174,7 @@ parseTransform(char*& trans_str, int& magic_int, double& magic_double, char *&fi
       unsigned tmpStringLen=strlen(tmpString);
       if(tmpStringLen==0) 
 	error("ERROR: In parsing tranform '%s': no filter file name specified\n", err_str);
-      filterFileName=new char[tmpStringLen];
+      filterFileName=new char[tmpStringLen+1];
       strcpy(filterFileName,tmpString);
       if(*trans_str=='_') ++trans_str;
     }
