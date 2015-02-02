@@ -157,6 +157,12 @@ class HDF5File: public ObservationFile {
     error("This GMTK build does not support HDF5 files\n");
   }
 
+  // write ctor
+  HDF5File(char const *listFileName, char const *outputFileName, unsigned nfloats, unsigned nints) {
+    error("This GMTK build does not support HDF5 files\n");
+  }
+
+
   ~HDF5File() {}
  
 
