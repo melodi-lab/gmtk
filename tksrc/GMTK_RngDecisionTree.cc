@@ -481,10 +481,10 @@ RngDecisionTree::seek(
   //////////////////////////////////////////////////////////////////////////
   // Read in the position of the tree in the DT file 
   //////////////////////////////////////////////////////////////////////////
-  indexFile->fseek( sizeof(unsigned)*(dt_nmbr), SEEK_CUR ); 
+  indexFile->fseek( (gmtk_off_t)(sizeof(unsigned)*(dt_nmbr)), SEEK_CUR ); 
   indexFile->read(position, "DT offset");
 
-  (void) dtFile->fseek(position, SEEK_SET); 
+  (void) dtFile->fseek( (gmtk_off_t)position, SEEK_SET); 
   dtNum = dt_nmbr - 1; 
 }
 
