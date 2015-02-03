@@ -44,6 +44,9 @@
 #ifndef GMTK_NGRAM_CPT_H
 #define GMTK_NGRAM_CPT_H
 
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
 
 #include "GMTK_CPT.h"
 #include "GMTK_Vocab.h"

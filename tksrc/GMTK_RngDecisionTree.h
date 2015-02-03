@@ -33,6 +33,10 @@
 #ifndef GMTK_RNG_DECISION_TREE_H
 #define GMTK_RNG_DECISION_TREE_H
 
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
 #include "bp_range.h"
 #include "fileParser.h"
 #include "GMTK_NamedObject.h"
