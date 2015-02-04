@@ -480,7 +480,7 @@ void obsPrint(FILE* out_fp, HDF5File *hdf5, Range& srrng,const char * pr_str,con
 	}
 	else if (ofmt == HDF5) {
 	  Data32 *d32p = (Data32 *)lab_buf_p;
-	  hdf5->writeFeature(lab_buf_p[lrit]);
+	  hdf5->writeFeature(d32p[lrit]);
 	}
       }
       if (ofmt==FLATASC || ofmt==RAWASC)
