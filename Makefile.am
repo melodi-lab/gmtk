@@ -19,7 +19,7 @@ scripts/triangulateTimings
 SUBDIRS = IEEEFloatingpoint miscSupport featureFileIO mitk deepMLP tksrc tests
 
 # machine to publish to (any that mount /g/melodi/html will probably do)
-PUBLISHHOST=parrot
+PUBLISHHOST=trumpet
 
 # where to publish released tarballs
 DOWNLOADS=$(PUBLISHHOST):/g/melodi/html/web-pages/downloads/gmtk
