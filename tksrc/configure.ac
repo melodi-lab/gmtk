@@ -220,7 +220,7 @@ AC_CHECK_HEADERS([emmintrin.h], [have_sse=yes])
 # the DMLP training code.
 
 m4_include([../deepMLP/m4/gmtk_cxx11])
-if test x$gmtk_cxx11 = xyes -a -a x$have_see = xyes -a x$XOPEN = x; then
+if test x$gmtk_cxx11 = xyes -a x$have_sse = xyes -a x$XOPEN = x; then
   AC_SUBST([dmlp_libraries],[../deepMLP/libDMLP.a])
   AC_SUBST([dmlp_programs],[gmtkDMLPtrain])
   AC_SUBST([dmlp_check_programs],[abstest dmlp])
