@@ -2154,9 +2154,13 @@ static bool writeLogVals = false;
   Arg("vitObsFileFormat", Arg::Opt, JunctionTree::vitObsFileFmt, "Output Viterbi observation file format (hdf5,htk,binary,ascii,flatascii,pfile)"),
   Arg("vitObsFileSwap", Arg::Opt, JunctionTree::vitObsFileSwap, "Do byte swapping when outputting PFile, HTK, or binary Viterbi observation file"),
 
-  Arg("mVitValsFile",Arg::Opt,mVitValsFileName,"Modified Section Vit: file to print viterbi values in ASCII, '-' for stdout"),
+  // in gmtkOnline -vitValsFile is not available, and 
+  // -mVitValsFile is required rather than optional
 #ifndef GMTK_ONLINE_UNSUPPORTED
+  Arg("mVitValsFile",Arg::Opt,mVitValsFileName,"Modified Section Vit: file to print viterbi values in ASCII, '-' for stdout"),
   Arg("vitValsFile",Arg::Opt,vitValsFileName,"Original Section Vit: file to print viterbi values in ASCII, '-' for stdout"),
+#else
+  Arg("mVitValsFile",Arg::Req,mVitValsFileName,"Modified Section Vit: file to print viterbi values in ASCII, '-' for stdout"),
 #endif
 
 #if defined(GMTK_ARGUMENTS_REQUIRE_BINARY_VIT_FILE)
