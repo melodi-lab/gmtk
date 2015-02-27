@@ -46,6 +46,7 @@ using namespace std;
 #include "H5Cpp.h"
 #ifndef H5_NO_NAMESPACE
 using namespace H5;
+
 #endif
 
 class HDF5File: public ObservationFile {
@@ -75,8 +76,23 @@ class HDF5File: public ObservationFile {
   // ith segment is the 2D hyperslab 
   // fileName[i]:groupName[i]:xStart[i],yStart[i];xStride[i],yStride[i];xCount[i],yCount[i]
 
+
+  // for writable files
+  FILE       *listFile;   // list of segments
+  char const *fofName;    // filename of list of segments
+  char const *hdf5Name;   // actual HDF5 file
+  unsigned    curFrame;
+  unsigned    curFeature;
+  unsigned    frameCount;
+  unsigned    segStart;
+  H5File     *outputFile;
+  Data32     *frameBuffer;
+  DataSet     contDataset, discDataset;
+  DataSpace  *contDataspace, *discDataspace;
+
  public:
 
+  // read ctor
   HDF5File(const char *name, unsigned num, 
 	   bool cppIfAscii, char const* cppCommandOptions=NULL,
 	   char const *contFeatureRangeStr_=NULL, 
@@ -85,34 +101,21 @@ class HDF5File: public ObservationFile {
 	   char const *segRangeStr_=NULL,
 	   unsigned leftPad=0, unsigned rightPad=0);
 
+  // write ctor
+  HDF5File(char const *listFileName, char const *outputFileName, unsigned nfloats, unsigned nints);
+
   ~HDF5File();
  
-
-  // Write segment to the file (no need to call endOfSegment)
-  void writeSegment(Data32 const *segment, unsigned nFrames) {
-    assert(0);
-  }
-
-  // Write frame to the file (call endOfSegment after last frame of a segment)
-  void writeFrame(Data32 const *frame) {
-    assert(0);
-  }
-
   // Set frame # to write within current segemnt
   void setFrame(unsigned frame) {
-    assert(0);
+    assert(0); // we only support sequential writing
   }
 
   // Write frame to the file (call endOfSegment after last frame of a segment)
-  void writeFeature(Data32 x) {
-    assert(0);
-  }
+  void writeFeature(Data32 x);
 
   // Call after last writeFrame of a segment
-  void endOfSegment() {
-    assert(0);
-  }
-
+  void endOfSegment();
 
   // The number of available segments.
   unsigned numSegments() { return numSlabs; }
@@ -153,6 +156,12 @@ class HDF5File: public ObservationFile {
   {
     error("This GMTK build does not support HDF5 files\n");
   }
+
+  // write ctor
+  HDF5File(char const *listFileName, char const *outputFileName, unsigned nfloats, unsigned nints) {
+    error("This GMTK build does not support HDF5 files\n");
+  }
+
 
   ~HDF5File() {}
  

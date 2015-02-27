@@ -21,6 +21,9 @@ AC_ARG_ENABLE([register],
                               [use the deprecated register keyword @<:@default: no@:>@])],
               [register=${enableval}],[register=no])
 
+m4_include([tksrc/m4/wxwin.m4])
+WX_CONFIG_OPTIONS
+
 AC_ARG_ENABLE([gmtkViz], 
               [AS_HELP_STRING([--disable-gmtkViz],
                               [disable gmtkViz @<:@default: no@:>@])],

@@ -166,11 +166,13 @@ HDF5File::HDF5File(const char *name, unsigned num,
     cppIfAscii(cppIfAscii),
     cppCommandOptions(cppCommandOptions),
     buffer(NULL), bufSize(0),
-    curFile(NULL)
+    curFile(NULL), 
+    listFile(NULL), fofName(NULL), outputFile(NULL), frameBuffer(NULL),
+    contDataspace(NULL), discDataspace(NULL)
 {
   FILE *fofFile = openCPPableFile(name, cppIfAscii, cppCommandOptions);
   if (!fofFile) 
-    error("HDF5File: couldn't open '%s' fore reading\n", name);
+    error("HDF5File: couldn't open '%s' for reading\n", name);
   char **hdf5Name;
   (void) readFof(fofFile, name, numSlabs, hdf5Name, 
 		 cppIfAscii, cppCommandOptions);
@@ -247,6 +249,86 @@ HDF5File::HDF5File(const char *name, unsigned num,
 }
 
 
+// write ctor
+HDF5File::HDF5File(char const *listFileName, char const *outputFileName, unsigned nfloats, unsigned nints)
+  : fofName(listFileName), hdf5Name(outputFileName)
+{
+  if (fofName) {
+    if ((listFile = fopen(fofName, "w")) == NULL) {
+      error("ERROR: Couldn't open output list (%s) for writing.\n", fofName);
+    }
+  } else {
+    error("ERROR: you must specify an HDF5 list file name\n");
+  }
+  _numContinuousFeatures = nfloats;
+  _numDiscreteFeatures = nints;
+  _numFeatures = nfloats + nints;
+
+  frameBuffer = new Data32[_numFeatures];
+  
+  curSegment = 0;
+  curFrame = 0;
+  curFeature = 0;
+  frameCount = 0;
+  segStart = 0;
+
+  try {
+    // Let GMTK do the error logging
+    Exception::dontPrint();
+
+    // create the HDF5 file
+    outputFile = new H5File(outputFileName, H5F_ACC_TRUNC);
+
+    hsize_t dims[2];
+    hsize_t maxdims[2];
+    hsize_t chunk_dims[2];
+
+    // Create continuous & discrete dataspaces & datasets
+
+    if (nfloats > 0) {
+      dims[0] = 1;
+      dims[1] = nfloats;
+      maxdims[0] = H5S_UNLIMITED;
+      maxdims[1] = nfloats;
+      chunk_dims[0] = 1;
+      chunk_dims[1] = nfloats;
+      contDataspace = new DataSpace(2, dims, maxdims);
+      
+      // Modify dataset creation property to enable chunking
+      DSetCreatPropList prop;
+      prop.setChunk(2, chunk_dims);
+
+      const H5std_string datasetName("continuous");
+      contDataset = outputFile->createDataSet(datasetName, PredType::NATIVE_FLOAT, *contDataspace, prop);
+    }
+    if (nints > 0) {
+      dims[0] = 1;
+      dims[1] = nints;
+      maxdims[0] = H5S_UNLIMITED;
+      maxdims[1] = nints;
+      chunk_dims[0] = 1;
+      chunk_dims[1] = nints;
+      discDataspace = new DataSpace(2, dims, maxdims);
+
+      // Modify dataset creation property to enable chunking
+      DSetCreatPropList prop;
+      prop.setChunk(2, chunk_dims);
+
+      const H5std_string datasetName("discrete");
+      discDataset = outputFile->createDataSet(datasetName, PredType::NATIVE_UINT32, *discDataspace, prop);
+    }
+  } catch(Exception err) {
+err.printError(stderr);
+fprintf(stderr, "%s\n", err.getCFuncName());
+fflush(stderr);
+    string errmsg("ERROR: creating HDF5 output file '");
+    errmsg = (errmsg + outputFileName) + "' failed:\n";
+    errmsg = errmsg + err.getCDetailMsg();
+    error(errmsg.c_str() );
+  }
+}
+
+
 HDF5File::~HDF5File() {
   if (fileName) {
     for (unsigned i=0; i < numSlabs; i+=1) 
@@ -268,8 +350,83 @@ HDF5File::~HDF5File() {
     curFile->close();
     delete curFile;
   }
+  if (listFile) {
+    if (fclose(listFile)) {
+      error("ERROR: failed to close output list file '%s'\n", fofName);
+    }
+  }
+  if (outputFile) {
+    delete outputFile;
+  }
   if (buffer) free(buffer);
+  if (frameBuffer) delete[] frameBuffer;
+  if (contDataspace) delete contDataspace;
+  if (discDataspace) delete discDataspace;
 }  
+
+
+// Write frame to the file (call endOfSegment after last frame of a segment)
+void 
+HDF5File::writeFeature(Data32 x) {
+  assert(frameBuffer);
+  assert(curFeature < _numFeatures);
+  frameBuffer[curFeature++] = x;
+  if (curFeature == _numFeatures) {
+    try {
+      Exception::dontPrint();
+      if (_numContinuousFeatures > 0) {
+	hsize_t dims[2] = {1, _numContinuousFeatures};
+	DataSpace memspace(2, dims, NULL); // shape of the vector (in memory) that we're going to write
+	if (curFrame > 0) { // have to extend the data set for new frame
+	  hsize_t size[2] = {curFrame+1, _numContinuousFeatures};
+	  contDataset.extend(size);
+	}
+	hsize_t offset[2] = {curFrame, 0}; // offset for new frame
+	DataSpace filespace(contDataset.getSpace());
+	filespace.selectHyperslab(H5S_SELECT_SET, dims, offset);
+	contDataset.write(frameBuffer, PredType::NATIVE_FLOAT, memspace, filespace);
+      }
+      if (_numDiscreteFeatures > 0) {
+	hsize_t dims[2] = {1, _numDiscreteFeatures};
+	DataSpace memspace(2, dims, NULL); // shape of the vector (in memory) that we're going to write
+
+	if (curFrame > 0) { // have to extend the data set for new frame
+	  hsize_t size[2] = {curFrame+1, _numDiscreteFeatures};
+	  discDataset.extend(size);
+	}
+	hsize_t offset[2] = {curFrame, 0}; // offset for new frame
+	DataSpace filespace(discDataset.getSpace());
+	filespace.selectHyperslab(H5S_SELECT_SET, dims, offset);
+	discDataset.write(frameBuffer+_numContinuousFeatures, PredType::NATIVE_UINT32, memspace, filespace);
+      }
+    } catch(Exception err) {
+err.printError(stderr);
+fprintf(stderr, "%s\n", err.getCFuncName());
+fflush(stderr);
+      string errmsg("ERROR: writing to HDF5 output file '");
+      errmsg = (errmsg + hdf5Name) + "' failed:\n";
+      errmsg = errmsg + err.getCDetailMsg();
+      error(errmsg.c_str() );
+    }
+    curFeature = 0;
+    curFrame += 1;
+  }
+}
+
+
+void 
+HDF5File::endOfSegment() {
+// filename:groupname:x_start,y_start;x_stride,y_stride;x_count,y_count
+  assert(listFile);
+  assert(curFeature == 0);
+  if (_numContinuousFeatures > 0) {
+    fprintf(listFile,"%s:/continuous:%u,0;1,1;%u,%u\n", hdf5Name, segStart, curFrame-segStart, _numContinuousFeatures);
+  }
+  if (_numDiscreteFeatures > 0) {
+    fprintf(listFile,"%s:/discrete:%u,0;1,1;%u,%u\n", hdf5Name, segStart, curFrame-segStart, _numDiscreteFeatures);
+  }
+  segStart = curFrame;
+}
 
 
 bool 

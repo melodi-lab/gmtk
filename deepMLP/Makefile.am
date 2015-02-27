@@ -23,7 +23,8 @@ if USE_GCC_FLAGS
 # Only used for GCC compilers
   OPTFLAGS = -O3
 # OPTFLAGS = -O3 -march=native -mtune=native -mfpmath=sse -msse3 -flto
-  GCC_FLAGS = -Wall $(ANSI) -msse2
+# GCC_FLAGS = -Wall $(ANSI) -msse2
+  GCC_FLAGS = -Wall $(ANSI)
   PHIPAC_FLAGS = -Wno-implicit-int
 # AM_LDFLAGS += -static -fwhole-program -L. 
 else

@@ -10,6 +10,12 @@ For general questions:  gmtk-users@u.washington.edu
 Subscribe to the email list at
   http://mailman.u.washington.edu/mailman/listinfo/gmtk-users
 
+Version 1.2.0  2015-02-06
+        * Support for writing HDF5 files
+        * Segment #, frame #, etc. available to external C mapper functions
+        * Added external C mapper function support to gmtkOnline
+        * Initial work on binary and source packaging
+        * Several bug fixes
 
 Version 1.1.1  2014-09-10
         * Fixed wxWidgets key press handling regression in 

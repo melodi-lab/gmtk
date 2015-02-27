@@ -149,8 +149,24 @@ void printHTKHeader(FILE* ofp, bool oswap, int numInts, int numFloats, int numSa
 
 }
 
-void printSegment(unsigned sent_no, FILE* out_fp, float* cont_buf, unsigned num_continuous, UInt32* disc_buf, unsigned num_discrete, unsigned num_frames, const bool dontPrintFrameID,const bool quiet,unsigned ofmt,int debug_level,bool oswap, OutFtrLabStream_PFile* out_stream) {
+void printSegment(unsigned sent_no, FILE* out_fp, HDF5File *hdf5, float* cont_buf, unsigned num_continuous, UInt32* disc_buf, unsigned num_discrete, unsigned num_frames, const bool dontPrintFrameID,const bool quiet,unsigned ofmt,int debug_level,bool oswap, OutFtrLabStream_PFile* out_stream) {
 
+
+  if (ofmt==HDF5) {
+    assert(hdf5);
+    Data32 * cont_buf_p = (Data32*)cont_buf;
+    Data32* disc_buf_p = (Data32 *)disc_buf;
+    for (unsigned frame=0; frame < num_frames; frame+=1) {
+      for (unsigned i=0; i < num_continuous; i+=1) {
+	hdf5->writeFeature(*(cont_buf_p++));
+      }
+      for (unsigned i=0; i < num_discrete; i+=1) {
+	hdf5->writeFeature(*(disc_buf_p++));
+      }
+    }
+    hdf5->endOfSegment();
+    return;
+  }
 
     if(ofmt==RAWASC || ofmt==RAWBIN || ofmt==HTK) {
       char* current_output_fname = new char[strlen(output_fname)+strlen(outputNameSeparatorStr)+50];
@@ -384,6 +400,12 @@ static void obsConcat(FILE *out_fp,
     out_stream = new OutFtrLabStream_PFile(debug_level,"",out_fp,n_ftrs,n_labs,1,oswap);
   }
 
+  HDF5File *hdf5 = NULL;
+  if (ofmt == HDF5) {
+    hdf5 = new HDF5File(outputList, output_fname, n_ftrs, n_labs);
+  }
+  
+
   float *ftr_buf = new float[buf_size * n_ftrs];
   UInt32 *lab_buf = new UInt32[buf_size * n_labs];
 
@@ -446,7 +468,7 @@ static void obsConcat(FILE *out_fp,
 				
       }
       // Write output.
-      printSegment(global_seg_num, out_fp, ftr_buf,n_ftrs,lab_buf,n_labs,n_frames, dontPrintFrameID,
+      printSegment(global_seg_num, out_fp, hdf5, ftr_buf,n_ftrs,lab_buf,n_labs,n_frames, dontPrintFrameID,
 		   quiet, ofmt, debug_level, oswap, out_stream);
     }
   }
@@ -484,8 +506,8 @@ Arg Arg::Args[] = {
   Arg("\n*** Output arguments ***\n"),
 
   Arg("o",      Arg::Opt, output_fname,"output file"),
-  Arg("ofmt",      Arg::Opt, ofmtStr,"format of output file (htk, binary, ascii, pfile, flatbin, flatasc)"),
-  Arg("olist",      Arg::Opt, outputList,"output list-of-files name.  Only meaningful if used with the RAW or HTK formats."),
+  Arg("ofmt",      Arg::Opt, ofmtStr,"format of output file (htk, hdf5, binary, ascii, pfile, flatbin, flatasc)"),
+  Arg("olist",      Arg::Opt, outputList,"output list-of-files name.  Only meaningful if used with the RAW, HDF5, or HTK formats."),
   Arg("sep",      Arg::Opt, outputNameSeparatorStr,"String to use as separator when outputting raw ascii or binary files (one segment per file)."),
   Arg("oswp",Arg::Opt, oswap,"do byte swapping on the output file"),
   Arg("ns",    Arg::Opt, dontPrintFrameID,"Don't print the frame IDs (i.e., sent and frame #)"),
@@ -552,6 +574,8 @@ int main(int argc, const char *argv[]) {
   }
   if (strcmp(ofmtStr,"htk") == 0)
     ofmt = HTK;
+  else if (strcmp(ofmtStr,"hdf5") == 0)
+    ofmt = HDF5;
   else if (strcmp(ofmtStr,"binary") == 0)
     ofmt = RAWBIN;
   else if (strcmp(ofmtStr,"ascii") == 0)
@@ -568,12 +592,12 @@ int main(int argc, const char *argv[]) {
 
   FILE *out_fp=NULL;
   if (output_fname==0 || !strcmp(output_fname,"-")) {
-    if(ofmt==RAWASC || ofmt==RAWBIN || ofmt==HTK) {
-      error("Need to specify output filename when output type is RAWBIN, RAWASC, or HTK.\n");
+    if(ofmt==RAWASC || ofmt==RAWBIN || ofmt==HTK || ofmt==HDF5) {
+      error("Need to specify output filename when output type is RAWBIN, RAWASC, HDF5, or HTK.\n");
     }
     out_fp = stdout;
   } else {
-    if(ofmt != RAWASC && ofmt != RAWBIN && ofmt != HTK) {
+    if(ofmt != RAWASC && ofmt != RAWBIN && ofmt != HTK && ofmt != HDF5) {
       if ((out_fp = fopen(output_fname, "w")) == NULL) {
 	error("Couldn't open output file for writing.\n");
       }
@@ -581,7 +605,7 @@ int main(int argc, const char *argv[]) {
   }
  
 
-  if(outputList != NULL) {
+  if(outputList != NULL && ofmt != HDF5) {
     if ((outputListFp = fopen(outputList, "w")) == NULL) {
       error("Couldn't open output list (%s) for writing.\n",outputList);
     }
@@ -591,7 +615,7 @@ int main(int argc, const char *argv[]) {
   if(nis[0]==0 && nfs[0]==0) {
     error("The number of floats and the number of ints cannot be both zero.");
   }
-  
+
   //////////////////////////////////////////////////////////////////////
   // Create objects.
   //////////////////////////////////////////////////////////////////////

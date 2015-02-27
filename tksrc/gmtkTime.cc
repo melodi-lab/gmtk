@@ -11,6 +11,10 @@
  *
  */
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -37,14 +41,10 @@
 
 #include "GMTK_WordOrganization.h"
 
-#if HAVE_CONFIG_H
-#include <config.h>
-#endif
 #if HAVE_HG_H
 #include "hgstamp.h"
 #endif
 VCID(HGID)
-
 
 #include "GMTK_FileParser.h"
 #include "GMTK_RV.h"

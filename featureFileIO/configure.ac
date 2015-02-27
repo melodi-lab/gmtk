@@ -114,7 +114,7 @@ AC_CHECK_LIB([m], [sqrt])
 #AC_CHECK_LIB([hdf5_cpp], [H5File::isHdf5])  
 #AC_LANG_POP([C++])
 
-AC_MSG_CHECKING([for HDF5 >= 1.8])
+AC_MSG_CHECKING([for HDF5 >= 1.8 C++ bindings])
 AC_LANG_PUSH([C++])
 hdf_check_save_LIBS=${LIBS}
 LIBS="${LIBS} -lhdf5_cpp -lhdf5"
