@@ -209,8 +209,7 @@ instantiateWriteFile(char *listFileName, char *outputFileName, char *outputNameS
   case HTK:
     return new HTKFile(listFileName, outputFileName, outputNameSeparator, swap, nfs, nis);
   case HDF5:
-    error("ERROR: HDF5 output files not yet supported\n");
-    break;
+    return new HDF5File(listFileName, outputFileName, nfs, nis);
   case FLATASC:
     return new FlatASCIIFile(outputFileName, nfs, nis);
   case RAWBIN:

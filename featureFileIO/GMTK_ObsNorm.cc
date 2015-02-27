@@ -18,6 +18,7 @@
 #include "general.h"
 
 void obsNorm(FILE*  out_fp,
+	     HDF5File *hdf5,
 	     FileSource* obs_mat,
 	     Range& srrng,
 	     const double result_mean,
@@ -203,7 +204,7 @@ void obsNorm(FILE*  out_fp,
     
 
       // Write output.
-      printSegment(*srit2, out_fp, oftr_buf,n_ftrs,olab_buf,n_labs,n_frames, dontPrintFrameID,quiet, ofmt, debug_level, oswap, out_stream);
+      printSegment(*srit2, out_fp, hdf5, oftr_buf,n_ftrs,olab_buf,n_labs,n_frames, dontPrintFrameID,quiet, ofmt, debug_level, oswap, out_stream);
       
       //out_stream.write_ftrslabs(prrng.length(), oftr_buf, olab_buf);
       //out_stream.doneseg((SegID) seg_id);

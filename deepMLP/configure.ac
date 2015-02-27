@@ -57,11 +57,14 @@ esac
 AM_CONDITIONAL([CYGWIN_FLAGS],[test x"$XOPEN" != x])
 
 
+# Check for SSE headers
+AC_CHECK_HEADERS([emmintrin.h], [have_sse=yes])
+
 # Test if compiler accepts ISO C++ 2011.  This is required for
 # the DMLP training code.
 
 m4_include([m4/gmtk_cxx11])
-if test x$gmtk_cxx11 = xyes -a x$XOPEN = x; then
+if test x$gmtk_cxx11 = xyes -a x$have_sse = xyes -a x$XOPEN = x; then
   AC_SUBST([dmlp_library],[libDMLP.a])
   AC_SUBST([check_programs],['dmlp mnist label dmlpTest orderTest phipacTest'])
 fi

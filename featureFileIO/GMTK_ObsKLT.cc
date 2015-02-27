@@ -92,7 +92,7 @@ void writeStats(FILE*f, size_t N, bool ascii, double *cor, double *means, double
   }
 }
 
-void obsKLT(FILE* out_fp, FileSource* obs_mat, FILE *in_st_fp,FILE *out_st_fp, Range& ofrrng,const bool unity_variance,const bool ascii,const bool dontPrintFrameID,const bool quiet,unsigned ofmt,int debug_level,bool oswap) {
+void obsKLT(FILE* out_fp, HDF5File *hdf5, FileSource* obs_mat, FILE *in_st_fp,FILE *out_st_fp, Range& ofrrng,const bool unity_variance,const bool ascii,const bool dontPrintFrameID,const bool quiet,unsigned ofmt,int debug_level,bool oswap) {
 
 
   // Feature and label buffers are dynamically grown as needed.
@@ -360,7 +360,7 @@ void obsKLT(FILE* out_fp, FileSource* obs_mat, FILE *in_st_fp,FILE *out_st_fp, R
       }
       
       // Write output.
-      printSegment(*srit, out_fp, oftr_buf,n_ftrs,lab_buf,n_labs,n_frames, dontPrintFrameID,quiet, ofmt, debug_level, oswap, out_stream);
+      printSegment(*srit, out_fp, hdf5, oftr_buf,n_ftrs,lab_buf,n_labs,n_frames, dontPrintFrameID,quiet, ofmt, debug_level, oswap, out_stream);
       
       //out_stream->write_ftrslabs(n_frames, oftr_buf, lab_buf);
       //out_stream->doneseg((SegID) *srit);

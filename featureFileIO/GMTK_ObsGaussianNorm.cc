@@ -275,6 +275,7 @@ histc_lookup(float *domain,
 
 
 void gaussianNorm(FILE* out_fp,
+		  HDF5File *hdf5,
                   FileSource* obs_mat,
                   FILE *in_st_fp,
                   FILE *out_st_fp,
@@ -771,7 +772,7 @@ void gaussianNorm(FILE* out_fp,
 
 
       // Write output.
-       printSegment(*srit2, out_fp, oftr_buf,n_ftrs,lab_buf,n_labs,n_frames, dontPrintFrameID,quiet, ofmt, debug_level, oswap, out_stream);
+      printSegment(*srit2, out_fp, hdf5, oftr_buf,n_ftrs,lab_buf,n_labs,n_frames, dontPrintFrameID,quiet, ofmt, debug_level, oswap, out_stream);
     }
     printf("...done\n");
 

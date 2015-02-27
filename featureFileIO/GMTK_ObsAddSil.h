@@ -10,6 +10,7 @@
 #include "GMTK_ObsPrint.h"
 
 void addSil(FILE* out_fp, 
+	    HDF5File *hdf5,
 	     FileSource* obs_mat,
 	     Range& srrng,
 	     const int nb,
