@@ -142,7 +142,7 @@ AM_CONDITIONAL([HAVE_HG],[test  x$HAVE_HG = xyes])
 m4_include([m4/wxwin.m4])
 
 WX_CONFIG_OPTIONS
-WX_CONFIG_CHECK([2.9.0], [HAVE_WXWIDGETS=yes])
+WX_CONFIG_CHECK([2.9.0], [HAVE_WXWIDGETS=yes], [AC_MSG_WARN([$wx_error_message])])
 
 AC_ARG_ENABLE([gmtkViz], 
               [AS_HELP_STRING([--disable-gmtkViz],
