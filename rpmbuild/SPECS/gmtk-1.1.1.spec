@@ -78,6 +78,7 @@ rm -rf $RPM_BUILD_ROOT
 /usr/bin/obs-print
 /usr/bin/obs-skmeans
 /usr/bin/obs-stats
+/usr/bin/obs-window
 /usr/bin/triangulateGA
 /usr/bin/triangulateParallel
 /usr/bin/triangulateTimings
