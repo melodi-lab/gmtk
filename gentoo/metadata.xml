@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+  <maintainer>
+    <email>rprogers@uw.edu</email>
+    <name>Richard Rogers</name>
+  </maintainer>
+  <use>
+    <flag name='hdf5'>Enables GMTK to read and write HDF5 files</flag>
+    <flag name='wxwidgets'>Builds and installs gmtkViz for producing
+    figures of graphical models. Note this requires <pkg>x11-libs/wxGTK</pkg>
+    to use wxWidgets version 3.0 or later</flag>
+  </use>>
+  <longdescription>
+    The Graphical Models Toolkit is an opensource toolkit for rapidly
+    prototyping dynamic graphcial models.
+  </longdescription>
+</pkgmetadata>
+
+  
