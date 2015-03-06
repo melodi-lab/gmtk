@@ -3,10 +3,39 @@
 ======================================================================
 ======================================================================
 
+The Graphical Models Toolkit (GMTK) is an open source, publicly available 
+toolkit for rapidly prototyping statistical models using dynamic graphical 
+models (DGMs) and dynamic Bayesian networks (DBNs). GMTK can be used for 
+applications and research in speech and language processing, bioinformatics, 
+activity recognition, and any time series application. GMTK has many features, 
+including exact and approximate inference; a large variety of built-in 
+factors including dense, sparse, and deterministic conditional probability 
+tables, native support for ARPA backoff-based factors and factored language 
+models, parameter sharing, gamma and beta distributions, dense and sparse 
+Gaussian factors, heterogeneous mixtures, deep neural network factors, and 
+time-inhomogeneous trellis factors; arbitrary order embedded Markov chains; a 
+GUI-based graph viewer; flexible feature-file support and processing tools 
+(supporting pfiles, HTK files, ASCII/binary, and HDF5 files); and both 
+offline and streaming online inference methods that can be used for both 
+parameter learning and prediction. More information is available in the 
+documentation. All in all, GMTK offers a flexible, concise, and expressive 
+probabilistic modeling framework with which one may rapidly specify a vast 
+collection of temporal statistical models.
+
+GMTK was developed by Prof. Jeff Bilmes, Richard Rogers, and a number of 
+other individuals. Please see the documentation for complete details and 
+acknowledgments. Work on GMTK was supported by the TerraSwarm Research 
+Center, one of six centers administered by the STARnet phase of the Focus 
+Center Research Program (FCRP) a Semiconductor Research Corporation program 
+sponsored by MARCO and DARPA. Support was also provided by the National 
+Science Foundation grants CNS-0855230, IIS-0905341, IIS-0093430, IIS-0434720, 
+and IIS-0326382, DARPA's ASSIST Program (contract number NBCH-C-05-0137), NIH
+awards R01 GM096306 and P41 GM103533, an ONR MURI grant (No. N000140510388),
+and generous gifts by Microsoft Research, the Intel corporation, and Google.
 
 			 How to compile GMTK
 
-			  Updated: September, 2014
+			  Updated: March, 2015
  
 
 GMTK uses a simple GNU Autotools build process. The familiar
@@ -36,12 +65,17 @@ the gmtkDMLPtrain program will not be compiled. You will also want to
 use a good CBLAS implementation like MKL or ATLAS to get the best
 performance with gmtkDMLPtrain. See the relevant options in ./configure --help
 
+Also note that on some platforms, ABI incompatibilities can cause
+programs that mix ISO C++ 2011 and non-2011 C++ to fail (they may
+compile & link successfully, but crash or produce incorrect output).
+gmtkDMLPtrain may not work properly on such platforms.
+
 
 gmtkViz (which is a graphical user interface for taking an 
 existing graph structure specified using a .str file, and quickly 
 producing a nice layout of that graph, and a resulting .eps/.pdf file 
 for, say, inclusion in a paper) is only built if a suitable wxWidgets 
-(http://www.wxwidgets.org/) installation version 2.9 or later is 
+(http://www.wxwidgets.org/) installation version 3.0 or later is 
 detected at configure time. The "Print to EPS file" option under the 
 file menu does not work with wxWidgets 2.9.2 or earlier due to bugs in 
 wxWidgets. You can use the native OS print-to-file driver to produce 
@@ -50,18 +84,17 @@ output. Note that wxWidgets is the only external dependence needed to
 compile any of GMTK. 
 
 On most platforms, gmtkViz will be built automatically if a suitable 
-wx-config is available under your PATH environment variable. If a suitable
-wxWidgets installation is not found, gmtkViz will be skipped but the rest 
-of GMTK will build & work fine.
+wx-config is available under your PATH environment variable. You can
+also specify how to find wxWidgets using the --with-wx configure options.
+See "configure --help" for more details. If a suitable wxWidgets installation
+is not found, gmtkViz will be skipped but the rest of GMTK will build and
+work fine.
 
-To build gmtkViz on OSX 10.8 or later: We haven't had much success
-building a wxWidgets with GCC that will work with gmtkViz. (If you've 
-had any luck, shoot us an email and let us know how you did it.)
-We suggest installing wxWidgets 3.0.1 via MacPorts https://www.macports.org
-and building GMTK with Clang (e.g, ./configure CC=clang CXX=clang++).
-Make sure wx-config is in your PATH; it seems to be in 
-/opt/local/Library/Frameworks/wxWidgets.framework/Versions/wxWidgets/3.0/bin
-when installed via MacPorts. 
+To build gmtkViz on Mac OSX we recommend installing wxWidgets via
+MacPorts https://www.macports.org/ as we have had great difficulty
+building a wxWidgets that will work with gmtkViz. Note that GMTK is 
+now available through MacPorts as well, so installing GMTK via MacPorts
+will pull in the proper wxWidgets. 
 
 You will also need to install X11 on OSX 10.8 and later in order for gmtkViz
 to build. We recommend installing XQuartz http://xquartz.macosforge.org
@@ -69,6 +102,7 @@ to build. We recommend installing XQuartz http://xquartz.macosforge.org
 gmtkViz is not supported on Cygwin. (If you've had any luck building
 with wxWidgets on Cygwin, shoot us an email and let us in on the
 secret!)
+
 
 Note that the main development compiler used for GMTK is GNU
 gcc/g++. Other compilers have also been tested (such as the Clang,
@@ -83,7 +117,7 @@ There are a few variables that control the flags passed to the C++
 compiler. You may want to specify them to the make command, though
 they all have reasonable defaults. For example, you might try
 
-  make DEBUGFLAGS=-ggdb3 OPTFLAGS="-O3 -march=pentium4 -mfpmath=sse -ffast-math"
+ make DEBUGFLAGS=-ggdb3 OPTFLAGS="-O3 -march=pentium4 -mfpmath=sse -ffast-math"
 
 The default is just generic optimization, but you might want to use
 something more aggressive (which can lead to significant speedups, but
@@ -115,7 +149,7 @@ installed, do
 Note, many of the above options can be combined.
 
 Don't forget to read the documentation. It can be found along with the latest
-GMTK source distribution at:
+GMTK distribution at:
 
        http://melodi.ee.washington.edu/gmtk
 
