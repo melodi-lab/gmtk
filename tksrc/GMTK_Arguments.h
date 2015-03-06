@@ -4,6 +4,10 @@
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *  $Header$
  *
+ * Copyright (C) 2005 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ *
  *
  *   Defines all the arguments for all gmtk programs in one place. Defines all three of:
  *       1) the (static) variable names, if not defined elsewhere in GMTK.
@@ -27,6 +31,7 @@
 #endif
 #endif
 
+#include "GMTK_Filter.h"
 #include "GMTK_ProgramDefaultParms.h"
 
 /*-----------------------------------------------------------------------------------------------------------*/
@@ -51,159 +56,8 @@ const char*const argerr = "ARG ERROR";
 #endif
 
 
+#include "GMTK_ObservationArguments.h"
 
-/*==============================================================================================================*/
-/****************************************************************************************************************/
-/****************************************************************************************************************/
-/*****************************                                     **********************************************/
-/*****************************   OBSERVATION INPUT FILE HANDLING   **********************************************/
-/*****************************                                     **********************************************/
-/****************************************************************************************************************/
-/****************************************************************************************************************/
-/****************************************************************************************************************/
-
-/*-----------------------------------------------------------------------------------------------------------*/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-
-
-#if defined(GMTK_ARG_OBS_FILES)
-#if defined(GMTK_ARGUMENTS_DEFINITION)
-
-
-// This next code is used by a number of routines to compute and set
-// the default endian swapping condition associated with the
-// arguments. We figure out the Endian of the machine this is running
-// on and set the swap defaults accordingly.
-
-#define DEF_CODE_TO_COMPUTE_ENDIAN(DEFAULT_SWAP_VALUE)   \
-  bool doWeSwap; \
-  ByteEndian byteEndian = getWordOrganization(); \
-  switch(byteEndian) { \
-  case BYTE_BIG_ENDIAN: \
-    doWeSwap=false; \
-    break; \
-  case BYTE_LITTLE_ENDIAN: \
-     doWeSwap=true; \
-     break; \
-  default: \
-    /* We weren't able to figure the Endian out.  Leave the swap defaults as they are. */ \
-    doWeSwap=DEFAULT_SWAP_VALUE; \
-  } \
-  \
-   for(int i=0; i<MAX_NUM_OBS_FILES; ++i) { \
-     iswp[i]=doWeSwap; \
-  }
-
-#ifdef INTV_WORDS_BIGENDIAN
-#define CODE_TO_COMPUTE_ENDIAN DEF_CODE_TO_COMPUTE_ENDIAN(true) 
-#else
-#define CODE_TO_COMPUTE_ENDIAN DEF_CODE_TO_COMPUTE_ENDIAN(false) 
-#endif
-
-
-   // observation input file handling
-#define MAX_NUM_OBS_FILES (5)
-   char    *ofs[MAX_NUM_OBS_FILES] = { NULL, NULL, NULL, NULL,NULL }; 
-   unsigned nfs[MAX_NUM_OBS_FILES] = { 0, 0, 0,0,0 };
-   unsigned nis[MAX_NUM_OBS_FILES] = { 0, 0, 0,0,0 };
-   const char   *fmts[MAX_NUM_OBS_FILES] = { "pfile", "pfile", "pfile","pfile","pfile" };
-   const char    *frs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
-   const char    *irs[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
-   const char     *sr[MAX_NUM_OBS_FILES] = { "all", "all", "all","all","all" };
-   // per stream frame range string before any tranformations are applied
-   char  *prepr[MAX_NUM_OBS_FILES] = {NULL,NULL,NULL,NULL,NULL};   
-   // per stream frame range string after per-stream transformations are applied
-   char *postpr[MAX_NUM_OBS_FILES] = {NULL,NULL,NULL,NULL,NULL};   
-   char *gpr_str                   = NULL;   // global final frame range string
-
-extern bool ObservationsAllowNan;
-
-#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
-
-  // observation input file handling
-  Arg("\n*** Observation input file handling ***\n"),
-  Arg("of",  Arg::Req,ofs,"Observation File.  Replace X with the file number",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("nf",  Arg::Opt,nfs,"Number of floats in observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("ni",  Arg::Opt,nis,"Number of ints in observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("fmt", Arg::Opt,fmts,"Format (htk,binary,ascii,pfile) for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("iswp",Arg::Opt,iswp,"Endian swap condition for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("fr",  Arg::Opt,frs,"Float range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("ir",  Arg::Opt,irs,"Int range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("sr",  Arg::Opt,sr,"Sentence range for observation file X",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("prepr", Arg::Opt, prepr,"Pre Per-segment frame Range for obs file X before any transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("postpr",Arg::Opt, postpr,"Post Per-segment frame Range for obs file X after per-stream transforms are applied",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("gpr",   Arg::Opt, gpr_str,"Global Per-segment final frame Range"),
-  Arg("obsNAN",   Arg::Opt, ObservationsAllowNan," True if observation files allow FP NAN values"),
-
-
-#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
-
-  ////////////////////////////////////////////
-  // check for valid argument values.
-  int nfiles = 0;
-  unsigned ifmts[MAX_NUM_OBS_FILES];
-  for (int i=0;i<MAX_NUM_OBS_FILES;i++) {
-
-    if (strcmp(fmts[i],"htk") == 0)
-      ifmts[i] = HTK;
-    else if (strcmp(fmts[i],"binary") == 0)
-      ifmts[i] = RAWBIN;
-    else if (strcmp(fmts[i],"ascii") == 0)
-      ifmts[i] = RAWASC;
-    else if (strcmp(fmts[i],"pfile") == 0)
-      ifmts[i] = PFILE;
-    else
-      error("%s: Unknown observation file format type: '%s'\n",argerr,fmts[i]);
-
-    if (ofs[i] != NULL && ifmts[i]!=PFILE && nfs[i] == 0 && nis[i] == 0)
-      error("%s: command line parameters must specify one of nf%d and ni%d as not zero",argerr,
-	    i+1,i+1);
-    
-    if(ofs[i] != NULL && ifmts[i]==PFILE) {
-      FILE *in_fp = fopen(ofs[i], "r");
-      if (in_fp==NULL) 
-	error("Couldn't open input pfile %s for reading.", ofs[i]);
-      bool debug_level=0;
-      InFtrLabStream_PFile* in_streamp = new InFtrLabStream_PFile(debug_level,"",in_fp,1,iswp[i]);
-      unsigned num_labs=in_streamp->num_labs();
-      unsigned num_ftrs=in_streamp->num_ftrs();
-
-      ////////////////////////////////////////////////////////////
-      // Check consistency between pfile and supplied arguments //
-      char search_str[]="nXXXXX";
-      sprintf(search_str,"-ni%d",i+1);
-      bool found=false;
-      for(int j=1; j < argc; ++j) {
-	if(strcmp(argv[j],search_str)==0) found=true;
-      }
-      if(found && nis[i] != num_labs) 
-	error("%s: command line parameter ni%d (%d) is different from the one found in the pfile (%d)",argerr,
-	      i+1,nis[i],num_labs); 
-      sprintf(search_str,"-nf%d",i+1);
-      found=false;
-      for(int j=1; j < argc; ++j) {
-	if(strcmp(argv[j],search_str)==0) found=true;
-      }
-      if(found && nfs[i] != num_ftrs) 
-	error("%s: command line parameter nf%d (%d) is different from the one found in the pfile (%d)",
-	      argerr,i+1,nfs[i],num_ftrs); 
-      ////////////////////////////////////////////////////////////
-      nis[i]=num_labs;
-      nfs[i]=num_ftrs;
-
-      if (fclose(in_fp)) 
-	error("Couldn't close input pfile %s.", ofs[i]);
-      delete in_streamp;
-    }
-    
-    nfiles += (ofs[i] != NULL);
-  }
-
-#else
-#endif
-#endif // defined(GMTK_ARG_OBS_FILES)
 
 
 /*==============================================================================================================*/
@@ -228,22 +82,6 @@ extern bool ObservationsAllowNan;
 #endif
 
 
-#if defined(GMTK_ARG_CPP_CMD_OPTS)
-#if defined(GMTK_ARGUMENTS_DEFINITION)
-
-  static char *cppCommandOptions = NULL;
-
-#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
-
-  Arg("cppCommandOptions",Arg::Opt,cppCommandOptions,"Command line options to give to 'cpp'"),
-
-#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
-
-#else
-#endif
-#endif // defined(GMTK_ARG_CPP_CMD_OPTS)
-
-
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
 /*************************************************************************************************************/
@@ -263,11 +101,37 @@ extern bool ObservationsAllowNan;
    Arg("inputMasterFile",Arg::Req,inputMasterFile,"Input file of multi-level master CPP processed GM input parameters"),
 #endif
 
-#elif defined(GMTK_ARGUMENTS_CHECK_ARGSo)
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
 #else
 #endif
 #endif // defined(GMTK_ARG_INPUT_MASTER_FILE)
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
+#if defined(GMTK_ARG_DLOPEN_MAPPERS)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+#include <vector>
+#include <dlfcn.h>
+
+#define MAX_NUM_DLOPENED_FILES (5)
+   char *dlopenFilenames[MAX_NUM_DLOPENED_FILES] = {NULL,NULL,NULL,NULL,NULL};
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+Arg("map",Arg::Opt,dlopenFilenames,"Deterministic mapping dynamic library file. Replace X with the file number",Arg::ARRAY,MAX_NUM_DLOPENED_FILES),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#else
+#endif
+#endif // defined(GMTK_ARG_DLOPEN_MAPPERS)
 
 
 /*-----------------------------------------------------------------------------------------------------------*/
@@ -942,6 +806,143 @@ extern bool ObservationsAllowNan;
 /*************************************************************************************************************/
 
 
+#if defined(GMTK_ARG_MEM_GROWTH)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+  static char const *memGrowthOption = "default";
+
+#define GMTK_MEM_GROWTH_CONSERVATIVE 0
+#define GMTK_MEM_GROWTH_DEFAULT      1
+#define GMTK_MEM_GROWTH_AGGRESSIVE   2
+
+  static unsigned memGrowthStrategy = GMTK_MEM_GROWTH_DEFAULT;
+
+#define GMTK_MEM_CONSERVATIVE_START_SIZE  1
+#define GMTK_MEM_CONSERVATIVE_GROWTH_RATE 1.05
+#define GMTK_MEM_CONSERVATIVE_DECAY_RATE 0.0
+
+#define GMTK_MEM_DEFAULT_START_SIZE  23
+#define GMTK_MEM_DEFAULT_GROWTH_RATE 1.25
+#define GMTK_MEM_DEFAULT_DECAY_RATE 0.0
+
+#define GMTK_MEM_AGGRESSIVE_START_SIZE  23
+#define GMTK_MEM_AGGRESSIVE_GROWTH_RATE 2.0
+#define GMTK_MEM_AGGRESSIVE_DECAY_RATE 0.0
+
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("memoryGrowth",Arg::Opt,memGrowthOption,"Rate to grow data structures (conservative, default, aggressive)"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+  if (strncasecmp(memGrowthOption, "conservative", 13) == 0) {
+    infoMsg(IM::Default,"NOTE: using conservative memory strategy - turning off component caching '-componentCache F', setting hash load factor to at least 0.98 '-hashLoadFactor 0.98', and not storing deterministic children '-deterministicChildrenStore F'\n"); 
+    fflush(stdout);
+    MixtureCommon::cacheMixtureProbabilities = false;
+    // make sure to use other low memory options.
+    if (hash_abstract::loadFactor < 0.98)
+      hash_abstract::loadFactor = 0.98;
+    MaxClique::storeDeterministicChildrenInClique = false;
+
+    memGrowthStrategy = GMTK_MEM_GROWTH_CONSERVATIVE;
+    
+    CliqueValueHolder::defaultAllocationUnitChunkSize = GMTK_MEM_CONSERVATIVE_START_SIZE;
+    CliqueValueHolder::defaultGrowthFactor            = GMTK_MEM_CONSERVATIVE_GROWTH_RATE;
+    
+    SeparatorClique::aiStartingSize                   = GMTK_MEM_CONSERVATIVE_START_SIZE;
+    SeparatorClique::aiGrowthFactor                   = GMTK_MEM_CONSERVATIVE_GROWTH_RATE;
+    
+    SeparatorClique::remStartingSize                  = GMTK_MEM_CONSERVATIVE_START_SIZE;
+    SeparatorClique::remGrowthFactor                  = GMTK_MEM_CONSERVATIVE_GROWTH_RATE;
+    
+    SeparatorClique::sepSpaceMgrStartingSize          = GMTK_MEM_CONSERVATIVE_START_SIZE;
+    SeparatorClique::sepSpaceMgrGrowthRate            = GMTK_MEM_CONSERVATIVE_GROWTH_RATE;
+    SeparatorClique::sepSpaceMgrDecayRate             = GMTK_MEM_CONSERVATIVE_DECAY_RATE;
+    
+    SeparatorClique::remSpaceMgrStartingSize          = GMTK_MEM_CONSERVATIVE_START_SIZE;
+    SeparatorClique::remSpaceMgrGrowthRate            = GMTK_MEM_CONSERVATIVE_GROWTH_RATE;
+    SeparatorClique::remSpaceMgrDecayRate             = GMTK_MEM_CONSERVATIVE_DECAY_RATE;
+    
+    ConditionalSeparatorTable::remHashMapStartingSize = GMTK_MEM_CONSERVATIVE_START_SIZE;
+    
+    MaxClique::spaceMgrStartingSize                   = GMTK_MEM_CONSERVATIVE_START_SIZE;
+    MaxClique::spaceMgrGrowthRate                     = GMTK_MEM_CONSERVATIVE_GROWTH_RATE;
+    MaxClique::spaceMgrDecayRate                      = GMTK_MEM_CONSERVATIVE_DECAY_RATE;
+  
+    MaxCliqueTable::valuePoolGrowthRate               = GMTK_MEM_CONSERVATIVE_GROWTH_RATE;
+
+  } else if (strncasecmp(memGrowthOption, "default", 8) == 0) {
+    memGrowthStrategy = GMTK_MEM_GROWTH_DEFAULT;
+
+    CliqueValueHolder::defaultAllocationUnitChunkSize = GMTK_MEM_DEFAULT_START_SIZE;
+    CliqueValueHolder::defaultGrowthFactor            = GMTK_MEM_DEFAULT_GROWTH_RATE;
+    
+    SeparatorClique::aiStartingSize                   = GMTK_MEM_DEFAULT_START_SIZE;
+    SeparatorClique::aiGrowthFactor                   = GMTK_MEM_DEFAULT_GROWTH_RATE;
+    
+    SeparatorClique::remStartingSize                  = GMTK_MEM_DEFAULT_START_SIZE;
+    SeparatorClique::remGrowthFactor                  = GMTK_MEM_DEFAULT_GROWTH_RATE;
+    
+    SeparatorClique::sepSpaceMgrStartingSize          = GMTK_MEM_DEFAULT_START_SIZE;
+    SeparatorClique::sepSpaceMgrGrowthRate            = GMTK_MEM_DEFAULT_GROWTH_RATE;
+    SeparatorClique::sepSpaceMgrDecayRate             = GMTK_MEM_DEFAULT_DECAY_RATE;
+    
+    SeparatorClique::remSpaceMgrStartingSize          = GMTK_MEM_DEFAULT_START_SIZE;
+    SeparatorClique::remSpaceMgrGrowthRate            = GMTK_MEM_DEFAULT_GROWTH_RATE;
+    SeparatorClique::remSpaceMgrDecayRate             = GMTK_MEM_DEFAULT_DECAY_RATE;
+    
+    ConditionalSeparatorTable::remHashMapStartingSize = GMTK_MEM_DEFAULT_START_SIZE;
+    
+    MaxClique::spaceMgrStartingSize                   = GMTK_MEM_DEFAULT_START_SIZE;
+    MaxClique::spaceMgrGrowthRate                     = GMTK_MEM_DEFAULT_GROWTH_RATE;
+    MaxClique::spaceMgrDecayRate                      = GMTK_MEM_DEFAULT_DECAY_RATE;
+  
+    MaxCliqueTable::valuePoolGrowthRate               = GMTK_MEM_DEFAULT_GROWTH_RATE;
+
+  } else if (strncasecmp(memGrowthOption, "aggressive", 11) == 0) {
+    memGrowthStrategy = GMTK_MEM_GROWTH_AGGRESSIVE;
+
+    CliqueValueHolder::defaultAllocationUnitChunkSize = GMTK_MEM_AGGRESSIVE_START_SIZE;
+    CliqueValueHolder::defaultGrowthFactor            = GMTK_MEM_AGGRESSIVE_GROWTH_RATE;
+    
+    SeparatorClique::aiStartingSize                   = GMTK_MEM_AGGRESSIVE_START_SIZE;
+    SeparatorClique::aiGrowthFactor                   = GMTK_MEM_AGGRESSIVE_GROWTH_RATE;
+    
+    SeparatorClique::remStartingSize                  = GMTK_MEM_AGGRESSIVE_START_SIZE;
+    SeparatorClique::remGrowthFactor                  = GMTK_MEM_AGGRESSIVE_GROWTH_RATE;
+    
+    SeparatorClique::sepSpaceMgrStartingSize          = GMTK_MEM_AGGRESSIVE_START_SIZE;
+    SeparatorClique::sepSpaceMgrGrowthRate            = GMTK_MEM_AGGRESSIVE_GROWTH_RATE;
+    SeparatorClique::sepSpaceMgrDecayRate             = GMTK_MEM_AGGRESSIVE_DECAY_RATE;
+    
+    SeparatorClique::remSpaceMgrStartingSize          = GMTK_MEM_AGGRESSIVE_START_SIZE;
+    SeparatorClique::remSpaceMgrGrowthRate            = GMTK_MEM_AGGRESSIVE_GROWTH_RATE;
+    SeparatorClique::remSpaceMgrDecayRate             = GMTK_MEM_AGGRESSIVE_DECAY_RATE;
+    
+    ConditionalSeparatorTable::remHashMapStartingSize = GMTK_MEM_AGGRESSIVE_START_SIZE;
+    
+    MaxClique::spaceMgrStartingSize                   = GMTK_MEM_AGGRESSIVE_START_SIZE;
+    MaxClique::spaceMgrGrowthRate                     = GMTK_MEM_AGGRESSIVE_GROWTH_RATE;
+    MaxClique::spaceMgrDecayRate                      = GMTK_MEM_AGGRESSIVE_DECAY_RATE;
+  
+    MaxCliqueTable::valuePoolGrowthRate               = GMTK_MEM_AGGRESSIVE_GROWTH_RATE;
+
+  } else {
+    error("%s: Unknown -memoryGrowth option '%s', must be 'conservative', 'default', or 'aggressive'", argerr, memGrowthOption);
+  }
+
+#else
+#endif
+#endif // defined(GMTK_ARG_MEM_GROWTH)
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
 #if defined(GMTK_ARG_HASH_LOAD_FACTOR)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
@@ -995,42 +996,6 @@ extern bool ObservationsAllowNan;
 #endif
 #endif // defined(GMTK_ARG_CLEAR_CLIQUE_VAL_MEM)
 
-/*==============================================================================================================*/
-/****************************************************************************************************************/
-/****************************************************************************************************************/
-/****************************                                     ***********************************************/
-/****************************      FILE RANGE OPTIONS             ***********************************************/
-/****************************                                     ***********************************************/
-/****************************************************************************************************************/
-/****************************************************************************************************************/
-/****************************************************************************************************************/
-
-#if defined(GMTK_ARG_FILE_RANGE_OPTIONS)
-#if defined(GMTK_ARGUMENTS_DOCUMENTATION)
-  Arg("\n*** File range options ***\n"),
-#endif
-#endif
-
-/*-----------------------------------------------------------------------------------------------------------*/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-
-
-#if defined(GMTK_ARG_DCDRNG)
-#if defined(GMTK_ARGUMENTS_DEFINITION)
-
-  const static char *dcdrng_str="all";
-
-#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
-
-  Arg("dcdrng",Arg::Opt,dcdrng_str,"Range to decode over segment file"),
-
-#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
-
-#else
-#endif
-#endif // defined(GMTK_ARG_DCDRNG)
 
 
 /*-----------------------------------------------------------------------------------------------------------*/
@@ -1038,48 +1003,20 @@ extern bool ObservationsAllowNan;
 /*************************************************************************************************************/
 /*************************************************************************************************************/
 
-
-#if defined(GMTK_ARG_TRRNG)
+#if defined(GMTK_ARG_USE_MMAP)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
-
-  static const char *trrng_str="all";
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("trrng",Arg::Opt,trrng_str,"Range to decode over segment file"),
+  Arg("mmapViterbiValues",Arg::Opt,JunctionTree::mmapViterbi,"Use mmap() to get memory to hold Viterbi values"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
 #else
 #endif
-#endif // defined(GMTK_ARG_TRRNG)
-
-/*-----------------------------------------------------------------------------------------------------------*/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
+#endif // defined(GMTK_ARG_USE_MMAP)
 
 
-#if defined(GMTK_ARG_START_END_SKIP)
-#if defined(GMTK_ARGUMENTS_DEFINITION)
-
-  static int startSkip = 0;
-  static int endSkip = 0;
-
-
-#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
-
-  Arg("startSkip",Arg::Opt,startSkip,"Frames to skip at beginning (i.e., first frame is buff[startSkip])"),
-  Arg("endSkip",Arg::Opt,endSkip,"Frames to skip at end (i.e., last frame is buff[len-1-endSkip])"),
-
-#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
-
-  if (startSkip < 0 || endSkip < 0)
-    error("%s: arguments startSkip=%d/endSkip=%d must both be >= 0",argerr,startSkip,endSkip);
-
-#else
-#endif
-#endif // defined(GMTK_ARG_START_END_SKIP)
 
 /*==============================================================================================================*/
 /****************************************************************************************************************/
@@ -1189,6 +1126,8 @@ extern bool ObservationsAllowNan;
 #if defined(GMTK_ARG_VERB)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
+#include "debug.h"
+
 #ifdef GMTK_ARG_VERB_DEF_VAL
   static unsigned verbosity = GMTK_ARG_VERB_DEF_VAL;
 #else
@@ -1199,7 +1138,7 @@ extern bool ObservationsAllowNan;
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("verbosity",Arg::Opt,modularVerbosity,"Verbosity - coma separated list of m=v, where m is all, default, inference, inference-memory, training, triangulation, boundary, unrolling, or printing; 0 <= v <= 100"),
+  Arg("verbosity",Arg::Opt,modularVerbosity,"Verbosity - coma separated list of m=v, where m is all, " moduleHelpString "; 0 <= v <= 100"),
   Arg("printIntValues",Arg::Opt,RV::alwaysPrintIntegerRVValues,"Always print rv values as integer rather than symbols"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
@@ -1225,64 +1164,6 @@ extern bool ObservationsAllowNan;
 #endif
 #endif // defined(GMTK_ARG_VERB)
 
-/*-----------------------------------------------------------------------------------------------------------*/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-
-
-#if defined(GMTK_ARG_HELP)
-#if defined(GMTK_ARGUMENTS_DEFINITION)
-
-   // 0: no help; HIGHEST_PRIORITY (1) ... LOWEST_PRIORITY (5) : increasing levels of help.  The priority levels are defined in arguments.h 
-   static unsigned help = 0;  
-
-#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
-
-  Arg("help",  Arg::Help, help,  "Print this message. Add an argument from 1 to 5 for increasing help info."),
-
-#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
-
-  if(help) {
-    Arg::usage();
-    exit(0);
-  }
-
-#else
-#endif
-#endif // defined(GMTK_ARG_HELP)
-
-/*-----------------------------------------------------------------------------------------------------------*/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-
-
-#if defined(GMTK_ARG_VERSION)
-#if defined(GMTK_ARGUMENTS_DEFINITION)
-
-  static bool print_version_and_exit = false;
-
-#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
-
-  Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
-
-#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
-
-  if (print_version_and_exit) {
-#ifdef HAVE_CONFIG_H
-    printf("%s (Mercurial id: %s)\n",gmtk_version_id,HGID);
-#else
-    printf("%s\n", gmtk_version_id);
-#endif
-    exit(0);
-  }
-
-
-#else
-#endif
-#endif // defined(GMTK_ARG_VERSION)
-
 
 
 /*-----------------------------------------------------------------------------------------------------------*/
@@ -1298,13 +1179,33 @@ static char* pPartCliquePrintRange = NULL;
 static char* cPartCliquePrintRange = NULL;
 static char* ePartCliquePrintRange = NULL;
 static bool  cliquePrintOnlyEntropy = false;
+static bool  cliquePosteriorNormalize = true;
+static bool  cliquePosteriorUnlog = true;
+
+static char* cliqueOutputName  = NULL;
+static char* cliqueListName    = NULL;
+static char* cliquePrintFormat     = (char *)"pfile";
+static char* cliquePrintSeparator  = (char *)"_";
+#ifdef INTV_WORDS_BIGENDIAN
+static bool  cliquePrintSwap       = true;
+#else
+static bool  cliquePrintSwap       = false;
+#endif
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+  Arg("\n*** Clique posterior output options ***\n"),
 
-  Arg("pCliquePrintRange",Arg::Opt,pPartCliquePrintRange,"With CE/DE, print range cliques from P partition."),
-  Arg("cCliquePrintRange",Arg::Opt,cPartCliquePrintRange,"With CE/DE, print range cliques from C partition."),
-  Arg("eCliquePrintRange",Arg::Opt,ePartCliquePrintRange,"With CE/DE, print range cliques from E partition."),
+  Arg("pCliquePrintRange",Arg::Opt,pPartCliquePrintRange,"With CE/DE, print range cliques from P section."),
+  Arg("cCliquePrintRange",Arg::Opt,cPartCliquePrintRange,"With CE/DE, print range cliques from C section."),
+  Arg("eCliquePrintRange",Arg::Opt,ePartCliquePrintRange,"With CE/DE, print range cliques from E section."),
   Arg("cliquePrintOnlyEntropy",Arg::Opt,cliquePrintOnlyEntropy,"With CE/DE, print only clique entropies."),
+  Arg("cliquePosteriorNormalize",Arg::Opt,cliquePosteriorNormalize,"Normalize posterior probabilities to sum to 1."),
+  Arg("cliquePosteriorUnlog",Arg::Opt,cliquePosteriorUnlog,"Output probabilities instead of log probabilities."),
+  Arg("cliqueOutputFileName",Arg::Opt,cliqueOutputName,"Output filename for clique posteriors."),
+  Arg("cliqueListFileName",Arg::Opt,cliqueListName,"Output list filename for clique posteriors (HDF5, HTK, ASCII, Binary)."),
+  Arg("cliquePrintSeparator",Arg::Opt,cliquePrintSeparator,"String to use as separator when outputting HTK, ASCII, or binary clique posteriors."),
+  Arg("cliquePrintSwap",Arg::Opt,cliquePrintSwap,"Do byte swapping when outputting PFile, HTK, or binary clique posteriors."),
+  Arg("cliquePrintFormat",Arg::Opt,cliquePrintFormat,"Output file format for clique posteriors (hdf5,htk,binary,ascii,flatascii,pfile)."),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
@@ -1313,6 +1214,27 @@ static bool  cliquePrintOnlyEntropy = false;
 #else
 #endif
 #endif // defined(GMTK_ARG_CLIQUE_PRINT)
+
+
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+#if defined(GMTK_ARG_CLIQUE_PRINT_NORMALIZE)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("cliquePrintNormalize",Arg::Opt,JunctionTree::normalizePrintedCliques,"Normalize scores of each printed clique to probabilities."),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#else
+#endif
+#endif // defined(GMTK_ARG_CLIQUE_PRINT_NORMALIZE)
 
 
 /*==============================================================================================================*/
@@ -1342,12 +1264,18 @@ static bool  cliquePrintOnlyEntropy = false;
 
   static bool island=false;
   static unsigned base=3;
+  const static char* baseString = "3";
+  static bool rootBase=false; // true iff we should use \sqrt T as the logarithm base, otherwise it's constant
+  static float islandRootPower=0.5; // allow arbitrary root of T as log base, default is square root
   static unsigned lst=100;
+
+#define GMTK_SQRT_BASE_STRING "root"
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   Arg("island",Arg::Opt,island,"Run island algorithm"),
-  Arg("base",Arg::Opt,base,"Island algorithm logarithm base"),
+  Arg("base",Arg::Opt,baseString,"Island algorithm logarithm base (integer or 'root')"),
+  Arg("root",Arg::Opt,islandRootPower,"use T^r as the island logarithm base, where T is the number of frames"),
   Arg("lst",Arg::Opt,lst,"Island algorithm linear segment threshold"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
@@ -1361,6 +1289,27 @@ static bool  cliquePrintOnlyEntropy = false;
     if (hash_abstract::loadFactor < 0.98)
       hash_abstract::loadFactor = 0.98;
     MaxClique::storeDeterministicChildrenInClique = false;
+
+    if (strncasecmp(baseString, GMTK_SQRT_BASE_STRING, strlen(GMTK_SQRT_BASE_STRING)+1 ) == 0) {
+      rootBase = true;
+      if (islandRootPower < 0.0 || 1.0 < islandRootPower) {
+	error("%s: -root %f must be between 0 and 1", argerr, islandRootPower);
+      }
+    } else {
+      int tmp = atoi(baseString);
+      if (tmp < 2) {
+	error("%s: -base %d is too small, it must be >= 2", argerr, tmp);
+      }
+      base = (unsigned) tmp;
+    }
+#ifdef GMTK_ARG_DO_DIST_EVIDENCE
+    if (doDistributeEvidence) {
+      infoMsg(IM::SoftWarning,"-doDistributeEvidence T is redundant with -island T\n");
+    }
+#endif
+    if (JunctionTree::sectionDoDist) {
+      error("ERROR: -sectionPartialDoDist T is not compatible with -island T\n");
+    }
   }
 
 
@@ -1381,13 +1330,36 @@ static bool  cliquePrintOnlyEntropy = false;
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("debugPartitions",Arg::Opt,pdbrng_str,"Partition range to generate debug output"),
+  Arg("debugSections",Arg::Opt,pdbrng_str,"Section range to generate debug output"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
 #else
 #endif
 #endif // defined(GMTK_ARG_DEBUG_PART_RNG)
+
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
+#if defined(GMTK_ARG_DEBUG_INCREMENT)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+  extern int debugIncrement;
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("debugIncrement",Arg::Opt,debugIncrement,"Increment to adjust inference verbosity on USR1/2 signals"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#else
+#endif
+#endif // defined(GMTK_ARG_DEBUG_INCREMENT)
 
 
 /*-----------------------------------------------------------------------------------------------------------*/
@@ -1454,7 +1426,7 @@ static const char* varCliqueAssignmentPrior = "COT";
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("vpap",Arg::Opt,varPartitionAssignmentPrior,"Variable partition assignment priority. Sequence of chars in set [C,D,O,B,S,I,A,F,N]"),  
+  Arg("vsap",Arg::Opt,varPartitionAssignmentPrior,"Variable section assignment priority. Sequence of chars in set [C,D,O,B,S,I,A,F,N]"),  
   Arg("vcap",Arg::Opt,varCliqueAssignmentPrior,"Variable clique sorting priority. Sequence of chars in set [C,D,O,B,S,I,A,F,N,T,M,+,.]"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
@@ -1553,12 +1525,91 @@ static const char* varCliqueAssignmentPrior = "COT";
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   Arg("doDistributeEvidence",Arg::Opt,doDistributeEvidence,"Also run distribute-evidence"),
+  Arg("sectionPartialDoDist",Arg::Opt,JunctionTree::sectionDoDist,"Compute P(Q_t|X_{0:t}), where Q_t are the hidden variables in modified section t and X_{0:t} is the evidence observed up to modified section t"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+  if (doDistributeEvidence && JunctionTree::sectionDoDist) {
+    error("ERROR: cannot do both -doDistributeEvidence and -sectionDoDist\n");
+  }
+#if defined(GMTK_ARG_ISLAND)
+  if (JunctionTree::sectionDoDist && island) {
+    error("ERROR: -sectionPartialDoDist T is not compatible with -island T\n");
+  }
+#endif
+
+
+#else
+#endif
+#endif // defined(GMTK_ARG_DO_DIST_EVIDENCE)
+
+
+
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
+#if defined(GMTK_ARG_ONLY_KEEP_SEPS)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+  static bool onlyKeepSeparators=false;
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("keepOnlyInterfaceSeparatorMemory",Arg::Opt,onlyKeepSeparators,"Use a slower but more memory efficient inference implementation"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#if defined(GMTK_ARG_DO_DIST_EVIDENCE)
+  if (!doDistributeEvidence && onlyKeepSeparators) {
+    error("ERROR: It doesn't make sense to use -keepOnlyInterfaceSeparatorMemory T without -doDistributeEvidence T. Perhaps you want -probE T for constant memory collect evidence\n");
+  }
+#endif
+
+#if defined(GMTK_ARG_PROB_EVIDENCE)
+  if (probE && onlyKeepSeparators) {
+    error("ERROR: -probE T is not compatible with -keepOnlyInterfaceSeparatorMemory T\n");
+  }
+#endif 
+
+  if (JunctionTree::sectionDoDist && onlyKeepSeparators) {
+    error("ERROR: -sectionPartialDoDist T is not compatible with -keepOnlyInterfaceSeparatorMemory T\n");
+  }
+ 
+#if defined(GMTK_ARG_ISLAND)
+  if (onlyKeepSeparators && island) {
+    error("ERROR: -keepOnlyInterfaceSeparatorMemory T is not compatible with -island T\n");
+  }
+#endif
+
+
+#else
+#endif
+#endif // defined(GMTK_ARG_ONLY_KEEP_SEPS)
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
+#if defined(GMTK_ARG_FAIL_ON_ZERO_CLIQUE)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("failOnZeroClique",Arg::Opt,MaxClique::failOnZeroClique,"abort GMTK program on zero clique errors"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
 #else
 #endif
-#endif // defined(GMTK_ARG_DO_DIST_EVIDENCE)
+#endif // defined(GMTK_ARG_FAIL_ON_ZERO_CLIQUE)
 
 
 
@@ -1578,6 +1629,10 @@ static const char* varCliqueAssignmentPrior = "COT";
   Arg("probE",Arg::Opt,probE,"Run the constant memory prob(evidence) function"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+  if (probE && doDistributeEvidence) {
+    error("ERROR: -doDistributeEvidence T is not compatible with -probE T\n");
+  }
 
 #else
 #endif
@@ -1682,12 +1737,19 @@ static bool localCliqueNormalization = false;
 #if defined(GMTK_ARG_CLIQUE_TABLE_NORMALIZE)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
+#if defined(GMTK_ARGUMENTS_ONLINE_NORMALIZATION)
+static float normalizeScoreEachClique = 0.0;
+#else
+static float normalizeScoreEachClique = MaxClique::normalizeScoreEachClique;
+#endif
+
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("cliqueTableNormalize",Arg::Opt,MaxClique::normalizeScoreEachClique,"Normalize scores of each clique right after its creation (increases dynamic range)."),
+  Arg("cliqueTableNormalize",Arg::Opt,normalizeScoreEachClique,"Normalize scores of each clique right after its creation (increases dynamic range)."),
 
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+    MaxClique::normalizeScoreEachClique = normalizeScoreEachClique;
 
     if (MaxClique::normalizeScoreEachClique < 0.0) {
       error("ERROR: -cliqueTableNormalize option must be non-negative\n");
@@ -1705,6 +1767,233 @@ static bool localCliqueNormalization = false;
 #else
 #endif
 #endif // defined(GMTK_ARG_CLIQUE_TABLE_NORMALIZE)
+
+
+
+
+
+
+/*==============================================================================================================*/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+/****************************                                     ***********************************************/
+/****************************         DMLP TRAINING OPTIONS       ***********************************************/
+/****************************                                     ***********************************************/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+
+#if defined(GMTK_ARG_DMLP_TRAINING_OPTIONS)
+#if defined(GMTK_ARGUMENTS_DOCUMENTATION)
+  Arg("\n*** DMLP training options ***\n"),
+#endif
+#endif
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
+#if defined(GMTK_ARG_DMLP_TRAINING_PARAMS)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+#include "DBN.h"
+
+static char const *DMLPName           = NULL;
+static unsigned    obsOffset          = 0;
+static unsigned    numFeatures        = 0;
+static unsigned    radius             = 0;
+static unsigned    labelOffset        = 0;
+static bool        oneHot             = true;
+static unsigned    batchQueueSize     = 1000;
+static char const *saveTrainingFile   = NULL;
+static char const *loadTrainingFile   = NULL;
+
+  // backprop hyperparameters
+
+static double   bpInitStepSize = 1e-2;
+static double   bpMinMomentum = 0.5;
+static double   bpMaxMomentum = 0.99;
+static double   bpMaxUpdate = 0.1;
+static double   bpL2 = 0.0;
+static float    bpNumEpochs = 1.0,
+                bpEpochFraction = 1.0;        // fraction of bpNum[Anneal]Epochs to do in this gmtkDMLPtrain invocation
+static float    bpNumAnnealEpochs = 1.0, 
+                bpAnnealEpochFraction = 1.0; 
+static unsigned bpMiniBatchSize = 10;
+static unsigned bpCheckInterval = 2000;
+static double   bpIdropP = 0.0;
+static double   bpHdropP = 0.0;
+
+  // pretraining hyperparameters
+
+static double   ptInitStepSize = 1e-2;
+static double   ptMinMomentum = 0.5;
+static double   ptMaxMomentum = 0.99;
+static double   ptMaxUpdate = 0.1;
+static double   ptL2 = 0.0;
+static float    ptNumEpochs = 1.0;
+static float    ptNumAnnealEpochs = 1.0;
+static unsigned ptMiniBatchSize = 10;
+static unsigned ptCheckInterval = 2000;
+
+static char const *pretrainType = "CD";
+static DBN::PretrainType pretrainMode;
+static char const *pretrainActFuncStr = "linear";
+static Layer::ActFunc iActFunc;
+
+static char const *trainingSchedule = "linear";
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+Arg("nnChunkSize", Arg::Opt, DBN::nnChunkSize, "Size in MB to use for incremental DeepNN matrix operations"),
+Arg("batchQueueSize", Arg::Opt, batchQueueSize, "Size (in training instances) of the asynchronous batch queue"),
+Arg("deepMLPName", Arg::Req, DMLPName, "Name of deep NN to train"),
+Arg("featureOffset", Arg::Opt, obsOffset, "Offset in observation file where input features start"),
+Arg("numFeatures", Arg::Req, numFeatures, "Number of input features (per frame)"),
+Arg("radius", Arg::Opt, radius, "Number of frames comprising one input instance = 2r+1"),
+Arg("labelOffset", Arg::Req, labelOffset, "Offset in observation file where output labels start"),
+Arg("oneHot", Arg::Opt, oneHot, "If true, labelOffset is the single discrete correct parent value, "
+                                "else the parent distribution starts ate labelOffset"),
+Arg("randomInitLayer", Arg::Opt, DBN::randomInitLayer, "Initialize weights randomly (according to sparse or dense strategy specified by -sparseInitLayer)"),
+Arg("sparseInitLayer", Arg::Opt, DBN::sparseInitLayer, "Use sparse or dense initilization strategy (dense is better for rectified linear)"),
+
+Arg("trainingSchedule", Arg::Opt, trainingSchedule, "Order to process training data (linear, random, permute, shuffle)"),
+Arg("pretrainType", Arg::Opt, pretrainType, "Pretraining type (none, AE, CD)"),
+Arg("pretrainActFunc", Arg::Opt, pretrainActFuncStr, "Pretraining input activation function (sig, tanh, cubic, linear, rect)"),
+Arg("saveTrainingFile", Arg::Opt, saveTrainingFile, "Filename to save training state for resuming training later"),
+Arg("loadTrainingFile", Arg::Opt, loadTrainingFile, "Filename to load training state from to resume training"),
+Arg("tempDir", Arg::Opt, FileBackedMatrix::dmlpTempDir, "Directory to store temp files if $GMTKTMPDIR environment variable is not set"),
+
+Arg("\n*** DMLP pretraining hyperparameters ***\n"),
+
+Arg("ptInitStepSize", Arg::Opt, ptInitStepSize, "Pretrain: Initial step size hyperparameter"),
+Arg("ptMinMomentum", Arg::Opt, ptMinMomentum, "Pretrain: Minimum momentum hyperparameter"),
+Arg("ptMaxMomentum", Arg::Opt, ptMaxMomentum, "Pretrain: Maximum momentum hyperparameter"),
+Arg("ptMaxUpdate", Arg::Opt, ptMaxUpdate, "Pretrain: Maximum update hyperparameter"),
+Arg("ptL2", Arg::Opt, ptL2, "Pretrain: l2 hyperparameter"),
+Arg("ptNumEpochs", Arg::Opt, ptNumEpochs, "Pretrain: Number of epochs hyperparameter"),
+Arg("ptNumAnnealEpochs", Arg::Opt, ptNumAnnealEpochs, "Pretrain: Number of anneal epochs hyperparameter"),
+Arg("ptMiniBatchSize", Arg::Opt, ptMiniBatchSize, "Pretrain: Mini-batch size hyperparameter"),
+Arg("ptCheckInterval", Arg::Opt, ptCheckInterval, "Pretrain: Check interval hyperparameter"),
+
+Arg("\n*** DMLP backprob hyperparameters ***\n"),
+
+Arg("bpInitStepSize", Arg::Opt, bpInitStepSize, "Backprop: Initial step size hyperparameter"),
+Arg("bpMinMomentum", Arg::Opt, bpMinMomentum, "Backprop: Minimum momentum hyperparameter"),
+Arg("bpMaxMomentum", Arg::Opt, bpMaxMomentum, "Backprop: Maximum momentum hyperparameter"),
+Arg("bpMaxUpdate", Arg::Opt, bpMaxUpdate, "Backprop: Maximum update hyperparameter"),
+Arg("bpL2", Arg::Opt, bpL2, "Backprop: l2 hyperparameter"),
+Arg("bpNumEpochs", Arg::Opt, bpNumEpochs, "Backprop: Total epochs of training hyperparameter"),
+Arg("bpEpochFraction", Arg::Opt, bpEpochFraction, "Backprop: [0,1] fraction of -bpNumEpochs to do in this invocation"),
+Arg("bpNumAnnealEpochs", Arg::Opt, bpNumAnnealEpochs, "Backprop: Total epochs of anneal training hyperparameter"),
+Arg("bpAnnealEpochFraction", Arg::Opt, bpAnnealEpochFraction, "Backprop: [0,1] fraction of -bpNumAnnealEpochs to do in this invocation"),
+Arg("bpMiniBatchSize", Arg::Opt, bpMiniBatchSize, "Backprop: Mini-batch size hyperparameter"),
+Arg("bpCheckInterval", Arg::Opt, bpCheckInterval, "Backprop: Check interval hyperparameter"),
+Arg("bpIdropP", Arg::Opt, bpIdropP, "Backprop: dropout probability for input layer"),
+Arg("bpHdropP", Arg::Opt, bpHdropP, "Backprop: dropout probability for hidden layers"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+// error checks
+
+  if (strcasecmp(pretrainType, "AE") == 0) {
+    pretrainMode = DBN::AE;
+  } else if (strcasecmp(pretrainType, "CD") == 0) {
+    pretrainMode = DBN::CD;
+  } else if (strcasecmp(pretrainType, "none") == 0) {
+    pretrainMode = DBN::NONE;
+  } else {
+    error("%s: Unknown pretraining type '%s', must be 'AE' 'CD' or 'none'\n", argerr, pretrainType);
+  }
+
+  if (strcasecmp(pretrainActFuncStr, "sig") == 0) {
+    iActFunc = Layer::ActFunc::LOG_SIG;
+  } else if (strcasecmp(pretrainActFuncStr, "tanh") == 0) {
+    iActFunc = Layer::ActFunc::TANH;
+  } else if (strcasecmp(pretrainActFuncStr, "cubic") == 0) {
+    iActFunc = Layer::ActFunc::CUBIC;
+  } else if (strcasecmp(pretrainActFuncStr, "linear") == 0) {
+    iActFunc = Layer::ActFunc::LINEAR;
+  } else if (strcasecmp(pretrainActFuncStr, "rect") == 0) {
+    iActFunc = Layer::ActFunc::RECT_LIN;
+  } else {
+    error("%s: Unknown pretraining input activation function '%s', must be 'sig', 'tanh', 'cubic', 'linear', or 'rect'\n",
+	  argerr, pretrainActFuncStr);
+  }
+
+  if (strcasecmp(trainingSchedule, "linear") == 0) {
+  } else if (strcasecmp(trainingSchedule, "random") == 0) {
+  } else if (strcasecmp(trainingSchedule, "permute") == 0) {
+  } else if (strcasecmp(trainingSchedule, "shuffle") == 0) {
+  } else {
+    error("%s: Unknown training schedule '%s', must be 'linear', 'random', 'permute', or 'shuffle'\n",
+	  argerr, trainingSchedule);
+  }
+
+  DBN::resumeTraining = loadTrainingFile != NULL;
+  if (DBN::resumeTraining && strcasecmp(pretrainType, "none")) {
+    error("%s: Resuming training T requires -pretrainType none\n", argerr);
+  }
+
+  if (bpInitStepSize <= 0.0) {
+    error("%s: -bpInitStepSize %e is invalid, it must be greater than 0\n", argerr, bpInitStepSize);
+  }
+  if (bpMinMomentum < 0.0 || 1.0 < bpMinMomentum) {
+    error("%s: -bpMinMomentum %e is invalid, it must be in [0,1]\n", argerr, bpMinMomentum);
+  }
+  if (bpMaxMomentum < 0.0 || 1.0 < bpMaxMomentum) {
+    error("%s: -bpMaxMomentum %e is invalid, it must be in [0,1]\n", argerr, bpMaxMomentum);
+  } 
+  if (bpMaxUpdate <= 0.0) {
+    error("%s: -bpMaxUpdate %e is invalid, it must be greater than 0\n", argerr, bpMaxUpdate);
+  }
+  if (bpL2 < 0.0) {
+    error("%s: -bpL2 %e is invalid, it must be greater than or equal to 0\n", argerr, bpL2);
+  }
+  if (bpNumEpochs <= 0.0) {
+    error("%s: -bpNumEpochs %e is invalid, it must be greater than 0\n", argerr, bpNumEpochs);
+  }
+  if (bpEpochFraction < 0.0 || 1.0 < bpEpochFraction) {
+    error("%s: -bpEpochFraction %e is invalid, it must be in [0,1]\n", argerr, bpEpochFraction);
+  }
+  if (bpNumAnnealEpochs <= 0.0) {
+    error("%s: -bpNumAnnealEpochs %e is invalid, it must be greater than 0\n", argerr, bpNumAnnealEpochs);
+  }
+  if (bpAnnealEpochFraction < 0.0 || 1.0 < bpAnnealEpochFraction) {
+    error("%s: -bpAnnealEpochFraction %e is invalid, it must be in [0,1]\n", argerr, bpAnnealEpochFraction);
+  }
+  if (bpIdropP < 0.0 || 1.0 <= bpIdropP) {
+    error("%s: -bpIdropP %e is invalid, it must be in [0,1)\n", argerr, bpIdropP);
+  }
+  if (bpHdropP < 0.0 || 1.0 <= bpHdropP) {
+    error("%s: -bpHdropP %e is invalid, it must be in [0,1)\n", argerr, bpHdropP);
+  }
+
+  if (ptInitStepSize <= 0.0) {
+    error("%s: -ptInitStepSize %e is invalid, it must be greater than 0\n", argerr, ptInitStepSize);
+  }
+  if (ptMinMomentum < 0.0 || 1.0 < ptMinMomentum) {
+    error("%s: -ptMinMomentum %e is invalid, it must be in [0,1]\n", argerr, ptMinMomentum);
+  }
+  if (ptMaxMomentum < 0.0 || 1.0 < ptMaxMomentum) {
+    error("%s: -ptMaxMomentum %e is invalid, it must be in [0,1]\n", argerr, ptMaxMomentum);
+  } 
+  if (ptL2 < 0.0) {
+    error("%s: -ptL2 %e is invalid, it must be greater than or equal to 0\n", argerr, ptL2);
+  }
+  if (ptNumEpochs <= 0.0) {
+    error("%s: -ptNumEpochs %e is invalid, it must be greater than 0\n", argerr, ptNumEpochs);
+  }
+  if (ptNumAnnealEpochs <= 0.0) {
+    error("%s: -ptNumAnnealEpochs %e is invalid, it must be greater than 0\n", argerr, ptNumAnnealEpochs);
+  }
+
+#else
+#endif
+#endif // defined(GMTK_ARG_EM_TRAINING_PARAMS)
+
 
 
 
@@ -1769,99 +2058,6 @@ static bool writeLogVals = false;
 
 
 
-
-/*==============================================================================================================*/
-/****************************************************************************************************************/
-/****************************************************************************************************************/
-/************************                                              ******************************************/
-/************************  OBSERVATION MATRIX TRANSFORMATION OPTIONS   ******************************************/
-/************************                                              ******************************************/
-/****************************************************************************************************************/
-/****************************************************************************************************************/
-/****************************************************************************************************************/
-
-#if defined(GMTK_ARG_OBS_MATRIX_OPTIONS)
-#if defined(GMTK_ARGUMENTS_DOCUMENTATION)
-  Arg("\n*** Observation matrix transformation options ***\n"),
-#endif
-#endif
-
-/*-----------------------------------------------------------------------------------------------------------*/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-/*************************************************************************************************************/
-
-
-#if defined(GMTK_ARG_OBS_MATRIX_XFORMATION)
-#if defined(GMTK_ARGUMENTS_DEFINITION)
-
-bool     Cpp_If_Ascii        = false;
-
-const char*    Action_If_Diff_Num_Frames_Str[MAX_NUM_OBS_FILES]={"er","er","er","er","er"};   // 
-unsigned Action_If_Diff_Num_Frames[MAX_NUM_OBS_FILES]={FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR,FRAMEMATCH_ERROR};   // 
-const char*    Action_If_Diff_Num_Sents_Str[MAX_NUM_OBS_FILES]={"te","te","te","te","te"}; 
-unsigned Action_If_Diff_Num_Sents[MAX_NUM_OBS_FILES]={SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END,SEGMATCH_TRUNCATE_FROM_END};   // 
-
-char    *Per_Stream_Transforms[MAX_NUM_OBS_FILES]={NULL,NULL,NULL,NULL,NULL};   // 
-char    *Post_Transforms=NULL;
-
-const char    *Ftr_Combo_Str="none";
-unsigned Ftr_Combo=FTROP_NONE;
- 
-#ifdef INTV_WORDS_BIGENDIAN
-bool iswp[MAX_NUM_OBS_FILES] = {true,true,true,true,true};
-#else
-bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
-#endif 
-
-#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
-
-  Arg("fdiffact",  Arg::Opt, Action_If_Diff_Num_Frames_Str ,"Action if different number of frames in streams: error (er), repeat last frame (rl), first frame (rf), segmentally expand (se), truncate from start (ts), truncate from end (te)",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("sdiffact",  Arg::Opt, Action_If_Diff_Num_Sents_Str ,"Action if different number of sentences in streams: error (er), truncate from end (te), repeat last sent (rl), and wrap around (wa).",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("cppifascii",Arg::Tog, Cpp_If_Ascii,"Pre-process ASCII files using CPP"),
-  Arg("trans",     Arg::Opt,Per_Stream_Transforms ,"per stream transformations string",Arg::ARRAY,MAX_NUM_OBS_FILES),
-  Arg("posttrans", Arg::Opt,Post_Transforms ,"Final global transformations string"),
-  Arg("comb",      Arg::Opt, Ftr_Combo_Str,"Combine float features (none: no combination, add, sub, mul,div"),
-
-
-#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
-
-  if (strcmp(Ftr_Combo_Str,"none") == 0)     Ftr_Combo = FTROP_NONE;
-  else if (strcmp(Ftr_Combo_Str,"add") == 0) Ftr_Combo = FTROP_ADD;
-  else if (strcmp(Ftr_Combo_Str,"sub") == 0) Ftr_Combo = FTROP_SUB;
-  else if (strcmp(Ftr_Combo_Str,"mul") == 0) Ftr_Combo = FTROP_MUL;
-  else if (strcmp(Ftr_Combo_Str,"div") == 0) Ftr_Combo = FTROP_DIV;
-  else error("%s: Unknown feature combination type: '%s'\n",argerr,Ftr_Combo_Str);
-  
-  for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
-    if(ofs[i]!=NULL) {
-      if (strcmp(Action_If_Diff_Num_Frames_Str[i],"er") == 0)      Action_If_Diff_Num_Frames[i] = FRAMEMATCH_ERROR;
-      else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"rl") == 0) Action_If_Diff_Num_Frames[i] = FRAMEMATCH_REPEAT_LAST;
-      else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"rf") == 0) Action_If_Diff_Num_Frames[i] = FRAMEMATCH_REPEAT_FIRST;
-      else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"se") == 0) Action_If_Diff_Num_Frames[i] = FRAMEMATCH_EXPAND_SEGMENTALLY;
-      else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"ts") == 0) Action_If_Diff_Num_Frames[i] = FRAMEMATCH_TRUNCATE_FROM_START;
-      else if (strcmp(Action_If_Diff_Num_Frames_Str[i],"te") == 0) Action_If_Diff_Num_Frames[i] = FRAMEMATCH_TRUNCATE_FROM_END;
-      else error("%s: Unknown action when diff num of frames: '%s'\n",argerr,Action_If_Diff_Num_Frames_Str[i]);
-    }
-  }
-  
-  for(int i=0; i < MAX_NUM_OBS_FILES; ++i) {
-    if(ofs[i]!=NULL) {
-      if (strcmp(Action_If_Diff_Num_Sents_Str[i],"er") == 0)      Action_If_Diff_Num_Sents[i] = SEGMATCH_ERROR;
-      else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"rl") == 0) Action_If_Diff_Num_Sents[i] = SEGMATCH_REPEAT_LAST;
-      else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"wa") == 0) Action_If_Diff_Num_Sents[i] = SEGMATCH_WRAP_AROUND;
-      else if (strcmp(Action_If_Diff_Num_Sents_Str[i],"te") == 0) Action_If_Diff_Num_Sents[i] = SEGMATCH_TRUNCATE_FROM_END;
-      else error("%s: Unknown action when diff num of sentences: '%s'\n",argerr,
-		 Action_If_Diff_Num_Sents_Str[i]);
-    }
-  }
-
-
-#else
-#endif
-#endif // defined(GMTK_ARG_OBS_MATRIX_XFORMATION)
-
-
 /*==============================================================================================================*/
 /****************************************************************************************************************/
 /****************************************************************************************************************/
@@ -1921,65 +2117,124 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
 
-  // arguments for partition based Viterbi printing.
-  static char* pVitValsFileName = NULL;
-  // TODO: get binary printing working
-  // static bool pVitValsFileBinp = false;
-  static char* pVitRegexFilter = NULL;
-  static bool pVitCaseSensitiveRegexFilter = false;
-  static char* pVitPartRangeFilter = NULL;
-  static bool pVitAlsoPrintObservedVariables = false;
+  // arguments for modified section based Viterbi printing.
+  static char* mVitValsFileName = NULL;
 
-  // arguments for frame-based Viterbi printing.
+  // arguments for original section based Viterbi printing
   static char* vitValsFileName = NULL;
-  // TODO: get binary printing working
-  // static bool vitValsFileBinp = false;
-  static char* vitRegexFilter = NULL;
-  static bool vitCaseSensitiveRegexFilter = false;
-  static bool vitAlsoPrintObservedVariables = false;
+
+  // filters & options that apply to modified/original Viterbi printing
+  static char* pVitRegexFilter = NULL;
+  static char* cVitRegexFilter = NULL;
+  static char* eVitRegexFilter = NULL;
+  static bool  vitCaseSensitiveRegexFilter = false;
+
+  static char* vitFrameRangeFilter = NULL;
+  static char* vitPartRangeFilter = NULL;
+  static bool  vitAlsoPrintObservedVariables = false;
+
+
+#ifndef GMTK_ONLINE_UNSUPPORTED
+//  static char* vitRegexFilter = NULL;
+//static bool vitCaseSensitiveRegexFilter = false;
+//  static bool vitAlsoPrintObservedVariables = false;
+#endif
+
 //  static bool vitReverseOrder = false;
-#define MAX_VITERBI_TRIGGERS 3
-  const char   *vitTriggerVariables[MAX_VITERBI_TRIGGERS] = { NULL, NULL, NULL };
-  const char   *vitTriggerSets[MAX_VITERBI_TRIGGERS] = { NULL, NULL, NULL };
 
 
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   Arg("\n*** Decoding options ***\n"),
-  // partition based 
-  Arg("pVitValsFile",Arg::Opt,pVitValsFileName,"Partition Vit: file to print viterbi values, '-' for stdout"),
-  // TODO: not currently used, but should add.
-  // Arg("pVitBinVitValsFile",Arg::Opt,pVitValsFileBinp,"Partition Vit: Should file to print viterbi values be binary? (T/F) "),
 
-  Arg("pVitRegexFilter",Arg::Opt,pVitRegexFilter,"Partition Vit: Regular expression to filter variable names."),
-  Arg("pVitCaseSensitiveRegexFilter",Arg::Opt,pVitCaseSensitiveRegexFilter,"Partition Vit: Case sensitivity of the rv regular expression filter."),
+  Arg("vitObsFileName", Arg::Opt, JunctionTree::vitObsFileName, "Output filename for Viterbi observation file"),
+  Arg("vitObsListFileName", Arg::Opt, JunctionTree::vitObsListName, "Output list filename for Viterbi observation file (HDF5, HTK, ASCII, Binary)"),
+  Arg("vitObsNameSeparator", Arg::Opt, JunctionTree::vitObsNameSeparator, "String to use as separator when outputting HTK, ASCII, or binary Viterbi observation file"),
+  Arg("vitObsFileFormat", Arg::Opt, JunctionTree::vitObsFileFmt, "Output Viterbi observation file format (hdf5,htk,binary,ascii,flatascii,pfile)"),
+  Arg("vitObsFileSwap", Arg::Opt, JunctionTree::vitObsFileSwap, "Do byte swapping when outputting PFile, HTK, or binary Viterbi observation file"),
 
-  Arg("pVitPrintRange",Arg::Opt,pVitPartRangeFilter,"Partition Vit: value printing, integer range filter for partitions (e.g., frames, slices) to print."),
+  // in gmtkOnline -vitValsFile is not available, and 
+  // -mVitValsFile is required rather than optional
+#ifndef GMTK_ONLINE_UNSUPPORTED
+  Arg("mVitValsFile",Arg::Opt,mVitValsFileName,"Modified Section Vit: file to print viterbi values in ASCII, '-' for stdout"),
+  Arg("vitValsFile",Arg::Opt,vitValsFileName,"Original Section Vit: file to print viterbi values in ASCII, '-' for stdout"),
+#else
+  Arg("mVitValsFile",Arg::Req,mVitValsFileName,"Modified Section Vit: file to print viterbi values in ASCII, '-' for stdout"),
+#endif
 
-  Arg("pVitPrintObservedVariables",Arg::Opt,pVitAlsoPrintObservedVariables,"Partition Vit: also print observed random variables in addtion to hidden"),
+#if defined(GMTK_ARGUMENTS_REQUIRE_BINARY_VIT_FILE)
+  Arg("binaryVitFile",Arg::Req,JunctionTree::binaryViterbiFilename,"File containing binary Viterbi values for printing"),
+#else
+  Arg("binaryVitFile",Arg::Opt,JunctionTree::binaryViterbiFilename,"File to write binary Viterbi values for later printing. Note that all values are stored in the file, not just those selected by the filter, trigger, and compression options below"),
+#endif
 
+  Arg("pVitRegexFilter",Arg::Opt,pVitRegexFilter,"Regular expression to filter variable names in prolog"),
+  Arg("cVitRegexFilter",Arg::Opt,cVitRegexFilter,"Regular expression to filter variable names in chunk"),
+  Arg("eVitRegexFilter",Arg::Opt,eVitRegexFilter,"Regular expression to filter variable names in epilog"),
+  Arg("vitCaseSensitiveRegexFilter",Arg::Opt,vitCaseSensitiveRegexFilter,"Case sensitivity of the rv regular expression filter"),
+
+
+  Arg("pVitTrigger",Arg::Opt,JunctionTree::pVitTrigger, "Leaf node expression for Viteribi printing trigger in prolog"),
+  Arg("cVitTrigger",Arg::Opt,JunctionTree::cVitTrigger, "Leaf node expression for Viteribi printing trigger in chunk"),
+  Arg("eVitTrigger",Arg::Opt,JunctionTree::eVitTrigger, "Leaf node expression for Viteribi printing trigger in epilog"),
+
+  Arg("vitRunLengthCompress",Arg::Opt,JunctionTree::vitRunLength, "Only print a chunk when its Viterbi values differ from the previous chunk"),
+
+#ifndef GMTK_ONLINE_UNSUPPORTED
+  Arg("vitSectionRange",Arg::Opt,vitPartRangeFilter,"Value printing, integer range filter for sections (e.g., frames, slices) to print."),
+  Arg("vitFrameRange",Arg::Opt,vitFrameRangeFilter,"Value printing, integer range filter for frames to print."),
+#endif
+
+  Arg("vitPrintObservedVariables",Arg::Opt,vitAlsoPrintObservedVariables,"Also print observed random variables in addtion to hidden"),
+
+#if 0
+#ifndef GMTK_ONLINE_UNSUPPORTED
   // frame based
-  Arg("vitValsFile",Arg::Opt,vitValsFileName,"Vit: file to print viterbi values, '-' for stdout"),
+  Arg("vitValsFile",Arg::Opt,vitValsFileName,"Original Section Vit: file to print viterbi values in ASCII, '-' for stdout"),
   // TODO: not currently used, but should add.
   // Arg("vitBinVitValsFile",Arg::Opt,vitValsFileBinp,"Vit: Should file to print viterbi values be binary? (T/F) "),
 
-  Arg("vitRegexFilter",Arg::Opt,vitRegexFilter,"Vit: Regular expression to filter variable names."),
-  Arg("vitCaseSensitiveRegexFilter",Arg::Opt,vitCaseSensitiveRegexFilter,"Vit: Case sensitivity of the rv regular expression filter."),
+  //  Arg("vitRegexFilter",Arg::Opt,vitRegexFilter,"Vit: Regular expression to filter variable names."),
+  //  Arg("vitCaseSensitiveRegexFilter",Arg::Opt,vitCaseSensitiveRegexFilter,"Vit: Case sensitivity of the rv regular expression filter."),
 
-  Arg("vitPrintObservedVariables",Arg::Opt,vitAlsoPrintObservedVariables,"Vit: also print observed random variables in addtion to hidden"),
+  //  Arg("vitPrintRange",Arg::Opt,vitPartRangeFilter,"Vit: value printing, integer range filter for original partitions (e.g., frames, slices) to print."),
+  Arg("vitFrameRange",Arg::Opt,vitFrameRangeFilter,"Value printing, integer range filter for frames to print."),
+
+  //Arg("vitPrintObservedVariables",Arg::Opt,vitAlsoPrintObservedVariables,"Vit: also print observed random variables in addtion to hidden"),
+#endif
+#endif
 
 #if 0
   // this is not implemented yet.
   Arg("vitReverseOrder",Arg::Opt,vitReverseOrder,"Vit: print values in reverse order."),
-
-  Arg("vitTriggerVar", Arg::Opt,vitTriggerVariables,"Viterbi: Trigger variable. Replace X with trigger variable number",Arg::ARRAY,MAX_VITERBI_TRIGGERS),
-  Arg("vitTriggerSet", Arg::Opt,vitTriggerSets,"Viterbi: Trigger value set. Replace X with trigger set number",Arg::ARRAY,MAX_VITERBI_TRIGGERS),
 #endif
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
+  if (JunctionTree::binaryViterbiFilename) {
+#if defined(GMTK_VITERBI_FILE_WRITE)
+    JunctionTree::binaryViterbiFile = fopen(JunctionTree::binaryViterbiFilename, "w+b");
+#else
+    JunctionTree::binaryViterbiFile = fopen(JunctionTree::binaryViterbiFilename, "rb");
+#endif
+    if (!JunctionTree::binaryViterbiFile) {
+      char *err = strerror(errno);
+      error("ERROR: Failed to open '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+    }
+  }
 
+  if (vitPartRangeFilter && vitFrameRangeFilter) {
+    error("%s: Can't use both -vitPrintRange and -vitFrameRange\n", argerr);
+  }
+
+  if ( vitFrameRangeFilter && ! (vitValsFileName || JunctionTree::vitObsFileName)) {
+    error("%s: -vitFrameRange requires -vitValsFile or -vitObsFileName to be specified\n", argerr);
+  }
+
+  if (JunctionTree::vitObsFileName && (vitValsFileName || mVitValsFileName) ) {
+    error("%s: -vitObsFileName cannot be used with -vitValsFileName or -mVitValsFileName\n", argerr);
+  }
 #else
 #endif
 #endif // defined(GMTK_ARG_NEW_DECODING_OPTIONS)
@@ -2024,7 +2279,7 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
   Arg("times",Arg::Opt,numTimes,"Number of times to run program seconds seconds long (not multitest mode)."),
   Arg("multiTest",Arg::Opt,multiTest,"Run gmtkTime in multi-test mode, taking triangulation file names from command line."),
   Arg("slop",Arg::Opt,rlimitSlop,"In multiTest mode, number of additional seconds before fail-terminate is forced."),
-  Arg("noEPartition",Arg::Opt,noEPartition,"If true, do not run E partition (only [P C C ... C] skipping E)"),
+  Arg("noESection",Arg::Opt,noEPartition,"If true, do not run E section (only [P C C ... C] skipping E)"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
@@ -2160,13 +2415,13 @@ bool iswp[MAX_NUM_OBS_FILES] = {false,false,false,false,false};
       Arg::Opt,timeLimit,
       "Do not run for longer than the given amount of time."),
 
-  Arg("rePartition",
+  Arg("reSection",
       Arg::Opt,rePartition,
-      "Re-Run the boundary algorithm even if .str.trifile exists to produce new partition and new triangulation."),
+      "Re-Run the boundary algorithm even if .str.trifile exists to produce new section and new triangulation."),
 
   Arg("reTriangulate",
       Arg::Opt,reTriangulate,
-      "Re-Run only triangluation using existing partition given in .trifile."),
+      "Re-Run only triangluation using existing section given in .trifile."),
 
   Arg("continueTriangulating",
       Arg::Opt,continueTriangulating,

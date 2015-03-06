@@ -8,14 +8,10 @@
  *
  * Written by Simon King <Simon.King@ed.ac.uk>
  *
- * Copyright (c) 2006, < fill in later >
+ * Copyright (C) 2006 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
  *
  */
 
@@ -2923,7 +2919,11 @@ GMTK_Tie::decision_tree_cluster(unsigned command_index,
 
 
   std::list<Cluster> clusters;
-  std::list<Cluster>::iterator ci,save1=NULL_ITERATOR,save2=NULL_ITERATOR;
+  std::list<Cluster>::iterator ci;
+#if 0
+  // unused
+  std::list<Cluster>::iterator save1=NULL_ITERATOR,save2=NULL_ITERATOR;
+#endif
   int p_counter=0;
 
 
@@ -3062,7 +3062,11 @@ GMTK_Tie::decision_tree_cluster(unsigned command_index,
 
     
     double this_score= LZERO, best_score=LZERO;
-    double best_ll=LZERO, before_ll = cluster_scaled_log_likelihood(ci->items);
+#if 0
+    // unused
+    double best_ll=LZERO;
+#endif
+    double before_ll = cluster_scaled_log_likelihood(ci->items);
 
     for (unsigned i=0;i<decision_tree.questions->questions.size();i++){
       
@@ -3126,7 +3130,7 @@ GMTK_Tie::decision_tree_cluster(unsigned command_index,
 	  if (this_score > best_score) {
 	    qindex=i;
 	    best_score=this_score;
-	    best_ll=after_ll;
+	    // best_ll=after_ll;
 	  }
 	}
 

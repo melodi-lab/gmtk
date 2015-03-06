@@ -1,5 +1,12 @@
 #include <iostream>
 
+/*
+ *
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ *
+ */
 #if HAVE_CONFIG_H
 #include <config.h>
 #endif
@@ -165,7 +172,7 @@ void MixNormalCollection::startEpoch() {
  * @param rng the pointer to set of nodes
  * @return true if no componenet dropped
  */
-void MixNormalCollection::addToEpoch(ObservationMatrix* obsMat,
+void MixNormalCollection::addToEpoch(FileSource *obsMat,
 				  size_t featureVecDim,
 				  size_t totalNumFramesInSentence,
 				  size_t numFramesToProcess,

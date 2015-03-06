@@ -1,6 +1,31 @@
 /**
  *: mixNormal.cc
 */
+/*
+ *
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ *
+ */
+
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+#if HAVE_HG_H
+#include "hgstamp.h"
+#endif
+#if HAVE_INTTYPES_H
+   // The ISO C99 standard specifies that the macros in inttypes.h must
+   //  only be defined if explicitly requested. 
+#  ifndef __STDC_FORMAT_MACROS
+#    define __STDC_FORMAT_MACROS 1
+#  endif
+#  include <inttypes.h>
+#endif
+#if HAVE_STDINT_H
+#  include <stdint.h>
+#endif
 
 #include <cstdio>
 #include <cstdlib>
@@ -10,7 +35,7 @@
 #include <cfloat>
 
 #include "rand.h"
-#include "config.h"
+#include "discrete_mi_config.h"
 #include "mixNormal.h"
 
 using std::cout;

@@ -1,16 +1,36 @@
 #                                               -*- Autoconf -*-
+
+#
+# Written by Richard Rogers <rprogers@uw.edu>
+#
+# Copyright (C) 2010 Jeff Bilmes
+# Licensed under the Open Software License version 3.0
+# See COPYING or http://opensource.org/licenses/OSL-3.0
+#
+
 # Process this file with autoconf to produce a configure script.
 
-AC_PREREQ(2.59)
+AC_PREREQ(2.69)
 AC_INIT([GMTK], m4_esyscmd(printf %s `head -n 1 ../RELEASE`),
-        [https://lungs.ee.washington.edu/trac/gmtk/newticket])
+        [https://j.ee.washington.edu/trac/gmtk/newticket])
 : ${CXXFLAGS=""}
 AC_CANONICAL_HOST
 
 AC_CONFIG_SRCDIR([pfile.h])
 AC_CONFIG_HEADER([config.h])
 
-AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
+AM_INIT_AUTOMAKE([1.12 silent-rules -Wall -Werror foreign])
+AM_SILENT_RULES([yes])
+
+AC_ARG_ENABLE([register],
+              [AS_HELP_STRING([--enable-register],
+                              [use the deprecated register keyword @<:@default: no@:>@])],
+              [register=${enableval}],[register=no])
+if test x${register} = xno; then
+  AC_DEFINE([REGISTER],[],[don't use the register keyword])
+else
+  AC_DEFINE([REGISTER],[register],[use the register keyword])
+fi
 
 AC_ARG_ENABLE([assertions],
               [AS_HELP_STRING([--disable-assertions],
@@ -48,14 +68,29 @@ AM_CONDITIONAL([NO_MODEL_CHECKS],[test x$model_checks != xyes])
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
+
+#check for Clang, which lies about being GCC
+AC_MSG_CHECKING([if compiling with clang])
+AC_COMPILE_IFELSE(
+[AC_LANG_PROGRAM([],[[
+#ifndef __clang__
+  not clang
+#endif
+]])],
+[CLANG=yes],[CLANG=no])
+AC_MSG_RESULT([$CLANG])
+AM_CONDITIONAL([USE_GCC_FLAGS],[test x$GCC = xyes -a x$GXX = xyes -a x$CLANG = xno])
+AM_CONDITIONAL([USE_CLANG_FLAGS],[test x$CLANG = xyes])
+
 AC_PROG_LEX
+m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 AC_PROG_INSTALL
 AC_PROG_RANLIB
 
-AC_CHECK_FILE([../.hg/dirstate],[
+AC_CHECK_FILE([$srcdir/../.hg/dirstate],[
   AC_CHECK_PROG([HAVE_HG],[hg],[yes])
   if test x$HAVE_HG = xyes; then
-    HGREVID=`hg id ..`  
+    HGREVID=`hg id $srcdir/..`  
     HGDATE=`hg parents --template '{date|date}'`
     printf "#ifndef HGID\n#define HGID \"$HGREVID\"\n#define HGDATE \"$HGDATE\"\n#endif\n" > hgstamp.h
     AC_DEFINE([HAVE_HG_H],[1],[Live Mercurial revision id header available?])
@@ -73,6 +108,32 @@ AM_CONDITIONAL([HAVE_HG],[test  x$HAVE_HG = xyes])
 
 # Checks for libraries.
 AC_CHECK_LIB([m], [sqrt])
+
+# this doesn't work - need to #include <H5Cpp.h>  and use namespace H5
+#AC_LANG_PUSH([C++])
+#AC_CHECK_LIB([hdf5_cpp], [H5File::isHdf5])  
+#AC_LANG_POP([C++])
+
+AC_MSG_CHECKING([for HDF5 >= 1.8 C++ bindings])
+AC_LANG_PUSH([C++])
+hdf_check_save_LIBS=${LIBS}
+LIBS="${LIBS} -lhdf5_cpp -lhdf5"
+# H5Lregister should only be present in >= 1.8
+AC_LINK_IFELSE([AC_LANG_PROGRAM([#include <H5Cpp.h>
+#ifndef H5_NO_NAMESPACE
+using namespace H5;
+#endif],
+[H5Lregister(NULL); H5File file("/dev/null", H5F_ACC_RDONLY )])],
+        AC_SUBST([HAVE_HDF5],[yes]),[])
+LIBS=${hdf_check_save_LIBS}
+AC_LANG_POP([C++])
+if test x"$HAVE_HDF5" = x"yes"; then 
+  LIBS="-lhdf5_cpp -lhdf5 $LIBS"
+  AC_DEFINE([HAVE_LIBHDF5_CPP],[1],[Are the C++ bindings for HDF5 available?])
+  AC_MSG_RESULT([yes])
+else
+  AC_MSG_RESULT([no])
+fi
 
 case "${host}" in
 *cygwin*) AC_SUBST([XOPEN],[-D__USE_XOPEN2K]) ;;

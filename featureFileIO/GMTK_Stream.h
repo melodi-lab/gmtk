@@ -9,18 +9,18 @@
  *
  * $Header$
  *
- * Copyright (c) 2001
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
  */
 
 #ifndef GMTK_Stream_h
+
 #define GMTK_Stream_h
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
 
 #include <ctype.h>
 #include "range.h"
@@ -29,15 +29,23 @@
 
 using namespace std;
 
+#ifdef HAVE_FSEEKO
+   typedef off_t htk_off_t;
+#else
+   typedef long  htk_off_t;
+#endif
+
+
 // possible file formats
 
 enum {
   RAWBIN, 
   RAWASC, 
+  FLATASC,
   PFILE,
   HTK,
   FLATBIN,
-  FLATASC
+  HDF5
 };
 
 
@@ -85,7 +93,7 @@ public:
 
 	int samp_size; /// bytes per sample
 	int n_samples; /// number of samples
-	int startOfData; ///the offset from start of file to the start of actual data
+	htk_off_t startOfData; ///the offset from start of file to the start of actual data
 	
 	///HTK kind flags.  See sect. "5.10.1 HTK Format Parameter Files" of the HTK book
 	bool isCompressed;

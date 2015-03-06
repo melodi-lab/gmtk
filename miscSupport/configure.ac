@@ -1,16 +1,36 @@
 #                                               -*- Autoconf -*-
+
+#
+# Written by Richard Rogers <rprogers@uw.edu>
+#
+# Copyright (C) 2010 Jeff Bilmes
+# Licensed under the Open Software License version 3.0
+# See COPYING or http://opensource.org/licenses/OSL-3.0
+#
+
 # Process this file with autoconf to produce a configure script.
 
-AC_PREREQ(2.59)
+AC_PREREQ(2.69)
 AC_INIT([GMTK], m4_esyscmd(printf %s `head -n 1 ../RELEASE`),
-        [https://lungs.ee.washington.edu/trac/gmtk/newticket])
+        [https://j.ee.washington.edu/trac/gmtk/newticket])
 : ${CXXFLAGS=""}
 AC_CANONICAL_HOST
 
 AC_CONFIG_SRCDIR([adaptive_filter.h])
 AC_CONFIG_HEADER([config.h])
 
-AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
+AM_INIT_AUTOMAKE([1.12 silent-rules -Wall -Werror foreign])
+AM_SILENT_RULES([yes])
+
+AC_ARG_ENABLE([register],
+              [AS_HELP_STRING([--enable-register],
+                              [use the deprecated register keyword @<:@default: no@:>@])],
+              [register=${enableval}],[register=no])
+if test x${register} = xno; then
+  AC_DEFINE([REGISTER],[],[don't use the register keyword])
+else
+  AC_DEFINE([REGISTER],[register],[use the register keyword])
+fi
 
 AC_ARG_ENABLE([assertions],
               [AS_HELP_STRING([--disable-assertions],
@@ -46,15 +66,75 @@ AC_ARG_ENABLE([model-checks],
 AM_CONDITIONAL([NO_ASSERTIONS],[test x$assertions != xyes])
 AM_CONDITIONAL([NO_MODEL_CHECKS],[test x$model_checks != xyes])
 
+
+
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
+
+#check for Clang, which lies about being GCC
+AC_MSG_CHECKING([if compiling with clang])
+AC_COMPILE_IFELSE(
+[AC_LANG_PROGRAM([],[[
+#ifndef __clang__
+  not clang
+#endif
+]])],
+[CLANG=yes],[CLANG=no])
+AC_MSG_RESULT([$CLANG])
+AM_CONDITIONAL([USE_CLANG_FLAGS],[test x$CLANG = xyes])
+AM_CONDITIONAL([USE_GCC_FLAGS],[test x$GCC = xyes -a x$GXX = xyes -a x$CLANG = xno])
+AM_PROG_CC_C_O
+m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 AC_PROG_RANLIB
 
-AC_CHECK_FILE([../.hg/dirstate],[
+# The following is for ticket 192. It's somewhat of a kludge.
+# If the build cpp supports "-x assembler-with-cpp" (it's 
+# likely only GCC's cpp does), we make GMTK's default cpp 
+# command "$CPP -x assembler-with-cpp" in order to eliminate
+# warnings about GMTK ASCII input files that aren't compatible 
+# with the C lexical rules normally enforced by cpp - this 
+# assumes the build cpp will be available and on the $PATH of 
+# the end-user's machine. Otherwise, the default is just "cpp". 
+
+# The user can override this at build-time with the 
+# "--with-cppCmd" configure argument, or at GMTK run-time
+# with the $GMTK_CPP_CMD environment variable.
+
+# We're going to fiddle with CPP and its arguments, so
+# remember what to reset them to when we're done
+AC_LANG_PUSH([C])
+AC_REQUIRE_CPP
+gmtk_save_CPPFLAGS=${CPPFLAGS}
+CPPFLAGS="-x assembler-with-cpp $CPPFLAGS"
+#CPPFLAGS="-std=c89 $CPPFLAGS"
+
+# see if the new flags handle the ticket 192 problems
+AC_PREPROC_IFELSE([
+  AC_LANG_SOURCE([[
+#define CONCAT(a,b) a##b
+#define CONCAT2(a,b) CONCAT(a,b)
+CONCAT2(dt/,foo)
+% GMTK's comments are not compatible with cpp]])],
+  [gmtkCPP="$CPP -x assembler-with-cpp"
+   AC_SUBST([gmtkCPPCMD],[$gmtkCPP])],
+  [gmtkCPP="cpp"])
+
+# restore original environment
+CPPFLAGS=$gmtk_save_CPPFLAGS
+AC_LANG_POP([C])
+
+AC_ARG_WITH([cppCmd],
+            [AS_HELP_STRING([--with-cppCmd],
+               [specify C pre-processor command GMTK uses to process ASCII input files @<:@default: "gcc -E -x assembler-with-cpp" if the build cpp is "gcc -E", otherwise just "cpp"@:>@])],
+            [AC_SUBST([GMTKCPPCMD],[$with_cppCmd])],
+            [AC_SUBST([GMTKCPPCMD],[$gmtkCPP])])
+
+
+AC_CHECK_FILE([$srcdir/../.hg/dirstate],[
   AC_CHECK_PROG([HAVE_HG],[hg],[yes])
   if test x$HAVE_HG = xyes; then
-    HGREVID=`hg id ..`  
+    HGREVID=`hg id $srcdir/..`  
     HGDATE=`hg parents --template '{date|date}'`
     printf "#ifndef HGID\n#define HGID \"$HGREVID\"\n#define HGDATE \"$HGDATE\"\n#endif\n" > hgstamp.h
     AC_DEFINE([HAVE_HG_H],[1],[Live Mercurial revision id header available?])
@@ -98,7 +178,10 @@ AC_FUNC_ERROR_AT_LINE
 AC_FUNC_MALLOC
 AC_FUNC_STRFTIME
 AC_FUNC_STRTOD
+AC_SYS_LARGEFILE
 AC_FUNC_VPRINTF
+AC_FUNC_MMAP
+AC_FUNC_FSEEKO
 AC_CHECK_FUNCS([floor pow sqrt strchr strerror strspn strtol strtoul log1p])
 
 AC_ARG_WITH([logp], 
@@ -125,10 +208,14 @@ esac
 
 AC_ARG_WITH([LZERO],
             [AS_HELP_STRING([--with-LZERO],
-              [the smallest log value that we represent @<:@default: -1.0E10@:>@])],
+              [the smallest log value that we represent (note that values > -1e16 may cause arithmetic problems (0+0 != 0) @<:@default: -1.0E17@:>@])],
 	    [],
-            [with_LZERO=(-1.0E10)])
+            [with_LZERO=(-1.0E17)])
 
+badLZERO=`echo ${with_LZERO} | awk '{if ($1 > -1.0e16) {print "bad"}}'`
+if test x"$badLZERO" = x"bad"; then
+  AC_WARN([Values for LZERO greater than -1.0e16 may cause an arithmetic issue so that 0+0 != 0])
+fi 
 AC_DEFINE_UNQUOTED([LZERO], [(${with_LZERO})], [smallest log value that we represent])
 
 AC_CONFIG_FILES([Makefile])

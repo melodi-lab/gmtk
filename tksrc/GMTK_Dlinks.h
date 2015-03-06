@@ -6,15 +6,10 @@
  * 
  *  $Header$
  * 
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
@@ -134,6 +129,9 @@ public:
   // return the min and maximum lags respectively.
   int minLag() { return _minLag; }
   int maxLag() { return _maxLag; }
+
+  static int globalMinLag() { return _globalMinLag; }
+  static int globalMaxLag() { return _globalMaxLag; }
 
 };
 

@@ -6,15 +6,10 @@
  * 
  *  $Header$
  * 
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
@@ -59,11 +54,10 @@ class DiscRV;
  *  |
  *  +-- VECPT - virtual evidence CPT
  *  | 
+ *  +-- DeepVECPT - deep virtual evidence CPT
+ *  |
  *  +-- LatticeEdgeCPT - implementation of an HTK lattice edge as a GMTK CPT
  *  +-- LatticeNodeCPT - implementation of an HTK lattice node as a GMTK CPT
- *
- *  Still TODO:
- *      Neural Network/MLP CPT
  *
  */
 
@@ -119,6 +113,8 @@ public:
     di_NGramCPT, // Ngram "language model" CPT
     di_FNGramCPT, // factored ngram "language model" CPT
     di_VECPT,    // Virtual Evidence CPT
+    di_DeepVECPT, // Deep Virtual Evidence CPT
+    di_DeepCPT,   // Deep CPT
     di_LatticeNodeCPT,	// lattice node CPT
     di_LatticeEdgeCPT,	// lattice edge CPT
     di_unknown
@@ -180,7 +176,8 @@ public:
     friend class NGramCPT;
     friend class FNGramCPT;
     friend class VECPT;
-
+    friend class DeepVECPT;
+    friend class DeepCPT;
 
     // The cpt for this iterator.
     CPT* cpt;

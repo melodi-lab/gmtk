@@ -5,6 +5,11 @@
 //  Jeff Bilmes <bilmes@cs.berkeley.edu> June 1997
 // 
 // 
+//  Copyright (C) 2004 Jeff Bilmes
+//  Licensed under the Open Software License version 3.0
+//  See COPYING or http://opensource.org/licenses/OSL-3.0
+//
+// 
 
 #include <stdlib.h>
 #include <stdio.h>

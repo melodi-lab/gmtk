@@ -1,0 +1,127 @@
+
+# Written by Richard Rogers rprogers@uw.edu
+#
+# Copyright (C) 2003 Jeff Bilmes
+# Licensed under the Open Software License version 3.0
+# See COPYING or http://opensource.org/licenses/OSL-3.0
+
+# We will set BLAS_CFLAGS and BLAS_LIBS appropriately
+# to link with either MKL or an external CBLAS. To use only the internal
+# replacement kernels, both should be empty.
+
+# Handle MKL
+
+if test x$MKL_REQUEST == xyes; then     # one of the --with-mkl-* flags was given, so use MKL
+  if test x$BLAS_REQUEST = xyes; then
+    AC_MSG_ERROR([MKL provides CBLAS, so you cannot use both MKL and another external CBLAS library. Do not use both --with-mkl-* and --with-cblas-*])
+  fi
+
+  BLAS_CFLAGS=$MKL_CFLAGS
+  BLAS_LIBS=$MKL_LIBS
+
+  AC_MSG_CHECKING([for MKL])
+  AC_LANG_PUSH([C++])
+  mkl_save_CXXFLAGS=$CXXFLAGS
+  CXXFLAGS=$BLAS_CFLAGS
+  mkl_save_LIBS=$LIBS
+  LIBS=$BLAS_LIBS
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include "mkl.h"]],
+                                  [[double x[3]; double y[3]; double alpha; cblas_daxpy(3, alpha, x, 1, y, 1);]])],
+    [AC_MSG_RESULT([yes])
+     AC_DEFINE([HAVE_MKL],1,[Define if you have intel MKL])], 
+    [AC_MSG_RESULT([no])
+     AC_MSG_ERROR([MKL failed with --with-mkl-cflags='$MKL_CFLAGS' and --with-mkl-libs='$MKL_LIBS'])])
+  LIBS=$mkl_save_LIBS
+  CXXFLAGS=$mkl_save_CXXFLAGS
+  AC_LANG_POP([C++])
+
+# MKL counts as a CBLAS
+  BLAS_FOUND=yes
+
+# For any other configure stuff that cares if we have MKL
+  USE_MKL=yes
+
+  AC_SUBST(BLAS_CFLAGS)
+  AC_SUBST(BLAS_LIBS)
+
+elif test x$BLAS_REQUEST != xno; then  # No MKL; try CBLAS  -- set BLAS_FOUND=yes if we find a working external CBLAS
+
+  # if any --with-cblas-* check @ user specified location
+  if test x$BLAS_REQUEST = xyes; then
+    AC_MSG_CHECKING([for CBLAS])
+    AC_LANG_PUSH([C])
+    blas_save_CFLAGS=${CFLAGS}
+    CFLAGS=$BLAS_CFLAGS
+    blas_save_LIBS=${LIBS}
+    LIBS=$BLAS_LIBS
+    AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <cblas.h>]],
+                      [[double x[3]; double y[3]; double alpha; cblas_daxpy(3, alpha, x, 1, y, 1);]])],
+      [AC_MSG_RESULT([yes])
+       AC_DEFINE([HAVE_BLAS],1,[Define if you have a (non-MKL) CBLAS installation])
+       AC_SUBST(BLAS_CFLAGS)
+       AC_SUBST(BLAS_LIBS)
+       BLAS_FOUND=yes],
+      [AC_MSG_RESULT([no])
+       AC_MSG_ERROR([no CBLAS found])])
+    LIBS=${blas_save_LIBS}
+    CFLAGS=${blas_save_CFLAGS}
+    AC_LANG_POP([C])
+
+  else # no --with-cblas-* specified, so try pkg-config
+
+    PKG_CHECK_EXISTS([cblas],[
+      PKG_CHECK_MODULES([BLAS],[cblas],
+        [AC_LANG_PUSH([C])
+         blas_save_CFLAGS=${CFLAGS}
+         CFLAGS=$BLAS_CFLAGS
+         blas_save_LIBS=${LIBS}
+         LIBS=$BLAS_LIBS
+         AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <cblas.h>]],
+                        [[double x[3]; double y[3]; double alpha; cblas_daxpy(3, alpha, x, 1, y, 1);]])],
+                        [AC_DEFINE([HAVE_BLAS],1,[Define if you have a (non-MKL) CBLAS installation])
+                         BLAS_FOUND=yes],
+                        [AC_MSG_ERROR([CBLAS found via pkg-config doesn't seem to work])])  # pkg-config cblas failed to link
+         LIBS=${blas_save_LIBS}
+         CFLAGS=${blas_save_CFLAGS}
+         AC_LANG_POP([C])])])
+  fi
+  if test "x$BLAS_FOUND" != "xyes"; then   # still not found? try last resort guess
+    AC_MSG_CHECKING([for BLAS in default locations])
+     AC_LANG_PUSH([C])
+     blas_save_LIBS=${LIBS}
+     LIBS=-lcblas
+     AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <cblas.h>]],
+                       [[double x[3]; double y[3]; double alpha; cblas_daxpy(3, alpha, x, 1, y, 1);]])],
+       [AC_MSG_RESULT([yes])
+        AC_DEFINE([HAVE_BLAS],1,[Define if you have a (non-MKL) CBLAS installation])
+        BLAS_CFLAGS=""
+        BLAS_LIBS="-lcblas"
+	BLAS_FOUND=yes],
+       [AC_MSG_RESULT([no])])
+     LIBS=${blas_save_LIBS}
+     CFLAGS=${blas_save_CFLAGS}
+     AC_LANG_POP([C])
+     AC_SUBST(BLAS_CFLAGS)
+     AC_SUBST(BLAS_LIBS)
+  fi
+fi
+
+if test x$BLAS_FOUND = xyes; then
+  if test x$enable_internal_dgemm = xyes; then
+#   build and use PHiPAC dgemm even though we have an external MKL or plain CBLAS dgemm
+    AC_DEFINE([USE_PHIPAC],1,[Define if you want to use the PHiPAC dgemm instead of an external CBLAS dgemm])
+    AM_CONDITIONAL([BUILD_PHIPAC], [true])
+    AC_SUBST([optional_libraries],[libPHiPAC.a])
+  else
+    AM_CONDITIONAL([BUILD_PHIPAC], [false])
+  fi
+else
+# We must have a dgemm, so use PHiPAC
+  if test x$enable_external_dgemm == xno; then
+    AC_MSG_ERROR([Cannot disable internal dgemm when neither external CBLAS nor MKL are available])
+  fi
+  AC_DEFINE([USE_PHIPAC],1,[Define if you want to use the PHiPAC dgemm instead of an external CBLAS dgemm])
+  AM_CONDITIONAL([BUILD_PHIPAC], [true])
+  AC_SUBST([optional_libraries],[libPHiPAC.a])
+fi
+

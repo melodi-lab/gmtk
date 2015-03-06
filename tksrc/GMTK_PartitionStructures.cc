@@ -4,15 +4,10 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2003, < fill in later >
+ * Copyright (C) 2003 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
@@ -30,6 +25,7 @@
 #include <iterator>
 #include <map>
 #include <set>
+#include <string>
 #include <algorithm>
 #include <new>
 
@@ -123,7 +119,7 @@ PartitionStructures::PartitionStructures(JT_Partition& from_part,
     allrvs = res;
   }
 
-  if (JunctionTree::viterbiScore == true) {
+  if (JunctionTree::viterbiScore || JunctionTree::onlineViterbi) {
 
     // set up a few members that are needed for computing and storing
     // values of this partition.
@@ -161,6 +157,7 @@ PartitionStructures::PartitionStructures(JT_Partition& from_part,
       }
     }
     assert(allrvs_vec.size() == allrvs.size());
+    sort(allrvs_vec.begin(), allrvs_vec.end(), rvcompare);
 
     // now need to create the packer for the hidden variables.
     hidRVVector.clear();

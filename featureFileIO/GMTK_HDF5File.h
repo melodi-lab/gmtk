@@ -1,0 +1,217 @@
+
+/*
+ * GMTK_HDF5File.h
+ * 
+ * Written by Richard Rogers <rprogers@ee.washington.edu>
+ *
+ * Copyright (C) 2012 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ * 
+ *
+ */
+
+#ifndef GMTK_HDF5FILE_H
+#define GMTK_HDF5FILE_H
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#include <stdio.h>
+#include <string>
+using namespace std;
+
+#include "machine-dependent.h"
+#include "error.h"
+#include "general.h"
+
+#include "GMTK_ObservationFile.h"
+
+#if HAVE_LIBHDF5_CPP
+
+// If Autoconf couldn't find the library, disable the code 
+// that requires it.
+
+
+// The argument to -ofX is the name of a file that contains
+// a list of:
+//
+// filename:groupname:x_start,y_start;x_stride,y_stride;x_count,y_count
+//
+// Each entry in the file represents a segment. 
+// See https://j.ee.washington.edu/trac/gmtk/ticket/21 for 
+// additional details and discussion
+
+#include "H5Cpp.h"
+#ifndef H5_NO_NAMESPACE
+using namespace H5;
+
+#endif
+
+class HDF5File: public ObservationFile {
+
+  bool         cppIfAscii;  // for the FoF  
+  char const  *cppCommandOptions;
+
+  unsigned     numSlabs;   // # hyperslabs specified in FoF
+  unsigned     curSegment; // currently open segment
+
+  unsigned     nFrames;    // # of frames in current segment
+
+  Data32      *buffer;     
+  unsigned     bufSize;    // in Data32's
+
+  H5File      *curFile;    // file for current segment
+
+  char const **fileName;
+  char const **groupName;  // groupName[i] is the group to read in fileName[i]
+  unsigned    *xStart;
+  unsigned    *yStart;     // hyperslab in fileName[i]:groupName[i] starts at (xStart[i],yStart[1])
+  unsigned    *xStride;
+  unsigned    *yStride;    // stride in ith hyperslab
+  unsigned    *xCount;
+  unsigned    *yCount;     // size of ith hyperslab
+
+  // ith segment is the 2D hyperslab 
+  // fileName[i]:groupName[i]:xStart[i],yStart[i];xStride[i],yStride[i];xCount[i],yCount[i]
+
+
+  // for writable files
+  FILE       *listFile;   // list of segments
+  char const *fofName;    // filename of list of segments
+  char const *hdf5Name;   // actual HDF5 file
+  unsigned    curFrame;
+  unsigned    curFeature;
+  unsigned    frameCount;
+  unsigned    segStart;
+  H5File     *outputFile;
+  Data32     *frameBuffer;
+  DataSet     contDataset, discDataset;
+  DataSpace  *contDataspace, *discDataspace;
+
+ public:
+
+  // read ctor
+  HDF5File(const char *name, unsigned num, 
+	   bool cppIfAscii, char const* cppCommandOptions=NULL,
+	   char const *contFeatureRangeStr_=NULL, 
+	   char const *discFeatureRangeStr_=NULL, 
+	   char const *preFrameRangeStr_=NULL, 
+	   char const *segRangeStr_=NULL,
+	   unsigned leftPad=0, unsigned rightPad=0);
+
+  // write ctor
+  HDF5File(char const *listFileName, char const *outputFileName, unsigned nfloats, unsigned nints);
+
+  ~HDF5File();
+ 
+  // Set frame # to write within current segemnt
+  void setFrame(unsigned frame) {
+    assert(0); // we only support sequential writing
+  }
+
+  // Write frame to the file (call endOfSegment after last frame of a segment)
+  void writeFeature(Data32 x);
+
+  // Call after last writeFrame of a segment
+  void endOfSegment();
+
+  // The number of available segments.
+  unsigned numSegments() { return numSlabs; }
+
+  bool openSegment(unsigned seg);
+
+  // The number of frames in the currently open segment.
+  unsigned numFrames() {
+    assert(curFile); // segment open
+    return nFrames; 
+  }
+
+  Data32 const *getFrames(unsigned first, unsigned count);
+
+  // Number of continuous/discrete/total features in the file
+  // after applying -frX and -irX
+  unsigned numLogicalContinuous() { return _numLogicalContinuousFeatures; }
+  unsigned numLogicalDiscrete()   { return _numLogicalDiscreteFeatures; }
+  unsigned numLogicalFeatures()   { return _numLogicalFeatures; }
+};
+
+#else
+
+// Fake do-nothing implementation in case the
+// HDF5 library is unavailable
+
+class HDF5File: public ObservationFile {
+
+ public:
+
+  HDF5File(const char *name, unsigned num,
+	   bool cppIfAscii, char const* cppCommandOptions=NULL,
+	   char const *contFeatureRangeStr_=NULL, 
+	   char const *discFeatureRangeStr_=NULL, 
+	   char const *preFrameRangeStr_=NULL, 
+	   char const *segRangeStr_=NULL,
+           unsigned leftPad=0, unsigned rightPad=0)
+  {
+    error("This GMTK build does not support HDF5 files\n");
+  }
+
+  // write ctor
+  HDF5File(char const *listFileName, char const *outputFileName, unsigned nfloats, unsigned nints) {
+    error("This GMTK build does not support HDF5 files\n");
+  }
+
+
+  ~HDF5File() {}
+ 
+
+  // Write segment to the file (no need to call endOfSegment)
+  void writeSegment(Data32 const *segment, unsigned nFrames) {
+    assert(0);
+  }
+
+  // Set frame # to write within current segemnt
+  void setFrame(unsigned frame) {
+    assert(0);
+  }
+
+  // Write frame to the file (call endOfSegment after last frame of a segment)
+  void writeFrame(Data32 const *frame) {
+    assert(0);
+  }
+
+  void writeFeature(Data32 x) {
+    assert(0);
+  }
+
+  // Call after last writeFrame of a segment
+  void endOfSegment() {
+    assert(0);
+  }
+
+  // The number of available segments.
+  unsigned numSegments() { return 0; }
+
+  // Begin sourcing data from the requested segment.
+  // Must be called before any other operations are performed on a segment.
+  bool openSegment(unsigned seg) { return false; }
+
+  // The number of frames in the currently open segment.
+  unsigned numFrames()  { return 0; }
+
+  // Load count frames of observed data, starting from first,
+  // in the current segment. count may be 0 to request loading
+  // the entire data segment (frames [first, numFrames)).
+  Data32 const *getFrames(unsigned first, unsigned count) { return NULL; }
+
+  unsigned numContinuous() { return 0; }
+
+  unsigned numDiscrete() { return 0; }
+
+  unsigned numFeatures() {return 0; }
+
+};
+
+#endif
+#endif

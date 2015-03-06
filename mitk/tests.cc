@@ -1,3 +1,10 @@
+/*
+ *
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ *
+ */
 #include "global-parameters.h"
 #include "general.h"
 #include "error.h"
@@ -5,7 +12,11 @@
 #include "mixNormal.h"
 #include "mixNormalCollection.h"
 #include "readRange.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_FileSource.h"
+#endif
 
 void generateSyntheticDataFromLearnedParams(MixNormalCollection* mg, int numSamples, FILE* pi_fp) {
   
@@ -22,7 +33,7 @@ void generateSyntheticDataFromLearnedParams(MixNormalCollection* mg, int numSamp
 }
 
 void dumpDistribSampleData(FILE* ofp, 
-			   ObservationMatrix * obsMat,
+			   FileSource *obsMat,
 			   RangeSetCollection &tupleCol,
 			   Range &lrrng,
 			   Range &sentRange,
@@ -38,8 +49,6 @@ void dumpDistribSampleData(FILE* ofp,
   size_t totalNumFramesInSentence, numFramesToProcess;
   int readStatus;
   unsigned frameStart,firstFrameToProcess;
-  unsigned numFramesProcessed;
-
   
   for( Range::iterator sent = sentRange.begin(); !sent.at_end(); sent++ ){
     //if( ! quiet )
@@ -55,7 +64,7 @@ void dumpDistribSampleData(FILE* ofp,
       
       //BUFFER_DATA_TYPE* obsMatPtr = (BUFFER_DATA_TYPE*) obsMat->features.ptr;
       BUFFER_DATA_TYPE* obsMatPtr = (BUFFER_DATA_TYPE*) obsMat->baseAtFrame(0);
-      numFramesProcessed = pointerSet.initialize(obsMatPtr, totalNumFramesInSentence, numFramesToProcess, firstFrameToProcess, tuple);
+      (void) pointerSet.initialize(obsMatPtr, totalNumFramesInSentence, numFramesToProcess, firstFrameToProcess, tuple);
       //cout << "Processing sentence no " << *sent <<endl;
       pointerSet.print(ofp);
       //cout << "Processing sentence no " << *sent <<endl;

@@ -7,15 +7,10 @@
  * 
  *  $Header$
  * 
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
@@ -43,6 +38,7 @@ class DiagCovarVector;
 class DlinkMatrix;
 class Dlinks;
 class RealMatrix;
+class DoubleMatrix;
 class DirichletTable;
 class MDCPT;
 class MSCPT;
@@ -51,6 +47,9 @@ class NGramCPT;
 class FNGramCPT;
 class FNGramImp;
 class VECPT;
+class DeepVECPT;
+class DeepCPT;
+class DeepNN;
 class Vocab;
 class LatticeADT;
 class LatticeNodeCPT;
@@ -155,6 +154,10 @@ public:
   ObjectMapType realMatsMap;
   void add(RealMatrix*ob);
 
+  vector< DoubleMatrix* > doubleMats;
+  ObjectMapType doubleMatsMap;
+  void add(DoubleMatrix*ob);
+
 
   ////////////////////////////////
   // Collection of N-D Dense count (Dirichlet hyperparameter) matrices, used
@@ -238,6 +241,21 @@ public:
   vector<VECPT*> veCpts;
   ObjectMapType veCptsMap;
   void add(VECPT*);
+
+  vector<DeepVECPT*> deepVECpts;
+  ObjectMapType deepVECptsMap;
+  void add(DeepVECPT*);
+
+  vector<DeepCPT*> deepCpts;
+  ObjectMapType deepCptsMap;
+  void add(DeepCPT*);
+
+  ///////////////////////////////////
+  // Collection of Deep Neural Networks
+  vector<DeepNN*> deepNNs;
+  ObjectMapType deepNNsMap;
+  void add(DeepNN*);
+
 
   /********************************************************************/
   /********************************************************************/
@@ -347,6 +365,7 @@ public:
   void readDLinkMats(iDataStreamFile& is,bool reset = false);
   void readDLinks(iDataStreamFile& is,bool reset = false);
   void readRealMats(iDataStreamFile& is,bool reset = false);
+  void readDoubleMats(iDataStreamFile& is,bool reset = false);
   void readDirichletTabs(iDataStreamFile& is,bool reset = false);
   void readMdCpts(iDataStreamFile& is,bool reset = false);
   void readMsCpts(iDataStreamFile& is,bool reset = false);
@@ -356,6 +375,9 @@ public:
   void readFNgramImps(iDataStreamFile& is, bool reset = false);
   void readLatticeAdts(iDataStreamFile& is, bool reset = false);
   void readVECpts(iDataStreamFile& is, bool reset = false);
+  void readDeepVECpts(iDataStreamFile& is, bool reset = false);
+  void readDeepCpts(iDataStreamFile& is, bool reset = false);
+  void readDeepNNs(iDataStreamFile& is, bool reset = false);
   void readDTs(iDataStreamFile& is,bool reset = false);
   void readComponents(iDataStreamFile& is,bool reset = false);
   void readMixtures(iDataStreamFile& is,bool reset = false);
@@ -372,6 +394,7 @@ public:
   void writeDLinkMats(oDataStreamFile& os);
   void writeDLinks(oDataStreamFile& os);
   void writeRealMats(oDataStreamFile& os);
+  void writeDoubleMats(oDataStreamFile& os);
   void writeDirichletTabs(oDataStreamFile& os);
   void writeMdCpts(oDataStreamFile& os);
   void writeMsCpts(oDataStreamFile& os);
@@ -380,6 +403,7 @@ public:
   //void writeNgramCpts(oDataStreamFile& os);
   //void writeFNgramCpts(oDataStreamFile& os);
   //void writeVECpts(oDataStreamFile& os);
+  //void writeDeepNNs(oDataStreamFile& os);
   void writeDTs(oDataStreamFile& os);
   void writeComponents(oDataStreamFile& os);
   void writeMixtures(oDataStreamFile& os);
@@ -512,6 +536,10 @@ private:
 // The global GM parameter object, must be
 // actually defined near where main() is defined.
 extern GMParms GM_Parms;
+
+// load & register C determinstic mapping functions as decision trees
+// from files specified by -mapX arguments
+void dlopenDeterministicMaps(char **dlopenFilenames, unsigned maxFilenames);
 
 #endif
 

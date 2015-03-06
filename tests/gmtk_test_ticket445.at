@@ -1,0 +1,28 @@
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/445 is fixed
+
+# If it's fixed, the cannonicalized Viterbi output from the ASCII 
+# non-observation file output should match that of the flatascii 
+# observation file
+
+AT_SETUP([Viterbi obsfile output (ticket 445)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&
+  gmtkViterbi  -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
+    -inputMasterFile PARAMS/nonTrainable.master \
+    -inputTrainable PARAMS/highly_trained.gmp -str PARAMS/aurora_decode.str \
+    -pVitRegexFilter word -cVitRegexFilter word -eVitRegexFilter word \
+    -printIntValues -vitValsF - | \
+  testViterbi | sort > vit.tru)
+  vitvars=`(cd $TEST_AND_DEV/auroraTutorial &&
+  gmtkViterbi  -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
+    -inputMasterFile PARAMS/nonTrainable.master \
+    -inputTrainable PARAMS/highly_trained.gmp -str PARAMS/aurora_decode.str \
+    -pVitRegexFilter word -cVitRegexFilter word -eVitRegexFilter word \
+    -printIntValues -vitObsFileName vit.flat -vitObsFileFormat flatascii | \
+  fgrep "Viterbi values will be stored in the observation file in" | \
+  awk '{for (i=13; i <= NF; i+=1) print $i}')`
+  flat2vit $vitvars < $TEST_AND_DEV/auroraTutorial/vit.flat | \
+    sort > $TEST_AND_DEV/auroraTutorial/vit.norm
+  diff $TEST_AND_DEV/auroraTutorial/vit.norm $TEST_AND_DEV/auroraTutorial/vit.tru],
+ [],[],[ignore])
+AT_CLEANUP

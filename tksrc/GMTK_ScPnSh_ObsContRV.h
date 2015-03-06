@@ -6,14 +6,10 @@
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *  $Header$
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
  *
  *
  *
@@ -26,6 +22,8 @@
 
 #include "GMTK_ObsContRV.h"
 #include "GMTK_ScPnShRV.h"
+#include "GMTK_MixtureCommon.h"
+#include "GMTK_Mixture.h"
 
 class ScPnSh_ObsContRV : public ObsContRV, public ScPnShRV {
   friend class FileParser;
@@ -65,17 +63,40 @@ public:
     ObsContRV::probGivenParents(p);
     modifyProbability(p,rv_info.rvWeightInfo[0],this);
   }
+
   inline virtual logpr maxValue() {
+    // ticket 6: This code is copied from ObsContRV::maxValue(), but 
+    // modified to include the scale/penalty/shift if they are available.
+    logpr mval, tmp;
+    assert(rv_info.rvWeightInfo.size() == 1); // this isn't a switched RV
+    for (unsigned i=0; i< conditionalMixtures.size(); i++) { // i is the switching state
+      // this loop should just iterate 1 time, since this isn't a switched RV
+      RVInfo::WeightInfo &wi = rv_info.rvWeightInfo[0];
+      if (conditionalMixtures[i].direct) {
+	tmp = conditionalMixtures[i].mixture->maxValue();
+	if (safeToModifyProbability(wi)) 
+	  modifyProbability(tmp, wi, this);
+	if (tmp > mval)
+	  mval = tmp;
+      } else {
+	for (unsigned j=0; j < conditionalMixtures[i].mapping.collection->mxSize(); j++) {
+	  tmp = conditionalMixtures[i].mapping.collection->mx(j)->maxValue();
+	  if (safeToModifyProbability(wi)) 
+	    modifyProbability(tmp, wi, this);
+	  if (tmp > mval)
+	    mval = tmp;
+	}
+      }
+    }
+    return mval;
+#if 0
+    // ticket 6:
+    // modifyProbability() may require observation data that's not available yet
+    // modifyProbability() should be done before taking the max
     logpr p = ObsContRV::maxValue();
-    // TODO: a bug here, if we call modifyProbability at the beginning
-    // before we have any observations, and if the modification parameters
-    // come from an observation file, then this will produce random results.
-    // I.e., we might be calling maxValue of this rv to do some pre-pruning
-    // stuff here.
-    // This is an inherent problem as the max probability of a random variable
-    // is very time-dependent (it depends on the obs file). 
     modifyProbability(p,rv_info.rvWeightInfo[0],this);
     return p;
+#endif
   }
 
 

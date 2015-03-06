@@ -4,6 +4,11 @@
  * an easy interface to quickly define arguments.
  * 
  *       Jeff Bilmes <bilmes@ee.washington.edu>
+// 
+//  Copyright (C) 2001 Jeff Bilmes
+//  Licensed under the Open Software License version 3.0
+//  See COPYING or http://opensource.org/licenses/OSL-3.0
+//
 
  Modified by Karim Filali (karim@cs.washington.edu) to handle the following:
 
@@ -198,8 +203,6 @@ class Arg {
   // if a user provided priority number is higher than the below.
   unsigned priority;
 
-  char* category;
-
   unsigned count;  // keeps track of how many command line instances of this flag there are.  
 
  public:
@@ -223,9 +226,9 @@ class Arg {
   ~Arg();
 
   static ArgsRetCode parseArgsFromCommandLine(int,char**);
-  static ArgsRetCode parseArgsFromFile(char*f="argsFile");
-  static bool parse(int i,char**c);
-  static void usage(const char* filter=NULL, bool stdErrPrint = true);
+  static ArgsRetCode parseArgsFromFile(char const *f="argsFile");
+  static bool parse(int i,char**c, const char *programDescription=NULL);
+  static void usage(const char* filter=NULL, bool stdErrPrint = true, const char *programDescription=NULL);
   static void printArgs(Arg*args,FILE*f);
 
   static unsigned getNumArguments() { return (unsigned) Num_Arguments; } 

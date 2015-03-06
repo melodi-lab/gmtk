@@ -10,14 +10,10 @@
  *
  * $Header$
  *
- * Copyright (c) 2001
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this soft
- * for any purpose. It is provided "as is" without express or implied warranty.
  * */
 
 #ifdef HAVE_CONFIG_H
@@ -208,7 +204,7 @@ StreamInfo::StreamInfo(const char *name, const char *crng_str,
    srRng= new Range(sr_range_str,0,fullFofSize);
    assert(srRng != NULL);
    if(!fullFofSize || (unsigned) srRng->last() >= (unsigned) fullFofSize)
-     error("ERROR: Specified per-stream sentence range (%s) exceeds total number of sentences (%d).",srRng->GetDefStr(),fullFofSize);
+     error("ERROR: Specified per-stream segment range (%s) exceeds total number of segments (%d).",srRng->GetDefStr(),fullFofSize);
    
    fofSize = srRng->length();
 }

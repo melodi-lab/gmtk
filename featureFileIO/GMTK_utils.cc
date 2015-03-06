@@ -1,17 +1,29 @@
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+/*
+ *
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ *
+ */
+
 #include <string.h>
 #include <ctype.h>
 #include "GMTK_utils.h"
 
 
-size_t
+gmtk_off_t
 fileSize(FILE *f) {
 
-  size_t s;
+  gmtk_off_t s;
 
-  if (fseek(f,0L,SEEK_END) != 0)
+  if (gmtk_fseek(f,(gmtk_off_t)0,SEEK_END) != 0)
     error("fileSize: Can't skip to end of file\n");
-  
-  s = ftell(f);
+  s = gmtk_ftell(f);
 
   rewind(f);
   return s;

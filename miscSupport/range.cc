@@ -1,5 +1,10 @@
 //
 // range.cc
+// 
+//  Copyright (C) 2004 Jeff Bilmes
+//  Licensed under the Open Software License version 3.0
+//  See COPYING or http://opensource.org/licenses/OSL-3.0
+//
 //
 // Another implementation of the integer range specification, this one
 // allows repetitions, reverse ranges, and a number of other features
@@ -559,6 +564,14 @@ int Range::_compileDefStr(void) {
     rangeList = NULL;
     pos = def_string;
     errmsg = "(unknown error)";
+
+    // Skip leading WS
+    pos += strspn(pos, space);
+    if (*pos == 'p' || *pos == 'P') {
+      permuted = true;
+      pos += 1;
+    }
+
     ok = _parseSpec(&rangeList);
     if (ok == 1 && strlen(pos) > 0) {
 	errmsg = "unparseable residue";
@@ -712,7 +725,7 @@ void Range::PrintRanges(char *tag/*=NULL*/, FILE *stream/*=stderr*/) {
     }
 }
 
-unsigned int Range::length(void) {
+unsigned int Range::length(void) const {
     // Total number of values specified by a list
     unsigned int size = 0;
     RangeList list = rangeList;
@@ -723,7 +736,7 @@ unsigned int Range::length(void) {
     return size;
 }
 
-int Range::index(int ix) {
+int Range::index(int ix) const {
     // Value of ix'th index in list
     RangeList list = rangeList;
     int n_pts;
@@ -877,6 +890,7 @@ Range::Range(const char *defstr /*=NULL*/, int minval /*=0*/,
   rangeList = NULL;
   type = RNG_TYPE_NONE;
   min_val=0; max_val=0;
+  permuted = false;
   SetLimits(minval, ulimval);
   SetDefStr(defstr?defstr:"all");
   
@@ -904,12 +918,18 @@ Range::~Range() {
 }
 
 Range::iterator::iterator (const Range& rng) 
-    : filename(0), file_handle(0)   // implicit, but pleases purify
+  : filename(0), file_handle(0), p(NULL)   // implicit, but pleases purify
 {
     reset(rng);
 }
 
 Range::iterator::iterator (const iterator& it) {
+  if (it.p) {
+    delete p;
+    p = new permuter(*(it.p));
+    return;
+  }
+  p = NULL;
     // Copy constructor.  Tricky if we've got an open file
     cur_value = it.cur_value;
     atEnd = it.atEnd;
@@ -934,6 +954,7 @@ Range::iterator::iterator (const iterator& it) {
 }
 
 Range::iterator::~iterator(void) {
+    delete p;
     if (file_handle != NULL) {
 	fclose(file_handle);
 	file_handle = NULL;
@@ -1013,6 +1034,11 @@ int Range::iterator::reset (void) {
 }
 
 int Range::iterator::reset (const Range& rng) {
+    if (rng.permuted) {
+      delete p;
+      p = new permuter(rng);
+      return p->val();
+    }
     cur_node = NULL;
     file_handle = NULL;
     atEnd = 0;
@@ -1046,6 +1072,7 @@ int Range::iterator::reset (const Range& rng) {
 }
 
 int Range::iterator::step_by(int n) {
+    if (p) return p->step_by(n);
     // Step on n steps, return resulting val
     if (file_handle) {
 	int i = 0;
@@ -1074,6 +1101,7 @@ int Range::iterator::step_by(int n) {
 }
 
 int Range::iterator::next_el(void) {
+    if (p) return p->next_el();
     if (file_handle) {
 	// Assume a file type
 	if ( read_next(&cur_value, file_handle, filename) == 0) {

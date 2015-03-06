@@ -5,15 +5,10 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
@@ -24,7 +19,9 @@
 #if HAVE_HG_H
 #include "hgstamp.h"
 #endif
-
+#if HAVE_DLFCN_H
+#include <dlfcn.h>
+#endif
 
 #include <math.h>
 #include <stdlib.h>
@@ -45,11 +42,11 @@
 #include "GMTK_MeanVector.h"
 #include "GMTK_DiagCovarVector.h"
 #include "GMTK_RealMatrix.h"
+#include "GMTK_DoubleMatrix.h"
 #include "GMTK_GammaComponent.h"
 #include "GMTK_BetaComponent.h"
 #include "GMTK_DlinkMatrix.h"
 #include "GMTK_Dlinks.h"
-#include "GMTK_RealMatrix.h"
 #include "GMTK_DirichletTable.h"
 #include "GMTK_MDCPT.h"
 #include "GMTK_MSCPT.h"
@@ -58,6 +55,9 @@
 #include "GMTK_NGramCPT.h"
 #include "GMTK_FNGramCPT.h"
 #include "GMTK_VECPT.h"
+#include "GMTK_DeepNN.h"
+#include "GMTK_DeepVECPT.h"
+#include "GMTK_DeepCPT.h"
 #include "GMTK_Vocab.h"
 #include "GMTK_LatticeADT.h"
 #include "GMTK_LatticeNodeCPT.h"
@@ -74,10 +74,17 @@
 #include "GMTK_ZeroScoreMixture.h"
 #include "GMTK_UnityScoreMixture.h"
 
-#include "GMTK_ObservationMatrix.h"
+#include "GMTK_ObservationSource.h"
+
 #include "GMTK_CFunctionDeterministicMappings.h"
 
 VCID(HGID)
+
+/////////////////////////////////
+// This is to allow dynamically loaded C mappers to get
+// access to the ObservationSource
+extern ObservationSource *globalObservationMatrix;
+
 
 /////////////////////////////////
 // an integer that specifies the maximum number of objects (such
@@ -125,6 +132,7 @@ GMParms::~GMParms()
   deleteObsInVector(covars);
   deleteObsInVector(dLinkMats);
   deleteObsInVector(realMats);
+  deleteObsInVector(doubleMats);
   deleteObsInVector(dirichletTabs);
   deleteObsInVector(components);
   deleteObsInVector(mdCpts);
@@ -136,6 +144,8 @@ GMParms::~GMParms()
   deleteObsInVector(latticeAdts);
   deleteObsInVector(latticeNodeCpts);
   deleteObsInVector(veCpts);
+  deleteObsInVector(deepVECpts);
+  deleteObsInVector(deepNNs);
   deleteObsInVector(mixtures);
   // deleteObsInVector(gausSwitchingMixtures);
   // deleteObsInVector(logitSwitchingMixtures);
@@ -156,6 +166,7 @@ void GMParms::add(MeanVector* ob){ add(ob,means,meansMap); }
 void GMParms::add(DiagCovarVector* ob){ add(ob,covars,covarsMap); }
 void GMParms::add(DlinkMatrix* ob) { add(ob,dLinkMats,dLinkMatsMap); }
 void GMParms::add(RealMatrix*ob) { add(ob,realMats,realMatsMap); }
+void GMParms::add(DoubleMatrix*ob) { add(ob,doubleMats,doubleMatsMap); }
 void GMParms::add(DirichletTable*ob) { add(ob,dirichletTabs,dirichletTabsMap); }
 void GMParms::add(Component*ob){ add(ob,
 				     components,
@@ -175,6 +186,8 @@ void GMParms::add(LatticeADT* ob) {
 void GMParms::add(LatticeNodeCPT* ob) { add(ob,latticeNodeCpts,latticeNodeCptsMap); }
 void GMParms::add(LatticeEdgeCPT* ob) { add(ob,latticeEdgeCpts,latticeEdgeCptsMap); }
 void GMParms::add(VECPT*ob) { add(ob,veCpts,veCptsMap); }
+void GMParms::add(DeepNN*ob) { add(ob,deepNNs,deepNNsMap); }
+void GMParms::add(DeepVECPT*ob) { add(ob,deepVECpts,deepVECptsMap); }
 void GMParms::add(Mixture*ob) { add(ob,mixtures,mixturesMap); }
 void GMParms::add(GausSwitchingMixture*ob) { assert (0); }
 void GMParms::add(LogitSwitchingMixture*ob) { assert (0); }
@@ -465,6 +478,43 @@ GMParms::readDLinks(iDataStreamFile& is, bool reset)
 	    ob->name().c_str(),is.fileName(),is.lineNo());
     dLinks[i+start] = ob;
     dLinksMap[ob->name()] = i+start;
+  }
+}
+
+
+void 
+GMParms::readDoubleMats(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
+
+  is.read(num,"Cant' read num double matrices");
+  if (num > GMPARMS_MAX_NUM) error("ERROR: number of double matrices (%d) in file '%s' line %d exceeds maximum",
+				   num,is.fileName(),is.lineNo());
+  if (reset) {
+    start = 0;
+    doubleMats.resize(num);
+  } else {
+    start = doubleMats.size();
+    doubleMats.resize(start+num);
+  }
+  for (unsigned i=0;i<num;i++) {
+    // first read the count
+    DoubleMatrix* ob;
+
+    is.read(cnt,"Can't read double mat num");
+    if (cnt != i) 
+      error("ERROR: double matrix count (%d), out of order in file '%s' line %d, expecting %d",
+	    cnt,is.fileName(),is.lineNo(),i);
+
+    ob = new DoubleMatrix;
+    ob->read(is);
+    if (doubleMatsMap.find(ob->name()) != doubleMatsMap.end())
+      error("ERROR: double matrix named '%s' already defined but is specified for a second time in file '%s' line %d",
+	    ob->name().c_str(),is.fileName(),is.lineNo());
+    doubleMats[i+start] = ob;
+    doubleMatsMap[ob->name()] = i+start;
   }
 }
 
@@ -856,6 +906,114 @@ void GMParms::readVECpts(iDataStreamFile& is, bool reset)
 }
 
 
+void GMParms::readDeepCpts(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
+
+  is.read(num, "Can't read num DeepCPTs");
+  if ( num > GMPARMS_MAX_NUM )
+    error("ERROR: number of DeepCPTs (%d) exceeds maximum", num);
+  if ( reset ) {
+    start = 0;
+    deepCpts.resize(num);
+  } else {
+    start = deepCpts.size();
+    deepCpts.resize(start + num);
+  }
+  for ( unsigned i = 0; i <num; i++ ) {
+    // first read the count
+    DeepCPT* ob;
+
+    is.read(cnt, "Can't read DeepCPT num");
+    if ( cnt != i )
+      error("ERROR: DeepCPT count (%d), out of order in file '%s' line %d, expecting %d", 
+	    cnt, is.fileName(), is.lineNo(),i);
+
+    ob = new DeepCPT();
+    ob->read(is);
+    if ( deepCptsMap.find(ob->name()) != deepCptsMap.end() )
+      error("ERROR: DeepCPT named '%s' already defined but is specified for a second time in file '%s' line %d",
+	    ob->name().c_str(), is.fileName(),is.lineNo());
+    deepCpts[i + start] = ob;
+    deepCptsMap[ob->name()] = i + start;
+  }
+}
+
+
+void GMParms::readDeepVECpts(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
+
+  is.read(num, "Can't read num DeepVirtualEvidenceCPTs");
+  if ( num > GMPARMS_MAX_NUM )
+    error("ERROR: number of Deep VE CPTs (%d) exceeds maximum", num);
+  if ( reset ) {
+    start = 0;
+    deepVECpts.resize(num);
+  } else {
+    start = deepVECpts.size();
+    deepVECpts.resize(start + num);
+  }
+  for ( unsigned i = 0; i <num; i++ ) {
+    // first read the count
+    DeepVECPT* ob;
+
+    is.read(cnt, "Can't read DeepVirtualEvidenceCPT num");
+    if ( cnt != i )
+      error("ERROR: DeepVECPT count (%d), out of order in file '%s' line %d, expecting %d", 
+	    cnt, is.fileName(), is.lineNo(),i);
+
+    ob = new DeepVECPT();
+    ob->read(is);
+    if ( deepVECptsMap.find(ob->name()) != deepVECptsMap.end() )
+      error("ERROR: DeepVECPT named '%s' already defined but is specified for a second time in file '%s' line %d",
+	    ob->name().c_str(), is.fileName(),is.lineNo());
+    deepVECpts[i + start] = ob;
+    deepVECptsMap[ob->name()] = i + start;
+  }
+}
+
+
+
+void GMParms::readDeepNNs(iDataStreamFile& is, bool reset)
+{
+  unsigned num;
+  unsigned cnt;
+  unsigned start = 0;
+
+  is.read(num, "Can't read num DeepNNs");
+  if ( num > GMPARMS_MAX_NUM )
+    error("ERROR: number of Deep Neural Networks (%d) exceeds maximum", num);
+  if ( reset ) {
+    start = 0;
+    deepNNs.resize(num);
+  } else {
+    start = deepNNs.size();
+    deepNNs.resize(start + num);
+  }
+  for ( unsigned i = 0; i <num; i++ ) {
+    // first read the count
+    DeepNN* ob;
+
+    is.read(cnt, "Can't read DeepNN num");
+    if ( cnt != i )
+      error("ERROR: DeepNN count (%d), out of order in file '%s' line %d, expecting %d", 
+	    cnt, is.fileName(), is.lineNo(),i);
+
+    ob = new DeepNN();
+    ob->read(is);
+    if ( deepNNsMap.find(ob->name()) != deepNNsMap.end() )
+      error("ERROR: DeepNN named '%s' already defined but is specified for a second time in file '%s' line %d",
+	    ob->name().c_str(), is.fileName(),is.lineNo());
+    deepNNs[i + start] = ob;
+    deepNNsMap[ob->name()] = i + start;
+  }
+}
+
 
 
 void
@@ -1151,6 +1309,9 @@ GMParms::readAll(iDataStreamFile& is)
   readCovars(is);
   readDLinkMats(is);
   readRealMats(is);
+#if DOUBLEMATS_EVERYWHERE
+  readDoubleMats(is);
+#endif
   readDirichletTabs(is);
   readMdCpts(is);
   readMsCpts(is);
@@ -1160,7 +1321,8 @@ GMParms::readAll(iDataStreamFile& is)
   readFNgramImps(is);
   readLatticeAdts(is);
   readVECpts(is);
-
+  readDeepNNs(is);
+  readDeepVECpts(is);
   // next read definitional items
   readComponents(is);
   readMixtures(is);
@@ -1210,6 +1372,10 @@ GMParms::readTrainable(iDataStreamFile& is)
   readDLinkMats(is);
   infoMsg(Low+9,"Reading Real Mats\n");
   readRealMats(is);  
+#if DOUBLEMATS_EVERYWHERE
+  infoMsg(Low+9,"Reading Double Mats\n");
+  readDoubleMats(is);  
+#endif
   infoMsg(Low+9,"Reading Dense CPTs\n");
   readMdCpts(is);
 
@@ -1271,6 +1437,10 @@ GMParms::readNonTrainable(iDataStreamFile& is)
   readFNgramImps(is);
   infoMsg(Low+9,"Reading VirtualEvidenceCPTs\n");
   readVECpts(is);
+  infoMsg(Low+9,"Reading DeepNNss\n");
+  readDeepNNs(is);
+  infoMsg(Low+9,"Reading DeepVirtualEvidenceCPTs\n");
+  readDeepVECpts(is);
 }
 
 
@@ -1355,6 +1525,9 @@ GMParms::read(
     } else if (keyword == "REAL_MAT_IN_FILE") {
       readRealMats(*((*it).second),false);
 
+    } else if (keyword == "DOUBLE_MAT_IN_FILE") {
+      readDoubleMats(*((*it).second),false);
+
     } else if (keyword == "DIRICHLET_TAB_IN_FILE") {
       readDirichletTabs(*((*it).second),false);
 
@@ -1381,6 +1554,15 @@ GMParms::read(
 
     } else if (keyword == "VE_CPT_IN_FILE") {
       readVECpts(*((*it).second),false);
+
+    } else if (keyword == "DEEP_NN_IN_FILE") {
+      readDeepNNs(*((*it).second),false);
+
+    } else if (keyword == "DEEP_VE_CPT_IN_FILE") {
+      readDeepVECpts(*((*it).second),false);
+
+    } else if (keyword == "DEEP_CPT_IN_FILE") {
+      readDeepCpts(*((*it).second),false);
 
     } else if (keyword == "DT_IN_FILE") {
       readDTs(*((*it).second),false);
@@ -1630,7 +1812,7 @@ void
 GMParms::writeDPmfs(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("dense PMFs");os.nl();
-  os.write(dPmfs.size(),"num dPMFs"); os.nl();
+  os.write((unsigned)dPmfs.size(),"num dPMFs"); os.nl();
   for (unsigned i=0;i<dPmfs.size();i++) {
     // first write the count
     os.write(i,"dDPMF cnt");
@@ -1646,7 +1828,7 @@ void
 GMParms::writeSPmfs(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("sparse PMFs");os.nl();
-  os.write(sPmfs.size(),"num sPMFs"); os.nl();
+  os.write((unsigned)sPmfs.size(),"num sPMFs"); os.nl();
   for (unsigned i=0;i<sPmfs.size();i++) {
     // first write the count
     os.write(i,"sPMFs cnt");
@@ -1822,7 +2004,7 @@ void
 GMParms::writeDLinks(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("dlink structures");os.nl();
-  os.write(dLinks.size(),"num dlinks"); os.nl();
+  os.write((unsigned)dLinks.size(),"num dlinks"); os.nl();
   for (unsigned i=0;i<dLinks.size();i++) {
     // first write the count
     os.write(i,"dlink cnt");
@@ -1883,6 +2065,53 @@ GMParms::writeRealMats(oDataStreamFile& os)
 
 /*-
  *-----------------------------------------------------------------------
+ * writeDoubleMats
+ *      writes out the double mats
+ * 
+ * Preconditions:
+ *      markUsedMixtureComponents() should have been called immediately before.
+ *
+ * Postconditions:
+ *      one
+ *
+ * Side Effects:
+ *      all "used" parameters are written out.
+ *
+ * Results:
+ *      nil.
+ *
+ *-----------------------------------------------------------------------
+ */
+void 
+GMParms::writeDoubleMats(oDataStreamFile& os)
+{
+  os.nl(); os.writeComment("double valued N_i x M_i matrices");os.nl();
+  unsigned used = 0;
+  for (unsigned i=0;i<doubleMats.size();i++) {
+    if (doubleMats[i]->emUsedBitIsSet())
+      used++;
+  }
+  if (used != doubleMats.size())
+    warning("NOTE: saving only %d used double matrices out of a total of %d",
+	    used,doubleMats.size());
+  os.write(used,"num double mats"); os.nl();
+  unsigned index = 0;
+  for (unsigned i=0;i<doubleMats.size();i++) {
+    if (doubleMats[i]->emUsedBitIsSet()) {
+      // first write the count
+      os.write(index++,"double mat cnt");
+      os.nl();
+      doubleMats[i]->write(os);
+    }
+  }
+  assert ( used == index );
+  os.nl();
+}
+
+
+
+/*-
+ *-----------------------------------------------------------------------
  * writeDiricletTabs
  *      writes out the Dirichlet Tables
  * 
@@ -1903,7 +2132,7 @@ void
 GMParms::writeDirichletTabs(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("Dirichlet Tables");os.nl();
-  os.write(dirichletTabs.size(),"num dirichlet tabs"); os.nl();
+  os.write((unsigned)dirichletTabs.size(),"num dirichlet tabs"); os.nl();
   for (unsigned i=0;i<dirichletTabs.size();i++) {
     // first write the count
     os.write(i,"diriclet tab cnt");
@@ -1945,7 +2174,7 @@ GMParms::writeMdCpts(oDataStreamFile& os)
   os.nl(); os.writeComment("Dense CPTs");os.nl();
   // leave out the 1st one (ie., the -1) as it is an internal
   // object. See routine loadGlobal()
-  os.write(mdCpts.size()-1,"num Dense CPTs"); os.nl();
+  os.write((unsigned)mdCpts.size()-1,"num Dense CPTs"); os.nl();
 
   // Next, get a pointer to the unity score CPT that we should not
   // write out.  Note that it potentially might not be at the end of
@@ -1991,7 +2220,7 @@ void
 GMParms::writeMsCpts(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("Sparse CPTs");os.nl();
-  os.write(msCpts.size(),"num Sparse CPTs"); os.nl();
+  os.write((unsigned)msCpts.size(),"num Sparse CPTs"); os.nl();
   for (unsigned i=0;i<msCpts.size();i++) {
     // first write the count
     os.write(i,"Sparse CPT cnt");
@@ -2025,7 +2254,7 @@ void
 GMParms::writeMtCpts(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("Deterministic CPTs");os.nl();
-  os.write(mtCpts.size(),"num deterministic CPTs"); os.nl();
+  os.write((unsigned)mtCpts.size(),"num deterministic CPTs"); os.nl();
   for (unsigned i=0;i<mtCpts.size();i++) {
     // first write the count
     os.write(i,"deterministic CPT cnt");
@@ -2058,7 +2287,7 @@ void
 GMParms::writeDTs(oDataStreamFile& os)
 {
   os.nl(); os.writeComment("Decision Trees");os.nl();
-  os.write(dts.size(),"num DTS"); os.nl();
+  os.write((unsigned)dts.size(),"num DTS"); os.nl();
   for (unsigned i=0;i<dts.size();i++) {
     // first write the count
     os.write(i,"DTS cnt");
@@ -2367,6 +2596,9 @@ GMParms::writeAll(oDataStreamFile& os, bool remove_unnamed)
   writeCovars(os);
   writeDLinkMats(os);
   writeRealMats(os);  
+#if DOUBLEMATS_EVERYWHERE
+  writeDoubleMats(os);  
+#endif
   writeMdCpts(os);
   writeMsCpts(os);
   writeMtCpts(os);
@@ -2415,6 +2647,9 @@ GMParms::writeTrainable(oDataStreamFile& os, bool remove_unnamed)
   writeCovars(os);
   writeDLinkMats(os);
   writeRealMats(os);  
+#if DOUBLEMATS_EVERYWHERE
+  writeDoubleMats(os);  
+#endif
   writeMdCpts(os);
 
   // next write definitional items
@@ -2554,6 +2789,9 @@ GMParms::write(const char *const outputFileFormat, const char * const cppCommand
     } else if (keyword == "REAL_MAT_OUT_FILE") {
       writeRealMats(*((*it).second));
 
+    } else if (keyword == "DOUBLE_MAT_OUT_FILE") {
+      writeDoubleMats(*((*it).second));
+
     } else if (keyword == "DIRICHLET_TAB_OUT_FILE") {
       writeDirichletTabs(*((*it).second));
 
@@ -2566,10 +2804,15 @@ GMParms::write(const char *const outputFileFormat, const char * const cppCommand
     } else if (keyword == "DETERMINISTIC_CPT_OUT_FILE") {
       writeMtCpts(*((*it).second));
 
-    } else if (keyword == "DT_OUT_FILE") {
+    }
+#if 0
+    // ticket 536: don't write out DTs
+     else if (keyword == "DT_OUT_FILE") {
       writeDTs(*((*it).second));
 
-    } else if (keyword == "MC_OUT_FILE") {
+    } 
+#endif
+    else if (keyword == "MC_OUT_FILE") {
       writeComponents(*((*it).second));
 
     } else if (keyword == "MX_OUT_FILE") {
@@ -2722,8 +2965,8 @@ GMParms::next()
 unsigned
 GMParms::setSegment(const unsigned segmentNo)
 {
-  globalObservationMatrix.loadSegment(segmentNo);
-  const unsigned numFrames = globalObservationMatrix.numFrames();
+  globalObservationMatrix->openSegment(segmentNo);
+  unsigned numFrames = globalObservationMatrix->numFrames();
 
   for(unsigned i = 0; i<iterableDts.size(); i++) {
     iterableDts[i]->seek(segmentNo);
@@ -2731,9 +2974,30 @@ GMParms::setSegment(const unsigned segmentNo)
   }
   for (unsigned i=0; i< veCpts.size(); i++) {
     veCpts[i]->setSegment(segmentNo);
-    if (veCpts[i]->numFrames() != numFrames) 
+    
+    // FIXME - investigate if veCpts work with stream input (where
+    //         the number of frames isn't known)
+    if (numFrames != 0 && veCpts[i]->numFrames() != numFrames) 
       error("ERROR: number of frames in segment %d for main observation matrix is %d, but VirtualEvidenceCPT '%s' observation matrix has %d frames in that segment",segmentNo,numFrames,veCpts[i]->name().c_str(),veCpts[i]->numFrames());
   }
+
+  for (unsigned i=0; i< deepVECpts.size(); i++) {
+    deepVECpts[i]->setSegment(segmentNo);
+
+#if 0
+// This is not needed since DeepVECPTs only take input from the
+// global observation matrix
+    // FIXME - investigate if DeepVECpts work with stream input (where
+    //         the number of frames isn't known)
+    if (numFrames != 0 && deepVECpts[i]->numFrames() != numFrames) 
+      error("ERROR: number of frames in segment %d for main observation matrix is %d, but DeepVirtualEvidenceCPT '%s' observation matrix has %d frames in that segment",segmentNo,numFrames,veCpts[i]->name().c_str(),veCpts[i]->numFrames());
+#endif
+  }
+
+  // FIXME - investigate if lattice CPTs work with stream input (where
+  //         the number of frames isn't known)
+  if (numFrames != 0) {
+
   // set the lattice CPT frame indices
   for (unsigned i=0; i < latticeAdts.size(); i++ ) {
 	  // I cannot call iterableLatticeAdts here because
@@ -2745,6 +3009,9 @@ GMParms::setSegment(const unsigned segmentNo)
 	  }
 	  latticeAdts[i]->resetFrameIndices(numFrames);
   }
+
+  }
+
   for (unsigned i=0;i<dLinks.size();i++) {
     dLinks[i]->clearArrayCache();
   }
@@ -2813,20 +3080,27 @@ GMParms::setStride(const unsigned stride)
 void
 GMParms::checkConsistentWithGlobalObservationStream()
 {
-  if ((int)globalObservationMatrix.startSkip() < -(int)Dlinks::_globalMinLag)
+  if ((int)globalObservationMatrix->startSkip() < -(int)Dlinks::_globalMinLag)
     error("ERROR: a start skip of %d is invalid for a minimum dlink lag of %d\n",
-	  globalObservationMatrix.startSkip(),
+	  globalObservationMatrix->startSkip(),
 	  Dlinks::_globalMinLag);
 
-  if ((int)globalObservationMatrix.endSkip() < (int)Dlinks::_globalMaxLag)
-    error("ERROR: an end skip of %d is invalid for a maximum dlink lag of %d\n",
-	  globalObservationMatrix.endSkip(),
-	  Dlinks::_globalMaxLag);
+  if (globalObservationMatrix->startSkip() < DeepVECPT::minSkip())
+    error("ERROR: start skip must be at least %u due to DeepVECPT radii\n", DeepVECPT::minSkip());
 
-  if ((int)globalObservationMatrix.numContinuous() <= (int)Dlinks::_globalMaxOffset)
+  if ((int)globalObservationMatrix->endSkip() < (int)Dlinks::_globalMaxLag)
+    error("ERROR: an end skip of %d is invalid for a maximum dlink lag of %d\n",
+	  globalObservationMatrix->endSkip(),
+	  Dlinks::_globalMaxLag);
+  
+  if (globalObservationMatrix->randomAccess() && globalObservationMatrix->endSkip() < DeepVECPT::minSkip())
+    error("ERROR: end skip must be at least %u due to DeepVECPT radii\n", DeepVECPT::minSkip());
+
+
+  if ((int)globalObservationMatrix->numContinuous() <= (int)Dlinks::_globalMaxOffset)
     error("ERROR: there is a dlink ofset of value %d which is too large for the observation matrix with only %d continuous features.",
 	  Dlinks::_globalMaxOffset,
-	  globalObservationMatrix.numContinuous());
+	  globalObservationMatrix->numContinuous());
 }
 
 
@@ -2879,6 +3153,10 @@ unsigned GMParms::totalNumberParameters()
     sum += fngramCpts[i]->totalNumberParameters();
   for (unsigned i=0;i<veCpts.size();i++)
     sum += veCpts[i]->totalNumberParameters();
+  for (unsigned i=0;i<deepNNs.size();i++)
+    sum += deepNNs[i]->totalNumberParameters();
+  for (unsigned i=0;i<deepVECpts.size();i++)
+    sum += deepVECpts[i]->totalNumberParameters();
   return sum;
 
 }
@@ -3019,6 +3297,8 @@ void GMParms::markUsedMixtureComponents(bool remove_unnamed)
     dLinkMats[i]->recursivelyClearUsedBit();
   for (unsigned i=0;i<realMats.size();i++)
     realMats[i]->recursivelyClearUsedBit();
+  for (unsigned i=0;i<doubleMats.size();i++)
+    doubleMats[i]->recursivelyClearUsedBit();
   for (unsigned i=0;i<components.size();i++)
     components[i]->recursivelyClearUsedBit();
   for (unsigned i=0;i<mixtures.size();i++)
@@ -3034,6 +3314,12 @@ void GMParms::markUsedMixtureComponents(bool remove_unnamed)
     for (unsigned i=0;i<mixtures.size();i++)
       mixtures[i]->recursivelySetUsedBit();
 
+  for (unsigned i=0; i < deepNNs.size(); i+=1) {
+    vector<DoubleMatrix *> mats = deepNNs[i]->getMatrices();
+    for (unsigned m=0; m < mats.size(); m += 1) {
+      mats[m]->recursivelySetUsedBit();
+    }
+  }
 }
 
 
@@ -3112,6 +3398,8 @@ void GMParms::markObjectsToNotTrain(const char*const fileName,
       EMCLEARAMTRAININGBIT_CODE(realMatsMap,realMats);
     } else if (objType == "REALMAT") {
       EMCLEARAMTRAININGBIT_CODE(realMatsMap,realMats);
+    } else if (objType == "DOUBLEMAT") {
+      EMCLEARAMTRAININGBIT_CODE(doubleMatsMap,doubleMats);
     } else if (objType == "COMPONENT") {
       EMCLEARAMTRAININGBIT_CODE(componentsMap,components);
     } else if (objType == "DENSECPT") {
@@ -3172,6 +3460,8 @@ void GMParms::markObjectsToNotTrain(const char*const fileName,
      dLinkMats[i]->makeRandom();
    for (unsigned i=0;i<realMats.size();i++)
      realMats[i]->makeRandom();
+   for (unsigned i=0;i<doubleMats.size();i++)
+     doubleMats[i]->makeRandom();
 
    // components
    for (unsigned i=0;i<components.size();i++)
@@ -3209,6 +3499,8 @@ GMParms::makeUniform()
     dLinkMats[i]->makeUniform();
   for (unsigned i=0;i<realMats.size();i++)
     realMats[i]->makeUniform();
+  for (unsigned i=0;i<doubleMats.size();i++)
+    doubleMats[i]->makeUniform();
 
    // components
   for (unsigned i=0;i<components.size();i++)
@@ -3426,6 +3718,10 @@ GMParms::emStoreAccumulators(oDataStreamFile& ofile)
     dLinkMats[i]->emStoreAccumulators(ofile);
   for (unsigned i=0;i<realMats.size();i++)
     realMats[i]->emStoreAccumulators(ofile);
+#if DOUBLEMATS_EVERYWHERE
+  for (unsigned i=0;i<doubleMats.size();i++)
+    doubleMats[i]->emStoreAccumulators(ofile);
+#endif
 
    // components
   for (unsigned i=0;i<components.size();i++)
@@ -3504,6 +3800,10 @@ GMParms::emLoadAccumulators(iDataStreamFile& ifile)
     dLinkMats[i]->emLoadAccumulators(ifile);
   for (unsigned i=0;i<realMats.size();i++)
     realMats[i]->emLoadAccumulators(ifile);
+#if DOUBLEMATS_EVERYWHERE
+  for (unsigned i=0;i<doubleMats.size();i++)
+    doubleMats[i]->emLoadAccumulators(ifile);
+#endif
 
   // components
   for (unsigned i=0;i<components.size();i++)
@@ -3548,6 +3848,10 @@ GMParms::emAccumulateAccumulators(iDataStreamFile& ifile)
     dLinkMats[i]->emAccumulateAccumulators(ifile);
   for (unsigned i=0;i<realMats.size();i++)
     realMats[i]->emAccumulateAccumulators(ifile);
+#if DOUBLEMATS_EVERYWHERE
+  for (unsigned i=0;i<doubleMats.size();i++)
+    doubleMats[i]->emAccumulateAccumulators(ifile);
+#endif
 
   // components
   for (unsigned i=0;i<components.size();i++)
@@ -3630,6 +3934,8 @@ GMParms::emInitAccumulators(bool startEMIteration)
     dLinkMats[i]->emInitAccumulators();
   for (unsigned i=0;i<realMats.size();i++)
     realMats[i]->emInitAccumulators();
+  for (unsigned i=0;i<doubleMats.size();i++)
+    doubleMats[i]->emInitAccumulators();
 
   // components
   for (unsigned i=0;i<components.size();i++)
@@ -3663,32 +3969,53 @@ void
 GMParms::emWriteUnencodedAccumulators(oDataStreamFile& ofile, bool writeLogVals)
 {
   // first do the basic objects
+  if (EMable::fisherKernelMode) {
+    ofile.writeComment("Fisher kernel accumulators\n");
+  } else {
+    ofile.writeComment("EM accumulators\n");
+  }
+  ofile.writeComment("%u dPmfs (there may be fewer due to -objsNotToUTilize)\n", dPmfs.size());
   for (unsigned i=0;i<dPmfs.size();i++)
     dPmfs[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+  ofile.writeComment("%u sPmfs (there may be fewer due to -objsNotToUTilize)\n", sPmfs.size());
   for (unsigned i=0;i<sPmfs.size();i++)
     sPmfs[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+  ofile.writeComment("%u means (there may be fewer due to -objsNotToUTilize)\n", means.size());
   for (unsigned i=0;i<means.size();i++)
     means[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+  ofile.writeComment("%u covars (there may be fewer due to -objsNotToUTilize)\n", covars.size());
   for (unsigned i=0;i<covars.size();i++)
     covars[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+  ofile.writeComment("%u dLinkMats (there may be fewer due to -objsNotToUTilize)\n", dLinkMats.size());
   for (unsigned i=0;i<dLinkMats.size();i++)
     dLinkMats[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+  ofile.writeComment("%u realMats (there may be fewer due to -objsNotToUTilize)\n", realMats.size());
   for (unsigned i=0;i<realMats.size();i++)
     realMats[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+#if DOUBLEMATS_EVERYWHERE
+  ofile.writeComment("%u doubleMats (there may be fewer due to -objsNotToUTilize)\n", doubleMats.size());
+  for (unsigned i=0;i<doubleMats.size();i++)
+    doubleMats[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+#endif
 
    // components
+  ofile.writeComment("%u components (there may be fewer due to -objsNotToUTilize)\n", components.size());
   for (unsigned i=0;i<components.size();i++)
     components[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
 
    // for discrete RVs
+  ofile.writeComment("%u mdCpts (there may be fewer due to -objsNotToUTilize)\n", mdCpts.size());
   for (unsigned i=0;i<mdCpts.size();i++)
     mdCpts[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+  ofile.writeComment("%u msCpts (there may be fewer due to -objsNotToUTilize)\n", msCpts.size());
   for (unsigned i=0;i<msCpts.size();i++)
     msCpts[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
+  ofile.writeComment("%u mtCpts (there may be fewer due to -objsNotToUTilize)\n", mtCpts.size());
   for (unsigned i=0;i<mtCpts.size();i++)
     mtCpts[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
 
    // for continuous RVs
+  ofile.writeComment("%u mixtrues (there may be fewer due to -objsNotToUTilize)\n", mixtures.size());
   for (unsigned i=0;i<mixtures.size();i++)
     mixtures[i]->emWriteUnencodedAccumulators(ofile,writeLogVals);
 #if 0
@@ -3760,6 +4087,81 @@ GMParms::commit_nc_changes()
 
 
 
+void 
+dlopenDeterministicMaps(char **dlopenFilenames, unsigned maxFilenames) {
+  for (unsigned i=0; i < maxFilenames; i+=1) {
+    if (dlopenFilenames[i]) {
+#if HAVE_DLFCN_H
+      void *handle = dlopen(dlopenFilenames[i], RTLD_NOW|RTLD_LOCAL);
+      if (!handle) {
+	error("Failed to load '%s': %s", dlopenFilenames[i], dlerror());
+      }
+      dlerror(); // clear errors
+
+      // POSIX defines dlsym to return a void*. ISO C & C++ do not
+      // require that a void* can be cast to a function pointer,
+      // and there are architectures (including x86 in certain
+      // modes) where it's not possible (sizeof(void*) != 
+      // sizeof(function pointer)). So, such architectures/modes
+      // cannot be POSIX compliant. The union below avoids the
+      // compiler warning about this situation, but it assumes
+      // that the void* returned by dlsym can safely be cast to
+      // a function pointer.
+
+      typedef void (*register_t)();
+      assert(sizeof(void*) == sizeof(register_t)); // necessary, but not sufficient?
+      typedef union {
+        void *obj_ptr;
+        register_t fn_ptr;
+      } registerUnion;
+      registerUnion registerMappers;
+      registerMappers.obj_ptr = dlsym(handle, "registerMappers");
+
+      const char *dlsym_error = dlerror();
+      if (dlsym_error) {
+	error("Failed to find registerMappers() function in '%s': %s", dlopenFilenames[i], dlsym_error);
+      }
+      registerMappers.fn_ptr();
+      
+      
+      dlerror(); // clear errors
+      vector<CFunctionMapperType> *mapperFunctions = (vector<CFunctionMapperType> *) dlsym(handle, "mapperFunctions");
+      dlsym_error = dlerror();
+      if (dlsym_error) {
+	error("Failed to find mapperFunctions in '%s': %s", dlopenFilenames[i], dlsym_error);
+      }
+      
+      dlerror(); // clear errors
+      vector<unsigned>    *mapperNumFeatures = (vector<unsigned> *) dlsym(handle, "mapperNumFeatures");
+      if (dlsym_error) {
+	error("Failed to find mapperNumFeatures in '%s': %s", dlopenFilenames[i], dlsym_error);
+      }
+      
+      dlerror(); // clear errors
+      vector<char const*> *mapperNames = (vector<char const*> *) dlsym(handle, "mapperNames");
+      if (dlsym_error) {
+	error("Failed to find mapperNames in '%s': %s", dlopenFilenames[i], dlsym_error);
+      }
+      
+      dlerror(); // clear errors
+      ObservationSource **externalObsSrc = (ObservationSource **) dlsym(handle, "externalObsSrc");
+      if (dlsym_error) {
+	error("Failed to find external observation source in '%s': %s", dlopenFilenames[i], dlsym_error);
+      }
+      *externalObsSrc = globalObservationMatrix; // make GOM available to mapper functions
+
+      for (unsigned j=0; j < mapperFunctions->size(); j+=1) {
+	infoMsg(IM::Moderate,"registering %s[%u] from %s\n", (*mapperNames)[j], (*mapperNumFeatures)[j], dlopenFilenames[i]);
+	GM_Parms.registerDeterministicCMapper((*mapperNames)[j], (*mapperNumFeatures)[j], (*mapperFunctions)[j]);
+      }
+#else
+      error("dynamic loading of mapping functions not supported");
+#endif
+    }
+  }
+}
+
+
 
 
 
@@ -3776,12 +4178,19 @@ GMParms::commit_nc_changes()
 #ifdef MAIN
 
 #include "rand.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_FileSource.h"
+#endif
 
 RAND rnd(false);
 GMParms GM_Parms;
+#if 0
 ObservationMatrix globalObservationMatrix;
-
+#else
+FileSource globalObservationMatrix;
+#endif
 
 
 int

@@ -3,7 +3,11 @@
 // This class is not meant for protection, it is only
 // for convenience.
 //
-// $Header$
+// 
+//  Copyright (C) 2001 Jeff Bilmes
+//  Licensed under the Open Software License version 3.0
+//  See COPYING or http://opensource.org/licenses/OSL-3.0
+//
 //
 // Written by: Jeff Bilmes
 //             bilmes@icsi.berkeley.edu
@@ -93,5 +97,10 @@ main()
   }   
 
 }
+
+#else
+
+// ticket 90: get rid of a warning from the OS X ranlib
+char make_osx_ranlib_shutup_about_no_symbols_sArray;
 
 #endif

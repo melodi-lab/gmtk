@@ -4,14 +4,10 @@
  *
  * Written by Chris Bartels & Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
  *
  */
 
@@ -44,7 +40,6 @@
 #include "arguments.h"
 #include "ieeeFPsetup.h"
 //#include "spi.h"
-#include "version.h"
 
 VCID(HGID)
 
@@ -54,7 +49,20 @@ VCID(HGID)
 #include "GMTK_DiscRV.h"
 #include "GMTK_ContRV.h"
 #include "GMTK_GMParms.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_ObservationSource.h"
+#  include "GMTK_FileSource.h"
+#  include "GMTK_ASCIIFile.h"
+#  include "GMTK_FlatASCIIFile.h"
+#  include "GMTK_PFileFile.h"
+#  include "GMTK_HTKFile.h"
+#  include "GMTK_HDF5File.h"
+#  include "GMTK_BinaryFile.h"
+#  include "GMTK_Filter.h"
+#  include "GMTK_Stream.h"
+#endif
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_MeanVector.h"
@@ -64,8 +72,10 @@ VCID(HGID)
 
 #define GMTK_ARG_INPUT_TRAINABLE_FILE_HANDLING
 #define GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG
+#define GMTK_ARG_DLOPEN_MAPPERS
 #define GMTK_ARG_CPP_CMD_OPTS
 #define GMTK_ARG_GENERAL_OPTIONS
+#define GMTK_ARG_HELP
 #define GMTK_ARG_VERB
 #define GMTK_ARG_VERSION
 
@@ -96,7 +106,11 @@ Arg Arg::Args[] = {
  */
 RAND rnd(false);
 GMParms GM_Parms;
-ObservationMatrix globalObservationMatrix;
+
+FileSource fileSource;
+FileSource *gomFS = &fileSource;
+ObservationSource *globalObservationMatrix = &fileSource;
+
 
 int
 main(int argc,char*argv[])
@@ -109,7 +123,9 @@ main(int argc,char*argv[])
 
   ////////////////////////////////////////////
   // parse arguments
-  bool parse_was_ok = Arg::parse(argc,(char**)argv);
+  bool parse_was_ok = Arg::parse(argc,(char**)argv,
+"\nThis program creates index files for decision trees to make them "
+"more efficent\n");
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }

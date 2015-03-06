@@ -1,6 +1,12 @@
 #ifndef PFILE_H_INCLUDED
 #define PFILE_H_INCLUDED
 
+/*
+ * Copyright (C) 2003 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ */
+
 // This file contains some miscellaneous routines for handling PFiles
 
 // IMPORTANT NOTE - some places in this file refer to "sentence" - this
@@ -13,7 +19,12 @@
 #if HAVE_INTTYPES_H
    // The ISO C99 standard specifies that the macros in inttypes.h must
    //  only be defined if explicitly requested. 
-#  define __STDC_FORMAT_MACROS 1
+#  ifndef __STDC_FORMAT_MACROS
+#    define __STDC_FORMAT_MACROS 1
+#  endif
+#  ifndef __STDC_CONSTANT_MACROS
+#    define __STDC_CONSTANT_MACROS 1
+#endif
 #  include <inttypes.h>
 #endif
 #if HAVE_STDINT_H
@@ -32,8 +43,10 @@
 // a print command for ssize_t similar to what you might find in inttypes.h
 #define PRIsst "zd"
 
-typedef int32_t intv_int32_t;
+typedef int32_t  intv_int32_t;
 typedef uint32_t intv_uint32_t;
+typedef int64_t  intv_int64_t;
+typedef uint64_t intv_uint64_t;
 
 typedef long SegID;
 enum {
@@ -311,6 +324,12 @@ public:
     void write_ftrslabs(size_t frames, const float* ftrs,
 		       const UInt32* labs);
 
+    // Write a single feature, keeping it part of the current frame/segment.
+    void write_ftr(unsigned currFeature, float x);
+
+    // Write a single label, keeping it part of the current frame/segment.
+    void write_lab(unsigned currFeature, UInt32 x);
+
     // Wrt. just features - compatible with OutFtrStream abstract interface.
     // NOTE - cannot use write_labs then write_ftrslabs - must use
     // write_ftrslabs if we need none-zero values for both.
@@ -326,6 +345,10 @@ public:
     // then move on to the next segment.
     void doneseg(SegID segid);
 
+    // KLUDGE by Richard to hack in random access writing. Only write each
+    // frame once or bad things will happen.
+    void setframe(long frame);
+
 private:
     FILE* const file;		// The stream for reading the PFile.
     const char *filename;             // the file name
@@ -337,8 +360,10 @@ private:
     long current_sent;		// The number of the current segment.
     long current_frame;		// The number of the current frame.
     long current_row;		// The number of the current row.
-  
 
+    pfile_off_t current_sent_offset; // The file offset of the start of the current segment
+    long        max_frame;           // highest frame actually written
+    long        seek_count;          // how many calls to setframe() this segment
 
     PFile_Val* buffer;	// A buffer for one frame of PFile data.
     char* header;		// Space for the header data.

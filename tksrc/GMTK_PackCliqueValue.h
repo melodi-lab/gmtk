@@ -14,14 +14,10 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2003, < fill in later >
+ * Copyright (C) 2003 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
  *
  *
  * $Header$
@@ -30,6 +26,10 @@
 
 #ifndef GMTK_PACK_CLIQUE_VALUE_H
 #define GMTK_PACK_CLIQUE_VALUE_H
+
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
 
 #include <vector>
 #include <string>
@@ -158,8 +158,8 @@ public:
   inline void pack(const unsigned *const unpacked_vec,
 		   unsigned *const packed_vec) {
     // zero out packed vector
-    register unsigned *packed_vecp = packed_vec;
-    register const unsigned *const packed_vec_endp = 
+    REGISTER unsigned *packed_vecp = packed_vec;
+    REGISTER const unsigned *const packed_vec_endp = 
       packed_vec + numUnsignedInPackedVector;
     do {
       *packed_vecp++ = 0;
@@ -167,9 +167,9 @@ public:
 
     // do the packing, first the ones that do not
     // span a word boundaries
-    register ValLocator* vl_p = valLocators.ptr;
-    register const ValLocator *vl_nwb_endp = member_vl_nwb_endp;
-    register const ValLocator *vl_endp = member_vl_endp;
+    REGISTER ValLocator* vl_p = valLocators.ptr;
+    REGISTER const ValLocator *vl_nwb_endp = member_vl_nwb_endp;
+    REGISTER const ValLocator *vl_endp = member_vl_endp;
     {
       // assume that at least one case did not span a word boundary
       do {
@@ -194,8 +194,8 @@ public:
   inline void pack(const unsigned *const *const unpacked_vec,
 		   unsigned *const packed_vec) {
     // zero out packed vector
-    register unsigned *packed_vecp = packed_vec;
-    register const unsigned *const packed_vec_endp = 
+    REGISTER unsigned *packed_vecp = packed_vec;
+    REGISTER const unsigned *const packed_vec_endp = 
       packed_vec + numUnsignedInPackedVector;
     do {
       *packed_vecp++ = 0;
@@ -203,9 +203,9 @@ public:
 
     // do the packing, first the ones that do not
     // span a word boundaries
-    register ValLocator* vl_p = valLocators.ptr;
-    register const ValLocator *vl_nwb_endp = member_vl_nwb_endp;
-    register const ValLocator *vl_endp = member_vl_endp;
+    REGISTER ValLocator* vl_p = valLocators.ptr;
+    REGISTER const ValLocator *vl_nwb_endp = member_vl_nwb_endp;
+    REGISTER const ValLocator *vl_endp = member_vl_endp;
     {
       // assume that at least one case did not span a word boundary
       do {
@@ -235,9 +235,9 @@ public:
 
   inline void unpack(const unsigned *const packed_vec,
 		     unsigned *const unpacked_vec) {
-    register ValLocator* vl_p = valLocators.ptr;
-    register const ValLocator *vl_nwb_endp = member_vl_nwb_endp;
-    register const ValLocator *vl_endp = member_vl_endp;
+    REGISTER ValLocator* vl_p = valLocators.ptr;
+    REGISTER const ValLocator *vl_nwb_endp = member_vl_nwb_endp;
+    REGISTER const ValLocator *vl_endp = member_vl_endp;
     // do the unpacking, first the ones
     // that do not span a word boundary
     {
@@ -251,7 +251,7 @@ public:
     // next the ones that do span a word boundary
     {
       while (vl_p != vl_endp) {
-	register unsigned res =
+	REGISTER unsigned res =
 	  (packed_vec[vl_p->start] & vl_p->startMask)
 	    >> vl_p->startRightShift;
 	res |=
@@ -267,9 +267,9 @@ public:
   // ints.
   inline void unpack(const unsigned *const packed_vec,
 		     unsigned **const unpacked_vec) {
-    register ValLocator* vl_p = valLocators.ptr;
-    register const ValLocator *vl_nwb_endp = member_vl_nwb_endp;
-    register const ValLocator *vl_endp = member_vl_endp;
+    REGISTER ValLocator* vl_p = valLocators.ptr;
+    REGISTER const ValLocator *vl_nwb_endp = member_vl_nwb_endp;
+    REGISTER const ValLocator *vl_endp = member_vl_endp;
     // do the unpacking, first the ones
     // that do not span a word boundary
     {
@@ -283,7 +283,7 @@ public:
     // next the ones that do span a word boundary
     {
       while (vl_p != vl_endp) {
-	register unsigned res =
+	REGISTER unsigned res =
 	  (packed_vec[vl_p->start] & vl_p->startMask)
 	    >> vl_p->startRightShift;
 	res |=

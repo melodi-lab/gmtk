@@ -1,4 +1,9 @@
 // -*- c++ -*-
+// 
+//  Copyright (C) 2004 Jeff Bilmes
+//  Licensed under the Open Software License version 3.0
+//  See COPYING or http://opensource.org/licenses/OSL-3.0
+//
 //
 // range.h
 //
@@ -38,6 +43,9 @@
 #define RANGE_H
 
 #include <cstdio>
+
+#include "rand.h"
+#include "prime.h"
 
 class RangeNode {
     // One node in a linked-list of matlab sequences
@@ -88,8 +96,8 @@ public:
 
     void PrintRanges(char *tag=NULL, FILE *stream=stderr);
 
-    unsigned int length(void);	// total number of points in range
-    int index(int ix);	// return ix'th value in list (counting from 0)
+    unsigned int length(void) const;	// total number of points in range
+    int index(int ix) const;	// return ix'th value in list (counting from 0)
 
     int first(void);	// first value in list, substitute for min()
     int last(void);	// last value in list, like max()
@@ -101,6 +109,8 @@ public:
     const RangeList getRangeList(void) const { return rangeList; }
 
 protected:
+    bool permuted;
+
     int _parseNumber(int *pval);
     int _parseMatlabRange(int *pstart, int *pstep, int *pend);
     int _parseRange(int *pstart, int *pstep, int *pend);
@@ -132,6 +142,118 @@ protected:
     static const char *repeats;	// valid separators of repeat lists
 
 public:
+
+  // Like an iterator, but in permuted order.
+  class permuter {
+  protected:
+      bool atEnd;
+      unsigned cur_pos;
+      unsigned length;       // # of elements in the range
+      const Range* myrange;
+      uint32_t a, b, p;      // cubic residue permutation parameters
+      unsigned count;        // keep track of # dispensed for atEnd
+
+    // permutation determined by $\sigma(i) = (ai + b)^3 \bmod p$ where
+    //    $p$ is the smallest prime such that $p >= length$ and $p \equiv_3 2$
+    //    $a$ is a random integer in $[1, p)$
+    //    $b$ is a random integer in $[0, p)$
+
+    // return $\sigma(cur_pos)$
+    int ith() {
+      uint32_t sigma; // sigma(i) = (ai + b)^3 mod p
+      do {
+	uint64_t t = (a * cur_pos) % p;
+	t = (t + b) % p;
+	uint64_t tt = (t * t) % p;
+	sigma = (t * tt) % p;
+	cur_pos = (cur_pos + 1) % p;
+      } while (sigma >= length); // skip any extras since p >= length
+      count += 1;
+      atEnd = count >= length;
+      return myrange->index((int)sigma);
+    }
+	
+    // return $\sigma(cur_pos)$
+    int ith(const unsigned ii) const {
+      unsigned i = ii;
+      uint32_t sigma; // sigma(i) = (ai + b)^3 mod p
+      do {
+	uint64_t t = (a * i) % p;
+	t = (t + b) % p;
+	uint64_t tt = (t * t) % p;
+	sigma = (t * tt) % p;
+	i = (i + 1) % p;
+      } while (sigma >= length); // skip any extras since p >= length
+      return myrange->index((int)sigma);
+    }
+	
+  public:
+      permuter() : atEnd(true), length(0), myrange(NULL), count(0) { };
+
+      permuter(const Range& rng) 
+        : atEnd(false), cur_pos(0), length(rng.length()), myrange(&rng), count(0) 
+      {
+	if (length > 0) {
+
+	  // find smallest prime p >= num_viable_units that is \equiv_3 2
+	  for (p = length + (2 - length % 3); !prime32(p); p += 3)
+	    ;
+	  a = rnd.uniform(1, p-1);     // pick a random a in [1,p)
+	  b = rnd.uniform(p-1);        // pick a random b in [0,p)
+	} else {
+	  atEnd = true;
+	}
+      }
+
+      int reset (const Range& rng) {
+	permuter perm(rng);
+	atEnd   = perm.atEnd;
+	cur_pos = 0;
+	length  = perm.length;
+	myrange = &rng;
+	a = perm.a; b = perm.b; p = perm.p;
+	count = 0;
+	return ith();
+      }
+
+      int reset (void) { cur_pos = 0; count=0; return ith(); } // reset to where we were before .. hope we were!
+
+      int next_el(void) { 
+	if (count < length) {
+	  return ith();
+	}
+	atEnd = true;
+	return 0;
+      }
+
+      int step_by(int n) {	// i.e. step on multiple steps
+	if (count + n <= length) {
+	  for (int i=0; i < n-1; i+=1) 
+	    (void) ith();
+	  return ith();
+	}
+	atEnd = true;
+	return 0;
+      }
+
+      permuter& operator ++(void) // prefix
+	  { next_el(); return *this; }
+      permuter& operator ++(int) // suffix (used to return a new it? (no &))
+	  { next_el(); return *this; }
+
+      bool at_end(void) const { return atEnd; }
+      int val(void) const    { return ith(cur_pos); }
+      const int operator *(void) const { return ith(cur_pos); }
+      operator int(void) const         { return ith(cur_pos); }
+
+      int operator ==(const permuter& it){ return (ith(cur_pos) == it.val());}
+      int operator !=(const permuter& it){ return (ith(cur_pos) != it.val());}
+      int operator <(const permuter& it) { return (ith(cur_pos) < it.val());}
+      int operator <=(const permuter& it){ return (ith(cur_pos) <= it.val());}
+      int operator >(const permuter& it) { return (ith(cur_pos) > it.val());}
+      int operator >=(const permuter& it){ return (ith(cur_pos) >= it.val());}
+  };
+
   class iterator {
   protected:
       int cur_value;
@@ -151,11 +273,13 @@ public:
       int bufpos;
       int bufline;
 
+      permuter *p;
+
   protected:
       int read_next(int *val, FILE* file, const char *name);
 
   public:
-      iterator () { };	// Ugly default constructor is DANGEROUS!
+      iterator() : p(NULL)  { };	// Ugly default constructor is DANGEROUS!
       iterator (const Range& rng);
       iterator (const iterator& it);
       ~iterator(void);
@@ -172,27 +296,28 @@ public:
       iterator& operator ++(int) // suffix (used to return a new it? (no &))
 	  { next_el(); return *this; }
 
-      int at_end(void) const { return atEnd; }
-      int val(void) const    { return cur_value; }
-      const int operator *(void) const { return cur_value; }
-      operator int(void) const         { return cur_value; }
+      int at_end(void) const { if (p) return p->at_end(); else return atEnd; }
+      int val(void) const    { if (p) return p->val(); else return cur_value; }
+      const int operator *(void) const { if (p) return p->val(); else return cur_value; }
+      operator int(void) const         { if (p) return p->val(); else return cur_value; }
 
       // Does the range we're currently in end in a finite value, 
       // or does it go to a default-like INT_MAX or INT_MIN?
       int current_range_finite(void) const;
 
-      int operator ==(const iterator& it){ return (cur_value == it.val());}
-      int operator !=(const iterator& it){ return (cur_value != it.val());}
-      int operator <(const iterator& it) { return (cur_value < it.val());}
-      int operator <=(const iterator& it){ return (cur_value <= it.val());}
-      int operator >(const iterator& it) { return (cur_value > it.val());}
-      int operator >=(const iterator& it){ return (cur_value >= it.val());}
+      int operator ==(const iterator& it){ return (val() == it.val());}
+      int operator !=(const iterator& it){ return (val() != it.val());}
+      int operator <(const iterator& it) { return (val() < it.val());}
+      int operator <=(const iterator& it){ return (val() <= it.val());}
+      int operator >(const iterator& it) { return (val() > it.val());}
+      int operator >=(const iterator& it){ return (val() >= it.val());}
   };
 
     friend class iterator;
+    friend class permuter;
 
     iterator begin(void) { return iterator(*this); }
-
+    permuter permute(void) { return permuter(*this); }
 };
 
 // Iterators on range objects.

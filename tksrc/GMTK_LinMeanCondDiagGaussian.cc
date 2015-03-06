@@ -12,15 +12,10 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
@@ -1172,6 +1167,9 @@ LinMeanCondDiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& ofile,
   // since this is a Gaussian, we ignore the writeLogVals
   // argument since it doesn't make sense to take log of
   // these values since they are continuous, could be negative, etc.
+  ofile.writeComment("LinMeanCondDiagGaussian %s xAcc len %u  xxAcc len %u  xzAcc len %u  zzAcc len %u  zAcc len %u:"
+		     " ... xAcc[i] ... xxAcc[i] ... xzAcc[i] ... zzAcc[i] ... zAcc[i] ...\n", name().c_str(), 
+		     xAccumulators.len(), xxAccumulators.len(), xzAccumulators.len(), zzAccumulators.len(), zAccumulators.len());
   if (writeZeros) {
     const unsigned totalLen = 
       xAccumulators.len()+ 
@@ -1180,7 +1178,7 @@ LinMeanCondDiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& ofile,
       zzAccumulators.len()+ 
       zAccumulators.len();
     for (unsigned i=0;i<totalLen;i++) {
-      ofile.write(0.0,"LMDG zero accums x.");
+      ofile.write(xAccumulators[0], 0.0,"LMDG zero accums x.");
     }
   } else {
     for (int i=0;i<xAccumulators.len();i++) {

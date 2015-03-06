@@ -5,15 +5,10 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
@@ -484,17 +479,27 @@ DiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& ofile,
   // argument since it doesn't make sense to take log of
   // these values since they are continuous, could be negative, etc.
   if (writeZeros) {
-    const unsigned totalLen = nextMeans.len() + nextDiagCovars.len();
-    for (unsigned i=0;i<totalLen;i++) {
-      ofile.write(0.0,"Diag Gaussian store accums nm + nc.");
+    ofile.writeComment("MeanVector %s len %u:  ... nextMeans[i] ... \n", mean->name().c_str(), nextMeans.len());
+    for (int i=0; i < nextMeans.len(); i++) {
+      ofile.write(nextMeans[0], 0.0, "Diag Gaussian store accums nm + nc.");
     }
+    ofile.nl();
+    ofile.writeComment("DiagCovarVector %s len %u:  ... nextDiagCovars[i] ... \n", covar->name().c_str(), nextDiagCovars.len());
+    for (int i=0; i < nextDiagCovars.len(); i++) {
+      ofile.write(nextDiagCovars[0], 0.0, "Diag Gaussian store accums nm + nc.");
+    }
+    ofile.nl();
   } else {
+    ofile.writeComment("MeanVector %s len %u:    ... nextMeans[i] ... \n", mean->name().c_str(), nextMeans.len());
     for (int i=0;i<nextMeans.len();i++) {
       ofile.write(nextMeans[i],"Diag Gaussian store accums nm.");
     }
+    ofile.nl();
+    ofile.writeComment("DiagCovarVector %s len %u:  ... nextDiagCovars[i] ... \n", covar->name().c_str(), nextDiagCovars.len());
     for (int i=0;i<nextDiagCovars.len();i++) {
       ofile.write(nextDiagCovars[i],"Diag Gaussian store accums nc.");
     }
+    ofile.nl();
   }
 }
 

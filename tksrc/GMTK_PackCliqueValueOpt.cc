@@ -4,17 +4,16 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2003, < fill in later >
+ * Copyright (C) 2003 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
+
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
 
 
 
@@ -66,8 +65,8 @@ VCID(HGID)
  */
 inline unsigned numBitsDifferent(unsigned long u1, unsigned long u2) 
 {
-  register unsigned count=0;
-  register unsigned i = 8*sizeof(unsigned long);
+  REGISTER unsigned count=0;
+  REGISTER unsigned i = 8*sizeof(unsigned long);
   do {
     count += ( (u1&0x1) != (u2&0x1) );
     u1 >>=1; u2>>=1;
@@ -91,7 +90,7 @@ unsigned
 PackCliqueValue::hamming_bit_distance(const unsigned *const packed_vec1,
 				      const unsigned *const packed_vec2)
 {
-  register unsigned dist = 0;
+  REGISTER unsigned dist = 0;
   // No need to unpack since we are just doing bit distance.
   const unsigned *const packed_vec1_endp = packed_vec1 + numUnsignedInPackedVector;
   const unsigned* packed_vec1_p = packed_vec1;
@@ -109,18 +108,18 @@ unsigned
 PackCliqueValue::hamming_entry_distance(const unsigned *const packed_vec1,
 					const unsigned *const packed_vec2)
 {
-  register ValLocator* vl_p = valLocators.ptr;
-  register const ValLocator *vl_nwb_endp = member_vl_nwb_endp;
-  register const ValLocator *vl_endp = member_vl_endp;
-  register unsigned dist = 0;
+  REGISTER ValLocator* vl_p = valLocators.ptr;
+  REGISTER const ValLocator *vl_nwb_endp = member_vl_nwb_endp;
+  REGISTER const ValLocator *vl_endp = member_vl_endp;
+  REGISTER unsigned dist = 0;
 
   // do the unpacking, first the ones
   // that do not span a word boundary
   {
     do {
-      register unsigned res1 =
+      REGISTER unsigned res1 =
 	(packed_vec1[vl_p->start] & vl_p->startMask);
-      register unsigned res2 =
+      REGISTER unsigned res2 =
 	(packed_vec2[vl_p->start] & vl_p->startMask);
       vl_p++;
 
@@ -133,14 +132,14 @@ PackCliqueValue::hamming_entry_distance(const unsigned *const packed_vec1,
     while (vl_p != vl_endp) {
 
       /*
-      register unsigned res1 =
+      REGISTER unsigned res1 =
 	(packed_vec1[vl_p->start] & vl_p->startMask)
 	>> vl_p->startRightShift;
       res1 |=
 	((packed_vec1[vl_p->start+1] & vl_p->nextMask) <<
 	 vl_p->nextLeftShift);
 
-      register unsigned res2 =
+      REGISTER unsigned res2 =
 	(packed_vec2[vl_p->start] & vl_p->startMask)
 	>> vl_p->startRightShift;
       res2 |=
@@ -148,12 +147,12 @@ PackCliqueValue::hamming_entry_distance(const unsigned *const packed_vec1,
 	 vl_p->nextLeftShift);
       */
 
-      register unsigned res1 =
+      REGISTER unsigned res1 =
 	(packed_vec1[vl_p->start] & vl_p->startMask);
       res1 |=
 	(packed_vec1[vl_p->start+1] & vl_p->nextMask);
 
-      register unsigned res2 =
+      REGISTER unsigned res2 =
 	 (packed_vec2[vl_p->start] & vl_p->startMask);
       res2 |=
 	 (packed_vec2[vl_p->start+1] & vl_p->nextMask);
@@ -171,20 +170,20 @@ PackCliqueValue::hamming_weighted_entry_distance(const unsigned *const packed_ve
 						 const unsigned *const packed_vec2)
 {
 
-  register ValLocator* vl_p = valLocators.ptr;
-  register const ValLocator *vl_nwb_endp = member_vl_nwb_endp;
-  register const ValLocator *vl_endp = member_vl_endp;
-  register unsigned dist = 0;
-  register unsigned* valBits_p = valBits.ptr;
+  REGISTER ValLocator* vl_p = valLocators.ptr;
+  REGISTER const ValLocator *vl_nwb_endp = member_vl_nwb_endp;
+  REGISTER const ValLocator *vl_endp = member_vl_endp;
+  REGISTER unsigned dist = 0;
+  REGISTER unsigned* valBits_p = valBits.ptr;
 
   // do the unpacking, first the ones
   // that do not span a word boundary
   {
     do {
-      // first, get the values into registers
-      register unsigned res1 =
+      // first, get the values into REGISTERs
+      REGISTER unsigned res1 =
 	(packed_vec1[vl_p->start] & vl_p->startMask);
-      register unsigned res2 =
+      REGISTER unsigned res2 =
 	(packed_vec2[vl_p->start] & vl_p->startMask);
       // we don't need to right shift since we are only testing
       // equality below.
@@ -212,12 +211,12 @@ PackCliqueValue::hamming_weighted_entry_distance(const unsigned *const packed_ve
       // equality below.  (i.e., the assumption here is that the stuff
       // at the bottom of one word and the top of another word, when
       // or'd together, will not overlap).
-      register unsigned res1 =
+      REGISTER unsigned res1 =
 	(packed_vec1[vl_p->start] & vl_p->startMask);
       res1 |=
 	(packed_vec1[vl_p->start+1] & vl_p->nextMask);
 
-      register unsigned res2 =
+      REGISTER unsigned res2 =
 	 (packed_vec2[vl_p->start] & vl_p->startMask);
       res2 |=
 	(packed_vec2[vl_p->start+1] & vl_p->nextMask);

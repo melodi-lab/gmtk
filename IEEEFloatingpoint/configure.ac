@@ -1,10 +1,19 @@
 #                                               -*- Autoconf -*-
+
+#
+# Written by Richard Rogers <rprogers@uw.edu>
+#
+# Copyright (C) 2010 Jeff Bilmes
+# Licensed under the Open Software License version 3.0
+# See COPYING or http://opensource.org/licenses/OSL-3.0
+#
+
 # Process this file with autoconf to produce a configure script.
 
 # autoconf initialization
-AC_PREREQ(2.59)
+AC_PREREQ(2.69)
 AC_INIT([GMTK], m4_esyscmd(printf %s `head -n 1 ../RELEASE`),
-        [https://lungs.ee.washington.edu/trac/gmtk/newticket])
+        [https://j.ee.washington.edu/trac/gmtk/newticket])
 : ${CXXFLAGS=""}
 
 
@@ -28,7 +37,8 @@ AC_CANONICAL_HOST
 
 # Turn on automake error checking and turn off whinging about missing
 # some files GNU projects are supposed to have
-AM_INIT_AUTOMAKE([1.11 silent-rules -Wall -Werror foreign])
+AM_INIT_AUTOMAKE([1.12 silent-rules -Wall -Werror foreign])
+AM_SILENT_RULES([yes])
 
 # Check that we're in the correct directory by verifying the existence 
 # of the file
@@ -39,15 +49,30 @@ AC_CONFIG_SRCDIR([ieeeFPsetup_ANY_ANY.cc])
 AC_CONFIG_HEADER([config.h])
 
 # Checks for programs.
-AC_PROG_CXX
 AC_PROG_CC
+AC_PROG_CXX
+
+#check for Clang, which lies about being GCC
+AC_MSG_CHECKING([if compiling with clang])
+AC_COMPILE_IFELSE(
+[AC_LANG_PROGRAM([],[[
+#ifndef __clang__
+  not clang
+#endif
+]])],
+[CLANG=yes],[CLANG=no])
+AC_MSG_RESULT([$CLANG])
+AM_CONDITIONAL([USE_GXX_FLAGS],[test x$GXX = xyes -a x$CLANG = xno])
+AM_CONDITIONAL([USE_CLANG_FLAGS],[test x$CLANG = xyes])
+
+m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 AC_PROG_RANLIB
 AC_PROG_LN_S
 
-AC_CHECK_FILE([../.hg/dirstate],[
+AC_CHECK_FILE([$srcdir/../.hg/dirstate],[
   AC_CHECK_PROG([HAVE_HG],[hg],[yes])
   if test x$HAVE_HG = xyes; then
-    HGREVID=`hg id ..`  
+    HGREVID=`hg id $srcdir/..`  
     HGDATE=`hg parents --template '{date|date}'`
     printf "#ifndef HGID\n#define HGID \"$HGREVID\"\n#define HGDATE \"$HGDATE\"\n#endif\n" > hgstamp.h
     AC_DEFINE([HAVE_HG_H],[1],[Live Mercurial revision id available?])

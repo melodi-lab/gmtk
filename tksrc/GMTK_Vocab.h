@@ -6,21 +6,20 @@
  * 
  *  $Header$
  * 
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
 
 #ifndef GMTK_VOCAB_H
 #define GMTK_VOCAB_H
+
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
 
 #include "debug.h"
 #include "GMTK_NamedObject.h"
@@ -84,7 +83,7 @@ protected:
 	///////////////////////////////////////////////////////////
 	// hash function
 	inline unsigned hash(const char* key) const {
-		register unsigned hashValue = 0;
+		REGISTER unsigned hashValue = 0;
 		// a simple string hash function.
 		while ( *key )
 		  hashValue += (hashValue << 7) + *key++;   // this is more efficient

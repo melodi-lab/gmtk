@@ -1,0 +1,107 @@
+
+# Written by Richard Rogers rprogers@uw.edu
+#
+# Copyright (C) 2003 Jeff Bilmes
+# Licensed under the Open Software License version 3.0
+# See COPYING or http://opensource.org/licenses/OSL-3.0
+
+# We need dgemm, which can come from PHiPAC or CBLAS.
+# PHiPAC is "built-in" to GMTK, so it is always avaialable. 
+# A well-tuned CBLAS dgemm might be faster.
+
+AC_ARG_ENABLE([internal-dgemm],
+   [AS_HELP_STRING([--enable-internal-dgemm], [use internal matrix multiply instead of external CBLAS/MKL dgemm])])
+
+# If the user gives --enable-internal-dgemm, $enable_internal_dgemm will be "yes"
+#    and we should AC_DEFINE(USE_PHIPAC) and build libPHiPAC.a.
+
+# If the user gives --disable-internal-dgemm, $enable_internal_dgemm will be "no"
+#    and we should not build libPHiPAC.a. In this case, the user (or pkg-config) must 
+#    supply an external CBLAS to link with to supply the required dgemm.
+
+# If the user gives neither, the the default is to use PHiPAC if they don't
+#    specify a CBLAS or MKL. Otherwise, the CBLAS or MKL dgemm will be used.
+
+
+
+# We need a CBLAS. ATLAS or Goto are nice. OpenBLAS is based on Goto. MKL also 
+# provides CBLAS. The ACML BLAS seems pretty fast on Opterons, though you have to build the
+# Netlib CBLAS interface for it yourself. See http://www.netlib.org/blas/blast-forum/cblas.tgz
+
+# We can also make use of some VML and MKL routines, so we AC_DEFINE(HAVE_MKL)
+# if the user tells us where to find MKL. We'll also use MKL's CBLAS in that case. If the user
+# gives one of the --with-mkl-* arguments, we'll use the MKL CBLAS dgemm unless the user also 
+# explicitly gives --enable-internal-dgemm.
+
+AC_ARG_WITH([mkl-cflags],
+   [AS_HELP_STRING([--with-mkl-cflags=-I<dir>], [C pre-processor -I flags to find MKL headers for CBLAS, VML, and MKL routines])],
+   [AS_IF([test "x$with_mkl_cflags" != "xno"],
+      [MKL_CFLAGS=$with_mkl_cflags; MKL_REQUEST=yes],
+      [MKL_REQUEST=no])],
+   [MKL_CFLAGS=""])
+
+
+AC_ARG_WITH([mkl-libs],
+   [AS_HELP_STRING([--with-mkl-libs=-l<library>], [linker -L and -l flags to link with MKL installation])],
+   [AS_IF([test "x$with_mkl_libs" != "xno"], 
+     [MKL_LIBS=$with_mkl_libs ; MKL_REQUEST=yes], 
+     [MKL_REQUEST=no])],
+   [MKL_LIBS=""])
+
+# MKL_REQUEST=yes signals that the user requested MKL
+# by using one of the --with-MKL-* arguments, so we must
+# verify the user-provided flags work; the configure script
+# fails if they do not.
+
+# MKL_REQUEST=no signals the user gave a --without-MKL-* argument, so don't try to use MKL.
+
+
+
+# If we don't have MKL, we need a plain external CBLAS (and we'll use internal 
+# replacement MKL kernels, and not use VML). If we don't get either MKL or a 
+# plain CBLAS, we'll use the PHiPAC dgemm, internal replacement MKL and BLAS
+# level 1 kernels, and no VML.
+
+
+# By default, we'll try to use a CBLAS located either by pkg-config
+# or in your default build search paths. You can specify
+#   --with-cblas-cflags=-I<dir> 
+#   --with-cblas-libs=-L<dir> -l<library>
+# if you want to use a particular CBLAS. If you don't specify any
+# of the above, we will try pkg-config cblas to locate the CBLAS.
+# If the --with-cblas-* weren't specified and pkg-config fails to 
+# find a CBLAS, we just guess -I/usr/include -L/usr/lib -lcblas
+#
+# If none of the above works, use the internal replacements...
+#
+# If you prefer to use MKL instead of a CBLAS, see --with-mkl
+
+AC_ARG_WITH([cblas-cflags],
+   [AS_HELP_STRING([--with-cblas-cflags=-I<dir>], [C pre-processor -I flags to find non-MKL CBLAS headers @<:@-I/usr/include@:>@])],
+   [AS_IF([test "x$with_cblas_cflags" != "xno"], 
+     [BLAS_CFLAGS=$with_cblas_cflags ; BLAS_REQUEST=yes], 
+     [BLAS_REQUEST=no])],
+   [BLAS_CFLAGS=""])
+# assume -I/usr/include is already included in the include seach path  
+
+AC_ARG_WITH([cblas-libs],
+   [AS_HELP_STRING([--with-cblas-libs=-l<library>], [linker -L and -l flags to link with a non-MKL CBLAS library @<:@-lcblas@:>@])],
+   [AS_IF([test "x$with_cblas_libs" != "xno"], 
+     [BLAS_LIBS=$with_cblas_libs ; BLAS_REQUEST=yes], 
+     [BLAS_REQUEST=no])],
+   [BLAS_LIBS=""])
+# assume libcblas.* is what we want
+
+# BLAS_REQUEST=yes signals that the user requested a specific CBLAS 
+# by using one of the --with-cblas-* arguments, so use that instead 
+# of trying pkg-config. BLAS_REQUEST=no signals the user gave a
+# --without-cblas-* argument, so don't try to find any external CBLAS
+# (note that if they gave --with-mkl, it will still use MKL as a BLAS).
+
+
+# Just here to add top-level --help for pkg-config
+m4_include([m4/pkg.m4])
+PKG_PROG_PKG_CONFIG()
+if false; then
+  PKG_CHECK_MODULES([BLAS],[cblas])
+fi

@@ -8,15 +8,10 @@
  * 
  *  $Header$
  * 
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
@@ -34,8 +29,13 @@
  */
 
 
+
 #ifndef GMTK_RNG_DECISION_TREE_H
 #define GMTK_RNG_DECISION_TREE_H
+
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
 
 #include "bp_range.h"
 #include "fileParser.h"
@@ -52,6 +52,7 @@
 #include <vector>
 
 class PackCliqueValue;
+class JunctionTree;
 
 /////////////////////////////////////////////////
 // The maximum branching factor on any decision tree node.
@@ -69,6 +70,9 @@ class PackCliqueValue;
 // The maximum range value
 #define MAX_BP_RANGE_VALUE 100000000
 
+/////////////////////////////////////////////////
+// The maximum number of DT parents
+#define MAX_DT_PARENTS 32
 
 /////////////////////////////////////////////////
 // The string that is used to specify the 'fail' case
@@ -108,6 +112,8 @@ typedef unsigned leafNodeValType;
 
 class RngDecisionTree : public NamedObject, IM {
 
+  friend class JunctionTree;
+
 #ifdef MAIN
   friend int main(int,char**);
 #endif
@@ -127,7 +133,9 @@ protected:
   int              dtNum;      // the current DT number
   string           curName;    // the current DT name
   unsigned         firstDT;    // index of the first decision tree
- 
+
+  string getSourceString();
+
   ///////////////////////////////////////////////////////////////////////////   
   // Equation Parsing 
   ///////////////////////////////////////////////////////////////////////////
@@ -181,10 +189,15 @@ protected:
 		      string leafNodeVal 
 		      );
 
-    leafNodeValType evaluateFormula(const vector< RV* >& variables,
+    leafNodeValType evaluateFormula(RngDecisionTree *dt,
+				    const vector< RV* >& variables,
 				    const RV* rv = NULL);
 
     void write(oDataStreamFile& os); 
+
+
+    // returns true iff name is a key in the function map
+    static bool functionNameCollision(string const &name);
 
   protected:
 
@@ -617,6 +630,9 @@ public:
   RngDecisionTree() : indexFile(NULL), dtFile(NULL), firstDT(0), root(NULL) {}; 
   ~RngDecisionTree();
 
+  // Create a "decision tree" for Viterbi printing trigger expressions on the command line
+  RngDecisionTree(string exprString) :  indexFile(NULL), dtFile(NULL), dtFileName(exprString), firstDT(0), root(NULL) {};
+
   // Create a "decision tree" that has a single internal C function.
   RngDecisionTree(string name, CFunctionMapperType _func,unsigned numFeatures);
 
@@ -683,7 +699,8 @@ public:
   // will evaluate to 0.
   leafNodeValType query(const vector < RV* >& arr,
 			const RV* rv) {
-    assert ( unsigned(arr.size()) == _numFeatures );
+    if (_numFeatures != ~0x0U)  //  ~0x0U means variable # features
+      assert ( unsigned(arr.size()) == _numFeatures );
     return queryRecurse(arr,root,rv);
   }
 

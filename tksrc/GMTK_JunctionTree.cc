@@ -4,15 +4,10 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2003, < fill in later >
+ * Copyright (C) 2003 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
@@ -45,6 +40,7 @@
 #include "GMTK_GMTemplate.h"
 #include "GMTK_JunctionTree.h"
 #include "GMTK_GMParms.h"
+#include "GMTK_CountIterator.h"
 
 
 ////////////////////////////////////////////////////////////////////
@@ -80,6 +76,28 @@ const char* JunctionTree::interfaceCliquePriorityStr = "W";
 
 bool JunctionTree::probEvidenceTimeExpired = false;
 bool JunctionTree::viterbiScore = false;
+bool JunctionTree::onlineViterbi = false;
+bool JunctionTree::mmapViterbi = true;
+bool JunctionTree::sectionDoDist = false;
+bool JunctionTree::binaryViterbiSwap = false;
+
+char * JunctionTree::pVitTrigger = NULL;
+char * JunctionTree::cVitTrigger = NULL;
+char * JunctionTree::eVitTrigger = NULL;
+bool   JunctionTree::vitRunLength = false;
+
+FILE * JunctionTree::binaryViterbiFile = NULL;
+char * JunctionTree::binaryViterbiFilename = NULL;
+off_t  JunctionTree::binaryViterbiOffset;
+off_t  JunctionTree::nextViterbiOffset;
+bool JunctionTree::normalizePrintedCliques = true;
+
+ObservationFile *JunctionTree::vitObsFile = NULL;
+char *JunctionTree::vitObsFileName = NULL;
+char *JunctionTree::vitObsListName = NULL;
+const char *JunctionTree::vitObsNameSeparator = "_";
+const char *JunctionTree::vitObsFileFmt = "pfile";
+bool  JunctionTree::vitObsFileSwap = false;
 
 // default names of the three partitions for printing/debugging messages.
 const char* JunctionTree::P1_n = "P'";
@@ -111,10 +129,10 @@ struct PairUnsigned1stElementCompare {
  */
 void
 JunctionTree::printAllCliques(FILE* f,
-			      const bool normalize,
-			      const bool justPrintEntropy)
+			      const bool normalize, const bool unlog,
+			      const bool justPrintEntropy,
+			      ObservationFile *obsFile)
 {
-
   ptps_iterator ptps_it(*this);
   ptps_it.set_to_first_entry();
 
@@ -122,15 +140,25 @@ JunctionTree::printAllCliques(FILE* f,
   if (pPartCliquePrintRange != NULL) {
     setCurrentInferenceShiftTo(ptps_it.pt_i());
     BP_Range::iterator it = pPartCliquePrintRange->begin();
+    if (obsFile)
+      obsFile->setFrame(0);
     while (!it.at_end()) {
       const unsigned cliqueNum = (unsigned)(*it);
       if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
-	sprintf(buff,"Partition %d (P), Clique %d:",ptps_it.pt_i(),cliqueNum); 
-	partitionTableArray[ptps_it.pt_i()]
-	  .maxCliques[cliqueNum]
-	  .printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
-			      .maxCliquesSharedStructure[cliqueNum],
-			      f,buff,normalize,justPrintEntropy);
+	if (obsFile) {
+	  partitionTableArray[ptps_it.pt_i()]
+	    .maxCliques[cliqueNum]
+	    .printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
+				.maxCliquesSharedStructure[cliqueNum],
+				obsFile,normalize, unlog);
+	} else {
+	  sprintf(buff,"Partition %d (P), Clique %d:",ptps_it.pt_i(),cliqueNum); 
+	  partitionTableArray[ptps_it.pt_i()]
+	    .maxCliques[cliqueNum]
+	    .printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
+				.maxCliquesSharedStructure[cliqueNum],
+				f,buff,normalize,unlog,justPrintEntropy);
+	}
       }
       it++;
     }
@@ -142,15 +170,25 @@ JunctionTree::printAllCliques(FILE* f,
       int currentPartition = ptps_it.pt_i();
       BP_Range::iterator it = cPartCliquePrintRange->begin();
       setCurrentInferenceShiftTo(currentPartition);
+      if (obsFile)
+	obsFile->setFrame(ptps_it.pt_i());
       while (!it.at_end()) {
 	const unsigned cliqueNum = (unsigned)(*it);
 	if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
-	  sprintf(buff,"Partition %d (C), Clique %d:",currentPartition,cliqueNum); 
-	  partitionTableArray[ptps_it.pt_i()].
-	    maxCliques[cliqueNum].
-	    printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
-			       .maxCliquesSharedStructure[cliqueNum],
-			       f,buff,normalize,justPrintEntropy);
+	  if (obsFile) {
+	    partitionTableArray[ptps_it.pt_i()].
+	      maxCliques[cliqueNum].
+              printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
+				 .maxCliquesSharedStructure[cliqueNum],
+				 obsFile,normalize,unlog);
+	  } else {
+	    sprintf(buff,"Partition %d (C), Clique %d:",currentPartition,cliqueNum); 
+	    partitionTableArray[ptps_it.pt_i()].
+	      maxCliques[cliqueNum].
+	      printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
+				 .maxCliquesSharedStructure[cliqueNum],
+				 f,buff,normalize,unlog,justPrintEntropy);
+	  }
 	}
 	it++;
       }
@@ -163,15 +201,25 @@ JunctionTree::printAllCliques(FILE* f,
   if (ePartCliquePrintRange != NULL) {
     setCurrentInferenceShiftTo(ptps_it.pt_i());
     BP_Range::iterator it = ePartCliquePrintRange->begin();
+    if (obsFile)
+      obsFile->setFrame(ptps_it.pt_i());
     while (!it.at_end()) {
       const unsigned cliqueNum = (unsigned)(*it);
       if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
-	sprintf(buff,"Partition %d (E), Clique %d:",ptps_it.pt_i(),cliqueNum); 
-	partitionTableArray[ptps_it.pt_i()]
-	  .maxCliques[cliqueNum]
-	  .printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
-			      .maxCliquesSharedStructure[cliqueNum],
-			      f,buff,normalize,justPrintEntropy);
+	if (obsFile) {
+	  partitionTableArray[ptps_it.pt_i()]
+	    .maxCliques[cliqueNum]
+            .printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
+				.maxCliquesSharedStructure[cliqueNum],
+				obsFile,normalize,unlog);
+	} else {
+	  sprintf(buff,"Partition %d (E), Clique %d:",ptps_it.pt_i(),cliqueNum); 
+	  partitionTableArray[ptps_it.pt_i()]
+	    .maxCliques[cliqueNum]
+	    .printCliqueEntries(partitionStructureArray[ptps_it.ps_i()]
+				.maxCliquesSharedStructure[cliqueNum],
+				f,buff,normalize,unlog,justPrintEntropy);
+	}
       }
       it++;
     }
@@ -186,9 +234,11 @@ JunctionTree::printAllCliques(PartitionStructures& ps, // partition
 			      const unsigned partNo, // partition Number, for printing/msgs only
 			      const char *const nm,  // partition name
 			      BP_Range* rng,         // range of cliques in partition to print.
-			      FILE* f,               // where to print
+			      FILE* f,               // where to print (ASCII sparse output)
 			      const bool normalize,
-			      const bool justPrintEntropy)
+			      const bool unlog,
+			      const bool justPrintEntropy,
+			      ObservationFile *obsFile) // offline observation file output
 {
   char buff[2048];
   if (rng != NULL) {
@@ -196,9 +246,16 @@ JunctionTree::printAllCliques(PartitionStructures& ps, // partition
     while (!it.at_end()) {
       const unsigned cliqueNum = (unsigned)(*it);
       if (cliqueNum < ps.maxCliquesSharedStructure.size()) {
-	sprintf(buff,"Partition %d (%s), Clique %d:",partNo,nm,cliqueNum); 
-	pt.maxCliques[cliqueNum].printCliqueEntries(ps.maxCliquesSharedStructure[cliqueNum],
-						    f,buff,normalize,justPrintEntropy);
+	if (obsFile) {
+	  pt.maxCliques[cliqueNum].
+            printCliqueEntries(ps.maxCliquesSharedStructure[cliqueNum],
+			       obsFile,normalize,unlog);
+	} else {
+	  sprintf(buff,"Partition %d (%s), Clique %d:",partNo,nm,cliqueNum); 
+	  pt.maxCliques[cliqueNum].
+	    printCliqueEntries(ps.maxCliquesSharedStructure[cliqueNum],
+			       f,buff,normalize,unlog,justPrintEntropy);
+	}
       } else {
 	// could print out a warning here.
       }
@@ -207,6 +264,242 @@ JunctionTree::printAllCliques(PartitionStructures& ps, // partition
   }
 }
 
+#if 0
+void
+JunctionTree::cliquePosteriorSize(unsigned &pSize, unsigned &cSize, unsigned &eSize) {
+
+  pSize = 0;
+  cSize = 0;
+  eSize = 0;
+
+  ptps_iterator ptps_it(*this);
+  ptps_it.set_to_first_entry();
+
+  if (pPartCliquePrintRange != NULL) {
+//    setCurrentInferenceShiftTo(ptps_it.pt_i());
+    BP_Range::iterator it = pPartCliquePrintRange->begin();
+    while (!it.at_end()) {
+      const unsigned cliqueNum = (unsigned)(*it);
+      if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
+	pSize += 
+#if 0
+partitionTableArray[ptps_it.pt_i()].maxCliques[cliqueNum].cliqueDomainSize(partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum]);
+#else
+	//partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum].origin->
+	MaxCliqueTable::cliqueDomainSize(partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum]);
+#endif
+      }
+      it++;
+    }
+  }
+  ptps_it++;
+
+  if (cPartCliquePrintRange != NULL) {
+    if (!ptps_it.at_last_entry()) {
+//      int currentPartition = ptps_it.pt_i();
+      BP_Range::iterator it = cPartCliquePrintRange->begin();
+//      setCurrentInferenceShiftTo(currentPartition);
+      while (!it.at_end()) {
+	const unsigned cliqueNum = (unsigned)(*it);
+	if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
+	  cSize += 
+#if 0
+partitionTableArray[ptps_it.pt_i()].maxCliques[cliqueNum].
+	             cliqueDomainSize(partitionStructureArray[ptps_it.ps_i()]
+				      .maxCliquesSharedStructure[cliqueNum]);
+#else
+	  //partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum].origin->
+	  MaxCliqueTable::cliqueDomainSize(partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum]);
+#endif
+	}
+	it++;
+      }
+    }
+  } 
+  // partNo = partitionStructureArray.size()-1;
+  ptps_it.set_to_last_entry();
+
+  if (ePartCliquePrintRange != NULL) {
+//    setCurrentInferenceShiftTo(ptps_it.pt_i());
+    BP_Range::iterator it = ePartCliquePrintRange->begin();
+    while (!it.at_end()) {
+      const unsigned cliqueNum = (unsigned)(*it);
+      if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
+	eSize += 
+#if 0
+partitionTableArray[ptps_it.pt_i()].maxCliques[cliqueNum].
+                   cliqueDomainSize(partitionStructureArray[ptps_it.ps_i()]
+				    .maxCliquesSharedStructure[cliqueNum]);
+#else
+	//partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum].origin->
+	MaxCliqueTable::cliqueDomainSize(partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum]);
+#endif
+      }
+      it++;
+    }
+  }
+}
+#else
+void
+JunctionTree::cliquePosteriorSize(unsigned &pSize, unsigned &cSize, unsigned &eSize) {
+
+  pSize = 0;
+  cSize = 0;
+  eSize = 0;
+
+  assert(partitionStructureArray.size() >= 2);
+  if (pPartCliquePrintRange != NULL) {
+    BP_Range::iterator it = pPartCliquePrintRange->begin();
+    while (!it.at_end()) {
+      const unsigned cliqueNum = (unsigned)(*it);
+      if (cliqueNum < partitionStructureArray[0].maxCliquesSharedStructure.size()) {
+	pSize += 
+	MaxCliqueTable::cliqueDomainSize(partitionStructureArray[0].maxCliquesSharedStructure[cliqueNum]);
+      }
+      it++;
+    }
+  }
+
+  if (cPartCliquePrintRange != NULL) {
+    if (partitionStructureArray.size() > 2) {
+      BP_Range::iterator it = cPartCliquePrintRange->begin();
+      while (!it.at_end()) {
+	const unsigned cliqueNum = (unsigned)(*it);
+	if (cliqueNum < partitionStructureArray[1].maxCliquesSharedStructure.size()) {
+	  cSize += 
+	  MaxCliqueTable::cliqueDomainSize(partitionStructureArray[1].maxCliquesSharedStructure[cliqueNum]);
+	}
+	it++;
+      }
+    }
+  } 
+  if (ePartCliquePrintRange != NULL) {
+    BP_Range::iterator it = ePartCliquePrintRange->begin();
+    while (!it.at_end()) {
+      const unsigned cliqueNum = (unsigned)(*it);
+      size_t Eindex = partitionStructureArray.size() - 1;
+      if (cliqueNum < partitionStructureArray[Eindex].maxCliquesSharedStructure.size()) {
+	eSize += 
+	MaxCliqueTable::cliqueDomainSize(partitionStructureArray[Eindex].maxCliquesSharedStructure[cliqueNum]);
+      }
+      it++;
+    }
+  }
+}
+#endif
+
+#if 0
+void 
+JunctionTree::printCliqueOrders(FILE *f) {
+  ptps_iterator ptps_it(*this);
+  ptps_it.set_to_first_entry();
+
+  if (pPartCliquePrintRange != NULL) {
+//    setCurrentInferenceShiftTo(ptps_it.pt_i());
+    BP_Range::iterator it = pPartCliquePrintRange->begin();
+    while (!it.at_end()) {
+      const unsigned cliqueNum = (unsigned)(*it);
+      if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
+	fprintf(f, "P partition clique #%u variable order:", cliqueNum);
+#if 0
+	partitionTableArray[ptps_it.pt_i()].maxCliques[cliqueNum].
+	  printCliqueOrder(f, partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum]);
+#else
+	MaxCliqueTable::printCliqueOrder(f, partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum]);
+#endif
+      }
+      it++;
+    }
+  }
+  ptps_it++;
+
+  if (cPartCliquePrintRange != NULL) {
+    if (!ptps_it.at_last_entry()) {
+//      int currentPartition = ptps_it.pt_i();
+      BP_Range::iterator it = cPartCliquePrintRange->begin();
+//      setCurrentInferenceShiftTo(currentPartition);
+      while (!it.at_end()) {
+	const unsigned cliqueNum = (unsigned)(*it);
+	if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
+	  fprintf(f, "C partition clique #%u variable order:", cliqueNum);
+#if 0
+	  partitionTableArray[ptps_it.pt_i()].maxCliques[cliqueNum].
+	    printCliqueOrder(f, partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum]);
+#else
+	  MaxCliqueTable::printCliqueOrder(f, partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum]);
+#endif
+	}
+	it++;
+      }
+    }
+  } 
+  // partNo = partitionStructureArray.size()-1;
+  ptps_it.set_to_last_entry();
+
+  if (ePartCliquePrintRange != NULL) {
+//    setCurrentInferenceShiftTo(ptps_it.pt_i());
+    BP_Range::iterator it = ePartCliquePrintRange->begin();
+    while (!it.at_end()) {
+      const unsigned cliqueNum = (unsigned)(*it);
+      if (cliqueNum < partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure.size()) {
+	int numCPrimes = (int)ptps_it.pt_len() - 2;
+	int frameDelta = gm_template.S * fp.numFramesInC() * (numCPrimes - 1);
+	fprintf(f, "E partition clique #%u variable order:", cliqueNum);
+#if 0
+	partitionTableArray[ptps_it.pt_i()].maxCliques[cliqueNum].
+	  printCliqueOrder(f, partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum]);
+#else
+	MaxCliqueTable::printCliqueOrder(f, partitionStructureArray[ptps_it.ps_i()].maxCliquesSharedStructure[cliqueNum],
+					 -frameDelta);
+#endif
+      }
+      it++;
+    }
+  }
+}
+#else
+void 
+JunctionTree::printCliqueOrders(FILE *f) {
+  assert(partitionStructureArray.size() >= 2);
+  if (pPartCliquePrintRange != NULL) {
+    BP_Range::iterator it = pPartCliquePrintRange->begin();
+    while (!it.at_end()) {
+      const unsigned cliqueNum = (unsigned)(*it);
+      if (cliqueNum < partitionStructureArray[0].maxCliquesSharedStructure.size()) {
+	fprintf(f, "P partition clique #%u variable order:", cliqueNum);
+	MaxCliqueTable::printCliqueOrder(f, partitionStructureArray[0].maxCliquesSharedStructure[cliqueNum]);
+      }
+      it++;
+    }
+  }
+
+  if (cPartCliquePrintRange != NULL) {
+    if (partitionStructureArray.size() > 2) {
+      BP_Range::iterator it = cPartCliquePrintRange->begin();
+      while (!it.at_end()) {
+	const unsigned cliqueNum = (unsigned)(*it);
+	if (cliqueNum < partitionStructureArray[1].maxCliquesSharedStructure.size()) {
+	  fprintf(f, "C partition clique #%u variable order:", cliqueNum);
+	  MaxCliqueTable::printCliqueOrder(f, partitionStructureArray[1].maxCliquesSharedStructure[cliqueNum]);
+	}
+	it++;
+      }
+    }
+  } 
+  if (ePartCliquePrintRange != NULL) {
+    BP_Range::iterator it = ePartCliquePrintRange->begin();
+    while (!it.at_end()) {
+      const unsigned cliqueNum = (unsigned)(*it);
+      size_t Eindex = partitionStructureArray.size() - 1;
+      if (cliqueNum < partitionStructureArray[Eindex].maxCliquesSharedStructure.size()) {
+	fprintf(f, "E partition clique #%u variable order:", cliqueNum);
+	MaxCliqueTable::printCliqueOrder(f, partitionStructureArray[Eindex].maxCliquesSharedStructure[cliqueNum]);
+      }
+      it++;
+    }
+  }
+}
+#endif
 
 /*-
  *-----------------------------------------------------------------------
@@ -497,7 +790,6 @@ JunctionTree::createPartitionJunctionTree(Partition& part,const string junctionT
 		      part.cliques[j].nodes.end(),
 		      inserter(clique_union,clique_union.end()));
 	    e.weights.push_back(-(double)MaxClique::computeWeight(clique_union));
-
 	  } else if (curCase == 'V') {
 	    // compute frame number variance in separator, push back
 	    // negative to prefer smalller frame variance (i.e.,
@@ -1031,35 +1323,35 @@ void
 JunctionTree::insertFactorClique(FactorClique& factorClique,FactorInfo& factor)
 {
 
-  set <RV*> res;
+  count_iterator<set <RV*> > res;
   // first try P1
   set_intersection(factorClique.nodes.begin(),factorClique.nodes.end(),
 		   P1.nodes.begin(),P1.nodes.end(),
-		   inserter(res,res.end()));
-  if (res.size() == factorClique.nodes.size()) {
+		   res);
+  if (res.count() == factorClique.nodes.size()) {
     // then fully contained in P1
     infoMsg(IM::Giga,"insertFactorClique: inserting factor %s(%d) into partition %s\n",
 	    factor.name.c_str(),factor.frame,P1_n);
     P1.factorCliques.push_back(factorClique);
   } else {
     // try Co
-    res.clear();
     set_intersection(factorClique.nodes.begin(),factorClique.nodes.end(),
 		     Co.nodes.begin(),Co.nodes.end(),
-		     inserter(res,res.end()));
-    if (res.size() == factorClique.nodes.size()) {
+		     res);
+    if (res.count() == factorClique.nodes.size()) {
       // then fully contained in P1
+//Co ?
       infoMsg(IM::Giga,"insertFactorClique: inserting factor %s(%d) into partition %s\n",
 	      factor.name.c_str(),factor.frame,Co_n);
       Co.factorCliques.push_back(factorClique);
     } else {
       // try E1
-      res.clear();
       set_intersection(factorClique.nodes.begin(),factorClique.nodes.end(),
 		       E1.nodes.begin(),E1.nodes.end(),
-		       inserter(res,res.end()));
-      if (res.size() == factorClique.nodes.size()) {
+		       res);
+      if (res.count() == factorClique.nodes.size()) {
 	// then fully contained in P1
+//E1 ?
 	infoMsg(IM::Giga,"insertFactorClique: inserting factor %s(%d) into partition %s\n",
 		factor.name.c_str(),factor.frame,E1_n);
 	E1.factorCliques.push_back(factorClique);
@@ -1335,6 +1627,10 @@ JunctionTree::assignRVsToCliques(const char* varPartitionAssignmentPrior,
 	     allAssignedProbNodes);
 
   set <RV*> nodesThatGiveNoProb;
+// 153: OK nodesThatGiveNoProb printed in error message
+// 153:    though we could use count_iterator to be efficient in
+// 153:    the common case, and compute the intersection in the
+// 153:    if statement
   set_difference(allNodes.begin(),allNodes.end(),
 		 allAssignedProbNodes.begin(),allAssignedProbNodes.end(),
 		 inserter(nodesThatGiveNoProb,
@@ -1709,20 +2005,19 @@ JunctionTree::assignRVToClique(const char *const partName,
       // The heuristic here is, have this node contribute probabiltiy
       // to this clique if many of its parents are already doing so, which
       // might produce a clique with good pruning behavior.
-      set<RV*> res;
+      count_iterator<set <RV*> > res;
       set_intersection(curClique.assignedProbNodes.begin(),
 		       curClique.assignedProbNodes.end(),
 		       parSet.begin(),parSet.end(),
-		       inserter(res,res.end()));
-      int num_parents_with_probability = (int) res.size();
+		       res);
+      int num_parents_with_probability = (int) res.count();
       // Previous Parents (earlier in the junction tree) with their
       // probabilities in Junction Tree.  We add this to the above.
-      res.clear();
       set_intersection(curClique.cumulativeAssignedProbNodes.begin(),
 		       curClique.cumulativeAssignedProbNodes.end(),
 		       parSet.begin(),parSet.end(),
-		       inserter(res,res.end()));
-      num_parents_with_probability += (int) res.size();
+		       res);
+      num_parents_with_probability += (int) res.count();
       // negate so that lower is preferable.
       num_parents_with_probability *= -1;
 
@@ -2583,7 +2878,7 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
       // then we have at least 2 real separators.
 
       unsigned lastSeparator = lastRealSeparator;
-      set<RV*> sep_intr_set;
+      count_iterator<set <RV*> > sep_intr_set;
       set<RV*> sep_union_set;
       set<RV*> empty;
       vector < pair<unsigned,unsigned> > sepIntersections; 
@@ -2609,11 +2904,11 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
 		      sep_j.nodes.begin(),sep_j.nodes.end(),
 		      inserter(sep_union_set,sep_union_set.end()));
 	  }
-	  sep_intr_set.clear();
+	  sep_intr_set.reset();
 	  set_intersection(sep_i.nodes.begin(),sep_i.nodes.end(),
 			   sep_union_set.begin(),sep_union_set.end(),
-			   inserter(sep_intr_set,sep_intr_set.end()));
-	  sepIntersections[i].first = sep_intr_set.size();
+			   sep_intr_set);
+	  sepIntersections[i].first = sep_intr_set.count();
 	}
 
 	// sort in (default) ascending order
@@ -2654,7 +2949,7 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
       // so at least two VE separators.
 
       int lastSeparator = numSeparators-1;
-      set<RV*> sep_intr_set;
+      count_iterator<set <RV*> > sep_intr_set;
       set<RV*> sep_union_set;
       set<RV*> empty;
       vector < pair<unsigned,unsigned> > sepIntersections; 
@@ -2682,11 +2977,11 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
 		      inserter(sep_union_set,sep_union_set.end()));
 
 	  }
-	  sep_intr_set.clear();
+	  sep_intr_set.reset();
 	  set_intersection(sep_i.nodes.begin(),sep_i.nodes.end(),
 			   sep_union_set.begin(),sep_union_set.end(),
-			   inserter(sep_intr_set,sep_intr_set.end()));
-	  sepIntersections[i-firstVESeparator].first = sep_intr_set.size();
+			   sep_intr_set);
+	  sepIntersections[i-firstVESeparator].first = sep_intr_set.count();
 	}
 
 
@@ -2864,7 +3159,6 @@ JunctionTree::getCumulativeUnassignedIteratedNodes(JT_Partition& part,
 
     const unsigned child = curClique.children[childNo];
     getCumulativeUnassignedIteratedNodes(part,child);
-
     set_union(part.cliques[child].cumulativeUnassignedIteratedNodes.begin(),
 	      part.cliques[child].cumulativeUnassignedIteratedNodes.end(),
 	      part.cliques[child].unassignedIteratedNodes.begin(),
@@ -3565,11 +3859,13 @@ JunctionTree::unroll(const unsigned int numFrames,
 					   modifiedTemplateMinUnrollAmount,
 					   numUsableFrames,
 					   frameStart))
-    error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, different template, or decrease M,S if >1.\n",
+    error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use segments of at least P+M*C+E = %d frames, different template, or decrease M,S if >1. You can identify which segment(s) in the input file(s) are too short with a command like \"obs-info -p -i1 file1 ... | awk '$2 < %d {print $1}'\"\n",
 	  numFrames,
 	  fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
 	  fp.numFrames(),
-	  gm_template.M,gm_template.S);
+	  gm_template.M,gm_template.S, 
+	  fp.numFramesInP() + gm_template.M * fp.numFramesInC() + fp.numFramesInE(),
+	  fp.numFramesInP() + gm_template.M * fp.numFramesInC() + fp.numFramesInE());
   const int numCoPartitionTables = modifiedTemplateMaxUnrollAmount+1;
   const int numCoPartitionStructures= modifiedTemplateMinUnrollAmount+1;
   const int numPartitionStructures= modifiedTemplateMinUnrollAmount+3;
@@ -3688,7 +3984,7 @@ JunctionTree::unroll(const unsigned int numFrames,
     // Next C
     C_partition_values.resize(N_best
 			      *partitionStructureArray[1].packer.packedLen()
-			      *numCoPartitionTables);
+			      *  (binaryViterbiFile ? 1 : numCoPartitionTables) );
 
     // Next E
     E_partition_values.resize(N_best

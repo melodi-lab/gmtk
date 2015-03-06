@@ -4,12 +4,19 @@
 // $Header$
 // Written by: Jeff Bilmes
 //             bilmes@ee.washington.edu
+// 
+//  Copyright (C) 2001 Jeff Bilmes
+//  Licensed under the Open Software License version 3.0
+//  See COPYING or http://opensource.org/licenses/OSL-3.0
+//
 
 
 #ifndef GENERAL_H
 #define GENERAL_H
 
-using namespace std;
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 // added this to keep gcc -pedantic flag from complaining
 // about incompatibilities with not defining certain
@@ -27,15 +34,33 @@ using namespace std;
 
 #include <vector>
 #include <string>
+using namespace std;
+
 
 #include "machine-dependent.h"
 
 #define VCID(x) static const char * const version_control_id = x;
 
+
+// Some stuff to deal with large file support
+//  First make sure things still work if we do not have fseeko/ftello
+#if HAVE_FSEEKO
+#  define gmtk_fseek(a,b,c) fseeko(a,b,c)
+#  define gmtk_ftell(a) ftello(a)
+   typedef off_t gmtk_off_t;
+#else
+#  define gmtk_fseek(a,b,c) fseek(a,b,c)
+#  define gmtk_ftell(a) ftell(a)
+   typedef long gmtk_off_t;
+#endif
+
+
 char *copyToNewStr(const char *const str);
 
 bool strIsInt(const char *const str, int* i=NULL,int* len=NULL);
 bool strIsInt(const char *const str, unsigned* i=NULL,int* len=NULL);
+
+bool strIsFloat(const char *const str, float* f=NULL,int* len=NULL);
 
 // a general swapping routine.
 template <class T>
@@ -82,8 +107,8 @@ void copyStringWithTag(char *result,const char *const input,
 		       const int tag, const int maxLen);
 
 
-unsigned long fsize(FILE*stream);
-unsigned long fsize(const char* const filename);
+gmtk_off_t fsize(FILE*stream);
+gmtk_off_t fsize(const char* const filename);
 
 
 void print_date_string(FILE* f);

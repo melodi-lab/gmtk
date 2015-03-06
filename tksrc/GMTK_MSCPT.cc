@@ -1,18 +1,12 @@
 /*-
  * GMTK_MSCPT.cc
- *     A Multi-Dimensional dense Conditional Probability Table class.
+ *     A Multi-Dimensional sparse Conditional Probability Table class.
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2001, < fill in later >
- *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  */
 
@@ -45,8 +39,8 @@
 VCID(HGID)
 
 
-
-
+// TODO: move this to a .h separate from GMTK_dlopenDeterministicMappings.h
+#define CDT_VARIABLE_NUMBER_FEATURES (~0x0U)
 
 ////////////////////////////////////////////////////////////////////
 //        General create, read, destroy routines 
@@ -85,7 +79,7 @@ MSCPT::MSCPT()
  *
  *-----------------------------------------------------------------------
  */
-void MSCPT::setNumParents(const int _nParents)
+void MSCPT::setNumParents(const unsigned _nParents)
 {
   CPT::setNumParents(_nParents);
   bitmask &= ~bm_basicAllocated;
@@ -105,7 +99,7 @@ void MSCPT::setNumParents(const int _nParents)
  *
  *-----------------------------------------------------------------------
  */
-void MSCPT::setNumCardinality(const int var, const int card)
+void MSCPT::setNumCardinality(const unsigned var, const int card)
 {
 
   CPT::setNumCardinality(var,card);
@@ -159,9 +153,6 @@ MSCPT::read(iDataStreamFile& is)
   NamedObject::read(is);
   is.read(_numParents,"Can't read SparseCPT number parents");
 
-  if (_numParents < 0) 
-    error("ERROR: reading file '%s' line %d, SparseCPT '%s' trying to use negative (%d) num parents.",
-	  is.fileName(),is.lineNo(),name().c_str(),_numParents);
   if (_numParents >= warningNumParents)
     warning("WARNING: creating SparseCPT with %d parents in file '%s' line %d",_numParents,
 	    is.fileName(),is.lineNo());
@@ -192,7 +183,7 @@ MSCPT::read(iDataStreamFile& is)
 
   dt = GM_Parms.dts[dtIndex];
   
-  if (_numParents != dt->numFeatures())
+  if (_numParents != dt->numFeatures() && dt->numFeatures() != CDT_VARIABLE_NUMBER_FEATURES)
       error("ERROR: reading file '%s' line %d, SparseCPT '%s' with %d parents specifies DT '%s' with %d features that does not match",
 	    is.fileName(),is.lineNo(),
 	    _name.c_str(),_numParents,str.c_str(),dt->numFeatures());

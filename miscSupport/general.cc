@@ -1,5 +1,10 @@
 //
 // General miscellaneous stuff that belongs nowhere else.
+//
+//  Copyright (C) 2001 Jeff Bilmes
+//  Licensed under the Open Software License version 3.0
+//  See COPYING or http://opensource.org/licenses/OSL-3.0
+//
 // 
 // Written by: Jeff Bilmes
 //             bilmes@ee.wasington.edu
@@ -7,6 +12,10 @@
 
 #if HAVE_CONFIG_H
 #include <config.h>
+#endif
+
+#ifndef DEFAULT_CPP
+#define DEFAULT_CPP="cpp"
 #endif
 
 #include <ctype.h>
@@ -18,6 +27,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #include <string>
 #include <string.h>
@@ -60,6 +70,25 @@ bool strIsInt(const char*const str, unsigned* i,int* len)
   else {
     if (i != NULL)
       *i = (unsigned)l;
+    if (len != NULL)
+      *len = (p - str);
+    return true;
+  }
+}
+
+bool strIsFloat(const char*const str, float* f,int* len) 
+{
+  char *p;
+  errno = 0;
+  float fl = strtof(str,&p);
+  if (errno == ERANGE) {
+    error("strIsFloat: input string '%s' caused overflow or underflow\n");
+  }
+  if (p == str)
+    return false;
+  else {
+    if (f != NULL)
+      *f = fl;
     if (len != NULL)
       *len = (p - str);
     return true;
@@ -113,14 +142,14 @@ void copyStringWithTag(char *result,const char *const input,
 //
 // Return the file size without moving the file
 // pointer.
-unsigned long
+gmtk_off_t
 fsize(FILE*stream) 
 {
-  long curpos = ftell(stream);
+  gmtk_off_t curpos = gmtk_ftell(stream);
   // rewind
   (void) fseek (stream, 0L, SEEK_END);
-  long filesize = ftell(stream);
-  (void) fseek (stream, curpos, SEEK_SET);
+  gmtk_off_t filesize = gmtk_ftell(stream);
+  (void) gmtk_fseek (stream, curpos, SEEK_SET);
   return filesize;
 }
  
@@ -130,7 +159,7 @@ fsize(FILE*stream)
 // return 0 if it doesn't exist (i.e., this will
 // return 0 if either the file doesn't exist or if
 // the file exists and it has zero size).
-unsigned long
+gmtk_off_t
 fsize(const char *const filename) 
 {
   if (filename == NULL)
@@ -139,7 +168,7 @@ fsize(const char *const filename)
   if ((stream = fopen(filename,"r")) == NULL)
     return 0l;
   (void) fseek (stream, 0L, SEEK_END);
-  long filesize = ftell(stream);
+  gmtk_off_t filesize = gmtk_ftell(stream);
   fclose(stream);
   return filesize;
 }
@@ -329,7 +358,7 @@ const char * CPP_Command()
 {
   const char * rc = getenv("GMTK_CPP_CMD");
   if (rc == NULL)
-    rc = "cpp";
+    rc = DEFAULT_CPP;
   // fprintf(stdout,"cpp command got is (%s)\n",rc);
   return rc;
 }

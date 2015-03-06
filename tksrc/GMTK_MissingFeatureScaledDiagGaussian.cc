@@ -5,17 +5,16 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
+
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
 
 
 #include <math.h>
@@ -471,10 +470,10 @@ MissingFeatureScaledDiagGaussian::emIncrementMeanDiagCovar(
 				       float *meanAccumulator,
 				       float *diagCovarAccumulator)
 {
-  register const float * f_p = f;
-  register const float *const f_p_endp = f + len;
-  register float *meanAccumulator_p = meanAccumulator;
-  register float *diagCovarAccumulator_p = diagCovarAccumulator;
+  REGISTER const float * f_p = f;
+  REGISTER const float *const f_p_endp = f + len;
+  REGISTER float *meanAccumulator_p = meanAccumulator;
+  REGISTER float *diagCovarAccumulator_p = diagCovarAccumulator;
   logpr* acp = elementAccumulatedProbability.ptr;
 
   do {
@@ -483,8 +482,8 @@ MissingFeatureScaledDiagGaussian::emIncrementMeanDiagCovar(
     // meanAccumulator_p so the compiler can probably optimize better.
     
     if (!isnan(*f_p)) {
-      register float tmp = (*f_p)*fprob;
-      register float tmp2 = tmp*(*f_p);
+      REGISTER float tmp = (*f_p)*fprob;
+      REGISTER float tmp2 = tmp*(*f_p);
 
       *meanAccumulator_p += tmp;
       *diagCovarAccumulator_p += tmp2;
@@ -543,26 +542,26 @@ MissingFeatureScaledDiagGaussian::fkIncrementMeanDiagCovar(
 				       float *meanAccumulator,
 				       float *diagCovarAccumulator)
 {
-  register const float * f_p = f;
-  register const float *const f_p_endp = f + len;
+  REGISTER const float * f_p = f;
+  REGISTER const float *const f_p_endp = f + len;
 
-  register float *mean_p = curMeans;
-  register float *diagCovar_p = curDiagCovars;
+  REGISTER float *mean_p = curMeans;
+  REGISTER float *diagCovar_p = curDiagCovars;
 
-  register float *meanAccumulator_p = meanAccumulator;
-  register float *diagCovarAccumulator_p = diagCovarAccumulator;
+  REGISTER float *meanAccumulator_p = meanAccumulator;
+  REGISTER float *diagCovarAccumulator_p = diagCovarAccumulator;
 
   logpr* acp = elementAccumulatedProbability.ptr;
 
   do {
     if (!isnan(*f_p)) {
-      register float tmp = (*f_p - *mean_p)/(*diagCovar_p);
+      REGISTER float tmp = (*f_p - *mean_p)/(*diagCovar_p);
 
       // store the values in temporaries so that the
       // compiler knows that there is no aliasing.
-      register float mean_val = fprob*tmp;
+      REGISTER float mean_val = fprob*tmp;
       tmp = tmp*tmp;
-      register float covar_val = 0.5*fprob*(-1.0/(*diagCovar_p) + tmp);
+      REGISTER float covar_val = 0.5*fprob*(-1.0/(*diagCovar_p) + tmp);
       
       // increment the actual accumulators
       *meanAccumulator_p += mean_val;
@@ -696,23 +695,39 @@ MissingFeatureScaledDiagGaussian::emStoreObjectsAccumulators(oDataStreamFile& of
   // argument since it doesn't make sense to take log of
   // these values since they are continuous, could be negative, etc.
   if (writeZeros) {
-    const unsigned totalLen = nextMeans.len() + nextDiagCovars.len();
-    for (unsigned i=0;i<totalLen;i++) {
-      ofile.write(0.0,"MissingFeatureScaledDiagGaussian store accums nm + nc.");
+    ofile.writeComment("MFSDG MeanVector %s len %u:  ... nextMeans[i] ...\n", mean->name().c_str(), nextMeans.len());
+    for (unsigned i=0; i < nextMeans.len(); i++) {
+      ofile.write(nextMeans[0], 0.0, "MissingFeatureScaledDiagGaussian store accums nm + nc.");
     }
-    for (int i=0;i<elementAccumulatedProbability.len();i++) {
-      ofile.write(elementAccumulatedProbability[0].valref()*0.0,"El Acc Prob 0.0");
+    ofile.nl();
+    ofile.writeComment("MFSDG DiagCovarVector %s len %u:  ... nextDiagCovars[i] ...\n", covar->name().c_str(), nextDiagCovars.len());
+    for (unsigned i=0; i < nextDiagCovars.len(); i++) {
+      ofile.write(nextDiagCovars[0], 0.0, "MissingFeatureScaledDiagGaussian store accums nm + nc.");
     }
+    ofile.nl();
+    ofile.writeComment("MFSDG elementAccumulatedProbability len %u:  ... elementAccumulatedProbability[i] ...\n",
+		       elementAccumulatedProbability.len());
+    for (int i=0; i < elementAccumulatedProbability.len(); i++) {
+      ofile.write(elementAccumulatedProbability[0].valref(), elementAccumulatedProbability[0].valref()*0.0,"El Acc Prob 0.0");
+    }
+    ofile.nl();
   } else {
+    ofile.writeComment("MFSDG MeanVector %s len %u:  ... nextMeans[i] ...\n", mean->name().c_str(), nextMeans.len());
     for (int i=0;i<nextMeans.len();i++) {
       ofile.write(nextMeans[i],"MissingFeatureScaledDiagGaussian store accums nm.");
     }
+    ofile.nl();
+    ofile.writeComment("MFSDG DiagCovarVector %s len %u:  ... nextDiagCovars[i] ...\n", covar->name().c_str(), nextDiagCovars.len());
     for (int i=0;i<nextDiagCovars.len();i++) {
       ofile.write(nextDiagCovars[i],"MissingFeatureScaledDiagGaussian store accums nc.");
     }
+    ofile.nl();
+    ofile.writeComment("MFSDG elementAccumulatedProbability len %u:  ... elementAccumulatedProbability[i] ...\n",
+		       elementAccumulatedProbability.len());
     for (int i=0;i<elementAccumulatedProbability.len();i++) {
       ofile.write(elementAccumulatedProbability[i].valref(),"El Acc Prob i");
     }
+    ofile.nl();
   }
 }
 

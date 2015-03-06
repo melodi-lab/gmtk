@@ -2,6 +2,17 @@
 #ifndef STR_HASH_MAP_H
 #define STR_HASH_MAP_H
 
+/*
+ * Written by Jeff Bilmes <bilmes@ee.washington.edu>
+ *
+ * Copyright (C) 2005 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ */
+
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
 
 #include <cstring>
 
@@ -274,7 +285,7 @@ protected:
 	 * @return pointer of bucket in the hash table
 	 */
 	HashBucket* findPos(const char* key) const {
-		register unsigned long hashValue = hashing(key, 0);
+		REGISTER unsigned long hashValue = hashing(key, 0);
 		unsigned long pos = ((hashValue >> _numBits) ^ hashValue) & _mask;
 
 		while ( _table[pos].active() && _table[pos].keyNotEqual(key) ) {

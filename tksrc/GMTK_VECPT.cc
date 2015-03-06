@@ -68,18 +68,17 @@ sentRange:all
 
 
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
+
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
 
 
 #include <math.h>
@@ -89,6 +88,7 @@ sentRange:all
 #include <string.h>
 #include <float.h>
 #include <assert.h>
+#include <typeinfo>
 
 #include "general.h"
 #include "error.h"
@@ -97,7 +97,14 @@ sentRange:all
 #include "GMTK_VECPT.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_DiscRV.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_Filter.h"
+#  include "GMTK_FilterFile.h"
+#  include "GMTK_ObservationFile.h"
+#  include "GMTK_FileSource.h"
+#endif
 
 VCID("$Header$")
 
@@ -143,6 +150,8 @@ VECPT::read(iDataStreamFile& is)
   sentRange=NULL;
   preTransforms=NULL;
   postTransforms=NULL;
+  leftPad=0;
+  rightPad=0;
 
   string str;
   string option_name;
@@ -200,8 +209,10 @@ VECPT::read(iDataStreamFile& is)
 
     if (obsFileName == FILE_NAME_WHEN_USING_GLOBAL_OBSERVATION_FILE) {
       // we take observations from the global observation matrix.
-      obs = &globalObservationMatrix;
-    
+      obs = dynamic_cast<FileSource *>(globalObservationMatrix); assert(obs);
+      // I think the above should be safe, as there's no chance of
+      // trying to read a VECPT from anything other than a FileSource
+
       is.read(str);
       while(! (is.isEOF() || str=="END")) {
 	lineNum++;
@@ -247,6 +258,20 @@ VECPT::read(iDataStreamFile& is)
 	    throw(error_message);
 	  }
 	}  
+	else if(option_name == "leftPad") {
+	  if (!strIsInt(option_value.c_str(), &leftPad)) {
+	    string error_message;
+	    stringprintf(error_message,"Invalid value '%s' for left padding option 'leftPad'. Must be integer.", option_value.c_str());
+	    throw(error_message);
+	  }
+	}
+	else if(option_name == "rightPad") {
+	  if (!strIsInt(option_value.c_str(), &rightPad)) {
+	    string error_message;
+	    stringprintf(error_message,"Invalid value '%s' for right padding option 'rightPad'. Must be integer.", option_value.c_str());
+	    throw(error_message);
+	  }
+	}
 	else {
 	  string error_message;
 	  stringprintf(error_message,"Unknown option:value pair '%s'",str.c_str());
@@ -279,10 +304,10 @@ VECPT::read(iDataStreamFile& is)
 
       if (nis == 0) {
 	// check that it works with the current global observation matrix.
-	if (nfs + obs_file_foffset > globalObservationMatrix.numContinuous()) {
+	if (nfs + obs_file_foffset > globalObservationMatrix->numContinuous()) {
 	  string error_message;
 	  stringprintf(error_message,"specifies %d floats and offset %d, but global observation matrix only has %d",
-		       nfs,obs_file_foffset,globalObservationMatrix.numContinuous());
+		       nfs,obs_file_foffset,globalObservationMatrix->numContinuous());
 	  throw(error_message);
 	}
 	if (cardinalities[0] != nfs) {
@@ -299,16 +324,16 @@ VECPT::read(iDataStreamFile& is)
 		is.fileName(),is.lineNo(),name().c_str(),nis,nfs);
 	}
 	// check that it works with the current global observation matrix.
-	if (nfs + obs_file_foffset > globalObservationMatrix.numContinuous()) {
+	if (nfs + obs_file_foffset > globalObservationMatrix->numContinuous()) {
 	  string error_message;
 	  stringprintf(error_message,"specifies %d floats and offset %d, but global observation matrix only has %d real entries per frame",
-		       nfs,obs_file_foffset,globalObservationMatrix.numContinuous());
+		       nfs,obs_file_foffset,globalObservationMatrix->numContinuous());
 	  throw(error_message);
 	}
-	if (nis + obs_file_ioffset > globalObservationMatrix.numDiscrete()) {
+	if (nis + obs_file_ioffset > globalObservationMatrix->numDiscrete()) {
 	  string error_message;
 	  stringprintf(error_message,"specifies %d ints and offset %d, but global observation matrix only has %d discrete entries per frame",
-		       nis,obs_file_ioffset,globalObservationMatrix.numDiscrete());
+		       nis,obs_file_ioffset,globalObservationMatrix->numDiscrete());
 	  throw(error_message);
 	}
 
@@ -435,6 +460,7 @@ VECPT::read(iDataStreamFile& is)
 	throw(error_message);
       }
 
+#if 0
       obs = new ObservationMatrix;
       // Now try opening the file:
       obs->openFile(obsFileName.c_str(),
@@ -458,23 +484,60 @@ VECPT::read(iDataStreamFile& is)
 		    //	       (const char**)&sentRangeStr
 		    (const char**)&sentRange
 		    );
+#else
+      assert(fmt=="ascii");
+      int ifmt = formatStrToNumber(fmt.c_str());
+      if (ifmt < 0) {
+	string error_message;
+	stringprintf(error_message,"unknown file format '%s' for VE CPT", fmt.c_str());
+	throw(error_message);
+      }
+      ObservationFile *obsFile = 
+	instantiateFile((unsigned)ifmt, (char *)obsFileName.c_str(), nfs, nis,
+			0, iswp, false, NULL, NULL, NULL, NULL,	sentRange, fmt.c_str(), leftPad, rightPad);
+
+      Filter *preFilt = instantiateFilters(preTransforms, obsFile->numLogicalContinuous(),
+                                                          obsFile->numLogicalDiscrete());
+      obsFile = new FilterFile(preFilt, obsFile, frs.c_str(), irs.c_str(), pr_rs);
+      assert(obsFile);
+      Filter *postTrans = instantiateFilters(postTransforms, obsFile->numLogicalContinuous(),
+                                                             obsFile->numLogicalDiscrete());
+      obsFile = new FilterFile(postTrans, obsFile);
+      obs = new FileSource(obsFile,
+			   DEFAULT_FILE_WINDOW_BYTES,
+			   DEFAULT_FILE_WINDOW_DELTA,
+			   DEFAULT_BUFFER_SIZE,
+			   globalObservationMatrix->startSkip(), 
+			   globalObservationMatrix->endSkip());
+#endif
 
       // still here? Do more error checking.
 
       if (obs->numContinuous() == 0) {
-	error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' and reading observation file '%s' with %d ints and %d floats. Range string '%s'. Must have or specify > 0 floats",
+	error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' and reading observation "
+	      "file '%s' with %d ints and %d floats. Range string '%s'. Must have or specify > 0 floats",
 	      is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs,frs.c_str());
       }
 
       if (!((obs->numDiscrete() == 0) || (obs->numDiscrete() == obs->numContinuous()))) {
-	error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' and reading observation file '%s' with %d ints and %d floats. Float range string is '%s', int range string is '%s'. Must have or specify either 0 ints, or same number of ints as floats",
+	error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' and reading observation file '%s' "
+	      "with %d ints and %d floats. Float range string is '%s', int range string is '%s'. Must have "
+	      "or specify either 0 ints, or same number of ints as floats",
 	      is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs,frs.c_str(),irs.c_str());
       }
 
-      // make sure we have same number of segments as global observation case.
-      if (globalObservationMatrix.numSegments() != obs->numSegments()) {
-	error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' and reading observation file '%s' with %d ints and %d floats. Number of segments %d must match that of the global observation file, which has %d segments",
-	      is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs,obs->numSegments(),globalObservationMatrix.numSegments());
+      FileSource *gomFS = dynamic_cast<FileSource *>(globalObservationMatrix);
+      FileSource *obsFS = dynamic_cast<FileSource *>(obs);
+      if ( gomFS && obsFS ) {
+	// make sure we have same number of segments as global observation case.
+	if (gomFS->numSegments() != obsFS->numSegments()) {
+	  error("ERROR: reading file '%s' line %d, VirtualEvidenceCPT '%s' and reading observation file '%s' "
+		"with %d ints and %d floats. Number of segments %d must match that of the global observation "
+		"file, which has %d segments",
+		is.fileName(),is.lineNo(),name().c_str(),obsFileName.c_str(),nis,nfs,obsFS->numSegments(),gomFS->numSegments());
+	}
+      } else {
+	warning("WARNING: StreamSource cannot verify that VECPT and observations have the same number of segments");
       }
 
       // we check that the cardinality is compatible with the VECPT.
@@ -596,7 +659,7 @@ logpr VECPT::probGivenParents(vector <RV *>& parents,
 {
   assert ( bitmask & bm_basicAllocated );
   curParentValue = RV2DRV(parents[0])->val;
-  register DiscRVType val = drv->val;
+  REGISTER DiscRVType val = drv->val;
 
   logpr p((void*)NULL);
   if (veMode == VE_Dense) {
@@ -613,7 +676,7 @@ logpr VECPT::probGivenParents(vector <RV *>& parents,
   } else {
     // do a slow linear search since order can be anything.
     // TODO: make sorted assumption and do binary search.
-    unsigned *base = obs->unsignedAtFrame(drv->frame());
+    unsigned *base = obs->unsignedVecAtFrame(drv->frame());
     unsigned i;
     for (i=obs_file_ioffset;i<obs->numDiscrete();i++) {
       if (base[i] == curParentValue)
@@ -681,7 +744,7 @@ void VECPT::begin(iterator& it,DiscRV* drv, logpr& p)
     // Sparse case.
     // 
     // do a slow linear search since order can be anything.
-    unsigned *base = obs->unsignedAtFrame(drv->frame());
+    unsigned *base = obs->unsignedVecAtFrame(drv->frame());
     unsigned i;
     for (i=obs_file_ioffset;i<obs->numDiscrete();i++) {
       if (base[i] == curParentValue)
@@ -715,7 +778,7 @@ bool VECPT::next(iterator &it,logpr& p)
     // we don't invert the score since this is the Pr(child = 1 | parent) case.
   } else {
     // do a slow linear search since order can be anything.
-    unsigned *base = obs->unsignedAtFrame(it.drv->frame());
+    unsigned *base = obs->unsignedVecAtFrame(it.drv->frame());
     unsigned i;
     for (i=obs_file_ioffset;i<obs->numDiscrete();i++) {
       if (base[i] == it.uInternalState)
@@ -778,7 +841,7 @@ int VECPT::randomSample(DiscRV* drv)
     return i;
   } else {
     // this assumes that ints in sparse case are ordered
-    return *(obs->unsignedAtFrame(drv->frame()) + i); 
+    return *(obs->unsignedVecAtFrame(drv->frame()) + i); 
   }
 
 }

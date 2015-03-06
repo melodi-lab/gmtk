@@ -5,6 +5,12 @@
  * 
  *   Jeff Bilmes <bilmes@ee.washington.edu>
 
+// 
+//  Copyright (C) 2001 Jeff Bilmes
+//  Licensed under the Open Software License version 3.0
+//  See COPYING or http://opensource.org/licenses/OSL-3.0
+//
+
  Modified by Karim Filali (karim@cs.washington.edu) to handle the following:
 
  - "Array type" flags: an example is the input flag -i; before if we
@@ -68,8 +74,6 @@
  *-----------------------------------------------------------------------
  */
 
-using namespace std;
-
 #include <iostream>
 #include <fstream>
 #include <cstddef>
@@ -83,6 +87,8 @@ using namespace std;
 #if HAVE_CONFIG_H
 #include <config.h>
 #endif
+using namespace std;
+
 
 #if HAVE_HG_H
 #include "hgstamp.h"
@@ -555,7 +561,11 @@ Arg::argsSwitch(Arg* arg_ptr,const char *arg,int& index,bool& found,const char*f
 {
   
   if(arg_ptr->dataStructType == ARRAY) {
-    assert(arg_ptr->arrayElmtIndex >= 0 && arg_ptr->arrayElmtIndex < (int) arg_ptr->maxArrayElmts);
+    if (arg_ptr->arrayElmtIndex < 0 || (int) arg_ptr->maxArrayElmts <= arg_ptr->arrayElmtIndex ) {
+      warning("%s Array index in switch (%s) is out of bounds (1..%u)\n", 
+	    ArgsErrStr, flag, arg_ptr->maxArrayElmts);
+      return ARG_ERROR;
+    }
   }
   
   switch(arg_ptr->mt.type) {
@@ -987,7 +997,7 @@ const char *MultiType::printable(MultiType::ArgumentType at) {
  *
  *-----------------------------------------------------------------------
  */
-void Arg::usage(const char* filter,bool stdErrPrint) {
+void Arg::usage(const char* filter,bool stdErrPrint, const char *programDescription) {
 
   FILE* destStream;
 
@@ -996,6 +1006,9 @@ void Arg::usage(const char* filter,bool stdErrPrint) {
   else
     destStream = stdout;
 
+  if (programDescription) {
+    fprintf(destStream,"%s\n", programDescription);
+  }
   fprintf(destStream,"Usage: %s  [[[-flag] [option]] ...]\n",Program_Name);
   fprintf(destStream,"Required: <>; Optional: []; Flagless arguments must be in order.\n");
 
@@ -1108,7 +1121,7 @@ void Arg::usage(const char* filter,bool stdErrPrint) {
  *
  *-----------------------------------------------------------------------
  */
-Arg::ArgsRetCode Arg::parseArgsFromFile(char *fileName)
+Arg::ArgsRetCode Arg::parseArgsFromFile(char const *fileName)
 {
   countAndClearArgBits();
   ifstream ifile(fileName);
@@ -1342,7 +1355,7 @@ Arg::parseArgsFromCommandLine(int argc,char**argv)
  *
  *-----------------------------------------------------------------------
  */
-bool Arg::parse(int argc,char** argv)
+bool Arg::parse(int argc,char** argv, const char *programDescription)
 {
   ArgsRetCode rc;
   rc = parseArgsFromCommandLine(argc,argv);
@@ -1355,7 +1368,7 @@ bool Arg::parse(int argc,char** argv)
   }
   if (cnt > 0) {
     // if help argument is given, print usage and exit cleanly.
-    usage(NULL,false);
+    usage(NULL,false,programDescription);
     exit(0);
   }
 

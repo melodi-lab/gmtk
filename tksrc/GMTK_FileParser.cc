@@ -4,15 +4,9 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2001, < fill in later >
- *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
+ * Copyright (C) 2001 Jeff Bilems
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  */
 
@@ -58,10 +52,16 @@
 #include "GMTK_FNGramCPT.h"
 #include "GMTK_USCPT.h"
 #include "GMTK_VECPT.h"
+#include "GMTK_DeepVECPT.h"
+#include "GMTK_DeepCPT.h"
 #include "GMTK_LatticeNodeCPT.h"
 #include "GMTK_LatticeEdgeCPT.h"
 #include "GMTK_Mixture.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_ObservationSource.h"
+#endif
 #include "GMTK_GraphicalModel.h"
 #include "GMTK_RVInfo.h"
 
@@ -468,6 +468,8 @@ FileParser::fillKeywordTable()
     /* 52 */ "logLinear",
     /* 53 */ "emarfNum",
     /* 54 */ "symboltable",
+    /* 55 */ "DeepVirtualEvidenceCPT",
+    /* 56 */ "DeepCPT"
   };
   vector<string> v;
   const unsigned len = sizeof(kw_table)/sizeof(char*);
@@ -1311,6 +1313,7 @@ FileParser::parseFactorSoftConstraintAttribute()
     curFactor.softConstraintInfo.softConstraintType = FactorInfo::fct_logLinear;
   } else
     parseErrorExpecting("table or logLinear");
+  consumeToken();
   
 
   ensureNotAtEOF("(");
@@ -1817,8 +1820,7 @@ FileParser::parseRandomVariableWeightOptionList()
       curWtItem->lastFeatureElement = tokenInfo.int_val;	
 
       if ((curWtItem->firstFeatureElement !=
-	   curWtItem->lastFeatureElement)
-	  || (curWtItem->lastFeatureElement < 0))
+	   curWtItem->lastFeatureElement))
 	parseError("first range num must be == second range num for observation file weight");
       
       consumeToken();
@@ -2065,7 +2067,7 @@ FileParser::parseDiscreteImplementation()
   ensureNotAtEOF("discrete implementation");
   if (tokenInfo == KW_MDCPT || tokenInfo == KW_MSCPT
       || tokenInfo == KW_MTCPT || tokenInfo == KW_NGRAMCPT || tokenInfo == KW_FNGRAMCPT
-      || tokenInfo == KW_VECPT || tokenInfo == KW_LATTICENODECPT || tokenInfo == KW_LATTICEEDGECPT ) {
+      || tokenInfo == KW_VECPT || tokenInfo == KW_DeepVECPT || tokenInfo == KW_DeepCPT || tokenInfo == KW_LATTICENODECPT || tokenInfo == KW_LATTICEEDGECPT ) {
 
     if (tokenInfo == KW_MDCPT)
       curRV.discImplementations.push_back(CPT::di_MDCPT);
@@ -2079,6 +2081,10 @@ FileParser::parseDiscreteImplementation()
       curRV.discImplementations.push_back(CPT::di_FNGramCPT);
     else if (tokenInfo == KW_VECPT)
       curRV.discImplementations.push_back(CPT::di_VECPT);
+    else if (tokenInfo == KW_DeepVECPT)
+      curRV.discImplementations.push_back(CPT::di_DeepVECPT);
+    else if (tokenInfo == KW_DeepCPT)
+      curRV.discImplementations.push_back(CPT::di_DeepCPT);
     else if (tokenInfo == KW_LATTICENODECPT)
 	    curRV.discImplementations.push_back(CPT::di_LatticeNodeCPT);
     else if (tokenInfo == KW_LATTICEEDGECPT)
@@ -2782,8 +2788,7 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		       ]];
       } else if  (rvInfoVector[i].switchMapping.liType ==
 		  RVInfo::ListIndex::li_Index) {
-	if ((rvInfoVector[i].switchMapping.intIndex < 0) ||
-	    (rvInfoVector[i].switchMapping.intIndex > GM_Parms.dts.size()))
+	if ((rvInfoVector[i].switchMapping.intIndex > GM_Parms.dts.size()))
 	  error("Error: RV \"%s\" at frame %d (line %d), switching parent num %d out of range\n",
 		rvInfoVector[i].name.c_str(),
 		rvInfoVector[i].frame,
@@ -2843,11 +2848,11 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		      rvInfoVector[i].listIndices[j].nameIndex) ==
 		GM_Parms.mdCptsMap.end()) {
 	      if (allocate == noAllocate) {
-		error("Error: RV \"%s\" at frame %d (line %d), conditional parent DenseCPT \"%s\" doesn't exist\n",
+		error("Error: The DenseCPT \"%s\" associated with RV \"%s\" at frame %d (line %d) doesn't exist\n",
+                      rvInfoVector[i].listIndices[j].nameIndex.c_str(),
 		      rvInfoVector[i].name.c_str(),
 		      rvInfoVector[i].frame,
-		      rvInfoVector[i].fileLineNumber,
-		      rvInfoVector[i].listIndices[j].nameIndex.c_str());
+		      rvInfoVector[i].fileLineNumber);
 	      }
 	      else {
 		// allocate the MDCPT with name and install it.
@@ -3198,6 +3203,70 @@ FileParser::associateWithDataParams(MdcptAllocStatus allocate)
 		cpts[j] = 
 		  GM_Parms.veCpts[
 				  GM_Parms.veCptsMap[
+						     rvInfoVector[i].listIndices[j].nameIndex
+				  ]
+		  ];
+	      }
+	    } else {
+	      // TODO: need to remove the integer index code.
+	      assert(0);
+	    }
+	} else
+	  if (rvInfoVector[i].discImplementations[j] == CPT::di_DeepVECPT) {
+
+	    /////////////////////////////////////////////////////////
+	    // Once again, same code as above, but using DeepVECPTs.
+
+	    //////////////////////////////////////////////////////
+	    // set the CPT to a DeepVECPT, depending on if a string
+	    // or integer index was used in the file.
+	    if (rvInfoVector[i].listIndices[j].liType
+		== RVInfo::ListIndex::li_String) {
+	      if (GM_Parms.deepVECptsMap.find(
+					  rvInfoVector[i].listIndices[j].nameIndex) ==
+		  GM_Parms.deepVECptsMap.end()) {
+		  error("Error: RV \"%s\" at frame %d (line %d), conditional parent DeepVirtualEvidenceCPT \"%s\" doesn't exist\n",
+			rvInfoVector[i].name.c_str(),
+			rvInfoVector[i].frame,
+			rvInfoVector[i].fileLineNumber,
+			rvInfoVector[i].listIndices[j].nameIndex.c_str());
+	      } else {
+		// otherwise add it
+		cpts[j] = 
+		  GM_Parms.deepVECpts[
+				  GM_Parms.deepVECptsMap[
+						     rvInfoVector[i].listIndices[j].nameIndex
+				  ]
+		  ];
+	      }
+	    } else {
+	      // TODO: need to remove the integer index code.
+	      assert(0);
+	    }
+	} else
+	  if (rvInfoVector[i].discImplementations[j] == CPT::di_DeepCPT) {
+
+	    /////////////////////////////////////////////////////////
+	    // Once again, same code as above, but using DeepCPTs.
+
+	    //////////////////////////////////////////////////////
+	    // set the CPT to a DeepCPT, depending on if a string
+	    // or integer index was used in the file.
+	    if (rvInfoVector[i].listIndices[j].liType
+		== RVInfo::ListIndex::li_String) {
+	      if (GM_Parms.deepCptsMap.find(
+					  rvInfoVector[i].listIndices[j].nameIndex) ==
+		  GM_Parms.deepCptsMap.end()) {
+		  error("Error: RV \"%s\" at frame %d (line %d), conditional parent DeepCPT \"%s\" doesn't exist\n",
+			rvInfoVector[i].name.c_str(),
+			rvInfoVector[i].frame,
+			rvInfoVector[i].fileLineNumber,
+			rvInfoVector[i].listIndices[j].nameIndex.c_str());
+	      } else {
+		// otherwise add it
+		cpts[j] = 
+		  GM_Parms.deepCpts[
+				  GM_Parms.deepCptsMap[
 						     rvInfoVector[i].listIndices[j].nameIndex
 				  ]
 		  ];
@@ -3754,16 +3823,16 @@ FileParser::checkConsistentWithGlobalObservationStream()
 	if (rvInfoVector[i].rvFeatureRange.filled == RVInfo::FeatureRange::fr_Range) {
 	  // then observed, value from a feature range. Need to check to make sure
 	  // it corresponds to a true discrete value.
-	  if (!globalObservationMatrix.elementIsDiscrete(rvInfoVector[i].rvFeatureRange.firstFeatureElement)) {
-	    if (globalObservationMatrix.numDiscrete() > 0) 
+	  if (!globalObservationMatrix->elementIsDiscrete(rvInfoVector[i].rvFeatureRange.firstFeatureElement)) {
+	    if (globalObservationMatrix->numDiscrete() > 0) 
 	      error("ERROR: discrete observed random variable '%s', frame %d, line %d, specifies a feature element %d:%d that is out of discrete range ([%d:%d] inclusive) of observation matrix",
 		    rvInfoVector[i].name.c_str(),
 		    rvInfoVector[i].frame,
 		    rvInfoVector[i].fileLineNumber,
 		    rvInfoVector[i].rvFeatureRange.firstFeatureElement,
 		    rvInfoVector[i].rvFeatureRange.firstFeatureElement,
-		    globalObservationMatrix.numContinuous(),
-		    globalObservationMatrix.numFeatures()-1);
+		    globalObservationMatrix->numContinuous(),
+		    globalObservationMatrix->numFeatures()-1);
 	    else
 	      error("ERROR: discrete observed random variable '%s', frame %d, line %d, specifies a feature element %d:%d for an observation matrix with zero discrete features.",
 		    rvInfoVector[i].name.c_str(),
@@ -3771,14 +3840,14 @@ FileParser::checkConsistentWithGlobalObservationStream()
 		    rvInfoVector[i].fileLineNumber,
 		    rvInfoVector[i].rvFeatureRange.firstFeatureElement,
 		    rvInfoVector[i].rvFeatureRange.firstFeatureElement,
-		    globalObservationMatrix.numContinuous(),
-		    globalObservationMatrix.numFeatures()-1);
+		    globalObservationMatrix->numContinuous(),
+		    globalObservationMatrix->numFeatures()-1);
 	  }
 	}
       }
     } else { // (rvInfoVector[i].rvType == RVInfo::t_continuous) {
       if (rvInfoVector[i].rvDisp != RVInfo::d_hidden) {
-	if (rvInfoVector[i].rvFeatureRange.lastFeatureElement >=  globalObservationMatrix.numContinuous())
+	if (rvInfoVector[i].rvFeatureRange.lastFeatureElement >=  globalObservationMatrix->numContinuous())
 	      error("ERROR: continuous observed random variable '%s', frame %d, line %d, specifies feature elements %d:%d that are out of continuous range ([%d:%d] inclusive) of observation matrix",
 		    rvInfoVector[i].name.c_str(),
 		    rvInfoVector[i].frame,
@@ -3786,7 +3855,7 @@ FileParser::checkConsistentWithGlobalObservationStream()
 		    rvInfoVector[i].rvFeatureRange.firstFeatureElement,
 		    rvInfoVector[i].rvFeatureRange.lastFeatureElement,
 		    0,
-		    globalObservationMatrix.numContinuous()-1);
+		    globalObservationMatrix->numContinuous()-1);
       }
     }
 
@@ -3798,7 +3867,7 @@ FileParser::checkConsistentWithGlobalObservationStream()
 
       if (rvInfoVector[i].rvWeightInfo[wt].penalty.wt_Status 
 	  == RVInfo::WeightInfo::WeightItem::wt_Observation) {
-	if (rvInfoVector[i].rvWeightInfo[wt].penalty.lastFeatureElement >= globalObservationMatrix.numContinuous()) {
+	if (rvInfoVector[i].rvWeightInfo[wt].penalty.lastFeatureElement >= globalObservationMatrix->numContinuous()) {
 	  error("ERROR: random variable '%s', frame %d, line %d, weight attribute at position %d has penalty observation feature element %d:%d that is out of continuous range ([%d:%d] inclusive) of observation matrix",
 		rvInfoVector[i].name.c_str(),
 		rvInfoVector[i].frame,
@@ -3807,12 +3876,12 @@ FileParser::checkConsistentWithGlobalObservationStream()
 		rvInfoVector[i].rvWeightInfo[wt].penalty.firstFeatureElement,
 		rvInfoVector[i].rvWeightInfo[wt].penalty.lastFeatureElement,
 		0,
-		globalObservationMatrix.numContinuous()-1);
+		globalObservationMatrix->numContinuous()-1);
 	}
       }
       if (rvInfoVector[i].rvWeightInfo[wt].scale.wt_Status 
 	  == RVInfo::WeightInfo::WeightItem::wt_Observation) {
-	if (rvInfoVector[i].rvWeightInfo[wt].scale.lastFeatureElement >= globalObservationMatrix.numContinuous()) {
+	if (rvInfoVector[i].rvWeightInfo[wt].scale.lastFeatureElement >= globalObservationMatrix->numContinuous()) {
 	  error("ERROR: random variable '%s', frame %d, line %d, weight attribute at position %d has scale observation feature element %d:%d that is out of continuous range ([%d:%d] inclusive) of observation matrix",
 		rvInfoVector[i].name.c_str(),
 		rvInfoVector[i].frame,
@@ -3821,12 +3890,12 @@ FileParser::checkConsistentWithGlobalObservationStream()
 		rvInfoVector[i].rvWeightInfo[wt].scale.firstFeatureElement,
 		rvInfoVector[i].rvWeightInfo[wt].scale.lastFeatureElement,
 		0,
-		globalObservationMatrix.numContinuous()-1);
+		globalObservationMatrix->numContinuous()-1);
 	}
       }
       if (rvInfoVector[i].rvWeightInfo[wt].shift.wt_Status 
 	  == RVInfo::WeightInfo::WeightItem::wt_Observation) {
-	if (rvInfoVector[i].rvWeightInfo[wt].shift.lastFeatureElement >= globalObservationMatrix.numContinuous()) {
+	if (rvInfoVector[i].rvWeightInfo[wt].shift.lastFeatureElement >= globalObservationMatrix->numContinuous()) {
 	  error("ERROR: random variable '%s', frame %d, line %d, weight attribute at position %d has shift observation feature element %d:%d that is out of continuous range ([%d:%d] inclusive) of observation matrix",
 		rvInfoVector[i].name.c_str(),
 		rvInfoVector[i].frame,
@@ -3835,7 +3904,7 @@ FileParser::checkConsistentWithGlobalObservationStream()
 		rvInfoVector[i].rvWeightInfo[wt].shift.firstFeatureElement,
 		rvInfoVector[i].rvWeightInfo[wt].shift.lastFeatureElement,
 		0,
-		globalObservationMatrix.numContinuous()-1);
+		globalObservationMatrix->numContinuous()-1);
 	}
       }
 
@@ -4445,59 +4514,117 @@ FileParser::readAndVerifyGMId(iDataStreamFile& is,const bool checkCardinality)
   int ival;
   unsigned uval;
   string nm;
-  
+  bool warned = false; 
+ 
   for (unsigned i=0;i<rvInfoVector.size();i++) {
 
     if (!is.read(uval)) return false;
-    if (uval != i) return false;
+    if (uval != i) {
+      warning("WARNING: Triangulation file '%s' has out-of-order GM ID entries", is.fileName());
+      return false;
+    }
 
     if (!is.read(nm)) return false;
-    if (nm != rvInfoVector[i].name) return false;
+    if (nm != rvInfoVector[i].name) {
+      warning("WARNING: Triangulation file '%s' has variable %s at position %u, expected %s",
+	      is.fileName(), nm.c_str(), i, rvInfoVector[i].name.c_str());
+      return false;
+    }
 
     if (!is.read(uval)) return false;
-    if (uval != rvInfoVector[i].frame) return false;
+    if (uval != rvInfoVector[i].frame) {
+      warning("WARNING: Triangulation file '%s' has variable %s(%u), expected %s(%u)",
+	      is.fileName(), rvInfoVector[i].name.c_str(), uval, rvInfoVector[i].name.c_str(), rvInfoVector[i].frame);
+      return false;
+    }
 
     if (!is.read(uval)) return false;
     if (checkCardinality) {
-      if (uval != rvInfoVector[i].rvCard) return false;
+      if (rvInfoVector[i].rvType == RVInfo::t_discrete) {
+        if (uval != rvInfoVector[i].rvCard) {
+	  warning("WARNING: Triangulation file '%s' has cardinality %u for variable %s, expected %u\n",
+		  is.fileName(), uval, rvInfoVector[i].name.c_str(), rvInfoVector[i].rvCard);
+	  return false;
+	}
+      } else if (rvInfoVector[i].rvType == RVInfo::t_continuous && uval != 0 && !warned) {
+#ifdef CONTINUOUS_CARDINALITY_WARNING
+        warning("WARNING: Triangulation file '%s' was created by a buggy version of GMTK.\n"
+                "It will work fine as-is, but you can repair the file and eliminate this\n"
+		"warning by running the fixTri.sh script distributed with GMTK:\n"
+                "  %s/fixTri.sh %s\n", is.fileName(), BINDIR, is.fileName());
+#endif
+        warned = true;
+      }
     }
 
     if (!is.read(nm)) return false;
     if (rvInfoVector[i].rvType == RVInfo::t_discrete) {
-      if (nm != "D") return false;
+      if (nm != "D") {
+	warning("WARNING: Triangulation file '%s' has %s as continuous, expected discrete", 
+		is.fileName(), rvInfoVector[i].name.c_str());
+	return false;
+      }
     } else {
-      if (nm != "C") return false;
+      if (nm != "C") {
+	warning("WARNING: Triangulation file '%s' has %s as discrete, expected continuous", 
+		is.fileName(), rvInfoVector[i].name.c_str());
+	return false;
+      }
     }
 
     if (!is.read(uval)) return false;    
-    if (uval != rvInfoVector[i].switchingParents.size()) return false;
+    if (uval != rvInfoVector[i].switchingParents.size()) {
+      warning("WARNING: Triangulation file '%s' has %u switching parents for variable %s, expected %u",
+	      is.fileName(), uval, rvInfoVector[i].name.c_str(), rvInfoVector[i].switchingParents.size());
+      return false;
+    }
 
     for (unsigned j=0;j<rvInfoVector[i].switchingParents.size();j++) {
       if (!is.read(nm)) return false;
-      if (nm != rvInfoVector[i].switchingParents[j].first) return false;
-
+      if (nm != rvInfoVector[i].switchingParents[j].first) {
+	warning("WARNING: Triangulation file '%s' has %s as the %uth switching parent of %s, expected %s",
+		is.fileName(), nm.c_str(), j, rvInfoVector[i].name.c_str(), rvInfoVector[i].switchingParents[j].first.c_str());
+	return false;
+      }
 
       if (!is.read(ival)) return false;
-      if (ival != rvInfoVector[i].switchingParents[j].second) return false;
-
+      if (ival != rvInfoVector[i].switchingParents[j].second) {
+	warning("WARNING: Triangulation file '%s' has %s(%d) as the %uth switching parent of %s, expected %s(%d)",
+		is.fileName(), nm.c_str(), ival, j, rvInfoVector[i].name.c_str(), rvInfoVector[i].switchingParents[j].first.c_str(),
+		rvInfoVector[i].switchingParents[j].second);
+	return false;
+      }
     }
 
     if (!is.read(uval)) return false;
-    if (uval != rvInfoVector[i].conditionalParents.size()) return false;
-
+    if (uval != rvInfoVector[i].conditionalParents.size()) {
+      warning("WARNING: Triangulation file '%s' has %u conditional parent sets for variable %s, expected %u",
+	      is.fileName(), uval, rvInfoVector[i].name.c_str(), rvInfoVector[i].conditionalParents.size());
+      return false;
+    }
     for (unsigned j=0;j<rvInfoVector[i].conditionalParents.size();j++) {
 
       if (!is.read(uval)) return false;      
-      if (uval != rvInfoVector[i].conditionalParents[j].size()) return false;
-
+      if (uval != rvInfoVector[i].conditionalParents[j].size()) {
+	warning("WARNING: Triangulation file '%s' has %u conditional parents of variable %s in the %uth set, expected %u", 
+		is.fileName(), uval, rvInfoVector[i].name.c_str(), j, rvInfoVector[i].conditionalParents[j].size());
+	return false;
+      }
       for (unsigned k=0;k<rvInfoVector[i].conditionalParents[j].size();k++) {
 
 	if (!is.read(nm)) return false;
-	if (nm != rvInfoVector[i].conditionalParents[j][k].first) return false;
-
+	if (nm != rvInfoVector[i].conditionalParents[j][k].first) {
+	  warning("WARNING: Triangulation file '%s' has %s as conditional parent of %s, expected %s", 
+		  is.fileName(), nm.c_str(), rvInfoVector[i].name.c_str(), rvInfoVector[i].conditionalParents[j][k].first.c_str());
+	  return false;
+	}
 	if (!is.read(ival)) return false;	
-	if (ival != rvInfoVector[i].conditionalParents[j][k].second) return false;
-
+	if (ival != rvInfoVector[i].conditionalParents[j][k].second) {
+	  warning("WARNING: Triangulation file '%s' has %s(%d) as conditional parent of %s, expected %s(%d)", 
+		  is.fileName(), nm.c_str(), ival,  rvInfoVector[i].name.c_str(), rvInfoVector[i].conditionalParents[j][k].first.c_str(), 
+		  rvInfoVector[i].conditionalParents[j][k].second);
+	  return false;
+	}
       }
     }
   }
@@ -4516,18 +4643,33 @@ FileParser::readAndVerifyGMId(iDataStreamFile& is,const bool checkCardinality)
     // if (nm != factorList[i].name) return false;
 
     if (!is.read(uval)) return false;
-    if (uval != factorList[i].frame) return false;
+    if (uval != factorList[i].frame) {
+      warning("WARNING: Triangulation file '%s' has factor %s defined at frame %u, expected %u",
+	      is.fileName(), factorList[i].name.c_str(), uval, factorList[i].frame);
+      return false;
+    }
 
     if (!is.read(uval)) return false;
-    if (uval != factorList[i].variables.size()) return false;
+    if (uval != factorList[i].variables.size()) {
+      warning("WARNING: Triangulation file '%s' has size %u for factor %s, expected %u",
+	      is.fileName(), uval, factorList[i].name.c_str(), factorList[i].variables.size());
+      return false;
+    }
 
     for (unsigned j=0;j<factorList[i].variables.size();j++) {
       if (!is.read(nm)) return false;
-      if (nm != factorList[i].variables[j].first) return false;
-
+      if (nm != factorList[i].variables[j].first) {
+	warning("WARNING: Triangulation file '%s' has variable %s in factor %s, expected %s",
+		is.fileName(), nm.c_str(), factorList[i].name.c_str(), factorList[i].variables[j].first.c_str());
+	return false;
+      }
 
       if (!is.read(ival)) return false;
-      if (ival != factorList[i].variables[j].second) return false;
+      if (ival != factorList[i].variables[j].second) {
+	warning("WARNING: Triangulation file '%s' has variable %s(%d) in factor %s, expected %s(%d)",
+		is.fileName(), nm.c_str(), ival, factorList[i].name.c_str(), factorList[i].variables[j].first.c_str(), factorList[i].variables[j].second);
+	return false;
+      }
 
     }
 
@@ -4540,13 +4682,25 @@ FileParser::readAndVerifyGMId(iDataStreamFile& is,const bool checkCardinality)
 
 
   if (!is.read(uval)) return false;
-  if (uval != _firstChunkframe) return false;
+  if (uval != _firstChunkframe) {
+    warning("WARNING: Triangulation file '%s' has first chunk frame %u, expected %u",
+	    is.fileName(), uval, _firstChunkframe);
+    return false;
+  }
 
   if (!is.read(uval)) return false;
-  if (uval != _lastChunkframe) return false;
+  if (uval != _lastChunkframe) {
+    warning("WARNING: Triangulation file '%s' has last chunk frame %u, expected %u",
+	    is.fileName(), uval, _lastChunkframe);
+    return false;
+  }
 
   if (!is.read(nm)) return false;
-  if (nm != TRIFILE_END_OF_ID_STRING) return false;
+  if (nm != TRIFILE_END_OF_ID_STRING) {
+    warning("WARNING: Triangulation file '%s' GM Id ends with '%s', expected '%s'",
+	    is.fileName(), nm.c_str(), TRIFILE_END_OF_ID_STRING);
+    return false;
+  }
 
   // all checked out ok
   return true;

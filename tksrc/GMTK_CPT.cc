@@ -4,15 +4,10 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
@@ -77,14 +72,8 @@ double CPT::normalizationThreshold = 1e-2;
  */
 void CPT::setNumParents(const unsigned _nParents)
 {
-
-  if (_nParents < 0) 
-    error("CPT: setNumParents, trying to use negative (%d) num parents.",
-	  _nParents);
-
   _numParents = _nParents;
   cardinalities.resize(_numParents);
-
 }
 
 
@@ -105,10 +94,6 @@ void CPT::setNumParents(const unsigned _nParents)
  */
 void CPT::setNumCardinality(const unsigned var, const int card)
 {
-
-  if (var < 0)
-    error("CPT: setNumCardinality, trying to use negative (%d) var.",
-	  var);
   if (var > _numParents) 
     error("CPT: setNumCardinality, trying to use illegal (%d) var.",
 	  var);

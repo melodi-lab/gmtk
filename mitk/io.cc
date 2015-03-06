@@ -1,5 +1,30 @@
+/*
+ *
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ *
+ */
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <iostream>
 #include "mixNormalCollection.h"
+
+
+// Some stuff to deal with large file support
+//  First make sure things still work if we do not have fseeko/ftello
+#if HAVE_FSEEKO
+#  define gmtk_fseek(a,b,c) fseeko(a,b,c)
+#  define gmtk_ftell(a) ftello(a)
+   typedef off_t gmtk_off_t;
+#else
+#  define gmtk_fseek(a,b,c) fseek(a,b,c)
+#  define gmtk_ftell(a) ftell(a)
+   typedef long gmtk_off_t;
+#endif
 
 
 ///////////////////////  KMEANS READING PARAMETERS IN ///////////////
@@ -284,11 +309,11 @@ void MixNormal::printCurParamsBin(FILE *fp) const {
 
   // seek over the remaining unused components
   if ( _numMixtures < _orgNumMixtures ) {
-    unsigned offset = sizeof(PARAM_DATA_TYPE) * (1 + 2 * _numVariables);
+    gmtk_off_t offset = sizeof(PARAM_DATA_TYPE) * (1 + 2 * _numVariables);
     if ( _fullCoVar )
       offset += sizeof(PARAM_DATA_TYPE) * _numVariables * _numVariables;
 
-    if ( fseek(fp, offset * (_orgNumMixtures - _numMixtures), SEEK_CUR) == -1 )
+    if ( gmtk_fseek(fp, offset * (_orgNumMixtures - _numMixtures), SEEK_CUR) == -1 )
       error("problem seeking over mixture components");
   }
 } // end writeCurParamsBin
@@ -425,11 +450,11 @@ void MixNormal::readCurParamsBin(FILE *fp) {
 
   // seek over the remaining unused components
   if ( _numMixtures < _orgNumMixtures ) {
-    unsigned offset = sizeof(PARAM_DATA_TYPE) * (1 + 2 * _numVariables);
+    gmtk_off_t offset = sizeof(PARAM_DATA_TYPE) * (1 + 2 * _numVariables);
     if ( _fullCoVar )
       offset += sizeof(PARAM_DATA_TYPE) * _numVariables * _numVariables;
 
-    if ( fseek(fp, offset * (_orgNumMixtures - _numMixtures), SEEK_CUR) == -1 )
+    if ( gmtk_fseek(fp, offset * (_orgNumMixtures - _numMixtures), SEEK_CUR) == -1 )
       error("problem seeking over mixture components");
   }
 
@@ -512,11 +537,11 @@ void MixNormal::readCurParams(FILE *fp) {
  * @throws IOException wrong size of the file
  */
 void MixNormal::seekOverCurParamsBin(FILE *fp) const {
-  unsigned offset = sizeof(PARAM_DATA_TYPE) * (1 + 2 * _numVariables);
+  gmtk_off_t offset = sizeof(PARAM_DATA_TYPE) * (1 + 2 * _numVariables);
   if ( _fullCoVar )
     offset += sizeof(PARAM_DATA_TYPE) * _numVariables * _numVariables;
 
-  if ( fseek(fp, sizeof(unsigned) * 3 + offset * _orgNumMixtures,
+  if ( gmtk_fseek(fp, sizeof(unsigned) * 3 + offset * _orgNumMixtures,
 	     SEEK_CUR) == -1 )
     error("problem seeking over mixture components in file");
 } // end MixNormal::seekOverCurParamsBin

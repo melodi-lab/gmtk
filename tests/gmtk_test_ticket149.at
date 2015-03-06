@@ -7,12 +7,12 @@
 # frame index, otherwise it only outputs 0 and 50 as frame numbers.
 # Note that the extra LF after [51 is required.
 
-AT_SETUP([ticket 149])
+AT_SETUP([add -xCliquePrintRange (ticket 149)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/mouse4])
 AT_CHECK([(cd $TEST_AND_DEV/mouse4 && \
           gmtkViterbi -strF mouse4.str -inputM mouse4.mtr -of1 inMicePa.lst \
-                      -fmt1 ascii -nf1 6 -pVitValsFile /dev/null -cCliquePrint all | \
-         grep response | sed 's/(/ /g; s/)/ /g' | awk '{print $4}' | \
-         sort -u | wc -l | tr -d ' ')],[],[51
+                      -fmt1 ascii -nf1 6 -mVitValsFile /dev/null -cCliquePrint all | \
+         grep -v "variable order" | grep response | sed 's/(/ /g; s/)/ /g' | \
+         awk '{print $4}' | sort -u | wc -l | tr -d ' ')],[],[51
 ])
 AT_CLEANUP

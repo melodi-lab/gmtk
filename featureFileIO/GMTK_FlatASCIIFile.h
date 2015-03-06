@@ -1,0 +1,153 @@
+
+/*
+ * GMTK_FlatASCIIFile.h
+ * 
+ * Written by Richard Rogers <rprogers@ee.washington.edu>
+ *
+ * Copyright (C) 2012 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ * 
+ *
+ */
+
+#ifndef GMTK_FLATASCIIFILE_H
+#define GMTK_FLATASCIIFILE_H
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#include <stdio.h>
+#include <errno.h>
+#include <string.h>
+
+#include <string>
+
+using namespace std;
+#include <vector>
+
+#include "machine-dependent.h"
+#include "error.h"
+#include "general.h"
+
+#include "GMTK_ObservationFile.h"
+
+
+// Reads in flat ASCII files, which consist of a single file
+// with lines in the format:
+//
+// S F f_0 ... f_n i_0 ... i_m
+//
+// where S is the segment number, F is the frame number,
+// f_i are the continuous features and i_j are the 
+// discrete features. The entire file is read into
+// memory.
+
+class FlatASCIIFile: public ObservationFile {
+
+  vector<unsigned>  nFrames;       // nFrames[i] is the # of frames in the ith segment
+  unsigned          nSegments;
+  int               currSegment;
+  unsigned          currFrame;     // just used for writeFrame
+  unsigned          currFeature;
+
+  Data32     *buffer;              // data for current segment
+  Data32    **segment;             // the frames for the ith segment start at segment[i]
+
+  FILE       *writeFile;           // for writable files
+  bool        close;
+
+ public:
+
+  FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints, unsigned num, 
+                bool cppIfAscii, char const *cppCommandOptions=NULL,
+		char const *contFeatureRangeStr_=NULL, 
+		char const *discFeatureRangeStr_=NULL, 
+		char const *preFrameRangeStr_=NULL, 
+		char const *segRangeStr_=NULL,
+		unsigned leftPad=0, unsigned rightPad=0);
+
+
+  // write constructor
+  FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints);
+
+  ~FlatASCIIFile() {
+    if (buffer) delete [] buffer;
+    if (segment) delete [] segment;
+    if (writeFile && close) {
+      if (fclose(writeFile)) {
+	error("ERROR: '%s' %s\n", fileName, strerror(errno));
+      }
+      writeFile = NULL;
+    }
+  }
+ 
+  // The number of available segments.
+  unsigned numSegments() {return nSegments;}
+
+  // Write segment to the file
+  void writeSegment(Data32 const *segment, unsigned nFrames);
+  
+  // Write frame to the file (call endOfSegment after last frame of a segment)
+  void writeFrame(Data32 const *frame);
+
+  // Set frame # to write within current segemnt (partially supported)
+  void setFrame(unsigned frame) {
+    if (frame == currFrame) return;
+    assert(currFeature == 0);
+    if (frame > currFrame) {
+      for (unsigned i=0; i < frame - currFrame; i+=1) {
+	for (unsigned j=0; j < _numFeatures; j+=1) {
+	  writeFeature(0);
+	}
+      }
+    } else { // frame < currFrame - can't go backwards
+      error("ERROR: ASCII files do not support random access\n");
+    }
+  }
+
+  // Write frame to the file (call endOfSegment after last frame of a segment)
+  void writeFeature(Data32 x);
+
+  // Call after last writeFrame of a segment
+  void endOfSegment();
+
+  // Set the frame range for the segment
+  bool openSegment(unsigned seg) {
+    assert(seg < nSegments);
+    currSegment = seg;
+    if (preFrameRange)
+      delete preFrameRange;
+    if (preFrameRangeStr) {
+      preFrameRange = new Range(preFrameRangeStr,0,nFrames[seg]);
+      assert(preFrameRange);
+    }
+    return true;
+  }
+
+  // The number of frames in the currently open segment.
+  unsigned numFrames()  {
+    assert(currSegment >= 0);
+    return nFrames[currSegment];
+  }
+
+
+  // get the starting frame of the current segment and then
+  // add the offset for the first requested frame
+  Data32 const *getFrames(unsigned first, unsigned count) {
+    assert(currSegment > -1); 
+    assert(first < nFrames[currSegment]);
+    assert(first + count <= nFrames[currSegment]);
+    return segment[currSegment] + first * _numFeatures;
+  }
+
+  // Number of continuous/discrete/total features in the file
+  // after applying -frX and -irX
+  unsigned numLogicalContinuous() { return _numLogicalContinuousFeatures; }
+  unsigned numLogicalDiscrete()   { return _numLogicalDiscreteFeatures; }
+  unsigned numLogicalFeatures()   { return _numLogicalFeatures; }
+
+};
+
+#endif
