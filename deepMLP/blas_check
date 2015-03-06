@@ -1,4 +1,10 @@
 
+# Written by Richard Rogers rprogers@uw.edu
+#
+# Copyright (C) 2003 Jeff Bilmes
+# Licensed under the Open Software License version 3.0
+# See COPYING or http://opensource.org/licenses/OSL-3.0
+
 # We will set BLAS_CFLAGS and BLAS_LIBS appropriately
 # to link with either MKL or an external CBLAS. To use only the internal
 # replacement kernels, both should be empty.
