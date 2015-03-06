@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Richard Rogers <rprogers@uw.edu>
 Build-Depends: debhelper (>=9)
 Standards-Version: 3.9.2
-Homepage: https://j.ee.washington.edu/trac/gmtk"
+Homepage: https://j.ee.washington.edu/trac/gmtk
 
 Package: gmtk
 Architecture: any
