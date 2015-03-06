@@ -4,16 +4,22 @@
  *  Created   : 2003-12-05 15:23:13 karim
  *  Author    : Karim Filali (karim@cs.washington.edu)
  *  Time-stamp: <>
+ *
+ * Copyright (C) 2003 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
 */
 
 #include <limits.h>
 #include <float.h>
+#include <string.h>
 #include <math.h>
 #include "GMTK_ObsNorm.h"
 #include "general.h"
 
 void obsNorm(FILE*  out_fp,
-	     ObservationMatrix* obs_mat,
+	     HDF5File *hdf5,
+	     FileSource* obs_mat,
 	     Range& srrng,
 	     const double result_mean,
 	     const double result_std,
@@ -80,13 +86,13 @@ void obsNorm(FILE*  out_fp,
     // instead of going through entire range, only calculate ranges in 
     // same seg_group
     for (;!srit.at_end() && seg_markers[(*srit)]==cur_seg_group;srit++) {
-      obs_mat->loadSegment(*srit);
+      obs_mat->openSegment(*srit);
       const size_t n_frames = obs_mat->numFrames();
    
       if (debug_level > 0) 
-	printf("Processing sentence %d\n",(*srit));
+	printf("Processing segment %d\n",(*srit));
       else if (!quiet && (*srit) % 100 == 0)
-	printf("Processing sentence %d\n",(*srit));
+	printf("Processing segment %d\n",(*srit));
       
       // Increase size of buffers if needed.
       if (n_frames > buf_size) {
@@ -151,13 +157,13 @@ void obsNorm(FILE*  out_fp,
 	  printf("Normalizing from utt %d to utt %d.\n",(*srit2),(*srit)-1);
     }
     for (;(*srit2)<(*srit) || (srit.at_end() && !srit2.at_end());srit2++) {
-      obs_mat->loadSegment(*srit2);
+      obs_mat->openSegment(*srit2);
       const size_t n_frames = obs_mat->numFrames();
 
       if (debug_level > 0) 
-	printf("Processing sentence %d\n",(*srit2));
+	printf("Processing segment %d\n",(*srit2));
       else if (!quiet && (*srit2) % 100 == 0)
-	printf("Processing sentence %d\n",(*srit2));
+	printf("Processing segment %d\n",(*srit2));
 	
       // Increase size of buffers if needed.
       if (n_frames > buf_size) {
@@ -183,7 +189,7 @@ void obsNorm(FILE*  out_fp,
       
       for(unsigned frame_no = 0;  frame_no < n_frames; ++frame_no) {
 	float* start_of_frame = obs_mat->floatVecAtFrame(frame_no);
-	UInt32* lab_buf_p =  obs_mat->unsignedAtFrame(frame_no);
+	UInt32* lab_buf_p =  obs_mat->unsignedVecAtFrame(frame_no);
 	ftr_means_p = ftr_means;
 	ftr_stds_p = ftr_stds;
 	for(unsigned feat_no = 0;  feat_no < n_ftrs; ++feat_no) {
@@ -198,7 +204,7 @@ void obsNorm(FILE*  out_fp,
     
 
       // Write output.
-      printSegment(*srit2, out_fp, oftr_buf,n_ftrs,olab_buf,n_labs,n_frames, dontPrintFrameID,quiet, ofmt, debug_level, oswap, out_stream);
+      printSegment(*srit2, out_fp, hdf5, oftr_buf,n_ftrs,olab_buf,n_labs,n_frames, dontPrintFrameID,quiet, ofmt, debug_level, oswap, out_stream);
       
       //out_stream.write_ftrslabs(prrng.length(), oftr_buf, olab_buf);
       //out_stream.doneseg((SegID) seg_id);

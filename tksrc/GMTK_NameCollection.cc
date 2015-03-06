@@ -4,15 +4,10 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
@@ -63,10 +58,7 @@ VCID(HGID)
  *
  *-----------------------------------------------------------------------
  */
-NameCollection::NameCollection()
-{
- _is_sorted=false;
-}
+NameCollection::NameCollection() : _is_sorted(false), type(CT_Unknown) {}
 
 
 ////////////////////////////////////////////////////////////////////
@@ -158,10 +150,7 @@ NameCollection::write(oDataStreamFile& os)
 void
 NameCollection::fillMxTable()
 {
-#if 0
-  infoMsg(IM::Huge,"NameCollection::fillMxTable\n");
-#endif
-
+  type = CT_MX;
   if (mxTable.size() >= table.size())
     return;
 
@@ -199,6 +188,7 @@ NameCollection::fillMxTable()
 void
 NameCollection::fillSpmfTable()
 {
+  type = CT_SPMF;
   if (spmfTable.size() >= table.size())
     return;
 
@@ -342,10 +332,11 @@ NameCollection::unsort()
   mxTable.clear();
   spmfTable.clear();
 
-  fillMxTable();
-  //fillSpmfTable(); call one or the other, but not both ... but how
-  //on earth do we know which?
-
+  switch(type) {
+  case CT_MX: fillMxTable(); break;
+  case CT_SPMF: fillSpmfTable(); break;
+  case CT_Unknown: break; // These aren't the names you're looking for. Move along...
+  }
 }
 
 
@@ -445,8 +436,10 @@ NameCollection::commit_all_searches_and_replacements(){
     sort();  
 
 
-
+#if 0
+  // unused
   vector<pair<string,string> >::iterator qi=queued_changes.begin(), qie=queued_changes.end();
+#endif
   vector<std::string>::iterator nci=sorted_table.begin(), ncie=sorted_table.end();
   unsigned nchanged=0;
 

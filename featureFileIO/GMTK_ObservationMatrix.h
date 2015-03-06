@@ -57,14 +57,10 @@
  *
  * $Header$
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
  *
  */
 
@@ -366,8 +362,12 @@ class ObservationMatrix {
       return RAWBIN;
     else if (strcmp(fmt,"ascii") == 0)
       return RAWASC;
+    else if (strcmp(fmt,"flatascii") == 0)
+      return FLATASC;
     else if (strcmp(fmt,"pfile") == 0)
       return  PFILE;
+    else if (strcmp(fmt,"hdf5") == 0)
+      return HDF5;
     else {
       error("ERROR: Unknown observation file format type: '%s'\n",fmt);
       return 0;
@@ -479,7 +479,7 @@ class ObservationMatrix {
   }
 
   bool elementIsContinuous(unsigned el) {
-    return (el >= 0 && el < _numContinuous);
+    return (el < _numContinuous);
   }
   /////////////////////////////////////////////////////////////
 
@@ -640,8 +640,11 @@ unsigned ObservationMatrix::applyPreTransformFrameRange(sArray<T>* tmp_sen_buffe
 ////////////////////////////////////////////////
 // The global matrix object, must be
 // actually defined near where main() is defined.
-
+#if 0
 extern ObservationMatrix globalObservationMatrix;
+#else
+//extern ObservationMtarix oldGOM;
+#endif
 
 #endif
 

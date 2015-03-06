@@ -1,0 +1,20 @@
+
+# test and dev model Aug31_3
+
+
+AT_SETUP([Aug31_3: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/Aug31_3/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/Aug31_3 && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([Aug31_3: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/Aug31_3/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/Aug31_3 && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([Aug31_3: jtcommand])
+# too slow
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/Aug31_3/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/Aug31_3 && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

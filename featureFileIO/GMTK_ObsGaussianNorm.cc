@@ -1,5 +1,8 @@
 /*
-    $Header$
+ *
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
   
     This program normalizes the features in a pfile to be
     Gaussian distributed with zero mean and unit variance. 
@@ -272,7 +275,8 @@ histc_lookup(float *domain,
 
 
 void gaussianNorm(FILE* out_fp,
-                  ObservationMatrix* obs_mat,
+		  HDF5File *hdf5,
+                  FileSource* obs_mat,
                   FILE *in_st_fp,
                   FILE *out_st_fp,
                   Range& srrng,
@@ -422,7 +426,7 @@ void gaussianNorm(FILE* out_fp,
 	// .. and also to realloc the ftr buf to be the largest
 	size_t max_n_frames = buf_size;
 	for (Range::iterator srit=srrng.begin();!srit.at_end();srit++) {
-	  obs_mat->loadSegment((const unsigned)(*srit));
+	  obs_mat->openSegment((const unsigned)(*srit));
 	  const size_t n_frames = obs_mat->numFrames();
 
 	  Range prrng(pr_str,0,n_frames);
@@ -457,11 +461,11 @@ void gaussianNorm(FILE* out_fp,
 	// Go through input pfile to get the initial statistics,
 	// i.e., max, min, mean, std, etc.
 	for (Range::iterator srit=srrng.begin();!srit.at_end();srit++) {
-	  obs_mat->loadSegment((const unsigned)(*srit));
+	  obs_mat->openSegment((const unsigned)(*srit));
 	  const size_t n_frames = obs_mat->numFrames();
 
 	    if ((*srit) % 100 == 0)
-	      printf("Processing sentence %d\n",(*srit));
+	      printf("Processing segment %d\n",(*srit));
 
 	    // Increase size of buffers if needed.
 	    if (n_frames > buf_size)
@@ -555,11 +559,11 @@ void gaussianNorm(FILE* out_fp,
 	  ftr_ranges[i] = ftr_maxs[i]-ftr_mins[i];
 	printf("Computing histograms...\n");
 	for (Range::iterator srit1=srrng.begin();!srit1.at_end();srit1++) {
-	   obs_mat->loadSegment((const unsigned)(*srit1));
+	   obs_mat->openSegment((const unsigned)(*srit1));
 	   const size_t n_frames = obs_mat->numFrames();
 
 	  if ((*srit1) % 100 == 0)
-	    printf("Processing sentence %d\n",(*srit1));
+	    printf("Processing segment %d\n",(*srit1));
 
 	  for(unsigned frame_no = 0;  frame_no < n_frames; ++frame_no) {
 	    float* start_of_frame = obs_mat->floatVecAtFrame(frame_no);
@@ -697,15 +701,15 @@ void gaussianNorm(FILE* out_fp,
 
     printf("Writting warped output pfile...\n");
     for (Range::iterator srit2=srrng.begin();!srit2.at_end();srit2++) {
-      obs_mat->loadSegment((const unsigned)(*srit2));
+      obs_mat->openSegment((const unsigned)(*srit2));
       const size_t n_frames = obs_mat->numFrames();
 
       if ((*srit2) % 100 == 0)
-	  printf("Processing sentence %d\n",(*srit2));
+	  printf("Processing segment %d\n",(*srit2));
 
       for(unsigned frame_no = 0;  frame_no < n_frames; ++frame_no) {
 	const float* start_of_frame = obs_mat->floatVecAtFrame(frame_no);
-	const UInt32* start_of_unsigned_frame = obs_mat->unsignedAtFrame(frame_no);
+	const UInt32* start_of_unsigned_frame = obs_mat->unsignedVecAtFrame(frame_no);
 	for(unsigned feat_no = 0;  feat_no < n_ftrs; ++feat_no) {
 	  ftr_buf[frame_no * n_ftrs + feat_no] = *(start_of_frame  + feat_no);
 	}
@@ -768,7 +772,7 @@ void gaussianNorm(FILE* out_fp,
 
 
       // Write output.
-       printSegment(*srit2, out_fp, oftr_buf,n_ftrs,lab_buf,n_labs,n_frames, dontPrintFrameID,quiet, ofmt, debug_level, oswap, out_stream);
+      printSegment(*srit2, out_fp, hdf5, oftr_buf,n_ftrs,lab_buf,n_labs,n_frames, dontPrintFrameID,quiet, ofmt, debug_level, oswap, out_stream);
     }
     printf("...done\n");
 

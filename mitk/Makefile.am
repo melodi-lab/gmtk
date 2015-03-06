@@ -1,41 +1,56 @@
 
+#
+# Written by Richard Rogers <rprogers@uw.edu>
+#
+# Copyright (C) 2010 Jeff Bilmes
+# Licensed under the Open Software License version 3.0
+# See COPYING or http://opensource.org/licenses/OSL-3.0
+#
+
+
+DEBUGFLAGS = 
+
+
+# If configure determines we're using GCC C/C++ compilers, set flags appropriately
+if USE_GCC_FLAGS
+# Only used for GCC compilers
+  OPTFLAGS = -O3
+  GCC_FLAGS = -Wall
+else
+# unknown compiler
+if USE_CLANG_FLAGS
+  OPTFLAGS = -O3
+  GCC_FLAGS = -Wno-c99-extensions
+else
+  OPTFLAGS =
+  GCC_FLAGS =
+endif
+endif
+
+DBFLAGS =
+if NO_ASSERTIONS
+DBFLAGS += -DNDEBUG
+endif
+if NO_MODEL_CHECKS
+DBFLAGS += -DNMODELCHECK
+endif
+
+
 AM_CPPFLAGS = \
 -I$(srcdir)/../miscSupport \
 -I$(srcdir)/../featureFileIO \
--I$(builddir)/../IEEEFloatingpoint
+-I$(builddir)/../IEEEFloatingpoint \
+$(DBFLAGS)
 
 LDADD = \
 $(builddir)/../featureFileIO/libgmtkio.a \
 $(builddir)/../miscSupport/libmiscSupport.a \
 $(builddir)/../IEEEFloatingpoint/libIEEEsupport.a
 
-EXCCFLAGS = 
-EXCXXFLAGS = 
-EXLDFLAGS  = 
-DEBUGFLAGS = -g
-if NO_ASSERTIONS
-DEBUGFLAGS += -DNDEBUG
-endif
-if NO_MODEL_CHECKS
-DEBUGFLAGS += -DNMODELCHECK
-endif
-OPTFLAGS = -O3
+AM_CFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(GCC_FLAGS)
+AM_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(GCC_FLAGS)
 
-if CYGWIN_FLAGS
-ANSI = 
-PEDANTIC =
-else
-ANSI = -ansi
-PEDANTIC = -pedantic
-endif
-
-WALL = -Wall
-#WALL = -Wall -Wno-deprecated
-
-AM_CFLAGS = \
-$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
-AM_CXXFLAGS = \
-$(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(WALL) $(ANSI) $(PEDANTIC)
+SUBDIRS = discrete-mi
 
 EXTRA_DIST = global-parameters.h mixNormal.h
 noinst_PROGRAMS = multivariate-mi bivariate-mi
@@ -69,3 +84,4 @@ MixBiNormal_chelp.c
 
 test_matrix_ops_SOURCES = test-matrix-ops.cc \
 matrix-ops.h matrix-ops.cc
+

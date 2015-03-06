@@ -1,4 +1,10 @@
 
+/*
+ * Copyright (C) 2003 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ */
+
 //static char* rcsid = "$Id$";
 // revised pfile code (withouth intvec,fltvec or quicknet) - KK
 
@@ -34,6 +40,7 @@ static const char* pfile_version0_string =
 // which can then be used by any software that wishes to use pfiles.
 
 
+#pragma GCC diagnostic ignored "-Wformat"
 // This routine is used to get one pfile_ulonglong_t integer argument from a pfile
 // header stored in a buffer. It returns 0 on success, else -1.
 static int
@@ -380,10 +387,19 @@ InFtrLabStream_PFile::build_index_from_sentind_sect()
 
     if (sentind[total_sents] != total_frames)
     {
+
+      // try with opposite bswap
+      if (bswap) bswap = 0; else bswap = 1;
+      swapb_vi32_vi32(total_sents+1, (intv_int32_t*) sentind,
+		      (intv_int32_t*) sentind);
+      if (sentind[total_sents] != total_frames) {
 	error("Last sentence index (%lu) does not correspond"
-		 " with number of frames (%i) in PFile '%s' - probably a"
-		 " corrupted PFile.", (unsigned long) sentind[total_sents],
-		 total_frames, filename);
+	      " with number of frames (%i) in PFile '%s' - probably a"
+	      " corrupted PFile.", (unsigned long) sentind[total_sents],
+	      total_frames, filename);
+      } else {
+	if (*filename) warning("WARNING: PFile '%s' appears to need -iswpX %c", filename, bswap ? 'T' : 'F');
+      }
     }
 }
 
@@ -589,8 +605,8 @@ InFtrLabStream_PFile::read_ftrslabs(size_t frames,
 	current_row++;
       } else {
 	error("Inconsistent frame number in PFile '%s',"
-	      " sentence=%li frame=%li - probably corrupted PFile.",
-	      filename, current_sent, current_frame);
+	      " sentence=%li frame=%li - read frame # %li probably corrupted PFile.",
+	      filename, current_sent, current_frame, pfile_frame);
       }
     } else {
       // Different sentence number - simply return number of frames
@@ -675,12 +691,15 @@ InFtrLabStream_PFile::set_pos(size_t segno, size_t frameno)
 
     if (indexed)
     {
+#if 0
+      // unused
 	long this_sent_row;	// The number of the row at the start of sent.
+#endif
 	long next_sent_row;	// The row at the start of next sent.
 	long row;		// The number of the row we require
 	pfile_longlong_t offset;		// The position as a file offset
 
-	this_sent_row = sentind[segno];
+//	this_sent_row = sentind[segno];
 	row = sentind[segno] + frameno;
 	next_sent_row = sentind[segno+1];
 	if (row > next_sent_row)
@@ -790,6 +809,8 @@ OutFtrLabStream_PFile::OutFtrLabStream_PFile(int a_debug,
     current_sent(0),
     current_frame(0),
     current_row(0),
+    max_frame(-1),
+    seek_count(0),
     index(NULL),
     index_len(0),
     bswap(swap)
@@ -804,6 +825,7 @@ OutFtrLabStream_PFile::OutFtrLabStream_PFile(int a_debug,
 		   "'%s' - cannot write PFiles to streams.",
 		   filename );
     }
+    current_sent_offset = (pfile_off_t) PFILE_HEADER_SIZE; // start of first segment's data
 
     // Allocate a buffer for one frame.
     buffer = new PFile_Val[num_ftr_cols + num_lab_cols + 2];
@@ -904,13 +926,166 @@ OutFtrLabStream_PFile::write_ftrslabs(size_t frames, const float* ftrs,
     }
 }
 
+
+void
+OutFtrLabStream_PFile::write_ftr(unsigned currFeature, float x)
+{
+  size_t bytes_in_buffer;
+  
+  // Note we convert all data to big endian when we write it.
+  
+  int ec;			// Return code.
+  
+  if (bswap) {
+    x = swapb_f32_f32(x);
+  }
+  if (currFeature == 0) { // start of frame
+    if (bswap) {
+      buffer[0].l = swapb_i32_i32(current_sent);
+      buffer[1].l = swapb_i32_i32(current_frame);
+    } else {
+      buffer[0].l = current_sent;
+      buffer[1].l = current_frame;
+    }
+    buffer[2].f = x;
+    bytes_in_buffer = sizeof(PFile_Val) * 3;
+  } else {                // continue frame
+    buffer[0].f = x;
+    bytes_in_buffer = sizeof(PFile_Val);
+  }
+  
+  ec = fwrite((char*) buffer, bytes_in_buffer, 1, file);
+  if (ec!=1) {
+      error("Failed to write frame to PFile '%s' - only written %i items",
+	    filename,ec); 
+  }
+  currFeature += 1;
+  if (currFeature == num_ftr_cols + num_lab_cols) { // end of frame
+    current_frame++;
+    current_row++;
+  }
+}
+
+
+void
+OutFtrLabStream_PFile::write_lab(unsigned currFeature, UInt32 x)
+{
+  size_t bytes_in_buffer;
+  
+  // Note we convert all data to big endian when we write it.
+  
+  int ec;			// Return code.
+  
+  if (bswap) {
+    x = swapb_i32_i32(x);
+  }
+  if (currFeature == 0) { // start of frame
+    if (bswap) {
+      buffer[0].l = swapb_i32_i32(current_sent);
+      buffer[1].l = swapb_i32_i32(current_frame);
+    } else {
+      buffer[0].l = current_sent;
+      buffer[1].l = current_frame;
+    }
+    buffer[2].l = x;
+    bytes_in_buffer = sizeof(PFile_Val) * 3;
+  } else {                // continue frame
+    buffer[0].l = x;
+    bytes_in_buffer = sizeof(PFile_Val);
+  }
+  
+  ec = fwrite((char*) buffer, bytes_in_buffer, 1, file);
+  if (ec!=1) {
+      error("Failed to write frame to PFile '%s' - only written %i items",
+	    filename,ec); 
+  }
+  currFeature += 1;
+  if (currFeature == num_ftr_cols + num_lab_cols) { // end of frame
+    current_frame++;
+    current_row++;
+  }
+}
+
+
+// KLUDGY random access write
+void
+OutFtrLabStream_PFile::setframe(long frame) {
+  if (frame > max_frame) {
+    max_frame = frame;
+  }
+  pfile_off_t target_offset = current_sent_offset + 
+    (num_ftr_cols + num_lab_cols + 2) * frame * sizeof(PFile_Val);
+  if (pfile_fseek(file, target_offset, SEEK_SET) < 0) {
+    error("Failed to seek to frame %ld of segment %ld in Pfile '%s'\n",
+	  frame, current_sent, filename);
+  }
+  seek_count += 1;
+}
+
+
 void
 OutFtrLabStream_PFile::doneseg(SegID)
 {
     if (current_frame==0)
 	error("wrote zero length sentence.");
     current_sent++;
+
+    // KLUDGE: the PFile writing methods keep track of the number of
+    // features/frames/segments that have been written so far. In the
+    // sequential writting case (for which this code was originally
+    // written), the number of frames/segments is equal to the current
+    // frame/segment. I'm hacking in the ability to write frames in
+    // arbitrary order. If the client code doesn't write every frame 
+    // in the segment, the number of frames written will be less than
+    // the number of frames in the segment, so I track max_frame within
+    // the segment. The frame count will be hosed if the client code
+    // writes the same frame more than once. seek_count tracks the
+    // number of calls to setframe()
+
+    if (max_frame > current_frame) {
+      current_frame = max_frame + 1; // +1 since max_frame is the last frame #
+    }
+    // current_frame is now total # of frames in segment
+    if (seek_count > 0 && seek_count < current_frame) {
+      int delta = current_frame - seek_count;
+      current_row += delta;                   // count the unwritten rows
+    }
+    if (seek_count > 0) {
+      // write the segment & frame numbers for each frame since it 
+      // might have no or wrong frame #
+      if (bswap) {
+	buffer[0].l = swapb_i32_i32(current_sent-1);
+      } else {
+	buffer[0].l = current_sent-1;
+      }
+      size_t bytes_in_buffer = sizeof(PFile_Val) * 2;
+      for (long i=0; i < current_frame; i+=1) {
+	if (bswap) {
+	  buffer[1].l = swapb_i32_i32(i);
+	} else {
+	  buffer[1].l = i;
+	}  
+	pfile_off_t frame_offset = (num_ftr_cols + num_lab_cols + 2) * i * sizeof(PFile_Val); 
+	if (pfile_fseek(file, current_sent_offset+frame_offset, SEEK_SET) < 0) {
+	  error("Failed to seek to start of segment %u in PFile '%s'\n", current_sent, filename);
+	}
+	size_t ec = fwrite((char*) buffer, bytes_in_buffer, 1, file);
+	if (ec!=1) {
+	  error("Failed to write frame to PFile '%s' - only written %i items",
+		filename,ec); 
+	}
+      }
+    }
+    // where next segment starts
+    current_sent_offset += (num_ftr_cols + num_lab_cols + 2) * current_frame * sizeof(PFile_Val); 
+    if (pfile_fseek(file, current_sent_offset, SEEK_SET) < 0) {
+      error("Failed to seek to start of segment %u in PFile '%s'\n", current_sent, filename);
+    }
+
     current_frame = 0;
+    seek_count = 0;
+    max_frame = -1;
+
     // Update the index if necessary.
     if (indexed)
     {
@@ -1032,7 +1207,7 @@ OutFtrLabStream_PFile::write_header()
     assert((unsigned long) count<=PFILE_HEADER_SIZE);
 
     // Seek to start of file to write header.
-    ec = fseek(file, 0L, SEEK_SET);
+    ec = pfile_fseek(file, 0L, SEEK_SET);
     if (ec!=0)
     {
 	error("Failed to seek to start of PFile '%s' - %s.",

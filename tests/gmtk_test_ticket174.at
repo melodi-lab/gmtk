@@ -2,23 +2,23 @@
 
 # should include "notfound.pfile" in error message if bug is fixed
 
-AT_SETUP([ticket 174])
-AT_CHECK([obs-concat -i1 notfound.pfile], [ignore], [ignore],
+AT_SETUP([missing pfile error message (ticket 174)])
+AT_CHECK([obs-concat -of1 notfound.pfile], [ignore], [ignore],
          [Couldn't open input pfile notfound.pfile for reading.
 ])
 # extra EOL above is necessary for test to pass
 
-AT_CHECK([obs-info -i1 notfound.pfile], [ignore], [ignore],
+AT_CHECK([obs-info -of1 notfound.pfile], [ignore], [ignore],
          [Couldn't open input pfile notfound.pfile for reading.
 ])
 # extra EOL above is necessary for test to pass
 
-AT_CHECK([obs-print -i1 notfound.pfile], [ignore], [ignore],
+AT_CHECK([obs-print -of1 notfound.pfile], [ignore], [ignore],
          [Couldn't open input pfile notfound.pfile for reading.
 ])
 # extra EOL above is necessary for test to pass
 
-AT_CHECK([obs-skmeans -i1 notfound.pfile], [ignore], [ignore],
+AT_CHECK([obs-skmeans -of1 notfound.pfile], [ignore], [ignore],
          [Couldn't open input pfile notfound.pfile for reading.
 ])
 # extra EOL above is necessary for test to pass

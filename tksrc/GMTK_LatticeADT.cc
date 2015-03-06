@@ -5,15 +5,10 @@
  * 
  *  $Header$
  * 
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
@@ -353,6 +348,10 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab)
       case 'E':
 	// ending link
 	endNodeId = atoi(ptr+2);
+	if (endNodeId >= _numberOfNodes) {
+	  error("Error in lattice '%s', line %d, node id %u is bigger than number of lattice nodes %d",
+		ifs.fileName(), ifs.lineNo(), id, _numberOfNodes);
+	}
 	break;
       case 'W':
 	// word token
@@ -1043,16 +1042,18 @@ void LatticeADT::normalizePosterior() {
 	  }
 	} while ( it.next() );
       }
-      // start iter again
-      _latticeNodes[i].edges.begin(it);
-      {
-	do {
-	  LatticeEdgeList &edge_list = (*it);
-	  for (unsigned edge_ctr=0;edge_ctr < edge_list.num_edges; edge_ctr ++ ) {
-	    LatticeEdge &edge = edge_list.edge_array[edge_ctr];
-	    edge.posterior = edge.posterior / sum;
-	  }
-	} while ( it.next() );
+      if (! sum.essentially_zero()) {
+	// start iter again
+	_latticeNodes[i].edges.begin(it);
+	{
+	  do {
+	    LatticeEdgeList &edge_list = (*it);
+	    for (unsigned edge_ctr=0;edge_ctr < edge_list.num_edges; edge_ctr ++ ) {
+	      LatticeEdge &edge = edge_list.edge_array[edge_ctr];
+	      edge.posterior = edge.posterior / sum;
+	    }
+	  } while ( it.next() );
+	}
       }
     }
   }

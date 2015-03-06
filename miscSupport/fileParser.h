@@ -1,6 +1,11 @@
 // 
 // Simple code to parse a file
 //
+// 
+//  Copyright (C) 2001 Jeff Bilmes
+//  Licensed under the Open Software License version 3.0
+//  See COPYING or http://opensource.org/licenses/OSL-3.0
+//
 // $Header$
 //
 //
@@ -24,6 +29,7 @@
 
 #include "general.h"
 
+
 class ioDataStreamFile {
 
  protected:
@@ -45,8 +51,8 @@ class ioDataStreamFile {
   const char *const fileName() { return _fileName.c_str(); }
   int lineNo() { return _curLineNo; }
 
-  long ftell() const { return(::ftell(fh)); }
-  int  fseek ( long offset , int origin ) { return(::fseek(fh,offset,origin)); }
+  gmtk_off_t ftell() const { return(gmtk_ftell(fh)); }
+  int  fseek ( gmtk_off_t offset , int origin ) { return(gmtk_fseek(fh,offset,origin)); }
 };
 
 
@@ -80,7 +86,7 @@ class iDataStreamFile : public ioDataStreamFile {
   bool prepareNext();
   
   void rewind();
-  int  fseek ( long offset , int origin );
+  int  fseek ( gmtk_off_t offset , int origin );
 
   bool isEOF() { 
     if(feof(fh)) return true;
@@ -235,6 +241,11 @@ class oDataStreamFile : public ioDataStreamFile {
   bool write(const double d,const char *msg=NULL) { return writeDouble(d,msg); }
   bool write(const float* fp,unsigned len,const char *msg=NULL) { return writeFloatVec(fp,len,msg); }
   bool write(const double* dp,unsigned len,const char *msg=NULL) { return writeDoubleVec(dp,len,msg); }
+
+  // For https://j.ee.washington.edu/trac/gmtk/ticket/375
+  // Write x as float or double according to type of the dummy argument
+  bool write(const float  dummy, const double x,const char *msg=NULL) { return writeFloat((float)x,msg); }
+  bool write(const double dummy, const double x,const char *msg=NULL) { return writeDouble(x,msg); }
 
 
   template <class T>

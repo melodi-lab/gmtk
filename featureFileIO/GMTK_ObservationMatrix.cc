@@ -3,6 +3,10 @@
  *
  * Modified by Karim Filali <karim@cs.washington.edu> on 08sep2003:
  *
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ *
  *   - ASCII files are piped through CPP
  *
  *   - Changed the way data is read into memory.  It used to be read
@@ -82,16 +86,7 @@
  *
  * $Header$
  *
- * Copyright (c) 2001
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
- *
- * for any purpose. It is provided "as is" without express or implied warranty.
  * */
 
 #if HAVE_CONFIG_H
@@ -475,7 +470,7 @@ bool ObservationMatrix::checkIfSameNumSamples(unsigned segno, unsigned& max_num_
   max_num_samples=cur_n_samps;  // i.e. 0
   prrng_max_num_samples=cur_prrng_n_samps;  // i.e. 0
 
-  if (segno < 0 || segno >= _numSegments)
+  if (segno >= _numSegments)
     error("ObservationMatrix:::checkIfSameNumSamples: segment number (%li) outside range of 0 - %li\n",segno,_numSegments);
 
   ////////////////////////////////////
@@ -743,7 +738,7 @@ void ObservationMatrix::loadSegment(unsigned segno) {
     // Used to before the above section of code that modifies segno.  It seems obvious it should follow it instead, but the coment is here just in case there was a reason for that I don't see now.
     _segmentNumber = logicalSegNo;
 
-    DBGFPRINTF((stderr,"In loadSegment(): Reading sentence. prrng->length()=%d.\n",prrng->length()));
+    DBGFPRINTF((stderr,"In loadSegment(): Reading segment. prrng->length()=%d.\n",prrng->length()));
 
     switch(s->dataFormat) {
     case RAWBIN:
@@ -1293,7 +1288,7 @@ void ObservationMatrix::copyToFinalBuffer(unsigned stream_no,
 	    ; // do nothing
 	  } else {
 #ifdef WARNING_ON_NAN
-	    warning("WARNING: Found NaN or +/-INF at %i'th float in frame %i, sentence %i  and observation file '%s'\n",*it,*pr_it,_segmentNumber,_inStreams[stream_no]->fofName);
+	    warning("WARNING: Found NaN or +/-INF at %i'th float in frame %i, segment %i  and observation file '%s'\n",*it,*pr_it,_segmentNumber,_inStreams[stream_no]->fofName);
 #else
 	    error("ERROR: Found NaN or +/-INF at %i'th float in frame %i, segment %i and observation file '%s'\n",*it,*pr_it,_segmentNumber,_inStreams[stream_no]->fofName);
 #endif
@@ -1397,7 +1392,7 @@ void ObservationMatrix::copyAndAdjustLengthToFinalBuffer(unsigned stream_no,
        _repeat[4]=-1;  //we stop here
        break;
      default:
-       error("ObservationMatrix:::copyAndAdjustLengthToFinalBuffer: Invalid action (%d) for when the number of frames in sentences is different across streams",_actionIfDiffNumFrames[stream_no]);
+       error("ObservationMatrix:::copyAndAdjustLengthToFinalBuffer: Invalid action (%d) for when the number of frames in segments is different across streams",_actionIfDiffNumFrames[stream_no]);
      }
   }
   else {
@@ -1790,7 +1785,7 @@ void ObservationMatrix::printFrame(FILE *stream, size_t absoluteFrameno) {
 size_t ObservationMatrix::openPFile(StreamInfo *f, size_t sentno) {
 
   unsigned long pfile_size=f->getFullFofSize();
-  if((sentno < 0) || (sentno >= pfile_size)) {
+  if(sentno >= pfile_size) {
     error("ERROR: Requested segment no %li of observation file '%s' but the max num of segments in pfile is %li",sentno,f->fofName,pfile_size);
   }
   //  assert(sentno >= 0 && sentno < _numSegments);
@@ -1827,7 +1822,7 @@ size_t ObservationMatrix::openBinaryFile(StreamInfo *f, size_t sentno) {
 
     DBGFPRINTF((stderr,"In ObservationMatrix::openBinaryFile, sentno %d\n",sentno));
     unsigned long binfile_size=f->getFullFofSize();
-    if(sentno < 0 || sentno >= binfile_size) {
+    if(sentno >= binfile_size) {
         error("ObservationMatrix::openBinaryFile: Requested segment no %li of observation file '%s' but the max num of segments in list of binary files is %li",sentno,f->fofName,binfile_size);
     }
     
@@ -1934,7 +1929,7 @@ size_t ObservationMatrix::openAsciiFile(StreamInfo *f,size_t sentno) {
 	 }
        }
        	 DBGFPRINTF((stderr,"\n"));
-       fclose(f->curDataFile);
+       pclose(f->curDataFile);
        f->curDataFile = ::popen(cppCommand.c_str(),"r");
      }
      else {
@@ -1992,12 +1987,12 @@ void ObservationMatrix::parseSentenceSpec(const string& sentLoc, int* startFrame
 	  //have a subrange spec
 	  fNameLen=sentLoc.find_last_of('[');
 	  if (fNameLen==string::npos){
-		    error("ERROR: ObservationMatrix::parseSentenceSpec: '%s' is an invalid sentence location.  Must be of the form 'filename[startFrame:endFrame]'",sentLoc.c_str());		  
+		    error("ERROR: ObservationMatrix::parseSentenceSpec: '%s' is an invalid segment location.  Must be of the form 'filename[startFrame:endFrame]'",sentLoc.c_str());		  
 	  }
 
 	  string range= sentLoc.substr(fNameLen+1,sentLoc.length()-2-fNameLen);
 	  if (sscanf(range.c_str(),"%d:%d",startFrame,endFrame) != 2)
-	  	error("ERROR: ObservationMatrix::parseSentenceSpec: '%s' is an invalid sentence location.  Must be of the form 'filename[startFrame:endFrame]'",sentLoc.c_str());		  
+	  	error("ERROR: ObservationMatrix::parseSentenceSpec: '%s' is an invalid segment location.  Must be of the form 'filename[startFrame:endFrame]'",sentLoc.c_str());		  
   
 	  if(*endFrame<*startFrame)
 	  	error("ERROR: ObservationMatrix::parseSentenceSpec: %s has the last frame smaller than first frame.\n",sentLoc.c_str());	  
@@ -2218,7 +2213,7 @@ size_t ObservationMatrix::openHTKFile(StreamInfo *f, size_t sentno) {
 
   DBGFPRINTF((stderr,"In ObservationMatrix::openHTKFile, sentno %d\n",sentno));
   unsigned long htkfile_size=f->getFullFofSize();
-  if(sentno < 0 || sentno >= htkfile_size) {
+  if(sentno >= htkfile_size) {
     error("ERROR: ObservationMatrix::openHTKFile: Requested segment no %li of observation file '%s' but the max num of segments in list of HTK files is %li",sentno,f->fofName,htkfile_size);
   }
 
@@ -2302,7 +2297,10 @@ void ObservationMatrix::printSegmentInfo() {
  *                 allocated for them
  */
 
-bool ObservationMatrix::readBinSentence(float* float_buffer, unsigned num_floats, Int32* int_buffer, unsigned num_ints,StreamInfo* s) {
+bool 
+ObservationMatrix::readBinSentence(float* float_buffer, unsigned num_floats, 
+				   Int32* int_buffer, unsigned num_ints,StreamInfo* s) 
+{
 
   assert(num_floats > 0 || num_ints > 0);
 
@@ -2323,49 +2321,49 @@ bool ObservationMatrix::readBinSentence(float* float_buffer, unsigned num_floats
   if(num_ints==0) {
     assert(float_buffer !=NULL);
     if (data_format==HTK && s->curHTKFileInfo->isCompressed) {
-			short* tmp_short_buffer = new short[total_num_floats];
-			n_read = fread((short*)tmp_short_buffer, sizeof(short),
-					total_num_floats, f);
-		    if (n_read != total_num_floats) {
-		      warning("ObservationMatrix::readBinFloats: read %i items, expected %i",
-			      n_read,total_num_floats);
-		      return false;
-		    }
+      short* tmp_short_buffer = new short[total_num_floats];
+      n_read = fread((short*)tmp_short_buffer, sizeof(short),
+		     total_num_floats, f);
+      if (n_read != total_num_floats) {
+	warning("ObservationMatrix::readBinFloats: read %i items, expected %i",
+		n_read,total_num_floats);
+	return false;
+      }
 			
-			if (swap) {
-				for (unsigned i=0; i<total_num_floats; ++i) {
-					tmp_short_buffer[i]=swapb_short_short(tmp_short_buffer[i]);
-				}
-			}
-			for (unsigned i=0; i<total_num_floats; ++i) {
-				float_buffer[i]=tmp_short_buffer[i];
-			}
-			delete [] tmp_short_buffer;
-			
-			//uncompress the shorts
-			for (unsigned i=0; i<n_samples;i++){
-				float* curSampPtr=float_buffer+i*num_floats;
-				copy_add_vf32_vf32(num_floats,s->curHTKFileInfo->offset,curSampPtr);
-				copy_div_vf32_vf32(num_floats,s->curHTKFileInfo->scale,curSampPtr);
-
-			}
+      if (swap) {
+	for (unsigned i=0; i<total_num_floats; ++i) {
+	  tmp_short_buffer[i]=swapb_short_short(tmp_short_buffer[i]);
 	}
+      }
+      for (unsigned i=0; i<total_num_floats; ++i) {
+	float_buffer[i]=tmp_short_buffer[i];
+      }
+      delete [] tmp_short_buffer;
+			
+      //uncompress the shorts
+      for (unsigned i=0; i<n_samples;i++){
+	float* curSampPtr=float_buffer+i*num_floats;
+	copy_add_vf32_vf32(num_floats,s->curHTKFileInfo->offset,curSampPtr);
+	copy_div_vf32_vf32(num_floats,s->curHTKFileInfo->scale,curSampPtr);
+
+      }
+    }
     else {
 	    
-	    n_read = fread((float *)float_buffer,sizeof(float),total_num_floats,f);
-	    if (n_read != total_num_floats) {
-	      warning("ObservationMatrix::readBinFloats: read %i items, expected %i",
-		      n_read,total_num_floats);
-	      return false;
-	    }
-	    // swap if needed.
-	    if(swap) {
-	      float tmp_float[1];
-	      for (unsigned i=0; i<total_num_floats; ++i) {
-		swapb_vf32_vf32(1,(float_buffer+i),tmp_float);
-		float_buffer[i]=tmp_float[0];
-	      }
-	    }
+      n_read = fread((float *)float_buffer,sizeof(float),total_num_floats,f);
+      if (n_read != total_num_floats) {
+	warning("ObservationMatrix::readBinFloats: read %i items, expected %i",
+		n_read,total_num_floats);
+	return false;
+      }
+      // swap if needed.
+      if(swap) {
+	float tmp_float[1];
+	for (unsigned i=0; i<total_num_floats; ++i) {
+	  swapb_vf32_vf32(1,(float_buffer+i),tmp_float);
+	  float_buffer[i]=tmp_float[0];
+	}
+      }
     }
   }
   else if(num_floats==0) {
@@ -2467,7 +2465,7 @@ bool ObservationMatrix::readAsciiSentence(float* float_buffer, unsigned num_floa
 
   // could be made a bit more efficient since we check whether
   // num_floats and num_ints > 0 for each frame.
-  DBGFPRINTF((stderr,"Reading ascii sentence...\n"));
+  DBGFPRINTF((stderr,"Reading ascii segment...\n"));
   for(unsigned s=0; s < n_samples; ++s) {
     DBGFPRINTF((stderr,"%d:  ",lineNum));
     lineNum++;
@@ -2490,7 +2488,7 @@ bool ObservationMatrix::readAsciiSentence(float* float_buffer, unsigned num_floa
     DBGFPRINTF((stderr,"\n"));
   }
 
-  DBGFPRINTF((stderr,"Done reading ascii sentence.\n"));
+  DBGFPRINTF((stderr,"Done reading ascii segment.\n"));
   return true;
 }
 

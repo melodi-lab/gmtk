@@ -1,0 +1,16 @@
+GMTK for Debian
+---------------
+
+The Debian 7 HDF5 package does not include the C++ bindings, so GMTK binary
+packages do not support HDF5. If you build GMTK from source on a machine
+with the HDF5 C++ bindings available, the configure script should find 
+them and build a GMTK with HDF5 support.
+
+Debian 7 does not have a package for wxWidgets 3, which is required to
+build gmtkViz. So GMTK binary packages do not include gmtkViz. If you
+build GMTK from source on a machine with a suitable wxWdigets installed,
+the configure script should find it and build gmtkViz.
+
+These issues appear to be fixed in Debian 8.
+
+ -- Richard Rogers <rprogers@uw.edu>  Thu, 11 Dec 2014 11:30:59 -0800

@@ -2,6 +2,11 @@
     Simple informational message system
     Jeff Bilmes <bilmes@ee.washington.edu>
     $Header$
+//
+//  Copyright (C) 2003 Jeff Bilmes
+//  Licensed under the Open Software License version 3.0
+//  See COPYING or http://opensource.org/licenses/OSL-3.0
+//
 */
 
 
@@ -13,9 +18,13 @@
 
 unsigned IM::globalMessageLevel = IM::Nano;
 bool IM::globalFlush = true;
-unsigned IM::globalModuleLevel[(unsigned)ModuleCount] = {};
+#ifdef GMTK_ARG_VERB_DEF_VAL
+unsigned IM::globalModuleLevel[(unsigned)ModuleCount] = {GMTK_ARG_VERB_DEF_VAL,...};
+#else
+unsigned IM::globalModuleLevel[(unsigned)ModuleCount] = {IM::Default,};
+#endif
 const char*IM::moduleString[(unsigned)ModuleCount] = 
-  {"default","inference","inference-memory", "training", "triangulation","boundary","unrolling","printing","modelinfo"};
+  {"default","inference","inference-memory", "training", "triangulation","boundary","unrolling","printing","modelinfo","obsfile","obsstream"};
 
 #ifdef MAIN
 

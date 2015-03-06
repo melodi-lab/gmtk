@@ -27,14 +27,10 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
  *
  */
 
@@ -64,8 +60,7 @@
 #include "rand.h"
 #include "arguments.h"
 #include "ieeeFPsetup.h"
-#include "version.h"
-
+#include "file_utils.h"
 
 #include "GMTK_WordOrganization.h"
 
@@ -78,7 +73,21 @@ VCID(HGID)
 #include "GMTK_ContRV.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_GMParms.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_ObservationSource.h"
+#  include "GMTK_FileSource.h"
+#  include "GMTK_CreateFileSource.h"
+#  include "GMTK_ASCIIFile.h"
+#  include "GMTK_FlatASCIIFile.h"
+#  include "GMTK_PFileFile.h"
+#  include "GMTK_HTKFile.h"
+#  include "GMTK_HDF5File.h"
+#  include "GMTK_BinaryFile.h"
+#  include "GMTK_Filter.h"
+#  include "GMTK_Stream.h"
+#endif
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_MeanVector.h"
@@ -98,6 +107,7 @@ VCID(HGID)
 #define GMTK_ARG_INPUT_TRAINABLE_FILE_HANDLING
 #define GMTK_ARG_CPP_CMD_OPTS
 #define GMTK_ARG_INPUT_MASTER_FILE
+#define GMTK_ARG_DLOPEN_MAPPERS
 #define GMTK_ARG_INPUT_TRAINABLE_PARAMS
 #define GMTK_ARG_ALLOC_DENSE_CPTS
 #define GMTK_ARG_CPT_NORM_THRES
@@ -132,7 +142,8 @@ VCID(HGID)
 #define GMTK_ARG_HASH_LOAD_FACTOR
 #define GMTK_ARG_STORE_DETERMINISTIC_CHILDREN
 #define GMTK_ARG_CLEAR_CLIQUE_VAL_MEM
-
+#define GMTK_ARG_MEM_GROWTH
+#define GMTK_ARG_USE_MMAP
 
 /****************************      FILE RANGE OPTIONS             ***********************************************/
 #define GMTK_ARG_FILE_RANGE_OPTIONS
@@ -150,20 +161,24 @@ VCID(HGID)
 
 /****************************         INFERENCE OPTIONS           ***********************************************/
 #define GMTK_ARG_INFERENCE_OPTIONS
+#define GMTK_ARG_ONLY_KEEP_SEPS
 #define GMTK_ARG_ISLAND
 #define GMTK_ARG_DEBUG_PART_RNG
+#define GMTK_ARG_DEBUG_INCREMENT
 #define GMTK_ARG_CLIQUE_TABLE_NORMALIZE
 #define GMTK_ARG_CE_SEP_DRIVEN
 #define GMTK_ARG_MIXTURE_CACHE
 #define GMTK_ARG_CLIQUE_VAR_ITER_ORDERS
 #define GMTK_ARG_JT_OPTIONS
 #define GMTK_ARG_VE_SEPS
+#define GMTK_ARG_FAIL_ON_ZERO_CLIQUE
 
 /************************  OBSERVATION MATRIX TRANSFORMATION OPTIONS   ******************************************/
 #define GMTK_ARG_OBS_MATRIX_OPTIONS
 #define GMTK_ARG_OBS_MATRIX_XFORMATION
 
 /************************            DECODING OPTIONS                  ******************************************/
+#define GMTK_VITERBI_FILE_WRITE
 #define GMTK_ARG_NEW_DECODING_OPTIONS
 
 // should be made conditional on having setrlimit available
@@ -194,8 +209,12 @@ Arg Arg::Args[] = {
  */
 RAND rnd(seedme);
 GMParms GM_Parms;
+#if 0
 ObservationMatrix globalObservationMatrix;
+#endif
 
+FileSource *gomFS;
+ObservationSource *globalObservationMatrix;
 
 int
 main(int argc,char*argv[])
@@ -213,7 +232,8 @@ main(int argc,char*argv[])
    
   ////////////////////////////////////////////
   // parse arguments
-  bool parse_was_ok = Arg::parse(argc,(char**)argv);
+  bool parse_was_ok = Arg::parse(argc,(char**)argv,
+"\nThis program determines the most likely values of the hidden variables\n");
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }
@@ -226,33 +246,13 @@ main(int argc,char*argv[])
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_CHECK_ARGS
 
-  globalObservationMatrix.openFiles(nfiles,
-				    (const char**)&ofs,
-				    (const char**)&frs,
-				    (const char**)&irs,
-				    (unsigned*)&nfs,
-				    (unsigned*)&nis,
-				    (unsigned*)&ifmts,
-				    (bool*)&iswp,
-				    startSkip,
-				    endSkip,
-				    Cpp_If_Ascii,
-				    cppCommandOptions,
-				    (const char**)&postpr,  //Frame_Range_Str,
-				    Action_If_Diff_Num_Frames,
-				    Action_If_Diff_Num_Sents,
-				    Per_Stream_Transforms,
-				    Post_Transforms,
-				    Ftr_Combo,
-				    (const char**)&sr,
-				    (const char**)&prepr,
-				    gpr_str
-				    );
-
+  gomFS = instantiateFileSource();
+  globalObservationMatrix = gomFS;
 
   /////////////////////////////////////////////
   // read in all the parameters
 
+  dlopenDeterministicMaps(dlopenFilenames, MAX_NUM_DLOPENED_FILES);
   if (inputMasterFile) {
     // flat, where everything is contained in one file, always ASCII
     iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
@@ -301,7 +301,7 @@ main(int argc,char*argv[])
   fp.checkConsistentWithGlobalObservationStream();
   GM_Parms.checkConsistentWithGlobalObservationStream();
 
-  GM_Parms.setStride(globalObservationMatrix.stride());
+  GM_Parms.setStride(gomFS->stride());
 
   // Utilize both the partition information and elimination order
   // information already computed and contained in the file. This
@@ -339,6 +339,16 @@ main(int argc,char*argv[])
     triangulator.ensurePartitionsAreChordal(gm_template);
   }
 
+  //  printf("Dlinks: min lag %d    max lag %d\n", Dlinks::globalMinLag(), Dlinks::globalMaxLag());
+  // FIXME - min past = min(dlinkPast, VECPTPast), likewise for future
+  int dlinkPast = Dlinks::globalMinLag();
+  dlinkPast = (dlinkPast < 0) ? -dlinkPast : 0;
+  gomFS->setMinPastFrames( dlinkPast );
+  
+  int dlinkFuture = Dlinks::globalMaxLag();
+  dlinkFuture = (dlinkFuture > 0) ? dlinkFuture : 0;
+  gomFS->setMinFutureFrames( dlinkFuture );
+
 
   ////////////////////////////////////////////////////////////////////
   // CREATE JUNCTION TREE DATA STRUCTURES
@@ -354,12 +364,12 @@ main(int argc,char*argv[])
   ////////////////////////////////////////////////////////////////////
 
 
-  if (globalObservationMatrix.numSegments()==0) {
+  if (gomFS->numSegments()==0) {
     infoMsg(IM::Default,"ERROR: no segments are available in observation file. Exiting...");
     exit_program_with_status(0);
   }
 
-  Range* dcdrng = new Range(dcdrng_str,0,globalObservationMatrix.numSegments());
+  Range* dcdrng = new Range(dcdrng_str,0,gomFS->numSegments());
   if (dcdrng->length() == 0) { 
     error("Decoding range must specify a non-zero length range. Range given is %s\n",
 	  dcdrng_str);
@@ -367,6 +377,9 @@ main(int argc,char*argv[])
 
   logpr total_data_prob = 1.0;
 
+  if (JunctionTree::binaryViterbiFile && (mVitValsFileName || vitValsFileName)) {
+    error("Can't do both binary Viterbi output and -mVitValsFileName or -vitValsFileName");
+  }
   // What is the difference between the pVit* files and the vit*
   // files?  The pVit* files are similar to the vit* files, but the
   // pVit print via partitions, while the vit* does a bunch more
@@ -376,13 +389,13 @@ main(int argc,char*argv[])
   // for users, while the pVit files are more meant for algorithm
   // writters/debugging which is the reason that we have both of them
   // here.
-  FILE* pVitValsFile = NULL;
-  if (pVitValsFileName) {
-    if (strcmp("-",pVitValsFileName) == 0)
-      pVitValsFile = stdout;
+  FILE* mVitValsFile = NULL;
+  if (mVitValsFileName) {
+    if (strcmp("-",mVitValsFileName) == 0)
+      mVitValsFile = stdout;
     else {
-      if ((pVitValsFile = fopen(pVitValsFileName, "w")) == NULL)
-	error("Can't open file '%s' for writing\n",pVitValsFileName);
+      if ((mVitValsFile = fopen(mVitValsFileName, "w")) == NULL)
+	error("Can't open file '%s' for writing\n",mVitValsFileName);
     }
   }
 #if 1
@@ -395,8 +408,9 @@ main(int argc,char*argv[])
 	error("Can't open file '%s' for writing\n",vitValsFileName);
     }
   }
-  if (!pVitValsFile && !vitValsFile) {
-    error("Argument Error: Missing REQUIRED argument: -pVitValsFile <str>  OR  -vitValsFile <str>\n");
+  if (!mVitValsFile && !vitValsFile && !JunctionTree::binaryViterbiFile && !JunctionTree::vitObsFileName) {
+    error("Argument Error: Missing REQUIRED argument: -mVitValsFile <str>  OR  -vitValsFile <str> OR "
+	  "-binaryVitFile <str> OR -vitObsFileName <str>\n");
   }
 #endif
 
@@ -414,122 +428,396 @@ main(int argc,char*argv[])
   total_data_prob = 1.0;
   Range::iterator* dcdrng_it = new Range::iterator(dcdrng->begin());
     
-  regex_t *pVitPreg = NULL;
+  const unsigned case_ignore = (vitCaseSensitiveRegexFilter? 0 : REG_ICASE);
+  regex_t *vitPreg = NULL;
   if (pVitRegexFilter != NULL) {
-    pVitPreg = (regex_t*) malloc(sizeof(regex_t));
-    const unsigned case_ignore = (pVitCaseSensitiveRegexFilter? 0 : REG_ICASE);
-    if (regcomp(pVitPreg,pVitRegexFilter,
+    vitPreg = (regex_t*) malloc(sizeof(regex_t));
+    if (regcomp(vitPreg,pVitRegexFilter,
 		REG_EXTENDED
 		| case_ignore
 		| REG_NOSUB
 		)) {
-      error("ERROR: problem with regular expression filter string '%s'\n",pVitRegexFilter);
+      error("ERROR: problem with prolog regular expression filter string '%s'\n",pVitRegexFilter);
+    }
+  }
+  regex_t *vitCreg = NULL;
+  if (cVitRegexFilter != NULL) {
+    vitCreg = (regex_t*) malloc(sizeof(regex_t));
+    if (regcomp(vitCreg,cVitRegexFilter,
+		REG_EXTENDED
+		| case_ignore
+		| REG_NOSUB
+		)) {
+      error("ERROR: problem with chunk regular expression filter string '%s'\n",cVitRegexFilter);
+    }
+  }
+  regex_t *vitEreg = NULL;
+  if (eVitRegexFilter != NULL) {
+    vitEreg = (regex_t*) malloc(sizeof(regex_t));
+    if (regcomp(vitEreg,eVitRegexFilter,
+		REG_EXTENDED
+		| case_ignore
+		| REG_NOSUB
+		)) {
+      error("ERROR: problem with epilog regular expression filter string '%s'\n",pVitRegexFilter);
     }
   }
 
-  regex_t *vitPreg = NULL;
-  if (vitRegexFilter != NULL) {
-    vitPreg = (regex_t*) malloc(sizeof(regex_t));
-    const unsigned case_ignore = (vitCaseSensitiveRegexFilter? 0 : REG_ICASE);
-    if (regcomp(vitPreg,vitRegexFilter,
-		REG_EXTENDED
-		| case_ignore
-		| REG_NOSUB
-		)) {
-      error("ERROR: problem with regular expression filter string '%s'\n",vitRegexFilter);
+  if (JunctionTree::binaryViterbiFile) {
+
+    // Here we write out the binary Viterbi file header. This is the magic
+    // string "GMTKVIT\n" followed by a BOM (4 bytes), the # of segments (4 bytes),
+    // and k for k-best (4 bytes, always 1 for now...)
+
+    if (fputs(GMTK_VITERBI_COOKIE, JunctionTree::binaryViterbiFile) == EOF) {
+      char *err = strerror(errno);
+      error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
     }
+    int byte_order_mark = 0x01020304; assert(sizeof(byte_order_mark) == 4);
+    if (fwrite(&byte_order_mark, sizeof(byte_order_mark), 1, JunctionTree::binaryViterbiFile) != 1) {
+      char *err = strerror(errno);
+      error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+    }
+    unsigned numSegments = gomFS->numSegments();
+    if (fwrite(&numSegments, sizeof(numSegments), 1, JunctionTree::binaryViterbiFile) != 1) {
+      char *err = strerror(errno);
+      error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+    }
+    unsigned N_best = 1;
+    if (fwrite(&N_best, sizeof(N_best), 1, JunctionTree::binaryViterbiFile) != 1) {
+      char *err = strerror(errno);
+      error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+    }
+
+    // Next we write out dummy values for the index. For each segment, the index
+    // contains the offset in the file where the segment's Viterbi values start
+    // (8 bytes) followed by the segment's score (4 bytes). The values written
+    // here should be over-written as the actual inference results are stored
+    // in the file. The important thing is to end up with the file positioned
+    // at the start of the first segment - this could have been achieved with an
+    // fseek(), but I wrote out the dummy values (0, NaN) so that I could
+    // (manually) verify that they are over-written with the correct values.
+
+    if (sizeof(gmtk_off_t) != 8) {
+      error("ERROR: GMTK requires 64-bit file offsets to support binary Viterbi "
+            "files. The current file offset size appears to be %u bits. The "
+            "configure script used to build GMTK should have arranged to use "
+            "64-bit file offsets if that's possible on this platform.\n",
+            (unsigned)(sizeof(gmtk_off_t)*8));
+    }
+    gmtk_off_t off = (gmtk_off_t) 0;
+    float score = NAN;
+    for (unsigned i=0; i < numSegments; i+=1) {
+      if (fwrite(&off, sizeof(off), 1, JunctionTree::binaryViterbiFile) != 1) {
+	char *err = strerror(errno);
+	error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+      }
+      if (fwrite(&score, sizeof(score), 1, JunctionTree::binaryViterbiFile) != 1) {
+	char *err = strerror(errno);
+	error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+      }
+    }
+    // The next (in this case, first) segment's Viterbi values start at the current
+    // file position...
+    JunctionTree::nextViterbiOffset = gmtk_ftell(JunctionTree::binaryViterbiFile);
   }
+
+  ObservationFile *pCliqueFile = NULL;
+#if 0
+  ObservationFile *cCliqueFile = NULL;
+  ObservationFile *eCliqueFile = NULL;
+#endif
 
   while (!dcdrng_it->at_end()) {
     const unsigned segment = (unsigned)(*(*dcdrng_it));
-    if (globalObservationMatrix.numSegments() < (segment+1)) 
+
+    gmtk_off_t indexOff;
+    gmtk_off_t off;
+    float score;
+    if (JunctionTree::binaryViterbiFile) {
+
+      // Update the index with the correct starting position of the current segment
+      off = JunctionTree::nextViterbiOffset;
+
+      // The file position to write the segment's (offset,score) in the index.
+      // Note that we don't know the segment's score yet, so we're just writing
+      // the offset here. Obviously, we'll update the score later.
+      indexOff = (gmtk_off_t) ( GMTK_VITERBI_HEADER_SIZE + segment * (sizeof(gmtk_off_t) + sizeof(float)) );
+      if (gmtk_fseek(JunctionTree::binaryViterbiFile, indexOff, SEEK_SET)) {
+	char *err = strerror(errno);
+	error("Error seeking in '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+      }
+
+      if (fwrite(&off, sizeof(off), 1, JunctionTree::binaryViterbiFile) != 1) {
+	char *err = strerror(errno);
+	error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+      }
+
+      // Now back to the start of the segment so we can write the Viterbi data
+      if (gmtk_fseek(JunctionTree::binaryViterbiFile, off, SEEK_SET)) {
+	char *err = strerror(errno);
+	error("Error seeking in '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+      }
+      JunctionTree::binaryViterbiOffset = off;
+    }
+
+    if (gomFS->numSegments() < (segment+1)) 
       error("ERROR: only %d segments in file, decode range must be in range [%d,%d] inclusive\n",
-	    globalObservationMatrix.numSegments(),
-	    0,globalObservationMatrix.numSegments()-1);
+	    gomFS->numSegments(),
+	    0,gomFS->numSegments()-1);
 
     const unsigned numFrames = GM_Parms.setSegment(segment);
 
-    logpr probe;
-    if (island) {
-      unsigned numUsableFrames;
-      myjt.collectDistributeIsland(numFrames,
-				   numUsableFrames,
-				   base,
-				   lst,
-				   false, // run EM algorithm
-				   true,  // run viterbi algorithm
-				   false  // localCliqueNormalization, unused here.
-				   );
-      probe = myjt.curProbEvidenceIsland();
-      printf("Segment %d, after Island, viterbi log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	     segment,
-	     probe.val(),
-	     probe.val()/numFrames,
-	     probe.val()/numUsableFrames);
-      if (probe.not_essentially_zero()) {
-	total_data_prob *= probe;
-      }
-    } else {
-      // linear space inference
-      unsigned numUsableFrames = myjt.unroll(numFrames);
-      infoMsg(IM::Inference, IM::Med,"Collecting Evidence\n");
-      myjt.collectEvidence();
-      infoMsg(IM::Inference, IM::Med,"Done Collecting Evidence\n");
-      probe = myjt.probEvidence();
-      infoMsg(IM::Default,"Segment %d, after CE, viterbi log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	     segment,
-	     probe.val(),
-	     probe.val()/numFrames,
-	     probe.val()/numUsableFrames);
-      if (probe.essentially_zero()) {
-	infoMsg(IM::Default,"Skipping segment %d since probability is essentially zero\n",
-		segment);
-      } else {
-	myjt.setRootToMaxCliqueValue();
-	total_data_prob *= probe;
-	infoMsg(IM::Inference, IM::Low,"Distributing Evidence\n");
-	myjt.distributeEvidence();
-	infoMsg(IM::Inference, IM::Low,"Done Distributing Evidence\n");
-      }
-    }
-    
-    if (probe.essentially_zero())
-      warning("Segment %d: Not printing Viterbi values since segment has zero probability\n",
-	      segment);
-    else {
-      if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange)
-	myjt.printAllCliques(stdout,true,cliquePrintOnlyEntropy);
+    try {
+      logpr probe;
+      if (island) {
 
-      if (pVitValsFile) {
-	fprintf(pVitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
-		segment,numFrames,probe.val());
-	myjt.printSavedPartitionViterbiValues(pVitValsFile,
-					      pVitAlsoPrintObservedVariables,
-					      pVitPreg,
-					      pVitPartRangeFilter);
+	if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange) {
+	  
+	  if (cliqueOutputName && !pCliqueFile) {
+	    unsigned totalNumberPartitions;
+	    (void) myjt.unroll(numFrames,JunctionTree::ZeroTable,&totalNumberPartitions);
+	    unsigned pSize, cSize, eSize;
+	    myjt.cliquePosteriorSize(pSize, cSize, eSize);
+	    unsigned cliqueSize = (pSize > cSize) ? pSize : cSize;
+	    cliqueSize = (cliqueSize > eSize) ? cliqueSize : eSize;
+	    
+            if (pPartCliquePrintRange && pSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output. Cliques "
+		    "selected in the prolog, chunk, and epilog must all have the "
+		    "same total domain size.\n");
+	    }
+            if (cPartCliquePrintRange && cSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output. Cliques "
+		    "selected in the prolog, chunk, and epilog must all have the "
+		    "same total domain size.\n");
+	    }
+            if (ePartCliquePrintRange && eSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output. Cliques "
+		    "selected in the prolog, chunk, and epilog must all have the "
+		    "same total domain size.\n");
+	    }
+	    myjt.printCliqueOrders(stdout);
+	    pCliqueFile = instantiateWriteFile(cliqueListName, cliqueOutputName, cliquePrintSeparator,
+					       cliquePrintFormat, cliqueSize, 0, cliquePrintSwap);
+	    if (!pCliqueFile->seekable()) {
+	      error("ERROR: -island T requires a -cliquePrintFormat that supports random access "
+		    "writes (htk, binary, hdf5, or pfile)\n");
+	    }
+	  }
+	}
+
+	unsigned numUsableFrames;
+	myjt.collectDistributeIsland(numFrames,
+				     numUsableFrames,
+				     base,
+				     lst,
+				     rootBase, islandRootPower,
+				     false, // run EM algorithm
+				     true,  // run viterbi algorithm
+				     false, // localCliqueNormalization, unused here.
+				     pCliqueFile, 
+				     cliquePosteriorNormalize,
+				     cliquePosteriorUnlog
+				     );
+	probe = myjt.curProbEvidenceIsland();
+	if (pCliqueFile)
+	  pCliqueFile->endOfSegment();
+
+	printf("Segment %d, after Island, viterbi log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+	       segment,
+	       probe.val(),
+	       probe.val()/numFrames,
+	       probe.val()/numUsableFrames);
+	if (probe.not_essentially_zero()) {
+	  total_data_prob *= probe;
+	}
+      } if (onlyKeepSeparators) {
+
+	infoMsg(IM::Inference, IM::Med,"Collecting Evidence (linear space)\n");
+	unsigned numUsableFrames;
+	probe = myjt.collectEvidenceOnlyKeepSeps(numFrames, &numUsableFrames);
+	infoMsg(IM::Inference, IM::Med,"Done Collecting Evidence\n");
+
+	infoMsg(IM::Default,"Segment %d, after CE, viterbi log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+		segment,
+		probe.val(),
+		probe.val()/numFrames,
+		probe.val()/numUsableFrames);
+	if (probe.essentially_zero()) {
+	  infoMsg(IM::Default,"Skipping segment %d since probability is essentially zero\n",
+		  segment);
+	} else {
+	  total_data_prob *= probe;
+	  infoMsg(IM::Inference, IM::Low,"Distributing Evidence\n");
+	  myjt.distributeEvidenceOnlyKeepSeps();
+	  infoMsg(IM::Inference, IM::Low,"Done Distributing Evidence\n");
+	}
+
+	if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange) {
+	  
+	  if (cliqueOutputName && !pCliqueFile) {
+	    unsigned pSize, cSize, eSize;
+	    myjt.cliquePosteriorSize(pSize, cSize, eSize);
+	    unsigned cliqueSize = (pSize > cSize) ? pSize : cSize;
+	    cliqueSize = (cliqueSize > eSize) ? cliqueSize : eSize;
+	    
+            if (pPartCliquePrintRange && pSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output\n");
+	    }
+            if (cPartCliquePrintRange && cSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output\n");
+	    }
+            if (ePartCliquePrintRange && eSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output\n");
+	    }
+	    myjt.printCliqueOrders(stdout);
+	    pCliqueFile = instantiateWriteFile(cliqueListName, cliqueOutputName, cliquePrintSeparator,
+					       cliquePrintFormat, cliqueSize, 0, cliquePrintSwap);
+	  }
+	  myjt.printAllCliques(stdout,cliquePosteriorNormalize, cliquePosteriorUnlog, cliquePrintOnlyEntropy, pCliqueFile);
+	  
+	  if (pCliqueFile)
+	    pCliqueFile->endOfSegment();
+	}
+
+      }else {
+	// linear space inference
+	unsigned numUsableFrames = myjt.unroll(numFrames);
+	gomFS->justifySegment(numUsableFrames);
+
+	infoMsg(IM::Inference, IM::Med,"Collecting Evidence\n");
+	myjt.collectEvidence();
+	infoMsg(IM::Inference, IM::Med,"Done Collecting Evidence\n");
+	probe = myjt.probEvidence();
+	infoMsg(IM::Default,"Segment %d, after CE, viterbi log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+		segment,
+		probe.val(),
+		probe.val()/numFrames,
+		probe.val()/numUsableFrames);
+	if (probe.essentially_zero()) {
+	  infoMsg(IM::Default,"Skipping segment %d since probability is essentially zero\n",
+		  segment);
+	} else {
+	  myjt.setRootToMaxCliqueValue();
+	  total_data_prob *= probe;
+	  infoMsg(IM::Inference, IM::Low,"Distributing Evidence\n");
+	  myjt.distributeEvidence();
+	  infoMsg(IM::Inference, IM::Low,"Done Distributing Evidence\n");
+	}
+
+	if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange) {
+	  
+	  if (cliqueOutputName && !pCliqueFile) {
+	    unsigned pSize, cSize, eSize;
+	    myjt.cliquePosteriorSize(pSize, cSize, eSize);
+	    unsigned cliqueSize = (pSize > cSize) ? pSize : cSize;
+	    cliqueSize = (cliqueSize > eSize) ? cliqueSize : eSize;
+	    
+            if (pPartCliquePrintRange && pSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output\n");
+	    }
+            if (cPartCliquePrintRange && cSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output\n");
+	    }
+            if (ePartCliquePrintRange && eSize != cliqueSize) {
+	      error("ERROR: incompatible cliques selected for file output\n");
+	    }
+	    myjt.printCliqueOrders(stdout);
+	    pCliqueFile = instantiateWriteFile(cliqueListName, cliqueOutputName, cliquePrintSeparator,
+					       cliquePrintFormat, cliqueSize, 0, cliquePrintSwap);
+	  }
+	  myjt.printAllCliques(stdout,cliquePosteriorNormalize, cliquePosteriorUnlog, cliquePrintOnlyEntropy, pCliqueFile);
+	  
+	  if (pCliqueFile)
+	    pCliqueFile->endOfSegment();
+#if 0
+	  if (cCliqueFile)
+	    cCliqueFile->endOfSegment();
+	  if (eCliqueFile)
+	    eCliqueFile->endOfSegment();
+#endif
+	}
       }
+
+      if (JunctionTree::binaryViterbiFile) {
+        // Now we know the segment's score, so we can update it in the index
+	indexOff = (gmtk_off_t) ( GMTK_VITERBI_HEADER_SIZE + sizeof(gmtk_off_t) + segment * (sizeof(gmtk_off_t) + sizeof(float)) );
+	if (gmtk_fseek(JunctionTree::binaryViterbiFile, indexOff, SEEK_SET)) {
+	  char *err = strerror(errno);
+	  error("Error seeking in '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+	}
+	score = probe.val();
+	if (fwrite(&score, sizeof(score), 1, JunctionTree::binaryViterbiFile) != 1) {
+	  char *err = strerror(errno);
+	  error("Error writing to '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+	}
+      }
+    
+      if (probe.essentially_zero())
+	warning("Segment %d: Not printing Viterbi values since segment has zero probability\n",
+		segment);
+      else {
+
+	if (myjt.vitObsFileName) {
+	  myjt.viterbiValuesToObsFile(numFrames, vitValsFile, segment, vitPreg, vitCreg, vitEreg, vitFrameRangeFilter);
+	}
+
+	if (mVitValsFile) {
+	  fprintf(mVitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
+		  segment,numFrames,probe.val());
+	  myjt.printSavedPartitionViterbiValues(mVitValsFile,
+						vitAlsoPrintObservedVariables,
+						vitPreg, vitCreg, vitEreg,
+						vitPartRangeFilter);
+	}
 
 #if 1     
-      if (pVitValsFile || pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange)
-	myjt.resetViterbiPrinting();
-      if (vitValsFile) {
-	fprintf(vitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
-		segment,numFrames,probe.val());
-	myjt.printSavedViterbiValues(vitValsFile,
-				     vitAlsoPrintObservedVariables,
-				     vitPreg,
-				     pVitPartRangeFilter);
-      }
+	if (mVitValsFile || pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange)
+	  myjt.resetViterbiPrinting();
+	if (vitValsFile) {
+	  fprintf(vitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",
+		  segment,numFrames,probe.val());
+	  if (!vitFrameRangeFilter) {
+	    myjt.printSavedViterbiValues(numFrames, vitValsFile, NULL,
+					 vitAlsoPrintObservedVariables,
+					 vitPreg, vitCreg, vitEreg,
+					 vitPartRangeFilter);
+	  } else {
+	    myjt.printSavedViterbiFrames(numFrames, vitValsFile, NULL,
+					 vitAlsoPrintObservedVariables,
+					 vitPreg, vitCreg, vitEreg,
+					 vitFrameRangeFilter);
+	  }
+	}
 #endif
 
+      }
+    } catch (ZeroCliqueException &e) {
+      warning("Segment %d aborted due to zero clique\n", segment);
     }
-
     (*dcdrng_it)++;
   }
 
-  if (pVitPreg != NULL) {
-    regfree(pVitPreg);
-    free(pVitPreg);
+  if (JunctionTree::vitObsFile) delete JunctionTree::vitObsFile;
+
+  if (pCliqueFile) delete pCliqueFile;
+#if 0
+  if (cCliqueFile) delete cCliqueFile;
+  if (eCliqueFile) delete eCliqueFile;
+#endif
+
+  if (vitPreg != NULL) {
+    regfree(vitPreg);
+    free(vitPreg);
+  }
+  if (vitCreg != NULL) {
+    regfree(vitCreg);
+    free(vitCreg);
+  }
+  if (vitEreg != NULL) {
+    regfree(vitEreg);
+    free(vitEreg);
   }
 
   infoMsg(IM::Default,"Total data log prob for all segments is: %1.9e\n",
@@ -542,12 +830,14 @@ main(int argc,char*argv[])
     reportTiming(rus,rue,userTime,sysTime,stdout);
   }
 
-  if (pVitValsFile && pVitValsFile != stdout)
-    fclose(pVitValsFile);
+  if (mVitValsFile && mVitValsFile != stdout)
+    fclose(mVitValsFile);
 #if 1
   if (vitValsFile && vitValsFile != stdout)
     fclose(vitValsFile);
 #endif
+  if (JunctionTree::binaryViterbiFile)
+    fclose(JunctionTree::binaryViterbiFile);
 
   exit_program_with_status(0);
 }

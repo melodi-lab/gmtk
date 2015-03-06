@@ -8,15 +8,10 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
@@ -52,9 +47,9 @@ VCID(HGID)
 ////////////////////////////////////////////////////////////////////
 
 // ok if -startSkip <= _globalMinLag
-int Dlinks::_globalMinLag = 1000000;
+int Dlinks::_globalMinLag = 0;
 // ok if endSkip >= _globalMaxLag
-int Dlinks::_globalMaxLag = -1000000;
+int Dlinks::_globalMaxLag = 0;
 
 int Dlinks::_globalMinOffset = 1000000;
 int Dlinks::_globalMaxOffset = -1000000;
@@ -109,8 +104,8 @@ Dlinks::read(iDataStreamFile& is)
 
   dIndices.resize(nFeats);
   
-  _minLag = 1000000;
-  _maxLag = -1000000;
+  _minLag = 0;
+  _maxLag = 0;
   for (int i=0;i<nFeats;i++) {
     int nLinks;
     is.read(nLinks,"Can't read Dlinks's num links");

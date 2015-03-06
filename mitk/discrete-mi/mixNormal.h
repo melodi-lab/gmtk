@@ -2,6 +2,13 @@
  *: mixNormal.h
 */
 
+/*
+ *
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ *
+ */
 
 #ifndef MIX_NORMAL_H
 #define MIX_NORMAL_H
@@ -13,7 +20,7 @@
 #include <vector>
 
 #include "data_processing.h"
-#include "config.h"
+#include "discrete_mi_config.h"
 #include "error.h"
 
 #ifndef DATA_TYPE_DEFINED
@@ -83,7 +90,7 @@ private:
   double _MI;
 
   /** number of samples used in LLN calculation by using "real" data */
-  unsigned _nSamplesMI;
+  // unsigned _nSamplesMI;  appears to be unused
 }; // end class MixNormal
 
 

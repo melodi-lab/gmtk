@@ -1,0 +1,20 @@
+
+# test and dev model mildew
+
+
+AT_SETUP([mildew: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/mildew/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/mildew && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([mildew: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/mildew/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/mildew && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([mildew: jtcommand])
+# too big
+AT_SKIP_IF([test x"$GMTK_NOSKIP" = x""])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/mildew/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/mildew && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

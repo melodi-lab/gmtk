@@ -4,15 +4,10 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
@@ -43,7 +38,8 @@
 VCID(HGID)
 
 
-
+// TODO: move this to a .h separate from GMTK_dlopenDeterministicMappings.h
+#define CDT_VARIABLE_NUMBER_FEATURES (~0x0U)
 
 
 ////////////////////////////////////////////////////////////////////
@@ -85,7 +81,7 @@ MTCPT::MTCPT()
  *
  *-----------------------------------------------------------------------
  */
-void MTCPT::setNumParents(const int _nParents)
+void MTCPT::setNumParents(const unsigned _nParents)
 {
   CPT::setNumParents(_nParents);
   bitmask &= ~bm_basicAllocated;
@@ -105,7 +101,7 @@ void MTCPT::setNumParents(const int _nParents)
  *
  *-----------------------------------------------------------------------
  */
-void MTCPT::setNumCardinality(const int var, const int card)
+void MTCPT::setNumCardinality(const unsigned var, const int card)
 {
 
   CPT::setNumCardinality(var,card);
@@ -159,9 +155,6 @@ MTCPT::read(iDataStreamFile& is)
   NamedObject::read(is);
   is.read(_numParents,"Can't read DeterministicCPT numParents");
 
-  if (_numParents < 0) 
-    error("ERROR: reading file '%s' line %d, DeterministicCPT '%s' trying to use negative (%d) num parents.",
-	  is.fileName(),is.lineNo(),name().c_str(),_numParents);
   if (_numParents >= warningNumParents)
     warning("WARNING: creating DeterministicCPT '%s' with %d parents in file '%s' line %d",
 	    _numParents,name().c_str(),is.fileName(),is.lineNo());
@@ -194,7 +187,7 @@ MTCPT::read(iDataStreamFile& is)
 
   dt = GM_Parms.dts[dtIndex];
   
-  if (_numParents != dt->numFeatures())
+  if (_numParents != dt->numFeatures() && dt->numFeatures() != CDT_VARIABLE_NUMBER_FEATURES)
     error("ERROR: reading file '%s' line %d, DeterministicCPT '%s' with %d parents specifies DT '%s' with %d features that does not match",
 	  is.fileName(),is.lineNo(),_name.c_str(),_numParents,str.c_str(),dt->numFeatures());
 

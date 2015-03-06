@@ -1,24 +1,9 @@
 /*
  * gmtkModelInfo.cc
- * produce a junction tree
  *
  * Written by Richard Rogers <rprogers@ee.washington.edu>
  *
- * Copyright (c) 2011, < fill in later >
- *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
- *
- */
-
-/*
- * This program converts from ascii trainable parameters to binary
- * and vice versa.
- *
+ * Copyright (C) 2011 Jeff Bilmes
  *
  */
 
@@ -38,7 +23,6 @@
 #include "ieeeFPsetup.h"
 #include "debug.h"
 //#include "spi.h"
-#include "version.h"
 
 #if HAVE_CONFIG_H
 #include <config.h>
@@ -56,7 +40,21 @@ VCID(HGID)
 #include "GMTK_GMParms.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_Partition.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_ObservationSource.h"
+#  include "GMTK_FileSource.h"
+#  include "GMTK_CreateFileSource.h"
+#  include "GMTK_ASCIIFile.h"
+#  include "GMTK_FlatASCIIFile.h"
+#  include "GMTK_PFileFile.h"
+#  include "GMTK_HTKFile.h"
+#  include "GMTK_HDF5File.h"
+#  include "GMTK_BinaryFile.h"
+#  include "GMTK_Filter.h"
+#  include "GMTK_Stream.h"
+#endif
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_LinMeanCondDiagGaussian.h"
@@ -80,6 +78,7 @@ VCID(HGID)
 /*************************   INPUT TRAINABLE PARAMETER FILE HANDLING  *******************************************/
 #define GMTK_ARG_INPUT_TRAINABLE_FILE_HANDLING
 #define GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG
+#define GMTK_ARG_DLOPEN_MAPPERS
 #define GMTK_ARG_OUTPUT_MASTER_FILE
 #define GMTK_ARG_OUTPUT_TRAINABLE_PARAMS
 #define GMTK_ARG_INPUT_TRAINABLE_PARAMS
@@ -101,6 +100,7 @@ VCID(HGID)
 #define GMTK_ARG_SEED
 #define GMTK_ARG_VERB
 #define GMTK_ARG_VERSION
+#define GMTK_ARG_HELP
 
 #define GMTK_ARG_INFOSEPARATOR
 #define GMTK_ARG_INFOFIELDFILE
@@ -129,7 +129,12 @@ Arg Arg::Args[] = {
  */
 RAND rnd(false);
 GMParms GM_Parms;
+#if 0
 ObservationMatrix globalObservationMatrix;
+#endif
+
+FileSource *gomFS;
+ObservationSource *globalObservationMatrix;
 
   // these are the available fields
   enum fields {
@@ -171,6 +176,9 @@ ObservationMatrix globalObservationMatrix;
     gammaDist_F,
     betaDist_F,
     veCPT_F,
+    dNN_F,
+    dveCPT_F,
+    dCPT_F,
     veSep_F,
     format_F,
     unknown_F, // use this for fields you don't know how to compute
@@ -201,7 +209,9 @@ main(int argc,char*argv[])
 
   ////////////////////////////////////////////
   // parse arguments
-  bool parse_was_ok = Arg::parse(argc,(char**)argv);
+  bool parse_was_ok = Arg::parse(argc,(char**)argv,
+"\nThis program prints out some information about the number of variables\n"
+"in a model and which GMTK features the model uses\n");
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }
@@ -227,31 +237,13 @@ main(int argc,char*argv[])
   }
 
   infoMsg(IM::Max,"Opening Files ...\n");
-  globalObservationMatrix.openFiles(nfiles,
-				    (const char**)&ofs,
-				    (const char**)&frs,
-				    (const char**)&irs,
-				    (unsigned*)&nfs,
-				    (unsigned*)&nis,
-				    (unsigned*)&ifmts,
-				    (bool*)&iswp,
-				    startSkip,
-				    endSkip,
-				    Cpp_If_Ascii,
-				    cppCommandOptions,
-				    (const char**)&postpr,  //Frame_Range_Str,
-				    Action_If_Diff_Num_Frames,
-				    Action_If_Diff_Num_Sents,
-				    Per_Stream_Transforms,
-				    Post_Transforms,
-				    Ftr_Combo,
-				    (const char**)&sr,
-				    (const char**)&prepr,
-				    gpr_str);
+  gomFS = instantiateFileSource();
+  globalObservationMatrix = gomFS;
   infoMsg(IM::Max,"Finished opening files.\n");
 
 
   ////////////////////////////////////////////
+  dlopenDeterministicMaps(dlopenFilenames, MAX_NUM_DLOPENED_FILES);
   if (inputMasterFile != NULL) {
     iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
     GM_Parms.read(pf);
@@ -370,6 +362,9 @@ main(int argc,char*argv[])
   bool gammaDist = false;
   bool betaDist = false;
   bool veCPT = GM_Parms.veCpts.size() > 0;
+  bool dveCPT = GM_Parms.deepVECpts.size() > 0;
+  bool dCPT = GM_Parms.deepCpts.size() > 0;
+  bool dNN = GM_Parms.deepNNs.size() > 0;
   bool veSep = false;
 
   for (vector<RV*>::iterator it = unrolled_rvs.begin(); it != unrolled_rvs.end(); ++it) {
@@ -472,6 +467,9 @@ main(int argc,char*argv[])
     "gammaDist",
     "betaDist",
     "veCPT",
+    "deepNN",
+    "deepVECPT",
+    "deepCPT",
     "veSep",
     "format",
     "unknown",
@@ -517,6 +515,9 @@ main(int argc,char*argv[])
     "gamma distribution",
     "beta distribution",
     "VE CPTs",
+    "deep NNs",
+    "deep VE CPTs",
+    "deep CPTs",
     "VE separators",
     "data format",
     "unknown field",
@@ -554,7 +555,10 @@ main(int argc,char*argv[])
     lattice_F, 
     l1Reg_F, 
     l2Reg_F, 
-    veCPT_F, 
+    veCPT_F,
+    dNN_F, 
+    dCPT_F,
+    dveCPT_F,
     format_F,
 #else
     nRVs_F, 
@@ -710,6 +714,9 @@ switch (mode) {\
     case gammaDist_F:   PB(gammaDist); break;
     case betaDist_F:    PB(betaDist); break;
     case veCPT_F:       PB(veCPT); break;
+    case dCPT_F:        PB(dCPT); break;
+    case dNN_F:         PB(dNN); break;
+    case dveCPT_F:      PB(dveCPT); break;
     case veSep_F:       PB(veSep); break;
     case format_F:      PS(fmts[0]); break;
     case unknown_F:     PS("?"); break;

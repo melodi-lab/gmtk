@@ -6,14 +6,10 @@
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *  $Header$
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
  *
  *
  * The top level GMTK random variable object for the RV class hierarchy.
@@ -52,7 +48,11 @@
 #include "GMTK_RVInfo.h"
 #include "GMTK_NamedObject.h"
 #include "GMTK_RngDecisionTree.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_FileSource.h"
+#endif
 #include "GMTK_RV.h"
 
 class ScPnShRV {
@@ -66,6 +66,38 @@ public:
   ScPnShRV() {}
   ~ScPnShRV() {}
 
+  // For ticket #6: returns true iff it's "safe" to call modifyProbability()
+  // with the specified WeightInfo at this time. Safe means that all the
+  // information needed to modify the probability is currently available.
+  // In particular, if data from the globalObservationMatrix is required, the
+  // globalObservationMatrix must be non-NULL and ready to provide data.
+
+  // modifyProbability() can be called early in the course of GMTK setup to
+  // prepare for cpbeam pruning, before the globalObservationMatrix has been
+  // instantiated. That is why this check is necessary.
+
+  bool safeToModifyProbability(RVInfo::WeightInfo &wi) {
+    if (wi.penalty.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Constant) {
+      // this is safe; the penalty is known
+    } else if (wi.penalty.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Observation) {
+      if (!globalObservationMatrix) return false; // need observations, but they're not here yet
+      if (!globalObservationMatrix->active()) return false; // GOM exists, but not ready yet
+    }
+    if (wi.scale.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Constant) {
+      // this is safe; the scale is known
+    } else if (wi.scale.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Observation) {
+      if (!globalObservationMatrix) return false; // need observations, but they're not here yet
+      if (!globalObservationMatrix->active()) return false; // GOM exists, but not ready yet
+    }
+    if (wi.shift.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Constant) {
+      // this is safe; the shift is known
+    } else if (wi.shift.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Observation) {
+      if (!globalObservationMatrix) return false; // need observations, but they're not here yet
+      if (!globalObservationMatrix->active()) return false; // GOM exists, but not ready yet
+    }
+    return true; // everything we need is available
+  }
+
   // Version with branches.
   // Given a p, modify p according to:
   //         penalty*p^scale+shift
@@ -78,23 +110,23 @@ public:
     } else if (wi.penalty.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Observation) {
       // TODO: check here that global obsevation matrix is active.
       p.valref() += 
-	(*globalObservationMatrix.floatVecAtFrame(rv->frame(),
-						  wi.penalty.firstFeatureElement));
+	(*(globalObservationMatrix->floatVecAtFrame(rv->frame(),
+						    wi.penalty.firstFeatureElement)));
     }
     if (wi.scale.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Constant) {
       p.valref() *= wi.scale.weight_value;
     } else if (wi.scale.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Observation) {
       p.valref() *= 
-	(*globalObservationMatrix.floatVecAtFrame(rv->frame(), 
-						  wi.scale.firstFeatureElement));
+	(*(globalObservationMatrix->floatVecAtFrame(rv->frame(), 
+						    wi.scale.firstFeatureElement)));
     }
     if (wi.shift.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Constant) {
       logpr shift((void*)NULL,wi.shift.weight_value);
       p += shift;
     } else if (wi.shift.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Observation) {
       logpr shift((void*)NULL,
-		  (*globalObservationMatrix.floatVecAtFrame(rv->frame(), 
-							    wi.shift.firstFeatureElement)));
+		  (*(globalObservationMatrix->floatVecAtFrame(rv->frame(), 
+							      wi.shift.firstFeatureElement))));
       p += shift;
     }
   }
@@ -115,16 +147,16 @@ public:
   }
   inline void modifyProbabilityOP(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
       p.valref() += 
-	(*globalObservationMatrix.floatVecAtFrame(rv->frame(),
-						  wi.penalty.firstFeatureElement));
+	(*(globalObservationMatrix->floatVecAtFrame(rv->frame(),
+						    wi.penalty.firstFeatureElement)));
   }
   inline void modifyProbabilityCS(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
       p.valref() *= wi.scale.weight_value;
   }
   inline void modifyProbabilityOS(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
       p.valref() *= 
-	(*globalObservationMatrix.floatVecAtFrame(rv->frame(), 
-						  wi.scale.firstFeatureElement));
+	(*(globalObservationMatrix->floatVecAtFrame(rv->frame(), 
+						  wi.scale.firstFeatureElement)));
   }
   inline void modifyProbabilityCO(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
       logpr shift((void*)NULL,wi.shift.weight_value);
@@ -132,8 +164,8 @@ public:
   }
   inline void modifyProbabilityOO(logpr& p,RVInfo::WeightInfo& wi,RV* rv) { 
       logpr shift((void*)NULL,
-		  (*globalObservationMatrix.floatVecAtFrame(rv->frame(), 
-							    wi.shift.firstFeatureElement)));
+		  (*(globalObservationMatrix->floatVecAtFrame(rv->frame(), 
+							      wi.shift.firstFeatureElement))));
       p += shift;
   }
 

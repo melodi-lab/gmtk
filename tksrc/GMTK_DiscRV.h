@@ -4,14 +4,10 @@
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *  $Header$
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
  *
  *
  * The discrete random variable type.
@@ -29,7 +25,11 @@
 
 #include "GMTK_RV.h"
 #include "GMTK_CPT.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#ese
+#  include "GMTK_FileSource.h"
+#endif
 #include "GMTK_PackCliqueValue.h"
 #include "GMTK_NameCollection.h"
 

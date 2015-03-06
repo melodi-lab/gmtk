@@ -3,17 +3,9 @@
  *
  *  Written by Jeff Bilmes <bilmes@ee.washington.edu>
  * 
- *  $Header$
- * 
- * Copyright (c) 2001, < fill in later >
- *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
  */
 
@@ -34,6 +26,7 @@ class RealMatrix : public EMable  {
 
   friend class GammaComponent;
   friend class BetaComponent;
+  friend class DeepVECPT;
 
 protected:
 

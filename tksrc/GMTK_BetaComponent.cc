@@ -4,15 +4,10 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2008, < fill in later >
+ * Copyright (C) 2008 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
@@ -651,9 +646,10 @@ BetaComponent::emStoreObjectsAccumulators(oDataStreamFile& ofile,
   // since this is a Beta, we ignore the writeLogVals
   // argument since it doesn't make sense to take log of
   // these values since they are continuous. etc.
+  ofile.writeComment("BetaComponent %s dim %u:   ... sumx[i] sumxx[i] ... \n", name().c_str(), _dim);
   if (writeZeros) {
-    for (unsigned i=0;i<2*_dim;i++) {
-      ofile.write(0.0,"Beta Component store accum.");
+    for (unsigned i=0; i < 2*_dim; i++) {
+      ofile.write(sumx.ptr[0], 0.0,"Beta Component store accum.");
     }
   } else {
     for (unsigned i = 0; i < _dim; i++) {
@@ -661,6 +657,7 @@ BetaComponent::emStoreObjectsAccumulators(oDataStreamFile& ofile,
       ofile.write(sumxx.ptr[i],"Beta Component store accum.");
     }
   }
+  ofile.nl();
 }
 
 

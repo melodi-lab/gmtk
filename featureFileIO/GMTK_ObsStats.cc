@@ -4,12 +4,20 @@
  *  Created   : 2003-12-05 14:26:06 karim
  *  Author    : Karim Filali (karim@cs.washington.edu)
  *  Time-stamp: <>
+ *
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ *
 */
 
 
 #include <limits.h>
 #include <float.h>
 #include <math.h>
+#include <string.h>
+
+#include "general.h"
 #include "GMTK_ObsStats.h"
 
 typedef struct { 
@@ -19,7 +27,7 @@ typedef struct {
 
 
 
-void obsStats(FILE *out_fp, ObservationMatrix* obs_mat,Range& srrng, Range& frrng, const char*pr_str, const size_t hist_bins, const bool quiet_mode) {
+void obsStats(FILE *out_fp, FileSource* obs_mat,Range& srrng, Range& frrng, const char*pr_str, const size_t hist_bins, const bool quiet_mode) {
 
     // Feature and label buffers are dynamically grown as needed.
 
@@ -61,12 +69,12 @@ void obsStats(FILE *out_fp, ObservationMatrix* obs_mat,Range& srrng, Range& frrn
     }
 
     for (Range::iterator srit=srrng.begin();!srit.at_end();srit++) {
-      obs_mat->loadSegment(*srit);
+      obs_mat->openSegment(*srit);
       const size_t n_frames = obs_mat->numFrames();
 
 	if (!quiet_mode) {
 	  if ((*srit) % 100 == 0)
-	    printf("Processing sentence %d\n",(*srit));
+	    printf("Processing segment %d\n",(*srit));
 	}
 
         // Increase size of buffers if needed.
@@ -164,12 +172,12 @@ void obsStats(FILE *out_fp, ObservationMatrix* obs_mat,Range& srrng, Range& frrn
 	printf("Computing histograms..\n");
       }
       for (Range::iterator srit=srrng.begin();!srit.at_end();srit++) {
-	obs_mat->loadSegment(*srit);
+	obs_mat->openSegment(*srit);
 	const size_t n_frames = obs_mat->numFrames();
 	
 	if (!quiet_mode) {
 	    if ((*srit) % 100 == 0)
-	      printf("Processing sentence %d\n",(*srit));
+	      printf("Processing segment %d\n",(*srit));
 	  }
 
 	  for(unsigned frame_no = 0;  frame_no < n_frames; ++frame_no) {

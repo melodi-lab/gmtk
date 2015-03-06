@@ -28,15 +28,10 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2010, < fill in later >
+ * Copyright (C) 2010 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
@@ -273,8 +268,12 @@ registerAllCFunctionDeterministicMappings(GMParms& gmp)
   gmp.registerDeterministicCMapper("internal:conditionalLimitedDecrement",
 				   CONDITIONAL_LIMITED_DECREMENT_NUM_FEATURES,
 				   DETERMINISTIC_MAPPER_C_CODE_NAME(conditionalLimitedDecrement));
-  // TODO: add the variable parent deterministic mappers once the DT code can accept variable numbers of parens.
-  // ...
+  gmp.registerDeterministicCMapper("internal:allParentsEqual",
+				   CDT_VARIABLE_NUMBER_FEATURES,
+				   DETERMINISTIC_MAPPER_C_CODE_NAME(allParentsEqual));
+  gmp.registerDeterministicCMapper("internal:allParentsUnEqual",
+				   CDT_VARIABLE_NUMBER_FEATURES,
+				   DETERMINISTIC_MAPPER_C_CODE_NAME(allParentsUnEqual));
   // DO NOT CHANGE ANYTHING IN THE ABOVE FEW LINES ENDING HERE.
   ///////////////////////////////////////////////////////////////////////
 

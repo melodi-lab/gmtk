@@ -1,5 +1,12 @@
 #ifndef READ_RANGE_H
 #define READ_RANGE_H
+/*
+ *
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ *
+ */
 
 #include <stdio.h>
 #include <stdlib.h>

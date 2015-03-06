@@ -1,7 +1,13 @@
 //
 // Log arithmetic .cc and test file.
 //
+// 
+//  Copyright (C) 2001 Jeff Bilmes
+//  Licensed under the Open Software License version 3.0
+//  See COPYING or http://opensource.org/licenses/OSL-3.0
 //
+
+
 // Written by: Jeff A. Bilmes
 //             bilmes@icsi.berkeley.edu
 
@@ -118,10 +124,10 @@ main()
 	 tmp3.unlog(),
 	 tmp4.unlog());
 
-  printf("sizeof(logp<float,float>) = %lu\n",sizeof(logp<float,float>));
-  printf("sizeof(logp<double,float>) = %lu\n",sizeof(logp<double,float>));
-  printf("sizeof(logp<float,double>) = %lu\n",sizeof(logp<float,double>));
-  printf("sizeof(logp<double,double>) = %lu\n",sizeof(logp<double,double>));
+  printf("sizeof(logp<float,float>) = %lu\n",(unsigned long)sizeof(logp<float,float>));
+  printf("sizeof(logp<double,float>) = %lu\n",(unsigned long)sizeof(logp<double,float>));
+  printf("sizeof(logp<float,double>) = %lu\n",(unsigned long)sizeof(logp<float,double>));
+  printf("sizeof(logp<double,double>) = %lu\n",(unsigned long)sizeof(logp<double,double>));
 
 
   foo(tmp,tmp);

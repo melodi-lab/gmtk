@@ -1,14 +1,14 @@
 
 # Verify that https://j.ee.washington.edu/trac/gmtk/ticket/23 is fixed
 
-AT_SETUP([ticket 23])
+AT_SETUP([obs-concat crashes (ticket 23)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/ticket23])
-AT_CHECK([obs-concat -i1 $TEST_AND_DEV/ticket23/obs1.pfile \
-                     -i2 $TEST_AND_DEV/ticket23/obs2.pfile \
+AT_CHECK([obs-concat -of1 $TEST_AND_DEV/ticket23/obs1.pfile \
+                     -of2 $TEST_AND_DEV/ticket23/obs2.pfile \
                      -o obs3.pfile -ofmt pfile],
-         [],[ignore],[ignore])
-AT_CHECK([obs-concat -i1 obs3.pfile],
-         [],[Processing sentence 0 of file obs3.pfile
+         [],[ignore])
+AT_CHECK([obs-concat -of1 obs3.pfile],
+         [],[Processing segment 0 of file obs3.pfile
 0 0 0.799279 0.199117 0.465240
 0 1 0.827937 0.915163 0.056923
 0 2 0.808103 0.511985 0.348996

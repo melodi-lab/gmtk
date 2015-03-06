@@ -7,14 +7,10 @@
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *  $Header$
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
  *
  *
  * The top level GMTK random variable object for the RV class hierarchy.
@@ -37,6 +33,7 @@ VCID(HGID)
 
 #include <iostream>
 #include <fstream>
+#include <typeinfo>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -162,68 +159,83 @@ void ObsDiscRV::setToObservedValue()
     if (rv_info.rvFeatureRange.filled == RVInfo::FeatureRange::fr_FirstIsValue) {
       val = rv_info.rvFeatureRange.firstFeatureElement;
     } else if (rv_info.rvFeatureRange.filled == RVInfo::FeatureRange::fr_FrameNumIsValue) {
-      assert (globalObservationMatrix.active());
+      assert (globalObservationMatrix->active());
       if (frame() >= cardinality) 
 	error("ERROR: RV '%s(%d)' has cardinality %d, but current frame value %d too large to store in RV with this cardinality (in segment %d of frame length %d).\n",
 	      name().c_str(),
 	      frame(),
 	      cardinality,
 	      frame(),
-	      globalObservationMatrix.segmentNumber(),
-	      globalObservationMatrix.numFrames());
+	      globalObservationMatrix->segmentNumber(),
+	      globalObservationMatrix->numFrames());
       val = frame();
     } else if (rv_info.rvFeatureRange.filled == RVInfo::FeatureRange::fr_EmarfNumIsValue) {
-      assert (globalObservationMatrix.active());
-      unsigned emarf = globalObservationMatrix.numFrames() - frame();
+      assert (globalObservationMatrix->active());
+      FileSource fs;
+      if ( typeid(*globalObservationMatrix) != typeid(fs) ) {
+	error("ERROR: RV '%s(%d)' online inference cannot support emarf as value",name().c_str(),frame());
+      }
+      unsigned emarf = globalObservationMatrix->numFrames() - frame();
       if (emarf >= cardinality) 
 	error("ERROR: RV '%s(%d)' has cardinality %d, but current emarf value %d too large to store in RV with this cardinality (in segment %d of frame length %d).\n",
 	      name().c_str(),
 	      frame(),
 	      cardinality,
 	      emarf,
-	      globalObservationMatrix.segmentNumber(),
-	      globalObservationMatrix.numFrames());
+	      globalObservationMatrix->segmentNumber(),
+	      globalObservationMatrix->numFrames());
       val = emarf;
     } else if (rv_info.rvFeatureRange.filled == RVInfo::FeatureRange::fr_NumFramesIsValue) {
-      assert (globalObservationMatrix.active());
-      if (globalObservationMatrix.numFrames() >= cardinality) 
+      assert (globalObservationMatrix->active());
+      FileSource fs;
+      if ( typeid(*globalObservationMatrix) != typeid(fs) ) {
+	error("ERROR: RV '%s(%d)' online inference cannot support number of frames as value",name().c_str(),frame());
+      }
+      if (globalObservationMatrix->numFrames() >= cardinality) 
 	error("ERROR: RV '%s(%d)' has cardinality %d, but current num frames %d too large to store in RV with this cardinality (in segment %d of frame length %d).\n",
 	      name().c_str(),
 	      frame(),
 	      cardinality,
-	      globalObservationMatrix.numFrames(),
-	      globalObservationMatrix.segmentNumber(),
-	      globalObservationMatrix.numFrames());
-      val = globalObservationMatrix.numFrames();
+	      globalObservationMatrix->numFrames(),
+	      globalObservationMatrix->segmentNumber(),
+	      globalObservationMatrix->numFrames());
+      val = globalObservationMatrix->numFrames();
     } else if (rv_info.rvFeatureRange.filled == RVInfo::FeatureRange::fr_SegmentNumIsValue) {
-      assert (globalObservationMatrix.active());
-      if (globalObservationMatrix.segmentNumber() >= cardinality) 
+      assert (globalObservationMatrix->active());
+      if (globalObservationMatrix->segmentNumber() >= cardinality) 
 	error("ERROR: RV '%s(%d)' has cardinality %d, but current segment number %d too large to store in RV with this cardinality (in segment %d of frame length %d).\n",
 	      name().c_str(),
 	      frame(),
 	      cardinality,
-	      globalObservationMatrix.segmentNumber(),
-	      globalObservationMatrix.segmentNumber(),
-	      globalObservationMatrix.numFrames());
-      val = globalObservationMatrix.segmentNumber();
+	      globalObservationMatrix->segmentNumber(),
+	      globalObservationMatrix->segmentNumber(),
+	      globalObservationMatrix->numFrames());
+      val = globalObservationMatrix->segmentNumber();
     } else if (rv_info.rvFeatureRange.filled == RVInfo::FeatureRange::fr_NumSegmentsIsValue) {
-      assert (globalObservationMatrix.active());
-      if (globalObservationMatrix.numSegments() >= cardinality) 
+      assert (globalObservationMatrix->active());
+      FileSource *fs = static_cast<FileSource *>(globalObservationMatrix);
+      FileSource dummyFS;
+      if ( typeid(*globalObservationMatrix) != typeid(dummyFS) ) {
+	error("ERROR: RV '%s(%d)' online inference cannot support number of segments as value",name().c_str(),frame());
+      }
+      if (fs->numSegments() >= cardinality) 
 	error("ERROR: RV '%s(%d)' has cardinality %d, but current number segments %d too large to store in RV with this cardinality (in segment %d of frame length %d).\n",
 	      name().c_str(),
 	      frame(),
 	      cardinality,
-	      globalObservationMatrix.numSegments(),
-	      globalObservationMatrix.segmentNumber(),
-	      globalObservationMatrix.numFrames());
-      val = globalObservationMatrix.numSegments();
+	      fs->numSegments(),
+	      globalObservationMatrix->segmentNumber(),
+	      fs->numFrames());
+      val = fs->numSegments();
     } else if (rv_info.rvFeatureRange.filled == RVInfo::FeatureRange::fr_Range) {
-      assert (globalObservationMatrix.active());
+      assert (globalObservationMatrix->active());
       // printf("getting value of random variable '%s', time index %d, el %d\n",
       // label.c_str(),timeIndex,featureElement);
-      unsigned tmp = globalObservationMatrix.unsignedAtFrame(frame(),featureElement());
+      unsigned tmp = globalObservationMatrix->unsignedAtFrame(frame(),featureElement());
       if (tmp >= (unsigned)cardinality) 
-	error("ERROR: RV '%s' (file:line '%s:%d') at time index %d has cardinality %d, but feature element position %d in observation file (time %d of segment %d) has value %u.\n",
+	error("ERROR: RV '%s' (file:line '%s:%d') at time index %d has cardinality %d, "
+	      "but feature element position %d in observation file (time %d of segment %d) "
+	      "has value %u = 0x%X.\n",
 	      name().c_str(),
 	      rv_info.rvFileName.c_str(),
 	      rv_info.fileLineNumber,
@@ -231,8 +243,8 @@ void ObsDiscRV::setToObservedValue()
 	      cardinality,
 	      featureElement(),
 	      frame(),
-	      globalObservationMatrix.segmentNumber(),
-	      tmp);
+	      globalObservationMatrix->segmentNumber(),
+	      tmp, tmp);
       val = tmp;
     } else {
       // shouldn't happen.

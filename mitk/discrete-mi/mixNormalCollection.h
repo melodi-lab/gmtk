@@ -2,6 +2,13 @@
  *: mixnormalcollection.h
  */
 
+/*
+ *
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ *
+ */
 
 #ifndef MIX_NORMAL_COLLECTION_H
 #define MIX_NORMAL_COLLECTION_H
@@ -36,8 +43,11 @@ public:
 
 private:
   const unsigned _numMis;  
+#if 0
+  // appears to be unused
   const unsigned _numVars;
   const unsigned _dimX;
+#endif
   MixNormal * const _ftrMI;
   MixNormal * const _ftrMI_endp;
 };

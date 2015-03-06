@@ -4,14 +4,10 @@
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *  $Header$
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
  *
  *
  * The top level GMTK random variable object for the RV class hierarchy.
@@ -43,6 +39,7 @@ VCID(HGID)
 
 #include "GMTK_RV.h"
 #include "GMTK_ObsDiscRV.h"
+#include "GMTK_CountIterator.h"
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -419,6 +416,24 @@ void RV::setParents(vector<RV *> &sparents,vector<vector<RV *> > &cpl)
     }
 
 
+#define DO_IF_REGEX_AND_FRAME_MATCH(preg,rv,pcommand)		\
+    if (preg) { \
+      if (frame == (int)rv->frame() && !regexec(preg,rv->name().c_str(),0,0,0)) { \
+        if (!first) \
+          fprintf(f,","); \
+	pcommand; \
+	first = false; \
+      } \
+    } else { \
+      if (frame == (int)rv->frame()) {		\
+         if (!first) \
+           fprintf(f,","); \
+         pcommand; \
+         first = false; \
+       } \
+     }
+
+
 /*-
  *-----------------------------------------------------------------------
  * printRVSet{,AndValues}()
@@ -444,6 +459,15 @@ void printRVSetAndValues(FILE*f,vector<RV*>& locset,const bool nl,regex_t* preg)
   for (unsigned i=0;i<locset.size();i++) {
     RV* rv = locset[i];
     DO_IF_REGEX_MATCH(preg,rv,rv->printNameFrameValue(f,false));
+  }
+  if (nl) fprintf(f,"\n");
+}
+void printRVSetAndValues(FILE*f,vector<RV*>& locset,const bool nl,regex_t* preg, int frame)
+{
+  bool first = true;
+  for (unsigned i=0;i<locset.size();i++) {
+    RV* rv = locset[i];
+    DO_IF_REGEX_AND_FRAME_MATCH(preg,rv,rv->printNameFrameValue(f,false));
   }
   if (nl) fprintf(f,"\n");
 }
@@ -690,32 +714,6 @@ getRVOVec(const vector <RV*>& rvs, // a set of RVs
   return res;
 }
 
-/*
- * simple count iterator that counts the number
- * of insertions made, but doesn't do anything else.
- */
-template <typename _Container>
-class count_iterator 
-  : public iterator<output_iterator_tag, void, void, void, void> {
-  unsigned counter;
-public:
-
-  count_iterator(_Container& __x) { counter = 0; }
-  count_iterator() { counter = 0; }
-
-  // count_iterator(const count_iterator& ci) { counter = ci.counter; }
-  // count_iterator& operator=(const count_iterator& ci) { counter = ci.counter; }
-
-  count_iterator& operator=(const typename _Container::const_reference _value) 
-  { counter++; return *this; }
-  count_iterator& operator*() { return *this; }
-  count_iterator& operator++() {  return *this; }
-  count_iterator& operator++(int) { return *this; }
-
-  void reset() { counter = 0; }
-  unsigned count() { return counter; }
-};
-
 class setrv_count_iterator: public count_iterator <set <RV*> > {
 public:
 
@@ -771,3 +769,14 @@ void adjustFramesBy(set <RV*>& rvs,
 }
 
 
+// true iff first < second with name as major key, frame as minor
+bool 
+rvcompare(RV *first, RV *second) {
+  int order = first->name().compare(second->name());
+  if (order < 0)
+    return true;
+  else if (order == 0)
+    return first->frame() < second->frame();
+  else
+    return false;
+}

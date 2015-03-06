@@ -4,14 +4,10 @@
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *  $Header$
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
  *
  *
  */
@@ -121,6 +117,7 @@ Each routine has:
 #include <set>
 #include <regex.h>
 
+#include "range.h"
 #include "logp.h"
 #include "GMTK_RVInfo.h"
 #include "GMTK_NamedObject.h"
@@ -495,8 +492,8 @@ public:
 // TODO: below routines should be in RV namespace.
 
 void printRVSetAndValues(FILE*f,vector<RV*>& locset,const bool nl=true,regex_t* preg = NULL); 
-void printRVSetAndValues(FILE*f,sArray<RV*>& locset,
-			 const bool nl=true,regex_t* preg = NULL);
+void printRVSetAndValues(FILE*f,vector<RV*>& locset,const bool nl,regex_t* preg, int frame); 
+void printRVSetAndValues(FILE*f,sArray<RV*>& locset,const bool nl=true,regex_t* preg = NULL);
 void printRVSetAndValues(FILE*f,set<RV*>& locset,const bool nl=true,regex_t* preg = NULL);
 void printRVSet(FILE*f,vector<RV*>& locvec,const bool nl=true,regex_t* preg = NULL);
 void printRVSet(FILE*f,sArray<RV*>& locset,const bool nl=true,regex_t* preg = NULL);
@@ -547,6 +544,7 @@ bool firstRVSetContainedInSecond(set <RV*>& firstSet,
 
 void adjustFramesBy(set <RV*>& rvs,int adjustment,bool resetObservedValues = true);
 
-
+// true iff first < second with name as major key, frame as minor
+bool rvcompare(RV *first, RV *second);
 
 #endif

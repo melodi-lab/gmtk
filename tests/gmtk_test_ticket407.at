@@ -1,0 +1,40 @@
+
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/407 is fixed
+
+# command will fail if filename[startFrame:endFrame] isn't supported
+# by BinaryFile 
+
+AT_SETUP([Binary file frame ranges (ticket 407)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/toyFisher])
+AT_CHECK([if test -f $TEST_AND_DEV/toyFisher/triphone/debugTpModel/config2/DT/phoneIndex_word_2_phone.dt.bz2 -a \
+                ! -f $TEST_AND_DEV/toyFisher/triphone/debugTpModel/config2/DT/phoneIndex_word_2_phone.dt; \
+          then bunzip2 $TEST_AND_DEV/toyFisher/triphone/debugTpModel/config2/DT/phoneIndex_word_2_phone.dt.bz2; fi; \ 
+          for f in `ls $TEST_AND_DEV/toyFisher/triphone/debugTpModel/config2/tie/*.bz2`; do \
+            if test ! -f ${f%.bz2}; then bunzip2 $f; fi \
+          done],
+  [],[ignore],[ignore])
+AT_CHECK([(cd $TEST_AND_DEV/toyFisher/triphone &&                       \
+  gmtkJT -strF debugTpModel/config2/PARAM/triphoneTrain.str             \
+     -binInputTrainable T                                               \
+     -inputTrainable debugTpModel/config2/tie/untiedTriphoneParams.gmtk \
+     -inputMasterFile debugTpModel/config2/PARAM/triphoneTrain.mfl      \
+     -of1 ../fisherData/filelists/plpcutMVACompWordAligned.scp          \
+     -nf1 39  -iswp1 true -fmt1 htk -sdiffact1 er                       \
+     -of2 ../fisherData/filelists/wordObservationsWordAligned.scp       \
+     -ni2 2  -iswp2 true -fmt2 binary -sdiffact2 er                     \
+     -cppifascii T                                                      \
+     -cppComm ' -I debugTpModel/config2/PARAM -D word_OBS_RANGE=39:39   \
+         -D IN_NAME_COL_FILE=debugTpModel/config2/tie/untiedPlp_Col.txt \
+         -D MODEL_DIR=debugTpModel/config2 -D LEFT_CONTEXT_CROSS_WORD=1 \
+         -D plp_OBS_RANGE=0:38 -D SUB_PHONE_CARD=137                    \
+         -D END_OF_UTT_MARKER=657 -D WORD_CARD=79742                    \
+         -D WORD_COUNTER_CARD=272 -D SUB_PHONE_COUNTER_CARD=3           \
+         -D wordTransition_OBS_RANGE=40:40 -D END_OF_WORD_MARKER=47     \
+         -D PHONE_CARD=48 -D WORD_ALIGNED_TRAINING=1                    \
+         -D DATA_DIR=../fisherData -D RIGHT_CONTEXT_CROSS_WORD=1        \
+         -D PHONE_COUNTER_CARD=22 -D STATE_CARD=315648 ')], [1], 
+  [ignore], 
+[ERROR: ZERO CLIQUE: clique with no entries. Final probability will be zero.
+
+])
+AT_CLEANUP

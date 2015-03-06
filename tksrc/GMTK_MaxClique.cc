@@ -6,15 +6,10 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2003, < fill in later >
+ * Copyright (C) 2003 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
@@ -42,6 +37,10 @@
  *   in front of call to packer object (see below).   
  *
  */
+
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
 
 
 #include <math.h>
@@ -71,11 +70,16 @@
 #include "GMTK_ContRV.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_GMParms.h"
+#include "GMTK_MaxClique.h"
 #include "GMTK_MDCPT.h"
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
 #include "GMTK_Mixture.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_ObservationSource.h"
+#endif
 #include "GMTK_JunctionTree.h"
 
 #if HAVE_CONFIG_H
@@ -87,7 +91,7 @@
 VCID(HGID)
 
 
-
+#if 0
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 //        Constants
@@ -166,6 +170,7 @@ VCID(HGID)
 #define REMAINDER_VALUE_SPACE_MANAGER_DECAY_RATE   0.9
 
 #endif
+#endif
 
 // for sorting an array of RVs ascending based on increasing cardinality
 struct ParentCardinalityCompare 
@@ -235,6 +240,8 @@ namespace CliqueBuffer {
 
 
 
+
+
 /*
  *
  * Continuous observation per-feature penalty, default value defined here.
@@ -253,9 +260,40 @@ FILE* SeparatorClique::veSeparatorFile = NULL;
 float SeparatorClique::veSeparatorLogProdCardLimit = 7.0; // i.e., 1e7=10M is default max.
 
 
+/*
+ * Memory management options
+ */
+
+// Set these to reasonable defaults (see https://j.ee.washington.edu/trac/gmtk/ticket/384)
+// These defaults may be changed by the -memoryGrowth command line argument (see
+// https://j.ee.washington.edu/trac/gmtk/ticket/342)
+unsigned SeparatorClique::aiStartingSize = 1;
+float    SeparatorClique::aiGrowthFactor = 1.05;
+
+unsigned SeparatorClique::remStartingSize = 1;
+float    SeparatorClique::remGrowthFactor = 1.05;
+
+unsigned SeparatorClique::sepSpaceMgrStartingSize = 1;
+float    SeparatorClique::sepSpaceMgrGrowthRate   = 1.05;
+float    SeparatorClique::sepSpaceMgrDecayRate    = 0.0;
+
+unsigned SeparatorClique::remSpaceMgrStartingSize = 1;
+float    SeparatorClique::remSpaceMgrGrowthRate   = 1.05;
+float    SeparatorClique::remSpaceMgrDecayRate    = 0.0;
+
+unsigned MaxClique::spaceMgrStartingSize = 1;
+float    MaxClique::spaceMgrGrowthRate   = 1.05;
+float    MaxClique::spaceMgrDecayRate    = 0.0;
+
+float MaxCliqueTable::valuePoolGrowthRate;
+
+unsigned ConditionalSeparatorTable::remHashMapStartingSize;
+
 bool MaxClique::storeDeterministicChildrenInClique = true;
 
 double MaxClique::normalizeScoreEachClique = 1.0;
+
+bool MaxClique::failOnZeroClique = true;
 
 
 /*
@@ -440,9 +478,9 @@ MaxClique::MaxClique(MaxClique& from_clique,
 		     const unsigned int frameDelta)
 
   :  cliqueValueSpaceManager(1,     // starting size
-			     CLIQUE_VALUE_SPACE_MANAGER_GROWTH_RATE,   // growth rate
+			     spaceMgrGrowthRate,   // growth rate
 			     1,     // growth addition
-			     CLIQUE_VALUE_SPACE_MANAGER_DECAY_RATE)    // decay rate 
+			     spaceMgrDecayRate)    // decay rate 
 {
   set<RV*>::iterator it;
 
@@ -1208,7 +1246,7 @@ MaxClique::clearCliqueValueCache(bool force)
 {
   if (force && packer.packedLen() > IMC_NWWOH) {
     valueHolder.prepare();
-    cliqueValueHashSet.clear(CLIQUE_VALUE_HOLDER_STARTING_SIZE);
+    cliqueValueHashSet.clear(spaceMgrStartingSize);
 #ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
     temporaryCliqueValuePool.clear();
 #endif
@@ -1515,15 +1553,14 @@ MaxClique::prepareForUnrolling()
 
   if (packer.packedLen() > IMC_NWWOH) {
     // setup value hodler
-    new (&valueHolder) CliqueValueHolder(packer.packedLen(),
-					 CLIQUE_VALUE_HOLDER_STARTING_SIZE, // set to 1 to test.
-					 CLIQUE_VALUE_HOLDER_GROWTH_RATE); // 1.25
+    new (&valueHolder) CliqueValueHolder(packer.packedLen());
+
     // set up common clique hash tables 
     // TODO: add appropriate default staring hash sizes.
     // new (&cliqueValueHashSet) vhash_set< unsigned > (packer.packedLen(),2);
-    new (&cliqueValueHashSet) vhash_set< unsigned > (packer.packedLen(),CLIQUE_VALUE_HOLDER_STARTING_SIZE);
+    new (&cliqueValueHashSet) vhash_set< unsigned > (packer.packedLen(),spaceMgrStartingSize);
 #ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
-    temporaryCliqueValuePool.resize(CLIQUE_VALUE_HOLDER_STARTING_SIZE*packer.packedLen());
+    temporaryCliqueValuePool.resize(spaceMgrStartingSize*packer.packedLen());
 #endif
 
   } else {
@@ -1743,7 +1780,7 @@ MaxClique::sortAndAssignDispositions(const char *varCliqueAssignmentPrior)
   // continuation score than there are sorted assigned nodes because
   // we may want to do pruning at the very last node.
   sortedAssignedContinuationScores.resize(sortedAssignedNodes.size()+1);
-  if (cliqueBeamContinuationHeuristic) {
+  if (cliqueBeamContinuationHeuristic && cliqueBeamBuildBeam != (-LZERO) /* ie, default -cpbeam meaning no pruning */ ) {
     // TODO: do something better than just using global max value, like local max value
     // of the current rv.
     sortedAssignedContinuationScores.ptr[sortedAssignedNodes.size()] = 1.0;
@@ -2492,8 +2529,15 @@ ceGatherFromIncommingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStru
   // check if we have a zero clique, and if we do, print message and exit.
   // TODO: rather than exit, pop back to the top and allow continuation and/or
   // beam expansion.
-  if (numCliqueValuesUsed == 0)
-    error("ERROR: ZERO CLIQUE: clique with no entries. Final probability will be zero.\n");
+  if (numCliqueValuesUsed == 0) {
+    if (MaxClique::failOnZeroClique) 
+        error("ERROR: ZERO CLIQUE: clique with no entries. Final probability will be zero.\n");
+
+    // It looks like there's no cleanup to do here - the loop above just breaks
+    // without doing anything to cleanup the previous clique expansion tries. - RR
+    warning("ZERO CLIQUE: clique with no entries. Final probability will be zero.\n");
+    throw ZeroCliqueException();
+  }
 
   // We have some clique entries, so we store new previous max CE
   // values, before any pruning.
@@ -2534,7 +2578,7 @@ ceGatherFromIncommingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStru
     // finally, insert surviving entries into global shared pool.
     insertLocalCliqueValuesIntoSharedPool(origin);
     // and free up the local buffer.
-    origin.temporaryCliqueValuePool.resize(CLIQUE_VALUE_HOLDER_STARTING_SIZE*origin.packer.packedLen());
+    origin.temporaryCliqueValuePool.resize(MaxClique::spaceMgrStartingSize*origin.packer.packedLen());
   }
 #endif
 
@@ -2711,7 +2755,9 @@ ceGatherFromIncommingSeparatorsCliqueObserved(MaxCliqueTable::SharedLocalStructu
   }
 
   if (message(Inference,High)) {
-    psp2(stdout,spi*(traceIndent+1+sharedStructure.fSortedAssignedNodes.size()));
+    // see https://j.ee.washington.edu/trac/gmtk/ticket/214#comment:14
+    if (message(Inference,High+5))
+      psp2(stdout,spi*(traceIndent+1+sharedStructure.fSortedAssignedNodes.size()));
     infoMsg(IM::Inference, IM::High,"CI:Inserting Observed %d-clique ent #0,pr=%f,sm=%f:",
 	    sharedStructure.fNodes.size(),
 	    cliqueValues.ptr[0].p.val(),sumProbabilities().val());
@@ -2823,8 +2869,8 @@ MaxCliqueTable::ceIterateSeparatorsRecurse(MaxCliqueTable::SharedLocalStructure&
     sepSeparatorValuesPtr = sep.separatorValues->ptr; 
 
 
+  traceIndent++;
   if (message(Inference,High+5)) {
-    traceIndent++;
     psp2(stdout,spi*traceIndent);    
     infoMsg(Inference,High+5,"S%d:Starting separator iter,partSepNo=%d,p=%f,nodes:",
 	    sepNumber,origin.ceReceiveSeparators[sepNumber],p.val());
@@ -2996,8 +3042,8 @@ MaxCliqueTable::ceIterateSeparatorsRecurse(MaxCliqueTable::SharedLocalStructure&
   }
 
  ceIterateSeparatorsFinished:
-  if (message(Inference, High+5))
-    traceIndent--;
+  //  if (message(Inference, High+5))
+  traceIndent--;
 }
 
 
@@ -3051,8 +3097,8 @@ MaxCliqueTable::ceIterateUnassignedIteratedNodesRecurse(MaxCliqueTable::SharedLo
 
   RV* rv = sharedStructure.fUnassignedIteratedNodes[nodeNumber];
   // TODO: update comments here to match others.
+  traceIndent++;
   if (message(Inference, High+5)) {
-    traceIndent++;
     psp2(stdout,spi*traceIndent);
     infoMsg(Inference, High+5,"U%d:Starting Unassigned iteration of rv %s(%d),p=%f\n",
 	    nodeNumber,
@@ -3102,8 +3148,8 @@ MaxCliqueTable::ceIterateUnassignedIteratedNodesRecurse(MaxCliqueTable::SharedLo
 				     maxCEValue,
 				     nodeNumber+1,p);
   }
-  if (message(Inference, High+5))
-    traceIndent--;
+  //  if (message(Inference, High+5))
+  traceIndent--;
 }
 
 
@@ -3211,7 +3257,7 @@ MaxCliqueTable::ceIterateAssignedNodesRecurse(MaxCliqueTable::SharedLocalStructu
 	// use aggressive growth factor for now to avoid expensive copies.
 	origin.temporaryCliqueValuePool.resizeAndCopy(
 						      origin.packer.packedLen()*
-						      int(1.5+(double)origin.temporaryCliqueValuePool.size()*TEMPORARY_LOCAL_CLIQUE_VALUE_POOL_GROWTH_RATE));
+						      int(1.5+(double)origin.temporaryCliqueValuePool.size()*valuePoolGrowthRate));
       }
       unsigned *pcv = 
 	&origin.temporaryCliqueValuePool.ptr[lindex];
@@ -3246,7 +3292,9 @@ MaxCliqueTable::ceIterateAssignedNodesRecurse(MaxCliqueTable::SharedLocalStructu
     numCliqueValuesUsed++;
 
     if (message(Inference, High)) {
-      psp2(stdout,spi*(traceIndent+1));
+      // see https://j.ee.washington.edu/trac/gmtk/ticket/214#comment:14
+      if (message(Inference, High+5))
+	psp2(stdout,spi*(traceIndent+1));
       infoMsg(Inference, High,"CI:Inserting %d-clique ent #%d,pr=%f,sm=%f:",
 	      sharedStructure.fNodes.size(),
 	      (numCliqueValuesUsed-1),
@@ -3258,8 +3306,8 @@ MaxCliqueTable::ceIterateAssignedNodesRecurse(MaxCliqueTable::SharedLocalStructu
   RV* rv = sharedStructure.fSortedAssignedNodes[nodeNumber];
   // do the loop right here
 
+  traceIndent++;
   if (message(Inference, High+5)) {
-    traceIndent++;
     psp2(stdout,spi*traceIndent);
     infoMsg(Inference, High+5,"A%d:Starting assigned iteration of rv %s(%d),crClqPr=%f\n",
 	    nodeNumber,
@@ -3453,8 +3501,8 @@ MaxCliqueTable::ceIterateAssignedNodesRecurse(MaxCliqueTable::SharedLocalStructu
     assert(0);
     break;
   }
-  if (message(Inference, High+5))
-    traceIndent--;
+  //  if (message(Inference, High+5))
+  traceIndent--;
 
 }
 
@@ -3652,7 +3700,7 @@ MaxCliqueTable::ceIterateAssignedNodesNoRecurse(MaxCliqueTable::SharedLocalStruc
 	  // use aggressive growth factor for now to avoid expensive copies.
 	  origin.temporaryCliqueValuePool.resizeAndCopy(
 							origin.packer.packedLen()*
-							int(1.5+(double)origin.temporaryCliqueValuePool.size()*TEMPORARY_LOCAL_CLIQUE_VALUE_POOL_GROWTH_RATE));
+							int(1.5+(double)origin.temporaryCliqueValuePool.size()*valuePoolGrowthRate));
 	}
 	unsigned *pcv = 
 	  &origin.temporaryCliqueValuePool.ptr[lindex];
@@ -3733,7 +3781,7 @@ MaxCliqueTable::ceIterateAssignedNodesNoRecurse(MaxCliqueTable::SharedLocalStruc
 	    // continue going until we get one that is unfinished and within beam.
 	    unfinished = cur_rv->next(cur_p);
 	    if (unfinished) {
-	      register logpr tmp = parray[nodeNumber-1]*cur_p;
+	      REGISTER logpr tmp = parray[nodeNumber-1]*cur_p;
 	      if (tmp*origin.sortedAssignedContinuationScores[nodeNumber]  
 		  > cliqueBeamThresholdEstimate) {
 		parray[nodeNumber] = tmp;
@@ -3811,7 +3859,7 @@ MaxCliqueTable::ceIterateAssignedNodesNoRecurse(MaxCliqueTable::SharedLocalStruc
 	  cur_rv->begin(cur_p);
 	  // might get a zero probability, check condition here.
 	  // TODO: keep result in temp and only write back out if need be. @@@
-	  register logpr tmp =  parray[nodeNumber-1]*cur_p;
+	  REGISTER logpr tmp =  parray[nodeNumber-1]*cur_p;
 	  if (tmp*origin.sortedAssignedContinuationScores[nodeNumber] 
 	      <= cliqueBeamThresholdEstimate) {
 	    // We just did a begin and got zero on the first try. 
@@ -3828,7 +3876,7 @@ MaxCliqueTable::ceIterateAssignedNodesNoRecurse(MaxCliqueTable::SharedLocalStruc
 	{
 	  cur_rv->probGivenParents(cur_p);
 	  // might get a zero probability, check condition here.
-	  register logpr tmp = parray[nodeNumber-1]*cur_p;
+	  REGISTER logpr tmp = parray[nodeNumber-1]*cur_p;
 	  if (tmp*origin.sortedAssignedContinuationScores[nodeNumber] 
 	      <= cliqueBeamThresholdEstimate) {
 	    // Since we have zero here, we cancel iterations of all
@@ -4207,7 +4255,7 @@ ceSendToOutgoingSeparator(MaxCliqueTable::SharedLocalStructure& sharedStructure,
 		// re-construct hash tables only for new entries.
 		new (&sepSeparatorValuesPtr[i].iRemHashMap)
 		  VHashMapUnsignedUnsignedKeyUpdatable
-		  (sepOrigin.remPacker.packedLen(),REM_HASH_MAP_STARTING_SIZE);
+		  (sepOrigin.remPacker.packedLen(),ConditionalSeparatorTable::remHashMapStartingSize);
 		// TODO: potentially preallocate default size of  
 		// separatorValues->ptr[i].remValues.resize(default);
 		// TODO: potentially create zero size here, and only
@@ -5965,10 +6013,10 @@ maxProb()
   // since max is bad for ilp.
 
   // check for empty clique and if so, return zero.
-  register logpr mx0 = cliqueValues.ptr[0].p;
+  REGISTER logpr mx0 = cliqueValues.ptr[0].p;
   if (numCliqueValuesUsed == 1)
     return mx0;
-  register logpr mx1 = cliqueValues.ptr[1].p;
+  REGISTER logpr mx1 = cliqueValues.ptr[1].p;
   // find the max score clique entry
   unsigned end_loc = numCliqueValuesUsed & ~0x1;
   for (unsigned cvn=2;cvn<end_loc;cvn+=2) {
@@ -6094,7 +6142,7 @@ void
 MaxCliqueTable::
 printCliqueEntries(MaxCliqueTable::SharedLocalStructure& sharedStructure,
 		   FILE *f,const char*str, 
-		   const bool normalize,
+		   const bool normalize, const bool unlog,
 		   const bool justPrintEntropy)
 {
   MaxClique& origin = *(sharedStructure.origin);
@@ -6141,13 +6189,388 @@ printCliqueEntries(MaxCliqueTable::SharedLocalStructure& sharedStructure,
       }
     }
     if (normalize) {
-      // then print the exponentiated probability
-      fprintf(f,"%d: %.8e ",cvn,(cliqueValues.ptr[cvn].p/sum).unlog());
+      if (unlog) {
+	// then print the exponentiated probability
+	fprintf(f,"%d: %.8e ",cvn,(cliqueValues.ptr[cvn].p/sum).unlog());
+      } else {
+	fprintf(f,"%d: %.8e ",cvn,(cliqueValues.ptr[cvn].p/sum).valref());
+      }
     } else {
-      // print the log value directly
-      fprintf(f,"%d: %f ",cvn,cliqueValues.ptr[cvn].p.valref());
+      if (unlog) {
+	fprintf(f,"%d: %.8e ",cvn,cliqueValues.ptr[cvn].p.unlog());
+      } else {
+	// print the log value directly
+	fprintf(f,"%d: %.8e ",cvn,cliqueValues.ptr[cvn].p.valref());
+      }
     }
     printRVSetAndValues(f,sharedStructure.fNodes);
+    fflush(f);
+  }
+}
+
+
+#define MAX_CLIQUE_DOMAIN_SIZE (0x7FFFFFFF)
+
+unsigned
+MaxCliqueTable::
+cliqueDomainSize(MaxCliqueTable::SharedLocalStructure& sharedStructure) {
+  if (sharedStructure.discreteValuePtrs.size() == 0) 
+    return 0;
+  unsigned domain = 1;
+  for (unsigned i = 0; i < sharedStructure.fNodes.size(); i += 1) {
+    if (sharedStructure.fNodes[i]->discrete() && sharedStructure.fNodes[i]->hidden()) {
+      domain *= RV2DRV(sharedStructure.fNodes[i])->cardinality;
+    }
+  }
+#if 0
+printf("cliqueDomainSize = %u :", domain);
+for (unsigned i = 0; i < sharedStructure.fNodes.size(); i += 1) {
+  if (sharedStructure.fNodes[i]->discrete() && sharedStructure.fNodes[i]->hidden()) {
+    DiscRV *drv = RV2DRV(sharedStructure.fNodes[i]);
+    printf(" %s(%u)=%u", drv->name().c_str(), drv->frame(), drv->cardinality);
+  }
+}
+printf("\n");
+#endif
+  return domain;
+}
+
+
+void 
+MaxCliqueTable::
+printCliqueOrder(FILE *f, SharedLocalStructure& sharedStructure, int frameDelta) {
+  if (sharedStructure.discreteValuePtrs.size() == 0) 
+    return ;
+  for (unsigned i = 0; i < sharedStructure.fNodes.size(); i += 1) {
+    if (sharedStructure.fNodes[i]->discrete() && sharedStructure.fNodes[i]->hidden()) {
+      DiscRV *drv = RV2DRV(sharedStructure.fNodes[i]);
+      fprintf(f, " %s(%d)", drv->name().c_str(), (int)drv->frame() + frameDelta);
+    }
+  }
+  fprintf(f,"\n");
+}
+
+
+unsigned
+MaxCliqueTable::
+cliqueValueMagnitude(MaxCliqueTable::SharedLocalStructure& sharedStructure, unsigned cliqueIndex) {
+
+  MaxClique& origin = *(sharedStructure.origin);
+  const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH);
+  const bool clique_has_hidden_vars = (origin.hashableNodes.size() > 0);
+  unsigned nDigits = sharedStructure.discreteValuePtrs.size();
+  unsigned magnitude = 0;
+
+  if (nDigits == 0) return 0;
+  assert(cliqueIndex < cliqueValues.size());
+
+  vector<unsigned> base (nDigits);
+  vector<DiscRV *> digitRVs(nDigits);
+
+  for (unsigned i = 0, digit = 0; i < sharedStructure.fNodes.size(); i += 1) {
+    if (sharedStructure.fNodes[i]->discrete() && sharedStructure.fNodes[i]->hidden()) {
+      digitRVs[digit++] = RV2DRV(sharedStructure.fNodes[i]);
+    }
+  }
+  base[nDigits-1] = 1;
+  for (int i = nDigits-2; i >= 0; i -= 1) {
+    unsigned card = digitRVs[i+1]->cardinality;
+    if (card >= MAX_CLIQUE_DOMAIN_SIZE / base[i+1]) {
+      error("ERROR: clique state space too large for non-sparse printing\n");
+    }
+    base[i] = base[i+1] * card;
+  }
+  if (digitRVs[0]->cardinality >= MAX_CLIQUE_DOMAIN_SIZE / base[0]) {
+    error("ERROR: clique state space too large for non-sparse printing\n");
+  }
+
+  if (clique_has_hidden_vars) {
+    if (imc_nwwoh_p) {
+      origin.packer.unpack((unsigned*)&(cliqueValues.ptr[cliqueIndex].val[0]),
+			   (unsigned**)sharedStructure.discreteValuePtrs.ptr);
+    } else {
+#if defined(USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL) && defined(PRINT_CLIQUE_ENTRIES_USING_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL)
+      // the entries are currently stored in the temporary clique value pool.
+      // This might be useful for debugging to print the entries before they are copied into their
+      // permanent locations (i.e., if we wish to print before pruning has occured).
+      origin.packer.unpack((unsigned*)&origin.temporaryCliqueValuePool.ptr[cliqueValues.ptr[cliqueIndex].ival],
+			   (unsigned**)sharedStructure.discreteValuePtrs.ptr);
+#else
+      // assume entries are stored in their final locations.
+      origin.packer.unpack((unsigned*)cliqueValues.ptr[cliqueIndex].ptr,
+			   (unsigned**)sharedStructure.discreteValuePtrs.ptr);
+#endif
+    }
+    for (unsigned j=0;j<sharedStructure.fDeterminableNodes.size();j++) {
+      RV* rv = sharedStructure.fDeterminableNodes.ptr[j];
+      RV2DRV(rv)->assignDeterministicChild();
+    }
+    for (unsigned i=0; i < nDigits; i+=1) {
+      magnitude += digitRVs[i]->val * base[i];
+    }
+  }
+#if 0
+printf("cliqueValueMagnitude(%u) = %u :  %s(%u)=%u", cliqueIndex, magnitude,
+       digitRVs[nDigits-1]->name().c_str(), digitRVs[nDigits-1]->frame(), digitRVs[nDigits-1]->val);
+for (int i = nDigits-2; i >= 0; i -= 1) {
+  printf("  %s(%u)=%u", digitRVs[i]->name().c_str(), digitRVs[i]->frame(), digitRVs[i]->val);
+}
+printf("\n");
+#endif
+  return magnitude;
+}
+
+
+// a - b; so positive iff a > b       == 0 if a == b      negative iff a < b
+int
+MaxCliqueTable::
+cliqueValueDistance(MaxCliqueTable::SharedLocalStructure& sharedStructure, 
+		    unsigned a, unsigned b) 
+{
+  MaxClique& origin = *(sharedStructure.origin);
+  const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH);
+  const bool clique_has_hidden_vars = (origin.hashableNodes.size() > 0);
+
+  unsigned nDigits = sharedStructure.discreteValuePtrs.size();
+
+  if (nDigits == 0) return 0;
+  assert(a < cliqueValues.size() && b < cliqueValues.size());
+
+  vector<unsigned> aVals(nDigits);
+  vector<unsigned> bVals(nDigits);
+  vector<unsigned> base (nDigits);
+  vector<DiscRV *> digitRVs(nDigits);
+
+  for (unsigned i = 0, digit = 0; i < sharedStructure.fNodes.size(); i += 1) {
+    if (sharedStructure.fNodes[i]->discrete() && sharedStructure.fNodes[i]->hidden()) {
+      digitRVs[digit++] = RV2DRV(sharedStructure.fNodes[i]);
+    }
+  }
+
+  base[nDigits-1] = 1;
+  for (int i = nDigits-2; i >= 0; i -= 1) {
+    unsigned card = digitRVs[i+1]->cardinality;
+    if (card >= MAX_CLIQUE_DOMAIN_SIZE / base[i+1]) {
+      error("ERROR: clique state space too large for non-sparse printing\n");
+    }
+    base[i] = base[i+1] * card;
+  }
+  if (digitRVs[0]->cardinality >= MAX_CLIQUE_DOMAIN_SIZE / base[0]) {
+    error("ERROR: clique state space too large for non-sparse printing\n");
+  }
+
+#if 0
+  for (unsigned i=0; i < nDigits; i+=1) {
+    printf("  |%s(%u)|=%u", digitRVs[i]->name().c_str(), digitRVs[i]->frame(), digitRVs[i]->cardinality);
+  }
+  printf("\n");
+
+printf(" < ");
+#endif
+
+  if (clique_has_hidden_vars) {
+    if (imc_nwwoh_p) {
+      origin.packer.unpack((unsigned*)&(cliqueValues.ptr[a].val[0]),
+			   (unsigned**)sharedStructure.discreteValuePtrs.ptr);
+    } else {
+#if defined(USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL) && defined(PRINT_CLIQUE_ENTRIES_USING_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL)
+      // the entries are currently stored in the temporary clique value pool.
+      // This might be useful for debugging to print the entries before they are copied into their
+      // permanent locations (i.e., if we wish to print before pruning has occured).
+      origin.packer.unpack((unsigned*)&origin.temporaryCliqueValuePool.ptr[cliqueValues.ptr[a].ival],
+			   (unsigned**)sharedStructure.discreteValuePtrs.ptr);
+#else
+      // assume entries are stored in their final locations.
+      origin.packer.unpack((unsigned*)cliqueValues.ptr[a].ptr,
+			   (unsigned**)sharedStructure.discreteValuePtrs.ptr);
+#endif
+    }
+    for (unsigned j=0;j<sharedStructure.fDeterminableNodes.size();j++) {
+      RV* rv = sharedStructure.fDeterminableNodes.ptr[j];
+      RV2DRV(rv)->assignDeterministicChild();
+    }
+    for (unsigned i=0; i < nDigits; i+=1) {
+      aVals[i] = digitRVs[i]->val; //*(sharedStructure.discreteValuePtrs[i]);
+    }
+
+#if 0
+  for (unsigned i=0; i < digitRVs.size(); i+=1) {
+    printf(" %s(%u)=%u ", digitRVs[i]->name().c_str(), digitRVs[i]->frame(), digitRVs[i]->val);
+  }
+  printf(" > - < ");
+#endif
+
+#if 1
+    if (imc_nwwoh_p) {
+      origin.packer.unpack((unsigned*)&(cliqueValues.ptr[b].val[0]),
+			   (unsigned**)sharedStructure.discreteValuePtrs.ptr);
+    } else {
+#if defined(USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL) && defined(PRINT_CLIQUE_ENTRIES_USING_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL)
+      // the entries are currently stored in the temporary clique value pool.
+      // This might be useful for debugging to print the entries before they are copied into their
+      // permanent locations (i.e., if we wish to print before pruning has occured).
+      origin.packer.unpack((unsigned*)&origin.temporaryCliqueValuePool.ptr[cliqueValues.ptr[b].ival],
+			   (unsigned**)sharedStructure.discreteValuePtrs.ptr);
+#else
+      // assume entries are stored in their final locations.
+      origin.packer.unpack((unsigned*)cliqueValues.ptr[b].ptr,
+			   (unsigned**)sharedStructure.discreteValuePtrs.ptr);
+#endif
+    }
+    for (unsigned j=0;j<sharedStructure.fDeterminableNodes.size();j++) {
+      RV* rv = sharedStructure.fDeterminableNodes.ptr[j];
+      RV2DRV(rv)->assignDeterministicChild();
+    }
+    for (unsigned i=0; i < nDigits; i+=1) {
+      bVals[i] = digitRVs[i]->val; //*(sharedStructure.discreteValuePtrs[i]);
+    }
+#endif
+  }
+
+  int diff = 0;
+  for (unsigned i=0; i < nDigits; i+=1) {
+    diff += (aVals[i] - bVals[i]) * base[i];
+  }
+
+#if 0
+  for (unsigned i=0; i < digitRVs.size(); i+=1) {
+    printf(" %s(%u)=%u ", digitRVs[i]->name().c_str(), digitRVs[i]->frame(), digitRVs[i]->val);
+  }
+  printf(" > = %d\n", diff);
+#endif
+
+#if 0
+printf("cliqueValueDistance(%u,%u) = %d\n", a, b, diff);
+#endif
+
+  return diff;
+}
+
+
+void
+MaxCliqueTable::
+printCliqueEntries(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+		   ObservationFile *f, const bool normalize, const bool unlog)
+{
+#if 0
+  printf("clique has %d variables (%d hidden discrete), %d entries\n", 
+	 sharedStructure.fNodes.size(),sharedStructure.discreteValuePtrs.size(),numCliqueValuesUsed);
+#endif
+
+  logpr sum;
+  if (normalize)
+    sum = sumProbabilities();
+#if 0
+  const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH);
+  const bool clique_has_hidden_vars = (origin.hashableNodes.size() > 0);
+#endif
+  sArray<CliqueValueIndex> index(numCliqueValuesUsed);
+
+  for (unsigned cvn=0;cvn<numCliqueValuesUsed;cvn++) {
+    index[cvn] = CliqueValueIndex(&sharedStructure, this, cvn);
+  }
+
+
+#if 0
+printf("  before:    ");
+for (unsigned i=0; i < numCliqueValuesUsed; i+=1){
+  printf(" %d", cliqueValueMagnitude(sharedStructure, index[i].index));
+}
+#endif
+
+  index.qsort();
+
+#if 0
+printf("    sort:    ");
+for (unsigned i=0; i < numCliqueValuesUsed; i+=1){
+  printf(" %d", cliqueValueMagnitude(sharedStructure, index[i].index));
+}
+printf("\n");
+#endif
+
+  float x;
+
+  union {
+    Data32  d;
+    float   R;
+  } zero;
+  zero.R = LZERO;
+  
+  union {
+    Data32  d;
+    float   R;
+  } feature;
+
+  // We don't need to handle printing zero cliques, since they either
+  // throw an exception or terminate the program. Thus it should be
+  // safe to assume at least 1 value in the clique at this point.
+
+  unsigned skip = cliqueValueMagnitude(sharedStructure, index[0].index);
+  assert(skip < cliqueDomainSize(sharedStructure));  // there must be at least 1 non-zero clique value
+  for (unsigned i=0; i < skip; i+=1) {
+    if (unlog) {
+      f->writeFeature(0);
+    } else {
+      f->writeFeature(zero.d);
+    }
+  }
+  if (normalize) {
+    if (unlog) {
+      // then print the exponentiated probability
+      x = (cliqueValues.ptr[index[0].index].p/sum).unlog();
+    } else {
+      x = (cliqueValues.ptr[index[0].index].p/sum).valref();
+    }
+  } else {
+    if (unlog) {
+      x = cliqueValues.ptr[index[0].index].p.unlog();
+    } else {
+      // print the log value directly
+      x = cliqueValues.ptr[index[0].index].p.valref();
+    }
+  }
+  feature.R = x;
+  f->writeFeature(feature.d);
+  unsigned cvn = index[0].index;
+  for (unsigned cvnIdx = 1; cvnIdx < numCliqueValuesUsed; cvnIdx++) {
+    unsigned prev = cvn;
+    cvn = index[cvnIdx].index;
+    skip = (int)cliqueValueDistance(sharedStructure, cvn, prev) - 1;
+    assert(0 <= skip && skip < cliqueDomainSize(sharedStructure));
+    for (unsigned i=0; i < skip; i+=1) {
+      if (unlog) {
+        f->writeFeature(0);
+      } else {
+        f->writeFeature(zero.d);
+      }
+    }
+    if (normalize) {
+      if (unlog) {
+	// then print the exponentiated probability
+	x = (cliqueValues.ptr[cvn].p/sum).unlog();
+      } else {
+	x = (cliqueValues.ptr[cvn].p/sum).valref();
+      }
+    } else {
+      if (unlog) {
+	x = cliqueValues.ptr[cvn].p.unlog();
+      } else {
+	// print the log value directly
+	x = cliqueValues.ptr[cvn].p.valref();
+      }
+    }
+    feature.R = x;
+    f->writeFeature(feature.d);
+  }
+  skip = cliqueDomainSize(sharedStructure) - 
+    cliqueValueMagnitude(sharedStructure,index[numCliqueValuesUsed-1].index) - 1;
+  assert(0 <= skip && skip < cliqueDomainSize(sharedStructure));
+  for (unsigned i=0; i < skip; i+=1) {
+    if (unlog) {
+      f->writeFeature(0);
+    } else {
+      f->writeFeature(zero.d);
+    }
   }
 }
 
@@ -7214,13 +7637,13 @@ deScatterToOutgoingSeparatorsViterbi(MaxCliqueTable::SharedLocalStructure& share
 SeparatorClique::SeparatorClique(MaxClique& c1, MaxClique& c2)
   :  veSeparator(false),
      separatorValueSpaceManager(1,     // starting size
-				SEPARATOR_VALUE_SPACE_MANAGER_GROWTH_RATE,   // growth rate
+				sepSpaceMgrGrowthRate,   // growth rate
 				1,     // growth addition
-				SEPARATOR_VALUE_SPACE_MANAGER_DECAY_RATE),   // decay rate 
+				sepSpaceMgrDecayRate),   // decay rate 
      remainderValueSpaceManager(1,     // starting size
-				REMAINDER_VALUE_SPACE_MANAGER_GROWTH_RATE,   // growth rate
+				remSpaceMgrGrowthRate,   // growth rate
 				1,     // growth addition
-				REMAINDER_VALUE_SPACE_MANAGER_DECAY_RATE)    // decay rate
+				remSpaceMgrDecayRate)    // decay rate
      
 {
   nodes.clear();
@@ -7361,11 +7784,11 @@ SeparatorClique::clearSeparatorValueCache(bool force)
 {
   if (force && accPacker.packedLen() > ISC_NWWOH_AI) {
     accValueHolder.prepare();
-    accSepValHashSet.clear(AI_SEP_VALUE_HOLDER_STARTING_SIZE);
+    accSepValHashSet.clear(aiStartingSize);
   }
   if (force && remPacker.packedLen() > ISC_NWWOH_RM) { 
     remValueHolder.prepare();
-    remSepValHashSet.clear(REM_SEP_VALUE_HOLDER_STARTING_SIZE);
+    remSepValHashSet.clear(remStartingSize);
   }
   // shrink space asked for by clique values. 
   separatorValueSpaceManager.decay();
@@ -7424,12 +7847,10 @@ SeparatorClique::prepareForUnrolling()
     if (accPacker.packedLen() > ISC_NWWOH_AI) {
       // only setup hash table if the packed accumulated insersection
       // set is larger than one machine word (unsigned).
-      new (&accValueHolder) CliqueValueHolder(accPacker.packedLen(),
-					      // TODO: optimize this 1000 value.
-					      AI_SEP_VALUE_HOLDER_STARTING_SIZE,
-					      AI_SEP_VALUE_HOLDER_GROWTH_RATE); // 1.25
+      new (&accValueHolder) CliqueValueHolder(accPacker.packedLen());
+
       // TODO: optimize starting size.
-      new (&accSepValHashSet) vhash_set< unsigned > (accPacker.packedLen(),AI_SEP_VALUE_HOLDER_STARTING_SIZE);
+      new (&accSepValHashSet) vhash_set< unsigned > (accPacker.packedLen(),aiStartingSize);
     }
   }
 
@@ -7451,11 +7872,8 @@ SeparatorClique::prepareForUnrolling()
     if (remPacker.packedLen() > ISC_NWWOH_RM) { 
       // Only setup hash table if the packed remainder set is larger
       // than one machine word (unsigned).
-      new (&remValueHolder) CliqueValueHolder(remPacker.packedLen(),
-					      // TODO: optimize this starting sizse
-					      REM_SEP_VALUE_HOLDER_STARTING_SIZE, // 2
-					      REM_SEP_VALUE_HOLDER_GROWTH_RATE); // 1.25
-      new (&remSepValHashSet) vhash_set< unsigned > (remPacker.packedLen(),REM_SEP_VALUE_HOLDER_STARTING_SIZE);
+      new (&remValueHolder) CliqueValueHolder(remPacker.packedLen());
+      new (&remSepValHashSet) vhash_set< unsigned > (remPacker.packedLen(),remStartingSize);
     }
   }
 
@@ -8058,14 +8476,14 @@ reportMemoryUsageTo(FILE *f)
  */
 ConditionalSeparatorTable::
 ConditionalSeparatorTable(SeparatorClique& origin)
-  : separatorValues(NULL),iAccHashMap(NULL)
+  : separatorValues(NULL),iAccHashMap(NULL),preserve(false)
 {
   init(origin);
 }
 
 void ConditionalSeparatorTable::init(SeparatorClique& origin) 
 {
-
+  preserve=false;
   if (origin.veSeparator) {
     // For VE separators, our origin contains the separator tables
     // already pre-generated and constant accross all instances of
@@ -8119,7 +8537,7 @@ void ConditionalSeparatorTable::init(SeparatorClique& origin)
 	for (unsigned i=0;i<starting_size;i++) {
 	  // need to re-construct individual hash tables.
 	  new (&separatorValues->ptr[i].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable
-	    (origin.remPacker.packedLen(),REM_HASH_MAP_STARTING_SIZE);
+	    (origin.remPacker.packedLen(),remHashMapStartingSize);
 	  // TODO: while we potentially could preallocate default size
 	  // of separatorValues->ptr[i].remValues.resize(default); here,
 	  // we don't really know what it should be. Since there are
@@ -8392,7 +8810,7 @@ ConditionalSeparatorTable
       for (unsigned i=0;i<starting_size;i++) {
 	// need to re-construct individual hash tables.
 	new (&separatorValues->ptr[i].iRemHashMap)VHashMapUnsignedUnsignedKeyUpdatable
-	  (origin.remPacker.packedLen(),REM_HASH_MAP_STARTING_SIZE);
+	  (origin.remPacker.packedLen(),remHashMapStartingSize);
 	// TODO: while we potentially could preallocate default size
 	// of separatorValues->ptr[i].remValues.resize(default); here,
 	// we don't really know what it should be. Since there are
@@ -8502,7 +8920,7 @@ void ConditionalSeparatorTable::insert(SeparatorClique& origin,
 	  // re-construct hash tables only for new entries.
 	  new (&sepSeparatorValuesPtr[i].iRemHashMap)
 	    VHashMapUnsignedUnsignedKeyUpdatable
-	    (origin.remPacker.packedLen(),REM_HASH_MAP_STARTING_SIZE);
+	    (origin.remPacker.packedLen(),remHashMapStartingSize);
 	  // TODO: potentially preallocate default size of  
 	  // separatorValues->ptr[i].remValues.resize(default);
 	  // TODO: potentially create zero size here, and only
@@ -8989,6 +9407,20 @@ reportMemoryUsageTo(SeparatorClique& origin, FILE *f)
 //        CliqueValueHolder support
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
+
+float CliqueValueHolder::defaultGrowthFactor;
+unsigned CliqueValueHolder::defaultAllocationUnitChunkSize;
+
+
+CliqueValueHolder::CliqueValueHolder(unsigned _cliqueValueSize) 
+  : cliqueValueSize(_cliqueValueSize),
+    growthFactor(defaultGrowthFactor),
+    allocationUnitChunkSize(defaultAllocationUnitChunkSize)
+
+{
+  assert ( allocationUnitChunkSize > 0 );
+  prepare();
+}
 
 
 CliqueValueHolder::CliqueValueHolder(unsigned _cliqueValueSize,

@@ -5,6 +5,10 @@
  *  Author    : Karim Filali (karim@cs.washington.edu)
  *  Time-stamp: <>
  *
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ *
  * $Header$
  *
 */
@@ -16,13 +20,16 @@
 ByteEndian getWordOrganization() {
 
   ByteEndian  byteEndian;
+#if 0
+// shortEndian is unused
   ShortEndian shortEndian;
+#endif
 
   union { unsigned long ln; unsigned char chrs[4]; unsigned short shrs[2]; };
   ln = 0xAABBCCDD;
 
   if (shrs[1] == 0xAABB) {
-    shortEndian = SHORT_LITTLE_ENDIAN;
+//  shortEndian = SHORT_LITTLE_ENDIAN;
     if (chrs[3] == 0xAA) {
       byteEndian = BYTE_LITTLE_ENDIAN;
     } else if (chrs[2] == 0xAA) {
@@ -31,7 +38,7 @@ ByteEndian getWordOrganization() {
       byteEndian = BYTE_UNSUPPORTED_ORG;
     }
   } else if (shrs[0] == 0xAABB) {
-    shortEndian = SHORT_BIG_ENDIAN;
+//  shortEndian = SHORT_BIG_ENDIAN;
     if (chrs[1] == 0xAA) {
       byteEndian = BYTE_LITTLE_ENDIAN;
    } else if (chrs[0] == 0xAA) {
@@ -40,7 +47,7 @@ ByteEndian getWordOrganization() {
      byteEndian = BYTE_UNSUPPORTED_ORG;
    }
   } else {
-    shortEndian = SHORT_UNSUPPORTED_ORG;
+//  shortEndian = SHORT_UNSUPPORTED_ORG;
     byteEndian = BYTE_UNSUPPORTED_ORG;
   }
 

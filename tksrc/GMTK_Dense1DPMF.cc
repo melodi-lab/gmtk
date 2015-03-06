@@ -5,15 +5,10 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
 
@@ -639,16 +634,21 @@ void Dense1DPMF::emStoreObjectsAccumulators(oDataStreamFile& ofile,
 					    bool writeLogVals,
 					    bool writeZeros)
 {
+  if (writeLogVals) {
+    ofile.writeComment("Dense1DPMF %s len %u:  ... log(nextPmf[i]) ... ", name().c_str(), nextPmf.len());
+  } else {
+    ofile.writeComment("Dense1DPMF %s len %u:  ... nextPmf[i] ... ", name().c_str(), nextPmf.len());
+  }
   if (writeZeros) {
     if (writeLogVals) {
       logpr z;
       z.set_to_zero();
       for (int i=0;i<nextPmf.len();i++) {
-	ofile.write(z.val(),"DPMF store accums");
+	ofile.write(nextPmf[0].val(), z.val(),"DPMF store accums");
       }   
     } else {
       for (int i=0;i<nextPmf.len();i++) {
-	ofile.write(0.0,"DPMF store accums");
+	ofile.write(nextPmf[0].val(), 0.0,"DPMF store accums");
       }   
     } 
   } else {
@@ -662,6 +662,7 @@ void Dense1DPMF::emStoreObjectsAccumulators(oDataStreamFile& ofile,
       }
     }
   }
+  ofile.nl();
 }
 
 void Dense1DPMF::emLoadObjectsDummyAccumulators(iDataStreamFile& ifile)

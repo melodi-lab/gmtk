@@ -4,17 +4,16 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle, and Jeff Bilmes make no representations about
- * the suitability of this software for any purpose.  It is provided
- * "as is" without express or implied warranty.
  *
  */
+
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
 
 
 
@@ -90,7 +89,7 @@ MDCPT::MDCPT()
  *
  *-----------------------------------------------------------------------
  */
-void MDCPT::setNumParents(const int _nParents)
+void MDCPT::setNumParents(const unsigned _nParents)
 {
   CPT::setNumParents(_nParents);
 
@@ -113,7 +112,7 @@ void MDCPT::setNumParents(const int _nParents)
  *
  *-----------------------------------------------------------------------
  */
-void MDCPT::setNumCardinality(const int var, const int card)
+void MDCPT::setNumCardinality(const unsigned var, const int card)
 {
   CPT::setNumCardinality(var,card);
   // assume that the basic stuff is not allocated.
@@ -191,9 +190,6 @@ MDCPT::read(iDataStreamFile& is)
 
   is.read(_numParents,"Can't read DenseCPT numParents");
 
-  if (_numParents < 0) 
-    error("ERROR: reading file '%s' line %d, DenseCPT '%s' trying to use negative (%d) num parents.",
-	  is.fileName(),is.lineNo(),name().c_str(),_numParents);
   if (_numParents >= warningNumParents)
     warning("WARNING: creating DenseCPT with %d parents in file '%s' line %d",
 	    _numParents,is.fileName(),is.lineNo());
@@ -503,13 +499,13 @@ MDCPT::becomeAwareOfParentValuesAndIterBegin( vector< RV * >& parents,
 	    ((DiscRV*)parents[i])->val,cardinalities[i]);
     offset += ((DiscRV*)parents[i])->val*cumulativeCardinalities[i];
   }
-  register logpr* const mdcpt_ptr = mdcpt.ptr + offset;
+  REGISTER logpr* const mdcpt_ptr = mdcpt.ptr + offset;
 
   it.setCPT(this);
   it.internalStatePtr = (void*)mdcpt_ptr;
   it.drv = drv;
 
-  register DiscRVType value = 0;
+  REGISTER DiscRVType value = 0;
   while (mdcpt_ptr[value].essentially_zero()) {
     value++;
     // We keep the following check as we must have that at least one
@@ -908,16 +904,17 @@ MDCPT::emStoreObjectsAccumulators(oDataStreamFile& ofile,
 				  bool writeLogVals,
 				  bool writeZeros)
 {
+  ofile.writeComment("MDCPT %s len %u:  ... nextMdcpt[i] ...\n", name().c_str(), nextMdcpt.len());
   if (writeZeros) {
     if (writeLogVals) {
       logpr v;
       v.set_to_zero();
       for (int i=0;i<nextMdcpt.len();i++) {
-	ofile.write(v.val(),"DenseCPT store accums");
+	ofile.write(nextMdcpt[0].val(), v.val(),"DenseCPT store accums");
       }
     } else {
       for (int i=0;i<nextMdcpt.len();i++) {
-	ofile.write(0.0,"DenseCPT store accums");
+	ofile.write(nextMdcpt[0].val(), 0.0,"DenseCPT store accums");
       }
     }
   } else {
@@ -931,6 +928,7 @@ MDCPT::emStoreObjectsAccumulators(oDataStreamFile& ofile,
       }
     }
   }
+  ofile.nl();
 }
 
 

@@ -21,14 +21,10 @@
  *          ./DATA/bigram.arpa.idx [binary] % ARPA lm indexing file
  *
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
  *
 */
 
@@ -50,7 +46,6 @@
 #include "arguments.h"
 #include "ieeeFPsetup.h"
 #include "error.h"
-#include "version.h"
 
 VCID(HGID)
 
@@ -64,7 +59,18 @@ static char* vocabFile = NULL;
 static bool outBin = false;
 
 
+#define GMTK_ARG_VERSION
+#define GMTK_ARG_HELP
+
+#define GMTK_ARGUMENTS_DEFINITION
+#include "GMTK_ObservationArguments.h"
+#undef GMTK_ARGUMENTS_DEFINITION
+
 Arg Arg::Args[] = {
+
+#define GMTK_ARGUMENTS_DOCUMENTATION
+#include "GMTK_ObservationArguments.h"
+#undef GMTK_ARGUMENTS_DOCUMENTATION
 
 	/////////////////////////////////////////////////////////////
 	// input parameter/structure file handling
@@ -90,7 +96,8 @@ Arg Arg::Args[] = {
  */
 RAND rnd;
 GMParms GM_Parms;
-ObservationMatrix globalObservationMatrix;
+ObservationMatrix obsMatrix;
+ObservationMatrix *globalObservationMatrix = &obsMatrix;
 
 
 int main(int argc, char *argv[]) {
@@ -103,12 +110,16 @@ int main(int argc, char *argv[]) {
 
 	////////////////////////////////////////////
 	// parse arguments
-	bool parse_was_ok = Arg::parse(argc,argv);
+	bool parse_was_ok = Arg::parse(argc,argv,
+"\nThis program indexes ARPA language model files to make them more efficient\n");
 
 	if(!parse_was_ok) {
 	  Arg::usage(); exit(-1);
 	}
 
+#define GMTK_ARGUMENTS_CHECK_ARGS
+#include "GMTK_ObservationArguments.h"
+#undef GMTK_ARGUMENTS_CHECK_ARGS
 
 	// figure out how many words in the vocab file
 	unsigned card = 0;

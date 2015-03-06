@@ -8,6 +8,14 @@
 //   data provided by outside of the class.
 
 
+/*
+ * Copyright (C) 2004 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ *
+ */
+
+
 
 #ifndef MIXBINORMAL_H
 #define MIXBINORMAL_H
@@ -79,8 +87,11 @@ class MixBiNormal {
   double *cur_alphas; // mixing coefficents
   Mean  *cur_means;
   CoVar *cur_covars;
+#if 0
+  // seems to be unused
   bool curParmsAreRandom; // true when the cur_* values are random.
-  
+#endif
+
   
   CoVarHelp *cur_covars_help;
   CholCoVar *cur_chol; // used for sampling

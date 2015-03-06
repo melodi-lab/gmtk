@@ -4,14 +4,10 @@
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
- * Copyright (c) 2001, < fill in later >
+ * Copyright (C) 2001 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * Permission to use, copy, modify, and distribute this
- * software and its documentation for any non-commercial purpose
- * and without fee is hereby granted, provided that the above copyright
- * notice appears in all copies.  The University of Washington,
- * Seattle make no representations about the suitability of this software
- * for any purpose. It is provided "as is" without express or implied warranty.
  *
  */
 
@@ -36,7 +32,6 @@
 #include "rand.h"
 #include "arguments.h"
 #include "ieeeFPsetup.h"
-#include "version.h"
 
 #include "GMTK_WordOrganization.h"
 
@@ -49,7 +44,21 @@ VCID(HGID)
 #include "GMTK_ContRV.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_GMParms.h"
-#include "GMTK_ObservationMatrix.h"
+#if 0
+#  include "GMTK_ObservationMatrix.h"
+#else
+#  include "GMTK_ObservationSource.h"
+#  include "GMTK_FileSource.h"
+#  include "GMTK_CreateFileSource.h"
+#  include "GMTK_ASCIIFile.h"
+#  include "GMTK_FlatASCIIFile.h"
+#  include "GMTK_PFileFile.h"
+#  include "GMTK_HTKFile.h"
+#  include "GMTK_HDF5File.h"
+#  include "GMTK_BinaryFile.h"
+#  include "GMTK_Filter.h"
+#  include "GMTK_Stream.h"
+#endif
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_MeanVector.h"
@@ -69,6 +78,7 @@ VCID(HGID)
 #define GMTK_ARG_CPP_CMD_OPTS
 #define GMTK_ARG_INPUT_MASTER_FILE
 #define GMTK_ARG_OUTPUT_MASTER_FILE
+#define GMTK_ARG_DLOPEN_MAPPERS
 #define GMTK_ARG_INPUT_TRAINABLE_PARAMS
 #define GMTK_ARG_OUTPUT_TRAINABLE_PARAMS
 #define GMTK_ARG_WPAEEI
@@ -107,7 +117,8 @@ VCID(HGID)
 #define GMTK_ARG_HASH_LOAD_FACTOR
 #define GMTK_ARG_STORE_DETERMINISTIC_CHILDREN
 #define GMTK_ARG_CLEAR_CLIQUE_VAL_MEM
-
+#define GMTK_ARG_MEM_GROWTH
+#define GMTK_ARG_USE_MMAP
 
 /****************************      FILE RANGE OPTIONS             ***********************************************/
 #define GMTK_ARG_FILE_RANGE_OPTIONS
@@ -125,13 +136,16 @@ VCID(HGID)
 /****************************         INFERENCE OPTIONS           ***********************************************/
 #define GMTK_ARG_INFERENCE_OPTIONS
 #define GMTK_ARG_ISLAND
+#define GMTK_ARG_ONLY_KEEP_SEPS
 #define GMTK_ARG_DEBUG_PART_RNG
+#define GMTK_ARG_DEBUG_INCREMENT
 #define GMTK_ARG_CLIQUE_TABLE_NORMALIZE
 #define GMTK_ARG_CE_SEP_DRIVEN
 #define GMTK_ARG_COMPONENT_CACHE
 #define GMTK_ARG_CLIQUE_VAR_ITER_ORDERS
 #define GMTK_ARG_JT_OPTIONS
 #define GMTK_ARG_VE_SEPS
+#define GMTK_ARG_FAIL_ON_ZERO_CLIQUE
 
 /****************************         EM TRAINING OPTIONS         ***********************************************/
 #define GMTK_ARG_EM_TRAINING_OPTIONS
@@ -164,8 +178,12 @@ Arg Arg::Args[] = {
  */
 RAND rnd(seedme);
 GMParms GM_Parms;
+#if 0
 ObservationMatrix globalObservationMatrix;
+#endif
 
+FileSource *gomFS;
+ObservationSource *globalObservationMatrix;
 
 int
 main(int argc,char*argv[])
@@ -184,7 +202,8 @@ main(int argc,char*argv[])
 
   ////////////////////////////////////////////
   // parse arguments
-  bool parse_was_ok = Arg::parse(argc,(char**)argv);
+  bool parse_was_ok = Arg::parse(argc,(char**)argv,
+"\nThis program learns the optimal model parameters from training data\n");
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }
@@ -193,33 +212,13 @@ main(int argc,char*argv[])
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_CHECK_ARGS
 
-  globalObservationMatrix.openFiles(nfiles,
-				    (const char**)&ofs,
-				    (const char**)&frs,
-				    (const char**)&irs,
-				    (unsigned*)&nfs,
-				    (unsigned*)&nis,
-				    (unsigned*)&ifmts,
-				    (bool*)&iswp,
-				    startSkip,
-				    endSkip,
-				    Cpp_If_Ascii,
-				    cppCommandOptions,
-				    (const char**)&postpr,  //Frame_Range_Str,
-				    Action_If_Diff_Num_Frames,
-				    Action_If_Diff_Num_Sents,
-				    Per_Stream_Transforms,
-				    Post_Transforms,
-				    Ftr_Combo,
-				    (const char**)&sr,
-				    (const char**)&prepr,
-				    gpr_str
-				    );
-
+  gomFS = instantiateFileSource();
+  globalObservationMatrix = gomFS;
 
   /////////////////////////////////////////////
   // read in all the parameters
 
+  dlopenDeterministicMaps(dlopenFilenames, MAX_NUM_DLOPENED_FILES);
   if (inputMasterFile) {
     // flat, where everything is contained in one file, always ASCII
     iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
@@ -269,7 +268,7 @@ main(int argc,char*argv[])
   fp.checkConsistentWithGlobalObservationStream();
   GM_Parms.checkConsistentWithGlobalObservationStream();
 
-  GM_Parms.setStride(globalObservationMatrix.stride());
+  GM_Parms.setStride(gomFS->stride());
 
   // Utilize both the partition information and elimination order
   // information already computed and contained in the file. This
@@ -304,6 +303,16 @@ main(int argc,char*argv[])
     triangulator.ensurePartitionsAreChordal(gm_template);
   }
 
+  //  printf("Dlinks: min lag %d    max lag %d\n", Dlinks::globalMinLag(), Dlinks::globalMaxLag());
+  // FIXME - min past = min(dlinkPast, VECPTPast), likewise for future
+  int dlinkPast = Dlinks::globalMinLag();
+  dlinkPast = (dlinkPast < 0) ? -dlinkPast : 0;
+  gomFS->setMinPastFrames( dlinkPast );
+  
+  int dlinkFuture = Dlinks::globalMaxLag();
+  dlinkFuture = (dlinkFuture > 0) ? dlinkFuture : 0;
+  gomFS->setMinFutureFrames( dlinkFuture );
+
 
   ////////////////////////////////////////////////////////////////////
   // CREATE JUNCTION TREE DATA STRUCTURES
@@ -326,12 +335,12 @@ main(int argc,char*argv[])
     GM_Parms.writeTrainable(of);
   }
 
-  if (globalObservationMatrix.numSegments()==0) {
+  if (gomFS->numSegments()==0) {
     infoMsg(IM::Default,"ERROR: no segments are available in observation file. Exiting...");
     exit_program_with_status(0);
   }
 
-  Range* trrng = new Range(trrng_str,0,globalObservationMatrix.numSegments());
+  Range* trrng = new Range(trrng_str,0,gomFS->numSegments());
 #if 0
   if (trrng->length() <= 0) {
     infoMsg(IM::Default,"Training range '%s' specifies empty set. Exiting...\n",
@@ -412,67 +421,105 @@ main(int argc,char*argv[])
       Range::iterator* trrng_it = new Range::iterator(trrng->begin());
       while (!trrng_it->at_end()) {
 	const unsigned segment = (unsigned)(*(*trrng_it));
-	if (globalObservationMatrix.numSegments() < (segment+1)) 
-	  error("ERROR: only %d segments in file, training range must be in range [%d,%d] inclusive\n",
-		globalObservationMatrix.numSegments(),
-		0,globalObservationMatrix.numSegments()-1);
+	try {
+	  if (gomFS->numSegments() < (segment+1)) 
+	    error("ERROR: only %d segments in file, training range must be in range [%d,%d] inclusive\n",
+		  gomFS->numSegments(),
+		  0,gomFS->numSegments()-1);
 
-	const unsigned numFrames = GM_Parms.setSegment(segment);
+	  const unsigned numFrames = GM_Parms.setSegment(segment);
 #if 0
-	if (globalObservationMatrix.active()) {
-	  globalObservationMatrix.printSegmentInfo();
-	  ::fflush(stdout);
-	}
+	  if (gomFS->active()) {
+	    gomFS->printSegmentInfo();
+	    ::fflush(stdout);
+	  }
 #endif
 
 
-	if (island) {
-	  unsigned numUsableFrames;
-	  myjt.collectDistributeIsland(numFrames,
-				       numUsableFrames,
-				       base,
-				       lst,
-				       true, // run EM algorithm
-				       false, // run Viterbi algorithm
-				       localCliqueNormalization);
-	  total_num_frames += numUsableFrames;
-	  printf("Segment %d, after Island, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-		 segment,
-		 myjt.curProbEvidenceIsland().val(),
-		 myjt.curProbEvidenceIsland().val()/numFrames,
-		 myjt.curProbEvidenceIsland().val()/numUsableFrames);
-	  if (myjt.curProbEvidenceIsland().not_essentially_zero()) {
-	    total_data_prob *= myjt.curProbEvidenceIsland();
-	  }
-	} else {
-	  unsigned numUsableFrames = myjt.unroll(numFrames);
-	  total_num_frames += numUsableFrames;
-	  infoMsg(IM::Low,"Collecting Evidence\n");
-	  myjt.collectEvidence();
-	  infoMsg(IM::Low,"Done Collecting Evidence\n");
-	  logpr probe = myjt.probEvidence();
-	  printf("Segment %d, after CE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-		 segment,
-		 probe.val(),
-		 probe.val()/numFrames,
-		 probe.val()/numUsableFrames);
-	  if (probe.essentially_zero()) {
-	    infoMsg(IM::Default,"Not training segment since probability is essentially zero\n");
-	  } else {
-	    total_data_prob *= probe;
-	    infoMsg(IM::Low,"Distributing Evidence\n");
-	    myjt.distributeEvidence();
-	    infoMsg(IM::Low,"Done Distributing Evidence\n");
-	    
-	    if (IM::messageGlb(IM::Huge)) {
-	      // print out all the clique probabilities. In the ideal
-	      // case, they should be the same.
-	      myjt.printProbEvidenceAccordingToAllCliques();
+	  if (island) {
+	    unsigned numUsableFrames;
+	    myjt.collectDistributeIsland(numFrames,
+					 numUsableFrames,
+					 base,
+					 lst,
+					 rootBase, islandRootPower,
+					 true, // run EM algorithm
+					 false, // run Viterbi algorithm
+					 localCliqueNormalization);
+	    total_num_frames += numUsableFrames;
+	    printf("Segment %d, after Island, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+		   segment,
+		   myjt.curProbEvidenceIsland().val(),
+		   myjt.curProbEvidenceIsland().val()/numFrames,
+		   myjt.curProbEvidenceIsland().val()/numUsableFrames);
+	    if (myjt.curProbEvidenceIsland().not_essentially_zero()) {
+	      total_data_prob *= myjt.curProbEvidenceIsland();
 	    }
-	    // And actually train with EM.
-	    infoMsg(IM::Low,"Incrementing EM Accumulators\n");
-	    myjt.emIncrement(probe,localCliqueNormalization,emTrainingBeam);
+	  } else if (onlyKeepSeparators) {
+
+	    unsigned numUsableFrames;
+
+	    infoMsg(IM::Low,"Collecting Evidence (linear space)\n");
+	    logpr probe = myjt.collectEvidenceOnlyKeepSeps(numFrames, &numUsableFrames);
+	    infoMsg(IM::Low,"Done Collecting Evidence\n");
+	    total_num_frames += numUsableFrames;
+
+	    printf("Segment %d, after CE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+		   segment,
+		   probe.val(),
+		   probe.val()/numFrames,
+		   probe.val()/numUsableFrames);
+	    if (probe.essentially_zero()) {
+	      infoMsg(IM::Default,"Not training segment since probability is essentially zero\n");
+	    } else {
+	      total_data_prob *= probe;
+	      infoMsg(IM::Low,"Distributing Evidence\n");
+	      myjt.distributeEvidenceOnlyKeepSeps();
+	      infoMsg(IM::Low,"Done Distributing Evidence\n");
+	    
+	      if (IM::messageGlb(IM::Huge)) {
+		// print out all the clique probabilities. In the ideal
+		// case, they should be the same.
+		myjt.printProbEvidenceAccordingToAllCliques();
+	      }
+	      // And actually train with EM.
+	      infoMsg(IM::Low,"Incrementing EM Accumulators\n");
+	      myjt.emIncrement(probe,localCliqueNormalization,emTrainingBeam);
+	    }
+
+	  } else {
+	    unsigned numUsableFrames = myjt.unroll(numFrames);
+	    gomFS->justifySegment(numUsableFrames);
+	    total_num_frames += numUsableFrames;
+	    infoMsg(IM::Low,"Collecting Evidence\n");
+	    myjt.collectEvidence();
+	    infoMsg(IM::Low,"Done Collecting Evidence\n");
+	    logpr probe = myjt.probEvidence();
+	    printf("Segment %d, after CE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+		   segment,
+		   probe.val(),
+		   probe.val()/numFrames,
+		   probe.val()/numUsableFrames);
+	    if (probe.essentially_zero()) {
+	      infoMsg(IM::Default,"Not training segment since probability is essentially zero\n");
+	    } else {
+	      total_data_prob *= probe;
+	      infoMsg(IM::Low,"Distributing Evidence\n");
+	      myjt.distributeEvidence();
+	      infoMsg(IM::Low,"Done Distributing Evidence\n");
+	    
+	      if (IM::messageGlb(IM::Huge)) {
+		// print out all the clique probabilities. In the ideal
+		// case, they should be the same.
+		myjt.printProbEvidenceAccordingToAllCliques();
+	      }
+	      // And actually train with EM.
+	      infoMsg(IM::Low,"Incrementing EM Accumulators\n");
+	      myjt.emIncrement(probe,localCliqueNormalization,emTrainingBeam);
+	    }
 	  }
+	} catch (ZeroCliqueException &e) {
+	  warning("Segment %d aborted due to zero clique\n", segment);
 	}
 	(*trrng_it)++;
       }

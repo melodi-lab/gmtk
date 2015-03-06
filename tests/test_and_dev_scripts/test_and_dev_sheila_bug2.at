@@ -1,0 +1,10 @@
+
+# test and dev model sheila_bug2
+
+
+AT_SETUP([sheila_bug2: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/sheila_bug2/tricommand])
+# https://j.ee.washington.edu/trac/gmtk/ticket/438
+AT_XFAIL_IF([test x"$GMTK_NOXFAIL" = x""])
+AT_CHECK([(cd $TEST_AND_DEV/sheila_bug2 && ulimit -v ${GMTK_MEMLIMT-8000000} &&            ulimit -t ${GMTK_TIMELIMIT-120} && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP

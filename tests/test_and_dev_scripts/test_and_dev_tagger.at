@@ -1,0 +1,30 @@
+
+# test and dev model tagger
+
+
+AT_SETUP([tagger: tricommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/tagger/tricommand])
+AT_CHECK([(cd $TEST_AND_DEV/tagger && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./tricommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([tagger: infocommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/tagger/infocommand])
+AT_CHECK([(cd $TEST_AND_DEV/tagger && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./infocommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([tagger: traincommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/tagger/traincommand])
+AT_CHECK([(cd $TEST_AND_DEV/tagger && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./traincommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([tagger: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/tagger/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/tagger && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
+
+AT_SETUP([tagger: vitcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/tagger/vitcommand])
+# missing file?
+AT_XFAIL_IF([test ! -f $TEST_AND_DEV/tagger/lca.train.Rec.Params])
+AT_CHECK([(cd $TEST_AND_DEV/tagger && ulimit -v ${GMTK_MEMLIMT-8000000} && ulimit -t ${GMTK_TIMELIMIT-120} && ./vitcommand)], [], [ignore], [ignore])
+AT_CLEANUP
