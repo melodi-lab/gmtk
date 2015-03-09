@@ -156,6 +156,9 @@ void GMParms::clearParms() {
     mixtures.clear();
     mixturesMap.clear();
 
+    dirichletTabs.clear();
+    dirichletTabsMap.clear();
+
     registerAllCFunctionDeterministicMappings(*this);
 }
 

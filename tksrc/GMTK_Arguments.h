@@ -2104,6 +2104,7 @@ Arg("bpHdropP", Arg::Opt, bpHdropP, "Backprop: dropout probability for hidden la
 static bool update_CPT = false;
 static bool update_mean = true;
 static bool update_covar = false;
+static bool update_DPMF = false;
 
 static bool use_adagrad = true;
 static bool use_decay_lr = true;
@@ -2126,6 +2127,7 @@ static double covar_epsilon = 1.0e-10;
 
 Arg("\n=== Discriminative Training Options  ===\n"),
   Arg("updateCPT",Arg::Opt, update_CPT, "whether to update cpts during discriminative training"),
+  Arg("updateDPMF", Arg::Opt, update_DPMF, "whether to update dpmfs during discriminative training"),
   Arg("updateMean",Arg::Opt, update_mean, "whether to update means during discriminative training"),
   Arg("updateCovar",Arg::Opt,update_covar, "whether to update covars during discriminative training"), 
   Arg("useAdagrad",Arg::Opt,use_adagrad, "whether to use adagrad"),

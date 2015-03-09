@@ -1,6 +1,7 @@
 /*
- * gmtkDiscTrain.cc
- *  
+ * gmtkKernel.cc
+ *  Use a DGM as a Kernel (e.g., Fisher Kernel, or something else).
+ *  In other words, for each observation file, we will write out 
  *  a vector that is on the order of the number of current system parameters.
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
@@ -76,6 +77,7 @@ VCID(HGID)
 
 #include "GMTK_DiagGaussian.h"
 #include "GMTK_MDCPT.h"
+#include "GMTK_Dense1DPMF.h"
 
 
 /*****************************   OBSERVATION INPUT FILE HANDLING   **********************************************/
@@ -189,7 +191,6 @@ RAND rnd(seedme);
 GMParms GM_Parms;
 GMParms GM_Parms_n;
 GMParms GM_Parms_d;
-
 #if 0
 ObservationMatrix globalObservationMatrix;
 #endif
@@ -351,10 +352,11 @@ void writeTrainedOutput(string & index) {
     GM_Parms.writeTrainable(outf, false);
 
     outf.nl();
+    //outf.close();
 }
 
 
-void train(JunctionTree & myjt, const char* range_str) {
+void train(JunctionTree & myjt, const char* range_str, vector<double> & data_probs, bool initEM) {
 
 
     Range* dcdrng = new Range(range_str,0,gomFS->numSegments());
@@ -386,7 +388,7 @@ void train(JunctionTree & myjt, const char* range_str) {
 	const unsigned numFrames = GM_Parms.setSegment(segment);
 
 	logpr data_prob = 1.0;
-	GM_Parms.emInitAccumulators(firstTime);
+    if(initEM) GM_Parms.emInitAccumulators(firstTime);
 
 	unsigned numUsableFrames;
 	if (island) {
@@ -422,6 +424,7 @@ void train(JunctionTree & myjt, const char* range_str) {
       
 	  myjt.emIncrement(data_prob,localCliqueNormalization);
 	} else {
+
 	  numUsableFrames = myjt.unroll(numFrames);
 	  gomFS->justifySegment(numUsableFrames);
 	  infoMsg(IM::Low,"Collecting Evidence\n");
@@ -442,6 +445,9 @@ void train(JunctionTree & myjt, const char* range_str) {
 	  myjt.emIncrement(data_prob,localCliqueNormalization);
 
 	}
+
+    data_probs.push_back(data_prob.val());
+
 	printf("writing %s-kernel feature space vector ...\n",(fisherKernelP?"Fisher":"accumulator"));
 	if (annotateTransformationOutput) {
 	  char buff[1024];
@@ -462,6 +468,8 @@ void train(JunctionTree & myjt, const char* range_str) {
       
       (*dcdrng_it)++;
       firstTime = false;
+
+        
     }
   }
 
@@ -471,6 +479,7 @@ void train(JunctionTree & myjt, const char* range_str) {
     double userTime,sysTime;
     reportTiming(rus,rue,userTime,sysTime,stdout);
   }
+
 }
 
 
@@ -501,6 +510,15 @@ void initAdaGrad(map<string, vector_d>& adagrad) {
         sArray<logpr>& mdcpts = mdcpt->getMdcpt();
         for(unsigned j=0; j<mdcpts.size(); j++) adagrad[name].push_back(1.0);
         
+    }
+
+    for(unsigned i=0; i<GM_Parms.dPmfs.size(); ++ i) {
+	Dense1DPMF* dpmf = (Dense1DPMF*)GM_Parms.dPmfs[i];
+
+        string name = dpmf->name();
+
+	sArray<logpr>& pmfs = dpmf->getPmf();
+	for(unsigned j=0; j<pmfs.size(); ++ j) adagrad[name].push_back(1.0);
     }
 }
 
@@ -570,12 +588,10 @@ void normalizeCPT(sArray<logpr>& mdcpts) {
 
 
 
+
+
 void updateBoth(double lr, map<string, vector_d>& adagrad, bool use_adagrad) {
     
-    //if(use_adagrad) updateAdagradBoth(adagrad);
-
-
-    //bool update_covar = true;
 
     double local_lr = lr;
 
@@ -586,22 +602,35 @@ void updateBoth(double lr, map<string, vector_d>& adagrad, bool use_adagrad) {
             string covar_name = dg->getCovar()->name();
 
 
-            DiagGaussian* dg_d;
-            if(GM_Parms_d.components[i]->typeName() != "Diag Gaussian") {
-                fprintf(stderr, "ERROR: componenet index %u not matched for numerator and denominator\n", i);
+            DiagGaussian* dg_d = NULL;
+            bool found_match = false;
+
+
+            //first check if the ith component for denominator and numerator are the same, for the reason that they are sometimes the same model
+            if(GM_Parms_d.components[i]->typeName().compare("Diag Gaussian") == 0) {
+                dg_d = (DiagGaussian*)GM_Parms_d.components[i];
+                if(dg_d->getMean()->name().compare(mean_name) == 0 && dg_d->getCovar()->name().compare(covar_name) == 0) {
+                    found_match = true;
+                }
+            }
+            if(!found_match) {
+                for(unsigned j=0; j<GM_Parms_d.components.size(); ++ j) {
+                    if(GM_Parms_d.components[j]->typeName().compare("Diag Gaussian") != 0) continue;
+                    else {
+                        dg_d = (DiagGaussian*)GM_Parms_d.components[j];
+                        if(dg_d->getMean()->name().compare(mean_name) == 0 && dg_d->getCovar()->name().compare(covar_name) == 0) {
+                            found_match = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if(!found_match) {
+                fprintf(stderr, "WARNING: mean/covar name different for numerator not found in denominator %u : %s, %s\n", i, mean_name.c_str(), covar_name.c_str());
                 continue;
             }
-            else {
-                dg_d = (DiagGaussian*)GM_Parms_d.components[i];
-                if(dg_d->getMean()->name() != mean_name) {
-                    fprintf(stderr, "ERROR: mean name different for numerator and demoninator on index %u : %s, %s\n", i, mean_name.c_str(), dg_d->getMean()->name().c_str());
-                }
-                if(dg_d->getCovar()->name() != covar_name) {
-                    fprintf(stderr, "ERROR: covar name different for numerator and demoninator on index %u : %s, %s\n", i, covar_name.c_str(), dg_d->getCovar()->name().c_str());
-                }
-
-            }
-
+            
 
 
             sArray<float>& means = dg -> getMean() -> getMeans();
@@ -619,47 +648,68 @@ void updateBoth(double lr, map<string, vector_d>& adagrad, bool use_adagrad) {
 
             double acc_val;
 
-	    if(update_mean && mean_name.compare("intensity_mean") != 0) {
-	        for(unsigned j=0; j<means.size(); j++) {
-		    acc_val = next_means[j] - down_weight_mean * next_means_d[j];
-		    if(use_adagrad) {
-		        double old_val = adagrad[mean_name][j];
-			local_lr = lr / old_val;
-			adagrad[mean_name][j] = sqrt(old_val * old_val + acc_val * acc_val);
-		    }
-		    else local_lr = lr;
+	        if(update_mean && mean_name.compare("intensity_mean") != 0) {
+	            for(unsigned j=0; j<means.size(); j++) {
+		            acc_val = next_means[j] - down_weight_mean * next_means_d[j];
+		            if(use_adagrad) {
+		                double old_val = adagrad[mean_name][j];
+			            local_lr = lr / old_val;
+			            adagrad[mean_name][j] = sqrt(old_val * old_val + acc_val * acc_val);
+		            }
+		            else local_lr = lr;
 
-		    means[j] += local_lr * acc_val;
-		    means_d[j] = means[j];
+		            means[j] += local_lr * acc_val;
+		            means_d[j] = means[j];
 		
-		}
-	    }
+		        }
+	        }
 
 
-        if(update_covar) {
+	        //if(update_covar && covar_name.compare("covar0") != 0) {
+            if(update_covar) {
 
-	        for(unsigned j=0; j<covars.size(); j++) {
-		    acc_val = (next_covars[j] - down_weight_covar * next_covars_d[j]) * covar_lr;
+		    //double down_weight = 1.0;
+		    //if(covar_name.compare("covar0") != 0) down_weight = 1.2;
+		    //else down_weight = 1.0;
 
-		    if(use_adagrad) {
-		        double old_val = adagrad[covar_name][j];
-			local_lr = lr / old_val;
-			adagrad[covar_name][j] = sqrt(old_val * old_val + acc_val * acc_val);
-		    }
-		    else local_lr = lr;
+	            for(unsigned j=0; j<covars.size(); j++) {
+		            acc_val = (next_covars[j] - down_weight_covar * next_covars_d[j]) * covar_lr;
+		            //if(i == 13) fprintf(stderr, "s: %s i: %d n: %f %f, d: %f %f, acc: %f\n", covar_name.c_str(), j, covars[j], next_covars[j], covars_d[j], next_covars_d[j], acc_val);
 
-		    covars[j] += local_lr * acc_val;
-		    if(covars[j] < covar_epsilon) covars[j] = covar_epsilon;
-		    covars_d[j] = covars[j];
-		}
-	    }
+		            if(use_adagrad) {
+		                double old_val = adagrad[covar_name][j];
+			            local_lr = lr / old_val;
+			            adagrad[covar_name][j] = sqrt(old_val * old_val + acc_val * acc_val);
+		            }
+		            else local_lr = lr;
+
+		            covars[j] += local_lr * acc_val;
+		            if(covars[j] < covar_epsilon) covars[j] = covar_epsilon;
+		            covars_d[j] = covars[j];
+                    //if(i == 13) fprintf(stderr, "s2: %s i: %d n: %f %f, d: %f %f, acc2: %f %f %f\n", covar_name.c_str(), j, covars[j], next_covars[j], covars_d[j], next_covars_d[j], local_lr * acc_val, local_lr, lr);
+		        }
+	        }
+
+            for(unsigned j=0; j<next_means.size(); ++ j) {
+                next_means[j] = 0.0;
+                next_means_d[j] = 0.0;
+            }
+
+            for(unsigned j=0; j<next_covars.size(); ++ j) {
+                next_covars[j] = 0.0;
+                next_covars_d[j] = 0.0;
+            }
+
+            dg -> getCovar()->preCompute();
+            dg_d -> getCovar()->preCompute();
+
+
         }
     }
 
     
-    if(update_CPT) {
 
-    for(unsigned i=0; i<GM_Parms_n.mdCpts.size(); i++) {
+    for(unsigned i=0; i<GM_Parms_n.mdCpts.size(); ++ i) {
         MDCPT* mdcpt = (MDCPT*)GM_Parms_n.mdCpts[i];
 
         string name = mdcpt->name();
@@ -667,10 +717,28 @@ void updateBoth(double lr, map<string, vector_d>& adagrad, bool use_adagrad) {
 
 
         MDCPT* mdcpt_d = (MDCPT*)GM_Parms_d.mdCpts[i];
-        if(mdcpt_d->name() != name) {
-            fprintf(stderr, "ERROR: mdcpt name different for numerator and denominator on index %u : %s, %s\n", i, name.c_str(), mdcpt_d->name().c_str());
+        bool found_match = false;
+
+        
+        if(mdcpt_d -> name().compare(name) == 0) {
+            found_match = true;
+        }
+
+        if(!found_match) {
+            for(unsigned j=0; j<GM_Parms_d.mdCpts.size(); ++ j) {
+                mdcpt_d = (MDCPT*)GM_Parms_d.mdCpts[j];
+                if(mdcpt_d -> name().compare(name) == 0) {
+                    found_match = true;
+                    break;
+                }
+            }
+        }
+
+        if(!found_match) {
+            fprintf(stderr, "WARNING: mdcpt name in numerator not found in denominator model %u : %s\n", i, name.c_str());
             continue;
         }
+
 
         sArray<logpr>& mdcpts = mdcpt->getMdcpt();
         sArray<logpr>& next_mdcpts = mdcpt->getNextMdcpt();
@@ -679,26 +747,106 @@ void updateBoth(double lr, map<string, vector_d>& adagrad, bool use_adagrad) {
         sArray<logpr>& next_mdcpts_d = mdcpt_d->getNextMdcpt();
 
 
-        //TODO: need normalization to simplex
-        for(unsigned j=0; j<mdcpts.size(); j++) {
-            double acc_val = next_mdcpts[j].unlog() - next_mdcpts_d[j].unlog();
-            if(use_adagrad) {
-                double old_val = adagrad[name][j];
-                local_lr = lr / old_val;
-                adagrad[name][j] = sqrt(old_val * old_val + acc_val * acc_val);
-            }
-            else local_lr = lr;
+        if(update_CPT) {
+            //TODO: need normalization to simplex
+            for(unsigned j=0; j<mdcpts.size(); j++) {
+                double acc_val = next_mdcpts[j].unlog() - next_mdcpts_d[j].unlog();
+                if(use_adagrad) {
+                    double old_val = adagrad[name][j];
+                    local_lr = lr / old_val;
+                    adagrad[name][j] = sqrt(old_val * old_val + acc_val * acc_val);
+                }
+                else local_lr = lr;
 
-            double p = mdcpts[j].unlog() + local_lr * acc_val;
-            if(p < 0.0) p = 0.0;
-            mdcpts[j] = logpr(p);
-        }
+                double p = mdcpts[j].unlog() + local_lr * acc_val;
+                if(p < 0.0) p = 0.0;
+                mdcpts[j] = logpr(p);
+            }
+        }//end of updateCPT
 
         //normalizeCPT(mdcpts);
-        for(unsigned j=0; j<mdcpts.size(); j++) mdcpts_d[j] = mdcpts[j];
+        //fprintf(stdout, "====mdcpt====\n");
+        for(unsigned j=0; j<mdcpts.size(); j++){
+            mdcpts_d[j] = mdcpts[j];
+        //    fprintf(stdout, "%f\n", mdcpts[j].val());
+        }
+        //fprintf(stdout, "\n");
+
+
+        for(unsigned j=0; j<next_mdcpts.size(); j++) {
+            next_mdcpts[j] = 0.0;
+            next_mdcpts_d[j] = 0.0;
+        }
+
     }
 
-    }//end of updateCPT
+    
+    //DPMFs
+    if(update_DPMF) {
+        for(unsigned i=0; i<GM_Parms_n.dPmfs.size(); ++ i) {
+            Dense1DPMF* dpmf = (Dense1DPMF*)GM_Parms_n.dPmfs[i];
+
+            string name = dpmf->name();
+
+            Dense1DPMF* dpmf_d = (Dense1DPMF*)GM_Parms_d.dPmfs[i];
+            bool found_match = false;
+
+            if(dpmf_d->name().compare(name) == 0) {
+                found_match = true;
+            }
+            if(!found_match) {
+                for(unsigned j=0; j<GM_Parms_d.dPmfs.size(); ++ j) {
+                    dpmf_d = (Dense1DPMF*)GM_Parms_d.dPmfs[j];
+                    if(dpmf_d->name().compare(name) == 0) {
+                        found_match = true;
+                        break;
+                    }
+                }
+            }
+
+            if(!found_match) {
+                fprintf(stderr, "WARNING: dpmf name for numerator not found in denominator %u : %s\n", i, name.c_str());
+                continue;
+            }
+
+
+            sArray<logpr>& pmfs = dpmf->getPmf();
+            sArray<logpr>& next_pmfs = dpmf->getNextPmf();
+
+            sArray<logpr>& pmfs_d = dpmf_d->getPmf();
+            sArray<logpr>& next_pmfs_d = dpmf_d->getNextPmf();
+
+
+            for(unsigned j=0; j<pmfs.size(); j++) {
+                double acc_val = next_pmfs[j].unlog() - next_pmfs_d[j].unlog();
+                if(use_adagrad) {
+                    double old_val = adagrad[name][j];
+                    local_lr = lr / old_val;
+                    adagrad[name][j] = sqrt(old_val * old_val + acc_val * acc_val);
+                }
+                else local_lr = lr;
+
+                double p = pmfs[j].unlog() + local_lr * acc_val;
+                if(p < 0.0) p = 0.0;
+                pmfs[j] = logpr(p);
+            }
+
+            //normalize??
+            normalizeCPT(pmfs);
+            
+            //fprintf(stdout, "====dpmfs====\n");
+            for(unsigned j=0; j<pmfs.size(); j++){
+                pmfs_d[j] = pmfs[j];
+            }
+            //fprintf(stdout, "\n");
+
+
+            for(unsigned j=0; j<next_pmfs.size(); j++) {
+                next_pmfs[j] = 0.0;
+                next_pmfs_d[j] = 0.0;
+            }
+        }
+    }
 
 }
 
@@ -773,6 +921,31 @@ void i2str(int i, string& s) {
         for(int j=cs.size() - 1; j>=0; j--) {
             s += char(cs[j] + '0');
         }
+
+}
+
+
+
+void getGmParmsValue() {
+
+    for(unsigned i=0; i<GM_Parms.components.size(); i++) {
+        if(GM_Parms.components[i]->typeName() == "Diag Gaussian") {
+            DiagGaussian* dg = (DiagGaussian*)GM_Parms.components[i];
+            string covar_name = dg->getCovar()->name();
+            
+            sArray<float>& covars = dg -> getCovar() ->getCovars();
+            sArray<float>& next_covars = dg -> getNextCovars();
+            
+            for(unsigned j=0; j<covars.size(); j++) {
+                if(i == 13) {
+                    if(j < next_covars.size()) fprintf(stderr, "WA s: %s i: %d n: %f %f\n", covar_name.c_str(), j, covars[j], next_covars[j]);
+                    else fprintf(stderr, "WA s: %s i: %d n: %f\n", covar_name.c_str(), j, covars[j]);
+                
+                }
+            }
+            
+        }
+    }
 
 }
 
@@ -858,7 +1031,8 @@ main(int argc,char*argv[])
     vector<unsigned> random_index;
 
     //unsigned batch_size = 20;
-    num_instance = num_instance / batch_size + 1;
+    num_instance = num_instance / batch_size;
+    if(num_instance * batch_size < orig_num_instance) ++ num_instance;
 
 
     fprintf(stderr, "Parameter Setting: update_CPT:%d, update_covar:%d, use_adagrad:%d, use_decay_lr:%d, max_iter:%d, init_lr:%f, batch_size:%u", update_CPT, update_covar, use_adagrad, use_decay_lr, max_iter, init_lr, batch_size);
@@ -872,8 +1046,9 @@ main(int argc,char*argv[])
 
     for(unsigned iter=0; iter<max_iter; iter++) {
         fprintf(stderr, "\n========= ITER %u =========\n", iter);
-        
-        
+
+        double cond_prob_iter = 0.0;
+
         for(unsigned i=0; i<num_instance; i++) {
 
             if(use_decay_lr) {
@@ -900,19 +1075,43 @@ main(int argc,char*argv[])
 	    fprintf(stderr, "range: %u %u\n", start, end);
 
 
+            vector<double> d_probs;
+            vector<double> n_probs;            
+
+            
+
             //denominator train/update
             GM_Parms = GM_Parms_d;
-            train(myjt_d, range_str.c_str());
+            //getGmParmsValue();
+            train(myjt_d, range_str.c_str(), d_probs, iter == 0);
+            //getGmParmsValue();
             GM_Parms_d = GM_Parms;
+
+
 
             //numerator train/update
             GM_Parms = GM_Parms_n;
-            train(myjt_n, range_str.c_str());
+            //getGmParmsValue();
+            train(myjt_n, range_str.c_str(), n_probs, iter == 0);
+            //getGmParmsValue();
             GM_Parms_n = GM_Parms;
 
+            double cond_prob = 0.0;
+            for(unsigned j=0; j< d_probs.size(); ++ j) {
+                cond_prob += (n_probs[j] - d_probs[j]);
+            }
+
+            cond_prob_iter += cond_prob;
+
+            fprintf(stderr, "### Conditional Log Likelihood of Current Batch: %f\n", cond_prob);
+
             updateBoth(lr, adagrad, use_adagrad);
+            //getGmParmsValue();
 	    
         }
+
+        fprintf(stderr, "### Conditional Log Likelihood of Current Iteration: %f Per Utterance: %f\n", cond_prob_iter, cond_prob_iter / orig_num_instance);
+
 	string iter_index = "";
 	i2str(iter, iter_index);
 	writeTrainedOutput(iter_index);
