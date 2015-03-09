@@ -54,6 +54,9 @@ public:
   Dense1DPMF();
   ~Dense1DPMF() { }
 
+    sArray<logpr> & getPmf() {return pmf;}
+    sArray<logpr> & getNextPmf() {return nextPmf;}  
+
   /////////////////////////////////////////////////
   // create a copy of self, with entirely new parameters with
   // identical values; NOTHING is shared
