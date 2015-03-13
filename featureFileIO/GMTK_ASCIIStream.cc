@@ -28,10 +28,17 @@ ASCIIStream::getNextFrame() {
   if (fscanf(f," %c ", &tag) != 1) {
     error("ERROR: ASCIIStream::getNextFrame: couldn't read stream tag\n");
   }
-  if (tag == 'E' || tag == 'e') return NULL;
+  if (tag == 'E' || tag == 'e') {
+    if (first_frame_of_segment) {
+      last_segment_empty = true;
+    }
+    first_frame_of_segment = true;
+    return NULL;
+  }
   if (tag != 'F' && tag != 'f') {
     error("ERROR: ASCIIStream::getNextFrame: expected tag E or F, got '%c'\n", tag);
   }
+  first_frame_of_segment = false;
   float *fdest = (float *)frameData;
   for (unsigned n=0; n < nFloat; n+=1) {
     if (fscanf(f, " %e ", fdest++) != 1) {
