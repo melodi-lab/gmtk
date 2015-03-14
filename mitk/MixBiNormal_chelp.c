@@ -1,7 +1,8 @@
 /*
 **
-**
-** $Header$
+** Copyright (C) 2004 Jeff Bilmes
+** Licensed under the Open Software License version 3.0
+** See COPYING or http://opensource.org/licenses/OSL-3.0
 ** 
 **   C langauge helper functions for the C++ class MixBiNormal.cc
 **   A mixture of bi-variate normal class.
@@ -11,7 +12,6 @@
 **   C, that correspond to the inner-most loops and can be compiled
 **   by, potentially, a more aggressive optimizing C (rather than C++) compiler.
 **
-**   $Header$
 ** 
 ** For documentation, see ICSI TR-97-021, May 1997.
 */

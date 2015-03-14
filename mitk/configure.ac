@@ -78,7 +78,7 @@ using namespace H5;
 LIBS=${hdf_check_save_LIBS}
 AC_LANG_POP([C++])
 if test x"$HAVE_HDF5" = x"yes"; then 
-  LIBS="-lhdf5_cpp  -lhdf5 $LIBS"
+  LIBS="-lhdf5_cpp -lhdf5 $LIBS"
   AC_DEFINE([HAVE_LIBHDF5_CPP],[1],[Are the C++ bindings for HDF5 available?])
 fi
 

@@ -1,4 +1,12 @@
 
+/*
+ *
+ * Copyright (C) 2007 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ *
+ */
+
 /* The ISO C99 standard specifies that in C++ implementations some
    macros should only be defined if explicitly requested.  */
 #define __STDC_LIMIT_MACROS 1

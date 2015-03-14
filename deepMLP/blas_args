@@ -1,4 +1,10 @@
 
+# Written by Richard Rogers rprogers@uw.edu
+#
+# Copyright (C) 2003 Jeff Bilmes
+# Licensed under the Open Software License version 3.0
+# See COPYING or http://opensource.org/licenses/OSL-3.0
+
 # We need dgemm, which can come from PHiPAC or CBLAS.
 # PHiPAC is "built-in" to GMTK, so it is always avaialable. 
 # A well-tuned CBLAS dgemm might be faster.

@@ -37,13 +37,16 @@ class ASCIIStream: public ObservationStream {
 
   char version[GMTK_ASC_VERSION_LENGTH]; // protocol version #
   
+  bool last_segment_empty;
+  bool first_frame_of_segment;
+
  public:
 
   ASCIIStream() {f=NULL;}
   
   ASCIIStream(FILE *file, unsigned nFloat, unsigned nInt, 
 	     char const *contFeatureRangeStr=NULL, char const *discFeatureRangeStr=NULL) 
-    : ObservationStream(nFloat, nInt, contFeatureRangeStr, discFeatureRangeStr), f(file)
+    : ObservationStream(nFloat, nInt, contFeatureRangeStr, discFeatureRangeStr), f(file), last_segment_empty(false), first_frame_of_segment(true)
   {
     char cookie[GMTK_ASC_COOKIE_LENGTH];
     if (fgets(cookie, GMTK_ASC_COOKIE_LENGTH, f) != cookie) {
@@ -88,7 +91,7 @@ class ASCIIStream: public ObservationStream {
   // and the data, so BinaryStream::EOS() is a little more
   // complicated
 
-  bool EOS() {return feof(f);}
+  bool EOS() {return last_segment_empty || feof(f);}
 
   Data32 const *getNextFrame();
 

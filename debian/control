@@ -1,0 +1,14 @@
+Source: gmtk
+Section: science
+Priority: optional
+Maintainer: Richard Rogers <rprogers@uw.edu>
+Build-Depends: debhelper (>=9)
+Standards-Version: 3.9.2
+Homepage: https://j.ee.washington.edu/trac/gmtk
+
+Package: gmtk
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: The Graphcial Models Toolkit
+ The Graphical Models Toolkit is an open source 
+ toolkit for rapidly prototyping dynamic graphical models

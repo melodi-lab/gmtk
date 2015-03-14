@@ -4149,6 +4149,8 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 
   infoMsg(IM::ObsStream, IM::Info, "preaload %u frames\n", numPreloadFrames);
   globalObservationMatrix->preloadFrames(numPreloadFrames);
+  if (globalObservationMatrix->EOS()) return logpr(0.0);
+
   fprintf(f,"========\nSegment %u\n", globalObservationMatrix->segmentNumber());
 
   unsigned truePtLen = 0; // 0 until we know the true number of modified partitions
@@ -4161,6 +4163,11 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
     viterbiScore = false; // avoid allocating space for O(T) viterbi values in unroll()
 
     if (T > 0) {
+      if (T <= globalObservationMatrix->minFutureFrames()) {
+	warning("WARNING: observation stream segment of %u frames is too short. Model requires at least %u frames\n", 
+		T,  globalObservationMatrix->minFutureFrames());
+	return logpr(0.0);
+      }
       T -= globalObservationMatrix->minFutureFrames(); // fake -endSkip
 
       // We already know the length of this segment (it's probably

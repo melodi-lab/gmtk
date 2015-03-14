@@ -1,4 +1,9 @@
 /*
+ * Copyright (C) 2009 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ *
+ *
  * counted_ptr - simple reference counted pointer.
  *
  * The is a non-intrusive implementation that allocates an additional
