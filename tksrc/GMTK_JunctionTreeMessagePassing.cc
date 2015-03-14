@@ -86,6 +86,7 @@
 #endif
 VCID(HGID)
 
+unsigned JunctionTree::numSmoothingPartitions = 0; // used for smoothing in gmtkOnline
 
 /*
  *  init_CC_CE_rvs(it)
@@ -4135,7 +4136,7 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
   // M|C| frames, but they're already counted in the C's). Here
   // |X| is the number of frames in partition X.
 
-  unsigned tau = 0; // # of "future" C's for smoothing
+  unsigned tau = numSmoothingPartitions; // # of "future" C's for smoothing
   unsigned numPreloadFrames = 
     globalObservationMatrix->startSkip() + 
     fp.numFramesInP() + 
@@ -4224,6 +4225,13 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 
   bool trigger = true;
 
+
+  unsigned numBufferedInterfaces = numSmoothingPartitions + 1;
+  interfaceTemp.resize(numBufferedInterfaces);
+  vector<PartitionTables *> partitionTableTemp(numBufferedInterfaces);
+  unsigned curInterfaceIdx = 0;
+
+
   // Set up our iterator, write over the member island iterator since
   // we assume the member does not have any dynamc sub-members.
   new (&inference_it) ptps_iterator(*this,totalNumberPartitions);
@@ -4231,16 +4239,26 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
   init_CC_CE_rvs(inference_it);
 
   PartitionTables* prev_part_tab = NULL;
-  PartitionTables* cur_part_tab
-    = new PartitionTables(inference_it.cur_jt_partition());
+  PartitionTables* cur_part_tab = new PartitionTables(inference_it.cur_jt_partition());
+  partitionTableTemp[curInterfaceIdx] = cur_part_tab;
+  curInterfaceIdx = (curInterfaceIdx + 1) % numBufferedInterfaces;
 
-  PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+  //  PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
       
 
   // we skip the first Co's LI separator if there is no P1
   // partition, since otherwise we'll get zero probability.
   if (inference_it.at_first_c() && P1.cliques.size() == 0)
     Co.skipLISeparator();
+
+  // TODO - decide if it makes sense to have E' be the only section
+
+  // it might be that E is the first partition as well, say if this is
+  // a static graph, and in this case we need in this case to skip the
+  // incomming separator, which doesn't exist.
+  if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+    E1.skipLISeparator();
+
   // gather into the root of the current  partition
   ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
 		   *cur_part_tab,
@@ -4249,78 +4267,178 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 		   inference_it.cur_nm(),
 		   inference_it.pt_i());
 
-  // nothing to set if P is empty - ticket #468
-  if (!inference_it.at_p() || P1.cliques.size() > 0) { 
-    // Set clique to most probable values given observations up to
-    // the current partition
-    cur_part_tab->maxCliques[inference_it.cur_ri()].
-      maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
-  }
-
-  // Send messages from the root clique to the rest of the cliques
-  // in this partition so that they are consistant with the observations
-  // in this partition. We originally wanted to send messages only to
-  // the cliques actually being printed, but deScatterToOutgoingSeparators()
-  // sends messages to all of a clique's outgoing separators (rather
-  // than just those on the path to a printing clique) and we decided
-  // not to implement a "subset" scatter. We think that in the common
-  // cases there won't be much extra work from the full scatter.
-  deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
-		     *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
-		     inference_it.cur_ri(),
-		     inference_it.cur_message_order(),
-		     inference_it.cur_nm(),
-		     inference_it.pt_i());
-
-  if (viterbiScore) {
-    // print filter ("Viterbi") values
-    
-    if (pVitTrigger) 
-      trigger = evaluateTrigger(ps.allrvs_vec, pVitTriggerVec, pVitTriggerExpr, pTriggerEqn);
-    if (trigger && printObserved && ps.allrvs.size() > 0) {
-      fprintf(f,"Ptn-%d P': ", inference_it.pt_i());
-      printRVSetAndValues(f,ps.allrvs,true,preg);
-      fflush(f);
-    } else if (trigger && !printObserved && ps.packer.packedLen() > 0) {
-      fprintf(f,"Ptn-%d P': ", inference_it.pt_i());
-      printRVSetAndValues(f,ps.hidRVVector,true,preg);
-      fflush(f);
-    }
-  } else {
-    if (inference_it.cur_part_clique_print_range() != NULL) {
-      // possibly print the P or C partition information
-      printAllCliques(partitionStructureArray[inference_it.ps_i()],
-		      *cur_part_tab,
-		      inference_it.pt_i(),
-		      inference_it.cur_nm(),
-		      inference_it.cur_part_clique_print_range(),
-		      stdout,
-		      cliquePosteriorNormalize, cliquePosteriorUnlog,
-		      false, posteriorFile);
-    }
-  }
-
   // if the LI separator was turned off, we need to turn it back on.
+  if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+    E1.useLISeparator();
   if (inference_it.at_first_c() && P1.cliques.size() == 0)
     Co.useLISeparator();
+
+
+  // ticket #468 - skip enqueue on first iteration if P is empty to keep PCCE first
+  // C observation data available in the queue
+  if (fp.numFramesInP() > 0) { 
+    // read in the same # of frames that we're about to consume to maintain
+    // enough queued frames to be sure we don't overshoot the C'->E' transition
+    unsigned nQueued = globalObservationMatrix->enqueueFrames(numNewFrames);  
+    currentMaxFrameNum += nQueued;
+  }
+
+
+
+  // update the ptps_iterator if we just found out the true length of the segment
+  if (truePtLen == 0 && globalObservationMatrix->numFrames() != 0) {
+#if 1
+    printf("learned T=%u at %u %u\n", globalObservationMatrix->numFrames(), 0, inference_it.pt_i());
+#endif
+    unsigned basicTempMaxUnrollAmnt;
+    unsigned basicTempMinUnrollAmnt;
+    int      modTempMaxUnrollAmnt;
+    int      modTempMinUnrollAmnt;
+    unsigned numUsableFrm;
+    unsigned frmStart;
+    unsigned T;
+    
+    if ( globalObservationMatrix->numFrames() <= globalObservationMatrix->minFutureFrames() )
+      error("Segment of %d frames too short as model requires at least %d frames\n", 
+	    globalObservationMatrix->numFrames() + globalObservationMatrix->minPastFrames(), 
+	    globalObservationMatrix->minPastFrames() + fp.numFramesInP() + fp.numFramesInE() + globalObservationMatrix->minFutureFrames());
+    
+    T  = globalObservationMatrix->numFrames() - globalObservationMatrix->minFutureFrames();
+    if (!gm_template.computeUnrollParameters(T,
+					     basicTempMaxUnrollAmnt,
+					     basicTempMinUnrollAmnt,
+					     modTempMaxUnrollAmnt,
+					     modTempMinUnrollAmnt,
+					     numUsableFrm,
+					     frmStart))
+      error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, different template, or decrease M,S if >1.\n",
+	    T,
+	    fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
+	    fp.numFrames(),
+	    gm_template.M,gm_template.S);
+    
+    truePtLen = modTempMaxUnrollAmnt + 3;
+    inference_it.set_pt_len(truePtLen);
+    if (numUsableFrames) 
+      *numUsableFrames = numUsableFrm;
+    
+#if 0
+    if (nQueued != numFramesInCprime && nQueued != 0) {
+      error("Stream segment %u length %u is incompatible with model unrolling",
+	    globalObservationMatrix->segmentNumber(), 
+	    globalObservationMatrix->numFrames());
+    }
+#endif
+  }
+
 
   bool first_C = true;
   unsigned C_size = 0;
   sArray<unsigned> previous_C_values;
   vector<bool> cregex_mask;
 
-  for (unsigned part=1; part < inference_it.pt_len(); part += 1 ) {
-    trigger = true;
-    delete prev_part_tab;
+
+  unsigned part;
+  for (part=1; part < numSmoothingPartitions; part += 1) {
+
     prev_part_tab = cur_part_tab;
 
     setCurrentInferenceShiftTo(part);
+    cur_part_tab = new PartitionTables(inference_it.cur_jt_partition());
+    partitionTableTemp[curInterfaceIdx] = cur_part_tab;
 
-    cur_part_tab
-      = new PartitionTables(inference_it.cur_jt_partition());
-
-    PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+    //    PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
       
+    // send from previous to current
+    ceSendForwardsCrossPartitions(// previous partition
+			  partitionStructureArray[inference_it.ps_prev_i()],
+			  *prev_part_tab,
+			  inference_it.prev_ri(),
+			  inference_it.prev_nm(),
+			  inference_it.pt_prev_i(),
+			  // current partition
+			  partitionStructureArray[inference_it.ps_i()],
+			  *cur_part_tab,
+			  inference_it.cur_li(),
+			  inference_it.cur_nm(),
+			  inference_it.pt_i());
+
+    // remember the incoming separator so the forward pass can be re-done in the backward pass
+    unsigned interfaceCliqueNum = 
+      partitionStructureArray[inference_it.ps_i()].separatorCliquesSharedStructure.size()-1;
+    cur_part_tab->separatorCliques[ interfaceCliqueNum ].preserve = true;
+    interfaceTemp[ curInterfaceIdx ] = cur_part_tab->separatorCliques[ interfaceCliqueNum ];
+    curInterfaceIdx = (curInterfaceIdx + 1) % numBufferedInterfaces;
+
+    if (!(inference_it.at_e() && noE)) {  
+      ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
+		       *cur_part_tab,
+		       inference_it.cur_ri(),
+		       inference_it.cur_message_order(),
+		       inference_it.cur_nm(),
+		       inference_it.pt_i());
+      unsigned nQueued = globalObservationMatrix->enqueueFrames(numNewFrames);
+      currentMaxFrameNum += nQueued;
+
+
+      // update the ptps_iterator if we just found out the true length of the segment
+      if (truePtLen == 0 && globalObservationMatrix->numFrames() != 0) {
+#if 1
+	printf("learned T=%u at %u %u\n", globalObservationMatrix->numFrames(), part, inference_it.pt_i());
+#endif
+	unsigned basicTempMaxUnrollAmnt;
+	unsigned basicTempMinUnrollAmnt;
+	int      modTempMaxUnrollAmnt;
+	int      modTempMinUnrollAmnt;
+	unsigned numUsableFrm;
+	unsigned frmStart;
+	unsigned T;
+	
+	if ( globalObservationMatrix->numFrames() <= globalObservationMatrix->minFutureFrames() )
+	  error("Segment of %d frames too short as model requires at least %d frames\n", 
+		globalObservationMatrix->numFrames() + globalObservationMatrix->minPastFrames(), 
+		globalObservationMatrix->minPastFrames() + fp.numFramesInP() + fp.numFramesInE() + globalObservationMatrix->minFutureFrames());
+	
+	T  = globalObservationMatrix->numFrames() - globalObservationMatrix->minFutureFrames();
+	if (!gm_template.computeUnrollParameters(T,
+						 basicTempMaxUnrollAmnt,
+						 basicTempMinUnrollAmnt,
+						 modTempMaxUnrollAmnt,
+						 modTempMinUnrollAmnt,
+						 numUsableFrm,
+						 frmStart))
+	  error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, different template, or decrease M,S if >1.\n",
+		T,
+		fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
+		fp.numFrames(),
+		gm_template.M,gm_template.S);
+	
+	truePtLen = modTempMaxUnrollAmnt + 3;
+	inference_it.set_pt_len(truePtLen);
+	if (numUsableFrames) 
+	  *numUsableFrames = numUsableFrm;
+	
+#if 0
+	if (nQueued != numFramesInCprime && nQueued != 0) {
+	  error("Stream segment %u length %u is incompatible with model unrolling",
+		globalObservationMatrix->segmentNumber(), 
+		globalObservationMatrix->numFrames());
+	}
+#endif
+      }
+
+    }
+  }
+
+
+
+  for ( ; part < inference_it.pt_len(); part += 1 ) {
+
+    prev_part_tab = cur_part_tab;
+
+    setCurrentInferenceShiftTo(part);
+    cur_part_tab = new PartitionTables(inference_it.cur_jt_partition());
+    partitionTableTemp[curInterfaceIdx] = cur_part_tab;
 
     // send from previous to current
     ceSendForwardsCrossPartitions(// previous partition
@@ -4336,175 +4454,193 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 			  inference_it.cur_nm(),
 			  inference_it.pt_i());
 
+    // remember the incoming separator so the forward pass can be re-done in the backward pass
+    unsigned interfaceCliqueNum = 
+      partitionStructureArray[inference_it.ps_i()].separatorCliquesSharedStructure.size()-1;
+    cur_part_tab->separatorCliques[ interfaceCliqueNum ].preserve = true;
+    interfaceTemp[ curInterfaceIdx ] = cur_part_tab->separatorCliques[ interfaceCliqueNum ];
 
-    // we skip the first Co's LI separator if there is no P1
-    // partition, since otherwise we'll get zero probability.
-    if (inference_it.at_first_c() && P1.cliques.size() == 0)
-      Co.skipLISeparator();
-
-    // it might be that E is the first partition as well, say if this is
-    // a static graph, and in this case we need in this case to skip the
-    // incomming separator, which doesn't exist.
-    if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
-      E1.skipLISeparator();
     if (!(inference_it.at_e() && noE)) {  
-      // we only do this if we're either not at an E, or if we are at
-      // an E and noE is false.
-
-      // next, gather into the root of the final E partition
       ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
 		       *cur_part_tab,
 		       inference_it.cur_ri(),
 		       inference_it.cur_message_order(),
 		       inference_it.cur_nm(),
 		       inference_it.pt_i());
+      unsigned nQueued = globalObservationMatrix->enqueueFrames(numNewFrames);
+      currentMaxFrameNum += nQueued;
 
-      cur_part_tab->maxCliques[inference_it.cur_ri()].
-	maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
-
-      // Send messages from the root clique to the rest of the cliques
-      // in this partition so that they are consistant with the observations
-      // in this partition. We originally wanted to send messages only to
-      // the cliques actually being printed, but deScatterToOutgoingSeparators()
-      // sends messages to all of a clique's outgoing separators (rather
-      // than just those on the path to a printing clique) and we decided
-      // not to implement a "subset" scatter. We think that in the common
-      // cases there won't be much extra work from the full scatter.
-      deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
-			 *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
-			 inference_it.cur_ri(),
-			 inference_it.cur_message_order(),
-			 inference_it.cur_nm(),
-			 inference_it.pt_i());
-
-      if (viterbiScore) {
-	// print filter values
+      // update the ptps_iterator if we just found out the true length of the segment
+      if (truePtLen == 0 && globalObservationMatrix->numFrames() != 0) {
+#if 1
+	printf("learned T=%u at %u %u\n", globalObservationMatrix->numFrames(), part, inference_it.pt_i());
+#endif
+	unsigned basicTempMaxUnrollAmnt;
+	unsigned basicTempMinUnrollAmnt;
+	int      modTempMaxUnrollAmnt;
+	int      modTempMinUnrollAmnt;
+	unsigned numUsableFrm;
+	unsigned frmStart;
+	unsigned T;
 	
-	char partLabel;
-	if (inference_it.at_e()) {
-	  if (eVitTrigger) 
-	    trigger = evaluateTrigger(ps.allrvs_vec, eVitTriggerVec, eVitTriggerExpr, eTriggerEqn);
-	  partLabel = 'E';
-	} else {
-	  if (cVitTrigger) 
-	    trigger = evaluateTrigger(ps.allrvs_vec, cVitTriggerVec, cVitTriggerExpr, cTriggerEqn);
-	  if (vitRunLength)
-	    trigger = trigger && newViterbiValues(first_C, C_size, printObserved, 
-						  ps.allrvs_vec, ps.hidRVVector,
-						  previous_C_values, cregex_mask, creg);
-	  partLabel = 'C';
+	if ( globalObservationMatrix->numFrames() <= globalObservationMatrix->minFutureFrames() )
+	  error("Segment of %d frames too short as model requires at least %d frames\n", 
+		globalObservationMatrix->numFrames() + globalObservationMatrix->minPastFrames(), 
+		globalObservationMatrix->minPastFrames() + fp.numFramesInP() + fp.numFramesInE() + globalObservationMatrix->minFutureFrames());
+	
+	T  = globalObservationMatrix->numFrames() - globalObservationMatrix->minFutureFrames();
+	if (!gm_template.computeUnrollParameters(T,
+						 basicTempMaxUnrollAmnt,
+						 basicTempMinUnrollAmnt,
+						 modTempMaxUnrollAmnt,
+						 modTempMinUnrollAmnt,
+						 numUsableFrm,
+						 frmStart))
+	  error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, different template, or decrease M,S if >1.\n",
+		T,
+		fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
+		fp.numFrames(),
+		gm_template.M,gm_template.S);
+	
+	truePtLen = modTempMaxUnrollAmnt + 3;
+	inference_it.set_pt_len(truePtLen);
+	if (numUsableFrames) 
+	  *numUsableFrames = numUsableFrm;
+	
+#if 0
+	if (nQueued != numFramesInCprime && nQueued != 0) {
+	  error("Stream segment %u length %u is incompatible with model unrolling",
+		globalObservationMatrix->segmentNumber(), 
+		globalObservationMatrix->numFrames());
 	}
-	if (trigger) {
-	  fprintf(f,"Ptn-%d %c': ",inference_it.pt_i(), partLabel);
-	  if (printObserved && ps.allrvs.size() > 0) {
-	    printRVSetAndValues(f,ps.allrvs,true, partLabel == 'C' ? creg:ereg);
-	    fflush(f);
-	  } else if (ps.packer.packedLen() > 0) {
-	    printRVSetAndValues(f,ps.hidRVVector,true, partLabel == 'C' ? creg:ereg);
-	    fflush(f);
-	  }
-	}
-      } else {
-	// possibly print the P or C partition information
-	if (inference_it.cur_part_clique_print_range() != NULL) {
-	  printAllCliques(partitionStructureArray[inference_it.ps_i()],
-			  *cur_part_tab,
-			  inference_it.pt_i(),
-			  inference_it.cur_nm(),
-			  inference_it.cur_part_clique_print_range(),
-			  stdout,
-			  cliquePosteriorNormalize, cliquePosteriorUnlog,
-			  false, posteriorFile);			
-	}
+#endif
       }
     }
-    if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
-      E1.useLISeparator();
 
-    // if the LI separator was turned off, we need to turn it back on.
-    if (inference_it.at_first_c() && P1.cliques.size() == 0)
-      Co.useLISeparator();
 
-    if (currentMaxFrameNum > MAX_FRAME_NUMBER - numNewFrames) {
-      // frame number is about to overflow
-      infoMsg(IM::Inference, IM::Info, "resetting frame to %u\n", numNewFrames);
-      globalObservationMatrix->resetFrameNumbers(0);
-      infoMsg(IM::Inference, IM::Info, "resetting ptps to partition 2\n");
-      part = 1; // restart @ C'_1 (1 is C'_0, but about to increment part at top of loop)
-      currentMaxFrameNum = numPreloadFrames;
-    }
+    // scatter in current partition
+    deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
+                       *cur_part_tab,
+                       inference_it.cur_ri(),
+                       inference_it.cur_message_order(),
+                       inference_it.cur_nm(),
+                       inference_it.pt_i());
 
-    // ticket #468 - skip enqueue on first iteration if P is empty to keep PCCE first
-    // C observation data available in the queue
-    if (part > 1 || fp.numFramesInP() > 0) { 
-      // read in the same # of frames that we're about to consume to maintain
-      // enough queued frames to be sure we don't overshoot the C'->E' transition
-      unsigned nQueued = globalObservationMatrix->enqueueFrames(numNewFrames);
+    unsigned prev_interface_idx = (curInterfaceIdx + numBufferedInterfaces - 1) % numBufferedInterfaces;
+    for (unsigned j=0, prev_part=part-1; j < numSmoothingPartitions; j+=1, prev_part-=1) {
+      // reconstruct previous partition
+      setCurrentInferenceShiftTo(prev_part);
       
-      currentMaxFrameNum += nQueued;
-    }
-    // update the ptps_iterator if we just found out the true length of the segment
-    if (truePtLen == 0 && globalObservationMatrix->numFrames() != 0) {
-#if 0
-printf("learned T=%u at %u %u\n", globalObservationMatrix->numFrames(), part, inference_it.pt_i());
-#endif
-      unsigned basicTempMaxUnrollAmnt;
-      unsigned basicTempMinUnrollAmnt;
-      int      modTempMaxUnrollAmnt;
-      int      modTempMinUnrollAmnt;
-      unsigned numUsableFrm;
-      unsigned frmStart;
-      unsigned T;
+      interfaceCliqueNum = partitionStructureArray[inference_it.ps_i()].separatorCliquesSharedStructure.size()-1;
+      prev_interface_idx = (curInterfaceIdx + numBufferedInterfaces - j - 1) % numBufferedInterfaces;
+      prev_part_tab = partitionTableTemp[prev_interface_idx];
+      if (!inference_it.at_first_entry()) {
+	prev_part_tab->separatorCliques[ interfaceCliqueNum ] = interfaceTemp[ prev_interface_idx ];
+      } else {
+	delete prev_part_tab;
+        prev_part_tab = new PartitionTables(inference_it.cur_jt_partition());
+	partitionTableTemp[prev_interface_idx] = prev_part_tab;
+      }
+      if (inference_it.at_first_c() && P1.cliques.size() == 0)
+	Co.skipLISeparator();
+      else  if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+	E1.skipLISeparator();
+      ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
+		       *prev_part_tab,
+		       inference_it.cur_ri(),
+		       inference_it.cur_message_order(),
+		       inference_it.cur_nm(),
+		       inference_it.pt_i());      
+      if (inference_it.at_first_c() && P1.cliques.size() == 0)
+	Co.useLISeparator();
+      else if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+	E1.useLISeparator();
 
-      if ( globalObservationMatrix->numFrames() <= globalObservationMatrix->minFutureFrames() )
-	error("Segment of %d frames too short as model requires at least %d frames\n", 
-	      globalObservationMatrix->numFrames() + globalObservationMatrix->minPastFrames(), 
-	      globalObservationMatrix->minPastFrames() + fp.numFramesInP() + fp.numFramesInE() + globalObservationMatrix->minFutureFrames());
-    
-      T  = globalObservationMatrix->numFrames() - globalObservationMatrix->minFutureFrames();
-      if (!gm_template.computeUnrollParameters(T,
-					       basicTempMaxUnrollAmnt,
-					       basicTempMinUnrollAmnt,
-					       modTempMaxUnrollAmnt,
-					       modTempMinUnrollAmnt,
-					       numUsableFrm,
-					       frmStart))
-	error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, different template, or decrease M,S if >1.\n",
-	      T,
-	      fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
-	      fp.numFrames(),
-	      gm_template.M,gm_template.S);
-      
-      truePtLen = modTempMaxUnrollAmnt + 3;
-      inference_it.set_pt_len(truePtLen);
-      if (numUsableFrames) 
-	*numUsableFrames = numUsableFrm;
+      setCurrentInferenceShiftTo(prev_part + 1);
+      // send backwads message to previous partition
+      deSendBackwardsCrossPartitions(partitionStructureArray[inference_it.ps_prev_i()], // previous
+                                     *prev_part_tab,
+	  			     inference_it.prev_ri(),
+				     inference_it.prev_nm(),
+				     inference_it.pt_prev_i(),
+				     // current partition
+				     partitionStructureArray[inference_it.ps_i()],
+				     *cur_part_tab,
+				     inference_it.cur_li(),
+				     inference_it.cur_nm(),
+				     inference_it.pt_i());
 
-#if 0
-    if (nQueued != numFramesInCprime && nQueued != 0) {
-      error("Stream segment %u length %u is incompatible with model unrolling",
-	    globalObservationMatrix->segmentNumber(), 
-	    globalObservationMatrix->numFrames());
-    }
-#endif
+      deScatterOutofRoot(partitionStructureArray[inference_it.ps_prev_i()],
+			 *prev_part_tab,
+			 inference_it.prev_ri(),
+			 inference_it.prev_message_order(),
+			 inference_it.prev_nm(),
+			 inference_it.pt_prev_i());
     }
     
+    setCurrentInferenceShiftTo(part - numBufferedInterfaces);
+    PartitionStructures &ps = partitionStructureArray[inference_it.ps_i()];
+    prev_part_tab->maxCliques[inference_it.cur_ri()].
+      maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
+
+    if (viterbiScore) {
+      // print filter values
+      char partLabel;
+      if (inference_it.at_e()) {
+	if (eVitTrigger) 
+	  trigger = evaluateTrigger(ps.allrvs_vec, eVitTriggerVec, eVitTriggerExpr, eTriggerEqn);
+	partLabel = 'E';
+      } else {
+	if (cVitTrigger) 
+	  trigger = evaluateTrigger(ps.allrvs_vec, cVitTriggerVec, cVitTriggerExpr, cTriggerEqn);
+	if (vitRunLength)
+	  trigger = trigger && newViterbiValues(first_C, C_size, printObserved, 
+						ps.allrvs_vec, ps.hidRVVector,
+						previous_C_values, cregex_mask, creg);
+	first_C = false;
+	partLabel = 'C';
+      }
+      if (trigger) {
+	fprintf(f,"Ptn-%d %c': ",inference_it.pt_i(), partLabel);
+	if (printObserved && ps.allrvs.size() > 0) {
+	  printRVSetAndValues(f,ps.allrvs,true, partLabel == 'C' ? creg:ereg);
+	  fflush(f);
+	} else if (ps.packer.packedLen() > 0) {
+	  printRVSetAndValues(f,ps.hidRVVector,true, partLabel == 'C' ? creg:ereg);
+	  fflush(f);
+	}
+      }
+    } else {
+      // possibly print the P or C partition information
+      if (inference_it.cur_part_clique_print_range() != NULL) {
+	printAllCliques(partitionStructureArray[inference_it.ps_i()],
+			*prev_part_tab,
+			inference_it.pt_i(),
+			inference_it.cur_nm(),
+			inference_it.cur_part_clique_print_range(),
+			stdout,
+			cliquePosteriorNormalize, cliquePosteriorUnlog,
+			false, posteriorFile);			
+      }
+    }
+
+    // don't need this partition any more
+    prev_part_tab->separatorCliques[interfaceCliqueNum].preserve = false;
+    delete prev_part_tab;
+    partitionTableTemp[prev_interface_idx] = NULL;
     
+    curInterfaceIdx = (curInterfaceIdx + 1) % numBufferedInterfaces;  
   }
-  assert ( inference_it.at_e() );
-
+    
   logpr rc;
+  rc = cur_part_tab->maxCliques[E_root_clique].sumProbabilities();
+  return rc;
+#if 0
   if (inference_it.at_e()) {
     // then we finished.
     rc = cur_part_tab->maxCliques[E_root_clique].sumProbabilities();
   }
-  if (numPartitionsDone)
-    *numPartitionsDone = inference_it.pt_i();
-
-  delete cur_part_tab;
-
-  return rc;
-
+#endif
 }
 
 
