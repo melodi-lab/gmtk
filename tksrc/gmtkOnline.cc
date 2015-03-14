@@ -127,6 +127,7 @@ VCID(HGID)
 
 /****************************         INFERENCE OPTIONS           ***********************************************/
 #define GMTK_ARG_INFERENCE_OPTIONS
+#define GMTK_ARG_ONLINE_SMOOTHING
 #if 0
 #define GMTK_ARG_DO_DIST_EVIDENCE
 #define GMTK_ARG_PROB_EVIDENCE

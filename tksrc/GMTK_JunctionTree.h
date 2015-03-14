@@ -543,6 +543,14 @@ class JunctionTree {
 	return jt.Co_message_order;
     }
 
+    vector< pair<unsigned,unsigned> > & prev_message_order() {
+      assert(!at_first_entry()); // no previous section!
+      if (at_first_c() || (at_e() && !has_c_partition()))
+     	return jt.P1_message_order;
+      else 
+	return jt.Co_message_order;
+    }
+
     JT_Partition& cur_jt_partition() {
       if (at_first_entry())
 	return jt.P1;
@@ -804,6 +812,9 @@ class JunctionTree {
 				   const bool cliquePosteriorUnlog = true);
 
 public:
+
+  static unsigned numSmoothingPartitions; // used for smoothing in gmtkOnline
+
 
   void setPartitionDebugRange(Range rng) { partitionDebugRange.SetLimits(rng.first(), rng.last()); 
                                        partitionDebugRange.SetDefStr(rng.GetDefStr()); }
