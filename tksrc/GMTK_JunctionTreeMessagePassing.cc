@@ -4280,64 +4280,10 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
   if (inference_it.at_first_c() && P1.cliques.size() == 0)
     Co.useLISeparator();
 
+  printf("gather into root P'\n");
 
-  // ticket #468 - skip enqueue on first iteration if P is empty to keep PCCE first
-  // C observation data available in the queue
-  if (fp.numFramesInP() > 0) { 
-    // read in the same # of frames that we're about to consume to maintain
-    // enough queued frames to be sure we don't overshoot the C'->E' transition
-    unsigned nQueued = globalObservationMatrix->enqueueFrames(numNewFrames);  
-    currentMaxFrameNum += nQueued;
-  }
-
-
-
-  // update the ptps_iterator if we just found out the true length of the segment
-  if (truePtLen == 0 && globalObservationMatrix->numFrames() != 0) {
-#if 1
-    printf("learned T=%u at %u %u\n", globalObservationMatrix->numFrames(), 0, inference_it.pt_i());
-#endif
-    unsigned basicTempMaxUnrollAmnt;
-    unsigned basicTempMinUnrollAmnt;
-    int      modTempMaxUnrollAmnt;
-    int      modTempMinUnrollAmnt;
-    unsigned numUsableFrm;
-    unsigned frmStart;
-    unsigned T;
-    
-    if ( globalObservationMatrix->numFrames() <= globalObservationMatrix->minFutureFrames() )
-      error("Segment of %d frames too short as model requires at least %d frames\n", 
-	    globalObservationMatrix->numFrames() + globalObservationMatrix->minPastFrames(), 
-	    globalObservationMatrix->minPastFrames() + fp.numFramesInP() + fp.numFramesInE() + globalObservationMatrix->minFutureFrames());
-    
-    T  = globalObservationMatrix->numFrames() - globalObservationMatrix->minFutureFrames();
-    if (!gm_template.computeUnrollParameters(T,
-					     basicTempMaxUnrollAmnt,
-					     basicTempMinUnrollAmnt,
-					     modTempMaxUnrollAmnt,
-					     modTempMinUnrollAmnt,
-					     numUsableFrm,
-					     frmStart))
-      error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, different template, or decrease M,S if >1.\n",
-	    T,
-	    fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
-	    fp.numFrames(),
-	    gm_template.M,gm_template.S);
-    
-    truePtLen = modTempMaxUnrollAmnt + 3;
-    inference_it.set_pt_len(truePtLen);
-    if (numUsableFrames) 
-      *numUsableFrames = numUsableFrm;
-    
-#if 0
-    if (nQueued != numFramesInCprime && nQueued != 0) {
-      error("Stream segment %u length %u is incompatible with model unrolling",
-	    globalObservationMatrix->segmentNumber(), 
-	    globalObservationMatrix->numFrames());
-    }
-#endif
-  }
-
+  // don't enqueue frames here - we preloaded enough, and we still need the P' 
+  // frames until P' prints... enqueuing scrolls out the oldest frame
 
   bool first_C = true;
   unsigned C_size = 0;
@@ -4369,6 +4315,7 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 			  inference_it.cur_li(),
 			  inference_it.cur_nm(),
 			  inference_it.pt_i());
+    printf("send forward C'_%u -> C'_%u\n", part-1, part);
 
     // remember the incoming separator so the forward pass can be re-done in the backward pass
     unsigned interfaceCliqueNum = 
@@ -4384,56 +4331,10 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 		       inference_it.cur_message_order(),
 		       inference_it.cur_nm(),
 		       inference_it.pt_i());
-      unsigned nQueued = globalObservationMatrix->enqueueFrames(numNewFrames);
-      currentMaxFrameNum += nQueued;
 
+      printf("gather into root C'_%u\n", part);
 
-      // update the ptps_iterator if we just found out the true length of the segment
-      if (truePtLen == 0 && globalObservationMatrix->numFrames() != 0) {
-#if 1
-	printf("learned T=%u at %u %u\n", globalObservationMatrix->numFrames(), part, inference_it.pt_i());
-#endif
-	unsigned basicTempMaxUnrollAmnt;
-	unsigned basicTempMinUnrollAmnt;
-	int      modTempMaxUnrollAmnt;
-	int      modTempMinUnrollAmnt;
-	unsigned numUsableFrm;
-	unsigned frmStart;
-	unsigned T;
-	
-	if ( globalObservationMatrix->numFrames() <= globalObservationMatrix->minFutureFrames() )
-	  error("Segment of %d frames too short as model requires at least %d frames\n", 
-		globalObservationMatrix->numFrames() + globalObservationMatrix->minPastFrames(), 
-		globalObservationMatrix->minPastFrames() + fp.numFramesInP() + fp.numFramesInE() + globalObservationMatrix->minFutureFrames());
-	
-	T  = globalObservationMatrix->numFrames() - globalObservationMatrix->minFutureFrames();
-	if (!gm_template.computeUnrollParameters(T,
-						 basicTempMaxUnrollAmnt,
-						 basicTempMinUnrollAmnt,
-						 modTempMaxUnrollAmnt,
-						 modTempMinUnrollAmnt,
-						 numUsableFrm,
-						 frmStart))
-	  error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, different template, or decrease M,S if >1.\n",
-		T,
-		fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
-		fp.numFrames(),
-		gm_template.M,gm_template.S);
-	
-	truePtLen = modTempMaxUnrollAmnt + 3;
-	inference_it.set_pt_len(truePtLen);
-	if (numUsableFrames) 
-	  *numUsableFrames = numUsableFrm;
-	
-#if 0
-	if (nQueued != numFramesInCprime && nQueued != 0) {
-	  error("Stream segment %u length %u is incompatible with model unrolling",
-		globalObservationMatrix->segmentNumber(), 
-		globalObservationMatrix->numFrames());
-	}
-#endif
-      }
-
+      // don't enqueue here
     }
   }
 
@@ -4461,6 +4362,8 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 			  inference_it.cur_nm(),
 			  inference_it.pt_i());
 
+    printf("send forward C'_%u -> C'_%u\n", part-1, part);
+
     // remember the incoming separator so the forward pass can be re-done in the backward pass
     unsigned interfaceCliqueNum = 
       partitionStructureArray[inference_it.ps_i()].separatorCliquesSharedStructure.size()-1;
@@ -4474,54 +4377,9 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 		       inference_it.cur_message_order(),
 		       inference_it.cur_nm(),
 		       inference_it.pt_i());
-      unsigned nQueued = globalObservationMatrix->enqueueFrames(numNewFrames);
-      currentMaxFrameNum += nQueued;
 
-      // update the ptps_iterator if we just found out the true length of the segment
-      if (truePtLen == 0 && globalObservationMatrix->numFrames() != 0) {
-#if 1
-	printf("learned T=%u at %u %u\n", globalObservationMatrix->numFrames(), part, inference_it.pt_i());
-#endif
-	unsigned basicTempMaxUnrollAmnt;
-	unsigned basicTempMinUnrollAmnt;
-	int      modTempMaxUnrollAmnt;
-	int      modTempMinUnrollAmnt;
-	unsigned numUsableFrm;
-	unsigned frmStart;
-	unsigned T;
-	
-	if ( globalObservationMatrix->numFrames() <= globalObservationMatrix->minFutureFrames() )
-	  error("Segment of %d frames too short as model requires at least %d frames\n", 
-		globalObservationMatrix->numFrames() + globalObservationMatrix->minPastFrames(), 
-		globalObservationMatrix->minPastFrames() + fp.numFramesInP() + fp.numFramesInE() + globalObservationMatrix->minFutureFrames());
-	
-	T  = globalObservationMatrix->numFrames() - globalObservationMatrix->minFutureFrames();
-	if (!gm_template.computeUnrollParameters(T,
-						 basicTempMaxUnrollAmnt,
-						 basicTempMinUnrollAmnt,
-						 modTempMaxUnrollAmnt,
-						 modTempMinUnrollAmnt,
-						 numUsableFrm,
-						 frmStart))
-	  error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, different template, or decrease M,S if >1.\n",
-		T,
-		fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
-		fp.numFrames(),
-		gm_template.M,gm_template.S);
-	
-	truePtLen = modTempMaxUnrollAmnt + 3;
-	inference_it.set_pt_len(truePtLen);
-	if (numUsableFrames) 
-	  *numUsableFrames = numUsableFrm;
-	
-#if 0
-	if (nQueued != numFramesInCprime && nQueued != 0) {
-	  error("Stream segment %u length %u is incompatible with model unrolling",
-		globalObservationMatrix->segmentNumber(), 
-		globalObservationMatrix->numFrames());
-	}
-#endif
-      }
+      printf("gather into root C'_%u\n", part);
+
     }
 
 
@@ -4532,6 +4390,8 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
                        inference_it.cur_message_order(),
                        inference_it.cur_nm(),
                        inference_it.pt_i());
+    
+    printf("scatter out of root C'_%u\n", part);
 
     unsigned prev_interface_idx = (curInterfaceIdx + numBufferedInterfaces - 1) % numBufferedInterfaces;
     for (unsigned j=0, prev_part=part-1; j < numSmoothingPartitions; j+=1, prev_part-=1) {
@@ -4563,6 +4423,8 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
       else if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
 	E1.useLISeparator();
 
+      printf("reconstructed C'_%u\n", prev_part);
+
       setCurrentInferenceShiftTo(prev_part + 1);
       // send backwads message to previous partition
       deSendBackwardsCrossPartitions(partitionStructureArray[inference_it.ps_prev_i()], // previous
@@ -4577,15 +4439,22 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 				     inference_it.cur_nm(),
 				     inference_it.pt_i());
 
+    printf("send backward C'_%u <- C'_%u\n", prev_part, prev_part+1);
+
       deScatterOutofRoot(partitionStructureArray[inference_it.ps_prev_i()],
 			 *prev_part_tab,
 			 inference_it.prev_ri(),
 			 inference_it.prev_message_order(),
 			 inference_it.prev_nm(),
 			 inference_it.pt_prev_i());
+
+    printf("scatter out of root C'_%u\n", prev_part);
+
     }
     
-    setCurrentInferenceShiftTo(part - numBufferedInterfaces);
+    printf("printing C'_%u\n", part -numSmoothingPartitions);
+
+    setCurrentInferenceShiftTo(part - numSmoothingPartitions);
     PartitionStructures &ps = partitionStructureArray[inference_it.ps_i()];
     prev_part_tab->maxCliques[inference_it.cur_ri()].
       maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
@@ -4635,7 +4504,57 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
     prev_part_tab->separatorCliques[interfaceCliqueNum].preserve = false;
     delete prev_part_tab;
     partitionTableTemp[prev_interface_idx] = NULL;
-    
+
+    { // enqueue a C' worth of frames
+      unsigned nQueued = globalObservationMatrix->enqueueFrames(numNewFrames);
+      currentMaxFrameNum += nQueued;
+      
+      // update the ptps_iterator if we just found out the true length of the segment
+      if (truePtLen == 0 && globalObservationMatrix->numFrames() != 0) {
+#if 1
+	printf("learned T=%u at %u %u\n", globalObservationMatrix->numFrames(), part, inference_it.pt_i());
+#endif
+	unsigned basicTempMaxUnrollAmnt;
+	unsigned basicTempMinUnrollAmnt;
+	int      modTempMaxUnrollAmnt;
+	int      modTempMinUnrollAmnt;
+	unsigned numUsableFrm;
+	unsigned frmStart;
+	unsigned T;
+	
+	if ( globalObservationMatrix->numFrames() <= globalObservationMatrix->minFutureFrames() )
+	  error("Segment of %d frames too short as model requires at least %d frames\n", 
+		globalObservationMatrix->numFrames() + globalObservationMatrix->minPastFrames(), 
+		globalObservationMatrix->minPastFrames() + fp.numFramesInP() + fp.numFramesInE() + globalObservationMatrix->minFutureFrames());
+	
+	T  = globalObservationMatrix->numFrames() - globalObservationMatrix->minFutureFrames();
+	if (!gm_template.computeUnrollParameters(T,
+						 basicTempMaxUnrollAmnt,
+						 basicTempMinUnrollAmnt,
+						 modTempMaxUnrollAmnt,
+						 modTempMinUnrollAmnt,
+						 numUsableFrm,
+						 frmStart))
+	  error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, different template, or decrease M,S if >1.\n",
+		T,
+		fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
+		fp.numFrames(),
+		gm_template.M,gm_template.S);
+	
+	truePtLen = modTempMaxUnrollAmnt + 3;
+	inference_it.set_pt_len(truePtLen);
+	if (numUsableFrames) 
+	  *numUsableFrames = numUsableFrm;
+	
+#if 0
+	if (nQueued != numFramesInCprime && nQueued != 0) {
+	  error("Stream segment %u length %u is incompatible with model unrolling",
+		globalObservationMatrix->segmentNumber(), 
+		globalObservationMatrix->numFrames());
+	}
+#endif
+      }
+    }
     curInterfaceIdx = (curInterfaceIdx + 1) % numBufferedInterfaces;  
   }
     
