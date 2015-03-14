@@ -139,6 +139,18 @@ AC_CHECK_FILE([$srcdir/../.hg/dirstate],[
 ])
 AM_CONDITIONAL([HAVE_HG],[test  x$HAVE_HG = xyes])
 
+m4_include([m4/wxwin.m4])
+
+WX_CONFIG_OPTIONS
+WX_CONFIG_CHECK([2.9.0], [HAVE_WXWIDGETS=yes], [AC_MSG_WARN([$wx_error_message
+
+gmtkViz will not be built])])
+
+AC_ARG_ENABLE([gmtkViz], 
+              [AS_HELP_STRING([--disable-gmtkViz],
+                              [disable gmtkViz @<:@default: no@:>@])],
+              [gmtkViz=${enableval}], [gmtkViz=yes])
+
 AC_DEFUN([GMTK_WCHAR_PROG],[dnl
 AC_LANG_PROGRAM([dnl
 #include <string>
@@ -146,57 +158,37 @@ using namespace std;
 #include <wx/wx.h>
 ],[wxString s("foo")])])
 
-AC_ARG_ENABLE([gmtkViz], 
-              [AS_HELP_STRING([--disable-gmtkViz],
-                              [disable gmtkViz @<:@default: no@:>@])],
-              [gmtkViz=${enableval}], [gmtkViz=yes])
-if test x"$gmtkViz" = x"yes"; then
-   AC_CHECK_PROG([HAVE_WXCONFIG],[wx-config],[yes])
-   if test x"$HAVE_WXCONFIG" = x"yes"; then
-     AC_MSG_CHECKING([for working wxWidgets 2.9 or later])
-     AC_LANG_PUSH([C++])
-     wx_check_save_CPPFLAGS=${CPPFLAGS}
-     CPPFLAGS=
-     wx_check_save_CXXFLAGS=${CXXFLAGS}
-     CXXFLAGS=`wx-config --cxxflags`
-     wx_check_save_LIBS=${LIBS}
-     LIBS=`wx-config --libs`
-     AC_LINK_IFELSE([AC_LANG_PROGRAM([#include "wx/wx.h"],[wxString s("foo");s.Capitalize()])],
-       [AC_MSG_RESULT([yes])
-        AC_MSG_CHECKING([whether wxWidgets works without -D_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_])
-        AC_LINK_IFELSE([GMTK_WCHAR_PROG],
-          [AC_MSG_RESULT([yes])
-           AC_SUBST([HAVE_WXWIDGETS],[yes])
-          ],[
-           AC_MSG_RESULT([no])
-           AC_MSG_CHECKING([whether wxWidgets works with -D_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_])
-           CPPFLAGS=-D_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_
-           AC_LINK_IFELSE([GMTK_WCHAR_PROG], 
-             [AC_MSG_RESULT([yes])
-              AC_SUBST([EXTRA_WX_FLAGS],[-D_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_])
-              AC_SUBST([HAVE_WXWIDGETS],[yes])
-             ],[ 
-              AC_MSG_RESULT([no])
-              AC_MSG_WARN([wxWidgets doesn't seem to work. gmtkViz will not be built.])
-             ]
-           )
-          ]
-        )
-       ],[
-        AC_MSG_RESULT([no])
-        AC_MSG_WARN([wxWidgets doesn't seem to work. gmtkViz will not be built.])
-       ]
-     )
-     LIBS=${wx_check_save_LIBS}
-     CXXFLAGS=${wx_check_save_CXXFLAGS}
-     CPPFLAGS=${wx_check_save_CPPFLAGS}
-     AC_LANG_POP([C++])
-   fi
+if test x"$HAVE_WXWIDGETS" = x"yes" -a x$gmtkViz = xyes; then
+  AC_MSG_CHECKING([whether wxWidgets works without -D_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_])
+  AC_LANG_PUSH([C++])
+  wx_check_save_CXXFLAGS=${CXXFLAGS}
+  wx_check_save_LIBS=${LIBS}
+  CXXFLAGS="$wx_check_save_CXXFLAGS $WX_CXXFLAGS"
+  LIBS="$wx_check_save_LIBS $WX_LIBS"
+  AC_LINK_IFELSE([GMTK_WCHAR_PROG],[
+    AC_MSG_RESULT([yes])
+  ],[
+    AC_MSG_RESULT([no])
+    AC_MSG_CHECKING([whether wxWidgets works with -D_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_])
+    CXXFLAGS="$CXXFLAGS -D_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_"
+    AC_LINK_IFELSE([GMTK_WCHAR_PROG],[
+      AC_MSG_RESULT([yes])
+      EXTRA_WX_FLAGS=-D_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_
+    ],[ 
+      AC_MSG_RESULT([no])
+      AC_MSG_WARN([wxWidgets doesn't seem to work. gmtkViz will not be built.])
+      HAVE_WXWIDGETS=no
+    ])
+  ])
+  CXXFLAGS=$wx_check_save_CXXFLAGS
+  LIBS=$wx_check_save_LIBS
+  AC_LANG_POP([C++])
 fi
+
 if test x"$HAVE_WXWIDGETS" = x"yes"; then
    AC_SUBST([GMTKVIZ],[gmtkViz])
-   AC_SUBST([VIZCXXFLAGS],[`wx-config --cxxflags`])
-   AC_SUBST([VIZLDFLAGS],[`wx-config --libs`])
+   AC_SUBST([VIZCXXFLAGS],["$WX_CXXFLAGS $EXTRA_WX_FLAGS"])
+   AC_SUBST([VIZLDFLAGS],[$WX_LIBS])
 fi
 
 case "${host}" in
@@ -223,7 +215,7 @@ m4_include([../deepMLP/m4/gmtk_cxx11])
 if test x$gmtk_cxx11 = xyes -a x$have_sse = xyes -a x$XOPEN = x; then
   AC_SUBST([dmlp_libraries],[../deepMLP/libDMLP.a])
   AC_SUBST([dmlp_programs],[gmtkDMLPtrain])
-  AC_SUBST([dmlp_check_programs],[abstest dmlp])
+  AC_SUBST([dmlp_check_programs],["abstest dmlp"])
   AM_CONDITIONAL([BUILD_DMLP],[true])
 else
   AM_CONDITIONAL([BUILD_DMLP],[false])

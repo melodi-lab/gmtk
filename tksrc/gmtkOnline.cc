@@ -543,12 +543,13 @@ main(int argc,char*argv[])
 
 
  
-  for (; !gomSS->EOS(); ) {
+  for (;;) {
     unsigned numUsableFrames;
     (void) myjt.onlineFixedUnroll(gomSS, &numUsableFrames, NULL, false, 
 				  mVitValsFile,vitAlsoPrintObservedVariables, 
 				  vitPreg, vitCreg, vitEreg, NULL, pCliqueFile, 
 				  cliquePosteriorNormalize, cliquePosteriorUnlog);
+    if (gomSS->EOS()) break;
     infoMsg(IM::Printing,IM::Info,"Segment %d, after Filtering: %u usable frames\n",
             gomSS->segmentNumber(),
             numUsableFrames);

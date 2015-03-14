@@ -288,6 +288,7 @@ main(int argc, char *argv[]) {
     }
     printf("%s", binaryOutputStream ? "E" : "E\n");
   }
+  printf("%s", binaryOutputStream ? "E" : "E\n");
 
   exit(0);
 }

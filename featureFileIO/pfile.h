@@ -1,6 +1,12 @@
 #ifndef PFILE_H_INCLUDED
 #define PFILE_H_INCLUDED
 
+/*
+ * Copyright (C) 2003 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ */
+
 // This file contains some miscellaneous routines for handling PFiles
 
 // IMPORTANT NOTE - some places in this file refer to "sentence" - this
