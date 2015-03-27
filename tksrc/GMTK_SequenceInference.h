@@ -16,6 +16,12 @@
 // Not all subclasses implement every inference task, e.g., Island can't
 // do online filtering/smoothing.
 
+
+// Another option would be to have separate base classes for each
+// inference task, and let concrete SequenceInference subclasses
+// use multiple inheritance to  specify which tasks they can handle.
+// I think I might like this design better.
+
 class SequenceInference {
  public:
 
