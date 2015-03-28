@@ -55,11 +55,15 @@ public:
 
   virtual void begin(logpr& p) {
     Sw_ObsContRV::begin(p);
+#if 0
+    // TODO:: need to go through and check all of RV subclasses 
+    // that the modification can't happen twice.
     if (rv_info.rvWeightInfo.size() > 1) 
       modifyProbability(p,rv_info.rvWeightInfo[cachedSwitchingState],this);
     else 
       modifyProbability(p,rv_info.rvWeightInfo[0],this);
     return;
+#endif
   }
 
   inline virtual void probGivenParents(logpr& p) {

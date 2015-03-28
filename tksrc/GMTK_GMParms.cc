@@ -45,6 +45,7 @@
 #include "GMTK_DoubleMatrix.h"
 #include "GMTK_GammaComponent.h"
 #include "GMTK_BetaComponent.h"
+#include "GMTK_MissingFeatureScaledDiagGaussian.h"
 #include "GMTK_DlinkMatrix.h"
 #include "GMTK_Dlinks.h"
 #include "GMTK_DirichletTable.h"
@@ -1108,6 +1109,8 @@ GMParms::readComponents(iDataStreamFile& is, bool reset)
       gc = new GammaComponent(dim);
     } else if (t == Component::BetaComponent) {
       gc = new BetaComponent(dim);
+    } else if (t == Component::MissingFeatureScaledDiagGaussian) {
+      gc = new MissingFeatureScaledDiagGaussian(dim);
     } else {
       error("Error: reading file %s line %d, unknown component type %d in file",
 	    is.fileName(),is.lineNo(),t);
