@@ -48,17 +48,6 @@ private:
   // The actual mean vector
   sArray<float> means;
 
-  //////////////////////////////////
-  // Data structures support for EM
-  // NOTE: if we change from type float, to type double,
-  //   we will need to check the load/store accumulator code
-  //   for subclasses of GaussianComponent.
-  sArray<float> nextMeans;
-
-  /////////////////////////////////////////////////////////
-  // the denominator used in the case of shared means.
-  sArray<double> sharedMeansDenominator;
-
   /////////////////////////////////////////////////
   // counts the number of gaussian components
   // that are sharing this mean at all. This is a static
@@ -67,20 +56,49 @@ private:
   // is read in.
   unsigned numTimesShared;
 
-  /////////////////////////////////////////////////
-  // counts the number of gaussian components
-  // that are sharing this mean at EM training time. This is a dynamic
-  // count, and is computed as EM training is run. This
-  // value does not necessarily equal the number of
-  // objects that have specified this object in
-  // the object files.
-  unsigned refCount;
+  ////////////////////////////////////////////////////////////////////
+  // Data structures support for parameter training (EM and potentially other forms)
+  ////////////////////////////////////////////////////////////////////
+  struct Training_Members {
+    // NOTE: if we change from type float, to type double,
+    //   we will need to check the load/store accumulator code
+    //   for subclasses of GaussianComponent.
+    sArray<float> nextMeans;
+
+    /////////////////////////////////////////////////////////
+    // the denominator used in the case of shared means.
+    sArray<double> sharedMeansDenominator;
+
+    ////////////////////////////////////////////////
+    // the local accumulated probability needed for each element of
+    // the mean vector in a missing feature scaled gaussian. This 
+    // is currently (as of 6/21/2013) used only by MissingFeatureScaledDiagGaussian,
+    // for other uses this array remains empty.
+    sArray<logpr> elementAccumulatedProbability;
+
+    /////////////////////////////////////////////////
+    // counts the number of gaussian components
+    // that are sharing this mean at EM training time. This is a dynamic
+    // count, and is computed as EM training is run. This
+    // value does not necessarily equal the number of
+    // objects that have specified this object in
+    // the object files.
+    unsigned refCount;
+
+    // default constructor
+    Training_Members() : refCount(0) {}  
+  };
+  auto_deleting_ptr<struct Training_Members> trMembers;
+  ////////////////////////////////////////////////////////////////////
+  // End of data structures support for EM
+  ////////////////////////////////////////////////////////////////////
+
 
   /////////////////////////////////////////////////
   // allow access to internal accumulator pointer for
   // shared covariance object to use to add to its
   // accumulation.
-  const float* const accumulatorPtr() { return nextMeans.ptr; }
+  const float* const accumulatorPtr() { return trMembers->nextMeans.ptr; }
 
 public:
 
@@ -122,7 +140,13 @@ public:
   void recursivelyClearUsedBit() {  emClearUsedBit();  }
   void recursivelySetUsedBit() { emSetUsedBit();  }
 
-
+  void initElementAccumulatedProbability() {
+    assert ( emEmAllocatedBitIsSet() );
+    trMembers->elementAccumulatedProbability.growIfNeeded(means.len());
+    for (int i=0 ; i<means.len() ; i++) {
+      trMembers->elementAccumulatedProbability[i].set_to_zero();
+    }
+  }
 
   //////////////////////////////////
   // Public interface support for EM
@@ -138,10 +162,15 @@ public:
   using EMable::emEndIteration;
   void emEndIteration(const float *const partialAccumulatedNextMeans);
   void emEndIterationSharedMeansCovars(const logpr parentsAccumulatedProbability,
-					     const float*const partialAccumulatedNextMeans,
-					     const DiagCovarVector* covar);
-  void emEndIterationNoSharing(const float *const partialAccumulatedNextMeans);
+				       const float*const partialAccumulatedNextMeans,
+				       const DiagCovarVector* covar);
+  void emEndIterationSharedMeansCovarsElementProbabilities(
+				       const logpr parentsAccumulatedProbability,
+				       const float*const partialAccumulatedNextMeans,
+				       const DiagCovarVector* covar,
+				       const logpr *const elementAccumulatedProbabilities);
 
+  void emEndIterationNoSharing(const float *const partialAccumulatedNextMeans);
   void emEndIterationNoSharingElementProbabilities(const float *const partialAccumulatedNextMeans,
 						   const logpr *const elementAccumulatedProbabilities);
 

@@ -78,8 +78,12 @@ public:
   // That may be OK as long as the scale and penalty are non-negative
   virtual logpr maxValue() {
     logpr p = HidDiscRV::maxValue();
+    // TODO: we might want to cache this value rather than modifying it all the time.
+    // TODO: note that there is an assumption here that the modify probability
+    // funciton is monotonic. If it is not the case (e.g., if scale could be negative) then
+    // this would be false, and we'd need to compute the maximum over the modified
+    // values rather than the modification of the max as we are doing here.
     if (safeToModifyProbability(rv_info.rvWeightInfo[0])) {
-      // todo: we might want to cache this value rather than modifying it all the time.
       modifyProbability(p,rv_info.rvWeightInfo[0],this);    
     }
     return p;
