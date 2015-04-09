@@ -1,0 +1,80 @@
+﻿GMTK Refactor Requirements
+Support
+* Factored interface approximate inference (add I/O a la tri files)
+* Pedagogical inference implementation
+* Optimized inference implementation
+* Island inference
+* Archipelagos inference
+* Online filtering, smoothing
+* k-best
+
+
+
+
+Random notes:
+
+
+Goals:
+   1  make the core inference code be based on an abstract class for which instantiations can do section -> section messages, and the instantiations can do anything within a section.
+  2 supports factored interfaces (interface is the set of random variables that are common to neighboring sections). I.e., P’ \cap C’ and C’ \cap E’ (right now, only monolithic interfaces are supported, and this makes inference much slower because the interface becomes a subclique in both the left and the right section relative to the interface). 
+  3 probably the case that the abstract interface needs to support factored interfaces (it doesn’t require factored interfaces, but it allows it).
+  4 the existing code (that doesn’t support factored interfaces) needs to become the first instantiation of this abstract interface. 
+ 5 the old naive code (which does the exponential time, and is useful for pedagogy) becomes the next instantiation of the abstract interface.
+ 6 Then, new code needs to be written (research bit, will probably involve Shengjie) to discover what are good factored interfaces. 
+ 7 As one can hand edit a triangulation, one should also be able to hand edit a junction tree and an interface file. This means that:
+      7a) abstract class has code to read/write the factored interface spec.
+      7b) any subclass is required to provide code to read/write human editable information
+            on how it is doing inference (e.g., the existing junction tree code would add
+            code to write out and read in the specifications for the cliques, the separators,
+            and the message orders within the sub-junction tree that lives within a section). 
+            (inference plan). 
+  8) each section inference code needs to support a forward direction (takes information in the form of an incoming factored interface on the left), does some stuff, and leaves new information in its outgoing factored interface on the right), and also a backwards direction (which is the reverse of the forward direction). In the current case, this is just the collect/distributed evidence dichotomy. 
+  9) I think that the data structure for the factored interfaces are probably ok (i.e., a factored interface is probably just going to be a bundle of either clique tables or separator tables). The factored interface also needs some sort of container class. Right now, an interface separator I think is just a particular position in an array of separators in a section’s array of separators (I think I recall it being the last one). 
+
+
+There is a difference between a clique table and a separator table. A clique table is really just a sparse table that contains sets of random variable values and a score. I.e., a clique table is an array of pairs { (x^1_i,x^2_i, ... , x^k_i, v_i) : i = 1 … N } where N is the number of entries in a clique table, i is the index of the current clique table entry, x^j_i is the value of the j’th random variable in the ith entry of the table, and there are k random variables in the table, and v_i is the score at position i. One can think of this as a matrix where rows are the clique table entries, and columns are the random variables (and the right -most column) is the score. 
+
+
+A separator table is like a conditional table. The random variables corresponding to a separator are parititioned into the “cumulative intersection” first bit and the “residual” second bit. One can represent this as follows. Say there are k variables in the separator, the first bit have k_1 variables and the second bit have k_2, where k_1 + k_2 = k. The table takes the form:
+   { (x^1_i, x^2_i, …, x^{k_1}_i, { (x^{k_1+1}_{ij}, x^{k_1+2}_{ij}, …., x^{k}_{ij},v_{ij} ), j = 1 … N_i }, i = 1 … N }
+
+
+one can quickly hash into a separator table with a hash key corresponding ot the first k_1 variables (say it returns entry i) and then quickly iterate over a conditional table over the remaining k_2 variables which contains N_i entries. The separator would then use the first entries to be those common with other separators so that the first k_1 values are instantiated and allow inference to iterate only over the new stuff the separator contains. This si why there is code in GMTK to choose an ordering of the separators (ordinarily, this doesn’t matter). 
+
+
+If k_1 = 0, then a separator table is essentially the same as a clique table (arguably maybe there need not be two distinct data structures, but i”m not sure about this and would need to look over the code to see if there is something I’m forgetting). 
+
+
+Also, see page 468 (section 13.4.3) of http://melodi.ee.washington.edu/~bilmes/gmtk_docs_draft_09_08_2014.pdf 
+which describes a bit of the idea of a clique table vs. a separator table (but it proably uses different notation). 
+
+
+How does this impact triangulation? Not too much. Right now, triangulation starts with the interfaces being already completed. Triangulation never removes edges, it only adds edges to ensure that the section is triangulated. Then the interface on the left side of a section and on the right side of a section are still going to be part of some clique, so all is still kosher. As an example, lets say that the section starts with a piece of a graph that is not triangulated, but has completed interfaces. After triangulation, the completed interfaces each will be part of a maxclique (which might be the same maxclique, or might not be). Then, a section -> section message corresponds to projecting from the maxclique down to the variables comprising the interface, and the separator between the right maxclique of the left section and the left maxclique of the right section becomes identical (in terms of the random variables it represents) to the interface on the right. 
+
+
+With the new factored interface, what gets fed to the triangulation engine is simply a graph section that doesn’t have the both interfaces completed, giving it more chance to produce a better triangulation (thus, we could even do exact HMM inference with multiple independent HMMs since the HMMs never get coupled).
+
+
+For right now, we can add simple heuristics for how to factor an interface (e..g, mean field like, which is all variables are independent, or clustering into deterministically related bundles, etc.). This will be a separate module, where the heuristics for doing this are just placeholders for what ultimately will be better algorithms. 
+
+
+
+
+Most of the existing code is in the following files:
+GMTK_GMTemplate.cc, GMTK_JunctionTree*.cc, GMTK_MaxClique.cc (which is where the message code currently lives), and GMTK_MaxClique.h (some part of gmtkTriangulate.cc
+might need to change since it is no longer the case that the interfaces need always to be compulsorily completed). 
+
+
+In GMTK_MaxClique.h, class “MaxClique” a number of the members have comments that include the tag “USED ONLY IN JUNCTION TREE INFERENCE”  (the intent of that tag was to indicate what members would be part of an instantiation of the abstract class, i.e., these members would *not* be part of the abstract class). 
+
+
+The abstract interface should be on the level of sections, i.e., messages between sections, granularity of island and archipelagos should be at the unit of sections and messages between sections. The current island code is doing that I believe so the current island code probably does not need much modification (it currently uses the old name for sections, namely “partitions” which we want to move away from).       for (unsigned part = section_start+1; part <= section_end; part ++) {
+        PartitionTables* pt_cur = pt_next;
+        pt_next = createPartition(part+1);
+        ceSendForwardsCrossPartitions(part,pt_cur,pt_next);
+        delete pt_cur;
+        ceGatherIntoRoot(part+1,pt_next);
+      }
+
+
+So ceGatherIntoRoot is really just the abstract interface call to tell a section that it has its left interface stuff ready, and it should do inference magic to ensure that after done it has its right interface ready to send to any new section in the future. ceGatherIntoRoot is currently called what it is since the current JT code’s version of this “magic” just does the messages that gather all data within a section into the local section’s root clique.
