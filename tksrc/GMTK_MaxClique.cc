@@ -2432,6 +2432,7 @@ ceGatherFromIncommingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStru
   // below this estimated threshold, they are pruned.
   logpr cliqueBeamThresholdEstimate;
 
+
   while (cliqueExpansionTry < origin.cliqueBeamBuildMaxExpansions) {
 
     traceIndent=-1; 
@@ -2477,6 +2478,7 @@ ceGatherFromIncommingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStru
       origin.prevMaxCEValPrediction = 0;
     }
 
+
     maxCEValue.set_to_zero();
     // next, do the actual collect message.
     if (origin.hashableNodes.size() == 0) {
@@ -2512,6 +2514,11 @@ ceGatherFromIncommingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStru
       }
     }
 
+
+
+
+//if(cliqueValues.size() > 0) fprintf(stdout, "clique 0: %f", cliqueValues.ptr[0].p.val());
+
     if (numCliqueValuesUsed == 0) {
       // if we have a zero clique, print message and possibly continue
       // with expanded clique.
@@ -2525,6 +2532,7 @@ ceGatherFromIncommingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStru
     }
     cliqueExpansionTry ++;
   }
+
 
   // check if we have a zero clique, and if we do, print message and exit.
   // TODO: rather than exit, pop back to the top and allow continuation and/or
@@ -2960,6 +2968,9 @@ MaxCliqueTable::ceIterateSeparatorsRecurse(MaxCliqueTable::SharedLocalStructure&
 
     // assert ( sepSeparatorValuesPtr[sepValueNumber].remValues.size() == 1 );
     if (sepSeparatorValuesPtr[sepValueNumber].numRemValuesUsed == 1) {
+
+//fprintf(stdout, "continue p: %f ", p.val());
+
       // Continue down with new probability value.
       // Search for tag 'ALLOCATE_REMVALUES_OPTION' in this file for
       // more info why remValues.ptr[0] exists.
@@ -3036,6 +3047,7 @@ MaxCliqueTable::ceIterateSeparatorsRecurse(MaxCliqueTable::SharedLocalStructure&
 			    maxCEValue,
 			    sepNumber+1,
 			    p*sepSeparatorValuesPtr[sepValueNumber].remValues.ptr[i].p);
+
       }
     }
 
@@ -3566,6 +3578,8 @@ MaxCliqueTable::ceIterateAssignedNodesNoRecurse(MaxCliqueTable::SharedLocalStruc
     return;
 
 
+//fprintf(stdout, "innr:%f\n", p.val());
+
   // parray has to be 1 offset, storing p in entry -1
   logpr* parray = origin.probArrayStorage.ptr + 1;
   parray[-1] = p;
@@ -3586,11 +3600,14 @@ MaxCliqueTable::ceIterateAssignedNodesNoRecurse(MaxCliqueTable::SharedLocalStruc
 
     case MaxClique::AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB: 
       rv->begin(cur_p);
+//fprintf(stdout, "begin\n");
       goto applyProbTag;
     case MaxClique::AN_COMPUTE_AND_APPLY_PROB:
       rv->probGivenParents(cur_p);
       {
       applyProbTag:
+
+//fprintf(stdout, "pgp: %f\n", cur_p.val());
 	// check for possible zero (could occur with
 	// zero score or observations).
 	parray[nodeNumber] = parray[nodeNumber-1]*cur_p;

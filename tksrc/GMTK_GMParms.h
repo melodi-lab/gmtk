@@ -29,6 +29,7 @@
 #include "sArray.h"
 #include "debug.h"
 
+
 /////////////////////
 // forward refs
 class Dense1DPMF;
@@ -103,6 +104,11 @@ public:
     arr.push_back(ob);
     map[ob->name()] = arr.size()-1;
   }
+
+
+    GMParms & operator=(const GMParms & that);
+
+    
 
   //////////////////////////////////////////////////////////////////
   // BASIC SHARED LOW-LEVEL SUPPORT PARAMETERS: These are the objects that 
@@ -425,6 +431,7 @@ public:
   // all of the above) from a single file consisting
   // of sets of <keyword,fileName> pairs
   void read(iDataStreamFile& is);
+    void readReset(iDataStreamFile& is, bool reset);
   void write(const char *const outputFileFormat, 
 	     const char * const cppCommandOptions,
 	     const int intTag=CSWT_EMPTY_TAG,
@@ -526,6 +533,8 @@ public:
   void registerDeterministicCMapper(const char *name,
 				    unsigned num_features,
 				    CFunctionMapperType);
+
+    void clearParms();
 
 private:
 

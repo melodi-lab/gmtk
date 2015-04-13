@@ -350,7 +350,6 @@ EMable::emWriteUnencodedAccumulators(oDataStreamFile& ofile,
       // that when we write a 1 before the accumulators,
       // we will always have the full set of accumulators written.
       assert (emEmAllocatedBitIsSet());
-
       // call virtual function to do actual work for object.
       emStoreObjectsAccumulators(ofile,
 				 writeLogVals // log value writing
