@@ -225,6 +225,7 @@ class oDataStreamFile : public ioDataStreamFile {
   bool nl(const char *msg=NULL);
   bool flush(const char *msg=NULL);
   void rewind();
+  bool close();
 
   // type implicit
   bool write(const char *const str,const char *msg=NULL,const bool writeSpaceSuffixAscii=true) { return writeStr(str,msg,writeSpaceSuffixAscii); }

@@ -371,6 +371,7 @@ Mixture::log_p(const unsigned frameIndex,
       logpr tmp = dense1DPMF->p(i)* components[i]->log_p(x,base,stride);
       // this stuff is needed only for EM, so don't cache components
       // when just doing decoding.
+
       if (cacheComponentsInEmTraining) {
 	// store each component prob value as well in this case.
 	componentCache.ptr[frameIndex].cmpProbArray.ptr[i].prob = tmp;
@@ -580,6 +581,7 @@ Mixture::emIncrement(logpr prob,
 	  prob.valref());
   */
 
+
   if (cacheMixtureProbabilities) {
     // note, we should not have to check that we've got the right size, since it
     // should be the case that if we are here in EM, with non-zero probability,
@@ -614,8 +616,9 @@ Mixture::emIncrement(logpr prob,
   // increment the mixture weights
   dense1DPMF->emIncrement(prob,weightedPostDistribution);
 
-  // and the components themselves.
+    
   for (unsigned i=0;i<numComponents;i++) {
+
     components[i]->emIncrement(weightedPostDistribution[i],
 			       x,base,stride);
   }

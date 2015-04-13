@@ -91,6 +91,9 @@ DiagGaussian::log_p(const float *const x,
   const float *mean_p = mean->basePtr();
   const float *var_inv_p = covar->baseVarInvPtr();
 
+//fprintf(stdout, "logp opt: %f %f %f\n", *mean_p, *var_inv_p, *(covar->basePtr()));
+
+
 #if 0
   // do the non-unrolled version only.
   const float *const x_endp = x + _dim;

@@ -108,6 +108,26 @@ const char*const argerr = "ARG ERROR";
 #endif // defined(GMTK_ARG_INPUT_MASTER_FILE)
 
 
+#if defined(GMTK_ARG_INPUT_MASTER_FILE) || defined(GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+   static char *inputMasterFile2=NULL;
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+#ifdef GMTK_ARG_INPUT_MASTER_FILE_OPT_ARG
+   Arg("inputMasterFile2",Arg::Opt,inputMasterFile2,"Input file of multi-level master CPP processed GM input parameters 2"),
+#else
+   Arg("inputMasterFile2",Arg::Opt,inputMasterFile2,"Input file of multi-level master CPP processed GM input parameters 2"),
+#endif
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#else
+#endif
+#endif // defined(GMTK_ARG_INPUT_MASTER_FILE)
+
+
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
 /*************************************************************************************************************/
@@ -171,6 +191,24 @@ Arg("map",Arg::Opt,dlopenFilenames,"Deterministic mapping dynamic library file. 
 
   Arg("inputTrainableParameters",Arg::Opt,inputTrainableParameters,"File of only and all trainable parameters"),
   Arg("binInputTrainableParameters",Arg::Opt,binInputTrainableParameters,"Binary condition of trainable parameters file"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+ 
+#else
+#endif
+#endif // defined(GMTK_ARG_INPUT_TRAINABLE_PARAMS
+
+
+#if defined(GMTK_ARG_INPUT_TRAINABLE_PARAMS)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+   static char *inputTrainableParameters2=NULL;
+   static bool binInputTrainableParameters2=false;
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("inputTrainableParameters2",Arg::Opt,inputTrainableParameters2,"File of only and all trainable parameters 2"),
+  Arg("binInputTrainableParameters2",Arg::Opt,binInputTrainableParameters2,"Binary condition of trainable parameters file 2"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
  
@@ -305,6 +343,28 @@ Arg("map",Arg::Opt,dlopenFilenames,"Deterministic mapping dynamic library file. 
 
 
 
+#if defined(GMTK_ARG_STR_FILE) || defined(GMTK_ARG_STR_FILE_OPT_ARG)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+  static char *strFileName2=NULL;
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+#ifdef GMTK_ARG_STR_FILE_OPT_ARG
+  Arg("strFile2",Arg::Opt,strFileName2,"Graphical Model Structure File 2"),
+#else
+  Arg("strFile2",Arg::Opt,strFileName2,"Graphical Model Structure File 2"),
+#endif
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#else
+#endif
+#endif // defined(GMTK_ARG_STR_FILE)
+
+
+
+
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
 /*************************************************************************************************************/
@@ -346,6 +406,24 @@ Arg("map",Arg::Opt,dlopenFilenames,"Deterministic mapping dynamic library file. 
 #else
 #endif
 #endif // defined(GMTK_ARG_TRI_FILE)
+
+
+
+#if defined(GMTK_ARG_TRI_FILE)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+  static char *triFileName2=NULL;
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("triFile2",Arg::Opt,triFileName2,"Triangulation file for strFile 2"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#else
+#endif
+#endif // defined(GMTK_ARG_TRI_FILE)
+
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
@@ -2014,11 +2092,87 @@ Arg("bpHdropP", Arg::Opt, bpHdropP, "Backprop: dropout probability for hidden la
 #endif
 #endif
 
+
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
 /*************************************************************************************************************/
 /*************************************************************************************************************/
+//GMTK Kernel Discriminative Training Arguments
+#if defined(GMTK_ARG_KERNEL_PARAMS)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
 
+static bool update_CPT = false;
+static bool update_mean = true;
+static bool update_covar = false;
+static bool update_DPMF = false;
+
+static bool use_adagrad = true;
+static bool use_decay_lr = true;
+static bool use_covar_decay_lr = true;
+static bool use_mean_decay_lr = true;
+static double decay_lr_rate = 0.5;
+static double decay_covar_lr_rate = 0.5;
+static double decay_mean_lr_rate = 0.5;
+
+static unsigned max_iter = 2;
+static double init_lr = 1.0e-3;
+static unsigned batch_size = 1;
+static unsigned init_iter = 0;
+
+static unsigned random_seed = 0;
+static bool shuffle_data = true;
+
+
+static double mean_lr = 1.0e-5;
+static double covar_lr = 1.0e-5;
+static double down_weight_mean = 1.0;
+static double down_weight_covar = 1.0;
+static double down_weight_dpmf = 1.0;
+
+static double covar_epsilon = 1.0e-10;
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+Arg("\n=== Discriminative Training Options  ===\n"),
+  Arg("updateCPT",Arg::Opt, update_CPT, "whether to update cpts during discriminative training"),
+  Arg("updateDPMF", Arg::Opt, update_DPMF, "whether to update dpmfs during discriminative training"),
+  Arg("updateMean",Arg::Opt, update_mean, "whether to update means during discriminative training"),
+  Arg("updateCovar",Arg::Opt,update_covar, "whether to update covars during discriminative training"), 
+  Arg("useAdagrad",Arg::Opt,use_adagrad, "whether to use adagrad"),
+  Arg("useDecayLr",Arg::Opt,use_decay_lr, "whether to use decaying learning rate: default is 1/sqrt(t)" ),
+  Arg("useCovarDecayLr",Arg::Opt,use_covar_decay_lr, "whether to use decaying learning rate for covariances: default is 1/sqrt(t)" ),
+  Arg("useMeanDecayLr",Arg::Opt,use_mean_decay_lr, "whether to use decaying learning rate for mean: default is 1/sqrt(t)" ),
+  Arg("decayLrRate", Arg::Opt, decay_lr_rate, "1/pow([learning rate], t)"),
+  Arg("decayCovarLrRate", Arg::Opt, decay_covar_lr_rate, "1/pow([learning rate], t)"),
+  Arg("decayMeanLrRate", Arg::Opt, decay_mean_lr_rate, "1/pow([learning rate], t)"),
+  Arg("maxIter", Arg::Opt, max_iter, "maximum number of iterations"),
+  Arg("initLr", Arg::Opt, init_lr, "initial learning rate"),
+  Arg("batchSize", Arg::Opt, batch_size, "batch size for stochastic gradient descent"),
+  Arg("initIter", Arg::Opt, init_iter, "initial iteration to shrink learning rate from"),
+  Arg("randomSeed", Arg::Opt, random_seed, "random seed for shuffling input data"),
+  Arg("shuffleData", Arg::Opt, shuffle_data, "whether to shuffle the input data"),
+  Arg("covarLr", Arg::Opt, covar_lr, "the additional multiplicative learning rate for covariance; the formula for covariance learning rate is: lr * covarLr * adagradLr"),
+  Arg("meanLr", Arg::Opt, mean_lr, "the additional multiplicative learning rate for means; the formula for the mean learning rate is: lr * meanLr * adagradLr"),
+  Arg("denomWeightMean", Arg::Opt, down_weight_mean, "the weight for the denominator model when calculating the gradient of means: numeratorGradient - denomWeight * denominatorGradient"),
+  Arg("denomWeightCovar", Arg::Opt, down_weight_covar, "the weight for the denominator model when calculating the gradient of covars: numeratorGradient - denomWeight * denominatorGradient"),
+  Arg("denomWeightDPMF", Arg::Opt, down_weight_dpmf, "the weight for the denominator model when calculating the gradient of DPMFs: numeratorGradient - denomWeight * denominatorGradient"),
+  Arg("covarEpsilon", Arg::Opt, covar_epsilon, "covars get set to covar epsilon if they get smaller values"),
+  Arg("\n=== End of Discriminative Training Options ===\n"),
+  
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+
+
+#else
+#endif
+#endif // defined(GMTK_ARG_KERNEL_PARAMS)
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
 
 
 #if defined(GMTK_ARG_KERNEL_PARAMS)

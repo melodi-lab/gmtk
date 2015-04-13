@@ -1134,6 +1134,15 @@ bool oDataStreamFile::flush(const char *msg)
   return true;
 }
 
+
+bool oDataStreamFile::close()
+{
+  fflush(fh);
+  if (fclose(fh) != 0) {
+    warning("WARNING: Can't close file '%s'.",fileName());
+  }
+}
+
 void oDataStreamFile::rewind()
 {
   _curLineNo = 0;

@@ -216,6 +216,7 @@ ObsContRV::probGivenParents(logpr& p)
   // label.c_str(),(*curConditionalParents)[0]->val,gaussianIndex);
   p = curMappingOrDirect->mapping.collection->mx(gaussianIndex)->log_p
     (frame(),firstFeatureElement());
+    //fprintf(stdout, "pff: %f %u %u\n", p.val(), frame(), firstFeatureElement());
 }
 
 
