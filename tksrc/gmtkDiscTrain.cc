@@ -673,15 +673,15 @@ void updateBoth(double lr, map<string, vector_d>& adagrad, bool use_adagrad) {
 		    //else down_weight = 1.0;
 
 	            for(unsigned j=0; j<covars.size(); j++) {
-		            acc_val = (next_covars[j] - down_weight_covar * next_covars_d[j]) * covar_lr;
+		            acc_val = (next_covars[j] - down_weight_covar * next_covars_d[j]); //* covar_lr;
 		            //if(i == 13) fprintf(stderr, "s: %s i: %d n: %f %f, d: %f %f, acc: %f\n", covar_name.c_str(), j, covars[j], next_covars[j], covars_d[j], next_covars_d[j], acc_val);
 
 		            if(use_adagrad) {
 		                double old_val = adagrad[covar_name][j];
-			            local_lr = lr / old_val;
+			            local_lr = covar_lr / old_val;
 			            adagrad[covar_name][j] = sqrt(old_val * old_val + acc_val * acc_val);
 		            }
-		            else local_lr = lr;
+		            else local_lr = covar_lr;
 
 		            covars[j] += local_lr * acc_val;
 		            if(covars[j] < covar_epsilon) covars[j] = covar_epsilon;
