@@ -590,7 +590,7 @@ void normalizeCPT(sArray<logpr>& mdcpts) {
 
 
 
-void updateBoth(double lr, map<string, vector_d>& adagrad, bool use_adagrad) {
+void updateBoth(double lr, double mean_lr, double covar_lr, map<string, vector_d>& adagrad, bool use_adagrad) {
     
 
     double local_lr = lr;
@@ -653,10 +653,10 @@ void updateBoth(double lr, map<string, vector_d>& adagrad, bool use_adagrad) {
 		            acc_val = next_means[j] - down_weight_mean * next_means_d[j];
 		            if(use_adagrad) {
 		                double old_val = adagrad[mean_name][j];
-			            local_lr = lr / old_val;
+			            local_lr = mean_lr / old_val;
 			            adagrad[mean_name][j] = sqrt(old_val * old_val + acc_val * acc_val);
 		            }
-		            else local_lr = lr;
+		            else local_lr = mean_lr;
 
 		            means[j] += local_lr * acc_val;
 		            means_d[j] = means[j];
@@ -684,7 +684,7 @@ void updateBoth(double lr, map<string, vector_d>& adagrad, bool use_adagrad) {
 		            else local_lr = covar_lr;
 
 		            covars[j] += local_lr * acc_val;
-		            if(covars[j] < covar_epsilon) covars[j] = covar_epsilon;
+		            if(covars[j] < varFloor) covars[j] = varFloor;
 		            covars_d[j] = covars[j];
                     //if(i == 13) fprintf(stderr, "s2: %s i: %d n: %f %f, d: %f %f, acc2: %f %f %f\n", covar_name.c_str(), j, covars[j], next_covars[j], covars_d[j], next_covars_d[j], local_lr * acc_val, local_lr, lr);
 		        }
@@ -1018,8 +1018,10 @@ main(int argc,char*argv[])
     GM_Parms_d = GM_Parms;
 
 
-
     double lr = init_lr;
+    double covarLr = covar_lr;
+    double meanLr = mean_lr;
+
     
     map<string, vector_d> adagrad;
     initAdaGrad(adagrad);
@@ -1035,7 +1037,7 @@ main(int argc,char*argv[])
     if(num_instance * batch_size < orig_num_instance) ++ num_instance;
 
 
-    fprintf(stderr, "Parameter Setting: update_CPT:%d, update_covar:%d, use_adagrad:%d, use_decay_lr:%d, max_iter:%d, init_lr:%f, batch_size:%u", update_CPT, update_covar, use_adagrad, use_decay_lr, max_iter, init_lr, batch_size);
+    fprintf(stderr, "Parameter Settings: update_CPT:%d, update_covar:%d, use_adagrad:%d, max_iter:%d, batch_size:%u, init_iter=%d\nLearning rate Settings: use_decay_lr:%d, init_lr:%e, decay_lr_rate:%e, use_covar_decay_lr:%d, init_covar_lr:%e, decay_covar_lr_rate:%e, use_mean_decay_lr:%d, init_mean_lr:%e, decay_mean_lr_rate:%e\n", update_CPT, update_covar, use_adagrad, max_iter, batch_size, init_iter, use_decay_lr, init_lr, decay_lr_rate, use_covar_decay_lr, covar_lr, decay_covar_lr_rate, use_mean_decay_lr, mean_lr, decay_mean_lr_rate);
 
 
     for(unsigned i=0; i<num_instance; i++) {
@@ -1043,6 +1045,10 @@ main(int argc,char*argv[])
     }
     std::srand(random_seed);
     if(shuffle_data) std::random_shuffle(random_index.begin(), random_index.end());
+
+
+    double cond_prob_iterPrev = 0.0;
+    double lldp = 0.0;
 
     for(unsigned iter=0; iter<max_iter; iter++) {
         fprintf(stderr, "\n========= ITER %u =========\n", iter);
@@ -1052,11 +1058,21 @@ main(int argc,char*argv[])
         for(unsigned i=0; i<num_instance; i++) {
 
             if(use_decay_lr) {
-                lr = init_lr / sqrt(iter * num_instance + i + 1.0);
-		        fprintf(stderr, "\t### lr: %f ###\n", lr);
+	            lr = init_lr / pow((iter + init_iter) * num_instance + i + 1.0, decay_lr_rate);
+		        // fprintf(stderr, "\t### lr: %f ###\n", lr);
             }
 
-            string range_str = "";
+            if(use_mean_decay_lr) {
+	            meanLr = mean_lr / pow((iter + init_iter) * num_instance + i + 1.0, decay_mean_lr_rate);
+		        // fprintf(stderr, "\t### lr: %f ###\n", lr);
+            }
+
+            if(use_covar_decay_lr) {
+	            covarLr = covar_lr / pow((iter + init_iter) * num_instance + i + 1.0, decay_covar_lr_rate);
+		        // fprintf(stderr, "\t### lr: %f ###\n", lr);
+        }
+
+        string range_str = "";
 	    unsigned start = random_index[i] * batch_size;
 	    unsigned end = (random_index[i] + 1) * batch_size - 1;
 	    
@@ -1076,8 +1092,7 @@ main(int argc,char*argv[])
 
 
             vector<double> d_probs;
-            vector<double> n_probs;            
-
+            vector<double> n_probs;
             
 
             //denominator train/update
@@ -1105,12 +1120,31 @@ main(int argc,char*argv[])
 
             fprintf(stderr, "### Conditional Log Likelihood of Current Batch: %f\n", cond_prob);
 
-            updateBoth(lr, adagrad, use_adagrad);
+            updateBoth(lr, meanLr, covarLr, adagrad, use_adagrad);
             //getGmParmsValue();
 	    
         }
 
         fprintf(stderr, "### Conditional Log Likelihood of Current Iteration: %f Per Utterance: %f\n", cond_prob_iter, cond_prob_iter / orig_num_instance);
+
+        if(iter > 0) {
+	        lldp = cond_prob_iter - cond_prob_iterPrev;
+
+	        if(lldp < 0) {
+	            lldp = -lldp / cond_prob_iterPrev;
+            }
+	        else {
+	            lldp = lldp / cond_prob_iterPrev;
+            }
+
+	        fprintf(stderr, "CLL: %f, Per Utterance CLL: %f, LLDP: %f\n", cond_prob_iter, cond_prob_iter / orig_num_instance, lldp);
+	      
+	    } else {
+	        fprintf(stderr, "CLL: %f, Per Utterance CLL: %f\n", cond_prob_iter, cond_prob_iter / orig_num_instance);
+	    }
+	    cond_prob_iterPrev = cond_prob_iter;
+
+
 
 	string iter_index = "";
 	i2str(iter, iter_index);
