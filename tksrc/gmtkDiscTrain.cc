@@ -80,6 +80,10 @@ VCID(HGID)
 #include "GMTK_Dense1DPMF.h"
 
 
+/*****************************   DISCRIMINITIVE TRAINING   **********************************************/
+
+#define GMTK_ARG_MMI_TRAINING
+
 /*****************************   OBSERVATION INPUT FILE HANDLING   **********************************************/
 #define GMTK_ARG_OBS_FILES
 
@@ -209,8 +213,8 @@ void setUpGM_Parms(FileParser& fp, GMTemplate& gm_template, GMParms & GM_Parms, 
         iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
         GM_Parms.read(pf);
     }
-    else if(!prime && inputMasterFile2) {
-        iDataStreamFile pf(inputMasterFile2,false,true,cppCommandOptions);
+    else if(!prime && denomInputMasterFile) {
+        iDataStreamFile pf(denomInputMasterFile,false,true,cppCommandOptions);
         GM_Parms.read(pf);
     }
 
@@ -219,8 +223,8 @@ void setUpGM_Parms(FileParser& fp, GMTemplate& gm_template, GMParms & GM_Parms, 
         iDataStreamFile pf(inputTrainableParameters, binInputTrainableParameters,true,cppCommandOptions);
         GM_Parms.readTrainable(pf);
     }
-    else if(!prime && inputTrainableParameters2) {
-        iDataStreamFile pf(inputTrainableParameters2, binInputTrainableParameters2,true,cppCommandOptions);
+    else if(!prime && denomInputTrainableParameters) {
+        iDataStreamFile pf(denomInputTrainableParameters, denomBinInputTrainableParameters,true,cppCommandOptions);
         GM_Parms.readTrainable(pf);
     }
 
@@ -275,10 +279,10 @@ void setUpGM_Parms(FileParser& fp, GMTemplate& gm_template, GMParms & GM_Parms, 
             tri_file = string(triFileName);
     }
     else {
-        if (triFileName2 == NULL) 
-            tri_file = string(strFileName2) + GMTemplate::fileExtension;
+        if (denomTriFileName == NULL) 
+            tri_file = string(denomStrFileName) + GMTemplate::fileExtension;
         else 
-            tri_file = string(triFileName2);
+            tri_file = string(denomTriFileName);
     }
   
   {
@@ -988,8 +992,7 @@ main(int argc,char*argv[])
     gomFS = instantiateFileSource();
     globalObservationMatrix = gomFS;
 
-    //NOTICE: all 2's are for denominator models; n for numerator, d for denominator
-
+    // NOTICE: all 2's are for denominator models; n for numerator, d for denominator
 
     FileParser fp_n(strFileName, cppCommandOptions);
     GMTemplate gm_template_n(fp_n);
@@ -999,7 +1002,7 @@ main(int argc,char*argv[])
 
     GM_Parms.clearParms();
 
-    FileParser fp_d(strFileName2, cppCommandOptions);
+    FileParser fp_d(denomStrFileName, cppCommandOptions);
     GMTemplate gm_template_d(fp_d);
     setUpGM_Parms(fp_d, gm_template_d, GM_Parms, false);
     GM_Parms_d = GM_Parms;
