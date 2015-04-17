@@ -519,8 +519,7 @@ Arg("map",Arg::Opt,dlopenFilenames,"Deterministic mapping dynamic library file. 
   static unsigned max_iter = 2;
   static unsigned init_iter = 0;
 
-  static unsigned random_seed = 0;
-  static bool shuffle_data = true;
+  static char const *segmentSchedule = "linear";
 
   static unsigned batch_size = 1;
 
@@ -556,11 +555,7 @@ Arg("map",Arg::Opt,dlopenFilenames,"Deterministic mapping dynamic library file. 
   Arg("maxIter", Arg::Opt, max_iter, "maximum number of iterations"),
   Arg("initIter", Arg::Opt, init_iter, "initial iteration to shrink learning rate from"),
 
-  // FIXME - use existing seed argument
-  Arg("randomSeed", Arg::Opt, random_seed, "random seed for shuffling input data"),
-
-  // FIXME - use existing minibatch infrastructure
-  Arg("shuffleData", Arg::Opt, shuffle_data, "whether to shuffle the input data"),
+  Arg("segmentSchedule", Arg::Opt, segmentSchedule, "Order to process training data segments (linear, random, permute, shuffle)"),
   Arg("batchSize", Arg::Opt, batch_size, "batch size for stochastic gradient descent"),
 
   Arg("initLr", Arg::Opt, init_lr, "initial learning rate for DPMFs and CPTs"),
@@ -571,6 +566,15 @@ Arg("map",Arg::Opt,dlopenFilenames,"Deterministic mapping dynamic library file. 
   Arg("denomWeightDPMF", Arg::Opt, down_weight_dpmf, "the weight for the denominator model when calculating the gradient of DPMFs: numeratorGradient - denomWeight * denominatorGradient"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+  if (strcasecmp(segmentSchedule, "linear") == 0) {
+  } else if (strcasecmp(segmentSchedule, "random") == 0) {
+  } else if (strcasecmp(segmentSchedule, "permute") == 0) {
+  } else if (strcasecmp(segmentSchedule, "shuffle") == 0) {
+  } else {
+    error("%s: Unknown segment schedule '%s', must be 'linear', 'random', 'permute', or 'shuffle'\n",
+	  argerr, segmentSchedule);
+  }
 
 #else
 #endif

@@ -18,9 +18,12 @@
 
 // The TrainingSchedule class abstracts various training schedules (order
 // which the training examples are presented to a learning algorithm).
+// TrainingSchedule subclasses schedule over both segments and frames, 
+// whereas the SegmentSchedule subclasses schedule only over segments.
 // Subclasses implement specific schedules, for example:
 //   RandomSampleSchedule implements uniform random sampling with replacement
-//   PermutationSchedule cycles through a random permuation
+//   PermutationSchedule cycles through a random permuation (selected via cubic residue)
+//   ShuffleSchedule cycles through a random permutation (selected via Knuth shuffle)
 //   LinearSchedule just presents the training data in observation file order
 
 // Note that TrainingSchedule assumes that a training unit will consist of
