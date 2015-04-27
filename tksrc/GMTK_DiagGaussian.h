@@ -62,6 +62,11 @@ public:
   DiagGaussian(const int dim) : GaussianComponent(dim) { }
   ~DiagGaussian() {}
 
+    MeanVector* getMean() {return mean;}
+    DiagCovarVector* getCovar() {return covar;}
+    sArray<float>& getNextMeans() {return nextMeans;}
+    sArray<float>& getNextCovars() {return nextDiagCovars;}
+
   //////////////////////////////////////////////
   // read/write basic parameters
   void read(iDataStreamFile& is);

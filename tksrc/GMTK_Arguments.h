@@ -178,6 +178,7 @@ Arg("map",Arg::Opt,dlopenFilenames,"Deterministic mapping dynamic library file. 
 #endif
 #endif // defined(GMTK_ARG_INPUT_TRAINABLE_PARAMS
 
+
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
 /*************************************************************************************************************/
@@ -347,6 +348,8 @@ Arg("map",Arg::Opt,dlopenFilenames,"Deterministic mapping dynamic library file. 
 #endif
 #endif // defined(GMTK_ARG_TRI_FILE)
 
+
+
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
 /*************************************************************************************************************/
@@ -476,6 +479,108 @@ Arg("map",Arg::Opt,dlopenFilenames,"Deterministic mapping dynamic library file. 
 #else
 #endif
 #endif // defined(GMTK_ARG_JTW_UB)
+
+
+
+
+/*==============================================================================================================*/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+/*************************                                            *******************************************/
+/*************************   MMI DISCRIMINITIVE TRAINING OPTIONS      *******************************************/
+/*************************                                            *******************************************/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+/****************************************************************************************************************/
+
+#if defined(GMTK_ARG_MMI_TRAINING)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+  static char *denomInputMasterFile=NULL;
+  static char *denomInputTrainableParameters=NULL;
+  static bool denomBinInputTrainableParameters=false;
+  static char *denomStrFileName=NULL;
+  static char *denomTriFileName=NULL;
+
+
+  static bool update_CPT = false;
+  static bool update_mean = true;
+  static bool update_covar = false;
+  static bool update_DPMF = false;
+
+  static bool use_adagrad = true;
+  static bool use_decay_lr = true;
+  static bool use_covar_decay_lr = true;
+  static bool use_mean_decay_lr = true;
+  static double decay_lr_rate = 0.5;
+  static double decay_covar_lr_rate = 0.5;
+  static double decay_mean_lr_rate = 0.5;
+
+  static unsigned max_iter = 2;
+  static unsigned init_iter = 0;
+
+  static char const *segmentSchedule = "linear";
+
+  static unsigned batch_size = 1;
+
+  static double init_lr = 1.0e-3;
+  static double mean_lr = 1.0e-5;
+  static double covar_lr = 1.0e-5;
+
+  static double down_weight_mean = 1.0;
+  static double down_weight_covar = 1.0;
+  static double down_weight_dpmf = 1.0;
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("\n*** Discriminative Training Options  ***\n"),
+  Arg("denomStrFile",Arg::Req,denomStrFileName,"Denominator graphical model structure file"),
+  Arg("denomTriFile",Arg::Opt,denomTriFileName,"Triangulation file for denomStrFile"),
+  Arg("denomInputMasterFile",Arg::Req,denomInputMasterFile,"Input file of multi-level master CPP processed GM input parameters for denominator model"),
+  Arg("denomInputTrainableParameters",Arg::Opt,denomInputTrainableParameters,"File of only and all trainable parameters for denominator model"),
+  Arg("denomBinInputTrainableParameters",Arg::Opt,denomBinInputTrainableParameters,"Binary condition of trainable parameters file for denominator model"),
+
+
+  Arg("updateCPT",Arg::Opt, update_CPT, "whether to update cpts during discriminative training"),
+  Arg("updateDPMF", Arg::Opt, update_DPMF, "whether to update dpmfs during discriminative training"),
+  Arg("updateMean",Arg::Opt, update_mean, "whether to update means during discriminative training"),
+  Arg("updateCovar",Arg::Opt,update_covar, "whether to update covars during discriminative training"), 
+  Arg("useAdagrad",Arg::Opt,use_adagrad, "whether to use adagrad"),
+  Arg("useDecayLr",Arg::Opt,use_decay_lr, "whether to use decaying learning rate for initLr: default is 1/sqrt(t)" ),
+  Arg("useCovarDecayLr",Arg::Opt,use_covar_decay_lr, "whether to use decaying learning rate for covariances: default is 1/sqrt(t)" ),
+  Arg("useMeanDecayLr",Arg::Opt,use_mean_decay_lr, "whether to use decaying learning rate for mean: default is 1/sqrt(t)" ),
+  Arg("decayLrRate", Arg::Opt, decay_lr_rate, "1/pow([initLr], t)"),
+  Arg("decayCovarLrRate", Arg::Opt, decay_covar_lr_rate, "1/pow([covarLr], t)"),
+  Arg("decayMeanLrRate", Arg::Opt, decay_mean_lr_rate, "1/pow([meanLr], t)"),
+  Arg("maxIter", Arg::Opt, max_iter, "maximum number of iterations"),
+  Arg("initIter", Arg::Opt, init_iter, "initial iteration to shrink learning rate from"),
+
+  Arg("segmentSchedule", Arg::Opt, segmentSchedule, "Order to process training data segments (linear, random, permute, shuffle)"),
+  Arg("batchSize", Arg::Opt, batch_size, "batch size for stochastic gradient descent"),
+
+  Arg("initLr", Arg::Opt, init_lr, "initial learning rate for DPMFs and CPTs"),
+  Arg("covarLr", Arg::Opt, covar_lr, "the additional multiplicative learning rate for covariance; the formula for covariance learning rate is: covarLr * adagradLr"),
+  Arg("meanLr", Arg::Opt, mean_lr, "the additional multiplicative learning rate for means; the formula for the mean learning rate is: meanLr * adagradLr"),
+  Arg("denomWeightMean", Arg::Opt, down_weight_mean, "the weight for the denominator model when calculating the gradient of means: numeratorGradient - denomWeight * denominatorGradient"),
+  Arg("denomWeightCovar", Arg::Opt, down_weight_covar, "the weight for the denominator model when calculating the gradient of covars: numeratorGradient - denomWeight * denominatorGradient"),
+  Arg("denomWeightDPMF", Arg::Opt, down_weight_dpmf, "the weight for the denominator model when calculating the gradient of DPMFs: numeratorGradient - denomWeight * denominatorGradient"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+  if (strcasecmp(segmentSchedule, "linear") == 0) {
+  } else if (strcasecmp(segmentSchedule, "random") == 0) {
+  } else if (strcasecmp(segmentSchedule, "permute") == 0) {
+  } else if (strcasecmp(segmentSchedule, "shuffle") == 0) {
+  } else {
+    error("%s: Unknown segment schedule '%s', must be 'linear', 'random', 'permute', or 'shuffle'\n",
+	  argerr, segmentSchedule);
+  }
+
+#else
+#endif
+#endif //  defined(GMTK_ARG_MMI_TRAINING)
+
+
 
 
 /*==============================================================================================================*/
@@ -2014,11 +2119,11 @@ Arg("bpHdropP", Arg::Opt, bpHdropP, "Backprop: dropout probability for hidden la
 #endif
 #endif
 
+
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
 /*************************************************************************************************************/
 /*************************************************************************************************************/
-
 
 
 #if defined(GMTK_ARG_KERNEL_PARAMS)
