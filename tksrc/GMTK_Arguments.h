@@ -1258,7 +1258,6 @@ static bool  cliquePrintSwap       = false;
 /*************************************************************************************************************/
 /*************************************************************************************************************/
 
-
 #if defined(GMTK_ARG_ISLAND)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
@@ -1338,6 +1337,25 @@ static bool  cliquePrintSwap       = false;
 #endif
 #endif // defined(GMTK_ARG_DEBUG_PART_RNG)
 
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
+#if defined(GMTK_ARG_ONLINE_SMOOTHING)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("numSmoothingSections",Arg::Opt,JunctionTree::numSmoothingPartitions,"Number of future modified sections to use for online smoothing"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#else
+#endif
+#endif // defined(GMTK_ARG_ONLINE_SMOOTHING)
 
 
 /*-----------------------------------------------------------------------------------------------------------*/
