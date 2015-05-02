@@ -805,6 +805,8 @@ class JunctionTree {
 
 public:
 
+  static unsigned numSmoothingPartitions; // used for smoothing in gmtkOnline
+
   void setPartitionDebugRange(Range rng) { partitionDebugRange.SetLimits(rng.first(), rng.last()); 
                                        partitionDebugRange.SetDefStr(rng.GetDefStr()); }
 
