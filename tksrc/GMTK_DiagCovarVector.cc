@@ -107,7 +107,7 @@ DiagCovarVector::read(iDataStreamFile& is)
   int length;
   is.read(length,"Can't read DiagCovarVector's vector length");
   if (length <= 0)
-    error("ERROR: diag covariance matrix %s specifies length (%d) < 0 in input. Must be positive.",
+    error("ERROR: diag covariance matrix %s specifies length (%d) <= 0 in input. Must be positive.",
 	  name().c_str(),length);
   covariances.resize(length);
   unsigned numFloored=0;
