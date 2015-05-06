@@ -236,19 +236,22 @@ main(int argc,char*argv[])
     }
   }
 
-  infoMsg(IM::Max,"Opening Files ...\n");
+  infoMsg(IM::Max,"Opening observation files ...\n");
   gomFS = instantiateFileSource();
   globalObservationMatrix = gomFS;
-  infoMsg(IM::Max,"Finished opening files.\n");
+  infoMsg(IM::Max,"Finished opening observation files.\n");
 
 
   ////////////////////////////////////////////
+  infoMsg(IM::Max,"Reading external deterministic maps ...\n");
   dlopenDeterministicMaps(dlopenFilenames, MAX_NUM_DLOPENED_FILES);
   if (inputMasterFile != NULL) {
+    infoMsg(IM::Max,"Reading input master file ...\n");
     iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
     GM_Parms.read(pf);
   }
   if (inputTrainableParameters != NULL) {
+    infoMsg(IM::Max,"Reading input trainable parameters ...\n");
     // flat, where everything is contained in one file
     iDataStreamFile pf(inputTrainableParameters,binInputTrainableParameters,true,cppCommandOptions);
     GM_Parms.readTrainable(pf);
@@ -258,6 +261,7 @@ main(int argc,char*argv[])
 
   // load up the structure file as we might want
   // it to allocate some Dense CPTs.
+  infoMsg(IM::Max,"Reading structure file ...\n");
   FileParser fp(strFileName,cppCommandOptions);
   infoMsg(IM::Tiny,"Finished reading in all parameters and structures\n");
     
