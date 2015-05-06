@@ -104,7 +104,7 @@ FlatASCIIFile::FlatASCIIFile(const char *name, unsigned nfloats, unsigned nints,
     }
     prevFrame = currFrame;
     // skip rest of line
-    while((tmp=fgetc(f)) != '\n')
+    while(!feof(f) && ( (tmp=fgetc(f)) != '\n' ) )
       ;
     lineNum += 1;
     totalFrames += 1;
