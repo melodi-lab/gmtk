@@ -1,4 +1,3 @@
-
 /*-
  * GMTK_JunctionTree.cc
  *     Junction Tree, message passing routines.
@@ -4252,15 +4251,13 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
   if (inference_it.at_first_c() && P1.cliques.size() == 0)
     Co.skipLISeparator();
 
-  // TODO - decide if it makes sense to have E' be the only section
-
   // it might be that E is the first partition as well, say if this is
   // a static graph, and in this case we need in this case to skip the
   // incomming separator, which doesn't exist.
   if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
     E1.skipLISeparator();
 
-  IM::VerbosityLevels onlineLevel = IM::High;
+  IM::VerbosityLevels onlineLevel = IM::Min;
 
 
 infoMsg(IM::Inference, onlineLevel, "      -> P\n");
@@ -4273,21 +4270,27 @@ infoMsg(IM::Inference, onlineLevel, "      -> P\n");
 		   inference_it.pt_i());
 
   if (numSmoothingPartitions == 0) {
+    // must do scatter & print for P' here since it won't happen in the smoothing loop
+    PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+    if (viterbiScore) {
+infoMsg(IM::Inference, onlineLevel, "      maxProb(P')\n");
+      cur_part_tab->maxCliques[inference_it.cur_ri()].maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
+    }
 infoMsg(IM::Inference, onlineLevel, "      <- P\n");
     deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
-		       *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
+		       *cur_part_tab,
 		       inference_it.cur_ri(),
 		       inference_it.cur_message_order(),
 		       inference_it.cur_nm(),
 		       inference_it.pt_i());
     
     // print P'
-
-PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
-assert(ps.maxCliquesSharedStructure.size()== 1);
+if (!viterbiScore) {
+assert(ps.maxCliquesSharedStructure.size()==1); // FIXME - maxProb all cliques
 cur_part_tab->maxCliques[inference_it.cur_ri()].maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
-fprintf(f,"Ptn-%d P': ",inference_it.pt_i());
-printRVSetAndValues(stdout,ps.hidRVVector,true, preg);
+}
+    fprintf(f,"Ptn-%d P': ",inference_it.pt_i());
+    printRVSetAndValues(stdout,ps.hidRVVector,true, preg);
   }
 
 
@@ -4306,7 +4309,7 @@ printRVSetAndValues(stdout,ps.hidRVVector,true, preg);
   vector<bool> cregex_mask;
 
   unsigned part, cur_part_idx, prev_part_idx;
-  for (part = 1; part < inference_it.pt_len(); part += 1) {
+  for (part = 1; part < inference_it.pt_len(); part += 1) {  // main inference loop over sections
     cur_part_idx = part % numBufferedPartitions;
     prev_part_idx = (cur_part_idx + numBufferedPartitions - 1) % numBufferedPartitions;
     delete partitionBuffer[cur_part_idx];
@@ -4315,8 +4318,7 @@ printRVSetAndValues(stdout,ps.hidRVVector,true, preg);
     cur_part_tab = new PartitionTables(inference_it.cur_jt_partition());
     prev_part_tab = partitionBuffer[prev_part_idx];
     partitionBuffer[cur_part_idx] = cur_part_tab;
-
-infoMsg(IM::Inference, onlineLevel, " C[%u:%u] -> C[%u:%u]\n", part-1, prev_part_idx, part, cur_part_idx);
+infoMsg(IM::Inference, onlineLevel, "C[%3u:%2u] -> C[%3u:%2u]\n", part-1, prev_part_idx, part, cur_part_idx);
     // send from previous to current
     ceSendForwardsCrossPartitions(// previous partition
 			  partitionStructureArray[inference_it.ps_prev_i()],
@@ -4342,7 +4344,7 @@ infoMsg(IM::Inference, onlineLevel, " C[%u:%u] -> C[%u:%u]\n", part-1, prev_part
     if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
       E1.skipLISeparator();
 
-infoMsg(IM::Inference, onlineLevel, "      -> C[%u]\n", part);
+infoMsg(IM::Inference, onlineLevel, "          -> C[%3u:%2u]\n", part, cur_part_idx);
     // next, gather into the root of the current partition
     ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
 		     *cur_part_tab,
@@ -4357,24 +4359,19 @@ infoMsg(IM::Inference, onlineLevel, "      -> C[%u]\n", part);
     if (inference_it.at_first_c() && P1.cliques.size() == 0)
       Co.useLISeparator();
 
-#if 0 
-    if (viterbiScore) {
-#elif 1
-    if (0) {
-#else
-    {
-#endif
-infoMsg(IM::Inference, onlineLevel, "     maxProb C[%u]\n", part);
-      PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
-assert(ps.maxCliquesSharedStructure.size() == 1);
-      cur_part_tab->maxCliques[inference_it.cur_ri()].
-	maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
-    }
+unsigned cpti = cur_part_idx, ppti = prev_part_idx;
 
-    // now smooth if there's enough future
-    if (part >= numSmoothingPartitions) {
-      for (unsigned i=1; i <= numSmoothingPartitions; i+=1) {
-	// length \tau backwards pass
+    if (part >= numSmoothingPartitions) {                     // now smooth if there's enough future
+
+      if (viterbiScore) {
+	// The current partition is acting as E' - need to set its back_max_cvn here as a precondition
+	//   to the smoothing DE pass...
+	infoMsg(IM::Inference, onlineLevel, "     maxProb C[%u3:%2u]\n", inference_it.pt_i(), cur_part_idx);
+	PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+	cur_part_tab->maxCliques[inference_it.cur_ri()].maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
+      }
+
+      for (unsigned i=1; i <= numSmoothingPartitions; i+=1) {    // length \tau backwards pass
 
 	// skip unconnected separators
 	if (inference_it.at_first_c() && P1.cliques.size() == 0)
@@ -4382,9 +4379,9 @@ assert(ps.maxCliquesSharedStructure.size() == 1);
 	else if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
 	  E1.skipLISeparator();
 
-infoMsg(IM::Inference, onlineLevel, "      <- C[%u]\n", inference_it.pt_i());
+infoMsg(IM::Inference, onlineLevel, "          <- C[%3u:%2u]\n", inference_it.pt_i(),cpti);
 	deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
-			   *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
+			   *cur_part_tab,
 			   inference_it.cur_ri(),
 			   inference_it.cur_message_order(),
 			   inference_it.cur_nm(),
@@ -4396,8 +4393,9 @@ infoMsg(IM::Inference, onlineLevel, "      <- C[%u]\n", inference_it.pt_i());
 	else if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
 	  E1.useLISeparator();
 	
+
 	// send backwads message to previous partition
-infoMsg(IM::Inference, onlineLevel, "C[%u] <- C[%u]\n", inference_it.pt_prev_i(), inference_it.pt_i());
+infoMsg(IM::Inference, onlineLevel, "C[%3u:%2u] <- C[%3u:%2u]\n", inference_it.pt_prev_i(), ppti, inference_it.pt_i(), cpti);
 	deSendBackwardsCrossPartitions(partitionStructureArray[inference_it.ps_prev_i()],
 				       *prev_part_tab,
 				       inference_it.prev_ri(),
@@ -4412,12 +4410,9 @@ infoMsg(IM::Inference, onlineLevel, "C[%u] <- C[%u]\n", inference_it.pt_prev_i()
 	
 	setCurrentInferenceShiftTo(part-i);
 	cur_part_tab  = prev_part_tab;
-#if 0
-unsigned ppt = (part + numBufferedPartitions - 1 - i) % numBufferedPartitions;
-printf("                        next DE %u:%u <- %u\n", inference_it.pt_prev_i(), ppt, inference_it.pt_i());
-#endif
 	prev_part_tab = partitionBuffer[(part + numBufferedPartitions - 1 - i) % numBufferedPartitions];
-
+cpti=ppti;
+ppti=(part + numBufferedPartitions - 1 - i) % numBufferedPartitions;
       }  // length \tau backward pass if smoothing
 
       // scatter out of root for the printing partition
@@ -4428,7 +4423,7 @@ printf("                        next DE %u:%u <- %u\n", inference_it.pt_prev_i()
       else if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
 	E1.skipLISeparator();
       
-infoMsg(IM::Inference, onlineLevel, "      <- C[%u]    (printing)\n", inference_it.pt_i());
+infoMsg(IM::Inference, onlineLevel, "          <- C[%3u:%2u]    (printing)\n", inference_it.pt_i(), cpti);
       deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
 			 *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
 			 inference_it.cur_ri(),
@@ -4445,13 +4440,26 @@ infoMsg(IM::Inference, onlineLevel, "      <- C[%u]    (printing)\n", inference_
       // print part-\tau
 
       PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
-assert(ps.maxCliquesSharedStructure.size()== 1);
-cur_part_tab->maxCliques[inference_it.cur_ri()].maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
-char partLabel;
-if (inference_it.at_e()) partLabel='E'; else partLabel='C'; 
- fprintf(f,"Ptn-%d:%u %c': ",inference_it.pt_i(), cur_part_idx, partLabel);
-printRVSetAndValues(stdout,ps.hidRVVector,true, partLabel == 'C' ? creg:ereg);
 
+
+#if 1
+ 
+      if (!viterbiScore) {
+infoMsg(IM::Inference, onlineLevel, "     maxProb C[%3u:%2u]\n", inference_it.pt_i(), cpti);
+	// If viterbiScore is true, the scatter out of root will leave the RVs set to
+	// their max values. Otherwise, we want to set the RVs to their max value here.
+// FIXME - set all the cliques to values with max prob
+assert(ps.maxCliquesSharedStructure.size()== 1);
+
+        cur_part_tab->maxCliques[inference_it.cur_ri()].maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
+      }
+#endif
+char partLabel;
+if (inference_it.at_e()) partLabel='E'; else if (inference_it.at_p()) partLabel='P'; else partLabel='C'; 
+if (!viterbiScore) {
+fprintf(f,"Ptn-%d:%u %c': ",inference_it.pt_i(), cpti, partLabel);
+printRVSetAndValues(stdout,ps.hidRVVector,true, partLabel == 'C' ? creg: ( partLabel == 'E' ? ereg : preg));
+}
       if (viterbiScore) {
 	// print filter values
 	
@@ -4460,6 +4468,10 @@ printRVSetAndValues(stdout,ps.hidRVVector,true, partLabel == 'C' ? creg:ereg);
 	  if (eVitTrigger) 
 	    trigger = evaluateTrigger(ps.allrvs_vec, eVitTriggerVec, eVitTriggerExpr, eTriggerEqn);
 	  partLabel = 'E';
+	} else if (inference_it.at_p()) {
+	  if (pVitTrigger)
+	    trigger = evaluateTrigger(ps.allrvs_vec, pVitTriggerVec, pVitTriggerExpr, pTriggerEqn);
+	  partLabel = 'P';
 	} else {
 	  if (cVitTrigger) 
 	    trigger = evaluateTrigger(ps.allrvs_vec, cVitTriggerVec, cVitTriggerExpr, cTriggerEqn);
@@ -4470,12 +4482,12 @@ printRVSetAndValues(stdout,ps.hidRVVector,true, partLabel == 'C' ? creg:ereg);
 	  partLabel = 'C';
 	}
 	if (trigger) {
-	  fprintf(f,"Ptn-%d %c': ",inference_it.pt_i(), partLabel);
+	  fprintf(f,"Ptn-%d:%u %c': ",inference_it.pt_i(), cpti, partLabel);
 	  if (printObserved && ps.allrvs.size() > 0) {
-	    printRVSetAndValues(f,ps.allrvs,true, partLabel == 'C' ? creg:ereg);
+	    printRVSetAndValues(f,ps.allrvs,true, partLabel == 'C' ? creg :  ( partLabel == 'E' ? ereg : preg) );
 	    fflush(f);
 	  } else if (ps.packer.packedLen() > 0) {
-	    printRVSetAndValues(f,ps.hidRVVector,true, partLabel == 'C' ? creg:ereg);
+	    printRVSetAndValues(f,ps.hidRVVector,true, partLabel == 'C' ? creg :  ( partLabel == 'E' ? ereg : preg) );
 	    fflush(f);
 	  }
 	}
@@ -4495,6 +4507,322 @@ printRVSetAndValues(stdout,ps.hidRVVector,true, partLabel == 'C' ? creg:ereg);
    
       // equeue more frames
       if (currentMaxFrameNum > MAX_FRAME_NUMBER - numNewFrames) {
+
+// TODO - Check how this interacts with smoothing
+
+	// frame number is about to overflow
+	infoMsg(IM::Inference, IM::Info, "resetting frame to %u\n", numNewFrames);
+	globalObservationMatrix->resetFrameNumbers(0);
+	infoMsg(IM::Inference, IM::Info, "resetting ptps to partition 2\n");
+	part = 1; // restart @ C'_1 (1 is C'_0, but about to increment part at top of loop)
+	currentMaxFrameNum = numPreloadFrames;
+      }
+
+      // ticket #468 - skip enqueue on first iteration if P is empty to keep PCCE first
+      // C observation data available in the queue
+      if (part > 1 || fp.numFramesInP() > 0) { 
+	// read in the same # of frames that we're about to consume to maintain
+	// enough queued frames to be sure we don't overshoot the C'->E' transition
+	unsigned nQueued = globalObservationMatrix->enqueueFrames(numNewFrames);
+	
+	currentMaxFrameNum += nQueued;
+      }
+      // update the ptps_iterator if we just found out the true length of the segment
+      if (truePtLen == 0 && globalObservationMatrix->numFrames() != 0) {
+#if 0
+	printf("learned T=%u at %u %u\n", globalObservationMatrix->numFrames(), part, inference_it.pt_i());
+#endif
+	unsigned basicTempMaxUnrollAmnt;
+	unsigned basicTempMinUnrollAmnt;
+	int      modTempMaxUnrollAmnt;
+	int      modTempMinUnrollAmnt;
+	unsigned numUsableFrm;
+	unsigned frmStart;
+	unsigned T;
+	
+	if ( globalObservationMatrix->numFrames() <= globalObservationMatrix->minFutureFrames() )
+	  error("Segment of %d frames too short as model requires at least %d frames\n", 
+		globalObservationMatrix->numFrames() + globalObservationMatrix->minPastFrames(), 
+		globalObservationMatrix->minPastFrames() + fp.numFramesInP() + fp.numFramesInE() + globalObservationMatrix->minFutureFrames());
+	
+	T  = globalObservationMatrix->numFrames() - globalObservationMatrix->minFutureFrames();
+	if (!gm_template.computeUnrollParameters(T,
+						 basicTempMaxUnrollAmnt,
+						 basicTempMinUnrollAmnt,
+						 modTempMaxUnrollAmnt,
+						 modTempMinUnrollAmnt,
+						 numUsableFrm,
+						 frmStart))
+	  error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, different template, or decrease M,S if >1.\n",
+		T,
+		fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
+		fp.numFrames(),
+		gm_template.M,gm_template.S);
+	
+	truePtLen = modTempMaxUnrollAmnt + 3;
+	inference_it.set_pt_len(truePtLen);
+	if (numUsableFrames) 
+	  *numUsableFrames = numUsableFrm;
+	
+#if 0
+if (nQueued != numFramesInCprime && nQueued != 0) {
+	  error("Stream segment %u length %u is incompatible with model unrolling",
+		globalObservationMatrix->segmentNumber(), 
+		globalObservationMatrix->numFrames());
+ }
+#endif
+
+      } // if just discovered segment length
+
+    } // if handled the first \tau partitions
+    
+    
+  } // loop over partitions
+
+// FIXME - this may fail if the frame count overflows
+  if (part <= numSmoothingPartitions) { 
+    // do normal DE pass, since there weren't enough frames for smoothing
+
+// FIXME - need a maxProb here on last section if viterbiScore
+    
+unsigned cpti, ppti;
+    for (part =- 1; part > 0; part -= 1) {
+      setCurrentInferenceShiftTo(part);
+      cur_part_tab = partitionBuffer[part];
+      prev_part_tab = partitionBuffer[part-1];
+
+cpti=part % numBufferedPartitions;
+ppti= (part-1) % numBufferedPartitions;
+
+      // skip unconnected separators
+      if (inference_it.at_first_c() && P1.cliques.size() == 0)
+	Co.skipLISeparator();    
+      else if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+	E1.skipLISeparator();
+      
+infoMsg(IM::Inference, onlineLevel, "      <- C[%3u:%2u]\n", inference_it.pt_i(), cpti);
+      deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
+			 *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
+			 inference_it.cur_ri(),
+			 inference_it.cur_message_order(),
+			 inference_it.cur_nm(),
+			 inference_it.pt_i());
+      
+      // restore unconnected separators
+      if (inference_it.at_first_c() && P1.cliques.size() == 0)
+	Co.useLISeparator();
+      else if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+	E1.useLISeparator();
+      
+      // send backwads message to previous partition
+infoMsg(IM::Inference, onlineLevel, "C[%3u:%2u] <- C[%3u:%2u]\n", inference_it.pt_prev_i(),ppti,inference_it.pt_i(),cpti);
+      deSendBackwardsCrossPartitions(partitionStructureArray[inference_it.ps_prev_i()],
+				     *prev_part_tab,
+				     inference_it.prev_ri(),
+				     inference_it.prev_nm(),
+				     inference_it.pt_prev_i(),
+				     //
+				     partitionStructureArray[inference_it.ps_i()],
+				     *cur_part_tab,
+				     inference_it.cur_li(),
+				     inference_it.cur_nm(),
+				     inference_it.pt_i());
+    }  // DE pass
+    
+    // DE pass P'
+    setCurrentInferenceShiftTo(part);
+    cur_part_tab = partitionBuffer[part];
+      
+    // skip unconnected separators
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.skipLISeparator();    
+    else if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      E1.skipLISeparator();
+    
+infoMsg(IM::Inference, onlineLevel, "      <- P[%u]\n", inference_it.pt_i());
+    deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
+		       *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
+		       inference_it.cur_ri(),
+		       inference_it.cur_message_order(),
+		       inference_it.cur_nm(),
+		       inference_it.pt_i());
+    
+    // restore unconnected separators
+    if (inference_it.at_first_c() && P1.cliques.size() == 0)
+      Co.useLISeparator();
+    else if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+      E1.useLISeparator();
+  } // short segment - normal DE pass
+
+
+  // print left-overs
+  
+  // FIXME - might be less than numSmoothingPartitions available if it's a short segment
+
+printf("at end cur idx = %u  part = %u  T = %u\n", cur_part_idx, part, inference_it.pt_len());
+  for (unsigned i=0; i < numSmoothingPartitions; i+=1) {
+    setCurrentInferenceShiftTo(part - numSmoothingPartitions + i);
+    cur_part_idx = (part + numBufferedPartitions - numSmoothingPartitions + i) % numBufferedPartitions;
+    cur_part_tab = partitionBuffer[cur_part_idx];
+
+    PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+    if (!viterbiScore) {
+      // if viterbiScore, the cliques should already be set to max values from scattering out of root
+assert(ps.maxCliquesSharedStructure.size()==1);      // FIXME - need to set all cliques to max values
+      cur_part_tab->maxCliques[inference_it.cur_ri()].maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
+    }
+    char partLabel;
+    if (inference_it.at_e()) partLabel='E'; else if (inference_it.at_p()) partLabel='P'; else partLabel='C'; 
+    fprintf(f,"Ptn-%d:%u %c': ",inference_it.pt_i(), cur_part_idx, partLabel);
+    printRVSetAndValues(stdout,ps.hidRVVector,true, partLabel == 'C' ? creg:ereg);
+  }
+
+#if 0
+    ////////////////////// BEGIN HORC
+
+
+    if (!viterbiScore) {
+      PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+                      // now smooth if there's enough future
+      for (unsigned i=1; i <= numSmoothingPartitions; i+=1) {    // length \tau backwards pass
+
+	// skip unconnected separators
+	if (inference_it.at_first_c() && P1.cliques.size() == 0)
+	  Co.skipLISeparator();    
+	else if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+	  E1.skipLISeparator();
+
+infoMsg(IM::Inference, onlineLevel, "          <- C[%3u:%2u]\n", inference_it.pt_i(), cur_part_idx);
+	deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
+			   *cur_part_tab,
+			   inference_it.cur_ri(),
+			   inference_it.cur_message_order(),
+			   inference_it.cur_nm(),
+			   inference_it.pt_i());
+ 
+	// restore unconnected separators
+	if (inference_it.at_first_c() && P1.cliques.size() == 0)
+	  Co.useLISeparator();
+	else if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+	  E1.useLISeparator();
+	
+
+	// send backwads message to previous partition
+infoMsg(IM::Inference, onlineLevel, "C[%3u:%2u] <- C[%3u:%2u]\n", inference_it.pt_prev_i(), ppti, inference_it.pt_i(), cpti);
+	deSendBackwardsCrossPartitions(partitionStructureArray[inference_it.ps_prev_i()],
+				       *prev_part_tab,
+				       inference_it.prev_ri(),
+				       inference_it.prev_nm(),
+				       inference_it.pt_prev_i(),
+				       //
+				       partitionStructureArray[inference_it.ps_i()],
+				       *cur_part_tab,
+				       inference_it.cur_li(),
+				       inference_it.cur_nm(),
+				       inference_it.pt_i());
+	
+	setCurrentInferenceShiftTo(part-i);
+	cur_part_tab  = prev_part_tab;
+	prev_part_tab = partitionBuffer[(part + numBufferedPartitions - 1 - i) % numBufferedPartitions];
+cpti=ppti;
+ppti=(part + numBufferedPartitions - 1 - i) % numBufferedPartitions;
+      }  // length \tau backward pass if smoothing
+
+      // scatter out of root for the printing partition
+
+      // skip unconnected separators
+      if (inference_it.at_first_c() && P1.cliques.size() == 0)
+	Co.skipLISeparator();    
+      else if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+	E1.skipLISeparator();
+      
+infoMsg(IM::Inference, onlineLevel, "          <- C[%3u:%2u]    (printing)\n", inference_it.pt_i(), cpti);
+      deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
+			 *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
+			 inference_it.cur_ri(),
+			 inference_it.cur_message_order(),
+			 inference_it.cur_nm(),
+			 inference_it.pt_i());
+      
+      // restore unconnected separators
+      if (inference_it.at_first_c() && P1.cliques.size() == 0)
+	Co.useLISeparator();
+      else if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
+	E1.useLISeparator();
+      
+      // print part-\tau
+
+      PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+
+
+#if 1
+infoMsg(IM::Inference, onlineLevel, "     maxProb C[%3u:%2u]\n", inference_it.pt_i(), cpti);
+ 
+      if (!viterbiScore) {
+	// If viterbiScore is true, the scatter out of root will leave the RVs set to
+	// their max values. Otherwise, we want to set the RVs to their max value here.
+// FIXME - set all the cliques to values with max prob
+assert(ps.maxCliquesSharedStructure.size()== 1);
+
+        cur_part_tab->maxCliques[inference_it.cur_ri()].maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
+      }
+#endif
+char partLabel;
+if (inference_it.at_e()) partLabel='E'; else if (inference_it.at_p()) partLabel='P'; else partLabel='C'; 
+if (!viterbiScore) {
+fprintf(f,"Ptn-%d:%u %c': ",inference_it.pt_i(), cpti, partLabel);
+printRVSetAndValues(stdout,ps.hidRVVector,true, partLabel == 'C' ? creg: ( partLabel == 'E' ? ereg : preg));
+}
+      if (viterbiScore) {
+	// print filter values
+	
+	char partLabel;
+	if (inference_it.at_e()) {
+	  if (eVitTrigger) 
+	    trigger = evaluateTrigger(ps.allrvs_vec, eVitTriggerVec, eVitTriggerExpr, eTriggerEqn);
+	  partLabel = 'E';
+	} else if (inference_it.at_p()) {
+	  if (pVitTrigger)
+	    trigger = evaluateTrigger(ps.allrvs_vec, pVitTriggerVec, pVitTriggerExpr, pTriggerEqn);
+	  partLabel = 'P';
+	} else {
+	  if (cVitTrigger) 
+	    trigger = evaluateTrigger(ps.allrvs_vec, cVitTriggerVec, cVitTriggerExpr, cTriggerEqn);
+	  if (vitRunLength)
+	    trigger = trigger && newViterbiValues(first_C, C_size, printObserved, 
+						  ps.allrvs_vec, ps.hidRVVector,
+						  previous_C_values, cregex_mask, creg);
+	  partLabel = 'C';
+	}
+	if (trigger) {
+	  fprintf(f,"Ptn-%d:%u %c': ",inference_it.pt_i(), cpti, partLabel);
+	  if (printObserved && ps.allrvs.size() > 0) {
+	    printRVSetAndValues(f,ps.allrvs,true, partLabel == 'C' ? creg :  ( partLabel == 'E' ? ereg : preg) );
+	    fflush(f);
+	  } else if (ps.packer.packedLen() > 0) {
+	    printRVSetAndValues(f,ps.hidRVVector,true, partLabel == 'C' ? creg :  ( partLabel == 'E' ? ereg : preg) );
+	    fflush(f);
+	  }
+	}
+      } else {
+	// possibly print the P or C partition information
+	if (inference_it.cur_part_clique_print_range() != NULL) {
+	  printAllCliques(partitionStructureArray[inference_it.ps_i()],
+			  *cur_part_tab,
+			  inference_it.pt_i(),
+			  inference_it.cur_nm(),
+			  inference_it.cur_part_clique_print_range(),
+			  stdout,
+			  cliquePosteriorNormalize, cliquePosteriorUnlog,
+			  false, posteriorFile);			
+	}
+      }
+   
+      // equeue more frames
+      if (currentMaxFrameNum > MAX_FRAME_NUMBER - numNewFrames) {
+
+// TODO - Check how this interacts with smoothing
+
 	// frame number is about to overflow
 	infoMsg(IM::Inference, IM::Info, "resetting frame to %u\n", numNewFrames);
 	globalObservationMatrix->resetFrameNumbers(0);
@@ -4566,6 +4894,8 @@ if (nQueued != numFramesInCprime && nQueued != 0) {
 
   if (part <= numSmoothingPartitions) {
     // do normal DE pass, since there weren't enough frames for smoothing
+
+// FIXME - need a maxProb here on last section if viterbiScore
     
     for (part =- 1; part > 0; part -= 1) {
       setCurrentInferenceShiftTo(part);
@@ -4630,23 +4960,40 @@ infoMsg(IM::Inference, onlineLevel, "      <- C[%u]\n", inference_it.pt_i());
       Co.useLISeparator();
     else if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
       E1.useLISeparator();
-  }
+  } // short segment - normal DE pass
 
   // print left-overs
   
+
+  // FIXME!!! might be less than numSmoothingPartitions available if it's a short segment
+
+
   printf("at end cur idx = %u  part = %u  T = %u\n", cur_part_idx, part, inference_it.pt_len());
-  cur_part_idx = part % numBufferedPartitions;
-  for (unsigned i=0; i < numSmoothingPartitions; i+=1, cur_part_idx = (cur_part_idx + 1) % numBufferedPartitions) {
+  for (unsigned i=0; i < numSmoothingPartitions; i+=1) {
     setCurrentInferenceShiftTo(part - numSmoothingPartitions + i);
+    cur_part_idx = (part + numBufferedPartitions - numSmoothingPartitions + i) % numBufferedPartitions;
     cur_part_tab = partitionBuffer[cur_part_idx];
-    PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
-assert(ps.maxCliquesSharedStructure.size()== 1);
-    cur_part_tab->maxCliques[inference_it.cur_ri()].maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
+    if (!viterbiScore) {
+      // if viterbiScore, the cliques should already be set to max values from scattering out of root
+      PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+assert(ps.maxCliquesSharedStructure.size()==1);      // FIXME - need to set all cliques to max values
+      cur_part_tab->maxCliques[inference_it.cur_ri()].maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
+    }
     char partLabel;
     if (inference_it.at_e()) partLabel='E'; else partLabel='C'; 
     fprintf(f,"Ptn-%d:%u %c': ",inference_it.pt_i(), cur_part_idx, partLabel);
     printRVSetAndValues(stdout,ps.hidRVVector,true, partLabel == 'C' ? creg:ereg);
   }
+
+
+
+
+
+  ///////////// END HORC
+
+#endif
+
+
 
   logpr rc;
   rc = cur_part_tab->maxCliques[E_root_clique].sumProbabilities();
