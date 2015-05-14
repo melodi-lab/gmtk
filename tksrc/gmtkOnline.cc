@@ -137,6 +137,7 @@ VCID(HGID)
 #define GMTK_ARG_MIXTURE_CACHE
 #if 1
 #define GMTK_ARG_VITERBI_SCORE
+#define GMTK_ARG_ONLINE_SMOOTHING
 #endif
 #define GMTK_ARG_CLIQUE_VAR_ITER_ORDERS
 #define GMTK_ARG_JT_OPTIONS
@@ -211,8 +212,10 @@ main(int argc,char*argv[])
   //  CODE_TO_COMPUTE_ENDIAN;
 
 
+#if 0
   JunctionTree::viterbiScore = true; // default is true for gmtkOnline
-
+  // no it isn't?
+#endif
 
   ////////////////////////////////////////////
   // parse arguments
