@@ -768,7 +768,10 @@ class JunctionTree {
   logpr probEvidenceRoot(const unsigned part,
 			 PartitionTables* pt);
   logpr setRootToMaxCliqueValue(const unsigned part,
-				PartitionTables* pt);				
+				PartitionTables* pt);
+
+  void setPartitionToMaxCliqueValues(PartitionTables *cur_part_tab);
+				
   void emIncrementIsland(const unsigned part,
 			 PartitionTables* pt,
 			 const logpr probE, 
@@ -1257,6 +1260,24 @@ public:
   // print a modified section to file f if it passes the triggers, reg ex, etc.
   void printModifiedSection(PartitionStructures &ps,
 			    unsigned *packed_values,
+			    bool useVitTrigger,
+			    vector< pair< string,int> > &vitTriggerVec,
+			    string &vitTriggerExpr,
+			    RngDecisionTree::EquationClass &vitTriggerEqn,
+			    bool printObserved,
+			    unsigned part,
+			    char sectionLabel,
+			    FILE *f,
+			    regex_t *preg,
+			    vector<bool> &regex_mask,
+			    bool &first_C,
+			    unsigned &C_size,
+			    sArray<unsigned> &previous_values,
+			    bool runLengthCompress = false,
+			    unsigned pt_i = 1);
+
+  // as above, but assuming the section is already unpacked
+  void printUnpackedSection(PartitionStructures &ps,
 			    bool useVitTrigger,
 			    vector< pair< string,int> > &vitTriggerVec,
 			    string &vitTriggerExpr,
