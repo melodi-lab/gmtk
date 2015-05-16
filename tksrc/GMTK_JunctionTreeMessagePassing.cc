@@ -4131,6 +4131,9 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 				const bool cliquePosteriorNormalize,
 				const bool cliquePosteriorUnlog)
 {
+
+  if (!f) f = stdout; // just for console progress logging
+
   // Unroll, but do not use the long table array (2nd parameter is
   // false) for allocation, but get back the long table length
   // in a local variable for use in our iterator.
@@ -4336,11 +4339,13 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
       Co.useLISeparator();
     
     // print P'
+#if 0
     if (!viterbiScore) {
       // If viterbiScore is true, the scatter out of root will leave the RVs set to
       // their max values. Otherwise, we want to set the RVs to their max value here.
       setPartitionToMaxCliqueValues(cur_part_tab);
     }
+#endif
     if (viterbiScore) {
       if (inference_it.at_p()) {
 	printUnpackedSection(ps, pVitTrigger!=NULL, pVitTriggerVec, pVitTriggerExpr, pTriggerEqn, printObserved, inference_it.pt_i(),
@@ -4418,6 +4423,8 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
     if (inference_it.at_first_c() && P1.cliques.size() == 0)
       Co.useLISeparator();
 
+    // FIXME - this may fail on overflow
+
     if (part >= numSmoothingPartitions) {                     // now smooth if there's enough future
 
       if (viterbiScore) {
@@ -4427,7 +4434,7 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 	cur_part_tab->maxCliques[inference_it.cur_ri()].maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
       }
 
-      for (unsigned i=1; i <= numSmoothingPartitions; i+=1) {    // length \tau backwards pass
+      for (unsigned i=1; i <= numSmoothingPartitions; i+=1) {    // length \tau backwards pass (smoothing)
 
 	// skip unconnected separators
 	if (inference_it.at_first_c() && P1.cliques.size() == 0)
@@ -4492,12 +4499,13 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 
       PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
  
+#if 0
       if (!viterbiScore) {
 	// If viterbiScore is true, the scatter out of root will leave the RVs set to
 	// their max values. Otherwise, we want to set the RVs to their max value here.
 	setPartitionToMaxCliqueValues(cur_part_tab);
       }
-
+#endif
       if (viterbiScore) {
 	if (inference_it.at_p()) {
 	  printUnpackedSection(ps, pVitTrigger!=NULL, pVitTriggerVec, pVitTriggerExpr, pTriggerEqn, printObserved, inference_it.pt_i(),
@@ -4600,7 +4608,12 @@ if (nQueued != numFramesInCprime && nQueued != 0) {
   if (part <= numSmoothingPartitions) { 
     // do normal DE pass, since there weren't enough frames for smoothing
 
-// FIXME - need a maxProb here on last section if viterbiScore
+    if (viterbiScore) {
+      // The E' didn't get maxProb'd yet because it's a short segment
+      setCurrentInferenceShiftTo(part-1);
+      PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+      cur_part_tab->maxCliques[inference_it.cur_ri()].maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
+    }
     
     for (part =- 1; part > 0; part -= 1) {
       setCurrentInferenceShiftTo(part);
@@ -4667,10 +4680,12 @@ if (nQueued != numFramesInCprime && nQueued != 0) {
 
   // print left-overs
   
-  // FIXME - might be less than numSmoothingPartitions available if it's a short segment
+  // FIXME - might be less than numSmoothingPartitions available if it's a short segment (or overflow)
 
-  for (unsigned i=0; i < numSmoothingPartitions; i+=1) {
-    setCurrentInferenceShiftTo(part - numSmoothingPartitions + i);
+  unsigned offset = ( part >= numSmoothingPartitions )  ?  numSmoothingPartitions : part;
+  unsigned unprintedPartitionCount  = ( part >= numSmoothingPartitions )  ?  numSmoothingPartitions : part; 
+  for (unsigned i=0; i < unprintedPartitionCount; i+=1) {
+    setCurrentInferenceShiftTo(part - offset + i);
     cur_part_idx = (part + numBufferedPartitions - numSmoothingPartitions + i) % numBufferedPartitions;
     cur_part_tab = partitionBuffer[cur_part_idx];
     

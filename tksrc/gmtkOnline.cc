@@ -504,8 +504,8 @@ main(int argc,char*argv[])
     error("Argument Error: Missing REQUIRED argument: -mVitValsFile <str>  OR  -vitValsFile <str>\n");
   }
 #else
-  if (!mVitValsFile) {
-    error("Argument Error: Missing REQUIRED argument: -mVitValsFile <str>\n");
+  if (JunctionTree::viterbiScore && !(mVitValsFile)) {
+    error("Argument Error: -viterbiScore requires -mVitValsFile <str>\n");
   }
 #endif
 
@@ -543,8 +543,6 @@ main(int argc,char*argv[])
   struct rusage rue; /* ending time */
   getrusage(RUSAGE_SELF,&rus);
 
-
- 
   for (;;) {
     unsigned numUsableFrames;
     (void) myjt.onlineFixedUnroll(gomSS, &numUsableFrames, NULL, false, 
