@@ -2242,18 +2242,6 @@ JunctionTree::setRootToMaxCliqueValue()
 
 
 
-void 
-JunctionTree::setPartitionToMaxCliqueValues(PartitionTables *cur_part_tab) {
-  PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
-  for (unsigned i=0; i < ps.origin.cliques.size(); ++i) {
-assert(i <= inference_it.cur_ri());
-    cur_part_tab->maxCliques[i].maxProbability(ps.maxCliquesSharedStructure[i], true);
-  }
-}
-
-
-
-
 ///////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////
 //   Forward Messages
@@ -4214,6 +4202,7 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
       tmp = unroll(T,ZeroTable,&totalNumberPartitions);
       truePtLen = totalNumberPartitions;
       currentMaxFrameNum  = T;
+//printf("%u partitions      %u frames\n", truePtLen, currentMaxFrameNum);
     } else {
       // We don't know how many frames are in the segment yet,
       // so just assume it's very long. Should be OK, since the
@@ -4321,7 +4310,7 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
   if (numSmoothingPartitions == 0) {
     // must do scatter & print for P' here since it won't happen in the smoothing loop
     PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
-    if (viterbiScore) {
+    if (viterbiScore && P1.cliques.size() > 0 ) { // nothing to set if P is empty - ticket #468
       cur_part_tab->maxCliques[inference_it.cur_ri()].maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
     }
     deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
@@ -4339,13 +4328,6 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
       Co.useLISeparator();
     
     // print P'
-#if 0
-    if (!viterbiScore) {
-      // If viterbiScore is true, the scatter out of root will leave the RVs set to
-      // their max values. Otherwise, we want to set the RVs to their max value here.
-      setPartitionToMaxCliqueValues(cur_part_tab);
-    }
-#endif
     if (viterbiScore) {
       if (inference_it.at_p()) {
 	printUnpackedSection(ps, pVitTrigger!=NULL, pVitTriggerVec, pVitTriggerExpr, pTriggerEqn, printObserved, inference_it.pt_i(),
@@ -4499,13 +4481,6 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 
       PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
  
-#if 0
-      if (!viterbiScore) {
-	// If viterbiScore is true, the scatter out of root will leave the RVs set to
-	// their max values. Otherwise, we want to set the RVs to their max value here.
-	setPartitionToMaxCliqueValues(cur_part_tab);
-      }
-#endif
       if (viterbiScore) {
 	if (inference_it.at_p()) {
 	  printUnpackedSection(ps, pVitTrigger!=NULL, pVitTriggerVec, pVitTriggerExpr, pTriggerEqn, printObserved, inference_it.pt_i(),
@@ -4608,24 +4583,28 @@ if (nQueued != numFramesInCprime && nQueued != 0) {
   if (part <= numSmoothingPartitions) { 
     // do normal DE pass, since there weren't enough frames for smoothing
 
+    unsigned shortPart = part-1; // partition # we're handling in the short segment
+
     if (viterbiScore) {
       // The E' didn't get maxProb'd yet because it's a short segment
-      setCurrentInferenceShiftTo(part-1);
+      setCurrentInferenceShiftTo(shortPart);
+
       PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
       cur_part_tab->maxCliques[inference_it.cur_ri()].maxProbability(ps.maxCliquesSharedStructure[inference_it.cur_ri()], true);
     }
-    
-    for (part =- 1; part > 0; part -= 1) {
-      setCurrentInferenceShiftTo(part);
-      cur_part_tab = partitionBuffer[part];
-      prev_part_tab = partitionBuffer[part-1];
+
+    for ( ; shortPart > 0; --shortPart) {
+
+      setCurrentInferenceShiftTo(shortPart);
+      cur_part_tab = partitionBuffer[shortPart];
+      prev_part_tab = partitionBuffer[shortPart-1];
       
       // skip unconnected separators
       if (inference_it.at_first_c() && P1.cliques.size() == 0)
 	Co.skipLISeparator();    
       else if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
 	E1.skipLISeparator();
-      
+
       deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
 			 *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
 			 inference_it.cur_ri(),
@@ -4654,15 +4633,15 @@ if (nQueued != numFramesInCprime && nQueued != 0) {
     }  // DE pass
     
     // DE pass P'
-    setCurrentInferenceShiftTo(part);
-    cur_part_tab = partitionBuffer[part];
+    setCurrentInferenceShiftTo(shortPart);
+    cur_part_tab = partitionBuffer[shortPart];
       
     // skip unconnected separators
     if (inference_it.at_first_c() && P1.cliques.size() == 0)
       Co.skipLISeparator();    
     else if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
       E1.skipLISeparator();
-    
+
     deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
 		       *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
 		       inference_it.cur_ri(),
@@ -4686,7 +4665,7 @@ if (nQueued != numFramesInCprime && nQueued != 0) {
   unsigned unprintedPartitionCount  = ( part >= numSmoothingPartitions )  ?  numSmoothingPartitions : part; 
   for (unsigned i=0; i < unprintedPartitionCount; i+=1) {
     setCurrentInferenceShiftTo(part - offset + i);
-    cur_part_idx = (part + numBufferedPartitions - numSmoothingPartitions + i) % numBufferedPartitions;
+    cur_part_idx = (part - offset + i) % numBufferedPartitions;
     cur_part_tab = partitionBuffer[cur_part_idx];
     
     PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
@@ -4700,6 +4679,23 @@ if (nQueued != numFramesInCprime && nQueued != 0) {
 			     'E', f, ereg, eregex_mask, first_E, E_size, previous_E_values);
       } else {
 	assert ( inference_it.at_c() );      
+
+	// Why is the deScatterOutofRoot() here? The C's printed during the main loop are printed immediately
+	// after their deScatterOutofRoot(), so the C' RVs are left in the max probability values. However,
+	// this code is printing the last \tau C's, which have experienced a "normal" backwards pass - 
+        // C'[ T-\tau] will be the last C' to have been deScatterOutofRoot()ed, so the C' shared structure RVs
+	// will be "stuck" at that partition's max probability values for the last \tau C's. Calling 
+	// deScatterOutofRoot() here right before printing the C' ensures that it is set to the correct values.
+	// This does mean that the last \tau partitions get scattered twice. This could possibly be avoided 
+	// by having a circular buffer of length \tau+1 for the packed RV values, but that would add work for
+	// every partition instead of just the last \tau.
+	deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
+			   *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
+			   inference_it.cur_ri(),
+			   inference_it.cur_message_order(),
+			   inference_it.cur_nm(),
+			   inference_it.pt_i());
+
 	printUnpackedSection(ps, cVitTrigger!=NULL, cVitTriggerVec, cVitTriggerExpr, cTriggerEqn, printObserved, inference_it.pt_i(),
 			     'C', f, creg, cregex_mask, first_C, C_size, previous_C_values, vitRunLength,   vitFile ? 1 : inference_it.pt_i());
       }
@@ -4716,7 +4712,7 @@ if (nQueued != numFramesInCprime && nQueued != 0) {
 			false, posteriorFile);			
       }
     }
-  }
+  }   // printing left-over partitions
 
   logpr rc;
   rc = cur_part_tab->maxCliques[E_root_clique].sumProbabilities();

@@ -770,8 +770,6 @@ class JunctionTree {
   logpr setRootToMaxCliqueValue(const unsigned part,
 				PartitionTables* pt);
 
-  void setPartitionToMaxCliqueValues(PartitionTables *cur_part_tab);
-				
   void emIncrementIsland(const unsigned part,
 			 PartitionTables* pt,
 			 const logpr probE, 
