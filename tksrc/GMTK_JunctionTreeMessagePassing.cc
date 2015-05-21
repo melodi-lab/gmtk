@@ -15,12 +15,13 @@
 /* The ISO C99 standard specifies that in C++ implementations these
    macros should only be defined if explicitly requested.  */
 #define __STDC_LIMIT_MACROS 1
+#defome __STDC_CONSTANT_MACROS 1
    // The ISO C99 standard specifies that the macros in inttypes.h must
    //  only be defined if explicitly requested. 
 #define __STDC_FORMAT_MACROS 1
 
 #ifdef HAVE_CONFIG_H
-#include <config.h>
+#  include <config.h>
 #endif
 #if HAVE_INTTYPES_H
 #  include <inttypes.h>
@@ -4169,6 +4170,11 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
     globalObservationMatrix->minFutureFrames();
   // Assume the above won't over-flow with just 5 partitions
 
+  bool overflow = false; // true iff we had to reset the frame # due to more than 2^31 frames
+  // NOTE: we assume \tau << 2^31  i.e. if the frame # had to overflow, we've definitely
+  // processed more than \tau partitions, and we can instantiate the first \tau + 1 partitions
+  // without the frame number overflowing
+
   unsigned numNewFrames = fp.numFramesInC() * S;
 
   infoMsg(IM::ObsStream, IM::Info, "preaload %u frames\n", numPreloadFrames);
@@ -4405,9 +4411,8 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
     if (inference_it.at_first_c() && P1.cliques.size() == 0)
       Co.useLISeparator();
 
-    // FIXME - this may fail on overflow
 
-    if (part >= numSmoothingPartitions) {                     // now smooth if there's enough future
+    if (part >= numSmoothingPartitions || overflow) {    // now smooth if there's enough future
 
       if (viterbiScore) {
 	// The current partition is acting as E' - need to set its back_max_cvn here as a precondition
@@ -4519,6 +4524,7 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 	infoMsg(IM::Inference, IM::Info, "resetting ptps to partition 2\n");
 	part = 1; // restart @ C'_1 (1 is C'_0, but about to increment part at top of loop)
 	currentMaxFrameNum = numPreloadFrames;
+	overflow = true;
       }
 
       // ticket #468 - skip enqueue on first iteration if P is empty to keep PCCE first
@@ -4553,7 +4559,8 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 						 modTempMinUnrollAmnt,
 						 numUsableFrm,
 						 frmStart))
-	  error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. Use longer utterances, different template, or decrease M,S if >1.\n",
+	  error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. "
+		"Use longer utterances, different template, or decrease M,S if >1.\n",
 		T,
 		fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
 		fp.numFrames(),
@@ -4564,23 +4571,13 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 	if (numUsableFrames) 
 	  *numUsableFrames = numUsableFrm;
 	
-#if 0
-if (nQueued != numFramesInCprime && nQueued != 0) {
-	  error("Stream segment %u length %u is incompatible with model unrolling",
-		globalObservationMatrix->segmentNumber(), 
-		globalObservationMatrix->numFrames());
- }
-#endif
-
       } // if just discovered segment length
 
     } // if handled the first \tau partitions
-    
-    
+        
   } // loop over partitions
 
-// FIXME - this may fail if the frame count overflows
-  if (part <= numSmoothingPartitions) { 
+  if (part <= numSmoothingPartitions && !overflow) { 
     // do normal DE pass, since there weren't enough frames for smoothing
 
     unsigned shortPart = part-1; // partition # we're handling in the short segment
@@ -4654,65 +4651,66 @@ if (nQueued != numFramesInCprime && nQueued != 0) {
       Co.useLISeparator();
     else if (!inference_it.has_c_partition() && P1.cliques.size() == 0)
       E1.useLISeparator();
+
   } // short segment - normal DE pass
 
 
-  // print left-overs
+  // print left-overs: the last \tau partitions, or all of them if T < \tau + 1
   
-  // FIXME - might be less than numSmoothingPartitions available if it's a short segment (or overflow)
-
-  unsigned offset = ( part >= numSmoothingPartitions )  ?  numSmoothingPartitions : part;
-  unsigned unprintedPartitionCount  = ( part >= numSmoothingPartitions )  ?  numSmoothingPartitions : part; 
-  for (unsigned i=0; i < unprintedPartitionCount; i+=1) {
-    setCurrentInferenceShiftTo(part - offset + i);
-    cur_part_idx = (part - offset + i) % numBufferedPartitions;
-    cur_part_tab = partitionBuffer[cur_part_idx];
-    
-    PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
-    
-    if (viterbiScore) {
-      if (inference_it.at_p()) {
-	printUnpackedSection(ps, pVitTrigger!=NULL, pVitTriggerVec, pVitTriggerExpr, pTriggerEqn, printObserved, inference_it.pt_i(),
-			     'P', f, preg, pregex_mask, first_P, P_size, previous_P_values);
-      } else if (inference_it.at_e()) {
-	printUnpackedSection(ps, eVitTrigger!=NULL, eVitTriggerVec, eVitTriggerExpr, eTriggerEqn, printObserved, inference_it.pt_i(),
-			     'E', f, ereg, eregex_mask, first_E, E_size, previous_E_values);
+  if (numSmoothingPartitions > 0) { // none left-over if filtering (\tau = 0)
+    unsigned offset = ( part > numSmoothingPartitions+1 || overflow )  ?  numSmoothingPartitions : part;
+    unsigned unprintedPartitionCount  = ( part > numSmoothingPartitions+1 || overflow )  ?  numSmoothingPartitions : part; 
+    for (unsigned i=0; i < unprintedPartitionCount; i+=1) {
+      setCurrentInferenceShiftTo(part - offset + i);
+      cur_part_idx = (part - offset + i) % numBufferedPartitions;
+      cur_part_tab = partitionBuffer[cur_part_idx];
+      
+      PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+      
+      if (viterbiScore) {
+	if (inference_it.at_p()) {
+	  printUnpackedSection(ps, pVitTrigger!=NULL, pVitTriggerVec, pVitTriggerExpr, pTriggerEqn, printObserved, inference_it.pt_i(),
+			       'P', f, preg, pregex_mask, first_P, P_size, previous_P_values);
+	} else if (inference_it.at_e()) {
+	  printUnpackedSection(ps, eVitTrigger!=NULL, eVitTriggerVec, eVitTriggerExpr, eTriggerEqn, printObserved, inference_it.pt_i(),
+			       'E', f, ereg, eregex_mask, first_E, E_size, previous_E_values);
+	} else {
+	  assert ( inference_it.at_c() );      
+	  
+	  // Why is the deScatterOutofRoot() here? The C's printed during the main loop are printed immediately
+	  // after their deScatterOutofRoot(), so the C' RVs are left in the max probability values. However,
+	  // this code is printing the last \tau C's, which have experienced a "normal" backwards pass - 
+	  // C'[ T-\tau] will be the last C' to have been deScatterOutofRoot()ed, so the C' shared structure RVs
+	  // will be "stuck" at that partition's max probability values for the last \tau C's. Calling 
+	  // deScatterOutofRoot() here right before printing the C' ensures that it is set to the correct values.
+	  // This does mean that the last \tau partitions get scattered twice. This could possibly be avoided 
+	  // by having a circular buffer of length \tau+1 for the packed RV values, but that would add work for
+	  // every partition instead of just the last \tau.
+	  deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
+			     *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
+			     inference_it.cur_ri(),
+			     inference_it.cur_message_order(),
+			     inference_it.cur_nm(),
+			     inference_it.pt_i());
+	  
+	  printUnpackedSection(ps, cVitTrigger!=NULL, cVitTriggerVec, cVitTriggerExpr, cTriggerEqn, printObserved, inference_it.pt_i(),
+			       'C', f, creg, cregex_mask, first_C, C_size, previous_C_values, vitRunLength,   vitFile ? 1 : inference_it.pt_i());
+	}
       } else {
-	assert ( inference_it.at_c() );      
-
-	// Why is the deScatterOutofRoot() here? The C's printed during the main loop are printed immediately
-	// after their deScatterOutofRoot(), so the C' RVs are left in the max probability values. However,
-	// this code is printing the last \tau C's, which have experienced a "normal" backwards pass - 
-        // C'[ T-\tau] will be the last C' to have been deScatterOutofRoot()ed, so the C' shared structure RVs
-	// will be "stuck" at that partition's max probability values for the last \tau C's. Calling 
-	// deScatterOutofRoot() here right before printing the C' ensures that it is set to the correct values.
-	// This does mean that the last \tau partitions get scattered twice. This could possibly be avoided 
-	// by having a circular buffer of length \tau+1 for the packed RV values, but that would add work for
-	// every partition instead of just the last \tau.
-	deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
-			   *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
-			   inference_it.cur_ri(),
-			   inference_it.cur_message_order(),
-			   inference_it.cur_nm(),
-			   inference_it.pt_i());
-
-	printUnpackedSection(ps, cVitTrigger!=NULL, cVitTriggerVec, cVitTriggerExpr, cTriggerEqn, printObserved, inference_it.pt_i(),
-			     'C', f, creg, cregex_mask, first_C, C_size, previous_C_values, vitRunLength,   vitFile ? 1 : inference_it.pt_i());
+	// possibly print the partition information
+	if (inference_it.cur_part_clique_print_range() != NULL) {
+	  printAllCliques(partitionStructureArray[inference_it.ps_i()],
+			  *cur_part_tab,
+			  inference_it.pt_i(),
+			  inference_it.cur_nm(),
+			  inference_it.cur_part_clique_print_range(),
+			  stdout,
+			  cliquePosteriorNormalize, cliquePosteriorUnlog,
+			  false, posteriorFile);			
+	}
       }
-    } else {
-      // possibly print the partition information
-      if (inference_it.cur_part_clique_print_range() != NULL) {
-	printAllCliques(partitionStructureArray[inference_it.ps_i()],
-			*cur_part_tab,
-			inference_it.pt_i(),
-			inference_it.cur_nm(),
-			inference_it.cur_part_clique_print_range(),
-			stdout,
-			cliquePosteriorNormalize, cliquePosteriorUnlog,
-			false, posteriorFile);			
-      }
-    }
-  }   // printing left-over partitions
+    }   // printing left-over partitions
+  }
 
   logpr rc;
   rc = cur_part_tab->maxCliques[E_root_clique].sumProbabilities();
