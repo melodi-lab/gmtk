@@ -1,3 +1,4 @@
+%define debug_package %{nil}
 
 Name:		gmtk
 Version:	1.3.0
