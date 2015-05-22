@@ -103,7 +103,7 @@ StreamSource::preloadFrames(unsigned nFrames) {
     memcpy(newFrameDest, newFrame, nFeatures*sizeof(Data32));
     newFrameDest += nFeatures;
     currentCookedFrames += 1;
-    infoMsg(IM::ObsStream, IM::High, "preload: [%u,%u] @ [%u,%u / %u]\n", 
+    infoMsg(IM::ObsStream, IM::Med, "preload: [%u,%u] @ [%u,%u / %u]\n", 
 	    firstCookedFrameNum, firstCookedFrameNum+currentCookedFrames-1,
 	    firstCookedFrameIndex, firstCookedFrameIndex+currentCookedFrames-1,
 	    maxCookedFrames);
@@ -167,7 +167,7 @@ StreamSource::enqueueFrames(unsigned nFrames) {
   if (firstCookedFrameIndex + currentCookedFrames + nFrames > maxCookedFrames) {
     // need to move active frames back to start of buffer
 
-    infoMsg(IM::ObsStream, IM::High, "enqueueFrames: moving [%u,%u] @ %u to start of buffer\n",
+    infoMsg(IM::ObsStream, IM::Med, "enqueueFrames: moving [%u,%u] @ %u to start of buffer\n",
 	    firstCookedFrameNum, firstCookedFrameNum+currentCookedFrames-1, firstCookedFrameIndex);
 
     // verify it's safe to memcpy (no overlap)
@@ -192,7 +192,7 @@ StreamSource::enqueueFrames(unsigned nFrames) {
       numFramesInSegment = firstCookedFrameNum + currentCookedFrames - _startSkip;
       break;
     }
-    if (IM::messageGlb(IM::ObsStream,IM::High)) {
+    if (IM::messageGlb(IM::ObsStream,IM::Med)) {
       printf("enqueue frame %u:", firstCookedFrameNum + currentCookedFrames);
       for (unsigned i=0; i < stream->numContinuous(); i+=1) {
 	printf(" %f", ((float *)newFrame)[i]);
@@ -207,7 +207,7 @@ StreamSource::enqueueFrames(unsigned nFrames) {
     newFrameDest += nFeatures;
     firstCookedFrameIndex += 1;
     firstCookedFrameNum += 1;
-    infoMsg(IM::ObsStream, IM::High, "enqueue: [%u,%u] @ [%u,%u / %u]\n", 
+    infoMsg(IM::ObsStream, IM::Med, "enqueue: [%u,%u] @ [%u,%u / %u]\n", 
 	    firstCookedFrameNum, firstCookedFrameNum+currentCookedFrames-1,
 	    firstCookedFrameIndex, firstCookedFrameIndex+currentCookedFrames-1,
 	    maxCookedFrames);
