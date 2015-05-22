@@ -15,7 +15,7 @@
 /* The ISO C99 standard specifies that in C++ implementations these
    macros should only be defined if explicitly requested.  */
 #define __STDC_LIMIT_MACROS 1
-#defome __STDC_CONSTANT_MACROS 1
+#define __STDC_CONSTANT_MACROS 1
    // The ISO C99 standard specifies that the macros in inttypes.h must
    //  only be defined if explicitly requested. 
 #define __STDC_FORMAT_MACROS 1
@@ -4168,11 +4168,12 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
     ( (3+tau) * S + M ) * fp.numFramesInC() + 
     fp.numFramesInE() +
     globalObservationMatrix->minFutureFrames();
-  // Assume the above won't over-flow with just 5 partitions
+  // Assume the above won't over-flow with just 5 + \tau partitions
 
-  bool overflow = false; // true iff we had to reset the frame # due to more than 2^31 frames
-  // NOTE: we assume \tau << 2^31  i.e. if the frame # had to overflow, we've definitely
-  // processed more than \tau partitions, and we can instantiate the first \tau + 1 partitions
+  bool overflow = false; // true iff we had to reset the frame # due to more than ~ 2^30 frames
+
+  // NOTE: we assume \tau << 2^30  i.e. if the frame # had to overflow, we've definitely
+  // processed more than \tau partitions, and we can instantiate the first 2(\tau + 1) partitions
   // without the frame number overflowing
 
   unsigned numNewFrames = fp.numFramesInC() * S;
@@ -4208,26 +4209,17 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
       tmp = unroll(T,ZeroTable,&totalNumberPartitions);
       truePtLen = totalNumberPartitions;
       currentMaxFrameNum  = T;
-//printf("%u partitions      %u frames\n", truePtLen, currentMaxFrameNum);
     } else {
       // We don't know how many frames are in the segment yet,
       // so just assume it's very long. Should be OK, since the
       // ZeroTable option just uses the minimum number of partitions.
       // We'll reset the ptps_iterator's partition length later
       // when we actually know it.
-      
-#ifndef UINT32_MAX
-      // FIXME - this should be in stdint.h as arranged by autoconf
-#  define UINT32_MAX		(4294967295U)
-#endif
 
-#define MAX_FRAME_NUMBER (1073741824U)
-
-      tmp = unroll(MAX_FRAME_NUMBER,ZeroTable,&totalNumberPartitions);
-
+#define FRAME_NUMBER_LIMIT (1073741824U)
+      tmp = unroll(FRAME_NUMBER_LIMIT, ZeroTable, &totalNumberPartitions);
       currentMaxFrameNum = numPreloadFrames;
     }
-    
     infoMsg(IM::Inference, IM::Info, "onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
     
     viterbiScore = rememberedViterbiScore;  // do compute viterbi values in deScatterOutofRoot()? (max-product semiring)
@@ -4277,12 +4269,40 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
   vector<bool> pregex_mask;
   vector<bool> cregex_mask;
   vector<bool> eregex_mask;
-
- FILE *vitFile = NULL; // I don't think we support writing output to files since the size is unbounded
+  
+  FILE *vitFile = NULL; // I don't think we support writing output to files since the size is unbounded
 
 
   unsigned numBufferedPartitions = tau > 0 ? numSmoothingPartitions + 1 : 2;
   vector<PartitionTables *> partitionBuffer(numBufferedPartitions, NULL);
+
+
+  // C' must end at frame <= FRAME_NUMBER_LIMIT to avoid overflow
+  
+  // We also want to only trigger overflow after processing a partition such that
+  //    part % (\tau + 1) = \tau - 1 
+  // so that the new partition lands in the last slot of the partition buffer and doesn't 
+  // stomp on the \tau previous partitions
+  
+  // The i^th C' (i starts at 1 since P' is 0) begins at frame |P| + (i-1)S|C| and ends at frame |P| + iS|C| + M|C| - 1
+  
+  // So we want to find the largest x <= FRAME_NUMBER_LIMIT such that 
+  //      x = |P| + iS|C| + M|C| - 1
+  // and  i % (\tau + 1) = \tau - 1             (only if we're smoothing, ie \tau > 0)
+
+  // Now the above is complicated by the fact that the frame queue must contain frames ahead of the
+  // partition inference is working on - at least a C' and E' to ensure that the end of the frame 
+  // stream can be detected before inference needs to start working on E'. So, we'll reset the frame
+  // numbers when inference hits the partition_number_limit, but reduce FRAME_NUMBER_LIMIT by
+  // numPreloadFrames to ensure the currentMaxFrameNum doesn't overflow.
+  assert(numPreloadFrames < FRAME_NUMBER_LIMIT);
+  unsigned partition_number_limit = (FRAME_NUMBER_LIMIT - numPreloadFrames - fp.numFramesInP() - M * fp.numFramesInC() + 1) / (S * fp.numFramesInC());
+ 
+  if (numSmoothingPartitions > 0) {
+    if ( partition_number_limit % numBufferedPartitions != (numSmoothingPartitions-1) ) {
+      partition_number_limit = ( partition_number_limit / numBufferedPartitions - 1 ) * numBufferedPartitions + numSmoothingPartitions - 1;
+    }
+  }
 
   // Set up our iterator, write over the member island iterator since
   // we assume the member does not have any dynamc sub-members.
@@ -4514,26 +4534,41 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 
    
       // equeue more frames
-      if (currentMaxFrameNum > MAX_FRAME_NUMBER - numNewFrames) {
 
-// TODO - Check how this interacts with smoothing
-
-	// frame number is about to overflow
-	infoMsg(IM::Inference, IM::Info, "resetting frame to %u\n", numNewFrames);
-	globalObservationMatrix->resetFrameNumbers(0);
-	infoMsg(IM::Inference, IM::Info, "resetting ptps to partition 2\n");
-	part = 1; // restart @ C'_1 (1 is C'_0, but about to increment part at top of loop)
-	currentMaxFrameNum = numPreloadFrames;
+      if (part == partition_number_limit && truePtLen == 0) {  // frame number is about to overflow
+	// There's no point trying to reset the frame #'s when the segment length is known,
+	// since all of the frames are already in the queue, presumably with non-overflowed numbers.
 	overflow = true;
+	
+	if (numSmoothingPartitions > 0) {
+	  assert( (part % numBufferedPartitions) == (numSmoothingPartitions - 1) );
+
+	  unsigned firstFrameOfCurrentPart = fp.numFramesInP() + (part-1) * S * fp.numFramesInC();
+	  assert( globalObservationMatrix->firstFrameInQueue() <= firstFrameOfCurrentPart && firstFrameOfCurrentPart <= currentMaxFrameNum );
+	  unsigned delta = firstFrameOfCurrentPart - globalObservationMatrix->firstFrameInQueue();
+	  unsigned firstFrameOfResetPart = fp.numFramesInP() + (2 * numSmoothingPartitions - 1) * S * fp.numFramesInC();
+	  unsigned firstFrame = firstFrameOfResetPart - delta;
+	  infoMsg(IM::Inference, IM::Info, "resetting first queued frame number to %u\n", firstFrame);
+	  globalObservationMatrix->resetFrameNumbers(firstFrame);
+	  currentMaxFrameNum = firstFrame + numPreloadFrames;
+	  infoMsg(IM::Inference, IM::Info, "resetting ptps to partition %u\n", 2 * numSmoothingPartitions + 1);
+	  part = 2 * numSmoothingPartitions; // continue @ partition 2 \tau + 1, about to increment part at top of loop
+	  // don't reset to partition \tau or it'll print P' on every overflow
+	} else {
+	  infoMsg(IM::Inference, IM::Info, "resetting frame number to 0\n");
+	  globalObservationMatrix->resetFrameNumbers(0);
+	  currentMaxFrameNum = numPreloadFrames;
+	  infoMsg(IM::Inference, IM::Info, "resetting ptps to partition 2");
+	  part = 1; // about to increment part at top of loop, so going to partition 2 (2nd C' in P' C' C' C' E')
+	}
       }
 
       // ticket #468 - skip enqueue on first iteration if P is empty to keep PCCE first
       // C observation data available in the queue
-      if (part > 1 || fp.numFramesInP() > 0) { 
+      if (truePtLen == 0 && (part > 1 || fp.numFramesInP() > 0)) {  // if truePtLen is known, no need to read more frames
 	// read in the same # of frames that we're about to consume to maintain
 	// enough queued frames to be sure we don't overshoot the C'->E' transition
 	unsigned nQueued = globalObservationMatrix->enqueueFrames(numNewFrames);
-	
 	currentMaxFrameNum += nQueued;
       }
       // update the ptps_iterator if we just found out the true length of the segment
