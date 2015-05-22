@@ -114,6 +114,10 @@ class StreamSource : public ObservationSource {
     firstCookedFrameNum = firstFrameNumber;
   }
 
+  // returns the # of the first frame in the queue (to support frame number 
+  // wrap-around in gmtkOnline)
+  unsigned firstFrameInQueue() { return firstCookedFrameNum; }
+
   bool EOS() { 
     assert(stream);
     return stream->EOS();

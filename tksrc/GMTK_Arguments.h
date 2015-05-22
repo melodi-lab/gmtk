@@ -1258,7 +1258,6 @@ static bool  cliquePrintSwap       = false;
 /*************************************************************************************************************/
 /*************************************************************************************************************/
 
-
 #if defined(GMTK_ARG_ISLAND)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
@@ -1338,6 +1337,25 @@ static bool  cliquePrintSwap       = false;
 #endif
 #endif // defined(GMTK_ARG_DEBUG_PART_RNG)
 
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
+#if defined(GMTK_ARG_ONLINE_SMOOTHING)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("numSmoothingSections",Arg::Opt,JunctionTree::numSmoothingPartitions,"Number of future modified sections to use for online smoothing"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#else
+#endif
+#endif // defined(GMTK_ARG_ONLINE_SMOOTHING)
 
 
 /*-----------------------------------------------------------------------------------------------------------*/
@@ -2118,7 +2136,11 @@ static bool writeLogVals = false;
 
 
   // arguments for modified section based Viterbi printing.
+#ifndef GMTK_ONLINE_UNSUPPORTED
   static char* mVitValsFileName = NULL;
+#else
+static char * mVitValsFileName = (char *)"-";
+#endif
 
   // arguments for original section based Viterbi printing
   static char* vitValsFileName = NULL;
@@ -2148,25 +2170,30 @@ static bool writeLogVals = false;
 
   Arg("\n*** Decoding options ***\n"),
 
+#ifndef GMTK_ONLINE_UNSUPPORTED
+  // The current Viterbi to observation file writing code only works for original (not modified) partitions.
+  // gmtkOnline only does modified partitiions, so these aren't supported.
   Arg("vitObsFileName", Arg::Opt, JunctionTree::vitObsFileName, "Output filename for Viterbi observation file"),
   Arg("vitObsListFileName", Arg::Opt, JunctionTree::vitObsListName, "Output list filename for Viterbi observation file (HDF5, HTK, ASCII, Binary)"),
   Arg("vitObsNameSeparator", Arg::Opt, JunctionTree::vitObsNameSeparator, "String to use as separator when outputting HTK, ASCII, or binary Viterbi observation file"),
   Arg("vitObsFileFormat", Arg::Opt, JunctionTree::vitObsFileFmt, "Output Viterbi observation file format (hdf5,htk,binary,ascii,flatascii,pfile)"),
   Arg("vitObsFileSwap", Arg::Opt, JunctionTree::vitObsFileSwap, "Do byte swapping when outputting PFile, HTK, or binary Viterbi observation file"),
-
-  // in gmtkOnline -vitValsFile is not available, and 
-  // -mVitValsFile is required rather than optional
-#ifndef GMTK_ONLINE_UNSUPPORTED
-  Arg("mVitValsFile",Arg::Opt,mVitValsFileName,"Modified Section Vit: file to print viterbi values in ASCII, '-' for stdout"),
-  Arg("vitValsFile",Arg::Opt,vitValsFileName,"Original Section Vit: file to print viterbi values in ASCII, '-' for stdout"),
-#else
-  Arg("mVitValsFile",Arg::Req,mVitValsFileName,"Modified Section Vit: file to print viterbi values in ASCII, '-' for stdout"),
 #endif
 
+  Arg("mVitValsFile",Arg::Opt,mVitValsFileName,"Modified Section Vit: file to print viterbi values in ASCII, '-' for stdout"),
+#ifndef GMTK_ONLINE_UNSUPPORTED
+  // in gmtkOnline -vitValsFile is not available since it only does modified partitions
+  Arg("vitValsFile",Arg::Opt,vitValsFileName,"Original Section Vit: file to print viterbi values in ASCII, '-' for stdout"),
+#endif
+
+#ifndef GMTK_ONLINE_UNSUPPORTED
+  // Binary Viterbi output requires knowing in advance how many segments there are.
+  // This is impossible with streaming input.
 #if defined(GMTK_ARGUMENTS_REQUIRE_BINARY_VIT_FILE)
   Arg("binaryVitFile",Arg::Req,JunctionTree::binaryViterbiFilename,"File containing binary Viterbi values for printing"),
 #else
   Arg("binaryVitFile",Arg::Opt,JunctionTree::binaryViterbiFilename,"File to write binary Viterbi values for later printing. Note that all values are stored in the file, not just those selected by the filter, trigger, and compression options below"),
+#endif
 #endif
 
   Arg("pVitRegexFilter",Arg::Opt,pVitRegexFilter,"Regular expression to filter variable names in prolog"),
@@ -2182,6 +2209,7 @@ static bool writeLogVals = false;
   Arg("vitRunLengthCompress",Arg::Opt,JunctionTree::vitRunLength, "Only print a chunk when its Viterbi values differ from the previous chunk"),
 
 #ifndef GMTK_ONLINE_UNSUPPORTED
+  // These are based on original partitions - gmtkOnline only does modified partitions
   Arg("vitSectionRange",Arg::Opt,vitPartRangeFilter,"Value printing, integer range filter for sections (e.g., frames, slices) to print."),
   Arg("vitFrameRange",Arg::Opt,vitFrameRangeFilter,"Value printing, integer range filter for frames to print."),
 #endif
