@@ -4380,6 +4380,7 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
       }
     } 
   }
+  fflush(f); if (!posteriorFile) fflush(stdout);
   
   unsigned part, cur_part_idx, prev_part_idx;
   for (part = 1; part < inference_it.pt_len(); part += 1) {  // main inference loop over sections
@@ -4531,6 +4532,7 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 			  false, posteriorFile);			
 	}
       }
+      fflush(f); if (!posteriorFile) fflush(stdout);
 
    
       // equeue more frames
@@ -4744,6 +4746,7 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 			  false, posteriorFile);			
 	}
       }
+      fflush(f); if (!posteriorFile) fflush(stdout);
     }   // printing left-over partitions
   }
 
