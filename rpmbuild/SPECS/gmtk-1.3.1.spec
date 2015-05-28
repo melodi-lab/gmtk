@@ -1,7 +1,7 @@
 %define debug_package %{nil}
 
 Name:		gmtk
-Version:	1.3.0
+Version:	1.3.1
 Release:	1%{?dist}
 Summary:	The Graphical Models Toolkit
 BuildRoot:	/var/tmp/rpmbuild/gmtk-1.3.0-root
