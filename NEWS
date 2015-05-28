@@ -10,6 +10,9 @@ For general questions:  gmtk-users@u.washington.edu
 Subscribe to the email list at
   http://mailman.u.washington.edu/mailman/listinfo/gmtk-users
 
+Version 1.3.1  2015-05-29
+        * Fixed regression in bursty gmtkOnline output
+
 Version 1.3.0  2015-05-22
         * Added support for smoothing to gmtkOnline
         * Bug fix in gmtkOnline end-of-stream handling
