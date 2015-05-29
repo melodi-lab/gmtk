@@ -4,7 +4,7 @@ Name:		gmtk
 Version:	1.3.1
 Release:	1%{?dist}
 Summary:	The Graphical Models Toolkit
-BuildRoot:	/var/tmp/rpmbuild/gmtk-1.3.0-root
+BuildRoot:	/var/tmp/rpmbuild/gmtk-1.3.1-root
 Group:		Applications/Engineering
 License:	OSL-3.0
 URL:		https://j.ee.washington.edu/trac/gmtk
