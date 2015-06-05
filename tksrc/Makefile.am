@@ -186,10 +186,9 @@ GMTK_PartitionStructures.h GMTK_PartitionStructures.cc \
 GMTK_BinaryViterbiFileUtils.h GMTK_BinaryViterbiFileUtils.cc \
 GMTK_JunctionTreeMessagePassing.cc \
 GMTK_JunctionTreeIslandMessagePassing.cc \
-version.h
-
-# GMTK_MissingFeatureScaledDiagGaussian.cc 
-# GMTK_MissingFeatureScaledDiagGaussian.h 
+version.h \
+GMTK_MissingFeatureScaledDiagGaussian.cc \
+GMTK_MissingFeatureScaledDiagGaussian.h 
 
 libXOPT_a_SOURCES = \
 GMTK_DiagGaussianOpt.cc \
@@ -307,6 +306,7 @@ endif
 
 check_PROGRAMS =  \
 $(dmlp_check_programs) \
+gmpstrip \
 flat2vit \
 parserTest \
 testPackCliqueValue \
@@ -333,6 +333,7 @@ abstest_LDADD += $(BLAS_LIBS)
 #testRngDecisionTree testGMParms testFileParser lex.yy
 # testHash testHashTree?
 
+gmpstrip_SOURCES = gmpstrip.ll
 
 dlinktest_SOURCES = dlinktest.cc
 
