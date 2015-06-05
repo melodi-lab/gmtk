@@ -15,6 +15,7 @@ mitk/discrete-mi/ac_config.h
 mitk/discrete-mi/ac_config.h.in
 tksrc/GMTK_FileTokenizer.cc
 tksrc/testViterbi.cc
+tksrc/gmpstrip.cc
 tksrc/dmlp
 hgstamp.h
 version.info
@@ -128,6 +129,7 @@ tksrc/gmtkViz.app/*
 tksrc/neghead
 tksrc/testPackCliqueValue
 tksrc/testViterbi
+tksrc/gmpstrip
 tksrc/testPackCliqueValue
 tksrc/dlinktest
 tksrc/parserTest
