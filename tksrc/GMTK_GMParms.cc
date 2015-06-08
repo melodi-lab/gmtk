@@ -159,6 +159,10 @@ void GMParms::clearParms() {
     dirichletTabs.clear();
     dirichletTabsMap.clear();
 
+// SHENGJIE: this will insert the built-in C mapping functions back into
+//           the DT map, so the GMParms instance won't be left "clear" (empty).
+//           I assume this is because you want it back in its post-construction
+//           state (which is not empty). It would be good to clarify this
     registerAllCFunctionDeterministicMappings(*this);
 }
 

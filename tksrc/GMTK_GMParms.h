@@ -105,7 +105,15 @@ public:
     map[ob->name()] = arr.size()-1;
   }
 
-
+// SHENGJIE: is the below correct?
+    // Most GMTK programs have a single GMParms global variable to hold this
+    // information. The new gmtkMMItrain needs 2 separate GMParms instances
+    // (one for numerator model, one for denominator model). Rather than rewrite
+    // all the GMTK code that uses the globals, gmtkMMItrain instead uses the
+    // assignment operator to set the global GMParms variable to the numerator 
+    // or denominator GMParms as needed.
+    // TODO: The global GMParms should probably be eliminated - perhaps in the
+    //       upcoming inference refactoring...
     GMParms & operator=(const GMParms & that);
 
     
@@ -431,6 +439,10 @@ public:
   // all of the above) from a single file consisting
   // of sets of <keyword,fileName> pairs
   void read(iDataStreamFile& is);
+
+// SHENGJIE: It would be better to just do read(iDataStreamFile& is, bool reset=false)
+//           than to maintain 2 versions of this code?  Existing read(is) should work
+//           fine, and readReset(is, reset) calls could be changed to read(is, reset)
     void readReset(iDataStreamFile& is, bool reset);
   void write(const char *const outputFileFormat, 
 	     const char * const cppCommandOptions,
@@ -534,6 +546,8 @@ public:
 				    unsigned num_features,
 				    CFunctionMapperType);
 
+// SHENGJIE: explain what/why this is. Presumably it's needed for the GMParms
+//           global variable shennanigans? 
     void clearParms();
 
 private:

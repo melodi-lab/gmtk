@@ -1,8 +1,7 @@
 /*
- * gmtkKernel.cc
- *  Use a DGM as a Kernel (e.g., Fisher Kernel, or something else).
- *  In other words, for each observation file, we will write out 
- *  a vector that is on the order of the number of current system parameters.
+ * gmtkMMItrain.cc
+// SHENGJIE: update description of program
+ * Perform discriminitive training using maximum mutual information (MMI) ...
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
@@ -207,7 +206,7 @@ ObservationMatrix globalObservationMatrix;
 FileSource *gomFS;
 ObservationSource *globalObservationMatrix;
 
-
+// SHENGJIE: add comment with brief description
 void setUpGM_Parms(FileParser& fp, GMTemplate& gm_template, GMParms & GM_Parms, bool prime) {
 
   /////////////////////////////////////////////
@@ -217,8 +216,7 @@ void setUpGM_Parms(FileParser& fp, GMTemplate& gm_template, GMParms & GM_Parms, 
     // flat, where everything is contained in one file, always ASCII
     iDataStreamFile pf(inputMasterFile,false,true,cppCommandOptions);
     GM_Parms.read(pf);
-  }
-  else if(!prime && denomInputMasterFile) {
+  } else if(!prime && denomInputMasterFile) {
     iDataStreamFile pf(denomInputMasterFile,false,true,cppCommandOptions);
     GM_Parms.read(pf);
   }
@@ -227,8 +225,7 @@ void setUpGM_Parms(FileParser& fp, GMTemplate& gm_template, GMParms & GM_Parms, 
     // flat, where everything is contained in one file
     iDataStreamFile pf(inputTrainableParameters, binInputTrainableParameters,true,cppCommandOptions);
     GM_Parms.readTrainable(pf);
-  }
-  else if(!prime && denomInputTrainableParameters) {
+  } else if(!prime && denomInputTrainableParameters) {
     iDataStreamFile pf(denomInputTrainableParameters, denomBinInputTrainableParameters,true,cppCommandOptions);
     GM_Parms.readTrainable(pf);
   }
@@ -364,7 +361,8 @@ void writeTrainedOutput(string & index) {
   //outf.close();
 }
 
-
+// SHENGJIE: comment describing function. This is one EM iteration on a batch of 
+//           segments to update the Fisher kernel?
 void train(JunctionTree & myjt, vector<unsigned> const &batch, vector<double> & data_probs, bool initEM) {
 
   struct rusage rus; /* starting time */
@@ -475,7 +473,7 @@ void train(JunctionTree & myjt, vector<unsigned> const &batch, vector<double> & 
   }
 }
 
-
+// SHENGJIE: comment describing function
 void initAdaGrad(map<string, vector_d>& adagrad) {
   for(unsigned i=0; i<GM_Parms.components.size(); i++) {
     if(GM_Parms_n.components[i]->typeName() == "Diag Gaussian") {
@@ -517,7 +515,7 @@ void initAdaGrad(map<string, vector_d>& adagrad) {
 
 
 
-
+// SHENGJIE: comment describing function
 void updateAdagrad(map<string, vector_d>& adagrad) {
   for(unsigned i=0; i<GM_Parms.components.size(); i++) {
     if(GM_Parms_n.components[i]->typeName() == "Diag Gaussian") {
@@ -559,7 +557,7 @@ void updateAdagrad(map<string, vector_d>& adagrad) {
 }
 
 
-
+// SHENGJIE: do we need has_parent?
 void normalizeCPT(sArray<logpr>& mdcpts) {
   bool has_parent = false;
     
@@ -582,7 +580,7 @@ void normalizeCPT(sArray<logpr>& mdcpts) {
 
 
 
-
+// SHENGJIE: comment describing function
 void updateBoth(double lr, double mean_lr, double covar_lr, map<string, vector_d>& adagrad, bool use_adagrad) {
     
 
@@ -844,6 +842,7 @@ void updateBoth(double lr, double mean_lr, double covar_lr, map<string, vector_d
 }
 
 
+// SHENGJIE: comment describing function - differentiate from above updateBoth
 void update(double lr, map<string, vector_d>& adagrad, bool use_adagrad) {
 
   if(use_adagrad) updateAdagrad(adagrad);
@@ -895,7 +894,7 @@ void update(double lr, map<string, vector_d>& adagrad, bool use_adagrad) {
 }
 
 
-
+// SHENGJIE: why not use sprintf instead?
 void i2str(int i, string& s) {
   std::vector<int> cs;
 
@@ -918,7 +917,7 @@ void i2str(int i, string& s) {
 }
 
 
-
+// SHENGJIE: is this just for debugging?
 void getGmParmsValue() {
 
   for(unsigned i=0; i<GM_Parms.components.size(); i++) {
@@ -959,6 +958,7 @@ main(int argc,char*argv[])
 
   ////////////////////////////////////////////
   // parse arguments
+ // SHENGJIE: update description of program...
   bool parse_was_ok = Arg::parse(argc,(char**)argv,
 				 "\nThis program uses a DGM as a Kernel (e.g., Fisher Kernel\n"
 				 "or accumulator). In other words, for each observation file,\n"
@@ -1018,6 +1018,7 @@ main(int argc,char*argv[])
   map<string, vector_d> adagrad;
   initAdaGrad(adagrad);
 
+// SHENGJIE: could use infoMsg instead of fprintf?
   fprintf(stderr, "Parameter Settings: update_CPT:%d, update_covar:%d, use_adagrad:%d, max_iter:%d, batch_size:%u, init_iter=%d\nLearning rate Settings: use_decay_lr:%d, init_lr:%e, decay_lr_rate:%e, use_covar_decay_lr:%d, init_covar_lr:%e, decay_covar_lr_rate:%e, use_mean_decay_lr:%d, init_mean_lr:%e, decay_mean_lr_rate:%e\n", update_CPT, update_covar, use_adagrad, max_iter, batch_size, init_iter, use_decay_lr, init_lr, decay_lr_rate, use_covar_decay_lr, covar_lr, decay_covar_lr_rate, use_mean_decay_lr, mean_lr, decay_mean_lr_rate);
 
   SegmentSchedule *segmentSched = NULL;
