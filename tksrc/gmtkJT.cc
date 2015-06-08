@@ -381,7 +381,7 @@ main(int argc,char*argv[])
 
   Range* dcdrng = new Range(dcdrng_str,0,gomFS->numSegments());
   if (dcdrng->length() <= 0) {
-    infoMsg(IM::Default,"Training range '%s' specifies empty set. Exiting...\n",
+    infoMsg(IM::Default,"Decoding range '%s' specifies empty set. Exiting...\n",
 	  dcdrng_str);
     exit_program_with_status(0);
   }
