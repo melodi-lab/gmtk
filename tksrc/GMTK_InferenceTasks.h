@@ -56,7 +56,8 @@ class ViterbiTask : public virtual InferenceTask {
   virtual ~ViterbiTask() {}
 
   // compute argmax P(Q_{0:T-1} | X_{0:T-1})
-  virtual logpr viterbi(unsigned kBest=1) = 0; // returns log prob of MPE
+  //   should this be a k element vector of logprs ?
+  virtual vector<logpr> viterbi(unsigned kBest=1) = 0; // returns log prob(s) of k-best MPEs
 };
 
 
@@ -152,11 +153,15 @@ class SectionInferenceAlgorithm {
   // Since we now have the ability to write Viterbi values to files, do
   // we want to drop the ability to store them in memory? This would
   // break things, as a Viterbi file would then be a required argument.
-  // it would also be slower for applications that do fit in memory
+  // It would also be slower for applications that do fit in memory
   // because of the higher overhead of file I/O operations.
 
+  // Maybe rename this to prepareForSegment() or something to avoid confusion
+  // with O(T) space graph unrolling?
   virtual unsigned unroll(unsigned T) = 0; // returns number of usable frames
 
+
+  // All message actions are named from the perspective of C_t.
 
   // compute forward message for C'_t -> C'_{t+1} (aka gather into root)
   virtual InterfaceSeparator computeForwardInterfaceSeparator(unsigned t) = 0; 
@@ -179,8 +184,8 @@ class SectionInferenceAlgorithm {
   virtual logpr probEvidence(unsigned t) = 0;
 
 
-  // Section subclasses can manage their own message ordering w/in a section
-  // read/write the section's inference plan (JT, msg orders, etc)
+  // Section subclasses can manage their own message ordering w/in a section.
+  // Read/write the section's inference plan (JT, msg orders, etc)
   void readInferencePlan(iDataStreamFile *f);
   void writeInferencePlan(ioDataStreamFile *f);
 };
