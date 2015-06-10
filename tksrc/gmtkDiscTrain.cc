@@ -206,7 +206,11 @@ ObservationMatrix globalObservationMatrix;
 FileSource *gomFS;
 ObservationSource *globalObservationMatrix;
 
-// SHENGJIE: add comment with brief description
+/*
+ * Read in graphical model parameters
+ * prime = true: read in the parameters for the numerator model
+ * prime = false: read in the parameters for the denominator model
+ */
 void setUpGM_Parms(FileParser& fp, GMTemplate& gm_template, GMParms & GM_Parms, bool prime) {
 
   /////////////////////////////////////////////
@@ -361,8 +365,11 @@ void writeTrainedOutput(string & index) {
   //outf.close();
 }
 
-// SHENGJIE: comment describing function. This is one EM iteration on a batch of 
-//           segments to update the Fisher kernel?
+/*
+ * Training on the given batch of data instances for one EM iteration;
+ * The gradients with respect to the Fisher kernel are also calculated;
+ * initEM should be set to true when calling the train() function for the first time;
+ */
 void train(JunctionTree & myjt, vector<unsigned> const &batch, vector<double> & data_probs, bool initEM) {
 
   struct rusage rus; /* starting time */
@@ -473,7 +480,9 @@ void train(JunctionTree & myjt, vector<unsigned> const &batch, vector<double> & 
   }
 }
 
-// SHENGJIE: comment describing function
+/*
+ * Initiate the data structure for adagrad
+ */
 void initAdaGrad(map<string, vector_d>& adagrad) {
   for(unsigned i=0; i<GM_Parms.components.size(); i++) {
     if(GM_Parms_n.components[i]->typeName() == "Diag Gaussian") {
@@ -515,7 +524,7 @@ void initAdaGrad(map<string, vector_d>& adagrad) {
 
 
 
-// SHENGJIE: comment describing function
+/*
 void updateAdagrad(map<string, vector_d>& adagrad) {
   for(unsigned i=0; i<GM_Parms.components.size(); i++) {
     if(GM_Parms_n.components[i]->typeName() == "Diag Gaussian") {
@@ -555,6 +564,7 @@ void updateAdagrad(map<string, vector_d>& adagrad) {
     }
   }
 }
+*/
 
 
 // SHENGJIE: do we need has_parent?
@@ -842,104 +852,7 @@ void updateBoth(double lr, double mean_lr, double covar_lr, map<string, vector_d
 }
 
 
-// SHENGJIE: comment describing function - differentiate from above updateBoth
-void update(double lr, map<string, vector_d>& adagrad, bool use_adagrad) {
 
-  if(use_adagrad) updateAdagrad(adagrad);
-
-  for(unsigned i=0; i<GM_Parms.components.size(); i++) {
-    if(GM_Parms_n.components[i]->typeName() == "Diag Gaussian") {
-      DiagGaussian* dg = (DiagGaussian*)GM_Parms_n.components[i];
-      string mean_name = dg->getMean()->name();
-      string covar_name = dg->getCovar()->name();
-
-      sArray<float>& means = dg -> getMean() -> getMeans();
-      sArray<float>& covars = dg -> getCovar() ->getCovars();
-
-      sArray<float>& next_means = dg -> getNextMeans();
-      sArray<float>& next_covars = dg -> getNextCovars();
-
-
-
-      for(unsigned j=0; j<means.size(); j++) {
-	if(use_adagrad) means[j] += lr * next_means[j] / adagrad[mean_name][j]; 
-	else means[j] += lr * next_means[j]; 
-      }
-      for(unsigned j=0; j<covars.size(); j++) {
-	if(use_adagrad) covars[j] += lr * next_covars[j] / adagrad[covar_name][j]; 
-	else covars[j] += lr * next_covars[j]; 
-      }
-    }
-
-  }
-    
-  //GM_Parms.mdCpts.size() should be 3 for TIMIT
-  for(unsigned i=0; i<GM_Parms.mdCpts.size(); i++) {
-    MDCPT* mdcpt = (MDCPT*)GM_Parms.mdCpts[i];
-
-    string name = mdcpt->name();
-    if(name == "internal:UnityScore") continue;
-
-    sArray<logpr>& mdcpts = mdcpt->getMdcpt();
-    sArray<logpr>& next_mdcpts = mdcpt->getNextMdcpt();
-
-
-    for(unsigned j=0; j<mdcpts.size(); j++) {
-      if(use_adagrad)
-	mdcpts[j] = logpr(mdcpts[j].unlog() + lr * next_mdcpts[j].unlog() / adagrad[name][j]);
-      else
-	mdcpts[j] = logpr(mdcpts[j].unlog() + lr * next_mdcpts[j].unlog());
-    }
-  }
-}
-
-
-// SHENGJIE: why not use sprintf instead?
-void i2str(int i, string& s) {
-  std::vector<int> cs;
-
-  if(i == 0) {
-    s = "0";
-    return;
-  }
-
-  while(i > 0) {
-    int n = i % 10;
-    i = i / 10;
-    cs.push_back(n);
-  }
-
-  if(cs.size() > 0)
-    for(int j=cs.size() - 1; j>=0; j--) {
-      s += char(cs[j] + '0');
-    }
-
-}
-
-
-// SHENGJIE: is this just for debugging?
-void getGmParmsValue() {
-
-  for(unsigned i=0; i<GM_Parms.components.size(); i++) {
-    if(GM_Parms.components[i]->typeName() == "Diag Gaussian") {
-      DiagGaussian* dg = (DiagGaussian*)GM_Parms.components[i];
-      string covar_name = dg->getCovar()->name();
-            
-      sArray<float>& covars = dg -> getCovar() ->getCovars();
-      sArray<float>& next_covars = dg -> getNextCovars();
-            
-      for(unsigned j=0; j<covars.size(); j++) {
-	if(i == 13) {
-	  if(j < next_covars.size()) fprintf(stderr, "WA s: %s i: %d n: %f %f\n", covar_name.c_str(), j, covars[j], next_covars[j]);
-	  else fprintf(stderr, "WA s: %s i: %d n: %f\n", covar_name.c_str(), j, covars[j]);
-                
-	}
-      }
-            
-    }
-  }
-
-}
 
 
 
@@ -958,12 +871,11 @@ main(int argc,char*argv[])
 
   ////////////////////////////////////////////
   // parse arguments
- // SHENGJIE: update description of program...
   bool parse_was_ok = Arg::parse(argc,(char**)argv,
-				 "\nThis program uses a DGM as a Kernel (e.g., Fisher Kernel\n"
-				 "or accumulator). In other words, for each observation file,\n"
-				 "it will write out a vector that is on the order of the number\n"
-				 "of current system parameters.\n");
+				 "\nThis program executes discriminative training on the two\n"
+				 "input models, with Fisher kernel to calculate the gradients,\n"
+				 "and stochastic gradient ascent to update the parameters with\n"
+				 "the gradients.\n");
   if(!parse_was_ok) {
     Arg::usage(); exit(-1);
   }
@@ -1018,8 +930,7 @@ main(int argc,char*argv[])
   map<string, vector_d> adagrad;
   initAdaGrad(adagrad);
 
-// SHENGJIE: could use infoMsg instead of fprintf?
-  fprintf(stderr, "Parameter Settings: update_CPT:%d, update_covar:%d, use_adagrad:%d, max_iter:%d, batch_size:%u, init_iter=%d\nLearning rate Settings: use_decay_lr:%d, init_lr:%e, decay_lr_rate:%e, use_covar_decay_lr:%d, init_covar_lr:%e, decay_covar_lr_rate:%e, use_mean_decay_lr:%d, init_mean_lr:%e, decay_mean_lr_rate:%e\n", update_CPT, update_covar, use_adagrad, max_iter, batch_size, init_iter, use_decay_lr, init_lr, decay_lr_rate, use_covar_decay_lr, covar_lr, decay_covar_lr_rate, use_mean_decay_lr, mean_lr, decay_mean_lr_rate);
+  infoMsg(IM::Default, "Parameter Settings: update_CPT:%d, update_covar:%d, use_adagrad:%d, max_iter:%d, batch_size:%u, init_iter=%d\nLearning rate Settings: use_decay_lr:%d, init_lr:%e, decay_lr_rate:%e, use_covar_decay_lr:%d, init_covar_lr:%e, decay_covar_lr_rate:%e, use_mean_decay_lr:%d, init_mean_lr:%e, decay_mean_lr_rate:%e\n", update_CPT, update_covar, use_adagrad, max_iter, batch_size, init_iter, use_decay_lr, init_lr, decay_lr_rate, use_covar_decay_lr, covar_lr, decay_covar_lr_rate, use_mean_decay_lr, mean_lr, decay_mean_lr_rate);
 
   SegmentSchedule *segmentSched = NULL;
   if (strcasecmp(segmentSchedule, "linear") == 0) {
@@ -1048,17 +959,14 @@ main(int argc,char*argv[])
 	  
       if(use_decay_lr) {
 	lr = init_lr / pow((iter + init_iter) * num_training_units + i + 1.0, decay_lr_rate);
-	// fprintf(stderr, "\t### lr: %f ###\n", lr);
       }
 	  
       if(use_mean_decay_lr) {
 	meanLr = mean_lr / pow((iter + init_iter) * num_training_units + i + 1.0, decay_mean_lr_rate);
-	// fprintf(stderr, "\t### lr: %f ###\n", lr);
       }
 	  
       if(use_covar_decay_lr) {
 	covarLr = covar_lr / pow((iter + init_iter) * num_training_units + i + 1.0, decay_covar_lr_rate);
-	// fprintf(stderr, "\t### lr: %f ###\n", lr);
       }
 	  
       vector<double> d_probs;
@@ -1069,18 +977,14 @@ main(int argc,char*argv[])
 
       //denominator train/update
       GM_Parms = GM_Parms_d;
-      //getGmParmsValue();
       train(myjt_d, batch, d_probs, iter == 0);
-      //getGmParmsValue();
       GM_Parms_d = GM_Parms;
 	  
 	  
 	  
       //numerator train/update
       GM_Parms = GM_Parms_n;
-      //getGmParmsValue();
       train(myjt_n, batch, n_probs, iter == 0);
-      //getGmParmsValue();
       GM_Parms_n = GM_Parms;
 	  
       double cond_prob = 0.0;
@@ -1093,7 +997,6 @@ main(int argc,char*argv[])
       fprintf(stderr, "### Conditional Log Likelihood of Current Batch: %f\n", cond_prob);
 	  
       updateBoth(lr, meanLr, covarLr, adagrad, use_adagrad);
-      //getGmParmsValue();
 	  
     }
 	
@@ -1118,8 +1021,10 @@ main(int argc,char*argv[])
 	
 	
 	
-    string iter_index = "";
-    i2str(iter, iter_index);
+    char buffer[100];
+    sprintf(buffer, "%u", iter);
+    string iter_index(buffer);
+    
     writeTrainedOutput(iter_index);
 	
   }
