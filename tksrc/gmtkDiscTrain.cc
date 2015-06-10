@@ -1,7 +1,9 @@
 /*
  * gmtkMMItrain.cc
-// SHENGJIE: update description of program
- * Perform discriminitive training using maximum mutual information (MMI) ...
+ *
+ * Perform discriminative training using maximum mutual information Estimation (MMIE);
+ * The MMIE objective is optimized with stochastic gradient ascent, and
+ * the gradient is calculated from EM with Fisher Kernel.
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
@@ -524,55 +526,15 @@ void initAdaGrad(map<string, vector_d>& adagrad) {
 
 
 
+
+
 /*
-void updateAdagrad(map<string, vector_d>& adagrad) {
-  for(unsigned i=0; i<GM_Parms.components.size(); i++) {
-    if(GM_Parms_n.components[i]->typeName() == "Diag Gaussian") {
-      DiagGaussian* dg = (DiagGaussian*)GM_Parms_n.components[i];
-      string mean_name = dg->getMean()->name();
-      string covar_name = dg->getCovar()->name();
-
-      sArray<float>& next_means = dg -> getNextMeans();
-      sArray<float>& next_covars = dg -> getNextCovars();
-
-      for(unsigned j=0; j<next_means.size(); j++) {
-	double old_val = adagrad[mean_name][j];
-	adagrad[mean_name][j] = sqrt(old_val * old_val + next_means[j] * next_means[j]);
-      }
-
-      for(unsigned j=0; j<next_covars.size(); j++) {
-	double old_val = adagrad[covar_name][j];
-	adagrad[covar_name][j] = sqrt(old_val * old_val + next_covars[j] * next_covars[j]);
-            
-      }
-    }
-  }
-    
-  //GM_Parms.mdCpts.size() should be 3 for TIMIT
-  for(unsigned i=0; i<GM_Parms.mdCpts.size(); i++) {
-    MDCPT* mdcpt = (MDCPT*)GM_Parms.mdCpts[i];
-
-    string name = mdcpt->name();
-    if(name == "internal:UnityScore") continue;
-
-    sArray<logpr>& next_mdcpts = mdcpt->getNextMdcpt();
-
-    for(unsigned j=0; j<next_mdcpts.size(); j++) {
-      double old_val = adagrad[name][j];
-      double acc_val = next_mdcpts[j].unlog();
-      adagrad[name][j] = sqrt(old_val * old_val + acc_val * acc_val);
-    }
-  }
-}
-*/
-
-
-// SHENGJIE: do we need has_parent?
+ * Helper function to normalize CPTs
+ * Note that parents are not considered for normalization
+ */
 void normalizeCPT(sArray<logpr>& mdcpts) {
-  bool has_parent = false;
     
-  double sum = 0.0;
-  if(!has_parent) {
+    double sum = 0.0;
     for(unsigned i=0; i<mdcpts.size(); i++) {
       sum += mdcpts[i].unlog();
     }
@@ -582,15 +544,17 @@ void normalizeCPT(sArray<logpr>& mdcpts) {
     for(unsigned i=0; i<mdcpts.size(); i++) {
       mdcpts[i] /= log_sum;
     }
-  }
-
-
 }
 
 
 
 
-// SHENGJIE: comment describing function
+
+
+/*
+ * Update both the numerator and the denominator model parameters based on the gradients
+ * calculated in the train() function (EM and Fisher kernel).
+ */
 void updateBoth(double lr, double mean_lr, double covar_lr, map<string, vector_d>& adagrad, bool use_adagrad) {
     
 
@@ -649,7 +613,7 @@ void updateBoth(double lr, double mean_lr, double covar_lr, map<string, vector_d
 
       double acc_val;
 
-      if(update_mean && mean_name.compare("intensity_mean") != 0) {
+      //if(update_mean && mean_name.compare("intensity_mean") != 0) {
 	for(unsigned j=0; j<means.size(); j++) {
 	  acc_val = next_means[j] - down_weight_mean * next_means_d[j];
 	  if(use_adagrad) {
@@ -663,19 +627,14 @@ void updateBoth(double lr, double mean_lr, double covar_lr, map<string, vector_d
 	  means_d[j] = means[j];
 		
 	}
-      }
+      //}
 
 
-      //if(update_covar && covar_name.compare("covar0") != 0) {
       if(update_covar) {
 
-	//double down_weight = 1.0;
-	//if(covar_name.compare("covar0") != 0) down_weight = 1.2;
-	//else down_weight = 1.0;
 
 	for(unsigned j=0; j<covars.size(); j++) {
 	  acc_val = (next_covars[j] - down_weight_covar * next_covars_d[j]); //* covar_lr;
-	  //if(i == 13) fprintf(stderr, "s: %s i: %d n: %f %f, d: %f %f, acc: %f\n", covar_name.c_str(), j, covars[j], next_covars[j], covars_d[j], next_covars_d[j], acc_val);
 
 	  if(use_adagrad) {
 	    double old_val = adagrad[covar_name][j];
@@ -687,7 +646,6 @@ void updateBoth(double lr, double mean_lr, double covar_lr, map<string, vector_d
 	  covars[j] += local_lr * acc_val;
 	  if(covars[j] < varFloor) covars[j] = varFloor;
 	  covars_d[j] = covars[j];
-	  //if(i == 13) fprintf(stderr, "s2: %s i: %d n: %f %f, d: %f %f, acc2: %f %f %f\n", covar_name.c_str(), j, covars[j], next_covars[j], covars_d[j], next_covars_d[j], local_lr * acc_val, local_lr, lr);
 	}
       }
 
@@ -766,12 +724,9 @@ void updateBoth(double lr, double mean_lr, double covar_lr, map<string, vector_d
     }//end of updateCPT
 
     //normalizeCPT(mdcpts);
-    //fprintf(stdout, "====mdcpt====\n");
     for(unsigned j=0; j<mdcpts.size(); j++){
       mdcpts_d[j] = mdcpts[j];
-      //    fprintf(stdout, "%f\n", mdcpts[j].val());
     }
-    //fprintf(stdout, "\n");
 
 
     for(unsigned j=0; j<next_mdcpts.size(); j++) {
@@ -835,11 +790,9 @@ void updateBoth(double lr, double mean_lr, double covar_lr, map<string, vector_d
       //normalize??
       normalizeCPT(pmfs);
             
-      //fprintf(stdout, "====dpmfs====\n");
       for(unsigned j=0; j<pmfs.size(); j++){
 	pmfs_d[j] = pmfs[j];
       }
-      //fprintf(stdout, "\n");
 
 
       for(unsigned j=0; j<next_pmfs.size(); j++) {
