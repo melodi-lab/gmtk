@@ -105,6 +105,13 @@ public:
   //  (log(penalty) + scale*log(p)) ++ log(shift)
   // where ++ is the log_add operator.
   inline void modifyProbability(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
+    if (wi.scale.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Constant) {
+      p.valref() *= wi.scale.weight_value;
+    } else if (wi.scale.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Observation) {
+      p.valref() *= 
+	(*(globalObservationMatrix->floatVecAtFrame(rv->frame(), 
+						    wi.scale.firstFeatureElement)));
+    }
     if (wi.penalty.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Constant) {
       p.valref() += wi.penalty.weight_value;
     } else if (wi.penalty.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Observation) {
@@ -112,13 +119,6 @@ public:
       p.valref() += 
 	(*(globalObservationMatrix->floatVecAtFrame(rv->frame(),
 						    wi.penalty.firstFeatureElement)));
-    }
-    if (wi.scale.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Constant) {
-      p.valref() *= wi.scale.weight_value;
-    } else if (wi.scale.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Observation) {
-      p.valref() *= 
-	(*(globalObservationMatrix->floatVecAtFrame(rv->frame(), 
-						    wi.scale.firstFeatureElement)));
     }
     if (wi.shift.wt_Status == RVInfo::WeightInfo::WeightItem::wt_Constant) {
       logpr shift((void*)NULL,wi.shift.weight_value);
@@ -170,63 +170,63 @@ public:
   }
 
   inline void modifyProbabilityCPCSCO(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
-    modifyProbabilityCP(p,wi,rv);
     modifyProbabilityCS(p,wi,rv);
+    modifyProbabilityCP(p,wi,rv);
     modifyProbabilityCO(p,wi,rv);
   }
   inline void modifyProbabilityCPCSOO(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
-    modifyProbabilityCP(p,wi,rv);
     modifyProbabilityCS(p,wi,rv);
+    modifyProbabilityCP(p,wi,rv);
     modifyProbabilityOO(p,wi,rv);
   }
   inline void modifyProbabilityCPOSCO(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
-    modifyProbabilityCP(p,wi,rv);
     modifyProbabilityOS(p,wi,rv);
+    modifyProbabilityCP(p,wi,rv);
     modifyProbabilityCO(p,wi,rv);
   }
   inline void modifyProbabilityCPOSOO(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
-    modifyProbabilityCP(p,wi,rv);
     modifyProbabilityOS(p,wi,rv);
+    modifyProbabilityCP(p,wi,rv);
     modifyProbabilityOO(p,wi,rv);
   }
   inline void modifyProbabilityOPCSCO(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
-    modifyProbabilityOP(p,wi,rv);
     modifyProbabilityCS(p,wi,rv);
+    modifyProbabilityOP(p,wi,rv);
     modifyProbabilityCO(p,wi,rv);
   }
   inline void modifyProbabilityOPCSOO(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
-    modifyProbabilityOP(p,wi,rv);
     modifyProbabilityCS(p,wi,rv);
+    modifyProbabilityOP(p,wi,rv);
     modifyProbabilityOO(p,wi,rv);
   }
   inline void modifyProbabilityOPOSCO(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
-    modifyProbabilityOP(p,wi,rv);
     modifyProbabilityOS(p,wi,rv);
+    modifyProbabilityOP(p,wi,rv);
     modifyProbabilityCO(p,wi,rv);
   }
   inline void modifyProbabilityOPOSOO(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
-    modifyProbabilityOP(p,wi,rv);
     modifyProbabilityOS(p,wi,rv);
+    modifyProbabilityOP(p,wi,rv);
     modifyProbabilityOO(p,wi,rv);
   }
 
 
 
   inline void modifyProbabilityCPCS(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
-    modifyProbabilityCP(p,wi,rv);
     modifyProbabilityCS(p,wi,rv);
+    modifyProbabilityCP(p,wi,rv);
   }
   inline void modifyProbabilityCPOS(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
-    modifyProbabilityCP(p,wi,rv);
     modifyProbabilityOS(p,wi,rv);
+    modifyProbabilityCP(p,wi,rv);
   }
   inline void modifyProbabilityOPCS(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
-    modifyProbabilityOP(p,wi,rv);
     modifyProbabilityCS(p,wi,rv);
+    modifyProbabilityOP(p,wi,rv);
   }
   inline void modifyProbabilityOPOS(logpr& p,RVInfo::WeightInfo& wi,RV* rv) {
-    modifyProbabilityOP(p,wi,rv);
     modifyProbabilityOS(p,wi,rv);
+    modifyProbabilityOP(p,wi,rv);
   }
 
 

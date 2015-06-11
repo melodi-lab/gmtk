@@ -10,6 +10,12 @@ For general questions:  gmtk-users@u.washington.edu
 Subscribe to the email list at
   http://mailman.u.washington.edu/mailman/listinfo/gmtk-users
 
+Version 1.3.2  2015-06-10
+        * Changed the code that handles random variable weights
+	  so that the scale is applied before the penalty if
+	  both are present, which matches the documentation.
+	* Made -viterbiScore T the default for gmtkOnline
+	
 Version 1.3.1  2015-05-29
         * Fixed regression in bursty gmtkOnline output
 
