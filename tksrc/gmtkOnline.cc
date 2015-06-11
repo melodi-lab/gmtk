@@ -211,11 +211,7 @@ main(int argc,char*argv[])
 
   //  CODE_TO_COMPUTE_ENDIAN;
 
-
-#if 0
   JunctionTree::viterbiScore = true; // default is true for gmtkOnline
-  // no it isn't?
-#endif
 
   ////////////////////////////////////////////
   // parse arguments
