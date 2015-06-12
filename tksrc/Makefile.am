@@ -224,7 +224,7 @@ gmtkTie \
 gmtkModelInfo \
 gmtkOnline \
 gmtkPrint \
-gmtkDiscTrain \
+gmtkMMItrain \
 $(dmlp_programs) $(GMTKVIZ) $(OSXBUNDLE)
 EXTRA_PROGRAMS = gmtkDMLPtrain gmtkViz gmtkViz.app abstest dmlp
 
@@ -275,7 +275,7 @@ gmtkNGramIndex_SOURCES = gmtkNGramIndex.cc
 
 gmtkOnline_SOURCES = gmtkOnline.cc
 
-gmtkDiscTrain_SOURCES = gmtkDiscTrain.cc
+gmtkMMItrain_SOURCES = gmtkMMItrain.cc
 
 #gmtkUnroll_SOURCES = gmtkUnroll.o  libGMTK.a ../miscSupport/libmiscSupport.a .NOEXPORT
 #	-@rm -f $@

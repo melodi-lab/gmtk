@@ -105,7 +105,6 @@ public:
     map[ob->name()] = arr.size()-1;
   }
 
-
     // Most GMTK programs have a single GMParms global variable to hold this
     // information. The new gmtkMMItrain needs 2 separate GMParms instances
     // (one for numerator model, one for denominator model). Rather than rewrite
@@ -438,8 +437,7 @@ public:
   // read/write an entire GM (params + structure, i.e.,
   // all of the above) from a single file consisting
   // of sets of <keyword,fileName> pairs
-  //void read(iDataStreamFile& is);
-  void read(iDataStreamFile& is, bool reset = false);
+    void read(iDataStreamFile& is, bool reset = false);
     
     
   void write(const char *const outputFileFormat, 
@@ -545,7 +543,7 @@ public:
 				    CFunctionMapperType);
 
   ////////////////////////////////////////////////////////////////////////////
-  // Clear parameter structure; used in gmtkMMItrain to load two set of parameters.
+  // Clear parameter structures; this is used in gmtkMMItrain to load two sets of parameters.
     void clearParms();
 
 private:
