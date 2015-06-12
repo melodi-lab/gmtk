@@ -5,7 +5,7 @@
  * The MMIE objective is optimized with stochastic gradient ascent, and
  * the gradient is calculated from EM with Fisher Kernel.
  *
- * Written by Jeff Bilmes <bilmes@ee.washington.edu>
+ * Written by Jeff Bilmes <bilmes@ee.washington.edu> and Shengjie Wang
  *
  * Copyright (C) 2001 Jeff Bilmes
  * Licensed under the Open Software License version 3.0

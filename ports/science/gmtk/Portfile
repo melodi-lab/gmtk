@@ -6,7 +6,7 @@ PortGroup         wxWidgets 1.0
 wxWidgets.use     wxWidgets-3.0
 
 name              gmtk
-version           1.3.1
+version           1.3.2
 categories        science
 platforms         darwin
 license           OSL-3
@@ -16,8 +16,8 @@ long_description  The Graphical Models Toolkit is an open source \
                   toolkit for rapidly prototyping dynamic graphical models
 homepage          https://j.ee.washington.edu/trac/gmtk
 master_sites      http://melodi.ee.washington.edu/downloads/gmtk/
-checksums         rmd160 b2621c3bd5e7d6b6d0e4343ad6e90f4ced79f678 \
-                  sha256 7b29b8bb3e689153c35f2411385fcdf6014988899fc8a80283a23dd2e3f7b9a5
+checksums         rmd160 eda34244a211c334fb26eec21c405f8814e21d1b \
+                  sha256 733683def020de408721a2e3719ab1c8b09ba6ee806d6d0992e15246db5d3df2
 depends_lib       port:hdf5 \
                   port:${wxWidgets.port}
 configure.args    --with-wxdir=${wxWidgets.wxdir}
