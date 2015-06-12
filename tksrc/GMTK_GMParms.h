@@ -105,7 +105,7 @@ public:
     map[ob->name()] = arr.size()-1;
   }
 
-// SHENGJIE: is the below correct?
+
     // Most GMTK programs have a single GMParms global variable to hold this
     // information. The new gmtkMMItrain needs 2 separate GMParms instances
     // (one for numerator model, one for denominator model). Rather than rewrite
@@ -438,12 +438,10 @@ public:
   // read/write an entire GM (params + structure, i.e.,
   // all of the above) from a single file consisting
   // of sets of <keyword,fileName> pairs
-  void read(iDataStreamFile& is);
-
-// SHENGJIE: It would be better to just do read(iDataStreamFile& is, bool reset=false)
-//           than to maintain 2 versions of this code?  Existing read(is) should work
-//           fine, and readReset(is, reset) calls could be changed to read(is, reset)
-    void readReset(iDataStreamFile& is, bool reset);
+  //void read(iDataStreamFile& is);
+  void read(iDataStreamFile& is, bool reset = false);
+    
+    
   void write(const char *const outputFileFormat, 
 	     const char * const cppCommandOptions,
 	     const int intTag=CSWT_EMPTY_TAG,
@@ -546,8 +544,8 @@ public:
 				    unsigned num_features,
 				    CFunctionMapperType);
 
-// SHENGJIE: explain what/why this is. Presumably it's needed for the GMParms
-//           global variable shennanigans? 
+  ////////////////////////////////////////////////////////////////////////////
+  // Clear parameter structure; used in gmtkMMItrain to load two set of parameters.
     void clearParms();
 
 private:
@@ -565,4 +563,4 @@ extern GMParms GM_Parms;
 void dlopenDeterministicMaps(char **dlopenFilenames, unsigned maxFilenames);
 
 #endif
-
+    

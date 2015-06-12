@@ -159,10 +159,7 @@ void GMParms::clearParms() {
     dirichletTabs.clear();
     dirichletTabsMap.clear();
 
-// SHENGJIE: this will insert the built-in C mapping functions back into
-//           the DT map, so the GMParms instance won't be left "clear" (empty).
-//           I assume this is because you want it back in its post-construction
-//           state (which is not empty). It would be good to clarify this
+    //Add back the built-in C mapping functions back to the DT map.
     registerAllCFunctionDeterministicMappings(*this);
 }
 
@@ -1608,6 +1605,7 @@ GMParms::readNonTrainable(iDataStreamFile& is)
 }
 
 
+/*
 void 
 GMParms::read(
   iDataStreamFile& is
@@ -1769,10 +1767,10 @@ GMParms::read(
 
 }
 
-
+*/
 
 void 
-GMParms::readReset(
+GMParms::read(
   iDataStreamFile& is, bool reset
   )
 {
