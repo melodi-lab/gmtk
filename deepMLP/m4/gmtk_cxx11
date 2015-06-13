@@ -3,8 +3,14 @@ AC_DEFUN([GMTK_STDCXX11],[dnl
   AC_LANG_PUSH([C++])
   GMTK_OLD_FLAGS=$CXXFLAGS
   CXXFLAGS="$CXXFLAGS $1"
-  AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <typeinfo>]], 
-                [[auto f = [] () { return 0;}; f()]])],
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+#include <typeinfo>
+#include <fstream>
+#include <string>]], 
+                 [[
+using namespace std;
+auto f = [] () { return 0;}; f();
+const string fn("/dev/null"); ofstream os(fn)]])],
     [AC_MSG_RESULT([yes])
      AC_SUBST([ISOCXX11FLAGS],[$1])
      gmtk_cxx11=yes],
