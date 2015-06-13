@@ -10,7 +10,8 @@ version           1.3.2
 categories        science
 platforms         darwin
 license           OSL-3
-maintainers       uw.edu:rprogers
+maintainers       uw.edu:rprogers \
+                  openmaintainer
 description       Graphical Models Toolkit
 long_description  The Graphical Models Toolkit is an open source \
                   toolkit for rapidly prototyping dynamic graphical models
@@ -21,3 +22,13 @@ checksums         rmd160 eda34244a211c334fb26eec21c405f8814e21d1b \
 depends_lib       port:hdf5 \
                   port:${wxWidgets.port}
 configure.args    --with-wxdir=${wxWidgets.wxdir}
+post-destroot {
+    # Install example files not installed by the Makefile
+    file mkdir ${destroot}${prefix}/share/doc/${name}
+    file copy ${worksrcpath}/COPYING \
+        ${destroot}${prefix}/share/doc/${name}
+    file copy ${worksrcpath}/NEWS \
+        ${destroot}${prefix}/share/doc/${name}
+    file copy ${worksrcpath}/README \
+        ${destroot}${prefix}/share/doc/${name}
+}
