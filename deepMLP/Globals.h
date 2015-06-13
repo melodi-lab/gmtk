@@ -89,7 +89,7 @@ static double LogLoss(double x) {
 // Serialize c to a file with the given path
 template<class C>
 void Serialize(const C & c, const string & filename) {
-  ofstream outStream(filename, ios::out|ios::binary);
+  ofstream outStream(filename.c_str(), ios::out|ios::binary);
   if (!outStream.is_open()) {
     error("Error: Couldn't open file '%s' to serialize to\n", filename.c_str());
   }
@@ -104,7 +104,7 @@ void Serialize(const C & c, const string & filename) {
 // Deserialize c from a file with the given path
 template<class C>
 void Deserialize(C & c, const string & filename) {
-  ifstream inStream(filename, ios::in|ios::binary);
+  ifstream inStream(filename.c_str(), ios::in|ios::binary);
   if (!inStream.is_open()) {
     error("Error: Couldn't open serialized file '%s'\n", filename.c_str());
   }
