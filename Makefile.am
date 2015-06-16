@@ -39,6 +39,14 @@ release: distcheck
 	scp gmtk-`cat RELEASE`.tar.gz $(DOWNLOADS)
 	ssh $(PUBLISHHOST) $(PUBLISH)
 
+# Skip the distcheck because you've already done it and it's slow.
+# You're on your honor not to skip it :)
+quickrelease:
+	hg tag v`cat RELEASE` -m "This is the "`cat RELEASE`" release"
+	hg push
+	scp gmtk-`cat RELEASE`.tar.gz $(DOWNLOADS)
+	ssh $(PUBLISHHOST) $(PUBLISH)
+
 # There can be lots of beta releases of the same version, even on the same
 # date. So hg tag -f, and also include date and hg id in the tarball name.
 beta-release: distcheck
