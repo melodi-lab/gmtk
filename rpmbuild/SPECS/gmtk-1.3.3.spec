@@ -1,14 +1,14 @@
 %define debug_package %{nil}
 
 Name:		gmtk
-Version:	1.3.2
+Version:	1.3.3
 Release:	1%{?dist}
 Summary:	The Graphical Models Toolkit
-BuildRoot:	/var/tmp/rpmbuild/gmtk-1.3.2-root
+BuildRoot:	/var/tmp/rpmbuild/gmtk-1.3.3-root
 Group:		Applications/Engineering
 License:	OSL-3.0
 URL:		https://j.ee.washington.edu/trac/gmtk
-Source:		http://melodi.ee.washington.edu/downloads/gmtk/gmtk-1.3.2.tar.gz
+Source:		http://melodi.ee.washington.edu/downloads/gmtk/gmtk-1.3.3.tar.gz
 
 BuildRequires:	hdf5-devel wxGTK3-devel
 Requires:	hdf5 wxGTK3
