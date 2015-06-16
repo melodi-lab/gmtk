@@ -33,9 +33,13 @@ and IIS-0326382, DARPA's ASSIST Program (contract number NBCH-C-05-0137), NIH
 awards R01 GM096306 and P41 GM103533, an ONR MURI grant (No. N000140510388),
 and generous gifts by Microsoft Research, the Intel corporation, and Google.
 
+You can obtain the latest GMTK source, pre-compiled binary packages, 
+documentation, tutorials, and examples at http://melodi.ee.washington.edu/gmtk
+
+
 			 How to compile GMTK
 
-			  Updated: March, 2015
+                         Updated: June, 2015
  
 
 GMTK uses a simple GNU Autotools build process. The familiar
