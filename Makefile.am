@@ -41,7 +41,7 @@ release: distcheck
 
 # Skip the distcheck because you've already done it and it's slow.
 # You're on your honor not to skip it :)
-quickrelease:
+quickrelease: dist
 	hg tag v`cat RELEASE` -m "This is the "`cat RELEASE`" release"
 	hg push
 	scp gmtk-`cat RELEASE`.tar.gz $(DOWNLOADS)
