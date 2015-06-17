@@ -95,6 +95,9 @@ public:
   DiagCovarVector();
   ~DiagCovarVector() {}
 
+
+    sArray<float>& getCovars() {return covariances;}
+
   // When noisy cloning an object, this gives
   // the fraction to multiply to get the STD of the noise.
   static double cloneSTDfrac;

@@ -116,6 +116,7 @@ tksrc/gmtkModelInfo
 tksrc/gmtkNGramIndex
 tksrc/gmtkParmConvert
 tksrc/gmtkTFmerge
+tksrc/gmtkMMItrain
 tksrc/gmtkTie
 tksrc/gmtkTime
 tksrc/gmtkTriangulate

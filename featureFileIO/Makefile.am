@@ -100,7 +100,12 @@ GMTK_TrainingSchedule.h GMTK_TrainingSchedule.cc \
 GMTK_RandomSampleSchedule.h \
 GMTK_LinearSchedule.h \
 GMTK_PermutationSchedule.h \
-GMTK_ShuffleSchedule.h
+GMTK_ShuffleSchedule.h \
+GMTK_SegmentSchedule.h GMTK_BaseSegmentSchedule.h \
+GMTK_RandomSegmentSchedule.h \
+GMTK_PermutationSegmentSchedule.h \
+GMTK_ShuffleSegmentSchedule.h \
+GMTK_LinearSegmentSchedule.h 
 
 check_PROGRAMS = \
 testPFileFile \
