@@ -59,6 +59,7 @@ rm -rf $RPM_BUILD_ROOT
 /usr/bin/gmtkDMLPtrain
 /usr/bin/gmtkDTindex
 /usr/bin/gmtkEMtrain
+/usr/bin/gmtkMMItrain
 /usr/bin/gmtkJT
 /usr/bin/gmtkKernel
 /usr/bin/gmtkModelInfo

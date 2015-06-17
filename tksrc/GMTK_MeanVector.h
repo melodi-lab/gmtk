@@ -122,7 +122,8 @@ public:
   void recursivelyClearUsedBit() {  emClearUsedBit();  }
   void recursivelySetUsedBit() { emSetUsedBit();  }
 
-
+    sArray<float>& getMeans() {return means;}
+    sArray<float>& getNextMeans() {return nextMeans;}
 
   //////////////////////////////////
   // Public interface support for EM
