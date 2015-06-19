@@ -522,6 +522,26 @@ Dense1DPMF::emEndIteration()
   if ( !emOnGoingBitIsSet() )
     return; 
 
+  // ticket 570 - warn if Dirichlet prior is responsible for entire accumulated count
+  if (smoothingType == NoneVal || !useDirichletPriors) {
+    // no prior, so no work to do...
+  } else if (smoothingType == DirichletConstVal) {
+    // const dirichlet priors 
+    logpr alpha(dirichletAlpha);
+    for (int i=0;i<nextPmf.len();i++) {
+      if (nextPmf[i] == alpha) {
+	warning("WARNING: Dense1DPMF '%s' entry %d only recieved accumulated probability from the Dirichlet prior.", name().c_str(), i);
+      }
+    }
+  } else if (smoothingType == DirichletTableVal) {
+    // table dirichlet priors 
+    for (int i=0;i<nextPmf.len();i++) {
+      if (nextPmf[i] == dirichletTable->tableValue(i)) {
+	warning("WARNING: Dense1DPMF '%s' entry %d only recieved accumulated probability from the Dirichlet prior.", name().c_str(), i);
+      }
+    }
+  }
+
   accumulatedProbability.floor();
   if (accumulatedProbability < minDiscAccumulatedProbability()) {
     infoMsg(IM::SoftWarning,"WARNING: Dense1DPMF named '%s' received only %e accumulated probability in EM iteration. Using previous values.",name().c_str(),accumulatedProbability.val());
