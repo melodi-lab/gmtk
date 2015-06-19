@@ -123,7 +123,12 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([#include <H5Cpp.h>
 #ifndef H5_NO_NAMESPACE
 using namespace H5;
 #endif],
-[H5Lregister(NULL); H5File file("/dev/null", H5F_ACC_RDONLY )])],
+[H5Lregister(NULL); H5File file("/dev/null", H5F_ACC_RDONLY);
+ hsize_t dims@<:@2@:>@; hsize_t maxdims@<:@2@:>@; 
+ DataSpace *discDataspace = new DataSpace(2, dims, maxdims); 
+ DSetCreatPropList prop;
+ file.createDataSet(H5std_string("/dev/null"), PredType::NATIVE_UINT32, 
+                     *discDataspace, prop)])],
         AC_SUBST([HAVE_HDF5],[yes]),[])
 LIBS=${hdf_check_save_LIBS}
 AC_LANG_POP([C++])
