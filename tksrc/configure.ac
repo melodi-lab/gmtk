@@ -254,23 +254,8 @@ AM_CONDITIONAL([CYGWIN_FLAGS],[test x"$XOPEN" = x"-D__USE_XOPEN2K"])
 AM_CONDITIONAL([MAKE_BUNDLE],[test  x$OSXBUNDLE = xgmtkViz.app])
 AC_CHECK_LIB([m], [log])
 
-
-AC_LANG_PUSH([C++])
-hdf_check_save_LIBS=${LIBS}
-LIBS="${LIBS} -lhdf5_cpp -lhdf5"
-AC_LINK_IFELSE([AC_LANG_PROGRAM([#include <H5Cpp.h>
-#ifndef H5_NO_NAMESPACE
-using namespace H5;
-#endif],
-[H5File file("/dev/null", H5F_ACC_RDONLY )])],
-        AC_SUBST([HAVE_HDF5],[yes]),[])
-LIBS=${hdf_check_save_LIBS}
-AC_LANG_POP([C++])
-if test x"$HAVE_HDF5" = x"yes"; then 
-  LIBS="-lhdf5_cpp -lhdf5 $LIBS"
-  AC_DEFINE([HAVE_LIBHDF5_CPP],[1],[Are the C++ bindings for HDF5 available?])
-fi
-
+m4_include([../m4/ax_lib_hdf5.m4])
+AX_LIB_HDF5
 
 AC_ARG_WITH([detBrush],
             [AS_HELP_STRING([--with-detBrush],
