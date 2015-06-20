@@ -133,9 +133,9 @@ fi
 # Checks for libraries.
 
 m4_include([deepMLP/blas_args])
-m4_include([m4/ax_lib_hdf5.m4])
 
-AX_LIB_HDF5([serial])
+m4_include([m4/ax_lib_hdf5.m4])
+AX_LIB_HDF5
 
 # Checks for header files.
 
