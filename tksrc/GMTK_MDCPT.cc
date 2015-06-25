@@ -797,7 +797,7 @@ MDCPT::emEndIteration()
 
   if (!emOnGoingBitIsSet())
     return;
-
+  
   accumulatedProbability.floor();
   if (accumulatedProbability < minDiscAccumulatedProbability()) {
     warning("WARNING: DenseCPT named '%s' received only %e accumulated probability in EM iteration. Using previous iteraton values.",name().c_str(),accumulatedProbability.val());
@@ -805,6 +805,29 @@ MDCPT::emEndIteration()
       nextMdcpt[i] = mdcpt[i];
     }
   } else {
+    
+    // ticket #570 - warn if Dirichlet prior is responsible for entire accumulated count
+    if (smoothingType == NoneVal || !useDirichletPriors) {
+      // no prior, so no work to do...
+    } else if  (smoothingType == DirichletConstVal) {
+      logpr alpha(dirichletAlpha);
+      for (int i=0;i<nextMdcpt.len();i++) {
+	if (nextMdcpt[i] == alpha) {
+	  warning("WARNING: DenseCPT '%s' entry %d only recieved accumulated probability from the Dirichlet prior.", name().c_str(), i);
+	}
+      }
+    } else if (smoothingType == DirichletTableVal) {
+      // dirichlet table
+      for (int i=0;i<nextMdcpt.len();i++) {
+	if (nextMdcpt[i] == dirichletTable->tableValue(i)) {
+	  warning("WARNING: DenseCPT '%s' entry %d only recieved accumulated probability from the Dirichlet prior.", name().c_str(), i);
+	}
+      }
+    } else {
+      // Someone added a new Dirichlet type and didn't update the code...
+      assert(false);
+    }
+
 
     nextCachedMaxValue.set_to_zero();
 
