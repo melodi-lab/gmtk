@@ -38,7 +38,7 @@ temporal statistical models.
 
 
 %build
-%configure
+%configure --with-wx-config=wx-config-3.0
 make %{?_smp_mflags}
 
 
