@@ -186,6 +186,8 @@ class SectionInferenceAlgorithm {
 
   // Section subclasses can manage their own message ordering w/in a section.
   // Read/write the section's inference plan (JT, msg orders, etc)
+
+  void createInferencePlan(); // called by gmtkTriangulate ?
   void readInferencePlan(iDataStreamFile *f);
   void writeInferencePlan(ioDataStreamFile *f);
 };
