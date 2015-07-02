@@ -8,7 +8,7 @@ Homepage: https://j.ee.washington.edu/trac/gmtk
 
 Package: gmtk
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libhdf5-cpp-8, libwxgtk3.0
+Depends: ${shlibs:Depends}, ${misc:Depends}, libhdf5-cpp-8, libwxgtk3.0-0
 Description: The Graphcial Models Toolkit
  The Graphical Models Toolkit is an open source 
  toolkit for rapidly prototyping dynamic graphical models
