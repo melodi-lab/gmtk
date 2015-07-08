@@ -10,8 +10,9 @@ License:	OSL-3.0
 URL:		https://j.ee.washington.edu/trac/gmtk
 Source:		http://melodi.ee.washington.edu/downloads/gmtk/gmtk-1.4.0.tar.gz
 
-BuildRequires:	hdf5-devel wxGTK3-devel libstdc++-devel perl-Graph
-Requires:	hdf5 wxGTK3 libstdc++
+AutoReq: no
+BuildRequires:	hdf5-devel wxGTK3-devel libstdc++-devel
+Requires:	hdf5 wxGTK3
 
 %description
 The Graphical Models Toolkit (GMTK) is an open source, publicly available 
