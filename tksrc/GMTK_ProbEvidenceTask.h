@@ -1,0 +1,68 @@
+/*
+ * GMTK_ProbEvidenceTask.h
+ *   compute P(X_{0:T-1}), forward pass only, O(1) memory
+ *
+ * Written by Richard Rogers <rprogers@uw.edu>
+ *
+ * Copyright (C) 2015 Jeff Bilmes
+ * Licensed under the Open Software License version 3.0
+ * See COPYING or http://opensource.org/licenses/OSL-3.0
+ *
+ */
+
+
+#ifndef GMTK_PROBEVIDENCETASK_H
+#define GMTK_PROBEVIDENCETASK_H
+
+#include "GMTK_SeriesInferenceAlgorithm.h"
+#include "GMTK_FileSource.h"
+
+class ProbEvidenceTask : public virtual SeriesInferenceAlgorithm {
+
+ public:
+
+ ProbEvidenceTask(FileSource &obs_source) : observation_source(obs_source) {}
+
+  virtual ~ProbEvidenceTask() {}
+
+  /*
+   * For the currently active segment of the observation_source, compute 
+   * log P(X_{0:T-1}) using only a forward pass, O(1) memory.
+   *
+   * numUsableFrames returns the number of frames in the currently active
+   *                 segment that were used for inference
+   *
+   * numSectionsDone returns the number of modified sections in the currently
+   *                 active segment that were used for inference
+   * 
+   * if limitTime is true, probEvidence() returns 0 if the time limit expires
+   *                 before inference is complete
+   *
+   * if noE is true, do not perform inference on E' (return results from up
+   *                 to the last C', or P' if there are no chunks)
+   *
+   * if cliquePosteriorNormalize is true, normalize the posterior scores to sum to 1 (in log space)
+   *
+   * if cliquePosteriorUnlog is true, return the posterior probability (vs. log(probability))
+   * 
+   * if posteriorFile is non-NULL, write the clique posteriors to the posteriorFile
+   *
+   */
+  virtual logpr probEvidence(unsigned *numUsableFrames = NULL,
+			     unsigned *numSectionsDone = NULL,
+			     const bool limitTime = false,
+			     const bool noE = false, 
+			     const bool cliquePosteriorNormalize = true,
+			     const bool cliquePosteriorUnlog = true,
+			     ObservationFile *posteriorFile = NULL);
+
+ 
+ protected:
+  
+  // The source of the observed data. In principle, this could be applied
+  // to a StreamSource as well. In that case, this would need to be of type
+  // ObservationSource&. 
+  FileSource &observation_source;
+};
+
+#endif
