@@ -1,3 +1,4 @@
+% -*- mode: c++-mode
 
 // InferenceTask subclasses handle inference over a series of sections. The 
 // Sections are responsible for doing inference within themselves via whatever
@@ -91,13 +92,13 @@ class OnlineSmoothingTask : public virtual InferenceTask {
 // gmtkOnline requires inference algorithms with the OnlineSmoothingTask 
 // interface, etc.
 
-class IslandInference : public ProbEvidenceTask, 
+class IslandInference : public ProbEvidenceTask, // silly - can already do this in O(1) memory
                         public ViterbiTask, 
                         public ForwardBackwardTask
 {...};
 
 
-class ArchipelagosInference : public ProbEvidenceTask, 
+class ArchipelagosInference : public ProbEvidenceTask,  // silly - can already do this in O(1) memory
                               public ViterbiTask, 
                               public ForwardBackwardTask
 {...};
@@ -108,7 +109,9 @@ class OnlineInference :  public ProbEvidenceTask,
 {...};
 
 
-// cuurent "standard" inference
+// hmm... I think ???Infernce and OnlyKeepSeperatorInference should actually be SectionInferenceAlgorithm subclasses
+
+// current "standard" inference
 class ???Inference : public ProbEvidenceTask,
                      public ViterbiTask,
                      public ForwardBackwardTask
@@ -129,6 +132,13 @@ class StaticInference : public ProbEvidenceTask,
                         public ViterbiTask,
                         public forwardBackwardTask
 {...};
+
+
+
+// Need to split up GMTemplate into separate template and triangulation concerns.
+// Possbibly each SectionInferenceAlgorithm might need to subclass it.
+
+
 
 
 // Specific section inference algorithm implementations:
