@@ -27,6 +27,8 @@ class InterfaceSeparator {
 
   // boundary algorithm lives here, possibly overridden in subclasses
 
+  // What's the API for a SectionInferenceAlgorithm to construct an InterfaceSeparator?
+  // What's the API for a SectionInferenceAlgorithm to receive an InterfaceSeparator?
 };
 
 #endif
