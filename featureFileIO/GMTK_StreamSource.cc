@@ -23,6 +23,7 @@ StreamSource::StreamSource() {
   maxCookedFrames = 0;
   currentCookedFrames = 0;
   numFramesInSegment = 0;
+  numActiveFrames = 0;
   segmentNum = -1;
   _startSkip = 0;
   nFloat = 0;
@@ -36,6 +37,7 @@ StreamSource::StreamSource(unsigned nStreams,
 			   char *filterStr,
 			   unsigned startSkip)
   : cookedBuffSize(queueLength),
+    numActiveFrames(0),
     segmentNum(-1),
     _startSkip(startSkip)
 {
@@ -78,12 +80,15 @@ StreamSource::initialize(unsigned queueLength, unsigned startSkip)
 }
 
 
+
 void
 StreamSource::preloadFrames(unsigned nFrames) {
+if (numActiveFrames < nFrames) printf("preloadFrames(%u) but numActiveFrames == %u\n", nFrames, numActiveFrames);
+  assert(numActiveFrames >= nFrames);
 //fprintf(stdout, "preloadFrames(%u)\n", nFrames);
   if (nFrames >  maxCookedFrames / 2) {
       error("ERROR: StreamSource::enqueueFrames -streamBufferSize must be at least %u MB\n",
-	    1 + nFrames * 2 / (1024*1024) );
+	    1 + numActiveFrames * 2 / (1024*1024) );
   }
   currentCookedFrames = 0;
   firstCookedFrameNum = 0;
@@ -119,14 +124,17 @@ StreamSource::loadFrames(unsigned first, unsigned count) {
     error("ERROR: StreamSource::loadFrames: requested %u frames, but the frame queue can only hold %u. Increase -streamBufferSize\n", count, maxCookedFrames);
   }
 
+  // FIXME: should be assert
   if (numFramesInSegment > 0 && first + count > numFramesInSegment) {
     error("ERROR: StreamSource::loadFrames: requested frame %u, but the segment only has %u frames\n", first+count, numFramesInSegment);
   }
 
+  // FIXME: should be assert
   if (first < firstCookedFrameNum) {
     error("ERROR: StreamSource::loadFrames: requested frame %u which is no longer available; the earliest available frame is %u\n", first, firstCookedFrameNum);
   }
 
+  // FIXME: should be assert
   if (first > firstCookedFrameNum + currentCookedFrames) {
 //fprintf(stdout, "  first %u  num %u\n", firstCookedFrameNum, currentCookedFrames);
     error("ERROR: StreamSource::loadFrames: requested frames [%u,%u] would require skipping %u frames past [%u,%u]\n", 
@@ -146,6 +154,7 @@ StreamSource::loadFrames(unsigned first, unsigned count) {
     return cookedBuffer + nFeatures * (firstCookedFrameIndex + first - firstCookedFrameNum);
   }
 
+  // FIXME: should be assert
   error("StreamSource::loadFrames requested frames [%u,%u], but only [%u,%u] are available\n",
 	first, first+count-1, firstCookedFrameNum, firstCookedFrameNum+currentCookedFrames-1);
   return NULL;
@@ -155,10 +164,12 @@ StreamSource::loadFrames(unsigned first, unsigned count) {
 
 unsigned 
 StreamSource::enqueueFrames(unsigned nFrames) {
+  assert(numActiveFrames >= nFrames);
 //fprintf(stdout, "enqueueFrames(%u)\n", nFrames);
   if (numFramesInSegment != 0)
     return 0; // current segment's done - call preloadFrames() to reset for the next
 
+  // FIXME: should be an assert
   if (nFrames > currentCookedFrames) {
     error("ERROR: StreamSource::enqueueFrames doesn't support enqueuing more than %u frames\n",
 	  currentCookedFrames);
@@ -205,8 +216,16 @@ StreamSource::enqueueFrames(unsigned nFrames) {
 
     memcpy(newFrameDest, newFrame, nFeatures*sizeof(Data32));
     newFrameDest += nFeatures;
-    firstCookedFrameIndex += 1;
-    firstCookedFrameNum += 1;
+
+    if (currentCookedFrames == numActiveFrames) {
+      // the active region of the queue is full, so scroll oldest frame out
+      firstCookedFrameIndex += 1;
+      firstCookedFrameNum += 1;
+    } else {
+      // still room in the active region -- append new frame
+      assert(currentCookedFrames < numActiveFrames);
+      currentCookedFrames += 1;
+    }
     infoMsg(IM::ObsStream, IM::Med, "enqueue: [%u,%u] @ [%u,%u / %u]\n", 
 	    firstCookedFrameNum, firstCookedFrameNum+currentCookedFrames-1,
 	    firstCookedFrameIndex, firstCookedFrameIndex+currentCookedFrames-1,
