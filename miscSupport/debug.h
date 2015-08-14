@@ -66,8 +66,8 @@ public:
     ModuleCount  // must always be the last enum element
   };
 
-  // Keep this up to date as modules are added
-#define moduleHelpString "default, inference, inference-memory, training, triangulation, boundary, unrolling, printing, modelinfo"
+  // Keep this up to date as modules are added!!!
+#define moduleHelpString "default, inference, inference-memory, training, triangulation, boundary, unrolling, printing, modelinfo, obsfile, obsstream"
 
 protected:
   static unsigned globalModuleLevel[(unsigned)IM::ModuleCount];
