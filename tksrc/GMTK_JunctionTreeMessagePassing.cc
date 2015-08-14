@@ -4161,14 +4161,17 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
   // |X| is the number of frames in partition X.
 
   unsigned tau = numSmoothingPartitions; // # of "future" C's for smoothing
+
   unsigned numPreloadFrames = 
-    2 + // setCurrentInferenceShiftTo may need up to 2 frames prior to the asked-for position
     globalObservationMatrix->startSkip() + 
     fp.numFramesInP() + 
     ( (3+tau) * S + M ) * fp.numFramesInC() + 
     fp.numFramesInE() +
     globalObservationMatrix->minFutureFrames();
   // Assume the above won't over-flow with just 5 + \tau partitions
+
+  // setCurrentInferenceShiftTo(C'_t) may need the frames for C'_{t-1}: (S+M)|C| frames
+  globalObservationMatrix->setActiveFrameCount(numPreloadFrames + (S+M) * fp.numFramesInC());
 
   bool overflow = false; // true iff we had to reset the frame # due to more than ~ 2^30 frames
 
