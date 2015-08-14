@@ -103,12 +103,13 @@ if (numActiveFrames < nFrames) printf("preloadFrames(%u) but numActiveFrames == 
     if (!newFrame) {
       // discovered segment length
       numFramesInSegment = currentCookedFrames - _startSkip;
+      infoMsg(IM::ObsStream, IM::Med, "Discovered segment length = %u\n", numFramesInSegment);
       break;
     }
     memcpy(newFrameDest, newFrame, nFeatures*sizeof(Data32));
     newFrameDest += nFeatures;
     currentCookedFrames += 1;
-    infoMsg(IM::ObsStream, IM::Med, "preload: [%u,%u] @ [%u,%u / %u]\n", 
+    infoMsg(IM::ObsStream, IM::Med+1, "preload: [%u,%u] @ [%u,%u / %u]\n", 
 	    firstCookedFrameNum, firstCookedFrameNum+currentCookedFrames-1,
 	    firstCookedFrameIndex, firstCookedFrameIndex+currentCookedFrames-1,
 	    maxCookedFrames);
@@ -201,9 +202,10 @@ StreamSource::enqueueFrames(unsigned nFrames) {
     if (!newFrame) {
       // discovered segment length
       numFramesInSegment = firstCookedFrameNum + currentCookedFrames - _startSkip;
+      infoMsg(IM::ObsStream, IM::Med, "Discovered segment length = %u\n", numFramesInSegment);
       break;
     }
-    if (IM::messageGlb(IM::ObsStream,IM::Med)) {
+    if (IM::messageGlb(IM::ObsStream,IM::High)) {
       printf("enqueue frame %u:", firstCookedFrameNum + currentCookedFrames);
       for (unsigned i=0; i < stream->numContinuous(); i+=1) {
 	printf(" %f", ((float *)newFrame)[i]);
@@ -226,7 +228,7 @@ StreamSource::enqueueFrames(unsigned nFrames) {
       assert(currentCookedFrames < numActiveFrames);
       currentCookedFrames += 1;
     }
-    infoMsg(IM::ObsStream, IM::Med, "enqueue: [%u,%u] @ [%u,%u / %u]\n", 
+    infoMsg(IM::ObsStream, IM::Med+1, "enqueue: [%u,%u] @ [%u,%u / %u]\n", 
 	    firstCookedFrameNum, firstCookedFrameNum+currentCookedFrames-1,
 	    firstCookedFrameIndex, firstCookedFrameIndex+currentCookedFrames-1,
 	    maxCookedFrames);
