@@ -4141,29 +4141,65 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
     error("ERROR: gmtkOnline does not support empty chunks\n");
   }
 
+
+  // We don't know how many frames are in the segment yet,
+  // so just assume it's very long. Should be OK, since the
+  // ZeroTable option just uses the minimum number of partitions.
+  // We'll reset the ptps_iterator's partition length later
+  // when we actually know it.
+
+#define FRAME_NUMBER_LIMIT (1073741824U)
+  (void) unroll(FRAME_NUMBER_LIMIT, ZeroTable, &totalNumberPartitions);
+
+
   // Try to read in enough frames for P' C'_1 C'_2 ... C'_\tau
 
   // Here |X| is the number of frames in partition X.
 
   // Assuming the segment is infinitely long, in the general case
-  // we need |P| + \tau s|C| + m|C| frames. The m|C| term is the
-  // worst case, where C' contains an observed variable in its
-  // (s+m)|C|^th frame. We really only need to load the frame
-  // containing the latest observed variable in C'_\tau, but
-  // we'll do that optimization later...  We won't be able to
-  // detect the C' -> E' transition, or handle segment lengths
+  // we need |P| + \tau s|C| + \delta_C' frames. 
+
+  // \delta_C' is the maximum # of frames into the C'_t, C'_{t+1} frame overlap
+  // in which C'_t contains an observed variable. That's how many
+  // frames beyond |P| + \tau s |C| we must read before we can compute the 
+  // posterior of P'.
+
+  // Let t_0 be the frame # of the latest observed variable in C'_1
+  // \delta_C' = max(0, t_0 - |P| - s|C| + 1) <= m|C|
+
+  // We may not be able to detect the C' -> E' transition, or handle segment lengths
   // incompatible with s & m.
 
   // We also need to preload startSkip frames so that they can be skipped :)
   // and the max Dlink lag so that the last modified section has sufficient future available.
-  
+
+  unsigned extraInterfaceFrames; // \delta_{C'}
+  {
+    unsigned maxObservedCPrime1Frame = 0; // frame # of latest observed variable in C'_1
+    unsigned lastFrameBeforeCPrime2 = fp.numFramesInP() + S * fp.numFramesInC() - 1; // last frame # before C'_2
+    vector<RV*> C = partitionStructureArray[1].allrvs_vec;
+    for (unsigned i=0; i < C.size(); i+=1) {
+      if (C[i]->observed() && C[i]->frame() > maxObservedCPrime1Frame) {
+	maxObservedCPrime1Frame = C[i]->frame();
+      }
+    }
+    infoMsg(IM::ObsStream, IM::Med+1, "frame # of latest observed variable in C'_1 is %u\n", maxObservedCPrime1Frame);
+    if (maxObservedCPrime1Frame > lastFrameBeforeCPrime2) {
+      extraInterfaceFrames = maxObservedCPrime1Frame - lastFrameBeforeCPrime2;
+    } else {
+      extraInterfaceFrames = 0;
+    }
+    assert(extraInterfaceFrames <= M * fp.numFramesInC());
+    infoMsg(IM::ObsStream, IM::Med, "Adding %u extra preload frames due to observed variables in C'C' interface\n", extraInterfaceFrames);
+  }
 
   unsigned tau = numSmoothingPartitions; // # of "future" C's for smoothing
 
   unsigned numPreloadFrames = 
     globalObservationMatrix->startSkip() + 
     fp.numFramesInP() + 
-    (tau * S + M ) * fp.numFramesInC() + 
+    tau * S * fp.numFramesInC() + 
+    extraInterfaceFrames +
     globalObservationMatrix->minFutureFrames();
   // Assume the above won't over-flow with so few frames
 
@@ -4180,10 +4216,9 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 
   unsigned numNewFrames = fp.numFramesInC() * S;  // read in this many frames for the next C'
 
-  infoMsg(IM::ObsStream, IM::Info, "preaload %u frames\n", numPreloadFrames);
+  infoMsg(IM::ObsStream, IM::Info, "preloading %u frames to smooth with %u modified sections\n", numPreloadFrames, tau);
   globalObservationMatrix->preloadFrames(numPreloadFrames);
 
-  // FIXME - should handle short segments!
   if (globalObservationMatrix->EOS()) return logpr(0.0);
 
   fprintf(f,"========\nSegment %u\n", globalObservationMatrix->segmentNumber());
@@ -4192,7 +4227,6 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
   unsigned currentMaxFrameNum;
   {
     unsigned T = globalObservationMatrix->numFrames();
-    unsigned tmp;
 
     bool rememberedViterbiScore = viterbiScore;
     viterbiScore = false; // avoid allocating space for O(T) viterbi values in unroll()
@@ -4204,32 +4238,18 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 	return logpr(0.0);
       }
       T -= globalObservationMatrix->minFutureFrames(); // fake -endSkip
-
-      // We already know the length of this segment (it's probably
-      // very short, since we only try to pre-load enough frames to
-      // process P' & tau C's), so we can pass the true number of
-      // frames to unroll...
-      
-      tmp = unroll(T,ZeroTable,&totalNumberPartitions);
-      truePtLen = totalNumberPartitions;
       currentMaxFrameNum  = T;
     } else {
-      // We don't know how many frames are in the segment yet,
-      // so just assume it's very long. Should be OK, since the
-      // ZeroTable option just uses the minimum number of partitions.
-      // We'll reset the ptps_iterator's partition length later
-      // when we actually know it.
-
-#define FRAME_NUMBER_LIMIT (1073741824U)
-      tmp = unroll(FRAME_NUMBER_LIMIT, ZeroTable, &totalNumberPartitions);
       currentMaxFrameNum = numPreloadFrames;
     }
     infoMsg(IM::Inference, IM::Info, "onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
     
     viterbiScore = rememberedViterbiScore;  // do compute viterbi values in deScatterOutofRoot()? (max-product semiring)
-  
+
+#if 0  
     if (numUsableFrames) 
       *numUsableFrames = tmp;
+#endif
     // limit scope of tmp.
   }
   if (numPartitionsDone)
