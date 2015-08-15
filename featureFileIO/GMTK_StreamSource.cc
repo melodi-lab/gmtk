@@ -83,9 +83,7 @@ StreamSource::initialize(unsigned queueLength, unsigned startSkip)
 
 void
 StreamSource::preloadFrames(unsigned nFrames) {
-if (numActiveFrames < nFrames) printf("preloadFrames(%u) but numActiveFrames == %u\n", nFrames, numActiveFrames);
   assert(numActiveFrames >= nFrames);
-//fprintf(stdout, "preloadFrames(%u)\n", nFrames);
   if (nFrames >  maxCookedFrames / 2) {
       error("ERROR: StreamSource::enqueueFrames -streamBufferSize must be at least %u MB\n",
 	    1 + numActiveFrames * 2 / (1024*1024) );
