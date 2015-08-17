@@ -4121,26 +4121,16 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 				const bool cliquePosteriorUnlog)
 {
 
+  if (fp.numFramesInC() == 0) {
+    error("ERROR: gmtkOnline does not support empty chunks\n");
+  }
+
   if (!f) f = stdout; // just for console progress logging
 
   // Unroll, but do not use the long table array (2nd parameter is
   // false) for allocation, but get back the long table length
   // in a local variable for use in our iterator.
   unsigned totalNumberPartitions;
-
-  unsigned M = gm_template.M;
-  unsigned S = gm_template.S;
-
-  // GMParms has checked that -startSkip is big enough
-
-  // The StreamSource doesn't implement -endSkip since the
-  // stream's length is unknown, but ObservationSource::minFutureFrames()
-  // has the correct number of frames to skip at the end
-
-  if (fp.numFramesInC() == 0) {
-    error("ERROR: gmtkOnline does not support empty chunks\n");
-  }
-
 
   // We don't know how many frames are in the segment yet,
   // so just assume it's very long. Should be OK, since the
@@ -4153,6 +4143,9 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 
 
   // Try to read in enough frames for P' C'_1 C'_2 ... C'_\tau
+  //                               or P' C'_1 C'_2 ... C'_{\tau-1} E'
+  unsigned M = gm_template.M;
+  unsigned S = gm_template.S;
 
   // Here |X| is the number of frames in partition X.
 
@@ -4167,30 +4160,43 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
   // Let t_0 be the frame # of the latest observed variable in C'_1
   // \delta_C' = max(0, t_0 - |P| - s|C| + 1) <= m|C|
 
-  // We may not be able to detect the C' -> E' transition, or handle segment lengths
-  // incompatible with s & m.
+  // If |E|=0, we can safely treat the last section as C', so in that case
+  // we don't need to read any extra frames to handle finite length segments.
+  // If E is not empty, we need to preload |P| + \tau s |C| + m|C| + |E| frames
+  // to detect the C' to E' transition in time for inference to work correctly.
 
   // We also need to preload startSkip frames so that they can be skipped :)
   // and the max Dlink lag so that the last modified section has sufficient future available.
 
+  // GMParms has checked that -startSkip is big enough
+
+  // The StreamSource doesn't implement -endSkip since the
+  // stream's length is unknown, but ObservationSource::minFutureFrames()
+  // has the correct number of frames to skip at the end
+
   unsigned extraInterfaceFrames; // \delta_{C'}
   {
-    unsigned maxObservedCPrime1Frame = 0; // frame # of latest observed variable in C'_1
-    unsigned lastFrameBeforeCPrime2 = fp.numFramesInP() + S * fp.numFramesInC() - 1; // last frame # before C'_2
-    vector<RV*> C = partitionStructureArray[1].allrvs_vec;
-    for (unsigned i=0; i < C.size(); i+=1) {
-      if (C[i]->observed() && C[i]->frame() > maxObservedCPrime1Frame) {
-	maxObservedCPrime1Frame = C[i]->frame();
+    if (0 == fp.numFramesInE()) {
+      unsigned maxObservedCPrime1Frame = 0; // frame # of latest observed variable in C'_1
+      unsigned lastFrameBeforeCPrime2 = fp.numFramesInP() + S * fp.numFramesInC() - 1; // last frame # before C'_2
+      vector<RV*> C = partitionStructureArray[1].allrvs_vec;
+      for (unsigned i=0; i < C.size(); i+=1) {
+	if (C[i]->observed() && C[i]->frame() > maxObservedCPrime1Frame) {
+	  maxObservedCPrime1Frame = C[i]->frame();
+	}
       }
-    }
-    infoMsg(IM::ObsStream, IM::Med+1, "frame # of latest observed variable in C'_1 is %u\n", maxObservedCPrime1Frame);
-    if (maxObservedCPrime1Frame > lastFrameBeforeCPrime2) {
-      extraInterfaceFrames = maxObservedCPrime1Frame - lastFrameBeforeCPrime2;
+      infoMsg(IM::ObsStream, IM::Med+1, "frame # of latest observed variable in C'_1 is %u\n", maxObservedCPrime1Frame);
+      if (maxObservedCPrime1Frame > lastFrameBeforeCPrime2) {
+	extraInterfaceFrames = maxObservedCPrime1Frame - lastFrameBeforeCPrime2;
+      } else {
+	extraInterfaceFrames = 0;
+      }
+      assert(extraInterfaceFrames <= M * fp.numFramesInC());
+      infoMsg(IM::ObsStream, IM::Med, "Adding %u extra preload frames due to observed variables in C'C' interface\n", extraInterfaceFrames);
     } else {
-      extraInterfaceFrames = 0;
+      extraInterfaceFrames = M * fp.numFramesInC();
+      infoMsg(IM::ObsStream, IM::Med, "Adding %u extra preload frames to detect C' to E' transition\n", extraInterfaceFrames + fp.numFramesInE());
     }
-    assert(extraInterfaceFrames <= M * fp.numFramesInC());
-    infoMsg(IM::ObsStream, IM::Med, "Adding %u extra preload frames due to observed variables in C'C' interface\n", extraInterfaceFrames);
   }
 
   unsigned tau = numSmoothingPartitions; // # of "future" C's for smoothing
@@ -4199,9 +4205,10 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
     globalObservationMatrix->startSkip() + 
     fp.numFramesInP() + 
     tau * S * fp.numFramesInC() + 
+    fp.numFramesInE() + 
     extraInterfaceFrames +
     globalObservationMatrix->minFutureFrames();
-  // Assume the above won't over-flow with so few frames
+  // Assume the above won't over-flow the frame # with so few frames
 
   // setCurrentInferenceShiftTo(C'_t) may need the frames for C'_{t-1}: (S+M)|C| extra frames
   // Note that these don't count towards the lag - we're just making extra space in the
