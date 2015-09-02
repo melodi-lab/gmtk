@@ -1,0 +1,16 @@
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/572 is fixed
+
+# If it's working, gmtkJT should not crash
+
+AT_SETUP([HDF5 clique posterior output (ticket 572)])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/simple_hmm_1])
+AT_SKIP_IF([test ! -f $TEST_AND_DEV/pfiles/ex_short.pfile])
+
+AT_CHECK([(cd $TEST_AND_DEV/simple_hmm_1 && \
+  gmtkJT -iswp1 -strFile ex.str -of1 ../pfiles/ex_short.pfile -nf1 26 \
+         -inputMasterFile ex.params \
+         -cCliquePrintRange 0 -cliquePrintFormat hdf5 \
+         -cliqueOutputFileName posterior_hdf5 \
+         -cliqueListFileName posterior.hdf5)])
+
+AT_CLEANUP
