@@ -11,6 +11,6 @@ AT_CHECK([(cd $TEST_AND_DEV/simple_hmm_1 && \
          -inputMasterFile ex.params \
          -cCliquePrintRange 0 -cliquePrintFormat hdf5 \
          -cliqueOutputFileName posterior_hdf5 \
-         -cliqueListFileName posterior.hdf5)])
+         -cliqueListFileName posterior.hdf5)],[],[ignore])
 
 AT_CLEANUP
