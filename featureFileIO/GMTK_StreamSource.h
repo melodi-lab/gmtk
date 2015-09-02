@@ -89,6 +89,9 @@ class StreamSource : public ObservationSource {
     this->numActiveFrames = numActiveFrames; 
   }
 
+  unsigned getActiveFrameCount() { return numActiveFrames; }
+
+
   // Resets queue state for starting a new segment & preloads
   // the requested # of frames into the active region of the queue
 
@@ -127,6 +130,7 @@ class StreamSource : public ObservationSource {
   // returns the # of the first frame in the queue (to support frame number 
   // wrap-around in gmtkOnline)
   unsigned firstFrameInQueue() { return firstCookedFrameNum; }
+  unsigned lastFrameInQueue() { return firstCookedFrameNum + currentCookedFrames - 1; }
 
   bool EOS() { 
     assert(stream);
