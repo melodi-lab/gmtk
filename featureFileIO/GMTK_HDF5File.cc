@@ -251,7 +251,10 @@ HDF5File::HDF5File(const char *name, unsigned num,
 
 // write ctor
 HDF5File::HDF5File(char const *listFileName, char const *outputFileName, unsigned nfloats, unsigned nints)
-  : fofName(listFileName), hdf5Name(outputFileName)
+  : cppCommandOptions(NULL), numSlabs(0), curSegment(0), buffer(NULL), curFile(NULL), 
+    fileName(NULL), groupName(NULL), xStart(NULL), yStart(NULL), xStride(NULL), yStride(NULL),
+    xCount(NULL), yCount(NULL), fofName(listFileName), hdf5Name(outputFileName), 
+    curFrame(0), curFeature(0), frameCount(0), segStart(0), contDataspace(NULL), discDataspace(NULL)
 {
   if (fofName) {
     if ((listFile = fopen(fofName, "w")) == NULL) {
@@ -266,12 +269,6 @@ HDF5File::HDF5File(char const *listFileName, char const *outputFileName, unsigne
 
   frameBuffer = new Data32[_numFeatures];
   
-  curSegment = 0;
-  curFrame = 0;
-  curFeature = 0;
-  frameCount = 0;
-  segStart = 0;
-
   try {
     // Let GMTK do the error logging
     Exception::dontPrint();
@@ -318,9 +315,6 @@ HDF5File::HDF5File(char const *listFileName, char const *outputFileName, unsigne
       discDataset = outputFile->createDataSet(datasetName, PredType::NATIVE_UINT32, *discDataspace, prop);
     }
   } catch(Exception err) {
-err.printError(stderr);
-fprintf(stderr, "%s\n", err.getCFuncName());
-fflush(stderr);
     string errmsg("ERROR: creating HDF5 output file '");
     errmsg = (errmsg + outputFileName) + "' failed:\n";
     errmsg = errmsg + err.getCDetailMsg();
@@ -331,13 +325,17 @@ fflush(stderr);
 
 HDF5File::~HDF5File() {
   if (fileName) {
-    for (unsigned i=0; i < numSlabs; i+=1) 
+    for (unsigned i=0; i < numSlabs; i+=1) {
+      assert(fileName[i]);
       free((void*)fileName[i]);
+    }
     delete [] fileName;
   }
   if (groupName) {
-    for (unsigned i=0; i < numSlabs; i+=1)
+    for (unsigned i=0; i < numSlabs; i+=1) {
+      assert(groupName[i]);
       free((void *)groupName[i]);
+    }
     delete [] groupName;
   }
   if (xStart)  delete xStart;
@@ -400,9 +398,6 @@ HDF5File::writeFeature(Data32 x) {
 	discDataset.write(frameBuffer+_numContinuousFeatures, PredType::NATIVE_UINT32, memspace, filespace);
       }
     } catch(Exception err) {
-err.printError(stderr);
-fprintf(stderr, "%s\n", err.getCFuncName());
-fflush(stderr);
       string errmsg("ERROR: writing to HDF5 output file '");
       errmsg = (errmsg + hdf5Name) + "' failed:\n";
       errmsg = errmsg + err.getCDetailMsg();
@@ -426,6 +421,7 @@ HDF5File::endOfSegment() {
     fprintf(listFile,"%s:/discrete:%u,0;1,1;%u,%u\n", hdf5Name, segStart, curFrame-segStart, _numDiscreteFeatures);
   }
   segStart = curFrame;
+  curSegment += 1;
 }
 
 
