@@ -4102,6 +4102,54 @@ JunctionTree::probEvidenceFixedUnroll(const unsigned int numFrames,
 }
 
 
+void
+JunctionTree::enqueueMoreFrames(unsigned &truePtLen, unsigned part, StreamSource *globalObservationMatrix, 
+				unsigned numNewFrames, unsigned *numUsableFrames)
+{
+  // ticket #468 - skip enqueue on first iteration if P is empty to keep PCCE first
+  // C observation data available in the queue
+  if (truePtLen == 0 && (part > 1 || fp.numFramesInP() > 0)) {  // if truePtLen is known, no need to read more frames
+    // read in the same # of frames that we're about to consume to maintain
+    // enough queued frames to be sure we don't overshoot the C'->E' transition
+    (void) globalObservationMatrix->enqueueFrames(numNewFrames);
+  }
+  // update the ptps_iterator if we just found out the true length of the segment
+  if (truePtLen == 0 && globalObservationMatrix->numFrames() != 0) {
+    unsigned basicTempMaxUnrollAmnt;
+    unsigned basicTempMinUnrollAmnt;
+    int      modTempMaxUnrollAmnt;
+    int      modTempMinUnrollAmnt;
+    unsigned numUsableFrm;
+    unsigned frmStart;
+    unsigned T;
+    
+    if ( globalObservationMatrix->numFrames() <= globalObservationMatrix->minFutureFrames() )
+      error("Segment of %d frames too short as model requires at least %d frames\n", 
+	    globalObservationMatrix->numFrames() + globalObservationMatrix->minPastFrames(), 
+	    globalObservationMatrix->minPastFrames() + fp.numFramesInP() + fp.numFramesInE() + globalObservationMatrix->minFutureFrames());
+    
+    T  = globalObservationMatrix->numFrames() - globalObservationMatrix->minFutureFrames();
+    if (!gm_template.computeUnrollParameters(T,
+					     basicTempMaxUnrollAmnt,
+					     basicTempMinUnrollAmnt,
+					     modTempMaxUnrollAmnt,
+					     modTempMinUnrollAmnt,
+					     numUsableFrm,
+					     frmStart))
+      error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. "
+	    "Use longer utterances, different template, or decrease M,S if >1.\n",
+	    T,
+	    fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
+	    fp.numFrames(),
+	    gm_template.M,gm_template.S);
+    
+    truePtLen = modTempMaxUnrollAmnt + 3;
+    inference_it.set_pt_len(truePtLen);
+    if (numUsableFrames) 
+      *numUsableFrames = numUsableFrm;
+    
+  } // if just discovered segment length
+}
 
 
 // DBN online filtering/smoothing
@@ -4121,6 +4169,10 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 				const bool cliquePosteriorUnlog)
 {
 
+  if (fp.numFramesInC() == 0) {
+    error("ERROR: gmtkOnline does not support empty chunks\n");
+  }
+
   if (!f) f = stdout; // just for console progress logging
 
   // Unroll, but do not use the long table array (2nd parameter is
@@ -4128,8 +4180,47 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
   // in a local variable for use in our iterator.
   unsigned totalNumberPartitions;
 
+  // We don't know how many frames are in the segment yet,
+  // so just assume it's very long. Should be OK, since the
+  // ZeroTable option just uses the minimum number of partitions.
+  // We'll reset the ptps_iterator's partition length later
+  // when we actually know it.
+
+#if 1
+#  define FRAME_NUMBER_LIMIT (1073741824U)
+#else
+  // to force frequent overflows for testing
+#  define FRAME_NUMBER_LIMIT (60U)
+#endif
+
+  (void) unroll(FRAME_NUMBER_LIMIT, ZeroTable, &totalNumberPartitions);
+
+
+  // Try to read in enough frames for P' C'_1 C'_2 ... C'_\tau
+  //                               or P' C'_1 C'_2 ... C'_{\tau-1} E'
   unsigned M = gm_template.M;
   unsigned S = gm_template.S;
+
+  // Here |X| is the number of frames in partition X.
+
+  // Assuming the segment is infinitely long, in the general case
+  // we need |P| + \tau s|C| + \delta_C' frames. 
+
+  // \delta_C' is the maximum # of frames into the C'_t, C'_{t+1} frame overlap
+  // in which C'_t contains an observed variable. That's how many
+  // frames beyond |P| + \tau s |C| we must read before we can compute the 
+  // posterior of P'.
+
+  // Let t_0 be the frame # of the latest observed variable in C'_1
+  // \delta_C' = max(0, t_0 - |P| - s|C| + 1) <= m|C|
+
+  // If |E|=0, we can safely treat the last section as C', so in that case
+  // we don't need to read any extra frames to handle finite length segments.
+  // If E is not empty, we need to preload |P| + \tau s |C| + m|C| + |E| frames
+  // to detect the C' to E' transition in time for inference to work correctly.
+
+  // We also need to preload startSkip frames so that they can be skipped :)
+  // and the max Dlink lag so that the last modified section has sufficient future available.
 
   // GMParms has checked that -startSkip is big enough
 
@@ -4137,38 +4228,47 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
   // stream's length is unknown, but ObservationSource::minFutureFrames()
   // has the correct number of frames to skip at the end
 
-  if (fp.numFramesInC() == 0) {
-    error("ERROR: gmtkOnline does not support empty chunks\n");
+  unsigned extraInterfaceFrames; // \delta_{C'}
+  {
+    if (0 == fp.numFramesInE()) {
+      unsigned maxObservedCPrime1Frame = 0; // frame # of latest observed variable in C'_1
+      unsigned lastFrameBeforeCPrime2 = fp.numFramesInP() + S * fp.numFramesInC() - 1; // last frame # before C'_2
+      vector<RV*> C = partitionStructureArray[1].allrvs_vec;
+      for (unsigned i=0; i < C.size(); i+=1) {
+	if (C[i]->observed() && C[i]->frame() > maxObservedCPrime1Frame) {
+	  maxObservedCPrime1Frame = C[i]->frame();
+	}
+      }
+      infoMsg(IM::ObsStream, IM::Med+1, "frame # of latest observed variable in C'_1 is %u\n", maxObservedCPrime1Frame);
+      if (maxObservedCPrime1Frame > lastFrameBeforeCPrime2) {
+	extraInterfaceFrames = maxObservedCPrime1Frame - lastFrameBeforeCPrime2;
+      } else {
+	extraInterfaceFrames = 0;
+      }
+      assert(extraInterfaceFrames <= M * fp.numFramesInC());
+      infoMsg(IM::ObsStream, IM::Med, "Adding %u extra preload frames due to observed variables in C'C' interface\n", extraInterfaceFrames);
+    } else {
+      extraInterfaceFrames = M * fp.numFramesInC();
+      infoMsg(IM::ObsStream, IM::Med, "Adding %u extra preload frames to detect C' to E' transition\n", extraInterfaceFrames + fp.numFramesInE());
+    }
   }
 
-  // Try to read in enough frames for P' C' C' C' E'
-  // because we need enough frames in the queue to notice the
-  // C' to E' transition before inference needs to start working
-  // on E'. Also, if we need to reset the frame # due to overflow,
-  // we want to come back to the C'C' state (rather than P'C').
-  // So, we "work" on the middle C', with the following C'E' as
-  // "runway" to notice the end of stream, and the preceeding C'
-  // in case of frame # overflow. When we start doing smoothing,
-  // we will also need to include the C's for the "psuedofuture".
-
-  // Now we also need to preload startSkip frames so that they
-  // can be skipped :) and the max Dlink lag so that the last
-  // partition has sufficient future available.
-  
-  // The (3S + M) is because P'C' share M|C| frames, then each
-  // C' requires S|C| new frames (the last C' and E' share
-  // M|C| frames, but they're already counted in the C's). Here
-  // |X| is the number of frames in partition X.
-
   unsigned tau = numSmoothingPartitions; // # of "future" C's for smoothing
+
   unsigned numPreloadFrames = 
-    2 + // setCurrentInferenceShiftTo may need up to 2 frames prior to the asked-for position
     globalObservationMatrix->startSkip() + 
     fp.numFramesInP() + 
-    ( (3+tau) * S + M ) * fp.numFramesInC() + 
-    fp.numFramesInE() +
+    tau * S * fp.numFramesInC() + 
+    fp.numFramesInE() + 
+    extraInterfaceFrames +
     globalObservationMatrix->minFutureFrames();
-  // Assume the above won't over-flow with just 5 + \tau partitions
+  // Assume the above won't over-flow the frame # with so few frames
+  assert(FRAME_NUMBER_LIMIT > numPreloadFrames);
+
+  // setCurrentInferenceShiftTo(C'_t) may need the frames for C'_{t-1}: (S+M)|C| extra frames
+  // Note that these don't count towards the lag - we're just making extra space in the
+  // buffer to hold the old C' frames, we're not preloading them.
+  globalObservationMatrix->setActiveFrameCount(numPreloadFrames + (S+M) * fp.numFramesInC());
 
   bool overflow = false; // true iff we had to reset the frame # due to more than ~ 2^30 frames
 
@@ -4176,19 +4276,18 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
   // processed more than \tau partitions, and we can instantiate the first 2(\tau + 1) partitions
   // without the frame number overflowing
 
-  unsigned numNewFrames = fp.numFramesInC() * S;
+  unsigned numNewFrames = fp.numFramesInC() * S;  // read in this many frames for the next C'
 
-  infoMsg(IM::ObsStream, IM::Info, "preaload %u frames\n", numPreloadFrames);
+  infoMsg(IM::ObsStream, IM::Info, "preloading %u frames to smooth with %u modified sections\n", numPreloadFrames, tau);
   globalObservationMatrix->preloadFrames(numPreloadFrames);
+
   if (globalObservationMatrix->EOS()) return logpr(0.0);
 
   fprintf(f,"========\nSegment %u\n", globalObservationMatrix->segmentNumber());
 
   unsigned truePtLen = 0; // 0 until we know the true number of modified partitions
-  unsigned currentMaxFrameNum;
   {
     unsigned T = globalObservationMatrix->numFrames();
-    unsigned tmp;
 
     bool rememberedViterbiScore = viterbiScore;
     viterbiScore = false; // avoid allocating space for O(T) viterbi values in unroll()
@@ -4200,33 +4299,10 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 	return logpr(0.0);
       }
       T -= globalObservationMatrix->minFutureFrames(); // fake -endSkip
-
-      // We already know the length of this segment (it's probably
-      // very short, since we only try to pre-load enough frames to
-      // process P' C' C' C' E'), so we can pass the true number of
-      // frames to unroll...
-      
-      tmp = unroll(T,ZeroTable,&totalNumberPartitions);
-      truePtLen = totalNumberPartitions;
-      currentMaxFrameNum  = T;
-    } else {
-      // We don't know how many frames are in the segment yet,
-      // so just assume it's very long. Should be OK, since the
-      // ZeroTable option just uses the minimum number of partitions.
-      // We'll reset the ptps_iterator's partition length later
-      // when we actually know it.
-
-#define FRAME_NUMBER_LIMIT (1073741824U)
-      tmp = unroll(FRAME_NUMBER_LIMIT, ZeroTable, &totalNumberPartitions);
-      currentMaxFrameNum = numPreloadFrames;
     }
     infoMsg(IM::Inference, IM::Info, "onlineFixedUnroll: total # partitions %u\n", totalNumberPartitions);
     
     viterbiScore = rememberedViterbiScore;  // do compute viterbi values in deScatterOutofRoot()? (max-product semiring)
-  
-    if (numUsableFrames) 
-      *numUsableFrames = tmp;
-    // limit scope of tmp.
   }
   if (numPartitionsDone)
     *numPartitionsDone = 0;
@@ -4270,39 +4346,58 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
   vector<bool> cregex_mask;
   vector<bool> eregex_mask;
   
+  // FIXME: it looks like we do support writing posteriors to files - this should be symmetric...
   FILE *vitFile = NULL; // I don't think we support writing output to files since the size is unbounded
 
 
-  unsigned numBufferedPartitions = tau > 0 ? numSmoothingPartitions + 1 : 2;
+  unsigned numBufferedPartitions = tau > 0 ? tau + 1 : 2;
   vector<PartitionTables *> partitionBuffer(numBufferedPartitions, NULL);
 
 
-  // C' must end at frame <= FRAME_NUMBER_LIMIT to avoid overflow
+  // C' (or E') must end at frame <= FRAME_NUMBER_LIMIT to avoid overflow
   
-  // We also want to only trigger overflow after processing a partition such that
+  // We also want to only trigger overflow after processing a section such that
   //    part % (\tau + 1) = \tau - 1 
-  // so that the new partition lands in the last slot of the partition buffer and doesn't 
-  // stomp on the \tau previous partitions
+  // so that the new section lands in the last slot of the section buffer and doesn't 
+  // stomp on the \tau previous sections
   
-  // The i^th C' (i starts at 1 since P' is 0) begins at frame |P| + (i-1)S|C| and ends at frame |P| + iS|C| + M|C| - 1
-  
-  // So we want to find the largest x <= FRAME_NUMBER_LIMIT such that 
-  //      x = |P| + iS|C| + M|C| - 1
-  // and  i % (\tau + 1) = \tau - 1             (only if we're smoothing, ie \tau > 0)
+  // The i^th C' (i starts at 1 since P' is 0) 
+  //                       begins at frame |P| + (i-1)S|C|                     and 
+  //                         ends at frame |P| +   i  S|C| +       M|C| - 1
+  // An E' following i-1 C's ends at frame |P| + (i-1)S|C| + |E| + M|C| - 1
 
-  // Now the above is complicated by the fact that the frame queue must contain frames ahead of the
-  // partition inference is working on - at least a C' and E' to ensure that the end of the frame 
-  // stream can be detected before inference needs to start working on E'. So, we'll reset the frame
-  // numbers when inference hits the partition_number_limit, but reduce FRAME_NUMBER_LIMIT by
-  // numPreloadFrames to ensure the currentMaxFrameNum doesn't overflow.
-  assert(numPreloadFrames < FRAME_NUMBER_LIMIT);
-  unsigned partition_number_limit = (FRAME_NUMBER_LIMIT - numPreloadFrames - fp.numFramesInP() - M * fp.numFramesInC() + 1) / (S * fp.numFramesInC());
+  // So we want to find the modified section with largest last frame # x <= FRAME_NUMBER_LIMIT such that 
+  //      x = |P| + (i-1)S|C| + max(S|C|, |E|) + M|C| - 1
+  // and  i % (\tau + 1) = \tau - 1                            (only if we're smoothing, ie \tau > 0)
+
+  // HOWEVER, the above analysis is irrelevant, since the preloaded frames' numbers are
+  // running ahead of the last frame of the section we're currently running inference on...
+  // The difference between the frame # inference is working on and the last frame # in the
+  // active area of the frame queue can be up to globalObservationMatrix->getActiveFrameCount()
+  assert(FRAME_NUMBER_LIMIT > globalObservationMatrix->getActiveFrameCount());
+  unsigned partition_number_limit = (FRAME_NUMBER_LIMIT - globalObservationMatrix->getActiveFrameCount() ) / (S * fp.numFramesInC());
  
   if (numSmoothingPartitions > 0) {
-    if ( partition_number_limit % numBufferedPartitions != (numSmoothingPartitions-1) ) {
+    if ( partition_number_limit % numBufferedPartitions != (tau-1) ) {
       partition_number_limit = ( partition_number_limit / numBufferedPartitions - 1 ) * numBufferedPartitions + numSmoothingPartitions - 1;
     }
+    //    assert(partition_number_limit > 2*tau+1); // resetting to C'_{2\tau+1}, so limit must be larger than that
+    assert(partition_number_limit > 3*tau+2); // resetting to C'_{3\tau+2}, so limit must be larger than that
+    assert(partition_number_limit % numBufferedPartitions == tau - 1);
+  } else {
+    // overflow C'_\theta to C'_2
+    // resetting to C'_2, so limit must be > 2. Might need to subtract 1, so must be > 3. Must be even, so must be > 4.
+    assert(partition_number_limit > 4); 
+    if ( partition_number_limit % 2 != 0 ) {
+      partition_number_limit -= 1;
+    }
+    assert(partition_number_limit > 2);
+    assert(partition_number_limit % 2 == 0);
   }
+  // Let \theta = partition_mumber_limit. Instead of incrementing from 
+  // C'_{\theta-1} to C'_{theta), we're going to wrap section C'_{\theta} to C'_{2\tau + 1}
+  // and renumber the frames to match. We go to 2\tau+1 because if we went
+  // to C'_{\tau}, we'd try to print P' again during the smoothing pass...
 
   // Set up our iterator, write over the member island iterator since
   // we assume the member does not have any dynamc sub-members.
@@ -4379,7 +4474,8 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 			false, posteriorFile);			
       }
     } 
-  }
+    enqueueMoreFrames(truePtLen, 0, globalObservationMatrix, numNewFrames, numUsableFrames);
+  } // handle scatter & print P' if filtering
   fflush(f); if (!posteriorFile) fflush(stdout);
   
   unsigned part, cur_part_idx, prev_part_idx;
@@ -4543,72 +4639,41 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 	overflow = true;
 	
 	if (numSmoothingPartitions > 0) {
-	  assert( (part % numBufferedPartitions) == (numSmoothingPartitions - 1) );
-
+	  assert( (part % numBufferedPartitions) == (tau - 1) );
+	  //	  assert( part > 2 * tau + 1 );
+	  assert(part > 3 * tau + 2);
 	  unsigned firstFrameOfCurrentPart = fp.numFramesInP() + (part-1) * S * fp.numFramesInC();
-	  assert( globalObservationMatrix->firstFrameInQueue() <= firstFrameOfCurrentPart && firstFrameOfCurrentPart <= currentMaxFrameNum );
-	  unsigned delta = firstFrameOfCurrentPart - globalObservationMatrix->firstFrameInQueue();
-	  unsigned firstFrameOfResetPart = fp.numFramesInP() + (2 * numSmoothingPartitions - 1) * S * fp.numFramesInC();
-	  unsigned firstFrame = firstFrameOfResetPart - delta;
+	  assert( globalObservationMatrix->firstFrameInQueue() <= firstFrameOfCurrentPart && firstFrameOfCurrentPart <= globalObservationMatrix->lastFrameInQueue() );
+	  unsigned firstFrameOfResetPart = fp.numFramesInP() + (3 * tau) * S * fp.numFramesInC(); // current section's first frame # after reset to section C'_{3 \tau+ 1}
+	  assert( firstFrameOfCurrentPart > firstFrameOfResetPart );
+	  unsigned delta = firstFrameOfCurrentPart - firstFrameOfResetPart;
+	  assert( globalObservationMatrix->firstFrameInQueue() >= delta);
+	  unsigned firstFrame = globalObservationMatrix->firstFrameInQueue() - delta;
 	  infoMsg(IM::Inference, IM::Info, "resetting first queued frame number to %u\n", firstFrame);
 	  globalObservationMatrix->resetFrameNumbers(firstFrame);
-	  currentMaxFrameNum = firstFrame + numPreloadFrames;
-	  infoMsg(IM::Inference, IM::Info, "resetting ptps to partition %u\n", 2 * numSmoothingPartitions + 1);
-	  part = 2 * numSmoothingPartitions; // continue @ partition 2 \tau + 1, about to increment part at top of loop
+	  infoMsg(IM::Inference, IM::Info, "resetting ptps to partition %u to %u\n", part, 2 * numSmoothingPartitions);
+	  //	  part = 2 * numSmoothingPartitions; // continue @ partition 2 \tau + 1, about to increment part at top of loop
+	  part = 3 * tau + 1; // continue @ section 3 \tau + 2, about to increment part at top of loop
 	  // don't reset to partition \tau or it'll print P' on every overflow
+	  // don't reset to partition 2\tau+1 or reset frame #s may underflow for small \tau
 	} else {
-	  infoMsg(IM::Inference, IM::Info, "resetting frame number to 0\n");
-	  globalObservationMatrix->resetFrameNumbers(0);
-	  currentMaxFrameNum = numPreloadFrames;
-	  infoMsg(IM::Inference, IM::Info, "resetting ptps to partition 2");
-	  part = 1; // about to increment part at top of loop, so going to partition 2 (2nd C' in P' C' C' C' E')
+	  assert( part % 2 == 0 );
+	  assert( part > 3); // P' C'_1 can't be reused, resetting to C'_2, C'_3, so current section must be later than that
+	  unsigned firstFrameOfCurrentPart = fp.numFramesInP() + (part-1) * S * fp.numFramesInC();
+	  assert( globalObservationMatrix->firstFrameInQueue() <= firstFrameOfCurrentPart && firstFrameOfCurrentPart <= globalObservationMatrix->lastFrameInQueue() );
+	  unsigned firstFrameOfResetPart = fp.numFramesInP() + S * fp.numFramesInC(); // current section's first frame # after reset to section C'_2
+	  assert( firstFrameOfCurrentPart > firstFrameOfResetPart );
+	  unsigned delta = firstFrameOfCurrentPart - firstFrameOfResetPart;
+	  assert( globalObservationMatrix->firstFrameInQueue() >= delta);
+	  unsigned firstFrame = globalObservationMatrix->firstFrameInQueue() - delta;
+	  infoMsg(IM::Inference, IM::Info, "resetting first queued frame number to %u\n", firstFrame);
+	  globalObservationMatrix->resetFrameNumbers(firstFrame);
+	  infoMsg(IM::Inference, IM::Info, "resetting ptps section %u to 3\n", part);
+	  part = 2; // continue @ section 3, about to increment part at top of loop
 	}
       }
 
-      // ticket #468 - skip enqueue on first iteration if P is empty to keep PCCE first
-      // C observation data available in the queue
-      if (truePtLen == 0 && (part > 1 || fp.numFramesInP() > 0)) {  // if truePtLen is known, no need to read more frames
-	// read in the same # of frames that we're about to consume to maintain
-	// enough queued frames to be sure we don't overshoot the C'->E' transition
-	unsigned nQueued = globalObservationMatrix->enqueueFrames(numNewFrames);
-	currentMaxFrameNum += nQueued;
-      }
-      // update the ptps_iterator if we just found out the true length of the segment
-      if (truePtLen == 0 && globalObservationMatrix->numFrames() != 0) {
-	unsigned basicTempMaxUnrollAmnt;
-	unsigned basicTempMinUnrollAmnt;
-	int      modTempMaxUnrollAmnt;
-	int      modTempMinUnrollAmnt;
-	unsigned numUsableFrm;
-	unsigned frmStart;
-	unsigned T;
-	
-	if ( globalObservationMatrix->numFrames() <= globalObservationMatrix->minFutureFrames() )
-	  error("Segment of %d frames too short as model requires at least %d frames\n", 
-		globalObservationMatrix->numFrames() + globalObservationMatrix->minPastFrames(), 
-		globalObservationMatrix->minPastFrames() + fp.numFramesInP() + fp.numFramesInE() + globalObservationMatrix->minFutureFrames());
-	
-	T  = globalObservationMatrix->numFrames() - globalObservationMatrix->minFutureFrames();
-	if (!gm_template.computeUnrollParameters(T,
-						 basicTempMaxUnrollAmnt,
-						 basicTempMinUnrollAmnt,
-						 modTempMaxUnrollAmnt,
-						 modTempMinUnrollAmnt,
-						 numUsableFrm,
-						 frmStart))
-	  error("Segment of %d frames too short with current GMTK template of length [P=%d,C=%d,E=%d] %d frames, and M=%d,S=%d boundary parameters. "
-		"Use longer utterances, different template, or decrease M,S if >1.\n",
-		T,
-		fp.numFramesInP(),fp.numFramesInC(),fp.numFramesInE(),
-		fp.numFrames(),
-		gm_template.M,gm_template.S);
-	
-	truePtLen = modTempMaxUnrollAmnt + 3;
-	inference_it.set_pt_len(truePtLen);
-	if (numUsableFrames) 
-	  *numUsableFrames = numUsableFrm;
-	
-      } // if just discovered segment length
+      enqueueMoreFrames(truePtLen, part, globalObservationMatrix, numNewFrames, numUsableFrames);
 
     } // if handled the first \tau partitions
         
@@ -4703,7 +4768,22 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
       cur_part_tab = partitionBuffer[cur_part_idx];
       
       PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
-      
+
+      // Why is the deScatterOutofRoot() here? The C's printed during the main loop are printed immediately
+      // after their deScatterOutofRoot(), so the C' RVs are left in the max probability values. However,
+      // this code is printing the last \tau C's, which have experienced a "normal" backwards pass - 
+      // C'[ T-\tau] will be the last C' to have been deScatterOutofRoot()ed, so the C' shared structure RVs
+      // will be "stuck" at that partition's max probability values for the last \tau C's. Calling 
+      // deScatterOutofRoot() here right before printing the C' ensures that it is set to the correct values.
+      // This does mean that the last \tau partitions get scattered twice. This could possibly be avoided 
+      // by having a circular buffer of length \tau+1 for the packed RV values, but that would add work for
+      // every partition instead of just the last \tau.
+      deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
+			 *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
+			 inference_it.cur_ri(),
+			 inference_it.cur_message_order(),
+			 inference_it.cur_nm(),
+			 inference_it.pt_i());
       if (viterbiScore) {
 	if (inference_it.at_p()) {
 	  printUnpackedSection(ps, pVitTrigger!=NULL, pVitTriggerVec, pVitTriggerExpr, pTriggerEqn, printObserved, inference_it.pt_i(),
@@ -4713,23 +4793,6 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 			       'E', f, ereg, eregex_mask, first_E, E_size, previous_E_values);
 	} else {
 	  assert ( inference_it.at_c() );      
-	  
-	  // Why is the deScatterOutofRoot() here? The C's printed during the main loop are printed immediately
-	  // after their deScatterOutofRoot(), so the C' RVs are left in the max probability values. However,
-	  // this code is printing the last \tau C's, which have experienced a "normal" backwards pass - 
-	  // C'[ T-\tau] will be the last C' to have been deScatterOutofRoot()ed, so the C' shared structure RVs
-	  // will be "stuck" at that partition's max probability values for the last \tau C's. Calling 
-	  // deScatterOutofRoot() here right before printing the C' ensures that it is set to the correct values.
-	  // This does mean that the last \tau partitions get scattered twice. This could possibly be avoided 
-	  // by having a circular buffer of length \tau+1 for the packed RV values, but that would add work for
-	  // every partition instead of just the last \tau.
-	  deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
-			     *cur_part_tab, //partitionTableArray[inference_it.pt_i()],
-			     inference_it.cur_ri(),
-			     inference_it.cur_message_order(),
-			     inference_it.cur_nm(),
-			     inference_it.pt_i());
-	  
 	  printUnpackedSection(ps, cVitTrigger!=NULL, cVitTriggerVec, cVitTriggerExpr, cTriggerEqn, printObserved, inference_it.pt_i(),
 			       'C', f, creg, cregex_mask, first_C, C_size, previous_C_values, vitRunLength,   vitFile ? 1 : inference_it.pt_i());
 	}

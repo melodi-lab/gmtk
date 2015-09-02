@@ -45,6 +45,7 @@ class StreamSource : public ObservationSource {
   unsigned currentCookedFrames;    // how many frames are in it now?
   unsigned firstCookedFrameNum;    // frame # of first frame in queue
   unsigned firstCookedFrameIndex;  // starting position (frame #) of first queued frame in cookedBuffer
+  unsigned numActiveFrames;        // max # of frames in the active region of the queue
   unsigned numFramesInSegment;     // # of frames in current segment
                                    // 0 until we know what it is
   
@@ -79,15 +80,27 @@ class StreamSource : public ObservationSource {
 
   void initialize(unsigned queueLength, unsigned startSkip=0); 
 
+  // set the # of frames in the active region of the queue
+  void setActiveFrameCount(unsigned numActiveFrames) {
+    if (maxCookedFrames < 1 + numActiveFrames * 2) {
+      error("ERROR: StreamSource::setActiveFrameCount: -streamBufferSize must be at least %u MB\n",
+	    1 + numActiveFrames * 2 / (1024*1024) );
+    } 
+    this->numActiveFrames = numActiveFrames; 
+  }
+
+  unsigned getActiveFrameCount() { return numActiveFrames; }
+
+
   // Resets queue state for starting a new segment & preloads
-  // the requested # of frames
+  // the requested # of frames into the active region of the queue
 
   // side effect: may set numFramesInSegment
 
   void preloadFrames(unsigned nFrames);
 
-  // Add the requested # of frames to the queue, possibly 
-  // triggering a flush of the older frames in the queue to
+  // Add the requested # of frames to the active region of the queue, 
+  // possibly triggering a flush of the older frames in the queue to
   // make room. Returns number of frames actually added.
   
   // side effect: may set numFramesInSegment
@@ -117,6 +130,7 @@ class StreamSource : public ObservationSource {
   // returns the # of the first frame in the queue (to support frame number 
   // wrap-around in gmtkOnline)
   unsigned firstFrameInQueue() { return firstCookedFrameNum; }
+  unsigned lastFrameInQueue() { return firstCookedFrameNum + currentCookedFrames - 1; }
 
   bool EOS() { 
     assert(stream);

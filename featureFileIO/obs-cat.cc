@@ -271,6 +271,7 @@ main(int argc, char *argv[]) {
   unsigned frmNum = 0;
   
   Data32 const *frame;
+  source->setActiveFrameCount(startSkip+1);
   for (; !source->EOS(); segNum += 1) {
     source->preloadFrames( startSkip + 1 );  // + 1 because the first n are skipped!
     for (frmNum=0; source->numFrames() == 0 || frmNum < source->numFrames(); frmNum += 1) {
