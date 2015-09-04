@@ -1,7 +1,7 @@
 inherit autotools
 
 NAME="gmtk"
-VERSION=1.4.0
+VERSION=1.4.1
 RELEASE=1
 
 CATEGORY="Science Math"
