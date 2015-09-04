@@ -10,6 +10,11 @@ For general questions:  gmtk-users@u.washington.edu
 Subscribe to the email list at
   http://mailman.u.washington.edu/mailman/listinfo/gmtk-users
 
+Version 1.4.1  2015-09-02
+        * Reduced latency in gmtkOnline
+        * Several bug fixes for writing HDF5 output files
+        * Added obsfile and obsstream as modules for -verbosity
+
 Version 1.4.0  2015-06-25
         * Added gmtkMMItrain discriminitive training program
         * Added --with-hdf5 configure argument
