@@ -4449,7 +4449,12 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
       Co.useLISeparator();
     
     // print P'
-    if (viterbiScore) {
+
+    if (!viterbiScore && P1.cliques.size() > 0 ) { // nothing to set if P is empty - ticket #468
+      for (unsigned i=0; i < ps.maxCliquesSharedStructure.size(); i+=1) {
+	cur_part_tab->maxCliques[i].maxProbability(ps.maxCliquesSharedStructure[i], true);
+      }
+    }
       if (inference_it.at_p()) {
 	printUnpackedSection(ps, pVitTrigger!=NULL, pVitTriggerVec, pVitTriggerExpr, pTriggerEqn, printObserved, inference_it.pt_i(),
 			     'P', f, preg, pregex_mask, first_P, P_size, previous_P_values);
@@ -4461,7 +4466,7 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 	printUnpackedSection(ps, cVitTrigger!=NULL, cVitTriggerVec, cVitTriggerExpr, cTriggerEqn, printObserved, inference_it.pt_i(),
 			     'C', f, creg, cregex_mask, first_C, C_size, previous_C_values, vitRunLength,   vitFile ? 1 : inference_it.pt_i());
       }
-    } else {
+
       // possibly print the P or C partition information
       if (inference_it.cur_part_clique_print_range() != NULL) {
 	printAllCliques(partitionStructureArray[inference_it.ps_i()],
@@ -4473,7 +4478,7 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 			cliquePosteriorNormalize, cliquePosteriorUnlog,
 			false, posteriorFile);			
       }
-    } 
+
     enqueueMoreFrames(truePtLen, 0, globalObservationMatrix, numNewFrames, numUsableFrames);
   } // handle scatter & print P' if filtering
   fflush(f); if (!posteriorFile) fflush(stdout);
@@ -4602,8 +4607,12 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
       // print part-\tau
 
       PartitionStructures& ps = partitionStructureArray[inference_it.ps_i()];
+      if (!viterbiScore) {
+	for (unsigned i=0; i < ps.maxCliquesSharedStructure.size(); i+=1) {
+	  cur_part_tab->maxCliques[i].maxProbability(ps.maxCliquesSharedStructure[i], true);
+	}
+      }
  
-      if (viterbiScore) {
 	if (inference_it.at_p()) {
 	  printUnpackedSection(ps, pVitTrigger!=NULL, pVitTriggerVec, pVitTriggerExpr, pTriggerEqn, printObserved, inference_it.pt_i(),
 			       'P', f, preg, pregex_mask, first_P, P_size, previous_P_values);
@@ -4615,8 +4624,8 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 	  printUnpackedSection(ps, cVitTrigger!=NULL, cVitTriggerVec, cVitTriggerExpr, cTriggerEqn, printObserved, inference_it.pt_i(),
 			       'C', f, creg, cregex_mask, first_C, C_size, previous_C_values, vitRunLength,   vitFile ? 1 : inference_it.pt_i());
 	}
-      } else {
-	// possibly print the P or C partition information
+
+        // possibly print the P or C partition information
 	if (inference_it.cur_part_clique_print_range() != NULL) {
 	  printAllCliques(partitionStructureArray[inference_it.ps_i()],
 			  *cur_part_tab,
@@ -4627,7 +4636,7 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 			  cliquePosteriorNormalize, cliquePosteriorUnlog,
 			  false, posteriorFile);			
 	}
-      }
+      
       fflush(f); if (!posteriorFile) fflush(stdout);
 
    
@@ -4784,7 +4793,13 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 			 inference_it.cur_message_order(),
 			 inference_it.cur_nm(),
 			 inference_it.pt_i());
-      if (viterbiScore) {
+
+      if (!viterbiScore) {
+	for (unsigned i=0; i < ps.maxCliquesSharedStructure.size(); i+=1) {
+	  cur_part_tab->maxCliques[i].maxProbability(ps.maxCliquesSharedStructure[i], true);
+	}
+      }
+
 	if (inference_it.at_p()) {
 	  printUnpackedSection(ps, pVitTrigger!=NULL, pVitTriggerVec, pVitTriggerExpr, pTriggerEqn, printObserved, inference_it.pt_i(),
 			       'P', f, preg, pregex_mask, first_P, P_size, previous_P_values);
@@ -4796,7 +4811,7 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 	  printUnpackedSection(ps, cVitTrigger!=NULL, cVitTriggerVec, cVitTriggerExpr, cTriggerEqn, printObserved, inference_it.pt_i(),
 			       'C', f, creg, cregex_mask, first_C, C_size, previous_C_values, vitRunLength,   vitFile ? 1 : inference_it.pt_i());
 	}
-      } else {
+
 	// possibly print the partition information
 	if (inference_it.cur_part_clique_print_range() != NULL) {
 	  printAllCliques(partitionStructureArray[inference_it.ps_i()],
@@ -4808,7 +4823,7 @@ JunctionTree::onlineFixedUnroll(StreamSource *globalObservationMatrix,
 			  cliquePosteriorNormalize, cliquePosteriorUnlog,
 			  false, posteriorFile);			
 	}
-      }
+
       fflush(f); if (!posteriorFile) fflush(stdout);
     }   // printing left-over partitions
   }
