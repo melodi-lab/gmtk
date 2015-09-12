@@ -89,13 +89,18 @@ $(builddir)/../IEEEFloatingpoint/libIEEEsupport.a
 noinst_LIBRARIES = libXOPT.a libGMTK.a
 
 libGMTK_a_SOURCES = \
-GMTK_SeriesInferenceAlgorithm.h \
-GMTK_InterfaceSeparator.h \
-GMTK_SectionInferenceAlgorithm.h \
+GMTK_SectionScheduler.h GMTK_SectionScheduler.cc \
+GMTK_LinearSectionScheduler.h GMTK_LinearSectionScheduler.cc \
+\
 GMTK_ProbEvidenceTask.h GMTK_ProbEvidenceTask.cc \
 GMTK_ForwardBackwardTask.h \
-GMTK_SequenceInference.h \
+GMTK_ViterbiTask.h \
+GMTK_SmoothingTask.h \
+\
+GMTK_SectionInferenceAlgorithm.h \
 GMTK_SparseJoinInference.h \
+\
+GMTK_InterfaceSeparator.h \
 \
 hgstamp.h \
 GMTK_Dense1DPMF.h GMTK_Dense1DPMF.cc \

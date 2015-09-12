@@ -13,7 +13,8 @@
 #include "GMTK_ProbEvidenceTask.h"
 
 logpr 
-ProbEvidenceTask::probEvidence(unsigned *numUsableFrames,
+ProbEvidenceTask::probEvidence(FileSource &obs_source,
+                               unsigned *numUsableFrames,
 			       unsigned *numSectionsDone,
 			       const bool limitTime,
 			       const bool noE,

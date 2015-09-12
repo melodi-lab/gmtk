@@ -1,6 +1,6 @@
 /*
- * GMTK_ForwardbackwardTask.h
- *    compute P(Q_{0:T-1} | X_{0:T-1})
+ * GMTK_ViterbiTask.h
+ *    compute argmax_{Q_{0:T-1}} P(Q_{0:T-1} | X_{0:T-1})
  *
  * Written by Richard Rogers <rprogers@uw.edu>
  *
@@ -11,21 +11,23 @@
  */
 
 
-#ifndef GMTK_FORWARDBACKWARDTASK_H
-#define GMTK_FORWARDBACKWARDTASK_H
+#ifndef GMTK_VITERBITASK_H
+#define GMTK_VITERBITASK_H
 
 #include "GMTK_FileSource.h"
 
-class ForwardBackwardTask {
+class ViterbiTask {
 
  public:
 
-  virtual ~ForwardBackwardTask() {}
+  virtual ~ViterbiTask() {}
 
   /*
    * For the currently active segment of the observation_source, compute 
-   * P(Q_{0:T-1} | X_{0:T-1})
+   * argmax_{Q_{0:T-1}} P(Q_{0:T-1} | X_{0:T-1})
    *
+   * observation_source is the source of the observed data
+   * 
    * numUsableFrames returns the number of frames in the currently active
    *                 segment that were used for inference
    *
@@ -36,11 +38,13 @@ class ForwardBackwardTask {
    * if posteriorFile is non-NULL, write the clique posteriors to the posteriorFile
    *
    */
-  virtual logpr forwardBackward(FileSource &observation_source,
-                                unsigned *numUsableFrames = NULL,
-				const bool cliquePosteriorNormalize = true,
-				const bool cliquePosteriorUnlog = true,
-				ObservationFile *posteriorFile = NULL);
+
+  virtual logpr viterbi(FileSource &observation_source,
+                        unsigned *numUsableFrames = NULL,
+			const bool cliquePosteriorNormalize = true,
+			const bool cliquePosteriorUnlog = true,
+		       	ObservationFile *posteriorFile = NULL);
+  
 };
 
 #endif
