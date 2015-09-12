@@ -12,4 +12,4 @@
 
 #include "GMTK_SectionScheduler.h"
 
-SectionScheduler::SectionScheduler() {}
+//SectionScheduler::SectionScheduler() {}

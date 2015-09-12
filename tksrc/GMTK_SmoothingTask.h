@@ -61,7 +61,7 @@ class SmoothingTask {
 			  regex_t *ereg=NULL,
 			  ObservationFile *posteriorFile = NULL,
 			  const bool cliquePosteriorNormalize = true,
-			  const bool cliquePosteriorUnlog = true);
+			  const bool cliquePosteriorUnlog = true) = 0;
 };
 
 #endif

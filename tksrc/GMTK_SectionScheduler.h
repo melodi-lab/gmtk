@@ -50,8 +50,6 @@ class SectionScheduler {
 
  public:
 
-  SectionScheduler();
-
   virtual ~SectionScheduler() {}
 
   // Initialize stuff at the model-level. See prepareForSegment() for segment-level initialization.
@@ -63,7 +61,7 @@ class SectionScheduler {
   virtual void printInferencePlanSummary(char const *fileName) = 0;
 
   // Formerly GMTemplate::reportScoreStats()
-  virtual void reportScoreStats();
+  virtual void reportScoreStats() = 0;
 
 
   // NOTE:  This assumes all inference algorithms will have clique-like things they
