@@ -1,6 +1,6 @@
 /*
- * GMTK_SeriesnIference.h
- *   Just go sequentially through the sections applying the SectionInferenceAlgorithm
+ * GMTK_IslandSectionScheduler.h
+ *   
  *
  * Written by Richard Rogers <rprogers@uw.edu>
  *
@@ -11,8 +11,8 @@
  */
 
 
-#ifndef GMTK_SEQUENCEINFERENCE_H
-#define GMTK_SEQUENCEINFERENCE_H
+#ifndef GMTK_ISLANDSECTIONSCHEDULER_H
+#define GMTK_ISLANDSECTIONSCHEDULER_H
 
 #include "GMTK_FileSource.h"
 
@@ -21,16 +21,15 @@
 #include "GMTK_ProbEvidenceTask.h"
 #include "GMTK_ForwardBackwardTask.h"
 #include "GMTK_ViterbiTask.h"
+#include "GMTK_SmoothingTask.h"
 
-class SequenceInference : public ProbEvidenceTask, ForwardBackwardTask, ViterbiTask {
+class IslandSectionScheduler : public ProbEvidenceTask, ForwardBackwardTask, ViterbiTask {
 
  public:
 
-  SequenceInferece(GMTemplate &gm_template, FileSource &observation_source) {}
+  IslandSectionScheduler(GMTemplate &gm_template, FileSource &observation_source) {}
 
-  ~SequenceInference() {}
-
- protected:
+  ~IslandSectionScheduler() {}
 
 };
 

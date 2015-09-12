@@ -14,14 +14,12 @@
 #ifndef GMTK_PROBEVIDENCETASK_H
 #define GMTK_PROBEVIDENCETASK_H
 
-#include "GMTK_SeriesInferenceAlgorithm.h"
+#include "logp.h"
 #include "GMTK_FileSource.h"
 
-class ProbEvidenceTask : public virtual SeriesInferenceAlgorithm {
+class ProbEvidenceTask {
 
  public:
-
- ProbEvidenceTask(FileSource &obs_source) : observation_source(obs_source) {}
 
   virtual ~ProbEvidenceTask() {}
 
@@ -48,21 +46,14 @@ class ProbEvidenceTask : public virtual SeriesInferenceAlgorithm {
    * if posteriorFile is non-NULL, write the clique posteriors to the posteriorFile
    *
    */
-  virtual logpr probEvidence(unsigned *numUsableFrames = NULL,
+  virtual logpr probEvidence(FileSource &obs_source,
+                             unsigned *numUsableFrames = NULL,
 			     unsigned *numSectionsDone = NULL,
 			     const bool limitTime = false,
 			     const bool noE = false, 
 			     const bool cliquePosteriorNormalize = true,
 			     const bool cliquePosteriorUnlog = true,
 			     ObservationFile *posteriorFile = NULL);
-
- 
- protected:
-  
-  // The source of the observed data. In principle, this could be applied
-  // to a StreamSource as well. In that case, this would need to be of type
-  // ObservationSource&. 
-  FileSource &observation_source;
 };
 
 #endif

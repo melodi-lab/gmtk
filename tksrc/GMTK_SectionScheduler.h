@@ -1,5 +1,5 @@
 /*
- * GMTK_SeriesInferenceAlgorithm.h
+ * GMTK_SectionScheduler.h
  *   Root class for the inference algorithms at the time series level.
  *
  * Written by Richard Rogers <rprogers@uw.edu>
@@ -8,35 +8,35 @@
  * Licensed under the Open Software License version 3.0
  * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
- * SeriesInferenceAlgorithm subclasses handle inference over a series of sections. 
+ * SectionScheduler subclasses handle inference over a series of sections. 
  *
- * The specific inference task subclasses of SeriesInferenceAlgorithm are 
+ * The specific inference task subclasses of SectionScheduler are 
  * (X is observed, Q is hidden, T is segment length):
  *
  *  - ProbEvidenceTask       compute P(X_{0:T-1}), forward pass only, O(1) memory
  *  - ViterbiTask            compute argmax_{Q_{0:T-1}} P(Q_{0:T-1} | X_{0:T-1})
  *  - ForwardBackwardTask    compute P(Q_{0:T-1} | X_{0:T-1})
- *  - OnlineSmoothingTask    compute argmax_{Q_t} P(Q_t | X_{0:t+\tau})
+ *  - SmoothingTask          compute argmax_{Q_{t-\tau}} P(Q_{t-\tau} | X_{0:t})  
  *
- * The time-series algorithm subclasses of SeriesInferenceAlgorithm are:
- *  - SequenceInference      Just iterate sequentially over sections
- *  - IslandInference        Skip through the time series, leaving "islands" of partial results to save memory
- *  - ArchipelagosInference  Parallel version of Island
+ * The time-series algorithm subclasses of SectionScheduler are:
+ *  - LinearSectionScheduler        Just iterate sequentially over sections
+ *  - IslandSectionScheduler        Skip through the time series, leaving "islands" of partial results to save memory
+ *  - ArchipelagosSectionScheduler  Parallel version of Island
  * 
- * The *Inference subclasses multiply inherit the *Task classes representing the
- * inference tasks the time series level inference algorithm can perform. Not all 
- * SeriesInferenceAlgorithms support every inference task, e.g., IslandInference 
- * can't do online filtering/smoothing.
+ * The SectionScheduler subclasses multiply inherit the *Task classes representing the
+ * inference tasks the time series level inference algorithms can perform. Not all 
+ * SectionSchedulers support every inference task, e.g., IslandSectionScheduler
+ * can't do online filtering/smoothing (OnlineSmoothingTask).
  *
  * The Sections are responsible for doing inference within themselves via whatever
- * SectionInferenceAlgorithm the Section subclass implements. The SeriesInferenceAlgorithm
+ * SectionInferenceAlgorithm the Section subclass implements. The SectionScheduler
  * classes just pass messages between Sections via instances of InterfaceSeparator.
  *
  */
 
 
-#ifndef GMTK_SERIESINFERENCEALGORITHM_H
-#define GMTK_SERIESINFERENCEALGORITHM_H
+#ifndef GMTK_SECTIONSCHEDULER_H
+#define GMTK_SECTIONSCHEDULER_H
 
 #include "logp.h"
 
@@ -46,17 +46,17 @@
 
 #include "GMTK_SectionInferenceAlgorithm.h"
 
-class SeriesInferenceAlgorithm {
+class SectionScheduler {
 
  public:
 
-  SeriesInferenceAlgorithm() {}
+  SectionScheduler();
 
-  virtual ~SeriesInferenceAlgorithm() {}
+  virtual ~SectionScheduler() {}
 
   // Initialize stuff at the model-level. See prepareForSegment() for segment-level initialization.
   // TODO: explain parameters
-  virtual void setUpDataStructures(char const *varPartitionAssignmentPrior,
+  virtual void setUpDataStructures(char const *varSectionAssignmentPrior,
 				   char const *varCliqueAssignmentPrior) = 0;
 
   // Formerly JunctionTree::printAllJTInfo()
@@ -88,11 +88,11 @@ class SeriesInferenceAlgorithm {
 
  protected:
 
-  // range of cliques within each partition to print out when doing
+  // range of cliques within each section to print out when doing
   // CE/DE inference. If these are NULL, then we print nothing.
-  BP_Range* pPartCliquePrintRange;
-  BP_Range* cPartCliquePrintRange;
-  BP_Range* ePartCliquePrintRange;
+  BP_Range* pCliquePrintRange;
+  BP_Range* cCliquePrintRange;
+  BP_Range* eCliquePrintRange;
 
   Range section_debug_range;
 

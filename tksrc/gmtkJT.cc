@@ -57,9 +57,19 @@
 #include "GMTK_Filter.h"
 #include "GMTK_Stream.h"
 
+// Section scheduling
+#include "GMTK_SectionScheduler.h"
+#include "GMTK_LinearSectionScheduler.h"
+#include "GMTK_IslandSectionScheduler.h"
+#include "GMTK_ArchipelagosSectionScheduler.h"
+
+// Supported inference tasks
 #include "GMTK_ProbEvidenceTask.h"
-#include "GMTK_SectionInferenceAlgorithm.h"
 #include "GMTK_ForwardBackwardTask.h"
+
+// Supported within-sectin inference algorithms
+#include "GMTK_SectionInferenceAlgorithm.h"
+#include "GMTK_SparseJoinInference.h"
 
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_GaussianComponent.h"
@@ -358,20 +368,20 @@ main(int argc,char*argv[])
   
   // Instantiate the requested inference algorithm for the time series as a whole
 
-  SeriesInferenceAlgorithm *inference_alg = NULL;
+  SectionScheduler *section_scheduler = NULL;
 
   if (false) {
 #ifdef GMTK_ISLANDINFERENCE_H
   } else if (island) {
-    inference_alg = new IslandInference(gm_template, gomFS);
+    section_scheduler = new IslandInference(gm_template, gomFS);
 #endif
 #ifdef GMTK_ARCHIPELAGOSINFERENCE_H
   } else if (archipelagos) {
-    inference_alg = new ArchipelagosInference(gm_template, gomFS);
+    section_scheduler = new ArchipelagosInference(gm_template, gomFS);
 #endif
-#ifdef GMTK_SERIESINFERENCE_H
+#ifdef GMTK_LINEARSECTIONSCHEDULER_H
   } else {
-    inference_alg = new SeriesInference(gm_template, gomFS);
+    section_scheduler = new LinearSectionScheduler(gm_template, *gomFS);
 #endif
   }
 
@@ -392,20 +402,21 @@ main(int argc,char*argv[])
     section_inference_alg = new SparseJoinInference(); // current "standard" algorithm
 #endif
   }
+  assert(section_inference_alg);
 
   ForwardBackwardTask *fwd_bkwd_alg = NULL;
   ProbEvidenceTask    *probE_alg    = NULL;
 
   if (!probE || doDistributeEvidence) {
     // doing the forward/backward task
-    fwd_bkwd_alg = dynamic_cast<ForwardBackwardTask *>(inference_alg);
+    fwd_bkwd_alg = dynamic_cast<ForwardBackwardTask *>(section_scheduler);
     assert(fwd_bkwd_alg); // The selected section inference algorithm must implement the ForwardBackwardTask API.
                           // The argument checking logic must prevent illegal combinations of inference task & algorithm,
                           // e.g., OnlineInference can't do the ForwardBackwardTask because it can't seek backwards
                           // arbitrarily far in the observation stream.
   } else {
     // doing the probability of evidence task (forward pass only)
-    probE_alg = dynamic_cast<ProbEvidenceTask *>(inference_alg);
+    probE_alg = dynamic_cast<ProbEvidenceTask *>(section_scheduler);
     assert(probE_alg); // The selected section inference algorithm must implement the ProbEvidenceTask API.
                        // The argument checking logic must prevent illegal combinations of inference task & algorithm,
                        // e.g., island can't do ProbEvidenceTask because it by definition does a backward pass.
@@ -421,7 +432,7 @@ main(int argc,char*argv[])
   JunctionTree myjt(gm_template);
 #endif
 
-  inference_alg->setUpDataStructures(varPartitionAssignmentPrior,varCliqueAssignmentPrior);
+  section_scheduler->setUpDataStructures(varPartitionAssignmentPrior,varCliqueAssignmentPrior);
 
 #if 0
   // TODO: should this be in setUpDataStructures, or named something else?
@@ -429,11 +440,11 @@ main(int argc,char*argv[])
 #endif
 
   if (jtFileName != NULL)
-    inference_alg->printInferencePlanSummary(jtFileName);
+    section_scheduler->printInferencePlanSummary(jtFileName);
 
 
   if (IM::messageGlb(IM::Giga)) { 
-    inference_alg->reportScoreStats();
+    section_scheduler->reportScoreStats();
   }
 
 #if 0
@@ -441,11 +452,11 @@ main(int argc,char*argv[])
   ////////////////////////////////////////////////////////////////////
 #endif
 
-  inference_alg->setCliquePrintRanges(pPartCliquePrintRange,cPartCliquePrintRange,ePartCliquePrintRange);
+  section_scheduler->setCliquePrintRanges(pPartCliquePrintRange,cPartCliquePrintRange,ePartCliquePrintRange);
 
   // setup enhanced verbosity for selected sections
   Range* pdbrng = new Range(pdbrng_str,0,0x7FFFFFFF);
-  inference_alg->setSectionDebugRange(*pdbrng);
+  section_scheduler->setSectionDebugRange(*pdbrng);
 
   // Output file in one of the supported observation file formats to hold the clique posteriors
   ObservationFile *clique_posterior_file = NULL; 
@@ -454,7 +465,7 @@ main(int argc,char*argv[])
   if (cliqueOutputName && (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange) ) {
 
       unsigned p_size, c_size, e_size;
-      inference_alg->getCliquePosteriorSize(p_size, c_size, e_size);
+      section_scheduler->getCliquePosteriorSize(p_size, c_size, e_size);
       unsigned clique_size = (p_size > c_size) ? p_size : c_size;
       clique_size = (clique_size > e_size) ? clique_size : e_size;
       
@@ -469,7 +480,7 @@ main(int argc,char*argv[])
       if (ePartCliquePrintRange && e_size != clique_size) {
 	error("ERROR: incompatible epilogue cliques selected for file output: selected E cliques are size %u, other clique %u\n", e_size, clique_size);
       }
-      inference_alg->printCliqueOrders(stdout);
+      section_scheduler->printCliqueOrders(stdout);
       clique_posterior_file = instantiateWriteFile(cliqueListName, cliqueOutputName, cliquePrintSeparator,
 						   cliquePrintFormat, clique_size, 0, cliquePrintSwap);
 
@@ -495,11 +506,13 @@ main(int argc,char*argv[])
     
     try {
       unsigned numUsableFrames;
+      logpr probe;
 
       if (!probE || doDistributeEvidence) { // doing the forward/backward task
 	assert(fwd_bkwd_alg);
 
-	logpr probe = fwd_bkwd_alg->forwardBackward(&numUsableFrames,
+	probe = fwd_bkwd_alg->forwardBackward(*gomFS, 
+                                                    &numUsableFrames,
 						    cliquePosteriorNormalize, 
 						    cliquePosteriorUnlog,
 						    clique_posterior_file);
@@ -509,20 +522,21 @@ main(int argc,char*argv[])
 	infoMsg(IM::Max,"Beginning call to probability of evidence.\n"); // TODO: move to probEvidence() impl
 	assert(probE_alg);
 
-	logpr probe = probE_alg->probEvidence(&numUsableFrames,
-					      NULL, // returns # of modified sections used for the current segment
-					      false,  // impose a time limit
-					      false,  // skip inference on E'
-					      cliquePosteriorNormalize,
-					      cliquePosteriorUnlog,
-					      clique_posterior_file);
-	// TODO: move this to probEvidence() impl
-	printf("Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	       segment,
-	       probe.val(),
-	       probe.val()/numFrames,
-	       probe.val()/numUsableFrames);
+	probe = probE_alg->probEvidence(*gomFS,
+					&numUsableFrames,
+					NULL, // returns # of modified sections used for the current segment
+					false,  // impose a time limit
+					false,  // skip inference on E'
+					cliquePosteriorNormalize,
+					cliquePosteriorUnlog,
+					clique_posterior_file);
       }
+      // TODO: move this to probEvidence() impl
+      printf("Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+	     segment,
+	     probe.val(),
+	     probe.val()/numFrames,
+	     probe.val()/numUsableFrames);
     } catch (ZeroCliqueException &e) {
       warning("Segment %d aborted due to zero clique\n", segment);
     }
