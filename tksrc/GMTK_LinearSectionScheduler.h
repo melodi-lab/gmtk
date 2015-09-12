@@ -31,8 +31,7 @@ class LinearSectionScheduler : public SectionScheduler, ProbEvidenceTask, Forwar
 
   LinearSectionScheduler(GMTemplate &gm_template, FileSource &observation_source) {}
 
-  ~LinearSectionScheduler() {}
-
+  virtual ~LinearSectionScheduler() {}
 
 
   // Initialize stuff at the model-level. See prepareForSegment() for segment-level initialization.
@@ -69,8 +68,34 @@ class LinearSectionScheduler : public SectionScheduler, ProbEvidenceTask, Forwar
     logpr p;
     return p;
   }
-  
- protected:
+
+
+  logpr viterbi(FileSource &observation_source,
+                        unsigned *numUsableFrames = NULL,
+			const bool cliquePosteriorNormalize = true,
+			const bool cliquePosteriorUnlog = true,
+		       	ObservationFile *posteriorFile = NULL)
+  {
+    logpr p;
+    return p;
+  }
+
+  logpr smoothing(StreamSource &observation_source,
+                          unsigned *numUsableFrames = NULL,
+ 			  unsigned *numSectionsDone=NULL,
+			  const bool noE=false,
+			  FILE *f=stdout,
+			  const bool printObserved=false,
+			  regex_t *preg=NULL,
+			  regex_t *creg=NULL,
+			  regex_t *ereg=NULL,
+			  ObservationFile *posteriorFile = NULL,
+			  const bool cliquePosteriorNormalize = true,
+			  const bool cliquePosteriorUnlog = true)
+  {
+    logpr p;
+    return p;
+  }
 
 };
 
