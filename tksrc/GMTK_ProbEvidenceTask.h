@@ -15,6 +15,7 @@
 #define GMTK_PROBEVIDENCETASK_H
 
 #include "logp.h"
+
 #include "GMTK_FileSource.h"
 
 class ProbEvidenceTask {
@@ -46,8 +47,7 @@ class ProbEvidenceTask {
    * if posteriorFile is non-NULL, write the clique posteriors to the posteriorFile
    *
    */
-  virtual logpr probEvidence(FileSource &obs_source,
-                             unsigned *numUsableFrames = NULL,
+  virtual logpr probEvidence(unsigned *numUsableFrames = NULL,
 			     unsigned *numSectionsDone = NULL,
 			     const bool limitTime = false,
 			     const bool noE = false, 

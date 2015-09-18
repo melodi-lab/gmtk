@@ -15,21 +15,38 @@
 #ifndef GMTK_LINEARSECTIONSCHEDULER_H
 #define GMTK_LINEARSECTIONSCHEDULER_H
 
+#include <assert.h>
+
+#include "logp.h"
+
 #include "GMTK_FileSource.h"
+#include "GMTK_StreamSource.h"
 
 #include "GMTK_GMTemplate.h"
 
 #include "GMTK_SectionScheduler.h"
+
 #include "GMTK_ProbEvidenceTask.h"
 #include "GMTK_ForwardBackwardTask.h"
 #include "GMTK_ViterbiTask.h"
 #include "GMTK_SmoothingTask.h"
 
+#include "GMTK_SectionInferenceAlgorithm.h"
+
 class LinearSectionScheduler : public SectionScheduler, ProbEvidenceTask, ForwardBackwardTask, ViterbiTask, SmoothingTask {
 
  public:
 
-  LinearSectionScheduler(GMTemplate &gm_template, FileSource &observation_source) {}
+  LinearSectionScheduler(GMTemplate                &gm_template,
+			 SectionInferenceAlgorithm *algorithm,
+			 FileSource                *observation_file = NULL,
+			 StreamSource              *observation_stream = NULL)
+    : gm_template(gm_template), algorithm(algorithm),
+      observation_file(observation_file), observation_stream(observation_stream)
+  {
+    assert(algorithm);
+    assert(observation_file || observation_stream);
+  }
 
   virtual ~LinearSectionScheduler() {}
 
@@ -59,44 +76,43 @@ class LinearSectionScheduler : public SectionScheduler, ProbEvidenceTask, Forwar
   // Returns the size (in # of floats) of the cliques selected by setCliquePrintRanges().
   void getCliquePosteriorSize(unsigned &p_size, unsigned &c_size, unsigned &e_size);
 
-  logpr forwardBackward(FileSource &observation_source,
-			unsigned *numUsableFrames = NULL,
+  logpr probEvidence(unsigned *numUsableFrames = NULL,
+		     unsigned *numSectionsDone = NULL,
+		     const bool limitTime = false,
+		     const bool noE = false, 
+		     const bool cliquePosteriorNormalize = true,
+		     const bool cliquePosteriorUnlog = true,
+		     ObservationFile *posteriorFile = NULL);
+
+  logpr forwardBackward(unsigned *numUsableFrames = NULL,
 			const bool cliquePosteriorNormalize = true,
 			const bool cliquePosteriorUnlog = true,
-			ObservationFile *posteriorFile = NULL)
-  {
-    logpr p;
-    return p;
-  }
+			ObservationFile *posteriorFile = NULL);
 
+  logpr viterbi(unsigned *numUsableFrames = NULL,
+		const bool cliquePosteriorNormalize = true,
+		const bool cliquePosteriorUnlog = true,
+		ObservationFile *posteriorFile = NULL);
 
-  logpr viterbi(FileSource &observation_source,
-                        unsigned *numUsableFrames = NULL,
-			const bool cliquePosteriorNormalize = true,
-			const bool cliquePosteriorUnlog = true,
-		       	ObservationFile *posteriorFile = NULL)
-  {
-    logpr p;
-    return p;
-  }
+  logpr smoothing(unsigned *numUsableFrames = NULL,
+		  unsigned *numSectionsDone=NULL,
+		  const bool noE=false,
+		  FILE *f=stdout,
+		  const bool printObserved=false,
+		  regex_t *preg=NULL,
+		  regex_t *creg=NULL,
+		  regex_t *ereg=NULL,
+		  ObservationFile *posteriorFile = NULL,
+		  const bool cliquePosteriorNormalize = true,
+		  const bool cliquePosteriorUnlog = true);
 
-  logpr smoothing(StreamSource &observation_source,
-                          unsigned *numUsableFrames = NULL,
- 			  unsigned *numSectionsDone=NULL,
-			  const bool noE=false,
-			  FILE *f=stdout,
-			  const bool printObserved=false,
-			  regex_t *preg=NULL,
-			  regex_t *creg=NULL,
-			  regex_t *ereg=NULL,
-			  ObservationFile *posteriorFile = NULL,
-			  const bool cliquePosteriorNormalize = true,
-			  const bool cliquePosteriorUnlog = true)
-  {
-    logpr p;
-    return p;
-  }
+ private:
 
+  GMTemplate   &gm_template;
+  SectionInferenceAlgorithm *algorithm;
+  FileSource   *observation_file;
+  StreamSource *observation_stream;
+  
 };
 
 #endif

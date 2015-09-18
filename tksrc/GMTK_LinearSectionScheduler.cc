@@ -49,3 +49,75 @@ void
 LinearSectionScheduler::getCliquePosteriorSize(unsigned &p_size, unsigned &c_size, unsigned &e_size) {
 }
 
+
+logpr
+LinearSectionScheduler::probEvidence(unsigned *numUsableFrames,
+				     unsigned *numSectionsDone,
+				     const bool limitTime,
+				     const bool noE, 
+				     const bool cliquePosteriorNormalize,
+				     const bool cliquePosteriorUnlog,
+				     ObservationFile *posteriorFile)
+{
+  unsigned T; // # of sections
+  unsigned nUsableFrames = algorithm->unroll(observation_file->numFrames() /*, ZeroTable, &T*/);
+  if (numUsableFrames) *numUsableFrames = nUsableFrames;
+
+  // do P'
+  InterfaceSeparator msg = algorithm->computeForwardInterfaceSeparator(0);
+
+  // do C'
+  unsigned t;
+  for (t=1; t < T-1; t+=1) {
+    algorithm->receiveForwardInterfaceSeparator(t, msg);
+    msg = algorithm->computeForwardInterfaceSeparator(t);
+    //if (limitTime && probEvidenceTimeExpired) goto finished;
+  }
+
+  // do E'
+  algorithm->receiveForwardInterfaceSeparator(t, msg);
+  algorithm->computeForwardInterfaceSeparator(t);
+
+ finished:
+  
+  if (numSectionsDone) *numSectionsDone = t;
+  return algorithm->probEvidence(t);
+}
+  
+logpr 
+LinearSectionScheduler::forwardBackward(unsigned *numUsableFrames,
+					const bool cliquePosteriorNormalize,
+					const bool cliquePosteriorUnlog,
+					ObservationFile *posteriorFile)
+{
+  logpr result;
+  return result;
+}
+
+logpr 
+LinearSectionScheduler::viterbi(unsigned *numUsableFrames,
+				const bool cliquePosteriorNormalize,
+				const bool cliquePosteriorUnlog,
+				ObservationFile *posteriorFile)
+{
+  logpr result;
+  return result;
+}
+
+
+logpr 
+LinearSectionScheduler::smoothing(unsigned *numUsableFrames,
+				  unsigned *numSectionsDone,
+				  const bool noE,
+				  FILE *f,
+				  const bool printObserved,
+				  regex_t *preg,
+				  regex_t *creg,
+				  regex_t *ereg,
+				  ObservationFile *posteriorFile,
+				  const bool cliquePosteriorNormalize,
+				  const bool cliquePosteriorUnlog)
+{
+  logpr result;
+  return result;
+}
