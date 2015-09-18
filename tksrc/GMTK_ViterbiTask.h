@@ -14,6 +14,8 @@
 #ifndef GMTK_VITERBITASK_H
 #define GMTK_VITERBITASK_H
 
+#include "logp.h"
+
 #include "GMTK_FileSource.h"
 
 class ViterbiTask {
@@ -39,8 +41,7 @@ class ViterbiTask {
    *
    */
 
-  virtual logpr viterbi(FileSource &observation_source,
-                        unsigned *numUsableFrames = NULL,
+  virtual logpr viterbi(unsigned *numUsableFrames = NULL,
 			const bool cliquePosteriorNormalize = true,
 			const bool cliquePosteriorUnlog = true,
 		       	ObservationFile *posteriorFile = NULL) = 0;

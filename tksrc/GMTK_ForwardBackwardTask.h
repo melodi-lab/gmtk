@@ -14,6 +14,8 @@
 #ifndef GMTK_FORWARDBACKWARDTASK_H
 #define GMTK_FORWARDBACKWARDTASK_H
 
+#include "logp.h"
+
 #include "GMTK_FileSource.h"
 
 class ForwardBackwardTask {
@@ -36,8 +38,7 @@ class ForwardBackwardTask {
    * if posteriorFile is non-NULL, write the clique posteriors to the posteriorFile
    *
    */
-  virtual logpr forwardBackward(FileSource &observation_source,
-                                unsigned *numUsableFrames = NULL,
+  virtual logpr forwardBackward(unsigned *numUsableFrames = NULL,
 				const bool cliquePosteriorNormalize = true,
 				const bool cliquePosteriorUnlog = true,
 				ObservationFile *posteriorFile = NULL) = 0;

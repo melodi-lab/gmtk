@@ -1,6 +1,6 @@
 /*
- * GMTK_ProbEvidenceTask.cc
- *   compute P(X_{0:T-1}), forward pass only, O(1) memory
+ * GMTK_ViterbiTask.cc
+ *   compute argmax_{Q_{0:T-1}} P(Q_{0:T-1} | X_{0:T-1})
  *
  * Written by Richard Rogers <rprogers@uw.edu>
  *
@@ -12,19 +12,16 @@
 
 #include <assert.h>
 
-#include "GMTK_ProbEvidenceTask.h"
+#include "GMTK_ViterbiTask.h"
 
 // This method is here just to make the compiler happy.
 // It should be overridden by the SectionScheduler subclass.
 
 logpr 
-ProbEvidenceTask::probEvidence(unsigned *numUsableFrames,
-			       unsigned *numSectionsDone,
-			       const bool limitTime,
-			       const bool noE,
-			       const bool cliquePosteriorNormalize,
-			       const bool cliquePosteriorUnlog,
-			       ObservationFile *posteriorFile)
+ViterbiTask::viterbi(unsigned *numUsableFrames,
+		     const bool cliquePosteriorNormalize,
+		     const bool cliquePosteriorUnlog,
+		     ObservationFile *posteriorFile)
 {
   assert(false); // nothing should call this method
   logpr result;

@@ -365,7 +365,22 @@ main(int argc,char*argv[])
     triangulator.ensurePartitionsAreChordal(gm_template);
   }
 
-  
+  // Setup the within-section inference implementation
+
+  SectionInferenceAlgorithm *section_inference_alg = NULL;
+  if (false) {
+#ifdef GMTK_PEDAGOGICALINFERENCE_H
+  } else if (pedagogical) {
+    section_inference_alg = new PedagogicalInference();
+#endif
+#ifdef GMTK_SPARSEJOININFERENCE_H
+  } else {
+    section_inference_alg = new SparseJoinInference(); // current "standard" algorithm
+#endif
+  }
+  assert(section_inference_alg);
+
+    
   // Instantiate the requested inference algorithm for the time series as a whole
 
   SectionScheduler *section_scheduler = NULL;
@@ -381,28 +396,9 @@ main(int argc,char*argv[])
 #endif
 #ifdef GMTK_LINEARSECTIONSCHEDULER_H
   } else {
-    section_scheduler = new LinearSectionScheduler(gm_template, *gomFS);
+    section_scheduler = new LinearSectionScheduler(gm_template, section_inference_alg, gomFS);
 #endif
   }
-
-  // Setup the within-section inference implementation
-
-  SectionInferenceAlgorithm *section_inference_alg = NULL;
-  if (false) {
-#ifdef GMTK_ONLYKEEPSEPARATORSINFERENCE_H
-  } else if (onlyKeepSeparators) {
-    section_inference_alg = new OnlyKeepSeparatorInference();
-#endif
-#ifdef GMTK_PEDAGOGICALINFERENCE_H
-  } else if (pedagogical) {
-    section_inference_alg = new PedagogicalInference();
-#endif
-#ifdef GMTK_SPARSEJOININFERENCE_H
-  } else {
-    section_inference_alg = new SparseJoinInference(); // current "standard" algorithm
-#endif
-  }
-  assert(section_inference_alg);
 
   ForwardBackwardTask *fwd_bkwd_alg = NULL;
   ProbEvidenceTask    *probE_alg    = NULL;
@@ -511,19 +507,17 @@ main(int argc,char*argv[])
       if (!probE || doDistributeEvidence) { // doing the forward/backward task
 	assert(fwd_bkwd_alg);
 
-	probe = fwd_bkwd_alg->forwardBackward(*gomFS, 
-                                                    &numUsableFrames,
-						    cliquePosteriorNormalize, 
-						    cliquePosteriorUnlog,
-						    clique_posterior_file);
-
+	probe = fwd_bkwd_alg->forwardBackward(&numUsableFrames,
+					      cliquePosteriorNormalize, 
+					      cliquePosteriorUnlog,
+					      clique_posterior_file);
+	
       } else {  // doing the probability of evidence task (forward pass only)
 
 	infoMsg(IM::Max,"Beginning call to probability of evidence.\n"); // TODO: move to probEvidence() impl
 	assert(probE_alg);
 
-	probe = probE_alg->probEvidence(*gomFS,
-					&numUsableFrames,
+	probe = probE_alg->probEvidence(&numUsableFrames,
 					NULL, // returns # of modified sections used for the current segment
 					false,  // impose a time limit
 					false,  // skip inference on E'

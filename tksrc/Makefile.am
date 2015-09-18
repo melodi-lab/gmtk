@@ -93,9 +93,9 @@ GMTK_SectionScheduler.h GMTK_SectionScheduler.cc \
 GMTK_LinearSectionScheduler.h GMTK_LinearSectionScheduler.cc \
 \
 GMTK_ProbEvidenceTask.h GMTK_ProbEvidenceTask.cc \
-GMTK_ForwardBackwardTask.h \
-GMTK_ViterbiTask.h \
-GMTK_SmoothingTask.h \
+GMTK_ForwardBackwardTask.h GMTK_ForwardBackwardTask.cc \
+GMTK_ViterbiTask.h GMTK_ViterbiTask.cc \
+GMTK_SmoothingTask.h GMTK_SmoothingTask.cc \
 \
 GMTK_SectionInferenceAlgorithm.h \
 GMTK_SparseJoinInference.h \

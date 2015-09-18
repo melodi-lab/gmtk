@@ -15,6 +15,8 @@
 #ifndef GMTK_SMOOTHINGTASK_H
 #define GMTK_SMOOTHINGTASK_H
 
+#include "logp.h"
+
 #include "GMTK_StreamSource.h"
 
 class SmoothingTask {
@@ -50,8 +52,7 @@ class SmoothingTask {
    * if posteriorFile is non-NULL, write the clique posteriors to the posteriorFile
    *
    */
-  virtual logpr smoothing(StreamSource &observation_source,
-                          unsigned *numUsableFrames = NULL,
+  virtual logpr smoothing(unsigned *numUsableFrames = NULL,
  			  unsigned *numSectionsDone=NULL,
 			  const bool noE=false,
 			  FILE *f=stdout,
