@@ -57,6 +57,27 @@ class SectionScheduler {
   virtual void setUpDataStructures(char const *varSectionAssignmentPrior,
 				   char const *varCliqueAssignmentPrior) = 0;
 
+
+  // Prepare to do inference on segment of length T. Note that this
+  // is the analog of the current JunctionTree::unroll() which sets up the
+  // PartitionStructureArray for at most  P' C' C' E' (4 sections, so
+  // O(1) memory), and the PartitionTableArray for between 0 and T
+  // sections depending on ZeroTable, ShortTable, or LongTable. 
+  // JT::unroll() also allocates O(T) memory (optionally memory mapped)
+  // to store the the Viterbi values if they aren't being written to
+  // a file.
+
+  // Since we now have the ability to write Viterbi values to files, do
+  // we want to drop the ability to store them in memory? This would
+  // break things, as a Viterbi file would then be a required argument.
+  // It would also be slower for applications that do fit in memory
+  // because of the higher overhead of file I/O operations.
+
+  // Maybe rename this to prepareForSegment() or something to avoid confusion
+  // with O(T) space graph unrolling?
+  virtual unsigned unroll(unsigned T) = 0; // returns number of usable frames
+
+
   // Formerly JunctionTree::printAllJTInfo()
   virtual void printInferencePlanSummary(char const *fileName) = 0;
 
