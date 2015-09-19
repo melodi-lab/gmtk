@@ -56,6 +56,8 @@ class LinearSectionScheduler : public SectionScheduler, ProbEvidenceTask, Forwar
   void setUpDataStructures(char const *varSectionAssignmentPrior,
 				   char const *varCliqueAssignmentPrior);
 
+  unsigned unroll(unsigned T);
+
   // Formerly JunctionTree::printAllJTInfo()
   void printInferencePlanSummary(char const *fileName);
 

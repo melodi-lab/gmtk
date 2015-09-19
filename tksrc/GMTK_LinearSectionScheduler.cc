@@ -50,6 +50,12 @@ LinearSectionScheduler::getCliquePosteriorSize(unsigned &p_size, unsigned &c_siz
 }
 
 
+unsigned 
+LinearSectionScheduler::unroll(unsigned T) {
+  return 0;
+}
+
+
 logpr
 LinearSectionScheduler::probEvidence(unsigned *numUsableFrames,
 				     unsigned *numSectionsDone,
@@ -60,7 +66,9 @@ LinearSectionScheduler::probEvidence(unsigned *numUsableFrames,
 				     ObservationFile *posteriorFile)
 {
   unsigned T; // # of sections
-  unsigned nUsableFrames = algorithm->unroll(observation_file->numFrames() /*, ZeroTable, &T*/);
+
+  // MOVE UNROLL TO SectionScheduler
+  unsigned nUsableFrames = unroll(observation_file->numFrames() /*, ZeroTable, &T*/);
   if (numUsableFrames) *numUsableFrames = nUsableFrames;
 
   // do P'
