@@ -1,5 +1,5 @@
 /*
- * GMTK_InterfaceSeparator.h
+ * GMTK_SectionSeparator.h
  *   The "message" passed between sections
  *
  * Eventially subclasses may include:
@@ -20,15 +20,13 @@
  */
 
 
-#ifndef GMTK_INTERFACESEPARATOR_H
-#define GMTK_INTERFACESEPARATOR_H
+#ifndef GMTK_SECTIONSEPARATOR_H
+#define GMTK_SECTIONSEPARATOR_H
 
-class InterfaceSeparator {
+class SectionSeparator {
 
-  // boundary algorithm lives here, possibly overridden in subclasses
-
-  // What's the API for a SectionInferenceAlgorithm to construct an InterfaceSeparator?
-  // What's the API for a SectionInferenceAlgorithm to receive an InterfaceSeparator?
+  // What's the API for a SectionInferenceAlgorithm to construct an SectionSeparator?
+  // What's the API for a SectionInferenceAlgorithm to receive an SectionSeparator?
 };
 
 #endif

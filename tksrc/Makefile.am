@@ -100,7 +100,7 @@ GMTK_SmoothingTask.h GMTK_SmoothingTask.cc \
 GMTK_SectionInferenceAlgorithm.h \
 GMTK_SparseJoinInference.h \
 \
-GMTK_InterfaceSeparator.h \
+GMTK_SectionSeparator.h \
 \
 hgstamp.h \
 GMTK_Dense1DPMF.h GMTK_Dense1DPMF.cc \

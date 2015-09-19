@@ -72,7 +72,7 @@ LinearSectionScheduler::probEvidence(unsigned *numUsableFrames,
   if (numUsableFrames) *numUsableFrames = nUsableFrames;
 
   // do P'
-  InterfaceSeparator msg = algorithm->computeForwardInterfaceSeparator(0);
+  SectionSeparator msg = algorithm->computeForwardInterfaceSeparator(0);
 
   // do C'
   unsigned t;

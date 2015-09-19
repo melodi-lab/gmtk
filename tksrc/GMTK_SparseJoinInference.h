@@ -14,7 +14,7 @@
 #ifndef GMTK_SPARSEJOININFERENCE_H
 #define GMTK_SPARSEJOININFERENCE_H
 
-#include "GMTK_InterfaceSeparator.h"
+#include "GMTK_SectionSeparator.h"
 #include "GMTK_SectionInferenceAlgorithm.h"
 
 class SparseJoinInference : public SectionInferenceAlgorithm {
@@ -26,23 +26,23 @@ class SparseJoinInference : public SectionInferenceAlgorithm {
   // All message actions are named from the perspective of C_t.
 
   // compute forward message for C'_t -> C'_{t+1} (aka gather into root)
-  virtual InterfaceSeparator computeForwardInterfaceSeparator(unsigned t) {
-    InterfaceSeparator is;
+  virtual SectionSeparator computeForwardInterfaceSeparator(unsigned t) {
+    SectionSeparator is;
     return is;
   } 
 
   // recieve forward message for C'_{t-1} -> C'_t (sendForwardsCrossPartitions)
-  virtual void receiveForwardInterfaceSeparator(unsigned t, InterfaceSeparator const &msg) {}
+  virtual void receiveForwardInterfaceSeparator(unsigned t, SectionSeparator const &msg) {}
 
 
   // compute backward message for C'_{t-1} <- C'_t (aka scatter out of root)
-  virtual InterfaceSeparator computeBackwardsInterfaceSeparator(unsigned t) {
-    InterfaceSeparator is;
+  virtual SectionSeparator computeBackwardsInterfaceSeparator(unsigned t) {
+    SectionSeparator is;
     return is;
   } 
 
   // recieve backward message for C'_t <- C'_{t+1} (sendBackwardCrossPartitions)
-  virtual void receiveBackwardInterfaceSeparator(unsigned t, InterfaceSeparator const &msg) {}
+  virtual void receiveBackwardInterfaceSeparator(unsigned t, SectionSeparator const &msg) {}
 
 
   // return P(Q_t | X_{?}), where ? depends on the messages C_t has seen so far:
