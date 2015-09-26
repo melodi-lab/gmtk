@@ -2324,9 +2324,13 @@ JunctionTree::recieveForwardInterfaceSeparator(unsigned t, PartitionTables *msg,
 }
 
 logpr
-JunctionTree::computeProbEvidence(unsigned t) {
-  logpr p;
-  return p;
+JunctionTree::computeProbEvidence(unsigned t, PartitionTables *sectionPosterior) {
+  logpr probE;
+  setCurrentInferenceShiftTo(t);
+  if (inference_it.at_e()) {
+    probE = sectionPosterior->maxCliques[E_root_clique].sumProbabilities();
+  }
+  return probE;
 }
 
 PartitionTables *JunctionTree::cachedPT = NULL;

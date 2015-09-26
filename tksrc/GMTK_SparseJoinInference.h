@@ -53,8 +53,8 @@ class SparseJoinInference : public SectionInferenceAlgorithm {
   //        P(Q_t | X_{0:t}) in the forward pass
   //        P(Q_t | X_{0:T-1}) in a (full) backward pass
   //        P(Q_t | X_{0:t+\tau}) in a smoothing backward pass
-  logpr probEvidence(unsigned t) {
-    return myjt->computeProbEvidence(t);
+  logpr probEvidence(unsigned t, PartitionTables *sectionPosterior) {
+    return myjt->computeProbEvidence(t, sectionPosterior);
   }
 
  private:

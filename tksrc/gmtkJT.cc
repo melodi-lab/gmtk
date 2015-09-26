@@ -355,7 +355,6 @@ main(int argc,char*argv[])
 #ifdef GMTK_LINEARSECTIONSCHEDULER_H
   } else {
     section_scheduler = new LinearSectionScheduler(gm_template, section_inference_alg, gomFS);
-    section_inference_alg->setJT(section_scheduler->getJT()); // BOGUS
 #endif
   }
 

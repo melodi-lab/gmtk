@@ -811,7 +811,7 @@ public:
   void sparseJoinSegementInit(unsigned numSections);
   PartitionTables *computeForwardInterfaceSeparator(unsigned t, PartitionTables *sectionPosterior);
   void recieveForwardInterfaceSeparator(unsigned t, PartitionTables *msg, PartitionTables *sectionPosterior);
-  logpr computeProbEvidence(unsigned t);
+  logpr computeProbEvidence(unsigned t, PartitionTables *sectionPosterior);
   static PartitionTables *cachedPT;
   static unsigned         cachedT;
 
