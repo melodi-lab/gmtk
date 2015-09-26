@@ -52,7 +52,7 @@ class SectionInferenceAlgorithm {
   //        P(Q_t | X_{0:t}) in the forward pass
   //        P(Q_t | X_{0:T-1}) in a (full) backward pass
   //        P(Q_t | X_{0:t+\tau}) in a smoothing backward pass
-  virtual logpr probEvidence(unsigned t) = 0;
+  virtual logpr probEvidence(unsigned t, PartitionTables *sectionPosterior) = 0;
 
 
   // Section subclasses can manage their own message ordering w/in a section.

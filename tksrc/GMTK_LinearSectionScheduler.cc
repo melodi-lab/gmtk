@@ -67,6 +67,7 @@ LinearSectionScheduler::setUpDataStructures(FileParser &fp,
   myjt->prepareForUnrolling();
   infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
   ////////////////////////////////////////////////////////////////////
+  algorithm->setJT(myjt);
 }
 
   // Formerly JunctionTree::printAllJTInfo()
@@ -155,6 +156,7 @@ LinearSectionScheduler::probEvidence(unsigned *numUsableFrames,
   }
 
   // do E'
+  cur_sect_tab = myjt->getSectionTables(t);
   algorithm->receiveForwardInterfaceSeparator(t, msg, cur_sect_tab);
   delete msg; // not if E' is the first section!
   algorithm->computeForwardInterfaceSeparator(t, cur_sect_tab);
@@ -162,7 +164,9 @@ LinearSectionScheduler::probEvidence(unsigned *numUsableFrames,
   //finished:
   
   if (numSectionsDone) *numSectionsDone = t;
-  return algorithm->probEvidence(t);
+  logpr probE = algorithm->probEvidence(t, cur_sect_tab);
+  delete cur_sect_tab;
+  return probE;
 }
   
 logpr 
