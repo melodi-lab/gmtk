@@ -1280,9 +1280,9 @@ Arg("map",Arg::Opt,dlopenFilenames,"Deterministic mapping dynamic library file. 
 #if defined(GMTK_ARG_CLIQUE_PRINT)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
-static char* pPartCliquePrintRange = NULL;
-static char* cPartCliquePrintRange = NULL;
-static char* ePartCliquePrintRange = NULL;
+static char* pSectionCliquePrintRange = NULL;
+static char* cSectionCliquePrintRange = NULL;
+static char* eSectionCliquePrintRange = NULL;
 static bool  cliquePrintOnlyEntropy = false;
 static bool  cliquePosteriorNormalize = true;
 static bool  cliquePosteriorUnlog = true;
@@ -1300,9 +1300,9 @@ static bool  cliquePrintSwap       = false;
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
   Arg("\n*** Clique posterior output options ***\n"),
 
-  Arg("pCliquePrintRange",Arg::Opt,pPartCliquePrintRange,"With CE/DE, print range cliques from P section."),
-  Arg("cCliquePrintRange",Arg::Opt,cPartCliquePrintRange,"With CE/DE, print range cliques from C section."),
-  Arg("eCliquePrintRange",Arg::Opt,ePartCliquePrintRange,"With CE/DE, print range cliques from E section."),
+  Arg("pCliquePrintRange",Arg::Opt,pSectionCliquePrintRange,"With CE/DE, print range cliques from P section."),
+  Arg("cCliquePrintRange",Arg::Opt,cSectionCliquePrintRange,"With CE/DE, print range cliques from C section."),
+  Arg("eCliquePrintRange",Arg::Opt,eSectionCliquePrintRange,"With CE/DE, print range cliques from E section."),
   Arg("cliquePrintOnlyEntropy",Arg::Opt,cliquePrintOnlyEntropy,"With CE/DE, print only clique entropies."),
   Arg("cliquePosteriorNormalize",Arg::Opt,cliquePosteriorNormalize,"Normalize posterior probabilities to sum to 1."),
   Arg("cliquePosteriorUnlog",Arg::Opt,cliquePosteriorUnlog,"Output probabilities instead of log probabilities."),

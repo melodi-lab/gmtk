@@ -23,19 +23,22 @@
 #include "fileParser.h"
 
 #include "GMTK_SectionSeparator.h"
+#include "GMTK_PartitionTables.h"
 
 class SectionInferenceAlgorithm {
  public:
 
   virtual ~SectionInferenceAlgorithm() {}
 
+  virtual void setJT(JunctionTree *jt) = 0; // BOGUS
+  
   // All message actions are named from the perspective of C_t.
 
   // compute forward message for C'_t -> C'_{t+1} (aka gather into root)
-  virtual SectionSeparator computeForwardInterfaceSeparator(unsigned t) = 0; 
+  virtual SectionSeparator *computeForwardInterfaceSeparator(unsigned t, PartitionTables *sectionPosterior) = 0; 
 
   // recieve forward message for C'_{t-1} -> C'_t (sendForwardsCrossPartitions)
-  virtual void receiveForwardInterfaceSeparator(unsigned t, SectionSeparator const &msg) = 0;
+  virtual void receiveForwardInterfaceSeparator(unsigned t, SectionSeparator *msg, PartitionTables *sectionPosterior) = 0;
 
 
   // compute backward message for C'_{t-1} <- C'_t (aka scatter out of root)

@@ -11,17 +11,68 @@
 
 #include "GMTK_LinearSectionScheduler.h"
 
+#include "GMTK_BoundaryTriangulate.h"
+
   // Initialize stuff at the model-level. See prepareForSegment() for segment-level initialization.
   // TODO: explain parameters
 void 
-LinearSectionScheduler::setUpDataStructures(char const *varSectionAssignmentPrior,
-				   char const *varCliqueAssignmentPrior)
+LinearSectionScheduler::setUpDataStructures(FileParser &fp,
+					    iDataStreamFile &tri_file,
+					    char const *varSectionAssignmentPrior,
+					    char const *varCliqueAssignmentPrior,
+					    bool checkTriFileCards)
 {
+
+  // Utilize both the partition information and elimination order
+  // information already computed and contained in the file. This
+  // enables the program to use external triangulation programs,
+  // where this program ensures that the result is triangulated
+  // and where it reports the quality of the triangulation.
+
+  infoMsg(IM::Max,"Reading triangulation file '%s' ...\n", tri_file.fileName());
+  if (!fp.readAndVerifyGMId(tri_file, checkTriFileCards)) {
+    error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",
+	  tri_file.fileName(),fp.fileNameParsing.c_str());
+  }
+  gm_template.readPartitions(tri_file);
+  gm_template.readMaxCliques(tri_file);
+
+  infoMsg(IM::Max,"Triangulating graph...\n");
+
+  // TODO: It looks like this is really just adding the edges to make the
+  //       cliques specified in the tri file actual cliques in the "graph"
+  //       by adding any missing edges. 
+  gm_template.triangulatePartitionsByCliqueCompletion();
+
+  if (1) { 
+    // check that graph is indeed triangulated.
+    // TODO: perhaps take this check out so that inference code does
+    // not need to link to the triangulation code (either that, or put
+    // the triangulation check in a different file, so that we only
+    // link to tri check code).
+
+    // TODO: Post-refactor, we're not assuming the graph must be triangulated?
+    //       Move this into the subset of section inference algorithms that require it.
+    BoundaryTriangulate triangulator(fp,
+				     gm_template.maxNumChunksInBoundary(),
+				     gm_template.chunkSkip(),1.0);
+    triangulator.ensurePartitionsAreChordal(gm_template);
+  }
+
+  ////////////////////////////////////////////////////////////////////
+  // CREATE JUNCTION TREE DATA STRUCTURES
+  infoMsg(IM::Default,"Creating Junction Tree\n"); fflush(stdout);
+  myjt = new JunctionTree(gm_template);
+  myjt->setUpDataStructures(varSectionAssignmentPrior,varCliqueAssignmentPrior);
+  myjt->prepareForUnrolling();
+  infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
+  ////////////////////////////////////////////////////////////////////
 }
 
   // Formerly JunctionTree::printAllJTInfo()
 void 
 LinearSectionScheduler::printInferencePlanSummary(char const *fileName) {
+  myjt->printAllJTInfo(fileName);
 }
 
   // Formerly GMTemplate::reportScoreStats()
@@ -37,22 +88,37 @@ LinearSectionScheduler::reportScoreStats() {
   // TODO: preconditions
 void 
 LinearSectionScheduler::setCliquePrintRanges(char *p_range, char *c_range, char *e_range) {
+  myjt->setCliquePrintRanges(p_range,c_range,e_range);
+}
+
+void 
+LinearSectionScheduler::setSectionDebugRange(Range &rng) {
+  myjt->setPartitionDebugRange(rng);
 }
 
   // Print to f the order of the variables in each clique selected by setCliquePrintRanges().
 void 
 LinearSectionScheduler::printCliqueOrders(FILE *f) {
+  myjt->printCliqueOrders(f);
 }
 
   // Returns the size (in # of floats) of the cliques selected by setCliquePrintRanges().
 void 
 LinearSectionScheduler::getCliquePosteriorSize(unsigned &p_size, unsigned &c_size, unsigned &e_size) {
+  myjt->cliquePosteriorSize(p_size, c_size, e_size);
 }
 
 
 unsigned 
-LinearSectionScheduler::unroll(unsigned T) {
-  return 0;
+LinearSectionScheduler::unroll(unsigned numFrames,
+			       const UnrollTableOptions tableOption,
+			       unsigned *totalNumberSections) 
+{
+  unsigned numSections;
+  unsigned numUsableFrames = myjt->unroll(numFrames, (JunctionTree::UnrollTableOptions)tableOption, &numSections);
+  myjt->sparseJoinSegementInit(numSections);
+  if (totalNumberSections) *totalNumberSections = numSections;
+  return numUsableFrames;
 }
 
 
@@ -68,25 +134,32 @@ LinearSectionScheduler::probEvidence(unsigned *numUsableFrames,
   unsigned T; // # of sections
 
   // MOVE UNROLL TO SectionScheduler
-  unsigned nUsableFrames = unroll(observation_file->numFrames() /*, ZeroTable, &T*/);
+  unsigned nUsableFrames = unroll(observation_file->numFrames(), ZeroTable, &T);
   if (numUsableFrames) *numUsableFrames = nUsableFrames;
-
-  // do P'
-  SectionSeparator msg = algorithm->computeForwardInterfaceSeparator(0);
+  myjt->sparseJoinSegementInit(T);
+  
+  PartitionTables* cur_sect_tab = myjt->getSectionTables(0);
+  
+ // do P'
+  SectionSeparator *msg = algorithm->computeForwardInterfaceSeparator(0, cur_sect_tab);
 
   // do C'
   unsigned t;
   for (t=1; t < T-1; t+=1) {
-    algorithm->receiveForwardInterfaceSeparator(t, msg);
-    msg = algorithm->computeForwardInterfaceSeparator(t);
+    // delete cur_sect_tab;
+    cur_sect_tab = myjt->getSectionTables(t);
+    algorithm->receiveForwardInterfaceSeparator(t, msg, cur_sect_tab);
+    delete msg;
+    msg = algorithm->computeForwardInterfaceSeparator(t, cur_sect_tab);
     //if (limitTime && probEvidenceTimeExpired) goto finished;
   }
 
   // do E'
-  algorithm->receiveForwardInterfaceSeparator(t, msg);
-  algorithm->computeForwardInterfaceSeparator(t);
+  algorithm->receiveForwardInterfaceSeparator(t, msg, cur_sect_tab);
+  delete msg; // not if E' is the first section!
+  algorithm->computeForwardInterfaceSeparator(t, cur_sect_tab);
 
- finished:
+  //finished:
   
   if (numSectionsDone) *numSectionsDone = t;
   return algorithm->probEvidence(t);

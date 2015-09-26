@@ -317,8 +317,8 @@ main(int argc,char*argv[])
 
   
   // chose C for the final destination version.
-  gm_template_for_C.P.setCliquesFromAnotherPartition(gm_template_for_P.P);
-  gm_template_for_C.E.setCliquesFromAnotherPartition(gm_template_for_E.E);
+  gm_template_for_C.P.setCliquesFromAnotherSection(gm_template_for_P.P);
+  gm_template_for_C.E.setCliquesFromAnotherSection(gm_template_for_E.E);
 
   // make sure triangulated
   BoundaryTriangulate triangulator(fp,gm_template_for_C.maxNumChunksInBoundary(),gm_template_for_C.chunkSkip(),1.0);

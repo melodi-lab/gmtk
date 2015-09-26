@@ -23,10 +23,16 @@
 #ifndef GMTK_SECTIONSEPARATOR_H
 #define GMTK_SECTIONSEPARATOR_H
 
+#include "GMTK_PartitionTables.h"
+
+typedef PartitionTables SectionSeparator;
+
+#if 0
 class SectionSeparator {
 
   // What's the API for a SectionInferenceAlgorithm to construct an SectionSeparator?
   // What's the API for a SectionInferenceAlgorithm to receive an SectionSeparator?
 };
+#endif
 
 #endif

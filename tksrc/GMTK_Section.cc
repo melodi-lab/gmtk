@@ -1,6 +1,6 @@
 /*-
- * GMTK_Partition.cc
- *    Basic Partition for a given graph file.
+ * GMTK_Section.cc
+ *    Basic Section for a given graph file.
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
@@ -46,7 +46,7 @@
 #include "GMTK_ObservationMatrix.h"
 #endif
 #include "GMTK_JunctionTree.h"
-#include "GMTK_Partition.h"
+#include "GMTK_Section.h"
 
 #if HAVE_CONFIG_H
 #include <config.h>
@@ -74,7 +74,7 @@ VCID(HGID)
 #if 0
 // This constructor isn't being used currently. as of Wed Jul 13, 2005
 // TODO: eventually remove
-Partition::Partition(Partition& from_part,
+Section::Section(Section& from_part,
 		     vector <RV*>& newRvs,
 		     map < RVInfo::rvParent, unsigned >& ppf,
 		     const unsigned int frameDelta)
@@ -108,8 +108,8 @@ Partition::Partition(Partition& from_part,
   }
   cliques.reserve(from_part.cliques.size());
   // 
-  // NOTE: It is Crucial for the cliques in the cloned partition to be
-  // inserted in the *SAME ORDER* as in the partition being cloned.
+  // NOTE: It is Crucial for the cliques in the cloned section to be
+  // inserted in the *SAME ORDER* as in the section being cloned.
   for (unsigned i=0;i<from_part.cliques.size();i++) {
     cliques.push_back(MaxClique(from_part.cliques[i],
 				newRvs,ppf,frameDelta));
@@ -119,15 +119,15 @@ Partition::Partition(Partition& from_part,
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
-//        Partition support
+//        Section support
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 
 
 /*-
  *-----------------------------------------------------------------------
- * Partition::writeMaxCliques()
- *   Write out the max cliques of the given partitions.
+ * Section::writeMaxCliques()
+ *   Write out the max cliques of the given sections.
  *
  * Preconditions:
  *   The maxclique variable must be instantiated.
@@ -144,7 +144,7 @@ Partition::Partition(Partition& from_part,
  *-----------------------------------------------------------------------
  */
 void
-Partition::
+Section::
 writeMaxCliques(oDataStreamFile& os)
 {
   // First write out the cliques in commented form for the user
@@ -209,8 +209,8 @@ writeMaxCliques(oDataStreamFile& os)
 
 /*-
  *-----------------------------------------------------------------------
- * Partition::readMaxCliques()
- *   Write out the max cliques of the given partitions.
+ * Section::readMaxCliques()
+ *   Write out the max cliques of the given sections.
  *
  * Preconditions:
  *   The maxclique variable must be instantiated.
@@ -227,7 +227,7 @@ writeMaxCliques(oDataStreamFile& os)
  *-----------------------------------------------------------------------
  */
 void
-Partition::
+Section::
 readMaxCliques(iDataStreamFile& is)
 {
 
@@ -240,7 +240,7 @@ readMaxCliques(iDataStreamFile& is)
   is.read(numCliques,"number of cliques");
 
 #if 0
-  // remove check for numCliques being > 0 since we now allow for empty partitions.
+  // remove check for numCliques being > 0 since we now allow for empty sections.
   if (numCliques == 0)
     error("ERROR: reading file '%s' line %d, numCliques must be >= 1\n",
 	  is.fileName(),is.lineNo());
@@ -289,7 +289,7 @@ readMaxCliques(iDataStreamFile& is)
       map < RVInfo::rvParent, RV* >::iterator loc;
       loc = namePos2Var.find(par);
       if (loc == namePos2Var.end())
-	error("ERROR: reading file %s line %d, clique specification %d has %d'th variable %s(%d) that does not exist in partition.\n",
+	error("ERROR: reading file %s line %d, clique specification %d has %d'th variable %s(%d) that does not exist in section.\n",
 	      is.fileName(),is.lineNo(),i,j,par.first.c_str(),par.second);
       RV* rv = (*loc).second;
       clique.insert(rv);
@@ -302,7 +302,7 @@ readMaxCliques(iDataStreamFile& is)
 
 /*-
  *-----------------------------------------------------------------------
- * Partition::reportScoreStats()
+ * Section::reportScoreStats()
  *   print out stats about the cliques to stdout
  *
  * Preconditions:
@@ -320,7 +320,7 @@ readMaxCliques(iDataStreamFile& is)
  *-----------------------------------------------------------------------
  */
 void
-Partition::reportScoreStats()
+Section::reportScoreStats()
 {
   for (unsigned i=0;i<cliques.size();i++) {
     printf("Clique %d:\n",i);
@@ -331,11 +331,11 @@ Partition::reportScoreStats()
 
 /*-
  *-----------------------------------------------------------------------
- * Partition::triangulatePartitionsByCliqueCompletion()
- *   Triangulate the partitions by completing the cliques that have been read in.
+ * Section::triangulateSectionsByCliqueCompletion()
+ *   Triangulate the sections by completing the cliques that have been read in.
  *
  * Preconditions:
- *   The corresponding partition  must be instantiated.
+ *   The corresponding section  must be instantiated.
  *   The maxclique variables cliques must be instantiated!!
  *
  * Postconditions:
@@ -351,8 +351,8 @@ Partition::reportScoreStats()
  *-----------------------------------------------------------------------
  */
 void
-Partition::
-triangulatePartitionsByCliqueCompletion()
+Section::
+triangulateSectionsByCliqueCompletion()
 {
   for (unsigned i=0;i<cliques.size();i++)
     MaxClique::makeComplete(cliques[i].nodes);
@@ -362,24 +362,24 @@ triangulatePartitionsByCliqueCompletion()
 
 /*-
  *-----------------------------------------------------------------------
- * Partition::setCliquesFromAnotherPartition()
- *   Set the cliques from anohter partition. The other partition
- *   must be from the same structure file, and if the current partition is  a P (resp. C, E)
- *   than the other partition must also be a P (resp. C, and E). Also, the partitions
+ * Section::setCliquesFromAnotherSection()
+ *   Set the cliques from anohter section. The other section
+ *   must be from the same structure file, and if the current section is  a P (resp. C, E)
+ *   than the other section must also be a P (resp. C, and E). Also, the sections
  *   are assumed to come from the same boundary for the .str file.
  *   The routine is used to merge together gm_templates for different triangulations
  *   of the same boundary but say a paralle triangulation of P, C, and E.
  *  
- *   Note that it is assumed that the different partitions refer to different instantiations of
+ *   Note that it is assumed that the different sections refer to different instantiations of
  *   the same set of random variables (so we can't use rv1 == rv2, but instead must use
  *   name and frame equality).
  *
  * Preconditions:
- *   The corresponding partition must be instantiated with nodes.
+ *   The corresponding section must be instantiated with nodes.
  *   
  *
  * Postconditions:
- *   The clique variables now refer to the cliques in the other partition.
+ *   The clique variables now refer to the cliques in the other section.
  *
  * Side Effects:
  *   Current cliques will be destroyed and set to new versions.
@@ -390,7 +390,7 @@ triangulatePartitionsByCliqueCompletion()
  *-----------------------------------------------------------------------
  */
 void
-Partition::setCliquesFromAnotherPartition(Partition& from_part)
+Section::setCliquesFromAnotherSection(Section& from_part)
 {
   cliques.clear();
 
@@ -412,7 +412,7 @@ Partition::setCliquesFromAnotherPartition(Partition& from_part)
     newRvs.push_back(rv);
   }
 
-  // make sure nodes refer to same partition.
+  // make sure nodes refer to same section.
   for (it = from_part.nodes.begin();
        it != from_part.nodes.end();
        it++) {
@@ -422,7 +422,7 @@ Partition::setCliquesFromAnotherPartition(Partition& from_part)
     rvp.second = rv->frame();
 
     if ( ppf.find(rvp) == ppf.end() ) {
-      warning("ERROR: can't find rv %s(%d) in RV set of dest partition\n",
+      warning("ERROR: can't find rv %s(%d) in RV set of dest section\n",
 	    rvp.first.c_str(),rvp.second);
       assert ( 0 );
     }

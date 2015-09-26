@@ -323,48 +323,6 @@ main(int argc,char*argv[])
   GMTemplate gm_template(fp);
 
 
-  // Utilize both the partition information and elimination order
-  // information already computed and contained in the file. This
-  // enables the program to use external triangulation programs,
-  // where this program ensures that the result is triangulated
-  // and where it reports the quality of the triangulation.
-  
-  string tri_file;
-  if (triFileName == NULL) 
-    tri_file = string(strFileName) + GMTemplate::fileExtension;
-  else 
-    tri_file = string(triFileName);
-
-  {
-    infoMsg(IM::Max,"Reading triangulation file...\n");
-
-    // do this in scope so that is gets deleted now rather than later.
-    iDataStreamFile is(tri_file.c_str());
-    if (!fp.readAndVerifyGMId(is,checkTriFileCards))
-      error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",tri_file.c_str(),strFileName);
-
-    gm_template.readPartitions(is);
-    gm_template.readMaxCliques(is);
-
-  }
-
-  infoMsg(IM::Max,"Triangulating graph...\n");
-  gm_template.triangulatePartitionsByCliqueCompletion();
-  if (1) { 
-    // check that graph is indeed triangulated.
-    // TODO: perhaps take this check out so that inference code does
-    // not need to link to the triangulation code (either that, or put
-    // the triangulation check in a different file, so that we only
-    // link to tri check code).
-
-    // TODO: Post-refactor, we're not assuming the graph must be triangulated?
-    //       Move this into the subset of inference algorithms that require it.
-    BoundaryTriangulate triangulator(fp,
-				     gm_template.maxNumChunksInBoundary(),
-				     gm_template.chunkSkip(),1.0);
-    triangulator.ensurePartitionsAreChordal(gm_template);
-  }
-
   // Setup the within-section inference implementation
 
   SectionInferenceAlgorithm *section_inference_alg = NULL;
@@ -397,7 +355,20 @@ main(int argc,char*argv[])
 #ifdef GMTK_LINEARSECTIONSCHEDULER_H
   } else {
     section_scheduler = new LinearSectionScheduler(gm_template, section_inference_alg, gomFS);
+    section_inference_alg->setJT(section_scheduler->getJT()); // BOGUS
 #endif
+  }
+
+  string tri_file;
+  if (triFileName == NULL) 
+    tri_file = string(strFileName) + GMTemplate::fileExtension;
+  else 
+    tri_file = string(triFileName);
+
+  {
+    // do this in scope so that is gets deleted now rather than later.
+    iDataStreamFile is(tri_file.c_str());
+    section_scheduler->setUpDataStructures(fp, is, varPartitionAssignmentPrior,varCliqueAssignmentPrior, checkTriFileCards);
   }
 
   ForwardBackwardTask *fwd_bkwd_alg = NULL;
@@ -419,22 +390,6 @@ main(int argc,char*argv[])
   }
 
 
-#if 0
-  // TODO: move to SeriesInference::setupDataStr()
-
-  ////////////////////////////////////////////////////////////////////
-  // CREATE JUNCTION TREE DATA STRUCTURES
-  infoMsg(IM::Default,"Creating Junction Tree\n"); fflush(stdout);
-  JunctionTree myjt(gm_template);
-#endif
-
-  section_scheduler->setUpDataStructures(varPartitionAssignmentPrior,varCliqueAssignmentPrior);
-
-#if 0
-  // TODO: should this be in setUpDataStructures, or named something else?
-  myjt.prepareForUnrolling();
-#endif
-
   if (jtFileName != NULL)
     section_scheduler->printInferencePlanSummary(jtFileName);
 
@@ -443,12 +398,7 @@ main(int argc,char*argv[])
     section_scheduler->reportScoreStats();
   }
 
-#if 0
-  infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
-  ////////////////////////////////////////////////////////////////////
-#endif
-
-  section_scheduler->setCliquePrintRanges(pPartCliquePrintRange,cPartCliquePrintRange,ePartCliquePrintRange);
+  section_scheduler->setCliquePrintRanges(pSectionCliquePrintRange, cSectionCliquePrintRange, eSectionCliquePrintRange);
 
   // setup enhanced verbosity for selected sections
   Range* pdbrng = new Range(pdbrng_str,0,0x7FFFFFFF);
@@ -458,7 +408,7 @@ main(int argc,char*argv[])
   ObservationFile *clique_posterior_file = NULL; 
   // Only use an observation file format if the user specified a file name and selected some cliques.
   // Otherwise, output (if any) goes to stdout in ASCII format
-  if (cliqueOutputName && (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange) ) {
+  if (cliqueOutputName && (pSectionCliquePrintRange || cSectionCliquePrintRange || eSectionCliquePrintRange) ) {
 
       unsigned p_size, c_size, e_size;
       section_scheduler->getCliquePosteriorSize(p_size, c_size, e_size);
@@ -467,13 +417,13 @@ main(int argc,char*argv[])
       
       // For the sections (P', C', E') that have selected cliques for output, the selected
       // cliques in each section must be the same size.
-      if (pPartCliquePrintRange && p_size != clique_size) {
+      if (pSectionCliquePrintRange && p_size != clique_size) {
 	error("ERROR: incompatible prologue cliques selected for file output: selected P cliques are size %u, other clique size %u\n", p_size, clique_size);
       }
-      if (cPartCliquePrintRange && c_size != clique_size) {
+      if (cSectionCliquePrintRange && c_size != clique_size) {
 	error("ERROR: incompatible chunk cliques selected for file output: selected C cliques are size %u, other clique size %u\n", c_size, clique_size);
       }
-      if (ePartCliquePrintRange && e_size != clique_size) {
+      if (eSectionCliquePrintRange && e_size != clique_size) {
 	error("ERROR: incompatible epilogue cliques selected for file output: selected E cliques are size %u, other clique %u\n", e_size, clique_size);
       }
       section_scheduler->printCliqueOrders(stdout);

@@ -17,42 +17,48 @@
 #include "GMTK_SectionSeparator.h"
 #include "GMTK_SectionInferenceAlgorithm.h"
 
+#include "GMTK_JunctionTree.h"
+#include "GMTK_PartitionTables.h"
+
 class SparseJoinInference : public SectionInferenceAlgorithm {
 
-  // Prepare to do inference on segment of length T.
-  virtual unsigned unroll(unsigned T) {return 0;} // returns number of usable frames
-
+  // temporary bogusness
+  void setJT(JunctionTree *jt) {myjt = jt;} // BOGUS
 
   // All message actions are named from the perspective of C_t.
 
   // compute forward message for C'_t -> C'_{t+1} (aka gather into root)
-  virtual SectionSeparator computeForwardInterfaceSeparator(unsigned t) {
-    SectionSeparator is;
-    return is;
+  SectionSeparator *computeForwardInterfaceSeparator(unsigned t, PartitionTables *sectionPosterior) {
+    assert(myjt);
+    return myjt->computeForwardInterfaceSeparator(t, sectionPosterior);
   } 
 
   // recieve forward message for C'_{t-1} -> C'_t (sendForwardsCrossPartitions)
-  virtual void receiveForwardInterfaceSeparator(unsigned t, SectionSeparator const &msg) {}
+  void receiveForwardInterfaceSeparator(unsigned t, SectionSeparator *msg, PartitionTables *sectionPosterior) {
+    myjt->recieveForwardInterfaceSeparator(t, msg, sectionPosterior);
+  }
 
 
   // compute backward message for C'_{t-1} <- C'_t (aka scatter out of root)
-  virtual SectionSeparator computeBackwardsInterfaceSeparator(unsigned t) {
+  SectionSeparator computeBackwardsInterfaceSeparator(unsigned t) {
     SectionSeparator is;
     return is;
   } 
 
   // recieve backward message for C'_t <- C'_{t+1} (sendBackwardCrossPartitions)
-  virtual void receiveBackwardInterfaceSeparator(unsigned t, SectionSeparator const &msg) {}
+  void receiveBackwardInterfaceSeparator(unsigned t, SectionSeparator const &msg) {}
 
 
   // return P(Q_t | X_{?}), where ? depends on the messages C_t has seen so far:
   //        P(Q_t | X_{0:t}) in the forward pass
   //        P(Q_t | X_{0:T-1}) in a (full) backward pass
   //        P(Q_t | X_{0:t+\tau}) in a smoothing backward pass
-  virtual logpr probEvidence(unsigned t) {
-    logpr p;
-    return p;
+  logpr probEvidence(unsigned t) {
+    return myjt->computeProbEvidence(t);
   }
+
+ private:
+  JunctionTree *myjt;
 
 };
 
