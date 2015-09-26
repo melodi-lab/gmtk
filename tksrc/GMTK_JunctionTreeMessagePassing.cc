@@ -2307,6 +2307,18 @@ JunctionTree::computeForwardInterfaceSeparator(unsigned t, PartitionTables *sect
 
 void
 JunctionTree::recieveForwardInterfaceSeparator(unsigned t, PartitionTables *msg, PartitionTables *sectionPosterior) {
+    ceSendForwardsCrossPartitions(// previous partition
+			  partitionStructureArray[inference_it.ps_prev_i()],
+			  *msg,
+			  inference_it.prev_ri(),
+			  inference_it.prev_nm(),
+			  inference_it.pt_prev_i(),
+			  // current partition
+			  partitionStructureArray[inference_it.ps_i()],
+			  *sectionPosterior,
+			  inference_it.cur_li(),
+			  inference_it.cur_nm(),
+			  inference_it.pt_i());
 }
 
 logpr
