@@ -2254,6 +2254,7 @@ JunctionTree::setRootToMaxCliqueValue()
 
 PartitionTables *
 JunctionTree::getSectionTables(unsigned t) {
+  setCurrentInferenceShiftTo(t);
   return new PartitionTables(inference_it.cur_jt_partition());
 }
 
