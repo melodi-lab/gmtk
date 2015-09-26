@@ -192,7 +192,7 @@ tieSupport.h tieSupport.cc \
 GMTK_RVInfo.h GMTK_RVInfo.cc \
 GMTK_GammaComponent.h GMTK_GammaComponent.cc \
 GMTK_BetaComponent.h GMTK_BetaComponent.cc \
-GMTK_Partition.h GMTK_Partition.cc \
+GMTK_Section.h GMTK_Section.cc \
 GMTK_JT_Partition.h GMTK_JT_Partition.cc \
 GMTK_PartitionTables.h GMTK_PartitionTables.cc \
 GMTK_PartitionStructures.h GMTK_PartitionStructures.cc \

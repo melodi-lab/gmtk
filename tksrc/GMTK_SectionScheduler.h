@@ -44,18 +44,33 @@
 #include "range.h"
 #include "bp_range.h"
 
+#include "fileParser.h"
+
+#include "GMTK_ObservationSource.h"
+#include "GMTK_FileParser.h"
+
 #include "GMTK_SectionInferenceAlgorithm.h"
 
 class SectionScheduler {
 
  public:
 
+  SectionScheduler() :
+    pCliquePrintRange(NULL), cCliquePrintRange(NULL), eCliquePrintRange(NULL),
+    section_debug_range("all", 0, 0x7FFFFFFF), obs_source(NULL)
+  {}
+
   virtual ~SectionScheduler() {}
+
+  virtual JunctionTree *getJT() = 0; // BOGUS
 
   // Initialize stuff at the model-level. See prepareForSegment() for segment-level initialization.
   // TODO: explain parameters
-  virtual void setUpDataStructures(char const *varSectionAssignmentPrior,
-				   char const *varCliqueAssignmentPrior) = 0;
+  virtual void setUpDataStructures(FileParser &fp,
+				   iDataStreamFile &tri_file,
+				   char const *varSectionAssignmentPrior,
+				   char const *varCliqueAssignmentPrior,
+				   bool checkTriFileCards) = 0;
 
 
   // Prepare to do inference on segment of length T. Note that this
@@ -75,7 +90,11 @@ class SectionScheduler {
 
   // Maybe rename this to prepareForSegment() or something to avoid confusion
   // with O(T) space graph unrolling?
-  virtual unsigned unroll(unsigned T) = 0; // returns number of usable frames
+  // returns number of usable frames
+  enum UnrollTableOptions { LongTable, ShortTable, ZeroTable, NoTouchTable };
+  virtual unsigned unroll(unsigned numFrames,
+			  const UnrollTableOptions tableOption = LongTable,
+			  unsigned *totalNumberSections = NULL) = 0; 
 
 
   // Formerly JunctionTree::printAllJTInfo()
@@ -115,6 +134,11 @@ class SectionScheduler {
 
   Range section_debug_range;
 
+  ObservationSource *obs_source; // & other common members?
+  // inference task methods can dynamic cast to FileSource or StreamSource as needed?
+
+  // sectionStructureArray
+  // sectionTableArray
 };
 
 #endif

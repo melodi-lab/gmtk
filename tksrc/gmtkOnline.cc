@@ -426,7 +426,7 @@ main(int argc,char*argv[])
   if (jtFileName != NULL)
     myjt.printAllJTInfo(jtFileName);
 
-  myjt.setCliquePrintRanges(pPartCliquePrintRange,cPartCliquePrintRange,ePartCliquePrintRange);
+  myjt.setCliquePrintRanges(pSectionCliquePrintRange,cSectionCliquePrintRange,eSectionCliquePrintRange);
   infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
   ////////////////////////////////////////////////////////////////////
 
@@ -506,7 +506,7 @@ main(int argc,char*argv[])
 #endif
 
   ObservationFile *pCliqueFile = NULL;
-  if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange) {
+  if (pSectionCliquePrintRange || cSectionCliquePrintRange || eSectionCliquePrintRange) {
     
     if (cliqueOutputName && !pCliqueFile) {
       unsigned totalNumberPartitions;
@@ -518,13 +518,13 @@ main(int argc,char*argv[])
       unsigned cliqueSize = (pSize > cSize) ? pSize : cSize;
       cliqueSize = (cliqueSize > eSize) ? cliqueSize : eSize;
       
-      if (pPartCliquePrintRange && pSize != cliqueSize) {
+      if (pSectionCliquePrintRange && pSize != cliqueSize) {
 	error("ERROR: incompatible cliques selected for file output\n");
       }
-      if (cPartCliquePrintRange && cSize != cliqueSize) {
+      if (cSectionCliquePrintRange && cSize != cliqueSize) {
 	error("ERROR: incompatible cliques selected for file output\n");
       }
-      if (ePartCliquePrintRange && eSize != cliqueSize) {
+      if (eSectionCliquePrintRange && eSize != cliqueSize) {
 	error("ERROR: incompatible cliques selected for file output\n");
       }
       myjt.printCliqueOrders(stdout);

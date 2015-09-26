@@ -910,7 +910,7 @@ private:
   );
 
   void triangulateOneEdgeChange(
-    Partition& part,
+    Section& part,
     SavedGraph orgnl_graph
     );
 
@@ -983,8 +983,8 @@ public:
     bool reTriE );
 
   void triangulateCrossover(
-    Partition& target,
-    Partition& crossover,
+    Section& target,
+    Section& crossover,
     float crossoverProbability,
     float mutateProbability );
 
@@ -1050,7 +1050,7 @@ public:
   );
 
   void saveCurrentNeighbors(
-    Partition&  prt,
+    Section&  prt,
     SavedGraph& orgnl_nghbrs) 
   {
     saveCurrentNeighbors(prt.nodes,orgnl_nghbrs);

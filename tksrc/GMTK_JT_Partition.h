@@ -38,7 +38,7 @@
 // class mention for forward references.
 class GraphicalModel;
 class BoundaryTriangulate;
-class Partition;
+class Section;
 class GMTemplate;
 class JunctionTree;
 
@@ -47,7 +47,7 @@ class JunctionTree;
 
 // Child class of partition that includes support for doing exact
 // inference.
-class JT_Partition : public Partition {
+class JT_Partition : public Section {
 
   friend class JunctionTree;
 
@@ -114,7 +114,7 @@ public:
   JT_Partition() {}
 
   // constructor
-  JT_Partition(Partition& from_part,
+  JT_Partition(Section& from_part,
 	       const unsigned int frameDelta,
 	       // the left and right interface variables for
 	       // this JT partition Empty if doesn't exist
@@ -129,7 +129,7 @@ public:
 	       vector <RV*>& newRvs,
 	       map < RVInfo::rvParent, unsigned >& ppf);
 
-  JT_Partition(Partition& from_part,
+  JT_Partition(Section& from_part,
 	       const set <RV*>& from_liVars,
 	       const set <RV*>& from_riVars);
   

@@ -23,6 +23,7 @@
 #include "GMTK_StreamSource.h"
 
 #include "GMTK_GMTemplate.h"
+#include "GMTK_FileParser.h"
 
 #include "GMTK_SectionScheduler.h"
 
@@ -33,7 +34,14 @@
 
 #include "GMTK_SectionInferenceAlgorithm.h"
 
-class LinearSectionScheduler : public SectionScheduler, ProbEvidenceTask, ForwardBackwardTask, ViterbiTask, SmoothingTask {
+#include "GMTK_JunctionTree.h"
+
+class LinearSectionScheduler : public SectionScheduler, 
+                               public ProbEvidenceTask, 
+                               public ForwardBackwardTask, 
+                               public ViterbiTask, 
+                               public SmoothingTask 
+{
 
  public:
 
@@ -42,21 +50,29 @@ class LinearSectionScheduler : public SectionScheduler, ProbEvidenceTask, Forwar
 			 FileSource                *observation_file = NULL,
 			 StreamSource              *observation_stream = NULL)
     : gm_template(gm_template), algorithm(algorithm),
-      observation_file(observation_file), observation_stream(observation_stream)
+    observation_file(observation_file), observation_stream(observation_stream)
   {
     assert(algorithm);
     assert(observation_file || observation_stream);
+    myjt = NULL;
   }
 
-  virtual ~LinearSectionScheduler() {}
+  ~LinearSectionScheduler() {}
 
 
+  JunctionTree *getJT() { return myjt; } // BOGUS
+  
   // Initialize stuff at the model-level. See prepareForSegment() for segment-level initialization.
   // TODO: explain parameters
-  void setUpDataStructures(char const *varSectionAssignmentPrior,
-				   char const *varCliqueAssignmentPrior);
+  void setUpDataStructures(FileParser &fp,
+			   iDataStreamFile &tri_file,
+			   char const *varSectionAssignmentPrior,
+			   char const *varCliqueAssignmentPrior,
+			   bool checkTriFileCards);
 
-  unsigned unroll(unsigned T);
+  unsigned unroll(unsigned numFrames,
+		  const UnrollTableOptions tableOption = LongTable,
+		  unsigned *totalNumberSections = NULL);
 
   // Formerly JunctionTree::printAllJTInfo()
   void printInferencePlanSummary(char const *fileName);
@@ -71,6 +87,9 @@ class LinearSectionScheduler : public SectionScheduler, ProbEvidenceTask, Forwar
   // Set the range of selected clique #'s in P', C', E' for printing.
   // TODO: preconditions
   void setCliquePrintRanges(char *p_range, char *c_range, char *e_range);
+
+  // Set range of sections that should produce extra debug info
+  void setSectionDebugRange(Range &rng);
 
   // Print to f the order of the variables in each clique selected by setCliquePrintRanges().
   void printCliqueOrders(FILE *f);
@@ -115,6 +134,7 @@ class LinearSectionScheduler : public SectionScheduler, ProbEvidenceTask, Forwar
   FileSource   *observation_file;
   StreamSource *observation_stream;
   
+  JunctionTree *myjt;
 };
 
 #endif

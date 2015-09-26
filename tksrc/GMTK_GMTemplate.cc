@@ -49,7 +49,7 @@
 #include "GMTK_ObservationMatrix.h"
 #endif
 #include "GMTK_JunctionTree.h"
-#include "GMTK_Partition.h"
+#include "GMTK_Section.h"
 
 #if HAVE_CONFIG_H
 #include <config.h>
@@ -1232,9 +1232,9 @@ void
 GMTemplate::
 triangulatePartitionsByCliqueCompletion()
 {
-  P.triangulatePartitionsByCliqueCompletion();
-  C.triangulatePartitionsByCliqueCompletion();
-  E.triangulatePartitionsByCliqueCompletion();
+  P.triangulateSectionsByCliqueCompletion();
+  C.triangulateSectionsByCliqueCompletion();
+  E.triangulateSectionsByCliqueCompletion();
 }
 
 

@@ -592,7 +592,7 @@ JunctionTree::setCliquePrintRanges(char *p,char*c,char*e)
  *-----------------------------------------------------------------------
  */
 void
-JunctionTree::createPartitionJunctionTree(Partition& part,const string junctionTreeMSTpriorityStr)
+JunctionTree::createPartitionJunctionTree(Section& part,const string junctionTreeMSTpriorityStr)
 {
   const unsigned numMaxCliques = part.cliques.size();
 
@@ -3369,7 +3369,7 @@ JunctionTree::junctionTreeWeight(vector<MaxClique>& cliques,
   if (cliques.size() == 0)
     return 0.0;
 
-  Partition part;
+  Section part;
   const set <RV*> emptySet;
   part.cliques = cliques;
 

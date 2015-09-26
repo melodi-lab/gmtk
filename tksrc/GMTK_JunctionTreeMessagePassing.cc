@@ -2250,6 +2250,78 @@ JunctionTree::setRootToMaxCliqueValue()
 ///////////////////////////////////////////////////////////////////////////////////////
 
 
+
+
+PartitionTables *
+JunctionTree::getSectionTables(unsigned t) {
+  return new PartitionTables(inference_it.cur_jt_partition());
+}
+
+
+void
+JunctionTree::sparseJoinSegementInit(unsigned numSections) {
+  new (&inference_it) ptps_iterator(*this, numSections);
+  init_CC_CE_rvs(inference_it);
+}
+
+
+PartitionTables *
+JunctionTree::computeForwardInterfaceSeparator(unsigned t, PartitionTables *sectionPosterior) {
+  setCurrentInferenceShiftTo(t);
+    // we skip the first Co's LI separator if there is no P1
+  // partition, since otherwise we'll get zero probability.
+  if (inference_it.at_first_c() && P1.cliques.size() == 0)
+    Co.skipLISeparator();
+  // gather into the root of the current  partition
+  ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
+		   *sectionPosterior,
+		   inference_it.cur_ri(),
+		   inference_it.cur_message_order(),
+		   inference_it.cur_nm(),
+		   inference_it.pt_i());
+  if (sectionDoDist) {
+    deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
+		       *sectionPosterior,
+		       inference_it.cur_ri(),
+		       inference_it.cur_message_order(),
+		       inference_it.cur_nm(),
+		       inference_it.pt_i());
+  }
+  
+  // possibly print the P or C partition information
+  if (inference_it.cur_part_clique_print_range() != NULL)
+    printAllCliques(partitionStructureArray[inference_it.ps_i()],
+		    *sectionPosterior,
+		    inference_it.pt_i(),
+		    inference_it.cur_nm(),
+		    inference_it.cur_part_clique_print_range(),
+		    stdout,
+		    true, true, //cliquePosteriorNormalize,cliquePosteriorUnlog,
+		    false, NULL /*posteriorFile*/);
+  // if the LI separator was turned off, we need to turn it back on.
+  if (inference_it.at_first_c() && P1.cliques.size() == 0)
+    Co.useLISeparator();
+
+  return sectionPosterior;
+}
+
+void
+JunctionTree::recieveForwardInterfaceSeparator(unsigned t, PartitionTables *msg, PartitionTables *sectionPosterior) {
+}
+
+logpr
+JunctionTree::computeProbEvidence(unsigned t) {
+  logpr p;
+  return p;
+}
+
+PartitionTables *JunctionTree::cachedPT = NULL;
+unsigned         JunctionTree::cachedT = 0;
+
+
+
+
+
 /*-
  *-----------------------------------------------------------------------
  * JunctionTree::ceGatherIntoRoot
