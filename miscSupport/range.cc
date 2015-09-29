@@ -715,7 +715,7 @@ void Range::_reportParseError(char *def_str) {
     exit(-1); // Karim 13oct2004
 }
 
-void Range::PrintRanges(char *tag/*=NULL*/, FILE *stream/*=stderr*/) {
+void Range::PrintRanges(char *tag/*=NULL*/, FILE *stream/*=stderr*/) const {
     // For debug, print out the actual ranges specified
     RangeNode *node = rangeList;
     fprintf(stream, "**Ranges '%s' (npts=%u):\n", tag?tag:"", length());
@@ -834,13 +834,13 @@ int Range::SetDefStr(const char *spec) {
     return rc;
 }
 
-int Range::first(void) {
+int Range::first(void) const {
     // it's an error to call first() or last() on an empty list
     assert(rangeList);
     return rangeList->start;
 }
 
-int Range::last(void) {
+int Range::last(void) const {
     RangeList list = rangeList;
     // it's an error to call first() or last() on an empty list
     assert(rangeList);
@@ -850,7 +850,7 @@ int Range::last(void) {
     return list->end;
 }
 
-int Range::contains(int val) {
+int Range::contains(int val) const {
     // return the *number of times* val occurs in the list
     int count = 0;
     RangeList list = rangeList;
@@ -871,7 +871,7 @@ int Range::contains(int val) {
     return count;
 }
 
-int Range::full(void) {
+int Range::full(void) const {
     // A full range goes straight from min to max
     int rc = 0;
     if (rangeList != NULL 
