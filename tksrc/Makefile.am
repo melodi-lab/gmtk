@@ -89,6 +89,7 @@ $(builddir)/../IEEEFloatingpoint/libIEEEsupport.a
 noinst_LIBRARIES = libXOPT.a libGMTK.a
 
 libGMTK_a_SOURCES = \
+GMTK_PtPsIterator.h \
 GMTK_SectionScheduler.h GMTK_SectionScheduler.cc \
 GMTK_LinearSectionScheduler.h GMTK_LinearSectionScheduler.cc \
 \

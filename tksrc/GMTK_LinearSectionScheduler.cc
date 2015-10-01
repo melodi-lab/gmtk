@@ -9,12 +9,13 @@
  *
  */
 
+#include "GMTK_LinearSectionScheduler.h"
+
 #include "GMTK_FileSource.h"
 #include "GMTK_StreamSource.h"
 
 #include "GMTK_BoundaryTriangulate.h"
 
-#include "GMTK_LinearSectionScheduler.h"
 
   // Initialize stuff at the model-level. See prepareForSegment() for segment-level initialization.
   // TODO: explain parameters
@@ -64,7 +65,9 @@ LinearSectionScheduler::setUpDataStructures(iDataStreamFile &tri_file,
   ////////////////////////////////////////////////////////////////////
   // CREATE JUNCTION TREE DATA STRUCTURES
   infoMsg(IM::Default,"Creating Junction Tree\n"); fflush(stdout);
-  myjt = new JunctionTree(gm_template);
+
+//  myjt = new JunctionTree(gm_template);
+
   myjt->setUpDataStructures(varSectionAssignmentPrior,varCliqueAssignmentPrior);
   myjt->prepareForUnrolling();
   infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
@@ -135,14 +138,16 @@ LinearSectionScheduler::probEvidence(unsigned *numUsableFrames,
 				     const bool cliquePosteriorUnlog,
 				     ObservationFile *posteriorFile)
 {
-  ObservationFile *observation_file = dynamic_cast<ObservationFile *>(obs_source);
-  assert(observation_file);
+  FileSource *observation_source = dynamic_cast<FileSource *>(obs_source);
+  assert(observation_source);
 
   unsigned T; // # of sections
 
   // MOVE UNROLL TO SectionScheduler
-  unsigned nUsableFrames = unroll(observation_file->numFrames(), ZeroTable, &T);
+  unsigned nUsableFrames = unroll(observation_source->numFrames(), ZeroTable, &T);
   if (numUsableFrames) *numUsableFrames = nUsableFrames;
+
+  new (&inference_it) PtPsIterator(*myjt,T);
   myjt->sparseJoinSegementInit(T);
   
   PartitionTables* cur_sect_tab = myjt->getSectionTables(0);
@@ -155,7 +160,7 @@ LinearSectionScheduler::probEvidence(unsigned *numUsableFrames,
   for (t=1; t < T-1; t+=1) {
     // delete cur_sect_tab;
     cur_sect_tab = myjt->getSectionTables(t);
-    algorithm->receiveForwardInterfaceSeparator(t, msg, cur_sect_tab);
+    algorithm->receiveForwardInterfaceSeparator(++inference_it, msg, cur_sect_tab);
     delete msg;
     msg = algorithm->computeForwardInterfaceSeparator(t, cur_sect_tab);
     //if (limitTime && probEvidenceTimeExpired) goto finished;
@@ -163,7 +168,7 @@ LinearSectionScheduler::probEvidence(unsigned *numUsableFrames,
 
   // do E'
   cur_sect_tab = myjt->getSectionTables(t);
-  algorithm->receiveForwardInterfaceSeparator(t, msg, cur_sect_tab);
+  algorithm->receiveForwardInterfaceSeparator(++inference_it, msg, cur_sect_tab);
   delete msg; // not if E' is the first section!
   algorithm->computeForwardInterfaceSeparator(t, cur_sect_tab);
 

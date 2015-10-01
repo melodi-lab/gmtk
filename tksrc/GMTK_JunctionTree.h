@@ -49,12 +49,14 @@ class BoundaryTriangulate;
 class Section;
 class GMTemplate;
 class JunctionTree;
+class PtPsIterator;
 
 class JunctionTree {
 
   friend class GMTemplate;
   friend class BoundaryTriangulate;
-
+  friend class PtPsIterator;
+  
   // partition range for debugging output
   Range partitionDebugRange;
 
@@ -810,7 +812,7 @@ public:
   PartitionTables *getSectionTables(unsigned t);
   void sparseJoinSegementInit(unsigned numSections);
   PartitionTables *computeForwardInterfaceSeparator(unsigned t, PartitionTables *sectionPosterior);
-  void recieveForwardInterfaceSeparator(unsigned t, PartitionTables *msg, PartitionTables *sectionPosterior);
+  void recieveForwardInterfaceSeparator(PtPsIterator &t, PartitionTables *msg, PartitionTables *sectionPosterior);
   logpr computeProbEvidence(unsigned t, PartitionTables *sectionPosterior);
   static PartitionTables *cachedPT;
   static unsigned         cachedT;

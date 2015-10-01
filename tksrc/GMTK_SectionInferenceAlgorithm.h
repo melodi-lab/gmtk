@@ -22,6 +22,7 @@
 
 #include "fileParser.h"
 
+#include "GMTK_PtPsIterator.h"
 #include "GMTK_SectionSeparator.h"
 #include "GMTK_PartitionTables.h"
 
@@ -38,7 +39,7 @@ class SectionInferenceAlgorithm {
   virtual SectionSeparator *computeForwardInterfaceSeparator(unsigned t, PartitionTables *sectionPosterior) = 0; 
 
   // recieve forward message for C'_{t-1} -> C'_t (sendForwardsCrossPartitions)
-  virtual void receiveForwardInterfaceSeparator(unsigned t, SectionSeparator *msg, PartitionTables *sectionPosterior) = 0;
+  virtual void receiveForwardInterfaceSeparator(PtPsIterator &t, SectionSeparator *msg, PartitionTables *sectionPosterior) = 0;
 
 
   // compute backward message for C'_{t-1} <- C'_t (aka scatter out of root)

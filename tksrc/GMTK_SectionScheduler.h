@@ -53,21 +53,33 @@
 #include "GMTK_ObservationSource.h"
 #include "GMTK_FileParser.h"
 
+#include "GMTK_PtPsIterator.h"
 #include "GMTK_PartitionStructures.h"
 #include "GMTK_PartitionTables.h"
 #include "GMTK_JT_Partition.h"
-
+#include "GMTK_PtPsIterator.h"
 #include "GMTK_SectionInferenceAlgorithm.h"
 
 class SectionScheduler {
 
  public:
 
+#if 0
   SectionScheduler(GMTemplate &gm_template, FileParser &fp, SectionInferenceAlgorithm *algorithm, ObservationSource *obs_source) :
     pCliquePrintRange(NULL), cCliquePrintRange(NULL), eCliquePrintRange(NULL),
     section_debug_range("all", 0, 0x7FFFFFFF), obs_source(obs_source), fp(fp), gm_template(gm_template), algorithm(algorithm)
   {}
-
+#else
+    JunctionTree *extremely_bogus_jt; // BOGUS
+    
+  SectionScheduler(GMTemplate &gm_template, FileParser &fp, SectionInferenceAlgorithm *algorithm, ObservationSource *obs_source) :
+    extremely_bogus_jt(new JunctionTree(gm_template)), // TOTALLY BOGUS
+    pCliquePrintRange(NULL), cCliquePrintRange(NULL), eCliquePrintRange(NULL),
+    section_debug_range("all", 0, 0x7FFFFFFF), obs_source(obs_source), fp(fp), gm_template(gm_template),
+      inference_it(*extremely_bogus_jt), algorithm(algorithm)
+  {}
+#endif
+    
   virtual ~SectionScheduler() {}
 
   virtual JunctionTree *getJT() = 0; // BOGUS
@@ -101,7 +113,7 @@ class SectionScheduler {
   enum UnrollTableOptions { LongTable, ShortTable, ZeroTable, NoTouchTable };
   virtual unsigned unroll(unsigned numFrames,
 			  const UnrollTableOptions tableOption = LongTable,
-			  unsigned *totalNumberSections = NULL) = 0; 
+			  unsigned *totalNumberSections = NULL); 
 
 
   // Formerly JunctionTree::printAllJTInfo()
@@ -214,6 +226,7 @@ class SectionScheduler {
   // The fixed gm_template for this model, contains the pre-triangulated graph.
   GMTemplate   &gm_template;
 
+  PtPsIterator inference_it;
   SectionInferenceAlgorithm *algorithm;
 };
 
