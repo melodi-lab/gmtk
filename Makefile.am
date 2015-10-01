@@ -7,7 +7,7 @@
 # See COPYING or http://opensource.org/licenses/OSL-3.0
 #
 
-EXTRA_DIST = RELEASE contrib version.sh buildhelp.sh bootstrap.sh version.info
+EXTRA_DIST = RELEASE contrib version.sh buildhelp.sh bootstrap.sh version.info gmtk.h2m
 
 dist_bin_SCRIPTS = \
 scripts/fixTri.sh \
@@ -16,7 +16,7 @@ scripts/triangulateGA \
 scripts/triangulateParallel \
 scripts/triangulateTimings
 
-SUBDIRS = IEEEFloatingpoint miscSupport featureFileIO mitk deepMLP tksrc tests
+SUBDIRS = IEEEFloatingpoint miscSupport featureFileIO mitk deepMLP tksrc tests man
 
 # machine to publish to (any that mount /g/melodi/html will probably do)
 PUBLISHHOST=trumpet

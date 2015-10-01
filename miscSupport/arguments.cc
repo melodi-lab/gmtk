@@ -1010,7 +1010,8 @@ void Arg::usage(const char* filter,bool stdErrPrint, const char *programDescript
     fprintf(destStream,"%s\n", programDescription);
   }
   fprintf(destStream,"Usage: %s  [[[-flag] [option]] ...]\n",Program_Name);
-  fprintf(destStream,"Required: <>; Optional: []; Flagless arguments must be in order.\n");
+  fprintf(destStream,"Options:\n");
+  fprintf(destStream,"Required: <>; Optional: []; Flagless arguments must be in order.\n\n");
 
   Arg* arg_ptr = Args;
   int longest_variation = 0;
