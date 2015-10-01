@@ -38,16 +38,24 @@
 #ifndef GMTK_SECTIONSCHEDULER_H
 #define GMTK_SECTIONSCHEDULER_H
 
+#include <vector>
+#include <map>
+
 #include "logp.h"
 
 // TODO: what's the difference between range and bp_range?
 #include "range.h"
 #include "bp_range.h"
+#include "mArray.h"
 
 #include "fileParser.h"
 
 #include "GMTK_ObservationSource.h"
 #include "GMTK_FileParser.h"
+
+#include "GMTK_PartitionStructures.h"
+#include "GMTK_PartitionTables.h"
+#include "GMTK_JT_Partition.h"
 
 #include "GMTK_SectionInferenceAlgorithm.h"
 
@@ -55,9 +63,9 @@ class SectionScheduler {
 
  public:
 
-  SectionScheduler() :
+  SectionScheduler(GMTemplate &gm_template, FileParser &fp, SectionInferenceAlgorithm *algorithm, ObservationSource *obs_source) :
     pCliquePrintRange(NULL), cCliquePrintRange(NULL), eCliquePrintRange(NULL),
-    section_debug_range("all", 0, 0x7FFFFFFF), obs_source(NULL)
+    section_debug_range("all", 0, 0x7FFFFFFF), obs_source(obs_source), fp(fp), gm_template(gm_template), algorithm(algorithm)
   {}
 
   virtual ~SectionScheduler() {}
@@ -66,8 +74,7 @@ class SectionScheduler {
 
   // Initialize stuff at the model-level. See prepareForSegment() for segment-level initialization.
   // TODO: explain parameters
-  virtual void setUpDataStructures(FileParser &fp,
-				   iDataStreamFile &tri_file,
+  virtual void setUpDataStructures(iDataStreamFile &tri_file,
 				   char const *varSectionAssignmentPrior,
 				   char const *varCliqueAssignmentPrior,
 				   bool checkTriFileCards) = 0;
@@ -75,8 +82,8 @@ class SectionScheduler {
 
   // Prepare to do inference on segment of length T. Note that this
   // is the analog of the current JunctionTree::unroll() which sets up the
-  // PartitionStructureArray for at most  P' C' C' E' (4 sections, so
-  // O(1) memory), and the PartitionTableArray for between 0 and T
+  // section_structure_array for at most  P' C' C' E' (4 sections, so
+  // O(1) memory), and the section_table_array for between 0 and T
   // sections depending on ZeroTable, ShortTable, or LongTable. 
   // JT::unroll() also allocates O(T) memory (optionally memory mapped)
   // to store the the Viterbi values if they aren't being written to
@@ -119,12 +126,76 @@ class SectionScheduler {
 
   // Set the range of section #s that get elevated verbosity
   // P' = 0, C' \in 1, ..., T=2, E' = T-1
-  virtual void setSectionDebugRange(Range &rng) {
+  virtual void setSectionDebugRange(Range const &rng) {
     section_debug_range.SetLimits(rng.first(), rng.last()); 
     section_debug_range.SetDefStr(rng.GetDefStr()); 
   }
 
  protected:
+
+  // The set of base sections from which real unrolled things are cloned from.
+  // When unrolling zero time, we get:
+  //   u0: P' E'
+  // When unrolling 1 or more times, the method depends on
+  // if the template was created using either the left or right interface
+  // method.
+  // If template created using left interface method, we do:
+  //  u0: P' E'
+  //  u1: P' C' E' 
+  //  u2: P' C' C' E' 
+  //  u3: P' C' C' C' E'
+  //  u4: etc.
+  // Note that for left interface, an E1 contains M copies of 
+  // the original chunk C, so u0 is the basic template.
+  //
+  // If template created using right interface method, we do:
+  //  u0: P' E'
+  //  u1: P' C' E' 
+  //  u2: P' C' C' E' 
+  //  u3: P' C' C' C' E'
+  //  u4: etc.
+  // in the right interface case, P' contains an original P and M
+  // copies of C.  The next three variables hold sections P', C',
+  // and E', where, for the standard left interface and simple
+  // boundary case, we have that P' = P, C' = C , and E' = [C
+  // E]. These sections use the *same* set of C++ random variables
+  // (so the intersection of the random variables in P1 and Co will be
+  // the interface).
+  JT_Partition P1; 
+  JT_Partition Co;   // C "other", depending on if right or left interface method is used.
+  JT_Partition E1; 
+
+  // The set of random variables corresponding to the union of the rvs
+  // P1, Co, E1, corresponding to the template unrolled M+S-1
+  // times. In other words, the number of C repetitions is M + S, so
+  // we unroll one less than that, see
+  // BoundaryTriangulate::findPartitions() for more information. These
+  // are determined in create_base_partitions().
+  vector <RV*> section_unrolled_rvs; 
+  // mapping from name(frame) to integer index into unrolled_rvs.
+  map < RVInfo::rvParent, unsigned > section_ppf;
+
+
+  // The names of the above three sections to use for printing,
+  // debugging, etc.
+  static const char* P1_n;
+  static const char* Co_n;
+  static const char* E1_n;
+  
+  // Note, while we need extra separator cliques that are between the
+  // corresponding sections interface cliques, these separators will
+  // live in the section on the right of the separator. They will be
+  // pointed to by the left interface clique in the section on the
+  // right.
+
+  // The section structures that hold structures for a set of
+  // RVs unrolled enough to cover any actual length DGM.
+  sArray <PartitionStructures> section_structure_array;
+  // The section tables that hold the actual clique/separator tables
+  // for a DGM. This might be much longer than the
+  // section_structure_array but is certainly no shorter.
+  sArray <PartitionTables> section_table_array;
+
 
   // range of cliques within each section to print out when doing
   // CE/DE inference. If these are NULL, then we print nothing.
@@ -137,8 +208,13 @@ class SectionScheduler {
   ObservationSource *obs_source; // & other common members?
   // inference task methods can dynamic cast to FileSource or StreamSource as needed?
 
-  // sectionStructureArray
-  // sectionTableArray
+  // the fixed file parser for this model, for RV unrolling, etc.
+  FileParser   &fp;
+
+  // The fixed gm_template for this model, contains the pre-triangulated graph.
+  GMTemplate   &gm_template;
+
+  SectionInferenceAlgorithm *algorithm;
 };
 
 #endif

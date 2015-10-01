@@ -9,15 +9,17 @@
  *
  */
 
-#include "GMTK_LinearSectionScheduler.h"
+#include "GMTK_FileSource.h"
+#include "GMTK_StreamSource.h"
 
 #include "GMTK_BoundaryTriangulate.h"
+
+#include "GMTK_LinearSectionScheduler.h"
 
   // Initialize stuff at the model-level. See prepareForSegment() for segment-level initialization.
   // TODO: explain parameters
 void 
-LinearSectionScheduler::setUpDataStructures(FileParser &fp,
-					    iDataStreamFile &tri_file,
+LinearSectionScheduler::setUpDataStructures(iDataStreamFile &tri_file,
 					    char const *varSectionAssignmentPrior,
 					    char const *varCliqueAssignmentPrior,
 					    bool checkTriFileCards)
@@ -109,7 +111,8 @@ LinearSectionScheduler::getCliquePosteriorSize(unsigned &p_size, unsigned &c_siz
   myjt->cliquePosteriorSize(p_size, c_size, e_size);
 }
 
-
+#if 0
+// now available in base class
 unsigned 
 LinearSectionScheduler::unroll(unsigned numFrames,
 			       const UnrollTableOptions tableOption,
@@ -121,7 +124,7 @@ LinearSectionScheduler::unroll(unsigned numFrames,
   if (totalNumberSections) *totalNumberSections = numSections;
   return numUsableFrames;
 }
-
+#endif
 
 logpr
 LinearSectionScheduler::probEvidence(unsigned *numUsableFrames,
@@ -132,6 +135,9 @@ LinearSectionScheduler::probEvidence(unsigned *numUsableFrames,
 				     const bool cliquePosteriorUnlog,
 				     ObservationFile *posteriorFile)
 {
+  ObservationFile *observation_file = dynamic_cast<ObservationFile *>(obs_source);
+  assert(observation_file);
+
   unsigned T; // # of sections
 
   // MOVE UNROLL TO SectionScheduler

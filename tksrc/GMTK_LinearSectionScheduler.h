@@ -19,8 +19,7 @@
 
 #include "logp.h"
 
-#include "GMTK_FileSource.h"
-#include "GMTK_StreamSource.h"
+#include "GMTK_ObservationSource.h"
 
 #include "GMTK_GMTemplate.h"
 #include "GMTK_FileParser.h"
@@ -46,14 +45,13 @@ class LinearSectionScheduler : public SectionScheduler,
  public:
 
   LinearSectionScheduler(GMTemplate                &gm_template,
+                         FileParser                &fp,
 			 SectionInferenceAlgorithm *algorithm,
-			 FileSource                *observation_file = NULL,
-			 StreamSource              *observation_stream = NULL)
-    : gm_template(gm_template), algorithm(algorithm),
-    observation_file(observation_file), observation_stream(observation_stream)
+                         ObservationSource         *obs_source)
+    : SectionScheduler(gm_template, fp, algorithm, obs_source)
   {
     assert(algorithm);
-    assert(observation_file || observation_stream);
+    assert(obs_source);
     myjt = NULL;
   }
 
@@ -64,8 +62,7 @@ class LinearSectionScheduler : public SectionScheduler,
   
   // Initialize stuff at the model-level. See prepareForSegment() for segment-level initialization.
   // TODO: explain parameters
-  void setUpDataStructures(FileParser &fp,
-			   iDataStreamFile &tri_file,
+  void setUpDataStructures(iDataStreamFile &tri_file,
 			   char const *varSectionAssignmentPrior,
 			   char const *varCliqueAssignmentPrior,
 			   bool checkTriFileCards);
@@ -129,11 +126,6 @@ class LinearSectionScheduler : public SectionScheduler,
 
  private:
 
-  GMTemplate   &gm_template;
-  SectionInferenceAlgorithm *algorithm;
-  FileSource   *observation_file;
-  StreamSource *observation_stream;
-  
   JunctionTree *myjt;
 };
 

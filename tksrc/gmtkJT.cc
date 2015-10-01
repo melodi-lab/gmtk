@@ -354,7 +354,7 @@ main(int argc,char*argv[])
 #endif
 #ifdef GMTK_LINEARSECTIONSCHEDULER_H
   } else {
-    section_scheduler = new LinearSectionScheduler(gm_template, section_inference_alg, gomFS);
+    section_scheduler = new LinearSectionScheduler(gm_template, fp, section_inference_alg, gomFS);
 #endif
   }
 
@@ -367,7 +367,7 @@ main(int argc,char*argv[])
   {
     // do this in scope so that is gets deleted now rather than later.
     iDataStreamFile is(tri_file.c_str());
-    section_scheduler->setUpDataStructures(fp, is, varPartitionAssignmentPrior,varCliqueAssignmentPrior, checkTriFileCards);
+    section_scheduler->setUpDataStructures(is, varPartitionAssignmentPrior,varCliqueAssignmentPrior, checkTriFileCards);
   }
 
   ForwardBackwardTask *fwd_bkwd_alg = NULL;
