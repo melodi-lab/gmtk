@@ -52,7 +52,7 @@ class LinearSectionScheduler : public SectionScheduler,
   {
     assert(algorithm);
     assert(obs_source);
-    myjt = NULL;
+    myjt = extremely_bogus_jt; // this should be the jt
   }
 
   ~LinearSectionScheduler() {}
@@ -67,10 +67,12 @@ class LinearSectionScheduler : public SectionScheduler,
 			   char const *varCliqueAssignmentPrior,
 			   bool checkTriFileCards);
 
+#if 0
   unsigned unroll(unsigned numFrames,
 		  const UnrollTableOptions tableOption = LongTable,
 		  unsigned *totalNumberSections = NULL);
-
+#endif
+  
   // Formerly JunctionTree::printAllJTInfo()
   void printInferencePlanSummary(char const *fileName);
 
