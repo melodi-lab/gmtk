@@ -65,8 +65,6 @@
 
 #include "GMTK_RngDecisionTree.h"
 
-#include "GMTK_PtPsIterator.h"
-
 #include "GMTK_FileSource.h"
 #include "GMTK_StreamSource.h"
 
@@ -2305,20 +2303,20 @@ JunctionTree::computeForwardInterfaceSeparator(unsigned t, PartitionTables *sect
 }
 
 void
-JunctionTree::recieveForwardInterfaceSeparator(PtPsIterator &iit, PartitionTables *msg, PartitionTables *sectionPosterior) {
-  setCurrentInferenceShiftTo(iit.pt_i());
+JunctionTree::recieveForwardInterfaceSeparator(SectionScheduler::SectionIterator &iit, PartitionTables *msg, PartitionTables *sectionPosterior) {
+  setCurrentInferenceShiftTo(iit.cur_st());
   ceSendForwardsCrossPartitions(// previous partition
-				partitionStructureArray[inference_it.ps_prev_i()],
+				partitionStructureArray[iit.prev_ss()],
 				*msg,
-				inference_it.prev_ri(),
-				inference_it.prev_nm(),
-				inference_it.pt_prev_i(),
+				iit.prev_ri(),
+				iit.prev_nm(),
+				iit.prev_st(),
 				// current partition
-				partitionStructureArray[inference_it.ps_i()],
+				partitionStructureArray[iit.cur_ss()],
 				*sectionPosterior,
-				inference_it.cur_li(),
-				inference_it.cur_nm(),
-				inference_it.pt_i());
+				iit.cur_li(),
+				iit.cur_nm(),
+				iit.cur_st());
 }
 
 logpr

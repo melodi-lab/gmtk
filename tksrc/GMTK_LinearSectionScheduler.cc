@@ -147,7 +147,7 @@ LinearSectionScheduler::probEvidence(unsigned *numUsableFrames,
   unsigned nUsableFrames = unroll(observation_source->numFrames(), ZeroTable, &T);
   if (numUsableFrames) *numUsableFrames = nUsableFrames;
 
-  new (&inference_it) PtPsIterator(*myjt,T);
+  new (&inference_it) SectionIterator(*this,T);
   myjt->sparseJoinSegementInit(T);
   
   PartitionTables* cur_sect_tab = myjt->getSectionTables(0);

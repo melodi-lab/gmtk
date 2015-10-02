@@ -15,8 +15,11 @@
 #define GMTK_VITERBITASK_H
 
 #include "logp.h"
+#include "mArray.h"
+#include "sArray.h"
 
 #include "GMTK_FileSource.h"
+#include "GMTK_SectionScheduler.h"
 
 class ViterbiTask {
 
@@ -45,6 +48,20 @@ class ViterbiTask {
 			const bool cliquePosteriorNormalize = true,
 			const bool cliquePosteriorUnlog = true,
 		       	ObservationFile *posteriorFile = NULL) = 0;
+
+ protected:
+
+  ////////////////////////////////////////////////////////////////////////
+  // Support variables specific to Viterbi and N-best decoding
+  // 
+  sArray < unsigned > P_section_values;
+  mArray < unsigned > C_section_values;
+  sArray < unsigned > E_section_values;
+
+  void recordSectiontionViterbiValue(SectionScheduler::SectionIterator &it);
+
+  ////////////////////////////////////////////////////////////////////////
+
   
 };
 
