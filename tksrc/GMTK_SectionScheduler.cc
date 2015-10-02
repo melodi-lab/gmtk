@@ -13,12 +13,18 @@
 #include "error.h"
 
 #include "GMTK_SectionScheduler.h"
+#include "GMTK_SectionInferenceAlgorithm.h"
+
+// default names of the three sections for printing/debugging messages.
+const char* SectionScheduler::P1_n = "P'";
+const char* SectionScheduler::Co_n = "C'";
+const char* SectionScheduler::E1_n = "E'";
 
 
 
 /*-
  *-----------------------------------------------------------------------
- * JunctionTree::unroll()
+ * SectionScheduler::unroll()
  *   sets up the internal data structures and creates a junction tree corresponding
  *   to the graph with C' unrolled k times, k >= 0. (i.e., we have
  *   a graph that has (k+1) copies of C') and place them into this
@@ -62,7 +68,7 @@ SectionScheduler::unroll(const unsigned int numFrames,
 
   ////////////////////////////////////////////////////////////////////////
   // various other parameters regarding the current segment. These
-  // are all computed by JunctionTree::unroll(...)
+  // are all computed by SectionScheduler::unroll(...)
   // 
   // 1) The number of frames given, but in units of the amount by which
   // the basic template would need to be unrolled to match the given

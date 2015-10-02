@@ -52,7 +52,7 @@ class LinearSectionScheduler : public SectionScheduler,
   {
     assert(algorithm);
     assert(obs_source);
-    myjt = extremely_bogus_jt; // this should be the jt
+    myjt = new JunctionTree(gm_template); // this (the self-pointer) should be the jt
   }
 
   ~LinearSectionScheduler() {}
