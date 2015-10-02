@@ -293,7 +293,7 @@ gmtkViz.app: gmtkViz.app/Contents/PkgInfo
 
 app_verbose   = $(app_verbose_@AM_V@)
 app_verbose_  = $(app_verbose_@AM_DEFAULT_V@)
-app_verbose_0 = @echo "  APP\t gmtkViz.app";
+app_verbose_0 = @echo "  APP\t   gmtkViz.app";
 
 gmtkViz.app/Contents/PkgInfo: gmtkViz$(EXEEXT) $(srcdir)/Info.plist.in \
                               $(srcdir)/wxmac.icns
