@@ -1378,8 +1378,9 @@ bool Arg::parse(int argc,char** argv, const char *programDescription)
     cnt=arg_ptr->getCount();
   }
   if (cnt > 0) {
+    printf("%s (GMTK) %s\n", Program_Name, PACKAGE_VERSION);
 #ifdef HAVE_CONFIG_H
-    printf("%s (Mercurial id: %s checkin date: %s)\n",PACKAGE_STRING,HGID,HGDATE);
+    printf("Mercurial id: %s\ncheckin date: %s\n",HGID,HGDATE);
 #else
     printf("Use the Autotools build to get a working -version argument\n");
 #endif
