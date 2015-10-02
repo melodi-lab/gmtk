@@ -44,79 +44,83 @@ dist_man1_MANS = \
 # environment that doesn't build gmtkDMLPtrain or gmtkViz,
 # because their man pages must exist for the distribution.
 
+h2m_verbose   = $(h2m_verbose_@AM_V@)
+h2m_verbose_  = $(h2m_verbose_@AM_DEFAULT_V@)
+h2m_verbose_0 = @echo "  H2M     " $@;
+
 obs-print.1: gmtk.h2m
-	-$(HELP2MAN) $(HELP2MANOPTS) -n obs-print $(builddir)/../featureFileIO/obs-print$(EXEEXT) | \
+	$(h2m_verbose) $(HELP2MAN) $(HELP2MANOPTS) -n obs-print $(builddir)/../featureFileIO/obs-print$(EXEEXT) | \
 	$(SED) $(SECTIONCMD) > $@
 obs-info.1: gmtk.h2m
-	-$(HELP2MAN) $(HELP2MANOPTS) -n obs-info $(builddir)/../featureFileIO/obs-info$(EXEEXT) | \
+	$(h2m_verbose) $(HELP2MAN) $(HELP2MANOPTS) -n obs-info $(builddir)/../featureFileIO/obs-info$(EXEEXT) | \
 	$(SED) $(SECTIONCMD) > $@
 obs-skmeans.1: gmtk.h2m
-	-$(HELP2MAN) $(HELP2MANOPTS) -n obs-skmeans $(builddir)/../featureFileIO/obs-skmeans$(EXEEXT) | \
+	$(h2m_verbose) $(HELP2MAN) $(HELP2MANOPTS) -n obs-skmeans $(builddir)/../featureFileIO/obs-skmeans$(EXEEXT) | \
 	$(SED) $(SECTIONCMD) > $@
 obs-window.1: gmtk.h2m
-	-$(HELP2MAN) $(HELP2MANOPTS) -n obs-window $(builddir)/../featureFileIO/obs-window$(EXEEXT) | \
+	$(h2m_verbose) $(HELP2MAN) $(HELP2MANOPTS) -n obs-window $(builddir)/../featureFileIO/obs-window$(EXEEXT) | \
 	$(SED) $(SECTIONCMD) > $@
 obs-concat.1: gmtk.h2m
-	-$(HELP2MAN) $(HELP2MANOPTS) -n obs-concat $(builddir)/../featureFileIO/obs-concat$(EXEEXT) | \
+	$(h2m_verbose) $(HELP2MAN) $(HELP2MANOPTS) -n obs-concat $(builddir)/../featureFileIO/obs-concat$(EXEEXT) | \
 	$(SED) $(SECTIONCMD) > $@
 obs-diff.1: gmtk.h2m
-	-$(HELP2MAN) $(HELP2MANOPTS) -n obs-diff $(builddir)/../featureFileIO/obs-diff$(EXEEXT) | \
+	$(h2m_verbose) $(HELP2MAN) $(HELP2MANOPTS) -n obs-diff $(builddir)/../featureFileIO/obs-diff$(EXEEXT) | \
 	$(SED) $(SECTIONCMD) > $@
 obs-stats.1: gmtk.h2m
-	-$(HELP2MAN) $(HELP2MANOPTS) -n obs-stats $(builddir)/../featureFileIO/obs-stats$(EXEEXT) | \
+	$(h2m_verbose) $(HELP2MAN) $(HELP2MANOPTS) -n obs-stats $(builddir)/../featureFileIO/obs-stats$(EXEEXT) | \
 	$(SED) $(SECTIONCMD) > $@
 obs-cat.1: gmtk.h2m
-	-$(HELP2MAN) $(HELP2MANOPTS) -n obs-cat $(builddir)/../featureFileIO/obs-cat$(EXEEXT) | \
+	$(h2m_verbose) $(HELP2MAN) $(HELP2MANOPTS) -n obs-cat $(builddir)/../featureFileIO/obs-cat$(EXEEXT) | \
 	$(SED) $(SECTIONCMD) > $@
 
 gmtkTime.1: gmtk.h2m
-	-$(HELP2MAN) $(HELP2MANOPTS) -n gmtkTime $(builddir)/../tksrc/gmtkTime$(EXEEXT) | \
+	$(h2m_verbose) $(HELP2MAN) $(HELP2MANOPTS) -n gmtkTime $(builddir)/../tksrc/gmtkTime$(EXEEXT) | \
 	$(SED) $(SECTIONCMD) > $@
 gmtkJT.1: gmtk.h2m
-	-$(HELP2MAN) $(HELP2MANOPTS) -n gmtkJT $(builddir)/../tksrc/gmtkJT$(EXEEXT) | \
+	$(h2m_verbose) $(HELP2MAN) $(HELP2MANOPTS) -n gmtkJT $(builddir)/../tksrc/gmtkJT$(EXEEXT) | \
 	$(SED) $(SECTIONCMD) > $@
 gmtkEMtrain.1: gmtk.h2m
-	-$(HELP2MAN) $(HELP2MANOPTS) -n gmtkEMtrain $(builddir)/../tksrc/gmtkEMtrain$(EXEEXT) | \
+	$(h2m_verbose) $(HELP2MAN) $(HELP2MANOPTS) -n gmtkEMtrain $(builddir)/../tksrc/gmtkEMtrain$(EXEEXT) | \
 	$(SED) $(SECTIONCMD) > $@
 gmtkKernel.1: gmtk.h2m
-	-$(HELP2MAN) $(HELP2MANOPTS) -n gmtkKernel $(builddir)/../tksrc/gmtkKernel$(EXEEXT) | \
+	$(h2m_verbose) $(HELP2MAN) $(HELP2MANOPTS) -n gmtkKernel $(builddir)/../tksrc/gmtkKernel$(EXEEXT) | \
 	$(SED) $(SECTIONCMD) > $@
 gmtkViterbi.1: gmtk.h2m
-	-$(HELP2MAN) $(HELP2MANOPTS) -n gmtkViterbi $(builddir)/../tksrc/gmtkViterbi$(EXEEXT) | \
+	$(h2m_verbose) $(HELP2MAN) $(HELP2MANOPTS) -n gmtkViterbi $(builddir)/../tksrc/gmtkViterbi$(EXEEXT) | \
 	$(SED) $(SECTIONCMD) > $@
 gmtkTriangulate.1: gmtk.h2m
-	-$(HELP2MAN) $(HELP2MANOPTS) -n gmtkTriangulate $(builddir)/../tksrc/gmtkTriangulate$(EXEEXT) | \
+	$(h2m_verbose) $(HELP2MAN) $(HELP2MANOPTS) -n gmtkTriangulate $(builddir)/../tksrc/gmtkTriangulate$(EXEEXT) | \
 	$(SED) $(SECTIONCMD) > $@
 gmtkParmConvert.1: gmtk.h2m
-	-$(HELP2MAN) $(HELP2MANOPTS) -n gmtkParmConvert $(builddir)/../tksrc/gmtkParmConvert$(EXEEXT) | \
+	$(h2m_verbose) $(HELP2MAN) $(HELP2MANOPTS) -n gmtkParmConvert $(builddir)/../tksrc/gmtkParmConvert$(EXEEXT) | \
 	$(SED) $(SECTIONCMD) > $@
 gmtkTFmerge.1: gmtk.h2m
-	-$(HELP2MAN) $(HELP2MANOPTS) -n gmtkTFmerge $(builddir)/../tksrc/gmtkTFmerge$(EXEEXT) | \
+	$(h2m_verbose) $(HELP2MAN) $(HELP2MANOPTS) -n gmtkTFmerge $(builddir)/../tksrc/gmtkTFmerge$(EXEEXT) | \
 	$(SED) $(SECTIONCMD) > $@
 gmtkDTindex.1: gmtk.h2m
-	-$(HELP2MAN) $(HELP2MANOPTS) -n gmtkDTindex $(builddir)/../tksrc/gmtkDTindex$(EXEEXT) | \
+	$(h2m_verbose) $(HELP2MAN) $(HELP2MANOPTS) -n gmtkDTindex $(builddir)/../tksrc/gmtkDTindex$(EXEEXT) | \
 	$(SED) $(SECTIONCMD) > $@
 gmtkNGramIndex.1: gmtk.h2m
-	-$(HELP2MAN) $(HELP2MANOPTS) -n gmtkNGramIndex $(builddir)/../tksrc/gmtkNGramIndex$(EXEEXT) | \
+	$(h2m_verbose) $(HELP2MAN) $(HELP2MANOPTS) -n gmtkNGramIndex $(builddir)/../tksrc/gmtkNGramIndex$(EXEEXT) | \
 	$(SED) $(SECTIONCMD) > $@
 gmtkTie.1: gmtk.h2m
-	-$(HELP2MAN) $(HELP2MANOPTS) -n gmtkTie $(builddir)/../tksrc/gmtkTie$(EXEEXT) | \
+	$(h2m_verbose) $(HELP2MAN) $(HELP2MANOPTS) -n gmtkTie $(builddir)/../tksrc/gmtkTie$(EXEEXT) | \
 	$(SED) $(SECTIONCMD) > $@
 gmtkModelInfo.1: gmtk.h2m
-	-$(HELP2MAN) $(HELP2MANOPTS) -n gmtkModelInfo $(builddir)/../tksrc/gmtkModelInfo$(EXEEXT) | \
+	$(h2m_verbose) $(HELP2MAN) $(HELP2MANOPTS) -n gmtkModelInfo $(builddir)/../tksrc/gmtkModelInfo$(EXEEXT) | \
 	$(SED) $(SECTIONCMD) > $@
 gmtkOnline.1: gmtk.h2m
-	-$(HELP2MAN) $(HELP2MANOPTS) -n gmtkOnline $(builddir)/../tksrc/gmtkOnline$(EXEEXT) | \
+	$(h2m_verbose) $(HELP2MAN) $(HELP2MANOPTS) -n gmtkOnline $(builddir)/../tksrc/gmtkOnline$(EXEEXT) | \
 	$(SED) $(SECTIONCMD) > $@
 gmtkPrint.1: gmtk.h2m
-	-$(HELP2MAN) $(HELP2MANOPTS) -n gmtkPrint $(builddir)/../tksrc/gmtkPrint$(EXEEXT) | \
+	$(h2m_verbose) $(HELP2MAN) $(HELP2MANOPTS) -n gmtkPrint $(builddir)/../tksrc/gmtkPrint$(EXEEXT) | \
 	$(SED) $(SECTIONCMD) > $@
 gmtkMMItrain.1: gmtk.h2m
-	-$(HELP2MAN) $(HELP2MANOPTS) -n gmtkMMItrain $(builddir)/../tksrc/gmtkMMItrain$(EXEEXT) | \
+	$(h2m_verbose) $(HELP2MAN) $(HELP2MANOPTS) -n gmtkMMItrain $(builddir)/../tksrc/gmtkMMItrain$(EXEEXT) | \
 	$(SED) $(SECTIONCMD) > $@
 gmtkDMLPtrain.1: gmtk.h2m
-	-$(HELP2MAN) $(HELP2MANOPTS) -n gmtkDMLPtrain $(builddir)/../tksrc/gmtkDMLPtrain$(EXEEXT) | \
+	$(h2m_verbose) $(HELP2MAN) $(HELP2MANOPTS) -n gmtkDMLPtrain $(builddir)/../tksrc/gmtkDMLPtrain$(EXEEXT) | \
 	$(SED) $(SECTIONCMD) > $@
 gmtkViz.1: gmtk.h2m
-	-$(HELP2MAN) $(HELP2MANOPTS) -n gmtkViz $(builddir)/../tksrc/gmtkViz$(EXEEXT) | \
+	$(h2m_verbose) $(HELP2MAN) $(HELP2MANOPTS) -n gmtkViz $(builddir)/../tksrc/gmtkViz$(EXEEXT) | \
 	$(SED) $(SECTIONCMD) > $@
