@@ -13,6 +13,7 @@ Subscribe to the email list at
 Version 1.4.2  2015-
         * "observation" is now allowed as an identifier in GMTKL
           (the structure file language)
+        * Fixed gmtkViz build failure on Ubuntu-derived Linuxes
 
 Version 1.4.1  2015-09-02
         * Reduced latency in gmtkOnline
