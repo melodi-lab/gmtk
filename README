@@ -159,13 +159,6 @@ GMTK distribution at:
 
 and will be updated in the near future. 
 
-Also note that the default linker configuration on recent Ubuntu Linux
-distributions may cause problems building wxWidgets or gmtkViz. Doing
-the build with
-
-	make CXXFLAGS="-Wl,--no-as-needed"
-
-may fix the problem.
 
 enjoy!!
 
