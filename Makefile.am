@@ -7,7 +7,7 @@
 # See COPYING or http://opensource.org/licenses/OSL-3.0
 #
 
-EXTRA_DIST = RELEASE contrib version.sh buildhelp.sh bootstrap.sh version.info gmtk.h2m
+EXTRA_DIST = RELEASE contrib version.sh buildhelp.sh bootstrap.sh version.info
 
 dist_bin_SCRIPTS = \
 scripts/fixTri.sh \
