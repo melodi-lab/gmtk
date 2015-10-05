@@ -79,6 +79,7 @@ make %{?_smp_mflags}
 %{_bindir}/triangulateTimings
 %doc COPYING
 %doc NEWS
+%doc README
 %{_mandir}/man1/*
 
 %changelog
