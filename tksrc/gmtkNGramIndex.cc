@@ -35,6 +35,8 @@
 #include "hgstamp.h"
 #endif
 
+//#define _WITH_GETLINE 1
+#include <stdio.h>
 #include <cstdlib>
 #include <cstdio>
 

@@ -105,7 +105,7 @@ AC_ARG_WITH([LZERO],
             [AS_HELP_STRING([--with-LZERO],
               [the smallest log value that we represent (note that values > -1e16 may cause arithmetic problems (0+0 != 0) @<:@default: -1.0E17@:>@])],
 	    [],
-            [with_LZERO=(-1.0E17)])
+            [with_LZERO=-1.0E17])
 
 AC_ARG_ENABLE([assertions],
               [AS_HELP_STRING([--disable-assertions],
