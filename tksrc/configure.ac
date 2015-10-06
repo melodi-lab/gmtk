@@ -311,6 +311,50 @@ AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 AC_FUNC_STRTOD
 AC_CHECK_FUNCS([alarm floor memset pow regcomp sqrt strchr strerror strstr strtol log1p getline])
+
+if test x$ac_cv_func_getline = x"yes"; then
+  AC_LANG_PUSH([C++])
+
+  AC_DEFUN([GMTK_GETLINE_PROG],[dnl
+    AC_LANG_PROGRAM([dnl
+#include <stdlib.h>
+#include <stdio.h>
+char *lineptr;
+size_t n;
+FILE *stream;
+],[if (getline(&lineptr, &n, stream) > 0) exit(0)])])
+
+  AC_MSG_CHECKING([if getline works without any feature test flags])
+  AC_LINK_IFELSE([GMTK_GETLINE_PROG],[
+    AC_MSG_RESULT([yes])
+    AC_DEFINE([USE_GETLINE],[1],[use POSIX getline function])
+  ],[
+    AC_MSG_RESULT([no])
+    AC_MSG_CHECKING([if getline requires _WITH_GETLINE])
+    getline_check_save_CPPFLAGS=${CPPFLAGS}
+    CPPFLAGS="-D_WITH_GETLINE ${getline_check_save_CPPFLAGS}"
+    AC_LINK_IFELSE([GMTK_GETLINE_PROG],[
+      AC_MSG_RESULT([yes])
+      AC_DEFINE([_WITH_GETLINE],[1],[enable POSIX getline function])
+      AC_DEFINE([USE_GETLINE],[1],[use POSIX getline function])
+    ],[
+      AC_MSG_RESULT([no])
+      AC_MSG_CHECKING([if getline requires _POSIX_C_SOURCE >= 200809])
+      CPPFLAGS="-D_POSIX_C_SOURCE=200809 ${getline_check_save_CPPFLAGS}"
+      AC_LINK_IFELSE([GMTK_GETLINE_PROG],[
+        AC_MSG_RESULT([yes])
+        AC_DEFINE([_POSIX_C_SOURCE],[200809],[enable POSIX getline function])
+        AC_DEFINE([USE_GETLINE],[1],[use POSIX getline function])
+      ],[
+        AC_MSG_RESULT([no])
+        AC_MSG_WARN([unable to use getline function - will use fgets instead])
+      ])
+    ])
+    CPPFLAGS=${getline_check_save_CPPFLAGS}
+  ])
+  AC_LANG_POP([C++])
+fi
+
 AC_FUNC_FSEEKO
 AC_SYS_LARGEFILE
 
