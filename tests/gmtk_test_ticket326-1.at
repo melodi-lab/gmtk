@@ -5,6 +5,13 @@
 
 AT_SETUP([-vit{Print,Frame}Range (ticket 326 test_hmm3)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/test_hmm3])
-AT_CHECK([cp $TEST_AND_DEV/test_hmm3/{3e.master,3e.str,3e_observations.ascii_data,observation_file_list.txt,atjt.sh,atvit.sh,atprt.sh} .],[],[ignore])
+AT_CHECK([cp $TEST_AND_DEV/test_hmm3/3e.master . && \
+cp $TEST_AND_DEV/test_hmm3/3e.str . && \
+cp $TEST_AND_DEV/test_hmm3/3e_observations.ascii_data . && \
+cp $TEST_AND_DEV/test_hmm3/observation_file_list.txt . && \
+cp $TEST_AND_DEV/test_hmm3/atjt.sh . && \
+cp $TEST_AND_DEV/test_hmm3/atvit.sh . && \
+cp $TEST_AND_DEV/test_hmm3/atprt.sh . && \ 
+chmod +x *.sh],[],[ignore])
 AT_CHECK([$TEST_AND_DEV/scripts/326_test.sh 3e.str > 326_test.log], [], [ignore])
 AT_CLEANUP
