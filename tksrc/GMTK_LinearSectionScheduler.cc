@@ -114,21 +114,6 @@ LinearSectionScheduler::getCliquePosteriorSize(unsigned &p_size, unsigned &c_siz
   myjt->cliquePosteriorSize(p_size, c_size, e_size);
 }
 
-#if 0
-// now available in base class
-unsigned 
-LinearSectionScheduler::unroll(unsigned numFrames,
-			       const UnrollTableOptions tableOption,
-			       unsigned *totalNumberSections) 
-{
-  unsigned numSections;
-  unsigned numUsableFrames = myjt->unroll(numFrames, (JunctionTree::UnrollTableOptions)tableOption, &numSections);
-  myjt->sparseJoinSegementInit(numSections);
-  if (totalNumberSections) *totalNumberSections = numSections;
-  return numUsableFrames;
-}
-#endif
-
 logpr
 LinearSectionScheduler::probEvidence(unsigned *numUsableFrames,
 				     unsigned *numSectionsDone,
@@ -147,8 +132,10 @@ LinearSectionScheduler::probEvidence(unsigned *numUsableFrames,
   unsigned nUsableFrames = unroll(observation_source->numFrames(), ZeroTable, &T);
   if (numUsableFrames) *numUsableFrames = nUsableFrames;
 
-  new (&inference_it) SectionIterator(*this,T);
-  myjt->sparseJoinSegementInit(T);
+  SectionIterator inference_it(*this,T);
+  myjt->sparseJoinSegementInit(T);        // BOGUS
+
+  init_CC_CE_rvs(inference_it);
   
   PartitionTables* cur_sect_tab = myjt->getSectionTables(0);
   

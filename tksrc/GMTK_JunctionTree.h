@@ -44,6 +44,7 @@
 #include "debug.h"
 
 #include "GMTK_SectionScheduler.h"
+#include "GMTK_SectionIterator.h"
 
 // class mention for forward references.
 class GraphicalModel;
@@ -812,7 +813,7 @@ public:
   PartitionTables *getSectionTables(unsigned t);
   void sparseJoinSegementInit(unsigned numSections);
   PartitionTables *computeForwardInterfaceSeparator(unsigned t, PartitionTables *sectionPosterior);
-  void recieveForwardInterfaceSeparator(SectionScheduler::SectionIterator &t, PartitionTables *msg, PartitionTables *sectionPosterior);
+  void recieveForwardInterfaceSeparator(SectionIterator &t, PartitionTables *msg, PartitionTables *sectionPosterior);
   logpr computeProbEvidence(unsigned t, PartitionTables *sectionPosterior);
   static PartitionTables *cachedPT;
   static unsigned         cachedT;

@@ -16,6 +16,7 @@
 
 #include "GMTK_SectionSeparator.h"
 #include "GMTK_SectionScheduler.h"
+#include "GMTK_SectionIterator.h"
 #include "GMTK_SectionInferenceAlgorithm.h"
 
 #include "GMTK_JunctionTree.h"
@@ -35,7 +36,7 @@ class SparseJoinInference : public SectionInferenceAlgorithm {
   } 
 
   // recieve forward message for C'_{t-1} -> C'_t (sendForwardsCrossPartitions)
-  void receiveForwardInterfaceSeparator(SectionScheduler::SectionIterator &iit, SectionSeparator *msg, PartitionTables *sectionPosterior) {
+  void receiveForwardInterfaceSeparator(SectionIterator &iit, SectionSeparator *msg, PartitionTables *sectionPosterior) {
     myjt->recieveForwardInterfaceSeparator(iit, msg, sectionPosterior);
   }
 

@@ -22,6 +22,172 @@ const char* SectionScheduler::E1_n = "E'";
 
 
 
+
+/*
+ *  init_CC_CE_rvs(it)
+ *    given an iterator representing an unrolled segment,
+ *    we create the pair of random variables CC and CE that
+ *    will be shifted around in time/position in order
+ *    to do inference.
+ *
+ * Preconditions:
+ *    1) section_structure_array must be set up and initialized before
+ *    this routine is called.
+ *    2) All random variables should currently be shifted to their 
+ *       zero position (otherwise thigns will be totally out of sync).
+ *
+ */
+void
+SectionScheduler::init_CC_CE_rvs(SectionIterator &it)
+{
+  if (it.num_c_sections() > 2) { 
+    // we only need to fill this set of we have more than 2 table
+    // sections (meaning we will need to do some RV adjustment).
+    set <RV*> tmp1,tmp2;
+    tmp1 = section_structure_array[1].returnRVsAndTheirObservedParentsAsSet();
+    tmp2 = section_structure_array[2].returnRVsAndTheirObservedParentsAsSet();
+    unionRVs(tmp1,tmp2,cur_CC_rvs);
+    tmp1 = section_structure_array[3].returnRVsAndTheirObservedParentsAsSet();
+    unionRVs(tmp1,tmp2,cur_CE_rvs);
+  } else {
+    cur_CC_rvs.clear();
+    cur_CE_rvs.clear();
+  } 
+  cur_cc_shift = cur_ce_shift = 0;
+  it.go_to_section_no(0);
+}
+
+/*
+ * shiftCCtoPosition(int pos)
+ *  Given an absolute section number 'pos', we shift the pair of
+ *  random variables CC so that the right position (the 2nd
+ *  C of CC) is now at position 'pos'. If the CE is shifted,
+ *  we first shift CE back to position 0 before shifting CC.
+ */
+void
+SectionScheduler::shiftCCtoPosition(int pos, bool reset_observed)
+{
+  if (cur_ce_shift != 0) {
+    assert ( cur_cc_shift == 0 );
+    // we need to get CE back to zero.
+    adjustFramesBy (cur_CE_rvs, -cur_ce_shift * gm_template.chunkSkip()*fp.numFramesInC(),
+		    reset_observed);  // gmtkOnline can't observe old values - ticket #468
+    cur_ce_shift = 0;
+  }
+  int delta = pos - cur_cc_shift;
+  adjustFramesBy (cur_CC_rvs, delta * gm_template.chunkSkip()*fp.numFramesInC());
+  cur_cc_shift = pos;
+}
+
+/*
+ * shiftOriginalVarstoPosition(vector<RV*> rvs, int pos, int &prevPos)
+ *  Shift the random variables in 'rvs' in time (frames) by
+ *  the difference between 'prevPos' and 'pos'. This is used  in 
+ *  printSavedViterbiValues to adjust the rvs' frame numbers in
+ *  the unpacking buffers.
+ */
+
+void
+SectionScheduler::shiftOriginalVarstoPosition(vector<RV*> rvs, int pos, int &prevPos)
+{
+  set<RV*> uprvs(rvs.begin(),rvs.end());
+  int delta = (pos - prevPos);
+  adjustFramesBy(uprvs, delta);
+  prevPos = pos;
+}
+
+/*
+ * shiftCCtoPosition(int pos)
+ *  Given an absolute section number 'pos', we shift the pair of
+ *  random variables CE so that the right position (the E
+ *  of CE) is now at position 'pos'. If the CC pair is shifted,
+ *  we first shift CC back to position 0 before shifting CE.
+ */
+void
+SectionScheduler::shiftCEtoPosition(int pos, bool reset_observed)
+{
+  if (cur_cc_shift != 0) {
+    assert ( cur_ce_shift == 0 );
+    // we need to get CC back to zero.
+    adjustFramesBy (cur_CC_rvs, -cur_cc_shift * gm_template.chunkSkip()*fp.numFramesInC(),
+                    reset_observed);  // gmtkOnline can't observe old values - ticket #468  cur_cc_shift = 0;
+  }
+  int delta = pos - cur_ce_shift;
+  adjustFramesBy (cur_CE_rvs, delta * gm_template.chunkSkip()*fp.numFramesInC());
+  cur_ce_shift = pos;
+}
+
+
+
+/*
+ * setCurrentInferenceShiftTo(int pos)
+ *
+ *  This activates sections 'pos-1' and 'pos' so the
+ *  right of two successive sections is active at position 'pos'.
+ *  This routine could be called:
+ *
+ *      activateTwoAdjacentSectionsWithRightSectionAtPos(pos)
+ *      alignRightSideOfSectionPairToPos(pos)
+ * 
+ *  Given an absolute section number 'pos', we shift the pair of
+ *  random variables (either CC or CE) so the *right* section (the 2nd
+ *  C of CC or the E of CE) is now at position 'pos'. This means that
+ *  messages entirely within section 'pos' and entirely within
+ *  section 'pos-1' and between sections 'pos-1' and 'pos' will be
+ *  correct, but no other messages are guaranteed to be correct.
+ *
+ * preconditions:
+ *    the SectionIterator must be initilzed for the
+ *    current and appropriate segment length.
+ *
+ * side effects
+ *   - modifies the random variables corresponding to a section pair
+ *   - modifies the section iterator.
+ *
+ */
+void
+SectionScheduler::setCurrentInferenceShiftTo(SectionIterator &it, int pos)
+{
+
+  if (it.at_entry(pos)) {
+    // printf("== Already at shift %d\n",pos);
+    return;
+  }
+
+  //   printf("========================================\n");
+  //   printf("== Setting current inference shift to %d\n",pos);
+  //   printf("========================================\n");
+
+  it.go_to_section_no(pos);
+  if (it.num_c_sections() <= 2) {
+    // then do nothing, since nothing is never shifted away from zero.
+  } else {
+    // need to do some work. We need to get the right
+    // of the appropriate pair (either the second C of CC in PCCE,
+    // or the E of CE in PCCE) to be at position pos.
+    if (it.at_p()) {
+      // P has an intersection with the first C in PCCE, so we need
+      // to get that first C into the right position. We do that
+      // by getting both CC's into the right position.
+      shiftCCtoPosition(0);
+    } else if (it.at_e()) {
+      // get the CE into the right position
+      shiftCEtoPosition(pos - 3);
+    } else {
+      // Get CC into the right position, where 'pos' corresponds
+      // to the second C in PCCE.
+      if (pos <= 2)
+	shiftCCtoPosition(0);
+      else 
+	shiftCCtoPosition(pos-2);
+    }
+  }
+}
+
+
+
+
+
 /*-
  *-----------------------------------------------------------------------
  * SectionScheduler::unroll()
