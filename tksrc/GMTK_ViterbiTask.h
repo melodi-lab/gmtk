@@ -19,7 +19,7 @@
 #include "sArray.h"
 
 #include "GMTK_FileSource.h"
-#include "GMTK_SectionScheduler.h"
+#include "GMTK_SectionIterator.h"
 
 class ViterbiTask {
 
@@ -58,7 +58,7 @@ class ViterbiTask {
   mArray < unsigned > C_section_values;
   sArray < unsigned > E_section_values;
 
-  void recordSectiontionViterbiValue(SectionScheduler::SectionIterator &it);
+  void recordSectiontionViterbiValue(SectionIterator &it);
 
   ////////////////////////////////////////////////////////////////////////
 

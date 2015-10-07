@@ -2303,7 +2303,7 @@ JunctionTree::computeForwardInterfaceSeparator(unsigned t, PartitionTables *sect
 }
 
 void
-JunctionTree::recieveForwardInterfaceSeparator(SectionScheduler::SectionIterator &iit, PartitionTables *msg, PartitionTables *sectionPosterior) {
+JunctionTree::recieveForwardInterfaceSeparator(SectionIterator &iit, PartitionTables *msg, PartitionTables *sectionPosterior) {
   setCurrentInferenceShiftTo(iit.cur_st());
   ceSendForwardsCrossPartitions(// previous partition
 				partitionStructureArray[iit.prev_ss()],

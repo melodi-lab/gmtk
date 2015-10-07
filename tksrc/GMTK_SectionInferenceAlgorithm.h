@@ -26,6 +26,7 @@
 #include "GMTK_PartitionTables.h"
 
 #include "GMTK_SectionScheduler.h"
+#include "GMTK_SectionIterator.h"
 
 class SectionInferenceAlgorithm {
  public:
@@ -40,7 +41,7 @@ class SectionInferenceAlgorithm {
   virtual SectionSeparator *computeForwardInterfaceSeparator(unsigned t, PartitionTables *sectionPosterior) = 0; 
 
   // recieve forward message for C'_{t-1} -> C'_t (sendForwardsCrossPartitions)
-  virtual void receiveForwardInterfaceSeparator(SectionScheduler::SectionIterator &t, SectionSeparator *msg, PartitionTables *sectionPosterior) = 0;
+  virtual void receiveForwardInterfaceSeparator(SectionIterator &t, SectionSeparator *msg, PartitionTables *sectionPosterior) = 0;
 
 
   // compute backward message for C'_{t-1} <- C'_t (aka scatter out of root)
