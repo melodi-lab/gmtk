@@ -39,6 +39,7 @@ class SectionInferenceAlgorithm {
 
   // compute forward message for C'_t -> C'_{t+1} (aka gather into root)
   virtual SectionSeparator *computeForwardInterfaceSeparator(unsigned t, PartitionTables *sectionPosterior) = 0; 
+//virtual void computeForwardInterfaceSeparator(unsigned t, PartitionTables *currentSection, SecionSeparator *msg) = 0; 
 
   // recieve forward message for C'_{t-1} -> C'_t (sendForwardsCrossPartitions)
   virtual void receiveForwardInterfaceSeparator(SectionIterator &t, SectionSeparator *msg, PartitionTables *sectionPosterior) = 0;

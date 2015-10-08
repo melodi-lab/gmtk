@@ -10,7 +10,12 @@
  *
  */
 
+#include <algorithm>
+#include <float.h>
+
 #include "error.h"
+
+#include "GMTK_BoundaryTriangulate.h"
 
 #include "GMTK_SectionScheduler.h"
 #include "GMTK_SectionInferenceAlgorithm.h"
@@ -20,6 +25,74 @@ const char* SectionScheduler::P1_n = "P'";
 const char* SectionScheduler::Co_n = "C'";
 const char* SectionScheduler::E1_n = "E'";
 
+
+const char* SectionScheduler::junctionTreeMSTpriorityStr = "DSU";
+
+
+void 
+SectionScheduler::prepareForUnrolling(JT_Partition &section) {
+}
+
+void 
+SectionScheduler::prepareForUnrolling() {
+}
+
+
+
+  // Initialize stuff at the model-level. See prepareForSegment() for segment-level initialization.
+  // TODO: explain parameters
+void 
+SectionScheduler::setUpDataStructures(iDataStreamFile &tri_file,
+				      char const *varSectionAssignmentPrior,
+				      char const *varCliqueAssignmentPrior,
+				      bool checkTriFileCards)
+{
+
+  // Utilize both the partition information and elimination order
+  // information already computed and contained in the file. This
+  // enables the program to use external triangulation programs,
+  // where this program ensures that the result is triangulated
+  // and where it reports the quality of the triangulation.
+
+  infoMsg(IM::Max,"Reading triangulation file '%s' ...\n", tri_file.fileName());
+  if (!fp.readAndVerifyGMId(tri_file, checkTriFileCards)) {
+    error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",
+	  tri_file.fileName(),fp.fileNameParsing.c_str());
+  }
+  gm_template.readPartitions(tri_file);
+  gm_template.readMaxCliques(tri_file);
+
+  infoMsg(IM::Max,"Triangulating graph...\n");
+
+  // TODO: It looks like this is really just adding the edges to make the
+  //       cliques specified in the tri file actual cliques in the "graph"
+  //       by adding any missing edges. 
+  gm_template.triangulatePartitionsByCliqueCompletion();
+
+  if (1) { 
+    // check that graph is indeed triangulated.
+    // TODO: perhaps take this check out so that inference code does
+    // not need to link to the triangulation code (either that, or put
+    // the triangulation check in a different file, so that we only
+    // link to tri check code).
+
+    // TODO: Post-refactor, we're not assuming the graph must be triangulated?
+    //       Move this into the subset of section inference algorithms that require it.
+    BoundaryTriangulate triangulator(fp,
+				     gm_template.maxNumChunksInBoundary(),
+				     gm_template.chunkSkip(),1.0);
+    triangulator.ensurePartitionsAreChordal(gm_template);
+  }
+
+  ////////////////////////////////////////////////////////////////////
+  // CREATE JUNCTION TREE DATA STRUCTURES
+  infoMsg(IM::Default,"Creating Junction Tree\n"); fflush(stdout);
+
+  setUpJTDataStructures(varSectionAssignmentPrior,varCliqueAssignmentPrior);
+  prepareForUnrolling();
+  infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
+  ////////////////////////////////////////////////////////////////////
+}
 
 
 
@@ -183,6 +256,10 @@ SectionScheduler::setCurrentInferenceShiftTo(SectionIterator &it, int pos)
     }
   }
 }
+
+
+
+
 
 
 
@@ -442,3 +519,556 @@ SectionScheduler::unroll(const unsigned int numFrames,
   return numUsableFrames;
 }
 
+
+
+
+
+
+// create the three junction trees for the basic sections.
+void 
+SectionScheduler::createSectionJunctionTrees(const string pStr) {
+  infoMsg(IM::Giga,"Creating of P section JT\n");
+  createSectionJunctionTree(gm_template.P,pStr);
+  infoMsg(IM::Giga,"Creating of C section JT\n");
+  createSectionJunctionTree(gm_template.C,pStr);
+  infoMsg(IM::Giga,"Creating of E section JT\n");
+  createSectionJunctionTree(gm_template.E,pStr);
+  infoMsg(IM::Giga,"Done creating P,C,E section JTs\n");
+}
+
+
+
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+//        Support for building a tree from clique graph
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * JunctionTree::createSectionJunctionTree()
+ *   Create a mini-junction tree from the cliques in the given section.
+ *   This uses Kruskal's greedy (but optimal) algorithm for MST generation.
+ *
+ *   TODO: move this routine to a MaxClique class at some point.
+ *   TODO: do this during triangulation time.
+ *
+ * Preconditions:
+ *   The section must be instantiated with cliques 
+ *
+ * Postconditions:
+ *   The cliques in the section are now such that they
+ *   form a junction tree over cliques within that section.
+ *
+ * Side Effects:
+ *   Modifies all neighbors variables within the cliques within the
+ *   section.
+ *
+ * Results:
+ *   none
+ *
+ *-----------------------------------------------------------------------
+ */
+void 
+SectionScheduler::createSectionJunctionTree(Section& section, const string junctionTreeMSTpriorityStr) {
+  // TODO: junctionTreeMSTpriorityStr is shadowing the SectionScheduler::junctionTreeMSTpriorityStr
+  //       member here. In SectionScheduler.h, the parameter is called pStr
+  const unsigned numMaxCliques = section.cliques.size();
+
+  infoMsg(IM::Giga,"Starting create JT\n");
+
+  if (numMaxCliques == 0) {
+    // Nothing to do.
+    // This could happen if the partition is empty which might occur
+    // for empty P's and E's. C should never be empty.
+    return;
+  } else if (numMaxCliques == 1) {
+    // then nothing to do
+    infoMsg(IM::Giga,"Partition has only one clique\n");
+    return;
+  } else if (numMaxCliques == 2) {
+    // then JT is easy, just connect the two cliques.
+    infoMsg(IM::Giga,"Partition has only two cliques\n");
+    section.cliques[0].neighbors.push_back(1);
+    section.cliques[1].neighbors.push_back(0);
+  } else {
+
+    infoMsg(IM::Giga,"Partition has only %d cliques\n",numMaxCliques);
+
+    // Run max spanning tree to construct JT from set of cliques.
+    // This is basically Krusgal's algorithm, but without using the
+    // fast data structures (it doesn't need to be that fast
+    // since it is run one time per partition, for all inference
+    // runs of any length.
+
+    // Create a vector of sets, corresponding to the trees associated
+    // with each clique. Non-empty set intersection corresponds to
+    // tree overlap. Each set contains the clique indices in teh set.
+    vector < set<unsigned> >  findSet;
+    findSet.resize(numMaxCliques);
+    for (unsigned i=0;i<numMaxCliques;i++) {
+      set<unsigned> iset;
+      iset.insert(i);
+      findSet[i] = iset;
+    }
+
+    vector< Edge > edges;
+    edges.reserve((numMaxCliques*(numMaxCliques-1))/2);
+
+    for (unsigned i=0;i<numMaxCliques;i++) {
+      for (unsigned j=i+1;j<numMaxCliques;j++) {
+	set<RV*> sep_set;
+	set_intersection(section.cliques[i].nodes.begin(),
+			 section.cliques[i].nodes.end(),
+			 section.cliques[j].nodes.begin(),
+			 section.cliques[j].nodes.end(),
+			 inserter(sep_set,sep_set.end()));
+	Edge e;
+	// define the edge
+	e.clique1 = i; e.clique2 = j; 
+	// !!!************************!!!
+	// !!!** MUST DO THIS FIRST **!!!
+	// !!!************************!!!
+	// First push sep set size. To get a JT, we *MUST*
+	// always choose from among the cliques that
+	// have the largest intersection size.
+	e.weights.push_back((double)sep_set.size());
+	// now that the size is there, we have many other options.
+
+	// All gets sorted in decreasing order, so that larger values
+	// have priority. Thus, the remaining items we push back in
+	// the case of ties.  
+	//
+	// *** Larger numbers are prefered. ***
+	//
+	// Options to include by priority of junctionTreeMSTpriorityStr:
+	//   * D: number of deterministic nodes in separator 
+	//   * E: number of deterministic nodes in union of cliques.
+	//   * S: neg. weight of separator
+	//   * U: neg. weight of union of cliques
+	//   * V: neg. frame number variance in separator
+	//   * W: neg. frame number variance in union
+	//   * H: number of hidden nodes in separator
+	//   * O: number of observed nodes in separator
+	//   * L: number of hidden nodes in union
+	//   * Q: number of observed nodes in union
+	//
+	//  Any can be preceeded by a '-' sign to flip effect. E.g., D-E-SU
+	//
+	// Default case: DSU
+	//
+	// TODO: Other ideas for this:
+	//        a) maximize number of variables in same frame (or near each other) (like variance)
+	//        b) minimize number of neighbors in each clique (i.e., 
+	//           if cliques already have neighbors, choose the ones with fewer.
+	//        c) integrate with RV value assignment to minimize
+	//           the number of unassigned clique nodes (since they're
+	//           iterated over w/o knowledge of any parents. If this
+	//           ends up being a search, make this be offline, in with gmtkTriangulate
+	// 
+
+	float mult = 1.0;
+	for (unsigned charNo=0;charNo< junctionTreeMSTpriorityStr.size(); charNo++) {
+	  const char curCase = toupper(junctionTreeMSTpriorityStr[charNo]);
+	  if (curCase == '-') {
+	    mult = -1.0;
+	    continue;
+	  }
+
+	  if (curCase == 'D') {
+
+	    // push back number of deterministic nodes in
+	    // the separator
+	    set<RV*>::iterator it;
+	    set<RV*>::iterator it_end = sep_set.end();
+	    unsigned numDeterministicNodes = 0;
+	    for (it = sep_set.begin(); it != it_end; it++) {
+	      RV* rv = (*it);
+	      if (rv->discrete() && RV2DRV(rv)->deterministic())
+		numDeterministicNodes++;
+	    }
+	    e.weights.push_back(mult*(double)numDeterministicNodes);
+
+	  } else if (curCase == 'E' || curCase == 'L' || curCase == 'Q' || curCase == 'W') {
+	    // push back negative weight of two cliques together.
+	    set<RV*> clique_union;
+	    set_union(section.cliques[i].nodes.begin(),
+		      section.cliques[i].nodes.end(),
+		      section.cliques[j].nodes.begin(),
+		      section.cliques[j].nodes.end(),
+		      inserter(clique_union,clique_union.end()));
+
+	    if (curCase == 'E') {
+	      // push back number of deterministic nodes in
+	      // the union
+	      set<RV*>::iterator it;
+	      set<RV*>::iterator it_end = clique_union.end();
+	      unsigned numDeterministicNodes = 0;
+	      for (it = clique_union.begin(); it != it_end; it++) {
+		RV* rv = (*it);
+		if (rv->discrete() && RV2DRV(rv)->deterministic())
+		  numDeterministicNodes++;
+	      }
+	      e.weights.push_back(mult*(double)numDeterministicNodes);
+	    } else if (curCase == 'L') {
+	      set<RV*>::iterator it;
+	      set<RV*>::iterator it_end = clique_union.end();
+	      unsigned numHidden = 0;
+	      for (it = clique_union.begin(); it != it_end; it++) {
+		RV* rv = (*it);
+		if (rv->hidden())
+		  numHidden++;
+	      }
+	      e.weights.push_back(mult*(double)numHidden);
+	    } else if (curCase == 'Q') {
+	      set<RV*>::iterator it;
+	      set<RV*>::iterator it_end = clique_union.end();
+	      unsigned numObserved = 0;
+	      for (it = clique_union.begin(); it != it_end; it++) {
+		RV* rv = (*it);
+		if (rv->observed())
+		  numObserved++;
+	      }
+	      e.weights.push_back(mult*(double)numObserved);
+	    } else if (curCase == 'W') {
+	      // compute frame number variance in union, push back
+	      // negative to prefer smalller frame variance (i.e.,
+	      // connect things that on average are close to each
+	      // other in time).
+	      set<RV*>::iterator it;
+	      set<RV*>::iterator it_end = clique_union.end();
+	      double sum = 0;
+	      double sumSq = 0;
+	      for (it = clique_union.begin(); it != it_end; it++) {
+		RV* rv = (*it);
+		sum += rv->frame();
+		sumSq += rv->frame()*rv->frame();
+	      }
+	      double invsize = 1.0/(double)clique_union.size();
+	      double variance = invsize*(sumSq - sum*sum*invsize);
+	      e.weights.push_back(mult*(double)-variance);
+	    }
+	  } else if (curCase == 'S') {
+
+	    // push back negative weight of separator, to prefer
+	    // least negative (smallest)  weight, since larger numbers
+	    // are prefered.
+	    e.weights.push_back(-(double)MaxClique::computeWeight(sep_set));
+
+	    // printf("weight of clique %d = %f, %d = %f\n",
+	    // i,section.cliques[i].weight(),
+	    // j,section.cliques[j].weight());
+
+	  } else if (curCase == 'U') {
+
+	    // push back negative weight of two cliques together.
+	    set<RV*> clique_union;
+	    set_union(section.cliques[i].nodes.begin(),
+		      section.cliques[i].nodes.end(),
+		      section.cliques[j].nodes.begin(),
+		      section.cliques[j].nodes.end(),
+		      inserter(clique_union,clique_union.end()));
+	    e.weights.push_back(-(double)MaxClique::computeWeight(clique_union));
+	  } else if (curCase == 'V') {
+	    // compute frame number variance in separator, push back
+	    // negative to prefer smalller frame variance (i.e.,
+	    // connect things that on average are close to each
+	    // other in time).
+	    set<RV*>::iterator it;
+	    set<RV*>::iterator it_end = sep_set.end();
+	    double sum = 0;
+	    double sumSq = 0;
+	    for (it = sep_set.begin(); it != it_end; it++) {
+	      RV* rv = (*it);
+	      sum += rv->frame();
+	      sumSq += rv->frame()*rv->frame();
+	    }
+	    if (sep_set.size() == 0) {
+	      e.weights.push_back(mult*(double)-FLT_MAX);
+	    } else {
+	      double invsize = 1.0/(double)sep_set.size();
+	      double variance = invsize*(sumSq - sum*sum*invsize);
+	      e.weights.push_back(mult*(double)-variance);
+	    }
+	  } else if (curCase == 'H') {
+	    set<RV*>::iterator it;
+	    set<RV*>::iterator it_end = sep_set.end();
+	    unsigned numHidden = 0;
+	    for (it = sep_set.begin(); it != it_end; it++) {
+	      RV* rv = (*it);
+	      if (rv->hidden())
+		numHidden++;
+	    }
+	    e.weights.push_back(mult*(double)numHidden);
+	  } else if (curCase == 'O') {
+	    set<RV*>::iterator it;
+	    set<RV*>::iterator it_end = sep_set.end();
+	    unsigned numObserved = 0;
+	    for (it = sep_set.begin(); it != it_end; it++) {
+	      RV* rv = (*it);
+	      if (rv->observed())
+		numObserved++;
+	    }
+	    e.weights.push_back(mult*(double)numObserved);
+	  } else {
+	    error("ERROR: Unrecognized junction tree clique sort order letter '%c' in string '%s'\n",curCase,junctionTreeMSTpriorityStr.c_str());
+	  }
+	  mult = 1.0;
+	}
+
+	// add the edge.
+	edges.push_back(e);
+	if (IM::messageGlb(IM::Giga)) {
+	  infoMsg(IM::Giga,"Edge (%d,%d) has sep size %.0f, ",
+		  i,j,
+		  e.weights[0]);
+	  for (unsigned charNo=0;charNo< junctionTreeMSTpriorityStr.size(); charNo++) {
+	    const char curCase = toupper(junctionTreeMSTpriorityStr[charNo]);
+	    infoMsg(IM::Giga,"%c,weight[%d] = %f, ",curCase,charNo+1,e.weights[charNo+1]);
+	  }
+	  infoMsg(IM::Giga,"\n");
+	}
+      }
+    }
+
+    // sort in decreasing order by edge weight which in this
+    // case is the sep-set size.
+    sort(edges.begin(),edges.end(),EdgeCompare());
+
+    unsigned joinsPlusOne = 1;
+    for (unsigned i=0;i<edges.size();i++) {
+      infoMsg(IM::Giga,"Edge %d has sep size %.0f\n",
+	      i,
+	      edges[i].weights[0]);
+
+      set<unsigned>& iset1 = findSet[edges[i].clique1];
+      set<unsigned>& iset2 = findSet[edges[i].clique2];
+      if (iset1 != iset2) {
+	// merge the two sets
+	set<unsigned> new_set;
+	set_union(iset1.begin(),iset1.end(),
+		  iset2.begin(),iset2.end(),
+		  inserter(new_set,new_set.end()));
+	// make sure that all members of the set point to the
+	// new set.
+	set<unsigned>::iterator ns_iter;
+	for (ns_iter = new_set.begin(); ns_iter != new_set.end(); ns_iter ++) {
+	  const unsigned clique = *ns_iter;
+	  findSet[clique] = new_set;
+	}
+	infoMsg(IM::Giga,"Joining cliques %d and %d (edge %d) with intersection size %.0f\n",
+		edges[i].clique1,edges[i].clique2,i,edges[i].weights[0]);
+
+	if (edges[i].weights[0] == 0.0) {
+	  if (IM::messageGlb(IM::High)) {
+	    // there is no way to know the difference here if the
+	    // graph is non-triangualted or is simply disconnected
+	    // (which is ok). A non-triangulated graph might have
+	    // resulted from the user editing the trifile, but we
+	    // presume that MCS has already checked for this when
+	    // reading in the trifiles. We just issue an informative
+	    // message just in case.
+	    printf("NOTE: junction tree creation joining two cliques (%d and %d) with size 0 set intersection. Either disconnected (which is ok) or non-triangulated (which is bad) graph.\n",
+		   edges[i].clique1,edges[i].clique2);
+	    // TODO: print out two cliques that are trying to be joined.
+	    printf("Clique %d: ",edges[i].clique1);
+	    section.cliques[edges[i].clique1].printCliqueNodes(stdout);
+	    printf("Clique %d: ",edges[i].clique2);
+	    section.cliques[edges[i].clique2].printCliqueNodes(stdout);
+	  }
+	}
+
+	section.cliques[edges[i].clique1].neighbors.push_back(edges[i].clique2);
+	section.cliques[edges[i].clique2].neighbors.push_back(edges[i].clique1);
+
+	if (++joinsPlusOne == numMaxCliques)
+	  break;
+      }
+    }
+  }
+}
+
+// routine to find the interface cliques of the sections
+void 
+SectionScheduler::computeSectionInterfaces() {
+}
+
+// routine to create the factors in the appropriate sections
+void 
+SectionScheduler::createFactorCliques() {
+}
+
+// routine to find the interface cliques of a section
+void 
+SectionScheduler::computeSectionInterface(JT_Partition& section1,
+					  unsigned int& section1_ric,
+					  JT_Partition& section2,
+					  unsigned int& section2_lic,
+					  bool& icliques_same)
+{
+}
+
+
+// root the JT
+void 
+SectionScheduler::createDirectedGraphOfCliques() {
+}
+
+void 
+SectionScheduler::createDirectedGraphOfCliques(JT_Partition& section, const unsigned root) {
+}
+
+
+
+// Assign probability giving random variables to cliques (i.e.,
+// these are assigned only to cliques such that the random variables
+// and *all* their parents live in the clique, plus some other
+// criterion in order to make message passing as efficient as
+// possible).
+void 
+SectionScheduler::assignRVsToCliques(const char* varSectionAssignmentPrior, const char *varCliqueAssignmentPrior) {
+}
+
+void 
+SectionScheduler::assignRVsToCliques(const char *const sectionName,
+				     JT_Partition&section,
+				     const unsigned rootClique,
+				     const char* varSectionAssignmentPrior,
+				     const char *varCliqueAssignmentPrior)
+{
+}
+
+
+
+void 
+SectionScheduler::assignFactorsToCliques() {
+}
+
+void 
+SectionScheduler::assignFactorsToCliques(JT_Partition& section) {
+}
+
+
+// For the three sections, set up the different message passing
+// orders that are to be used. This basically just does a tree
+// traversal using the previously selected root.
+void 
+SectionScheduler::setUpMessagePassingOrders() {
+}
+
+void 
+SectionScheduler::setUpMessagePassingOrder(JT_Partition& section,
+					   const unsigned root,
+					   vector< pair<unsigned,unsigned> >&order,
+					   const unsigned excludeFromLeafCliques,
+					   vector< unsigned>& leaf_cliques) 
+{
+}
+
+// Separator creation, meaning create the seperator objects
+// both within and between sections. Given two neighboring
+// sections L and R, the separator between the interface
+// cliques in L and R is contained in R.
+void 
+SectionScheduler::createSeparators(JT_Partition& section, vector< pair<unsigned,unsigned> >&order) {
+}
+
+void 
+SectionScheduler::createSeparators() {
+}
+
+// create the virtual evidence separators
+void 
+SectionScheduler::createVESeparators(JT_Partition& section) {
+}
+
+
+// Separator iteration order and accumulated set intersection
+// creation for separator driven clique potential creation, and
+// also updates the seperators partial accumulator structure and
+// sets up cliques other variables.
+void 
+SectionScheduler::computeSeparatorIterationOrder(MaxClique& clique, JT_Partition& section) {
+}
+
+void 
+SectionScheduler::computeSeparatorIterationOrders(JT_Partition& section) {
+}
+
+void 
+SectionScheduler::computeSeparatorIterationOrders() {
+}
+
+// Computes the preceding iterated unassigned nodes and therein the
+// set of assigned nodes in each clique that should/shouldn't be
+// iterated.
+void 
+SectionScheduler::getCumulativeUnassignedIteratedNodes() {
+}
+
+// compute the assignment order for nodes in this
+// section's cliques relative to each clique's incomming separators, and while
+// doing so, also set the dispositions for each of the resulting
+// nodes in each clique.
+void 
+SectionScheduler::sortCliqueAssignedNodesAndComputeDispositions(const char *varCliqueAssignmentPrior) {
+}
+
+void 
+SectionScheduler::sortCliqueAssignedNodesAndComputeDispositions(JT_Partition& section, const char *varCliqueAssignmentPrior) {
+}
+
+ 
+/*-
+ *-----------------------------------------------------------------------
+ * SectionScheduler::setUpJTDataStructures()
+ *
+ *   Sets up all the data structures in a JT (other than preparing for
+ *   unrolling), and calls all the routines in the necessary
+ *   order. This is like the main routine of this class, as it calls
+ *   what needs to be done to set up a JT.
+ *
+ * Preconditions:
+ *   Junction tree must have been created. Should not have called 
+ *   setUpDataStructures() before. The C sections in the template
+ *   have variables, but the other partions (P, and E) might be empty.
+ *
+ * Postconditions:
+ *   All data structures are set up. The JT is ready to have
+ *   prepareForUnrolling() called.
+ *
+ * Side Effects:
+ *   Changes many internal data structures in this object. 
+ *
+ * Results:
+ *    None.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+SectionScheduler::setUpJTDataStructures(const char* varSectionAssignmentPrior,
+					const char *varCliqueAssignmentPrior)
+{
+  // main() routine for this class.
+  createSectionJunctionTrees(junctionTreeMSTpriorityStr);
+  computeSectionInterfaces();
+  createFactorCliques();
+  createDirectedGraphOfCliques();
+  assignRVsToCliques(varSectionAssignmentPrior,varCliqueAssignmentPrior);
+  assignFactorsToCliques();
+  // TODO: assignScoringFactorsToCliques();
+  setUpMessagePassingOrders();
+  // create seps and VE seps.
+  createSeparators();
+  computeSeparatorIterationOrders();
+
+  // -- -- used only to compute weight.
+  getCumulativeUnassignedIteratedNodes(); 
+  // -- --
+
+  sortCliqueAssignedNodesAndComputeDispositions(varCliqueAssignmentPrior);
+}

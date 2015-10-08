@@ -82,7 +82,7 @@ class SectionScheduler {
   virtual void setUpDataStructures(iDataStreamFile &tri_file,
 				   char const *varSectionAssignmentPrior,
 				   char const *varCliqueAssignmentPrior,
-				   bool checkTriFileCards) = 0;
+				   bool checkTriFileCards);
 
 
   // Prepare to do inference on segment of length T. Note that this
@@ -135,6 +135,17 @@ class SectionScheduler {
     section_debug_range.SetLimits(rng.first(), rng.last()); 
     section_debug_range.SetDefStr(rng.GetDefStr()); 
   }
+
+
+
+  // The priority string for selecting the next edge when constructing
+  // the junction tree. Default is in .cc file, and see .cc file for
+  // what options are supported.
+  static const char* junctionTreeMSTpriorityStr;
+
+
+
+
 
  protected:
 
@@ -214,14 +225,14 @@ class SectionScheduler {
 
 
 
-  // Message passing orders for each partition.  Increasing index
+  // Message passing orders for each section.  Increasing index
   // order is 'collect evidence' phase from left to right in direction
   // of time, and decreasing order is 'distribute evidence' phase from
   // right to left in direction of time. Note that this assumes that
   // the overal root node in the JT is on the far right within E
   // (which might not be the best order).  NOTE: These are kept here
-  // rather than in the partitions, since they are re-used for all
-  // cloned partitions.
+  // rather than in the sections, since they are re-used for all
+  // cloned sections.
   vector< pair<unsigned,unsigned> > P1_message_order;
   vector< unsigned > P1_leaf_cliques;
   vector< pair<unsigned,unsigned> > Co_message_order;
@@ -285,6 +296,125 @@ class SectionScheduler {
   // This guy does the actual work of inference within a section
   SectionInferenceAlgorithm *algorithm;
  
+
+
+  // 
+  // Do some last-minute data structure setup to prepare for
+  // unrolling to work (such as preliminary and pre work for
+  // leaving STL, etc.)
+  static void prepareForUnrolling(JT_Partition &section);
+  virtual void prepareForUnrolling();
+
+
+
+
+  // TODO: consider moving this to separate file?
+
+  struct Edge {
+    unsigned clique1;
+    unsigned clique2;
+    vector <double> weights;
+  };
+
+  // for sorting edges in decreasing weight order.
+  struct EdgeCompare {  
+    // sort descending
+    bool operator() (const Edge& a, 
+		     const Edge& b) {
+      return (a.weights) > (b.weights);
+    }
+  };
+
+
+  virtual void setUpJTDataStructures(const char* varSectionAssignmentPrior,
+				   const char *varCliqueAssignmentPrior);
+
+  // create the three junction trees for the basic sections.
+  virtual void createSectionJunctionTrees(const string pStr = junctionTreeMSTpriorityStr);
+
+  // create a junction tree within a section.
+  static void createSectionJunctionTree(Section& section, const string pStr = junctionTreeMSTpriorityStr);
+
+  // routine to find the interface cliques of the sections
+  virtual void computeSectionInterfaces();
+
+  // routine to create the factors in the appropriate sections
+  virtual void createFactorCliques();
+
+  // routine to find the interface cliques of a section
+  virtual void computeSectionInterface(JT_Partition& section1,
+				       unsigned int& section1_ric,
+				       JT_Partition& section2,
+				       unsigned int& section2_lic,
+				       bool& icliques_same);
+
+
+  // root the JT
+  virtual void createDirectedGraphOfCliques();
+
+  static void createDirectedGraphOfCliques(JT_Partition& section, const unsigned root);
+
+
+
+  // Assign probability giving random variables to cliques (i.e.,
+  // these are assigned only to cliques such that the random variables
+  // and *all* their parents live in the clique, plus some other
+  // criterion in order to make message passing as efficient as
+  // possible).
+  virtual void assignRVsToCliques(const char* varSectionAssignmentPrior,
+				  const char *varCliqueAssignmentPrior);
+
+  static void assignRVsToCliques(const char *const sectionName,
+				 JT_Partition&section,
+				 const unsigned rootClique,
+				 const char* varSectionAssignmentPrior,
+				 const char *varCliqueAssignmentPrior);
+
+  virtual void assignFactorsToCliques();
+  virtual void assignFactorsToCliques(JT_Partition& section);
+
+
+  // For the three sections, set up the different message passing
+  // orders that are to be used. This basically just does a tree
+  // traversal using the previously selected root.
+  virtual void setUpMessagePassingOrders();
+  static void setUpMessagePassingOrder(JT_Partition& section,
+				       const unsigned root,
+				       vector< pair<unsigned,unsigned> >&order,
+				       const unsigned excludeFromLeafCliques,
+				       vector< unsigned>& leaf_cliques);
+
+  // Separator creation, meaning create the seperator objects
+  // both within and between sections. Given two neighboring
+  // sections L and R, the separator between the interface
+  // cliques in L and R is contained in R.
+  static void createSeparators(JT_Partition& section, vector< pair<unsigned,unsigned> >&order);
+  virtual void createSeparators();
+
+  // create the virtual evidence separators
+  static void createVESeparators(JT_Partition& section);
+
+
+  // Separator iteration order and accumulated set intersection
+  // creation for separator driven clique potential creation, and
+  // also updates the seperators partial accumulator structure and
+  // sets up cliques other variables.
+  static void computeSeparatorIterationOrder(MaxClique& clique, JT_Partition& section);
+  static void computeSeparatorIterationOrders(JT_Partition& section);
+  virtual void computeSeparatorIterationOrders();
+
+  // Computes the preceding iterated unassigned nodes and therein the
+  // set of assigned nodes in each clique that should/shouldn't be
+  // iterated.
+  virtual void getCumulativeUnassignedIteratedNodes();
+
+  // compute the assignment order for nodes in this
+  // section's cliques relative to each clique's incomming separators, and while
+  // doing so, also set the dispositions for each of the resulting
+  // nodes in each clique.
+  virtual void sortCliqueAssignedNodesAndComputeDispositions(const char *varCliqueAssignmentPrior);
+  virtual void sortCliqueAssignedNodesAndComputeDispositions(JT_Partition& section, const char *varCliqueAssignmentPrior);
+
 };
 
 #endif
