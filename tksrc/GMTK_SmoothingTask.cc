@@ -21,19 +21,22 @@
 // It should be overridden by the SectionScheduler subclass.
 
 logpr 
-SmoothingTask::smoothing(unsigned *numUsableFrames,
- 			  unsigned *numSectionsDone,
-			  const bool noE,
-			  FILE *f,
-			  const bool printObserved,
-			  regex_t *preg,
-			  regex_t *creg,
-			  regex_t *ereg,
-			  ObservationFile *posteriorFile,
-			  const bool cliquePosteriorNormalize,
-			  const bool cliquePosteriorUnlog)
-  {
+SmoothingTask::smoothing(SectionInferenceAlgorithm *algorithm,
+			 unsigned nBest,
+			 unsigned *numUsableFrames,
+			 unsigned *numSectionsDone,
+			 const bool noE,
+			 FILE *f,
+			 const bool printObserved,
+			 regex_t *preg,
+			 regex_t *creg,
+			 regex_t *ereg,
+			 ObservationFile *posteriorFile,
+			 const bool cliquePosteriorNormalize,
+			 const bool cliquePosteriorUnlog)
+{
   assert(false); // nothing should call this method
+  // just here to make the vtable non-empty
   logpr result;
   return result;
 }

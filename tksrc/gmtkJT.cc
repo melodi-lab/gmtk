@@ -346,15 +346,15 @@ main(int argc,char*argv[])
   if (false) {
 #ifdef GMTK_ISLANDINFERENCE_H
   } else if (island) {
-    section_scheduler = new IslandInference(gm_template, gomFS);
+    section_scheduler = new IslandInference(gm_template, fp, gomFS);
 #endif
 #ifdef GMTK_ARCHIPELAGOSINFERENCE_H
   } else if (archipelagos) {
-    section_scheduler = new ArchipelagosInference(gm_template, gomFS);
+    section_scheduler = new ArchipelagosInference(gm_template, fp, gomFS);
 #endif
 #ifdef GMTK_LINEARSECTIONSCHEDULER_H
   } else {
-    section_scheduler = new LinearSectionScheduler(gm_template, fp, section_inference_alg, gomFS);
+    section_scheduler = new LinearSectionScheduler(gm_template, fp, gomFS);
 #endif
   }
 
@@ -453,10 +453,13 @@ main(int argc,char*argv[])
       unsigned numUsableFrames;
       logpr probe;
 
+      // TODO:  maybe  if (fwd_bkwd_alg) { ... }  if (probE_alg) { ... }
+
       if (!probE || doDistributeEvidence) { // doing the forward/backward task
 	assert(fwd_bkwd_alg);
 
-	probe = fwd_bkwd_alg->forwardBackward(&numUsableFrames,
+	probe = fwd_bkwd_alg->forwardBackward(section_inference_alg,
+					      &numUsableFrames,
 					      cliquePosteriorNormalize, 
 					      cliquePosteriorUnlog,
 					      clique_posterior_file);
@@ -466,7 +469,8 @@ main(int argc,char*argv[])
 	infoMsg(IM::Max,"Beginning call to probability of evidence.\n"); // TODO: move to probEvidence() impl
 	assert(probE_alg);
 
-	probe = probE_alg->probEvidence(&numUsableFrames,
+	probe = probE_alg->probEvidence(section_inference_alg,
+					&numUsableFrames,
 					NULL, // returns # of modified sections used for the current segment
 					false,  // impose a time limit
 					false,  // skip inference on E'

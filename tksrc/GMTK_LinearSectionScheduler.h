@@ -45,13 +45,9 @@ class LinearSectionScheduler : public SectionScheduler,
 
   LinearSectionScheduler(GMTemplate                &gm_template,
                          FileParser                &fp,
-			 SectionInferenceAlgorithm *algorithm,
                          ObservationSource         *obs_source)
-    : SectionScheduler(gm_template, fp, algorithm, obs_source)
-  {
-    assert(algorithm);
-    assert(obs_source);
-  }
+    : SectionScheduler(gm_template, fp, obs_source)
+  {}
 
   virtual ~LinearSectionScheduler(); // putting dtor in .cpp seems to help with 'missing vtable' link errors...
   
@@ -79,7 +75,8 @@ class LinearSectionScheduler : public SectionScheduler,
   // Returns the size (in # of floats) of the cliques selected by setCliquePrintRanges().
   void getCliquePosteriorSize(unsigned &p_size, unsigned &c_size, unsigned &e_size);
 
-  logpr probEvidence(unsigned *numUsableFrames = NULL,
+  logpr probEvidence(SectionInferenceAlgorithm *algorithm,
+		     unsigned *numUsableFrames = NULL,
 		     unsigned *numSectionsDone = NULL,
 		     const bool limitTime = false,
 		     const bool noE = false, 
@@ -87,17 +84,22 @@ class LinearSectionScheduler : public SectionScheduler,
 		     const bool cliquePosteriorUnlog = true,
 		     ObservationFile *posteriorFile = NULL);
 
-  logpr forwardBackward(unsigned *numUsableFrames = NULL,
+  logpr forwardBackward(SectionInferenceAlgorithm *algorithm,
+			unsigned *numUsableFrames = NULL,
 			const bool cliquePosteriorNormalize = true,
 			const bool cliquePosteriorUnlog = true,
 			ObservationFile *posteriorFile = NULL);
 
-  logpr viterbi(unsigned *numUsableFrames = NULL,
+  logpr viterbi(SectionInferenceAlgorithm *algorithm,
+		unsigned nBest = 1,
+		unsigned *numUsableFrames = NULL,
 		const bool cliquePosteriorNormalize = true,
 		const bool cliquePosteriorUnlog = true,
 		ObservationFile *posteriorFile = NULL);
 
-  logpr smoothing(unsigned *numUsableFrames = NULL,
+  logpr smoothing(SectionInferenceAlgorithm *algorithm,
+		  unsigned nBest = 1,
+		  unsigned *numUsableFrames = NULL,
 		  unsigned *numSectionsDone=NULL,
 		  const bool noE=false,
 		  FILE *f=stdout,

@@ -18,6 +18,8 @@
 
 #include "GMTK_FileSource.h"
 
+#include "GMTK_SectionInferenceAlgorithm.h"
+
 class ForwardBackwardTask {
 
  public:
@@ -38,10 +40,11 @@ class ForwardBackwardTask {
    * if posteriorFile is non-NULL, write the clique posteriors to the posteriorFile
    *
    */
-  virtual logpr forwardBackward(unsigned *numUsableFrames = NULL,
+  virtual logpr forwardBackward(SectionInferenceAlgorithm *algorithm,
+				unsigned *numUsableFrames = NULL,
 				const bool cliquePosteriorNormalize = true,
 				const bool cliquePosteriorUnlog = true,
-				ObservationFile *posteriorFile = NULL) = 0;
+				ObservationFile *posteriorFile = NULL);
 };
 
 #endif

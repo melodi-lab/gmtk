@@ -59,8 +59,6 @@
 #include "GMTK_PartitionStructures.h"
 #include "GMTK_PartitionTables.h"
 
-//#include "GMTK_SectionInferenceAlgorithm.h"
-class SectionInferenceAlgorithm;
 class SectionIterator;
 
 class SectionScheduler {
@@ -69,10 +67,12 @@ class SectionScheduler {
  public:
 
 
-  SectionScheduler(GMTemplate &gm_template, FileParser &fp, SectionInferenceAlgorithm *algorithm, ObservationSource *obs_source) :
+  SectionScheduler(GMTemplate &gm_template, FileParser &fp, ObservationSource *obs_source) :
     p_clique_print_range(NULL), c_clique_print_range(NULL), e_clique_print_range(NULL),
-    section_debug_range("all", 0, 0x7FFFFFFF), obs_source(obs_source), fp(fp), gm_template(gm_template), algorithm(algorithm)
-  {}
+    section_debug_range("all", 0, 0x7FFFFFFF), obs_source(obs_source), fp(fp), gm_template(gm_template)
+  {
+    assert(obs_source);
+  }
     
   virtual ~SectionScheduler() {}
 
@@ -144,6 +144,25 @@ class SectionScheduler {
   static const char* junctionTreeMSTpriorityStr;
 
 
+  // The priority string for selecting which clique of a partition
+  // (from the set of valid ones) should be used as the partition
+  // interface clique. See .cc file in routine findInterfaceClique()
+  // for documentation.
+  static const char* interfaceCliquePriorityStr;
+  
+  // Set to true if the JT should create extra separators for any
+  // virtual evidence (VE) that might be usefully exploitable
+  // computationally in the clique. I.e., we treat the parents
+  // of an immediate observed child, where the child is a deterministic 
+  // function of the parents, a a separator over the parents
+  // to be intersected as normal with all the other separators.
+  static unsigned useVESeparators;
+
+  enum VESeparatorType { VESEP_PC = 0x1, VESEP_PCG = 0x2 }; 
+
+  // booleans to indicate where ve-seps should be used.
+  enum VESeparatorWhere { VESEP_WHERE_P = 0x1, VESEP_WHERE_C = 0x2, VESEP_WHERE_E = 0x4 }; 
+  static unsigned veSeparatorWhere;
 
 
 
@@ -224,6 +243,14 @@ class SectionScheduler {
   unsigned E_root_clique;
 
 
+  // Booleans telling if the interface cliques of the two partitions
+  // are the same, meaning we don't need both and can drop one (to
+  // save a bit of computation). These are currently computed but are
+  // not yet used for anything.
+  bool P_to_C_icliques_same;
+  bool C_to_C_icliques_same;
+  bool C_to_E_icliques_same;
+
 
   // Message passing orders for each section.  Increasing index
   // order is 'collect evidence' phase from left to right in direction
@@ -293,19 +320,20 @@ class SectionScheduler {
   GMTemplate   &gm_template;
 
 
-  // This guy does the actual work of inference within a section
-  SectionInferenceAlgorithm *algorithm;
- 
-
 
   // 
   // Do some last-minute data structure setup to prepare for
   // unrolling to work (such as preliminary and pre work for
   // leaving STL, etc.)
   static void prepareForUnrolling(JT_Partition &section);
-  virtual void prepareForUnrolling();
+  void prepareForUnrolling();
 
 
+
+  // A version of unroll that starts with the gm_template and fills up
+  // base sections.
+  void create_base_sections();
+  void insertFactorClique(FactorClique& factorClique,FactorInfo& factor);
 
 
   // TODO: consider moving this to separate file?
@@ -327,42 +355,62 @@ class SectionScheduler {
 
 
   virtual void setUpJTDataStructures(const char* varSectionAssignmentPrior,
-				   const char *varCliqueAssignmentPrior);
+				     const char *varCliqueAssignmentPrior);
 
   // create the three junction trees for the basic sections.
-  virtual void createSectionJunctionTrees(const string pStr = junctionTreeMSTpriorityStr);
+  void createSectionJunctionTrees(const string pStr = junctionTreeMSTpriorityStr);
 
   // create a junction tree within a section.
   static void createSectionJunctionTree(Section& section, const string pStr = junctionTreeMSTpriorityStr);
 
   // routine to find the interface cliques of the sections
-  virtual void computeSectionInterfaces();
+  void computeSectionInterfaces();
 
   // routine to create the factors in the appropriate sections
-  virtual void createFactorCliques();
+  void createFactorCliques();
 
   // routine to find the interface cliques of a section
-  virtual void computeSectionInterface(JT_Partition& section1,
-				       unsigned int& section1_ric,
-				       JT_Partition& section2,
-				       unsigned int& section2_lic,
-				       bool& icliques_same);
+  void computeSectionInterface(JT_Partition& section1,
+			       unsigned int& section1_ric,
+			       JT_Partition& section2,
+			       unsigned int& section2_lic,
+			       bool& icliques_same);
 
 
   // root the JT
-  virtual void createDirectedGraphOfCliques();
+  void createDirectedGraphOfCliques();
+  static void createDirectedGraphOfCliquesRecurse(JT_Partition& section,
+						  const unsigned root,
+						  vector< bool >& visited);
 
-  static void createDirectedGraphOfCliques(JT_Partition& section, const unsigned root);
+  static void createDirectedGraphOfCliques(JT_Partition &section, const unsigned root);
+  static void getCumulativeAssignedNodes(JT_Partition &section, const unsigned root);
+  static void getCumulativeUnassignedIteratedNodes(JT_Partition &section,const unsigned root);
 
 
+  static void setUpMessagePassingOrderRecurse(JT_Partition &section,
+					      const unsigned root,
+					      vector< pair<unsigned,unsigned> >&order,
+					      const unsigned excludeFromLeafCliques,
+					      vector< unsigned>& leaf_cliques);
+
+  static void assignRVToClique(const char *const sectionName,
+			       JT_Partition &section,
+			       const unsigned root,
+			       const unsigned depth,
+			       RV* rv,
+			       unsigned& numberOfTimesAssigned,
+			       set<RV*>& parSet,
+			       const bool allParentsObserved,
+			       multimap< vector<double>, unsigned >& scoreSet);
 
   // Assign probability giving random variables to cliques (i.e.,
   // these are assigned only to cliques such that the random variables
   // and *all* their parents live in the clique, plus some other
   // criterion in order to make message passing as efficient as
   // possible).
-  virtual void assignRVsToCliques(const char* varSectionAssignmentPrior,
-				  const char *varCliqueAssignmentPrior);
+  void assignRVsToCliques(const char* varSectionAssignmentPrior,
+			  const char *varCliqueAssignmentPrior);
 
   static void assignRVsToCliques(const char *const sectionName,
 				 JT_Partition&section,
@@ -370,14 +418,14 @@ class SectionScheduler {
 				 const char* varSectionAssignmentPrior,
 				 const char *varCliqueAssignmentPrior);
 
-  virtual void assignFactorsToCliques();
-  virtual void assignFactorsToCliques(JT_Partition& section);
+  void assignFactorsToCliques();
+  void assignFactorsToCliques(JT_Partition& section);
 
 
   // For the three sections, set up the different message passing
   // orders that are to be used. This basically just does a tree
   // traversal using the previously selected root.
-  virtual void setUpMessagePassingOrders();
+  void setUpMessagePassingOrders();
   static void setUpMessagePassingOrder(JT_Partition& section,
 				       const unsigned root,
 				       vector< pair<unsigned,unsigned> >&order,
@@ -389,7 +437,7 @@ class SectionScheduler {
   // sections L and R, the separator between the interface
   // cliques in L and R is contained in R.
   static void createSeparators(JT_Partition& section, vector< pair<unsigned,unsigned> >&order);
-  virtual void createSeparators();
+  void createSeparators();
 
   // create the virtual evidence separators
   static void createVESeparators(JT_Partition& section);
@@ -401,19 +449,19 @@ class SectionScheduler {
   // sets up cliques other variables.
   static void computeSeparatorIterationOrder(MaxClique& clique, JT_Partition& section);
   static void computeSeparatorIterationOrders(JT_Partition& section);
-  virtual void computeSeparatorIterationOrders();
+  void computeSeparatorIterationOrders();
 
   // Computes the preceding iterated unassigned nodes and therein the
   // set of assigned nodes in each clique that should/shouldn't be
   // iterated.
-  virtual void getCumulativeUnassignedIteratedNodes();
+  void getCumulativeUnassignedIteratedNodes();
 
   // compute the assignment order for nodes in this
   // section's cliques relative to each clique's incomming separators, and while
   // doing so, also set the dispositions for each of the resulting
   // nodes in each clique.
-  virtual void sortCliqueAssignedNodesAndComputeDispositions(const char *varCliqueAssignmentPrior);
-  virtual void sortCliqueAssignedNodesAndComputeDispositions(JT_Partition& section, const char *varCliqueAssignmentPrior);
+  void sortCliqueAssignedNodesAndComputeDispositions(const char *varCliqueAssignmentPrior);
+  void sortCliqueAssignedNodesAndComputeDispositions(JT_Partition& section, const char *varCliqueAssignmentPrior);
 
 };
 

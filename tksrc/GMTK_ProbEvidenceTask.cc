@@ -18,7 +18,8 @@
 // It should be overridden by the SectionScheduler subclass.
 
 logpr 
-ProbEvidenceTask::probEvidence(unsigned *numUsableFrames,
+ProbEvidenceTask::probEvidence(SectionInferenceAlgorithm *algorithm,
+			       unsigned *numUsableFrames,
 			       unsigned *numSectionsDone,
 			       const bool limitTime,
 			       const bool noE,
@@ -27,6 +28,7 @@ ProbEvidenceTask::probEvidence(unsigned *numUsableFrames,
 			       ObservationFile *posteriorFile)
 {
   assert(false); // nothing should call this method
+  // just here to make the vtable non-empty
   logpr result;
   return result;
 }
