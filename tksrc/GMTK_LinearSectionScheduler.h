@@ -33,7 +33,6 @@
 
 #include "GMTK_SectionInferenceAlgorithm.h"
 
-#include "GMTK_JunctionTree.h"
 
 class LinearSectionScheduler : public SectionScheduler, 
                                public ProbEvidenceTask, 
@@ -52,26 +51,10 @@ class LinearSectionScheduler : public SectionScheduler,
   {
     assert(algorithm);
     assert(obs_source);
-    myjt = new JunctionTree(gm_template); // this (the self-pointer) should be the jt
   }
 
-  ~LinearSectionScheduler() {}
-
-
-  JunctionTree *getJT() { return myjt; } // BOGUS
+  virtual ~LinearSectionScheduler(); // putting dtor in .cpp seems to help with 'missing vtable' link errors...
   
-  // Initialize stuff at the model-level. See prepareForSegment() for segment-level initialization.
-  // TODO: explain parameters
-  void setUpDataStructures(iDataStreamFile &tri_file,
-			   char const *varSectionAssignmentPrior,
-			   char const *varCliqueAssignmentPrior,
-			   bool checkTriFileCards);
-
-#if 0
-  unsigned unroll(unsigned numFrames,
-		  const UnrollTableOptions tableOption = LongTable,
-		  unsigned *totalNumberSections = NULL);
-#endif
   
   // Formerly JunctionTree::printAllJTInfo()
   void printInferencePlanSummary(char const *fileName);
@@ -128,7 +111,6 @@ class LinearSectionScheduler : public SectionScheduler,
 
  private:
 
-  JunctionTree *myjt;
 };
 
 #endif
