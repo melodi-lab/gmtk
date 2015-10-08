@@ -31,15 +31,11 @@ class ArchipelagosSectionScheduler : public SectionScheduler,
 
   ArchipelagosSectionScheduler(GMTemplate                &gm_template, 
                                FileParser                &fp, 
-                               SectionInferenceAlgorithm *algorithm, 
                                ObservationSource         *obs_source)
-    : SectionScheduler(gm_template, fp, algorithm, obs_source)
-  {
-    assert(algorithm);
-    assert(obs_source);
-  }
+    : SectionScheduler(gm_template, fp, obs_source)
+  {}
 
-  ~ArchipelagosSectionScheduler() {}
+  virtual ~ArchipelagosSectionScheduler() {}
 
 };
 

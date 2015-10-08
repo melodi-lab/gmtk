@@ -19,7 +19,9 @@
 #include "sArray.h"
 
 #include "GMTK_FileSource.h"
+
 #include "GMTK_SectionIterator.h"
+#include "GMTK_SectionInferenceAlgorithm.h"
 
 class ViterbiTask {
 
@@ -44,10 +46,12 @@ class ViterbiTask {
    *
    */
 
-  virtual logpr viterbi(unsigned *numUsableFrames = NULL,
+  virtual logpr viterbi(SectionInferenceAlgorithm *algorithm,
+			unsigned nBest=1,
+			unsigned *numUsableFrames = NULL,
 			const bool cliquePosteriorNormalize = true,
 			const bool cliquePosteriorUnlog = true,
-		       	ObservationFile *posteriorFile = NULL) = 0;
+		       	ObservationFile *posteriorFile = NULL);
 
  protected:
 

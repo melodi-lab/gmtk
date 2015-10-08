@@ -18,12 +18,15 @@
 // It should be overridden by the SectionScheduler subclass.
 
 logpr 
-ViterbiTask::viterbi(unsigned *numUsableFrames,
+ViterbiTask::viterbi(SectionInferenceAlgorithm *algorithm,
+		     unsigned nBest,
+		     unsigned *numUsableFrames,
 		     const bool cliquePosteriorNormalize,
 		     const bool cliquePosteriorUnlog,
 		     ObservationFile *posteriorFile)
 {
   assert(false); // nothing should call this method
+  // just here to make the vtable non-empty
   logpr result;
   return result;
 }

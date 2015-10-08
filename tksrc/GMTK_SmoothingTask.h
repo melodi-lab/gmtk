@@ -19,6 +19,8 @@
 
 #include "GMTK_StreamSource.h"
 
+#include "GMTK_SectionInferenceAlgorithm.h"
+
 class SmoothingTask {
 
  public:
@@ -52,7 +54,9 @@ class SmoothingTask {
    * if posteriorFile is non-NULL, write the clique posteriors to the posteriorFile
    *
    */
-  virtual logpr smoothing(unsigned *numUsableFrames = NULL,
+  virtual logpr smoothing(SectionInferenceAlgorithm *algorithm,
+			  unsigned nBest = 1,
+			  unsigned *numUsableFrames = NULL,
  			  unsigned *numSectionsDone=NULL,
 			  const bool noE=false,
 			  FILE *f=stdout,
@@ -62,7 +66,7 @@ class SmoothingTask {
 			  regex_t *ereg=NULL,
 			  ObservationFile *posteriorFile = NULL,
 			  const bool cliquePosteriorNormalize = true,
-			  const bool cliquePosteriorUnlog = true) = 0;
+			  const bool cliquePosteriorUnlog = true);
 };
 
 #endif

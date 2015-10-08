@@ -74,6 +74,7 @@ class FactorInfo {
   friend class Partition;
   friend class BoundaryTriangulate;
   friend class JunctionTree;
+  friend class SectionScheduler;
   friend class StructPage;
   friend class VizNode;
   friend class GraphicalModel;

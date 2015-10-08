@@ -54,7 +54,8 @@ LinearSectionScheduler::getCliquePosteriorSize(unsigned &p_size, unsigned &c_siz
 }
 
 logpr
-LinearSectionScheduler::probEvidence(unsigned *numUsableFrames,
+LinearSectionScheduler::probEvidence(SectionInferenceAlgorithm *algorithm,
+				     unsigned *numUsableFrames,
 				     unsigned *numSectionsDone,
 				     const bool limitTime,
 				     const bool noE, 
@@ -62,6 +63,7 @@ LinearSectionScheduler::probEvidence(unsigned *numUsableFrames,
 				     const bool cliquePosteriorUnlog,
 				     ObservationFile *posteriorFile)
 {
+  assert(algorithm);
   FileSource *observation_source = dynamic_cast<FileSource *>(obs_source);
   assert(observation_source);
 
@@ -107,28 +109,35 @@ LinearSectionScheduler::probEvidence(unsigned *numUsableFrames,
 }
   
 logpr 
-LinearSectionScheduler::forwardBackward(unsigned *numUsableFrames,
+LinearSectionScheduler::forwardBackward(SectionInferenceAlgorithm *algorithm,
+					unsigned *numUsableFrames,
 					const bool cliquePosteriorNormalize,
 					const bool cliquePosteriorUnlog,
 					ObservationFile *posteriorFile)
 {
+  assert(algorithm);
   logpr result;
   return result;
 }
 
 logpr 
-LinearSectionScheduler::viterbi(unsigned *numUsableFrames,
+LinearSectionScheduler::viterbi(SectionInferenceAlgorithm *algorithm,
+				unsigned nBest,
+				unsigned *numUsableFrames,
 				const bool cliquePosteriorNormalize,
 				const bool cliquePosteriorUnlog,
 				ObservationFile *posteriorFile)
 {
+  assert(algorithm);
   logpr result;
   return result;
 }
 
 
 logpr 
-LinearSectionScheduler::smoothing(unsigned *numUsableFrames,
+LinearSectionScheduler::smoothing(SectionInferenceAlgorithm *algorithm,
+				  unsigned nBest,
+				  unsigned *numUsableFrames,
 				  unsigned *numSectionsDone,
 				  const bool noE,
 				  FILE *f,
@@ -140,6 +149,7 @@ LinearSectionScheduler::smoothing(unsigned *numUsableFrames,
 				  const bool cliquePosteriorNormalize,
 				  const bool cliquePosteriorUnlog)
 {
+  assert(algorithm);
   logpr result;
   return result;
 }

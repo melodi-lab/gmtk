@@ -1590,10 +1590,10 @@ static const char* varCliqueAssignmentPrior = "COT";
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   Arg("useVESeparators",
-      Arg::Opt,JunctionTree::useVESeparators,
+      Arg::Opt,SectionScheduler::useVESeparators,
       "Use Virtual Evidence (VE) Separators (if any are available) during inference (Bitwise or of 0x1 (PC) or PCG (0x2)"),
   Arg("veSepWhere",
-      Arg::Opt,JunctionTree::veSeparatorWhere,
+      Arg::Opt,SectionScheduler::veSeparatorWhere,
       "Where to use VE seps. Bitwise or of 0x1 (P), 0x2 (C), 0x4 (E)"),
   Arg("veSepFileName",
       Arg::Opt,SeparatorClique::veSeparatorFileName,

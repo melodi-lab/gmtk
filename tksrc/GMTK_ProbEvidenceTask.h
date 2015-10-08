@@ -18,6 +18,8 @@
 
 #include "GMTK_FileSource.h"
 
+#include "GMTK_SectionInferenceAlgorithm.h"
+
 class ProbEvidenceTask {
 
  public:
@@ -47,7 +49,8 @@ class ProbEvidenceTask {
    * if posteriorFile is non-NULL, write the clique posteriors to the posteriorFile
    *
    */
-  virtual logpr probEvidence(unsigned *numUsableFrames = NULL,
+  virtual logpr probEvidence(SectionInferenceAlgorithm *algorithm,
+			     unsigned *numUsableFrames = NULL,
 			     unsigned *numSectionsDone = NULL,
 			     const bool limitTime = false,
 			     const bool noE = false, 

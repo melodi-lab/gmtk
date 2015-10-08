@@ -194,6 +194,7 @@ public:
 
   ~GMTemplate() { clear(); }
 
+  bool usesLeftInterface() { return leftInterface; }
 
   // returning M and S by their "proper" names.
   unsigned maxNumChunksInBoundary() { return M; }
