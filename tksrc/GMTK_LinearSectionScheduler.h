@@ -51,29 +51,6 @@ class LinearSectionScheduler : public SectionScheduler,
 
   virtual ~LinearSectionScheduler(); // putting dtor in .cpp seems to help with 'missing vtable' link errors...
   
-  
-  // Formerly JunctionTree::printAllJTInfo()
-  void printInferencePlanSummary(char const *fileName);
-
-  // Formerly GMTemplate::reportScoreStats()
-  void reportScoreStats();
-
-
-  // NOTE:  This assumes all inference algorithms will have clique-like things they
-  //        need to print posteriors of
-
-  // Set the range of selected clique #'s in P', C', E' for printing.
-  // TODO: preconditions
-  void setCliquePrintRanges(char *p_range, char *c_range, char *e_range);
-
-  // Set range of sections that should produce extra debug info
-  void setSectionDebugRange(Range &rng);
-
-  // Print to f the order of the variables in each clique selected by setCliquePrintRanges().
-  void printCliqueOrders(FILE *f);
-
-  // Returns the size (in # of floats) of the cliques selected by setCliquePrintRanges().
-  void getCliquePosteriorSize(unsigned &p_size, unsigned &c_size, unsigned &e_size);
 
   logpr probEvidence(SectionInferenceAlgorithm *algorithm,
 		     unsigned *numUsableFrames = NULL,

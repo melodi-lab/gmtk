@@ -110,10 +110,10 @@ class SectionScheduler {
 
 
   // Formerly JunctionTree::printAllJTInfo()
-  virtual void printInferencePlanSummary(char const *fileName) = 0;
+  virtual void printInferencePlanSummary(char const *fileName);
 
   // Formerly GMTemplate::reportScoreStats()
-  virtual void reportScoreStats() = 0;
+  virtual void reportScoreStats();
 
 
   // NOTE:  This assumes all inference algorithms will have clique-like things they
@@ -121,13 +121,13 @@ class SectionScheduler {
 
   // Set the range of selected clique #'s in P', C', E' for printing.
   // TODO: preconditions
-  virtual void setCliquePrintRanges(char *p_range, char *c_range, char *e_range) = 0;
+  virtual void setCliquePrintRanges(char *p_range, char *c_range, char *e_range);
 
   // Print to f the order of the variables in each clique selected by setCliquePrintRanges().
-  virtual void printCliqueOrders(FILE *f) = 0;
+  virtual void printCliqueOrders(FILE *f);
 
   // Returns the size (in # of floats) of the cliques selected by setCliquePrintRanges().
-  virtual void getCliquePosteriorSize(unsigned &p_size, unsigned &c_size, unsigned &e_size) = 0;
+  virtual void getCliquePosteriorSize(unsigned &p_size, unsigned &c_size, unsigned &e_size);
 
   // Set the range of section #s that get elevated verbosity
   // P' = 0, C' \in 1, ..., T=2, E' = T-1

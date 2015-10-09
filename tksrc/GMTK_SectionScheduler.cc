@@ -48,6 +48,41 @@ struct PairUnsigned1stElementCompare {
 
 
 
+
+// Formerly JunctionTree::printAllJTInfo()
+void 
+SectionScheduler::printInferencePlanSummary(char const *fileName) {
+}
+
+  // Formerly GMTemplate::reportScoreStats()
+void 
+SectionScheduler::reportScoreStats() {
+}
+
+
+  // NOTE:  This assumes all inference algorithms will have clique-like things they
+  //        need to print posteriors of
+
+  // Set the range of selected clique #'s in P', C', E' for printing.
+  // TODO: preconditions
+void 
+SectionScheduler::setCliquePrintRanges(char *p_range, char *c_range, char *e_range) {
+}
+
+
+  // Print to f the order of the variables in each clique selected by setCliquePrintRanges().
+void 
+SectionScheduler::printCliqueOrders(FILE *f) {
+}
+
+  // Returns the size (in # of floats) of the cliques selected by setCliquePrintRanges().
+void 
+SectionScheduler::getCliquePosteriorSize(unsigned &p_size, unsigned &c_size, unsigned &e_size) {
+}
+
+
+
+
 /*-
  *-----------------------------------------------------------------------
  * SectionScheduler::prepareForUnrolling()
