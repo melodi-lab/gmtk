@@ -13,6 +13,14 @@
 #if HAVE_CONFIG_H
 #include <config.h>
 #endif
+#if defined(HAVE_SYSEXITS_H)
+#  include <sysexits.h>
+#endif
+#ifndef EX_TEMPFAIL
+// BSDish exit status encouraging the user to try again
+#  define EX_TEMPFAIL 75
+#endif
+
 
 #ifndef DEFAULT_CPP
 #define DEFAULT_CPP="cpp"
@@ -198,7 +206,7 @@ void memory_error()
 {
   fprintf(stderr,"ERROR: can't allocate any more memory, malloc() failed. Either decrease your model size, find a better triangulation, use more pruning, use low-memory options, increase the size of the argument to -maxMem, and/or use a machine with more memory.\n");
 
-  exit_program_with_status(-1);
+  exit_program_with_status(EX_TEMPFAIL);
 }
 
 // returns log10(10^v1 + 10^v2)
