@@ -323,6 +323,26 @@ main(int argc,char*argv[])
   GMTemplate gm_template(fp);
 
 
+  // Instantiate the requested inference algorithm for the time series as a whole
+
+  SectionScheduler *section_scheduler = NULL;
+
+  if (false) {
+#ifdef GMTK_ISLANDSECTIONSCHEDULER_H
+  } else if (island) {
+    section_scheduler = new IslandSectionScheduler(gm_template, fp, gomFS);
+#endif
+#ifdef GMTK_ARCHIPELAGOSSECTIONSCHEDULER_H
+  } else if (false /*archipelagos*/) {
+    section_scheduler = new ArchipelagosSectionScheduler(gm_template, fp, gomFS);
+#endif
+#ifdef GMTK_LINEARSECTIONSCHEDULER_H
+  } else {
+    section_scheduler = new LinearSectionScheduler(gm_template, fp, gomFS);
+#endif
+  }
+
+
   // Setup the within-section inference implementation
 
   SectionInferenceAlgorithm *section_inference_alg = NULL;
@@ -331,32 +351,17 @@ main(int argc,char*argv[])
   } else if (pedagogical) {
     section_inference_alg = new PedagogicalInference();
 #endif
+#ifdef GMTK_LOOPYBELIEFINFERENCE_H
+  } else if (loopy) {
+    section_inference_alg = new LoopyBeliefInference();
+#endif
 #ifdef GMTK_SPARSEJOININFERENCE_H
   } else {
-    section_inference_alg = new SparseJoinInference(); // current "standard" algorithm
+    section_inference_alg = new SparseJoinInference(section_scheduler); // current "standard" algorithm
 #endif
   }
   assert(section_inference_alg);
 
-    
-  // Instantiate the requested inference algorithm for the time series as a whole
-
-  SectionScheduler *section_scheduler = NULL;
-
-  if (false) {
-#ifdef GMTK_ISLANDINFERENCE_H
-  } else if (island) {
-    section_scheduler = new IslandInference(gm_template, fp, gomFS);
-#endif
-#ifdef GMTK_ARCHIPELAGOSINFERENCE_H
-  } else if (archipelagos) {
-    section_scheduler = new ArchipelagosInference(gm_template, fp, gomFS);
-#endif
-#ifdef GMTK_LINEARSECTIONSCHEDULER_H
-  } else {
-    section_scheduler = new LinearSectionScheduler(gm_template, fp, gomFS);
-#endif
-  }
 
   string tri_file;
   if (triFileName == NULL) 

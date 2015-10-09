@@ -63,6 +63,9 @@ class SectionIterator;
 
 class SectionScheduler {
   friend class SectionIterator;
+  // MUST be friends with all SectionInferenceAlgorithm subclasses
+  friend class SectionInferenceAlgorithm;
+  friend class SparseJoinInference;
 
  public:
 

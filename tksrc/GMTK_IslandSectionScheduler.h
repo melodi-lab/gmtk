@@ -35,7 +35,7 @@ class IslandSectionScheduler : public SectionScheduler,
     : SectionScheduler(gm_template, fp, obs_source)
   {}
 
-  virtual ~IslandSectionScheduler() {}
+  virtual ~IslandSectionScheduler();
 
   logpr probEvidence(SectionInferenceAlgorithm *algorithm,
 		     unsigned *numUsableFrames = NULL,
