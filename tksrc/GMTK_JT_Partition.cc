@@ -95,7 +95,7 @@ VCID(HGID)
  *-----------------------------------------------------------------------
  */
 JT_Partition::JT_Partition(
-		       Partition& from_part,
+		       Section& from_part,
 		       const unsigned int frameDelta,
 		       // the left and right interface variables for
 		       // this JT partition Empty if doesn't exist
@@ -235,7 +235,7 @@ JT_Partition::clearCliqueAndIncommingSeparatorMemoryForClique(unsigned cliqueNo)
  *-----------------------------------------------------------------------
  */
 JT_Partition::JT_Partition(
- Partition& from_part,
+ Section& from_part,
  // Left interface:
  const set <RV*>& from_liVars,
  // Right interface:

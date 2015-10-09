@@ -3,7 +3,8 @@
 
 CORRECT_AC_VERSION="2.69"
 CORRECT_AM_VERSION="1.14"
-
+MIN_AM_VERSION=$CORRECT_AM_VERSION
+MAX_AM_VERSION="1.15"
 
 acversion=`autoconf --version | head -n 1 | awk '{print $4}'`
 if [ $acversion != $CORRECT_AC_VERSION ]; then
@@ -17,14 +18,14 @@ else
 fi
 
 amversion=`automake --version | head -n 1 | awk '{print $4}'`
-if [ ${amversion%.[0-9]} != $CORRECT_AM_VERSION ]; then
+if [ ${amversion%.[0-9]} \< $MIN_AM_VERSION -o $MAX_AM_VERSION \< ${amversion%.[0-9]} ]; then
   echo You seem to be using GNU Automake version $amversion at `which automake`
-  echo You should be using version ${CORRECT_AM_VERSION}, which is the latest release as of September 2014.
+  echo You should be using version ${CORRECT_AM_VERSION}.
   echo The correct version is available on ruby at /opt/local/bin/automake
   echo or /g/melodi/software/bin/as60-amd64 on the MELODI Linux machines.
   exit 1
 else
-  echo You are using the correct GNU Automake release $CORRECT_AM_VERSION
+  echo You are using the correct GNU Automake release $amversion
 fi
 
 autoreconf -i || exit 1

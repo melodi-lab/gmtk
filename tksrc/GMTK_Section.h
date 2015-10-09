@@ -1,9 +1,5 @@
 /*
- * GMTK_GMTemplate.h
- *   Basic GM Template and Basic Triangulation Routines.
- *   This includes code that is common to both triangulation and inference,
- *   so does not contain the more elaborate triangulation methods so that
- *   they are not appart of inference code.
+ * GMTK_Section.h
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
@@ -17,8 +13,8 @@
  *
  */
 
-#ifndef GMTK_PARTITION_H
-#define GMTK_PARTITION_H
+#ifndef GMTK_SECTION_H
+#define GMTK_SECTION_H
 
 #include <vector>
 #include <string>
@@ -36,34 +32,34 @@
 // class mention for forward references.
 class GraphicalModel;
 class BoundaryTriangulate;
-class Partition;
+class Section;
 class GMTemplate;
 
-class Partition : public IM {
+class Section : public IM {
 
   friend class GMTemplate;
   friend class BoundaryTriangulate;
 
 public:
 
-  // variables comprising this partition.
+  // variables comprising this section.
   set<RV*> nodes;  
 
   // The cliques themselves, used to store the current triangulation
-  // of each of the partitions.
+  // of each of the sections.
   vector<MaxClique> cliques;
   
   // a string with information about the method used to form the cliques
   string triMethod;
 
-  Partition() {}
+  Section() {}
 
-  // Clone constructor from another Partition, but that uses a new set
+  // Clone constructor from another Section, but that uses a new set
   // of random variables, and adjusts the frame of each new set of
   // random variable with offset
 
 #if 0
-  Partition(Partition& from_part,
+  Section(Section& from_part,
 	    vector <RV*>& newRvs,
 	    map < RVInfo::rvParent, unsigned >& ppf,
 	    const unsigned int frameDelta = 0);
@@ -82,8 +78,8 @@ public:
 
   void writeMaxCliques(oDataStreamFile& os);  
   void readMaxCliques(iDataStreamFile& is);
-  void triangulatePartitionsByCliqueCompletion();
-  void setCliquesFromAnotherPartition(Partition& p);
+  void triangulateSectionsByCliqueCompletion();
+  void setCliquesFromAnotherSection(Section& p);
   void reportScoreStats();
 
 };

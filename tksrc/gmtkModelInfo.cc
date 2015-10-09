@@ -39,7 +39,7 @@ VCID(HGID)
 #include "GMTK_ContRV.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_GMTemplate.h"
-#include "GMTK_Partition.h"
+#include "GMTK_Section.h"
 #if 0
 #  include "GMTK_ObservationMatrix.h"
 #else

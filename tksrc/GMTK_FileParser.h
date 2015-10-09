@@ -39,6 +39,7 @@ class FileParser : public IM
   friend class RV;
   friend class StructPage;
   friend class JunctionTree;
+  friend class SectionScheduler;
 
   ////////////////////////////////////////////////////////////////
   // The current pre-allocated random variable that is being

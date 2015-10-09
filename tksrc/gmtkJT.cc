@@ -1,10 +1,11 @@
 /*
  * gmtkJT.cc
- * produce a junction tree
+ *   compute probability of evidence or clique posteriors
  *
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
+ *            Richard Rogers <rprogers@uw.edu>
  *
- * Copyright (C) 2001 Jeff Bilmes
+ * Copyright (C) 2001, 2015 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
  * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
@@ -43,21 +44,33 @@
 #include "GMTK_ContRV.h"
 #include "GMTK_GMTemplate.h"
 #include "GMTK_GMParms.h"
-#if 0
-#  include "GMTK_ObservationMatrix.h"
-#else
-#  include "GMTK_ObservationSource.h"
-#  include "GMTK_FileSource.h"
-#  include "GMTK_CreateFileSource.h"
-#  include "GMTK_ASCIIFile.h"
-#  include "GMTK_FlatASCIIFile.h"
-#  include "GMTK_PFileFile.h"
-#  include "GMTK_HTKFile.h"
-#  include "GMTK_HDF5File.h"
-#  include "GMTK_BinaryFile.h"
-#  include "GMTK_Filter.h"
-#  include "GMTK_Stream.h"
-#endif
+
+#include "GMTK_ObservationSource.h"
+#include "GMTK_FileSource.h"
+#include "GMTK_CreateFileSource.h"
+#include "GMTK_ASCIIFile.h"
+#include "GMTK_FlatASCIIFile.h"
+#include "GMTK_PFileFile.h"
+#include "GMTK_HTKFile.h"
+#include "GMTK_HDF5File.h"
+#include "GMTK_BinaryFile.h"
+#include "GMTK_Filter.h"
+#include "GMTK_Stream.h"
+
+// Section scheduling
+#include "GMTK_SectionScheduler.h"
+#include "GMTK_LinearSectionScheduler.h"
+#include "GMTK_IslandSectionScheduler.h"
+#include "GMTK_ArchipelagosSectionScheduler.h"
+
+// Supported inference tasks
+#include "GMTK_ProbEvidenceTask.h"
+#include "GMTK_ForwardBackwardTask.h"
+
+// Supported within-sectin inference algorithms
+#include "GMTK_SectionInferenceAlgorithm.h"
+#include "GMTK_SparseJoinInference.h"
+
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_GaussianComponent.h"
 #include "GMTK_MeanVector.h"
@@ -158,21 +171,11 @@ VCID(HGID)
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_DEFINITION
 
-#if 0
-static unsigned boostVerbosity=0;
-const static char *boostVerbosityRng=NULL;
-#endif
-
 Arg Arg::Args[] = {
 
 #define GMTK_ARGUMENTS_DOCUMENTATION
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_DOCUMENTATION
-
-#if 0
-  Arg("boostVerbosity",Arg::Opt,boostVerbosity,"Verbosity (0 <= v <= 100) during boost verb partitions"),
-  Arg("boostRng",Arg::Opt,boostVerbosityRng,"Range to boost verbosity"),
-#endif
 
   // final one to signal the end of the list
   Arg()
@@ -187,9 +190,6 @@ Arg Arg::Args[] = {
  */
 RAND rnd(seedme);
 GMParms GM_Parms;
-#if 0
-ObservationMatrix globalObservationMatrix;
-#endif
 FileSource *gomFS;
 ObservationSource *globalObservationMatrix;
 
@@ -207,7 +207,6 @@ main(int argc,char*argv[])
 
   CODE_TO_COMPUTE_ENDIAN;
 
-
   ////////////////////////////////////////////
   // parse arguments
   bool parse_was_ok = Arg::parse(argc,(char**)argv,
@@ -223,8 +222,6 @@ main(int argc,char*argv[])
 #define GMTK_ARGUMENTS_CHECK_ARGS
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_CHECK_ARGS
-
-
 
   infoMsg(IM::Max,"Opening Files ...\n");
   gomFS = instantiateFileSource();
@@ -287,10 +284,7 @@ main(int argc,char*argv[])
       error("Error: command line argument '-allocateDenseCpts d', must have d = {0,1,2}\n");
   }
 
-
-
-  // make sure that all observation variables work
-  // with the global observation stream.
+  // make sure that all observation variables work with the global observation stream.
   infoMsg(IM::Max,"Checking consistency between cpts and observations...\n");
   fp.checkConsistentWithGlobalObservationStream();
   GM_Parms.checkConsistentWithGlobalObservationStream();
@@ -303,47 +297,6 @@ main(int argc,char*argv[])
   // logpr pruneRatio;
   // pruneRatio.valref() = -beam;
 
-  // Utilize both the partition information and elimination order
-  // information already computed and contained in the file. This
-  // enables the program to use external triangulation programs,
-  // where this program ensures that the result is triangulated
-  // and where it reports the quality of the triangulation.
-  
-  string tri_file;
-  if (triFileName == NULL) 
-    tri_file = string(strFileName) + GMTemplate::fileExtension;
-  else 
-    tri_file = string(triFileName);
-
-  infoMsg(IM::Max,"Creating template...\n");
-  GMTemplate gm_template(fp);
-  {
-    infoMsg(IM::Max,"Reading triangulation file...\n");
-
-    // do this in scope so that is gets deleted now rather than later.
-    iDataStreamFile is(tri_file.c_str());
-    if (!fp.readAndVerifyGMId(is,checkTriFileCards))
-      error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",tri_file.c_str(),strFileName);
-
-    gm_template.readPartitions(is);
-    gm_template.readMaxCliques(is);
-
-  }
-
-  infoMsg(IM::Max,"Triangulating graph...\n");
-  gm_template.triangulatePartitionsByCliqueCompletion();
-  if (1) { 
-    // check that graph is indeed triangulated.
-    // TODO: perhaps take this check out so that inference code does
-    // not need to link to the triangulation code (either that, or put
-    // the triangulation check in a different file, so that we only
-    // link to tri check code).
-    BoundaryTriangulate triangulator(fp,
-				     gm_template.maxNumChunksInBoundary(),
-				     gm_template.chunkSkip(),1.0);
-    triangulator.ensurePartitionsAreChordal(gm_template);
-  }
-
 
   //  printf("Dlinks: min lag %d    max lag %d\n", Dlinks::globalMinLag(), Dlinks::globalMaxLag());
   // FIXME - min past = min(dlinkPast, VECPTPast), likewise for future
@@ -355,52 +308,135 @@ main(int argc,char*argv[])
   dlinkFuture = (dlinkFuture > 0) ? dlinkFuture : 0;
   gomFS->setMinFutureFrames( dlinkFuture );
 
-
-  ////////////////////////////////////////////////////////////////////
-  // CREATE JUNCTION TREE DATA STRUCTURES
-  infoMsg(IM::Default,"Creating Junction Tree\n"); fflush(stdout);
-  JunctionTree myjt(gm_template);
-
-  myjt.setUpDataStructures(varPartitionAssignmentPrior,varCliqueAssignmentPrior);
-
-  myjt.prepareForUnrolling();
-
-  if (jtFileName != NULL)
-    myjt.printAllJTInfo(jtFileName);
-
-  myjt.setCliquePrintRanges(pPartCliquePrintRange,cPartCliquePrintRange,ePartCliquePrintRange);
-  infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
-  ////////////////////////////////////////////////////////////////////
-
   if (gomFS->numSegments()==0)
     error("ERROR: no segments are available in observation file");
 
-  if (IM::messageGlb(IM::Giga)) { 
-    gm_template.reportScoreStats();
-  }
-
   Range* dcdrng = new Range(dcdrng_str,0,gomFS->numSegments());
   if (dcdrng->length() <= 0) {
-    infoMsg(IM::Default,"Decoding range '%s' specifies empty set. Exiting...\n",
+    infoMsg(IM::Default,"Training range '%s' specifies empty set. Exiting...\n",
 	  dcdrng_str);
     exit_program_with_status(0);
   }
 
-  
+
+  infoMsg(IM::Max,"Creating template...\n");
+  GMTemplate gm_template(fp);
+
+
+  // Setup the within-section inference implementation
+
+  SectionInferenceAlgorithm *section_inference_alg = NULL;
+  if (false) {
+#ifdef GMTK_PEDAGOGICALINFERENCE_H
+  } else if (pedagogical) {
+    section_inference_alg = new PedagogicalInference();
+#endif
+#ifdef GMTK_SPARSEJOININFERENCE_H
+  } else {
+    section_inference_alg = new SparseJoinInference(); // current "standard" algorithm
+#endif
+  }
+  assert(section_inference_alg);
+
+    
+  // Instantiate the requested inference algorithm for the time series as a whole
+
+  SectionScheduler *section_scheduler = NULL;
+
+  if (false) {
+#ifdef GMTK_ISLANDINFERENCE_H
+  } else if (island) {
+    section_scheduler = new IslandInference(gm_template, fp, gomFS);
+#endif
+#ifdef GMTK_ARCHIPELAGOSINFERENCE_H
+  } else if (archipelagos) {
+    section_scheduler = new ArchipelagosInference(gm_template, fp, gomFS);
+#endif
+#ifdef GMTK_LINEARSECTIONSCHEDULER_H
+  } else {
+    section_scheduler = new LinearSectionScheduler(gm_template, fp, gomFS);
+#endif
+  }
+
+  string tri_file;
+  if (triFileName == NULL) 
+    tri_file = string(strFileName) + GMTemplate::fileExtension;
+  else 
+    tri_file = string(triFileName);
+
+  {
+    // do this in scope so that is gets deleted now rather than later.
+    iDataStreamFile is(tri_file.c_str());
+    section_scheduler->setUpDataStructures(is, varPartitionAssignmentPrior,varCliqueAssignmentPrior, checkTriFileCards);
+  }
+
+  ForwardBackwardTask *fwd_bkwd_alg = NULL;
+  ProbEvidenceTask    *probE_alg    = NULL;
+
+  if (!probE || doDistributeEvidence) {
+    // doing the forward/backward task
+    fwd_bkwd_alg = dynamic_cast<ForwardBackwardTask *>(section_scheduler);
+    assert(fwd_bkwd_alg); // The selected section inference algorithm must implement the ForwardBackwardTask API.
+                          // The argument checking logic must prevent illegal combinations of inference task & algorithm,
+                          // e.g., OnlineInference can't do the ForwardBackwardTask because it can't seek backwards
+                          // arbitrarily far in the observation stream.
+  } else {
+    // doing the probability of evidence task (forward pass only)
+    probE_alg = dynamic_cast<ProbEvidenceTask *>(section_scheduler);
+    assert(probE_alg); // The selected section inference algorithm must implement the ProbEvidenceTask API.
+                       // The argument checking logic must prevent illegal combinations of inference task & algorithm,
+                       // e.g., island can't do ProbEvidenceTask because it by definition does a backward pass.
+  }
+
+
+  if (jtFileName != NULL)
+    section_scheduler->printInferencePlanSummary(jtFileName);
+
+
+  if (IM::messageGlb(IM::Giga)) { 
+    section_scheduler->reportScoreStats();
+  }
+
+  section_scheduler->setCliquePrintRanges(pSectionCliquePrintRange, cSectionCliquePrintRange, eSectionCliquePrintRange);
+
+  // setup enhanced verbosity for selected sections
   Range* pdbrng = new Range(pdbrng_str,0,0x7FFFFFFF);
-  myjt.setPartitionDebugRange(*pdbrng);
+  section_scheduler->setSectionDebugRange(*pdbrng);
 
+  // Output file in one of the supported observation file formats to hold the clique posteriors
+  ObservationFile *clique_posterior_file = NULL; 
+  // Only use an observation file format if the user specified a file name and selected some cliques.
+  // Otherwise, output (if any) goes to stdout in ASCII format
+  if (cliqueOutputName && (pSectionCliquePrintRange || cSectionCliquePrintRange || eSectionCliquePrintRange) ) {
 
+      unsigned p_size, c_size, e_size;
+      section_scheduler->getCliquePosteriorSize(p_size, c_size, e_size);
+      unsigned clique_size = (p_size > c_size) ? p_size : c_size;
+      clique_size = (clique_size > e_size) ? clique_size : e_size;
+      
+      // For the sections (P', C', E') that have selected cliques for output, the selected
+      // cliques in each section must be the same size.
+      if (pSectionCliquePrintRange && p_size != clique_size) {
+	error("ERROR: incompatible prologue cliques selected for file output: selected P cliques are size %u, other clique size %u\n", p_size, clique_size);
+      }
+      if (cSectionCliquePrintRange && c_size != clique_size) {
+	error("ERROR: incompatible chunk cliques selected for file output: selected C cliques are size %u, other clique size %u\n", c_size, clique_size);
+      }
+      if (eSectionCliquePrintRange && e_size != clique_size) {
+	error("ERROR: incompatible epilogue cliques selected for file output: selected E cliques are size %u, other clique %u\n", e_size, clique_size);
+      }
+      section_scheduler->printCliqueOrders(stdout);
+      clique_posterior_file = instantiateWriteFile(cliqueListName, cliqueOutputName, cliquePrintSeparator,
+						   cliquePrintFormat, clique_size, 0, cliquePrintSwap);
+
+  }
+
+  // trac inference time
   struct rusage rus; /* starting time */
   struct rusage rue; /* ending time */
   getrusage(RUSAGE_SELF,&rus);
 
-  ObservationFile *pCliqueFile = NULL;
-#if 0
-  ObservationFile *cCliqueFile = NULL;
-  ObservationFile *eCliqueFile = NULL;
-#endif
-
+  // iterate over selected portions of observation data performing requested inference
   Range::iterator* dcdrng_it = new Range::iterator(dcdrng->begin());
   while (!dcdrng_it->at_end()) {
     const unsigned segment = (unsigned)(*(*dcdrng_it));
@@ -412,235 +448,56 @@ main(int argc,char*argv[])
     infoMsg(IM::Max,"Loading segment %d ...\n",segment);
     const unsigned numFrames = GM_Parms.setSegment(segment);
     infoMsg(IM::Max,"Finished loading segment %d with %d frames.\n",segment,numFrames);
-
+    
     try {
-      if (probE) {
-	if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange) {
-	  if (cliqueOutputName && !pCliqueFile) {
-	    unsigned totalNumberPartitions;
-	    // this is just to setup data structures for cliquePosteriorSize and printCliqueOrders
-	    (void) myjt.unroll(1000000000 /* fake value*/,
-			       JunctionTree::ZeroTable,&totalNumberPartitions);
-	    unsigned pSize, cSize, eSize;
-	    myjt.cliquePosteriorSize(pSize, cSize, eSize);
-	    unsigned cliqueSize = (pSize > cSize) ? pSize : cSize;
-	    cliqueSize = (cliqueSize > eSize) ? cliqueSize : eSize;
-	    
-	    if (pPartCliquePrintRange && pSize != cliqueSize) {
-	      error("ERROR: incompatible cliques selected for file output\n");
-	    }
-	    if (cPartCliquePrintRange && cSize != cliqueSize) {
-	      error("ERROR: incompatible cliques selected for file output\n");
-	    }
-	    if (ePartCliquePrintRange && eSize != cliqueSize) {
-	      error("ERROR: incompatible cliques selected for file output\n");
-	    }
-	    myjt.printCliqueOrders(stdout);
-	    pCliqueFile = instantiateWriteFile(cliqueListName, cliqueOutputName, cliquePrintSeparator,
-					       cliquePrintFormat, cliqueSize, 0, cliquePrintSwap);
-	  }
-	}
-	unsigned numUsableFrames;
-      
-	// Range* bvrng = NULL;
-	// if (boostVerbosityRng != NULL)
-	// bvrng = new Range(bvrng,0,gomFS->numSegments());
+      unsigned numUsableFrames;
+      logpr probe;
 
-	// logpr probe = myjt.probEvidence(numFrames,numUsableFrames,bvrng,boostVerbosity);
+      // TODO:  maybe  if (fwd_bkwd_alg) { ... }  if (probE_alg) { ... }
 
-	infoMsg(IM::Max,"Beginning call to probability of evidence.\n");
-	logpr probe = myjt.probEvidenceFixedUnroll(numFrames,&numUsableFrames,
-						   false, NULL, false, 
-						   cliquePosteriorNormalize,
-						   cliquePosteriorUnlog,
-						   pCliqueFile);
-	printf("Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	       segment,
-	       probe.val(),
-	       probe.val()/numFrames,
-	       probe.val()/numUsableFrames);
-      } else if (onlyKeepSeparators) {
+      if (!probE || doDistributeEvidence) { // doing the forward/backward task
+	assert(fwd_bkwd_alg);
 
-	infoMsg(IM::Inference, IM::Med,"Collecting Evidence (linear space)\n");
-	unsigned numUsableFrames;
-	logpr probe = myjt.collectEvidenceOnlyKeepSeps(numFrames, &numUsableFrames);
-	infoMsg(IM::Inference, IM::Med,"Done Collecting Evidence\n");
+	probe = fwd_bkwd_alg->forwardBackward(section_inference_alg,
+					      &numUsableFrames,
+					      cliquePosteriorNormalize, 
+					      cliquePosteriorUnlog,
+					      clique_posterior_file);
+	
+      } else {  // doing the probability of evidence task (forward pass only)
 
-	infoMsg(IM::Default,"Segment %d, after CE, viterbi log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-		segment,
-		probe.val(),
-		probe.val()/numFrames,
-		probe.val()/numUsableFrames);
-	if (probe.essentially_zero()) {
-	  infoMsg(IM::Default,"Skipping segment %d since probability is essentially zero\n",
-		  segment);
-	} else {
+	infoMsg(IM::Max,"Beginning call to probability of evidence.\n"); // TODO: move to probEvidence() impl
+	assert(probE_alg);
 
-	  infoMsg(IM::Inference, IM::Low,"Distributing Evidence\n");
-	  myjt.distributeEvidenceOnlyKeepSeps();
-	  infoMsg(IM::Inference, IM::Low,"Done Distributing Evidence\n");
-	}
-
-	if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange) {
-	  
-	  if (cliqueOutputName && !pCliqueFile) {
-	    unsigned pSize, cSize, eSize;
-	    myjt.cliquePosteriorSize(pSize, cSize, eSize);
-	    unsigned cliqueSize = (pSize > cSize) ? pSize : cSize;
-	    cliqueSize = (cliqueSize > eSize) ? cliqueSize : eSize;
-	    
-            if (pPartCliquePrintRange && pSize != cliqueSize) {
-	      error("ERROR: incompatible cliques selected for file output\n");
-	    }
-            if (cPartCliquePrintRange && cSize != cliqueSize) {
-	      error("ERROR: incompatible cliques selected for file output\n");
-	    }
-            if (ePartCliquePrintRange && eSize != cliqueSize) {
-	      error("ERROR: incompatible cliques selected for file output\n");
-	    }
-	    myjt.printCliqueOrders(stdout);
-	    pCliqueFile = instantiateWriteFile(cliqueListName, cliqueOutputName, cliquePrintSeparator,
-					       cliquePrintFormat, cliqueSize, 0, cliquePrintSwap);
-	  }
-	  myjt.printAllCliques(stdout,cliquePosteriorNormalize, cliquePosteriorUnlog, cliquePrintOnlyEntropy, pCliqueFile);
-	  
-	  if (pCliqueFile)
-	    pCliqueFile->endOfSegment();
-	}
-
-      } else if (island) {
-
-	if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange) {
-	  
-	  if (cliqueOutputName && !pCliqueFile) {
-	    unsigned totalNumberPartitions;
-	    (void) myjt.unroll(numFrames,JunctionTree::ZeroTable,&totalNumberPartitions);
-	    unsigned pSize, cSize, eSize;
-	    myjt.cliquePosteriorSize(pSize, cSize, eSize);
-	    unsigned cliqueSize = (pSize > cSize) ? pSize : cSize;
-	    cliqueSize = (cliqueSize > eSize) ? cliqueSize : eSize;
-	    
-            if (pPartCliquePrintRange && pSize != cliqueSize) {
-	      error("ERROR: incompatible cliques selected for file output. Cliques "
-		    "selected in the prolog, chunk, and epilog must all have the "
-		    "same total domain size.\n");
-	    }
-            if (cPartCliquePrintRange && cSize != cliqueSize) {
-	      error("ERROR: incompatible cliques selected for file output. Cliques "
-		    "selected in the prolog, chunk, and epilog must all have the "
-		    "same total domain size.\n");
-	    }
-            if (ePartCliquePrintRange && eSize != cliqueSize) {
-	      error("ERROR: incompatible cliques selected for file output. Cliques "
-		    "selected in the prolog, chunk, and epilog must all have the "
-		    "same total domain size.\n");
-	    }
-	    myjt.printCliqueOrders(stdout);
-	    pCliqueFile = instantiateWriteFile(cliqueListName, cliqueOutputName, cliquePrintSeparator,
-					       cliquePrintFormat, cliqueSize, 0, cliquePrintSwap);
-	    if (!pCliqueFile->seekable()) {
-	      error("ERROR: -island T requires a -cliquePrintFormat that supports random access "
-		    "writes (htk, binary, hdf5, or pfile)\n");
-	    }
-	  }
-	}
-	unsigned numUsableFrames;
-
-	infoMsg(IM::Max,"Beginning call to island collect/distribute evidence.\n");
-	logpr probe = myjt.collectDistributeIsland(numFrames,
-						   numUsableFrames,
-						   base,
-						   lst,
-						   rootBase, islandRootPower, 
-						   false,false,false,
-						   pCliqueFile, cliquePosteriorNormalize, cliquePosteriorUnlog);
-	if (pCliqueFile)
-	  pCliqueFile->endOfSegment();
-
-	printf("Segment %d, after island Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	       segment,
-	       probe.val(),
-	       probe.val()/numFrames,
-	       probe.val()/numUsableFrames);
-
-      } else {
-
-	infoMsg(IM::Max,"Beginning call to unroll\n");
-        unsigned numUsableFrames = myjt.unroll(numFrames);
-	gomFS->justifySegment(numUsableFrames);
-
-	infoMsg(IM::Low,"Collecting Evidence\n");
-	myjt.collectEvidence();
-	infoMsg(IM::Low,"Done Collecting Evidence\n");
-	logpr probe = myjt.probEvidence();
-	printf("Segment %d, after CE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	       segment,
-	       probe.val(),
-	       probe.val()/numFrames,
-	       probe.val()/numUsableFrames);
-
-	if (doDistributeEvidence) {
-	  if (JunctionTree::viterbiScore) myjt.setRootToMaxCliqueValue(); // fix #529
-	  infoMsg(IM::Low,"Distributing Evidence\n");
-	  myjt.distributeEvidence();
-	  infoMsg(IM::Low,"Done Distributing Evidence\n");
-
-	  if (JunctionTree::viterbiScore)
-	    infoMsg(IM::SoftWarning,"NOTE: Clique sums will be different since viteri option is active\n");
-	  if (IM::messageGlb(IM::Low)) {
-	    myjt.printProbEvidenceAccordingToAllCliques();
-	    probe = myjt.probEvidence();
-	    printf("Segment %d, after DE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-		   segment,
-		   probe.val(),
-		   probe.val()/numFrames,
-		   probe.val()/numUsableFrames);
-	  }
-	}
-	if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange) {
-
-	  if (cliqueOutputName && !pCliqueFile) {
-	    unsigned pSize, cSize, eSize;
-	    myjt.cliquePosteriorSize(pSize, cSize, eSize);
-	    unsigned cliqueSize = (pSize > cSize) ? pSize : cSize;
-	             cliqueSize = (cliqueSize > eSize) ? cliqueSize : eSize;
-	    
-            if (pPartCliquePrintRange && pSize != cliqueSize) {
-	      error("ERROR: incompatible cliques selected for file output\n");
-	    }
-            if (cPartCliquePrintRange && cSize != cliqueSize) {
-	      error("ERROR: incompatible cliques selected for file output\n");
-	    }
-            if (ePartCliquePrintRange && eSize != cliqueSize) {
-	      error("ERROR: incompatible cliques selected for file output\n");
-	    }
-	    myjt.printCliqueOrders(stdout);
-	    pCliqueFile = instantiateWriteFile(cliqueListName, cliqueOutputName, cliquePrintSeparator,
-					       cliquePrintFormat, cliqueSize, 0, cliquePrintSwap);
-	  }
-	  myjt.printAllCliques(stdout,cliquePosteriorNormalize,cliquePosteriorUnlog,cliquePrintOnlyEntropy, pCliqueFile);
-	  
-	  if (pCliqueFile)
-	    pCliqueFile->endOfSegment();
-#if 0
-	  if (cCliqueFile)
-	    cCliqueFile->endOfSegment();
-	  if (eCliqueFile)
-	    eCliqueFile->endOfSegment();
-#endif
-	}
+	probe = probE_alg->probEvidence(section_inference_alg,
+					&numUsableFrames,
+					NULL, // returns # of modified sections used for the current segment
+					false,  // impose a time limit
+					false,  // skip inference on E'
+					cliquePosteriorNormalize,
+					cliquePosteriorUnlog,
+					clique_posterior_file);
       }
+      // TODO: move this to probEvidence() impl
+      printf("Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+	     segment,
+	     probe.val(),
+	     probe.val()/numFrames,
+	     probe.val()/numUsableFrames);
     } catch (ZeroCliqueException &e) {
       warning("Segment %d aborted due to zero clique\n", segment);
     }
-    (*dcdrng_it)++;
+
+    // if we're writing clique posteriors to a file, terminate the current output segment
+    if (clique_posterior_file) {
+      clique_posterior_file->endOfSegment();
+    }
+
+    (*dcdrng_it)++; // increment current segment
   }
   
-  if (pCliqueFile) delete pCliqueFile;
-#if 0
-  if (cCliqueFile) delete cCliqueFile;
-  if (eCliqueFile) delete eCliqueFile;
-#endif
+  delete clique_posterior_file; // close the clique posterior output file
+
   getrusage(RUSAGE_SELF,&rue);
   if (IM::messageGlb(IM::Default)) { 
     infoMsg(IM::Default,"### Final time (seconds) just for inference: ");
