@@ -35,12 +35,10 @@ LinearSectionScheduler::probEvidence(SectionInferenceAlgorithm *algorithm,
 
   unsigned T; // # of sections
 
-  // MOVE UNROLL TO SectionScheduler
   unsigned nUsableFrames = unroll(observation_source->numFrames(), ZeroTable, &T);
   if (numUsableFrames) *numUsableFrames = nUsableFrames;
 
   SectionIterator inference_it(*this,T);
-  //myjt->sparseJoinSegementInit(T);        // BOGUS
 
   init_CC_CE_rvs(inference_it);
   
