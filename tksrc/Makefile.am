@@ -89,6 +89,20 @@ $(builddir)/../IEEEFloatingpoint/libIEEEsupport.a
 noinst_LIBRARIES = libXOPT.a libGMTK.a
 
 libGMTK_a_SOURCES = \
+GMTK_SectionIterator.h \
+GMTK_SectionScheduler.h GMTK_SectionScheduler.cc \
+GMTK_LinearSectionScheduler.h GMTK_LinearSectionScheduler.cc \
+\
+GMTK_ProbEvidenceTask.h GMTK_ProbEvidenceTask.cc \
+GMTK_ForwardBackwardTask.h GMTK_ForwardBackwardTask.cc \
+GMTK_ViterbiTask.h GMTK_ViterbiTask.cc \
+GMTK_SmoothingTask.h GMTK_SmoothingTask.cc \
+\
+GMTK_SectionInferenceAlgorithm.h \
+GMTK_SparseJoinInference.h \
+\
+GMTK_SectionSeparator.h \
+\
 hgstamp.h \
 GMTK_Dense1DPMF.h GMTK_Dense1DPMF.cc \
 GMTK_Sparse1DPMF.h GMTK_Sparse1DPMF.cc \
@@ -179,7 +193,7 @@ tieSupport.h tieSupport.cc \
 GMTK_RVInfo.h GMTK_RVInfo.cc \
 GMTK_GammaComponent.h GMTK_GammaComponent.cc \
 GMTK_BetaComponent.h GMTK_BetaComponent.cc \
-GMTK_Partition.h GMTK_Partition.cc \
+GMTK_Section.h GMTK_Section.cc \
 GMTK_JT_Partition.h GMTK_JT_Partition.cc \
 GMTK_PartitionTables.h GMTK_PartitionTables.cc \
 GMTK_PartitionStructures.h GMTK_PartitionStructures.cc \

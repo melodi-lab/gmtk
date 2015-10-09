@@ -149,6 +149,7 @@ class RV  {
   friend class GraphicalModel;
   friend class GMTemplate;
   friend class JunctionTree;
+  friend class SectionScheduler;
   friend class MaxClique;
   friend class MaxCliqueTable;
   friend class BoundaryTriangulate;

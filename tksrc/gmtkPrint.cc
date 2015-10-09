@@ -319,7 +319,7 @@ main(int argc,char*argv[])
   if (jtFileName != NULL)
     myjt.printAllJTInfo(jtFileName);
 
-  myjt.setCliquePrintRanges(pPartCliquePrintRange,cPartCliquePrintRange,ePartCliquePrintRange);
+  myjt.setCliquePrintRanges(pSectionCliquePrintRange,cSectionCliquePrintRange,eSectionCliquePrintRange);
   infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
   ////////////////////////////////////////////////////////////////////
 
@@ -535,7 +535,7 @@ main(int argc,char*argv[])
 					    vitPartRangeFilter);
     }
 
-    if (mVitValsFile || pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange)
+    if (mVitValsFile || pSectionCliquePrintRange || cSectionCliquePrintRange || eSectionCliquePrintRange)
       myjt.resetViterbiPrinting();
     if (vitValsFile) {
       fprintf(vitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",

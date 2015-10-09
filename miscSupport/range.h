@@ -94,17 +94,17 @@ public:
     const char *GetDefStr(void) const {return def_string;}
     int GetType(void) const { return type; }
 
-    void PrintRanges(char *tag=NULL, FILE *stream=stderr);
+    void PrintRanges(char *tag=NULL, FILE *stream=stderr) const;
 
     unsigned int length(void) const;	// total number of points in range
     int index(int ix) const;	// return ix'th value in list (counting from 0)
 
-    int first(void);	// first value in list, substitute for min()
-    int last(void);	// last value in list, like max()
+    int first(void) const;	// first value in list, substitute for min()
+    int last(void) const;	// last value in list, like max()
 
-    int contains(int val);	// test for this value
+    int contains(int val) const;	// test for this value
 
-    int full(void);	// is this the range of "all"?
+    int full(void) const;	// is this the range of "all"?
 
     const RangeList getRangeList(void) const { return rangeList; }
 

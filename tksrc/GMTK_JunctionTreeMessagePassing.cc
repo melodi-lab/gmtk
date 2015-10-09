@@ -65,12 +65,8 @@
 
 #include "GMTK_RngDecisionTree.h"
 
-#if 0
-#  include "GMTK_ObservationMatrix.h"
-#else
-#  include "GMTK_FileSource.h"
-#  include "GMTK_StreamSource.h"
-#endif
+#include "GMTK_FileSource.h"
+#include "GMTK_StreamSource.h"
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -2248,6 +2244,96 @@ JunctionTree::setRootToMaxCliqueValue()
 //   Forward Messages
 ///////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+PartitionTables *
+JunctionTree::getSectionTables(unsigned t) {
+  setCurrentInferenceShiftTo(t);
+  return new PartitionTables(inference_it.cur_jt_partition());
+}
+
+
+void
+JunctionTree::sparseJoinSegementInit(unsigned numSections) {
+  new (&inference_it) ptps_iterator(*this, numSections);
+  init_CC_CE_rvs(inference_it);
+}
+
+
+PartitionTables *
+JunctionTree::computeForwardInterfaceSeparator(unsigned t, PartitionTables *sectionPosterior) {
+  setCurrentInferenceShiftTo(t);
+    // we skip the first Co's LI separator if there is no P1
+  // partition, since otherwise we'll get zero probability.
+  if (inference_it.at_first_c() && P1.cliques.size() == 0)
+    Co.skipLISeparator();
+  // gather into the root of the current  partition
+  ceGatherIntoRoot(partitionStructureArray[inference_it.ps_i()],
+		   *sectionPosterior,
+		   inference_it.cur_ri(),
+		   inference_it.cur_message_order(),
+		   inference_it.cur_nm(),
+		   inference_it.pt_i());
+  if (sectionDoDist) {
+    deScatterOutofRoot(partitionStructureArray[inference_it.ps_i()],
+		       *sectionPosterior,
+		       inference_it.cur_ri(),
+		       inference_it.cur_message_order(),
+		       inference_it.cur_nm(),
+		       inference_it.pt_i());
+  }
+  
+  // possibly print the P or C partition information
+  if (inference_it.cur_part_clique_print_range() != NULL)
+    printAllCliques(partitionStructureArray[inference_it.ps_i()],
+		    *sectionPosterior,
+		    inference_it.pt_i(),
+		    inference_it.cur_nm(),
+		    inference_it.cur_part_clique_print_range(),
+		    stdout,
+		    true, true, //cliquePosteriorNormalize,cliquePosteriorUnlog,
+		    false, NULL /*posteriorFile*/);
+  // if the LI separator was turned off, we need to turn it back on.
+  if (inference_it.at_first_c() && P1.cliques.size() == 0)
+    Co.useLISeparator();
+
+  return sectionPosterior;
+}
+
+void
+JunctionTree::recieveForwardInterfaceSeparator(SectionIterator &iit, PartitionTables *msg, PartitionTables *sectionPosterior) {
+  setCurrentInferenceShiftTo(iit.cur_st());
+  ceSendForwardsCrossPartitions(// previous partition
+				partitionStructureArray[iit.prev_ss()],
+				*msg,
+				iit.prev_ri(),
+				iit.prev_nm(),
+				iit.prev_st(),
+				// current partition
+				partitionStructureArray[iit.cur_ss()],
+				*sectionPosterior,
+				iit.cur_li(),
+				iit.cur_nm(),
+				iit.cur_st());
+}
+
+logpr
+JunctionTree::computeProbEvidence(unsigned t, PartitionTables *sectionPosterior) {
+  logpr probE;
+  setCurrentInferenceShiftTo(t);
+  if (inference_it.at_e()) {
+    probE = sectionPosterior->maxCliques[E_root_clique].sumProbabilities();
+  }
+  return probE;
+}
+
+PartitionTables *JunctionTree::cachedPT = NULL;
+unsigned         JunctionTree::cachedT = 0;
+
+
+
 
 
 /*-

@@ -3490,8 +3490,8 @@ triangulateCrossover(
 void
 BoundaryTriangulate::
 triangulateCrossover(
-  Partition& triangulation1, 
-  Partition& triangulation2,
+  Section& triangulation1, 
+  Section& triangulation2,
   float crossoverProbability,
   float mutateProbability
  )
@@ -3642,7 +3642,7 @@ triangulateCrossover(
 void
 BoundaryTriangulate::
 triangulateOneEdgeChange(
-  Partition& part,
+  Section& part,
   SavedGraph orgnl_graph 
   )
 {

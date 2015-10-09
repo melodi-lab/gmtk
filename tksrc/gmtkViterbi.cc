@@ -359,7 +359,7 @@ main(int argc,char*argv[])
   if (jtFileName != NULL)
     myjt.printAllJTInfo(jtFileName);
 
-  myjt.setCliquePrintRanges(pPartCliquePrintRange,cPartCliquePrintRange,ePartCliquePrintRange);
+  myjt.setCliquePrintRanges(pSectionCliquePrintRange,cSectionCliquePrintRange,eSectionCliquePrintRange);
   infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
   ////////////////////////////////////////////////////////////////////
 
@@ -572,7 +572,7 @@ main(int argc,char*argv[])
       logpr probe;
       if (island) {
 
-	if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange) {
+	if (pSectionCliquePrintRange || cSectionCliquePrintRange || eSectionCliquePrintRange) {
 	  
 	  if (cliqueOutputName && !pCliqueFile) {
 	    unsigned totalNumberPartitions;
@@ -582,17 +582,17 @@ main(int argc,char*argv[])
 	    unsigned cliqueSize = (pSize > cSize) ? pSize : cSize;
 	    cliqueSize = (cliqueSize > eSize) ? cliqueSize : eSize;
 	    
-            if (pPartCliquePrintRange && pSize != cliqueSize) {
+            if (pSectionCliquePrintRange && pSize != cliqueSize) {
 	      error("ERROR: incompatible cliques selected for file output. Cliques "
 		    "selected in the prolog, chunk, and epilog must all have the "
 		    "same total domain size.\n");
 	    }
-            if (cPartCliquePrintRange && cSize != cliqueSize) {
+            if (cSectionCliquePrintRange && cSize != cliqueSize) {
 	      error("ERROR: incompatible cliques selected for file output. Cliques "
 		    "selected in the prolog, chunk, and epilog must all have the "
 		    "same total domain size.\n");
 	    }
-            if (ePartCliquePrintRange && eSize != cliqueSize) {
+            if (eSectionCliquePrintRange && eSize != cliqueSize) {
 	      error("ERROR: incompatible cliques selected for file output. Cliques "
 		    "selected in the prolog, chunk, and epilog must all have the "
 		    "same total domain size.\n");
@@ -654,7 +654,7 @@ main(int argc,char*argv[])
 	  infoMsg(IM::Inference, IM::Low,"Done Distributing Evidence\n");
 	}
 
-	if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange) {
+	if (pSectionCliquePrintRange || cSectionCliquePrintRange || eSectionCliquePrintRange) {
 	  
 	  if (cliqueOutputName && !pCliqueFile) {
 	    unsigned pSize, cSize, eSize;
@@ -662,13 +662,13 @@ main(int argc,char*argv[])
 	    unsigned cliqueSize = (pSize > cSize) ? pSize : cSize;
 	    cliqueSize = (cliqueSize > eSize) ? cliqueSize : eSize;
 	    
-            if (pPartCliquePrintRange && pSize != cliqueSize) {
+            if (pSectionCliquePrintRange && pSize != cliqueSize) {
 	      error("ERROR: incompatible cliques selected for file output\n");
 	    }
-            if (cPartCliquePrintRange && cSize != cliqueSize) {
+            if (cSectionCliquePrintRange && cSize != cliqueSize) {
 	      error("ERROR: incompatible cliques selected for file output\n");
 	    }
-            if (ePartCliquePrintRange && eSize != cliqueSize) {
+            if (eSectionCliquePrintRange && eSize != cliqueSize) {
 	      error("ERROR: incompatible cliques selected for file output\n");
 	    }
 	    myjt.printCliqueOrders(stdout);
@@ -706,7 +706,7 @@ main(int argc,char*argv[])
 	  infoMsg(IM::Inference, IM::Low,"Done Distributing Evidence\n");
 	}
 
-	if (pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange) {
+	if (pSectionCliquePrintRange || cSectionCliquePrintRange || eSectionCliquePrintRange) {
 	  
 	  if (cliqueOutputName && !pCliqueFile) {
 	    unsigned pSize, cSize, eSize;
@@ -714,13 +714,13 @@ main(int argc,char*argv[])
 	    unsigned cliqueSize = (pSize > cSize) ? pSize : cSize;
 	    cliqueSize = (cliqueSize > eSize) ? cliqueSize : eSize;
 	    
-            if (pPartCliquePrintRange && pSize != cliqueSize) {
+            if (pSectionCliquePrintRange && pSize != cliqueSize) {
 	      error("ERROR: incompatible cliques selected for file output\n");
 	    }
-            if (cPartCliquePrintRange && cSize != cliqueSize) {
+            if (cSectionCliquePrintRange && cSize != cliqueSize) {
 	      error("ERROR: incompatible cliques selected for file output\n");
 	    }
-            if (ePartCliquePrintRange && eSize != cliqueSize) {
+            if (eSectionCliquePrintRange && eSize != cliqueSize) {
 	      error("ERROR: incompatible cliques selected for file output\n");
 	    }
 	    myjt.printCliqueOrders(stdout);
@@ -773,7 +773,7 @@ main(int argc,char*argv[])
 	}
 
 #if 1     
-	if (mVitValsFile || pPartCliquePrintRange || cPartCliquePrintRange || ePartCliquePrintRange)
+	if (mVitValsFile || pSectionCliquePrintRange || cSectionCliquePrintRange || eSectionCliquePrintRange)
 	  myjt.resetViterbiPrinting();
 	if (vitValsFile) {
 	  fprintf(vitValsFile,"========\nSegment %d, number of frames = %d, viterbi-score = %f\n",

@@ -30,7 +30,7 @@
 #include "GMTK_RV.h"
 #include "GMTK_FileParser.h"
 #include "GMTK_MaxClique.h"
-#include "GMTK_Partition.h"
+#include "GMTK_Section.h"
 
 #include "debug.h"
 
@@ -47,7 +47,7 @@ class GMTemplate : public IM
   friend class FileParser;
   friend class GraphicalModel;
   friend class Triangulate;
-  friend class Partition;
+  friend class Section;
   friend class BoundaryTriangulate;
   friend class JunctionTree;
 
@@ -141,9 +141,9 @@ public:
   // long as before triangualtion it is the case that the common
   // interfaces are completed). Also, we are guaranteed that when
   // these are read in, the interfaces in each partition are complete.
-  Partition P;
-  Partition C;
-  Partition E;
+  Section P;
+  Section C;
+  Section E;
 
   // Interface between P and C, variables in P
   set<RV*> PCInterface_in_P;
@@ -194,6 +194,7 @@ public:
 
   ~GMTemplate() { clear(); }
 
+  bool usesLeftInterface() { return leftInterface; }
 
   // returning M and S by their "proper" names.
   unsigned maxNumChunksInBoundary() { return M; }

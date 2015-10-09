@@ -43,10 +43,13 @@
 #include "GMTK_RngDecisionTree.h"
 #include "debug.h"
 
+#include "GMTK_SectionScheduler.h"
+#include "GMTK_SectionIterator.h"
+
 // class mention for forward references.
 class GraphicalModel;
 class BoundaryTriangulate;
-class Partition;
+class Section;
 class GMTemplate;
 class JunctionTree;
 
@@ -54,7 +57,7 @@ class JunctionTree {
 
   friend class GMTemplate;
   friend class BoundaryTriangulate;
-
+  
   // partition range for debugging output
   Range partitionDebugRange;
 
@@ -703,10 +706,7 @@ class JunctionTree {
 					 const unsigned root);
   static void getCumulativeUnassignedIteratedNodes(JT_Partition& part,const unsigned root);
 
-
-
-
-
+  
   void ceGatherIntoRoot(PartitionStructures& ps,
 			PartitionTables& pt,
 			const unsigned root,
@@ -806,6 +806,23 @@ class JunctionTree {
 
 public:
 
+
+
+
+
+  PartitionTables *getSectionTables(unsigned t);
+  void sparseJoinSegementInit(unsigned numSections);
+  PartitionTables *computeForwardInterfaceSeparator(unsigned t, PartitionTables *sectionPosterior);
+  void recieveForwardInterfaceSeparator(SectionIterator &t, PartitionTables *msg, PartitionTables *sectionPosterior);
+  logpr computeProbEvidence(unsigned t, PartitionTables *sectionPosterior);
+  static PartitionTables *cachedPT;
+  static unsigned         cachedT;
+
+
+
+
+
+  
   static unsigned numSmoothingPartitions; // used for smoothing in gmtkOnline
 
   void setPartitionDebugRange(Range rng) { partitionDebugRange.SetLimits(rng.first(), rng.last()); 
@@ -927,7 +944,8 @@ public:
   BP_Range* cPartCliquePrintRange;
   BP_Range* ePartCliquePrintRange;
 
-  // constructor
+
+    // constructor
   JunctionTree(GMTemplate& arg_gm_template)
     : partitionDebugRange("all",0,0x7FFFFFFF),
       curEMTrainingBeam(-LZERO),
@@ -982,7 +1000,7 @@ public:
     infoMsg(IM::Giga,"Done creating P,C,E partition JTs\n");
   }
   // create a junction tree within a partition.
-  static void createPartitionJunctionTree(Partition& part, 
+  static void createPartitionJunctionTree(Section& part, 
 					  const string pStr = junctionTreeMSTpriorityStr);
 
   // routine to find the interface cliques of the partitions
