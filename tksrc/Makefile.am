@@ -92,6 +92,8 @@ libGMTK_a_SOURCES = \
 GMTK_SectionIterator.h \
 GMTK_SectionScheduler.h GMTK_SectionScheduler.cc \
 GMTK_LinearSectionScheduler.h GMTK_LinearSectionScheduler.cc \
+GMTK_IslandSectionScheduler.h GMTK_IslandSectionScheduler.cc \
+GMTK_ArchipelagosSectionScheduler.h GMTK_ArchipelagosSectionScheduler.cc \
 \
 GMTK_ProbEvidenceTask.h GMTK_ProbEvidenceTask.cc \
 GMTK_ForwardBackwardTask.h GMTK_ForwardBackwardTask.cc \
@@ -99,7 +101,7 @@ GMTK_ViterbiTask.h GMTK_ViterbiTask.cc \
 GMTK_SmoothingTask.h GMTK_SmoothingTask.cc \
 \
 GMTK_SectionInferenceAlgorithm.h \
-GMTK_SparseJoinInference.h \
+GMTK_SparseJoinInference.h GMTK_SparseJoinInference.cc \
 \
 GMTK_SectionSeparator.h \
 \

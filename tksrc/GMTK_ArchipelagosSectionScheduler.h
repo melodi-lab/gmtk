@@ -35,7 +35,7 @@ class ArchipelagosSectionScheduler : public SectionScheduler,
     : SectionScheduler(gm_template, fp, obs_source)
   {}
 
-  virtual ~ArchipelagosSectionScheduler() {}
+  virtual ~ArchipelagosSectionScheduler();
 
   logpr probEvidence(SectionInferenceAlgorithm *algorithm,
 		     unsigned *numUsableFrames = NULL,

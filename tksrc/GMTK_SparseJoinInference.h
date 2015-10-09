@@ -19,48 +19,29 @@
 #include "GMTK_SectionIterator.h"
 #include "GMTK_SectionInferenceAlgorithm.h"
 
-#include "GMTK_JunctionTree.h"
 #include "GMTK_PartitionTables.h"
 
 class SparseJoinInference : public SectionInferenceAlgorithm {
+ public:
 
-  // temporary bogusness
-  void setJT(JunctionTree *jt) {myjt = jt;} // BOGUS
+  SparseJoinInference(SectionScheduler *jt) : SectionInferenceAlgorithm(jt) {}
 
   // All message actions are named from the perspective of C_t.
 
   // compute forward message for C'_t -> C'_{t+1} (aka gather into root)
-  SectionSeparator *computeForwardInterfaceSeparator(unsigned t, PartitionTables *sectionPosterior) {
-    assert(myjt);
-    return myjt->computeForwardInterfaceSeparator(t, sectionPosterior);
-  } 
+  SectionSeparator *computeForwardInterfaceSeparator(SectionIterator &t, PartitionTables *section_posterior);
 
   // recieve forward message for C'_{t-1} -> C'_t (sendForwardsCrossPartitions)
-  void receiveForwardInterfaceSeparator(SectionIterator &iit, SectionSeparator *msg, PartitionTables *sectionPosterior) {
-    myjt->recieveForwardInterfaceSeparator(iit, msg, sectionPosterior);
-  }
+  void receiveForwardInterfaceSeparator(SectionIterator &t, SectionSeparator *msg, PartitionTables *section_posterior);
 
 
   // compute backward message for C'_{t-1} <- C'_t (aka scatter out of root)
-  SectionSeparator computeBackwardsInterfaceSeparator(unsigned t) {
-    SectionSeparator is;
-    return is;
-  } 
+  SectionSeparator *computeBackwardsInterfaceSeparator(SectionIterator &t);
 
   // recieve backward message for C'_t <- C'_{t+1} (sendBackwardCrossPartitions)
-  void receiveBackwardInterfaceSeparator(unsigned t, SectionSeparator const &msg) {}
-
-
-  // return P(Q_t | X_{?}), where ? depends on the messages C_t has seen so far:
-  //        P(Q_t | X_{0:t}) in the forward pass
-  //        P(Q_t | X_{0:T-1}) in a (full) backward pass
-  //        P(Q_t | X_{0:t+\tau}) in a smoothing backward pass
-  logpr probEvidence(unsigned t, PartitionTables *sectionPosterior) {
-    return myjt->computeProbEvidence(t, sectionPosterior);
-  }
+  void receiveBackwardInterfaceSeparator(SectionIterator &t, SectionSeparator const &msg);
 
  private:
-  JunctionTree *myjt;
 
 };
 
