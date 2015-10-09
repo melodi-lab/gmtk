@@ -19,40 +19,6 @@
 LinearSectionScheduler::~LinearSectionScheduler() {}
 
 
-  // Formerly JunctionTree::printAllJTInfo()
-void 
-LinearSectionScheduler::printInferencePlanSummary(char const *fileName) {
-}
-
-  // Formerly GMTemplate::reportScoreStats()
-void 
-LinearSectionScheduler::reportScoreStats() {
-}
-
-
-  // NOTE:  This assumes all inference algorithms will have clique-like things they
-  //        need to print posteriors of
-
-  // Set the range of selected clique #'s in P', C', E' for printing.
-  // TODO: preconditions
-void 
-LinearSectionScheduler::setCliquePrintRanges(char *p_range, char *c_range, char *e_range) {
-}
-
-void 
-LinearSectionScheduler::setSectionDebugRange(Range &rng) {
-}
-
-  // Print to f the order of the variables in each clique selected by setCliquePrintRanges().
-void 
-LinearSectionScheduler::printCliqueOrders(FILE *f) {
-}
-
-  // Returns the size (in # of floats) of the cliques selected by setCliquePrintRanges().
-void 
-LinearSectionScheduler::getCliquePosteriorSize(unsigned &p_size, unsigned &c_size, unsigned &e_size) {
-}
-
 logpr
 LinearSectionScheduler::probEvidence(SectionInferenceAlgorithm *algorithm,
 				     unsigned *numUsableFrames,

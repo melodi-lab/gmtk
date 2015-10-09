@@ -37,6 +37,27 @@ class IslandSectionScheduler : public SectionScheduler,
 
   virtual ~IslandSectionScheduler() {}
 
+  logpr probEvidence(SectionInferenceAlgorithm *algorithm,
+		     unsigned *numUsableFrames = NULL,
+		     unsigned *numSectionsDone = NULL,
+		     const bool limitTime = false,
+		     const bool noE = false, 
+		     const bool cliquePosteriorNormalize = true,
+		     const bool cliquePosteriorUnlog = true,
+		     ObservationFile *posteriorFile = NULL);
+
+  logpr forwardBackward(SectionInferenceAlgorithm *algorithm,
+			unsigned *numUsableFrames = NULL,
+			const bool cliquePosteriorNormalize = true,
+			const bool cliquePosteriorUnlog = true,
+			ObservationFile *posteriorFile = NULL);
+
+  logpr viterbi(SectionInferenceAlgorithm *algorithm,
+		unsigned nBest = 1,
+		unsigned *numUsableFrames = NULL,
+		const bool cliquePosteriorNormalize = true,
+		const bool cliquePosteriorUnlog = true,
+		ObservationFile *posteriorFile = NULL);
 };
 
 #endif
