@@ -97,6 +97,8 @@
 #include "GMTK_Tie.h"
 #include "tieSupport.h"
 
+#include "GMTK_SectionScheduler.h"
+
 VCID(HGID)
 
 #define GMTK_ARG_HELP

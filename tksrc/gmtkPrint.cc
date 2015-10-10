@@ -78,6 +78,8 @@ VCID(HGID)
 #include "GMTK_MaxClique.h"
 #include "GMTK_Signals.h"
 
+#include "GMTK_SectionScheduler.h"
+
 #define GMTK_ARGUMENTS_REQUIRE_BINARY_VIT_FILE
 
 /*****************************   OBSERVATION INPUT FILE HANDLING   **********************************************/

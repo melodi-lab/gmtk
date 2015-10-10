@@ -61,6 +61,7 @@ VCID(HGID)
 #include "GMTK_BoundaryTriangulate.h"
 #include "GMTK_JunctionTree.h"
 
+#include "GMTK_SectionScheduler.h"
 
 /*************************   INPUT TRAINABLE PARAMETER FILE HANDLING  *******************************************/
 #define GMTK_ARG_CPP_CMD_OPTS

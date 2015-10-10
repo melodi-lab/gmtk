@@ -64,6 +64,8 @@ VCID(HGID)
 
 #include "GMTK_WordOrganization.h"
 
+#include "GMTK_SectionScheduler.h"
+
 
 #define GMTK_ARG_OBS_FILES
 /****************************      FILE RANGE OPTIONS             ***********************************************/

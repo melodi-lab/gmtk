@@ -40,13 +40,14 @@ LinearSectionScheduler::probEvidence(SectionInferenceAlgorithm *algorithm,
 
   SectionIterator inference_it(*this,T);
 
+  algorithm->set_inference_it(&inference_it);
   init_CC_CE_rvs(inference_it);
   
   PartitionTables *prev_sect_tab = NULL;
   PartitionTables *cur_sect_tab = new PartitionTables(inference_it.cur_jt_section());
   
  // do P'
-  SectionSeparator *msg = algorithm->computeForwardInterfaceSeparator(inference_it, cur_sect_tab);
+  SectionSeparator *msg = algorithm->computeForwardInterfaceSeparator(cur_sect_tab);
 
   // do C' C' ... E'
   unsigned t;
@@ -58,8 +59,8 @@ LinearSectionScheduler::probEvidence(SectionInferenceAlgorithm *algorithm,
     prev_sect_tab = cur_sect_tab; // msg points into prev_sect_tab now
     cur_sect_tab = new PartitionTables(inference_it.cur_jt_section());
 
-    algorithm->receiveForwardInterfaceSeparator(inference_it, msg, cur_sect_tab);
-    msg = algorithm->computeForwardInterfaceSeparator(inference_it, cur_sect_tab);
+    algorithm->receiveForwardInterfaceSeparator(msg, cur_sect_tab);
+    msg = algorithm->computeForwardInterfaceSeparator(cur_sect_tab);
     // msg points into cur_sect_tab now
 
     //if (limitTime && probEvidenceTimeExpired) goto finished;
@@ -68,7 +69,7 @@ LinearSectionScheduler::probEvidence(SectionInferenceAlgorithm *algorithm,
   //finished:
   
   if (numSectionsDone) *numSectionsDone = t;
-  logpr probE = algorithm->probEvidence(inference_it, cur_sect_tab);
+  logpr probE = algorithm->probEvidence(cur_sect_tab);
   delete cur_sect_tab;
   return probE;
 }

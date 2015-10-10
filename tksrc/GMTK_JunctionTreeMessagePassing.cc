@@ -2247,6 +2247,7 @@ JunctionTree::setRootToMaxCliqueValue()
 
 
 
+#ifdef REFACTOR_FOO
 
 PartitionTables *
 JunctionTree::getSectionTables(unsigned t) {
@@ -2331,7 +2332,7 @@ JunctionTree::computeProbEvidence(unsigned t, PartitionTables *sectionPosterior)
 
 PartitionTables *JunctionTree::cachedPT = NULL;
 unsigned         JunctionTree::cachedT = 0;
-
+#endif
 
 
 

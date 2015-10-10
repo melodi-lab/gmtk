@@ -85,6 +85,7 @@ VCID(HGID)
 #include "GMTK_MDCPT.h"
 #include "GMTK_Dense1DPMF.h"
 
+#include "GMTK_SectionScheduler.h"
 
 /*****************************   DISCRIMINITIVE TRAINING   **********************************************/
 
