@@ -77,7 +77,8 @@ VCID(HGID)
 #include "GMTK_JunctionTree.h"
 #include "GMTK_MaxClique.h"
 
-
+#include "GMTK_ZeroCliqueException.h"
+#include "GMTK_SectionScheduler.h"
 
 
 /*****************************   OBSERVATION INPUT FILE HANDLING   **********************************************/

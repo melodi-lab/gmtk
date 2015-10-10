@@ -106,6 +106,7 @@ GMTK_SparseJoinInference.h GMTK_SparseJoinInference.cc \
 GMTK_SectionSeparator.h \
 \
 hgstamp.h \
+GMTK_ZeroCliqueException \
 GMTK_Dense1DPMF.h GMTK_Dense1DPMF.cc \
 GMTK_Sparse1DPMF.h GMTK_Sparse1DPMF.cc \
 GMTK_MeanVector.h GMTK_MeanVector.cc \

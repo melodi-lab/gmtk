@@ -57,6 +57,8 @@
 #include "GMTK_JunctionTree.h"
 #include "GMTK_MaxClique.h"
 
+#include "GMTK_SectionScheduler.h"
+
 VCID(HGID)
 
 // make default clique table normalization set max score to 0 (log 1)

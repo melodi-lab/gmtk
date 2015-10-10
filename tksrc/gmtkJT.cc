@@ -68,6 +68,8 @@
 #include "GMTK_ForwardBackwardTask.h"
 
 // Supported within-sectin inference algorithms
+#include "GMTK_ZeroCliqueException.h"
+#include "GMTK_SectionScheduler.h"
 #include "GMTK_SectionInferenceAlgorithm.h"
 #include "GMTK_SparseJoinInference.h"
 
@@ -81,6 +83,7 @@
 #include "GMTK_BoundaryTriangulate.h"
 #include "GMTK_JunctionTree.h"
 #include "GMTK_MaxClique.h"
+
 
 VCID(HGID)
 

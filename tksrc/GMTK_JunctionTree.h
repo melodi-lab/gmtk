@@ -43,8 +43,12 @@
 #include "GMTK_RngDecisionTree.h"
 #include "debug.h"
 
+#include "GMTK_ZeroCliqueException.h"
+
+#ifdef REFACTOR_FOO
 #include "GMTK_SectionScheduler.h"
 #include "GMTK_SectionIterator.h"
+#endif
 
 // class mention for forward references.
 class GraphicalModel;
@@ -809,7 +813,7 @@ public:
 
 
 
-
+#ifdef REFACTOR_FOO
   PartitionTables *getSectionTables(unsigned t);
   void sparseJoinSegementInit(unsigned numSections);
   PartitionTables *computeForwardInterfaceSeparator(unsigned t, PartitionTables *sectionPosterior);
@@ -817,7 +821,7 @@ public:
   logpr computeProbEvidence(unsigned t, PartitionTables *sectionPosterior);
   static PartitionTables *cachedPT;
   static unsigned         cachedT;
-
+#endif
 
 
 
@@ -1544,9 +1548,6 @@ public:
   inline vector <RV*>& curNodes() { return cur_unrolled_rvs; }
 
 
-};
-
-class ZeroCliqueException : exception {
 };
 
 #endif
