@@ -796,7 +796,7 @@ main(int argc,char*argv[])
 #endif
 
       }
-    } catch (ZeroCliqueException &e) {
+    } catch (ZeroCliqueException const &e) {
       warning("Segment %d aborted due to zero clique\n", segment);
     }
     (*dcdrng_it)++;

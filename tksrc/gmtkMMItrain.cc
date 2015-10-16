@@ -468,7 +468,7 @@ void train(JunctionTree & myjt, vector<unsigned> const &batch, vector<double> & 
       GM_Parms.writeTrainable(outf, false);
       outf.nl();
 
-    } catch (ZeroCliqueException &e) {
+    } catch (ZeroCliqueException const &e) {
       warning("Segment %d aborted due to zero clique\n", segment);
     }
     firstTime = false;
