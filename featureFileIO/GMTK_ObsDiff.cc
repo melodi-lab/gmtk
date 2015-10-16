@@ -455,6 +455,7 @@ Arg Arg::Args[] = {
 };
 
 int main(int argc, const char *argv[]) {
+  try { // for catching std::bad_alloc(), indicating memory exhaustion
 
     bool doWeSwap;
    
@@ -668,4 +669,7 @@ int main(int argc, const char *argv[]) {
     delete lr2_rng;
 
     return EXIT_SUCCESS;
+  } catch (std::bad_alloc const &e) {
+    memory_error();
+  }
 }
