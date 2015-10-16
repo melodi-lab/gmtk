@@ -465,7 +465,7 @@ main(int argc,char*argv[])
 	outf.nl();
 	GM_Parms.emWriteUnencodedAccumulators(outf,writeLogVals);
 	outf.nl();
-      } catch (ZeroCliqueException &e) {
+      } catch (ZeroCliqueException const &e) {
 	warning("Segment %d aborted due to zero clique\n", segment);
       }
       

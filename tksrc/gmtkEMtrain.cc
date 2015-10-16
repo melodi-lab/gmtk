@@ -518,7 +518,7 @@ main(int argc,char*argv[])
 	      myjt.emIncrement(probe,localCliqueNormalization,emTrainingBeam);
 	    }
 	  }
-	} catch (ZeroCliqueException &e) {
+	} catch (ZeroCliqueException const &e) {
 	  warning("Segment %d aborted due to zero clique\n", segment);
 	}
 	(*trrng_it)++;
