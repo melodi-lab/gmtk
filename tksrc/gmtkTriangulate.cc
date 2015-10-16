@@ -236,8 +236,9 @@ backupTriFile(const string &triFile)
 
 
 int
-main(int argc,char*argv[])
-{
+main(int argc,char*argv[]) {
+  try { // for catching std::bad_alloc(), indicating memory exhaustion
+
   string input_tri_file, output_tri_file;
   string input_crossover_tri_file, output_crossover_tri_file;
 
@@ -746,6 +747,9 @@ main(int argc,char*argv[])
   }
 
   exit_program_with_status(0);
+  } catch (std::bad_alloc const &e) {
+    memory_error();
+  }
 }
 
 

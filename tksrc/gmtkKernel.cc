@@ -186,8 +186,8 @@ FileSource *gomFS;
 ObservationSource *globalObservationMatrix;
 
 int
-main(int argc,char*argv[])
-{
+main(int argc,char*argv[]) {
+  try { // for catching std::bad_alloc(), indicating memory exhaustion
 
   ////////////////////////////////////////////
   // set things up so that if an FP exception
@@ -482,4 +482,8 @@ main(int argc,char*argv[])
   }
 
   exit_program_with_status(0);
+  } catch (std::bad_alloc const &e) {
+    memory_error();
+  }
+
 }

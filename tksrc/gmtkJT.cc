@@ -196,7 +196,10 @@ ObservationSource *globalObservationMatrix;
 
 int
 main(int argc,char*argv[])
-{{ // use double so that we can destruct objects at end.
+{
+  try { // for catching std::bad_alloc(), indicating memory exhaustion
+
+{ // use double so that we can destruct objects at end.
 
   ////////////////////////////////////////////
   // set things up so that if an FP exception
@@ -650,5 +653,8 @@ main(int argc,char*argv[])
 
 } // close brace to cause a destruct on valid end of program.
  exit_program_with_status(0); 
+  } catch (std::bad_alloc const &e) {
+    memory_error();
+  }
 }
 
