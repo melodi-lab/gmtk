@@ -211,8 +211,8 @@ void jtExpiredSigHandler(int arg) {
 #define MAX(x,y) ((x)>(y)?(x):(y))
 
 int
-main(int argc,char*argv[])
-{
+main(int argc,char*argv[]) {
+  try { // for catching std::bad_alloc(), indicating memory exhaustion
 
   ////////////////////////////////////////////
   // set things up so that if an FP exception
@@ -914,4 +914,7 @@ main(int argc,char*argv[])
   } // end of multi-test section.
 
   exit_program_with_status(EXIT_SUCCESS);
+  } catch (std::bad_alloc const &e) {
+    memory_error();
+  }
 }

@@ -187,7 +187,10 @@ ObservationSource *globalObservationMatrix;
 
 int
 main(int argc,char*argv[])
-{{ // use double so that we can destruct objects at end.
+{
+  try { // for catching std::bad_alloc(), indicating memory exhaustion
+
+{ // use double so that we can destruct objects at end.
 
   // printf("EMable::minIncrementProbabilty.v = %f,lfm=%f\n",EMable::minIncrementProbabilty.val(),log_FLT_MIN);
 
@@ -614,6 +617,9 @@ main(int argc,char*argv[])
 
 } // close brace to cause a destruct on valid end of program before print message.
  exit_program_with_status(0); 
+  } catch (std::bad_alloc const &e) {
+    memory_error();
+  }
 }
 
 
