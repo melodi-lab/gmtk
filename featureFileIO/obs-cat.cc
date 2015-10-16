@@ -194,6 +194,7 @@ makeFileSource() {
 
 int 
 main(int argc, char *argv[]) {
+  try { // for catching std::bad_alloc(), indicating memory exhaustion
 
   CODE_TO_COMPUTE_ENDIAN
 
@@ -292,5 +293,8 @@ main(int argc, char *argv[]) {
   printf("%s", binaryOutputStream ? "E" : "E\n");
 
   exit(0);
+  } catch (std::bad_alloc const &e) {
+    memory_error();
+  }
 }
 
