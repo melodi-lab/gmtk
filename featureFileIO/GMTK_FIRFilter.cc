@@ -145,7 +145,10 @@ FIRFilter::localTransform(Data32 const *inputSubMatrix,
   //  printf("xfrm in  [%u, %u, %u, %u]  :  stride %u  :  out [%u, %u]\n", inputDescription.firstFrame, inputDescription.historyFrames, inputDescription.numFrames, inputDescription.futureFrames, stride, myOutput.firstFrame, myOutput.numFrames);
   if (needed > buffSize) {
     buffer = (Data32 *) realloc(buffer, needed * sizeof(Data32));
-    assert(buffer);
+    if (!buffer) {
+      warning("FIRFilter: failed to allocate memory\n");
+      throw std::bad_alloc();
+    }
     buffSize = needed;
   }
 
