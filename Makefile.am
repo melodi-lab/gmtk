@@ -16,7 +16,7 @@ scripts/triangulateGA \
 scripts/triangulateParallel \
 scripts/triangulateTimings
 
-SUBDIRS = IEEEFloatingpoint miscSupport featureFileIO mitk deepMLP tksrc tests
+SUBDIRS = IEEEFloatingpoint miscSupport featureFileIO mitk deepMLP tksrc tests man
 
 # machine to publish to (any that mount /g/melodi/html will probably do)
 PUBLISHHOST=trumpet

@@ -11,8 +11,11 @@ Subscribe to the email list at
   http://mailman.u.washington.edu/mailman/listinfo/gmtk-users
 
 Version 1.4.2  2015-
+        * Removed some non-portable Bashisms
         * "observation" is now allowed as an identifier in GMTKL
           (the structure file language)
+        * Fixed gmtkViz build failure on Ubuntu-derived Linuxes
+        * Added automatically generated man pages
 
 Version 1.4.1  2015-09-02
         * Reduced latency in gmtkOnline
