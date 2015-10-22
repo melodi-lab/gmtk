@@ -35,6 +35,7 @@
 #include "hgstamp.h"
 #endif
 
+#include <stdio.h>
 #include <cstdlib>
 #include <cstdio>
 
@@ -142,7 +143,7 @@ int main(int argc, char *argv[]) {
 		error("cannot open file %s", lmFile);
 
 	do {
-#if defined(HAVE_GETLINE)
+#if defined(USE_GETLINE)
                 if ( getline(&word, &len, fp) < 0 )
 #else
 		if ( fgets(word, len, fp) == NULL )
@@ -151,7 +152,7 @@ int main(int argc, char *argv[]) {
 	} while ( strstr(word, "\\data\\") != word );
 
 	do {
-#if defined(HAVE_GETLINE)
+#if defined(USE_GETLINE)
                 if ( getline(&word, &len, fp) < 0 )
 #else
 		if ( fgets(word, len, fp) == NULL )

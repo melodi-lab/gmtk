@@ -42,51 +42,47 @@ temporal statistical models.
 %configure --with-wx-config=wx-config-3.0
 make %{?_smp_mflags}
 
-
 %install
-rm -rf $RPM_BUILD_ROOT
-make install DESTDIR=$RPM_BUILD_ROOT
-
-
-%clean
-rm -rf $RPM_BUILD_ROOT
-
+%makeinstall
 
 %files
-%defattr(-,root,root,-)
-/usr/bin/discrete-mi
-/usr/bin/fixTri.sh
-/usr/bin/generate_random_graph.pl
-/usr/bin/gmtkDMLPtrain
-/usr/bin/gmtkDTindex
-/usr/bin/gmtkEMtrain
-/usr/bin/gmtkMMItrain
-/usr/bin/gmtkJT
-/usr/bin/gmtkKernel
-/usr/bin/gmtkModelInfo
-/usr/bin/gmtkMMItrain
-/usr/bin/gmtkNGramIndex
-/usr/bin/gmtkOnline
-/usr/bin/gmtkParmConvert
-/usr/bin/gmtkPrint
-/usr/bin/gmtkTFmerge
-/usr/bin/gmtkTie
-/usr/bin/gmtkTime
-/usr/bin/gmtkTriangulate
-/usr/bin/gmtkViterbi
-/usr/bin/gmtkViz
-/usr/bin/obs-cat
-/usr/bin/obs-concat
-/usr/bin/obs-diff
-/usr/bin/obs-info
-/usr/bin/obs-print
-/usr/bin/obs-skmeans
-/usr/bin/obs-stats
-/usr/bin/obs-window
-/usr/bin/triangulateGA
-/usr/bin/triangulateParallel
-/usr/bin/triangulateTimings
+%{_bindir}/discrete-mi
+%{_bindir}/fixTri.sh
+%{_bindir}/generate_random_graph.pl
+%{_bindir}/gmtkDMLPtrain
+%{_bindir}/gmtkDTindex
+%{_bindir}/gmtkEMtrain
+%{_bindir}/gmtkJT
+%{_bindir}/gmtkKernel
+%{_bindir}/gmtkModelInfo
+%{_bindir}/gmtkMMItrain
+%{_bindir}/gmtkNGramIndex
+%{_bindir}/gmtkOnline
+%{_bindir}/gmtkParmConvert
+%{_bindir}/gmtkPrint
+%{_bindir}/gmtkTFmerge
+%{_bindir}/gmtkTie
+%{_bindir}/gmtkTime
+%{_bindir}/gmtkTriangulate
+%{_bindir}/gmtkViterbi
+%{_bindir}/gmtkViz
+%{_bindir}/obs-cat
+%{_bindir}/obs-concat
+%{_bindir}/obs-diff
+%{_bindir}/obs-info
+%{_bindir}/obs-print
+%{_bindir}/obs-skmeans
+%{_bindir}/obs-stats
+%{_bindir}/obs-window
+%{_bindir}/triangulateGA
+%{_bindir}/triangulateParallel
+%{_bindir}/triangulateTimings
 %doc COPYING
 %doc NEWS
+%doc README
+%{_mandir}/man1/*
 
 %changelog
+* Fri Oct 02 2015 Richard Rogers <rprogers@uw.edu> 1.4.1-1
+- Simplified specfile
+- Added man pages

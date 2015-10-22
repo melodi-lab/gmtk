@@ -11,6 +11,7 @@ syntax: glob
 *.Po
 *.tar.gz
 *.orig
+*.1
 mitk/discrete-mi/ac_config.h
 mitk/discrete-mi/ac_config.h.in
 tksrc/GMTK_FileTokenizer.cc

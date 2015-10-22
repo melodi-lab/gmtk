@@ -18,7 +18,6 @@ endif
 
 DEBUGFLAGS = 
 
-
 # If configure determines we're using GCC C/C++ compilers, set flags appropriately
 if USE_GCC_FLAGS
 # Only used for GCC compilers
@@ -123,6 +122,10 @@ testMerge
 
 #testFileSource 
 
+#check_PROGRAMS = gmtest
+
+#gmtest_SOURCES = gmtest.cc
+
 
 testPFileFile_SOURCES = testPFileFile.cc 
 testASCIIFile_SOURCES = testASCIIFile.cc 
@@ -141,11 +144,8 @@ testMerge_SOURCES = testMerge.cc
 bin_PROGRAMS = obs-print obs-info obs-skmeans obs-window \
                obs-concat obs-diff obs-stats obs-cat
 
-#check_PROGRAMS = gmtest
-
-#gmtest_SOURCES = gmtest.cc
-
 obs_cat_SOURCES = obs-cat.cc
+
 obs_stats_SOURCES = obs-stats.cc
 
 obs_print_SOURCES = \
