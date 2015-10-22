@@ -1,0 +1,40 @@
+[ENVIRONMENT]
+
+.TP
+GMTKTMPDIR  
+Temporary directory gmtkDMLPtrain uses to store neural network parameters
+.TP
+GMTK_CPP_CMD
+Command GMTK programs use to preprocess ASCII input files
+.TP
+GMTK_GZIP_CMD  
+Command GMTK programs use to uncompress ASCII input files with ".gz" extensions
+.TP
+GMTK_BZIP2_CMD
+Command GMTK programs ue to uncompress ASCII input files with ".bz2" extensions
+
+[REPORTING BUGS]
+
+Report bugs to http://j.ee.washington.edu/trac/gmtk
+
+[COPYRIGHT]
+
+Copyright \(co 2001-2015 Jeff Bilmes
+.PP
+Licensed under the Open Software License version 3.0
+.br
+See COPYING or http://opensource.org/licenses/OSL-3.0
+
+[SEE ALSO]
+
+The GMTK source code and full documentation is available at
+.br 
+http://melodi.ee.washington.edu/gmtk
+.PP
+Support is availabe via the GMTK Users' mailing list 
+.br
+gmtk-users@u.washington.edu
+.PP
+Subscribe at
+.br
+http://mailman.u.washington.edu/mailman/listinfo/gmtk-users
