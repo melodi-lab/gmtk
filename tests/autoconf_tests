@@ -60,6 +60,8 @@ gmtk_test_ticket461.at \
 gmtk_test_ticket52.at \
 gmtk_test_ticket545.at \
 gmtk_test_ticket555.at \
+gmtk_test_ticket572.at \
+gmtk_test_ticket579.at \
 gmtk_tests.at
 LOCAL_TEST_AND_DEV = \
 test_and_dev_scripts/test_and_dev_20090526.at \
