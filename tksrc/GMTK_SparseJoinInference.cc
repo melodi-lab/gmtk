@@ -10,6 +10,7 @@
  *
  */
 
+#include "GMTK_SectionSeparator.h"
 #include "GMTK_SparseJoinInference.h"
 #include "GMTK_ZeroCliqueException.h"
 
@@ -60,6 +61,51 @@ SparseJoinInference::computeForwardInterfaceSeparator(PartitionTables *section_p
 // recieve forward message for C'_{t-1} -> C'_t (sendForwardsCrossPartitions)
 void 
 SparseJoinInference::receiveForwardInterfaceSeparator(SectionSeparator *msg, PartitionTables *section_posterior) {
+  PartitionStructures &previous_ps = myjt->section_structure_array[inference_it->prev_ss()];
+  PartitionTables     &previous_pt = *msg;
+  unsigned             previous_part_root = inference_it->prev_ri();
+  const char*const     previous_part_type_name = inference_it->prev_nm();
+  unsigned             previous_part_num = inference_it->prev_st();
+
+  PartitionStructures &next_ps = myjt->section_structure_array[inference_it->cur_ss()];
+  PartitionTables     &next_pt = *section_posterior;
+  unsigned             next_part_leaf = inference_it->cur_li();
+  const char*const     next_part_type_name = inference_it->cur_nm();
+  unsigned             next_part_num = inference_it->cur_st();
+
+  // check for empty partitions.
+  if (previous_ps.maxCliquesSharedStructure.size() == 0 || next_ps.maxCliquesSharedStructure.size() == 0)
+    return;
+
+  unsigned inferenceDebugLevel = IM::glbMsgLevel(IM::Inference);
+  unsigned inferenceMemoryDebugLevel = IM::glbMsgLevel(IM::InferenceMemory);
+
+  if (! myjt->section_debug_range.contains( (int) next_part_num )) {
+    IM::setGlbMsgLevel(IM::Inference, IM::glbMsgLevel(IM::DefaultModule));
+    IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
+  }
+
+
+  infoMsg(IM::Inference, IM::Mod,"CE: message %s,part[%d],clique(%d) --> %s,part[%d],clique(%d)\n",
+	  previous_part_type_name,
+	  previous_part_num,
+	  previous_part_root,
+	  next_part_type_name,
+	  next_part_num,
+	  next_part_leaf);
+  previous_pt.maxCliques[previous_part_root].
+    ceSendToOutgoingSeparator(previous_ps.maxCliquesSharedStructure[previous_part_root],
+			      next_pt.separatorCliques[next_ps.separatorCliquesSharedStructure.size()-1],
+			      next_ps.separatorCliquesSharedStructure[next_ps.separatorCliquesSharedStructure.size()-1]);
+
+  if (IM::messageGlb(IM::InferenceMemory, IM::Med+9)) {
+    previous_pt.reportMemoryUsageTo(previous_ps,stdout);
+  }
+
+  if (! myjt->section_debug_range.contains((int)next_part_num)) {
+    IM::setGlbMsgLevel(IM::InferenceMemory, inferenceMemoryDebugLevel);
+    IM::setGlbMsgLevel(IM::Inference, inferenceDebugLevel);
+  }
 }
 
 
