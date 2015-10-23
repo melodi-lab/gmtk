@@ -1,14 +1,14 @@
 %define debug_package %{nil}
 
 Name:		gmtk
-Version:	1.4.1
+Version:	1.4.2
 Release:	1%{?dist}
 Summary:	The Graphical Models Toolkit
-BuildRoot:	/var/tmp/rpmbuild/gmtk-1.4.1-root
+BuildRoot:	/var/tmp/rpmbuild/gmtk-1.4.2-root
 Group:		Applications/Engineering
 License:	OSL-3.0
 URL:		https://j.ee.washington.edu/trac/gmtk
-Source:		http://melodi.ee.washington.edu/downloads/gmtk/gmtk-1.4.1.tar.gz
+Source:		http://melodi.ee.washington.edu/downloads/gmtk/gmtk-1.4.2.tar.gz
 
 AutoReq: no
 BuildRequires:	hdf5-devel wxGTK3-devel libstdc++-devel
@@ -83,6 +83,6 @@ make %{?_smp_mflags}
 %{_mandir}/man1/*
 
 %changelog
-* Fri Oct 02 2015 Richard Rogers <rprogers@uw.edu> 1.4.1-1
+* Fri Oct 02 2015 Richard Rogers <rprogers@uw.edu> 1.4.2-1
 - Simplified specfile
 - Added man pages
