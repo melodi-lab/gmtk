@@ -3,10 +3,11 @@
 # If it's working, gmtkViterbi should crash with exit status 75
 
 AT_SETUP([EX_TEMPFAIL on memory exhaustion (ticket 579)])
+AT_SKIP_IF([test `uname -a | awk '{print $1}'` != Linux])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/hui-lattice-align])
 
 AT_CHECK([(cd $TEST_AND_DEV/hui-lattice-align && \
-  ulimit -v 524288 && \
+  ulimit -d 524288 && \
   gmtkViterbi \
     -of1 ./MISC/ftr.lst -nf1 0 -ni1 1 -fmt1 ascii -deterministicC F \
     -hashLoadFactor 0.98  -cptNormT 100 \
