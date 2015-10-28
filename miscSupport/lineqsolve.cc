@@ -13,6 +13,13 @@
 #if HAVE_CONFIG_H
 #include <config.h>
 #endif
+#if defined(HAVE_SYSEXITS_H)
+#  include <sysexits.h>
+#endif
+#ifndef EX_TEMPFAIL
+// BSDish exit status encouraging the user to try again
+#  define EX_TEMPFAIL 75
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -48,7 +55,10 @@ void ludcmp(float *a, // nXn matrix
   float big,dum,sum,temp;
   float *vv;
 
-  vv= (float*) malloc((size_t) (n*sizeof(float)));
+  if ((vv = (float*) malloc((size_t) (n*sizeof(float)))) == NULL) {
+    fprintf(stderr, "ludcmp: Can't allocate memory\n");
+    exit(EX_TEMPFAIL);
+  }
   *d=1.0;
   for (i=0;i<n;i++) {
     big=0.0;
@@ -161,7 +171,10 @@ lineqsolve(const int n, const int nrhs,
 #else
   int *indx = (int*)alloca((size_t)(n*sizeof(int)));
 #endif
-
+  if (indx == NULL) {
+    fprintf(stderr, "lineqsolve: Can't allocate memory\n");
+    exit(EX_TEMPFAIL);
+  }
   ludcmp(a,n,indx,&d);
 
   bp = b;
@@ -186,7 +199,10 @@ void ludcmp(double *a, // nXn matrix
   double big,dum,sum,temp;
   double *vv;
 
-  vv= (double*) malloc((size_t) (n*sizeof(double)));
+  if ((vv= (double*) malloc((size_t) (n*sizeof(double)))) == NULL) {
+    fprintf(stderr, "ludcmp: Can't allocate memory\n");
+    exit(EX_TEMPFAIL);
+  }
   *d=1.0;
   for (i=0;i<nn;i++) {
     big=0.0;
@@ -299,7 +315,10 @@ lineqsolve(const int n, const int nrhs,
 #else
   int *indx = (int*)alloca((size_t)(n*sizeof(int)));
 #endif
-
+  if (indx == NULL) {
+    fprintf(stderr, "lineqsolve: Can't allocate memory\n");
+    exit(EX_TEMPFAIL);
+  }
   ludcmp(a,n,indx,&d);
 
   bp = b;

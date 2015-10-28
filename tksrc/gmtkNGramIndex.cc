@@ -35,6 +35,7 @@
 #include "hgstamp.h"
 #endif
 
+#include <stdio.h>
 #include <cstdlib>
 #include <cstdio>
 
@@ -101,6 +102,8 @@ ObservationMatrix *globalObservationMatrix = &obsMatrix;
 
 
 int main(int argc, char *argv[]) {
+  try { // for catching std::bad_alloc(), indicating memory exhaustion
+
 	////////////////////////////////////////////
 	// set things up so that if an FP exception
 	// occurs such as an "invalid" (NaN), overflow
@@ -140,7 +143,7 @@ int main(int argc, char *argv[]) {
 		error("cannot open file %s", lmFile);
 
 	do {
-#if defined(HAVE_GETLINE)
+#if defined(USE_GETLINE)
                 if ( getline(&word, &len, fp) < 0 )
 #else
 		if ( fgets(word, len, fp) == NULL )
@@ -149,7 +152,7 @@ int main(int argc, char *argv[]) {
 	} while ( strstr(word, "\\data\\") != word );
 
 	do {
-#if defined(HAVE_GETLINE)
+#if defined(USE_GETLINE)
                 if ( getline(&word, &len, fp) < 0 )
 #else
 		if ( fgets(word, len, fp) == NULL )
@@ -188,4 +191,7 @@ int main(int argc, char *argv[]) {
 	delete [] indexFile;
 
 	return 0;
+  } catch (std::bad_alloc const &e) {
+    memory_error();
+  }
 }

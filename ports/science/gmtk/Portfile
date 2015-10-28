@@ -6,7 +6,7 @@ PortGroup         wxWidgets 1.0
 wxWidgets.use     wxWidgets-3.0
 
 name              gmtk
-version           1.4.1
+version           1.4.2
 categories        science
 platforms         darwin
 license           OSL-3

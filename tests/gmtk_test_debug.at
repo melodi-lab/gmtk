@@ -31,7 +31,8 @@ AT_SKIP_IF([test `uname` = "CYGWIN_NT-6.1"])
 AT_SKIP_IF([true])
 
 AT_CHECK([
-for (( verb=0 ; $verb < 101 ; verb+=5 )); do
+verb=0
+while test $verb -lt 101; do
   (cd $TEST_AND_DEV/auroraTutorial && \
      gmtkViterbi -of1 DATA/small.pfile \
                  -iswp1 T -nf1 42 -ni1 0 \
@@ -41,11 +42,14 @@ for (( verb=0 ; $verb < 101 ; verb+=5 )); do
 	  	 -str PARAMS/aurora_decode.str \
 	  	 -pVitValsFile /dev/null \
         -verb $verb | grep -v "^Reading " | neghead 2) > out.$verb
+   verb=$((verb+5))
 done],[],[ignore])
-for (( verb=0 ; $verb < 101 ; verb+=5 )); do
+verb=0
+while test $verb -lt 101; do
 AT_CHECK([
 bzcat $TEST_AND_DEV/auroraTutorial/debug2_out/verb.2748.${verb}.bz2 | \
 diff out.$verb -
 ],[],[])
+verb=$((verb+5))
 done
 AT_CLEANUP

@@ -10,10 +10,14 @@ For general questions:  gmtk-users@u.washington.edu
 Subscribe to the email list at
   http://mailman.u.washington.edu/mailman/listinfo/gmtk-users
 
-Version 1.4.2  2015-
+Version 1.4.2  2015-10-28
+        * Consistantly exit with status 75 on failure due to 
+          memory exhaustion
+        * Removed some non-portable Bash-isms from shell commands
         * "observation" is now allowed as an identifier in GMTKL
           (the structure file language)
         * Fixed gmtkViz build failure on Ubuntu-derived Linuxes
+        * Added automatically generated man pages
 
 Version 1.4.1  2015-09-02
         * Reduced latency in gmtkOnline

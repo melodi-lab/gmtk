@@ -111,13 +111,22 @@ PFileFile::getFrames(unsigned first, unsigned count) {
     infoMsg(IM::ObsFile, IM::Low, "PFileFile buffer resize %u - > %u B for [%u,%u)\n",
 	    bufferSize * sizeof(Data32), needed * sizeof(Data32), first, first+count);
     buffer = (Data32 *) realloc(buffer, needed * sizeof(Data32));
-    assert(buffer);
+    if (!buffer) {
+      warning("PFileFile: failed to allocate memory\n");
+      throw std::bad_alloc();
+    }
     bufferSize = needed;
 
     contBuf = (float *) realloc(contBuf, count * _numContinuousFeatures * sizeof(Data32));
     discBuf = (UInt32*) realloc(discBuf, count * _numDiscreteFeatures   * sizeof(Data32));
-    assert(_numContinuousFeatures == 0 || contBuf != NULL);
-    assert(_numDiscreteFeatures == 0   || discBuf != NULL);
+    if (_numContinuousFeatures > 0 && contBuf == NULL) {
+      warning("PFileFile: failed to allocate memory\n");
+      throw std::bad_alloc();
+    }
+    if (_numDiscreteFeatures > 0 && discBuf == NULL) {
+      warning("PFileFile: failed to allocate memory\n");
+      throw std::bad_alloc();
+    }
   }
   assert(buffer);
   float  *contSrc = contBuf;

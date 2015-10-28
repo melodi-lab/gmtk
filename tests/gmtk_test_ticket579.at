@@ -1,0 +1,18 @@
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/579 is fixed
+
+# If it's working, gmtkViterbi should crash with exit status 75
+
+AT_SETUP([EX_TEMPFAIL on memory exhaustion (ticket 579)])
+AT_SKIP_IF([test `uname -a | awk '{print $1}'` != Linux])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/hui-lattice-align])
+
+AT_CHECK([(cd $TEST_AND_DEV/hui-lattice-align && \
+  ulimit -d 524288 -m 524288 -v 524288 && \
+  gmtkViterbi \
+    -of1 ./MISC/ftr.lst -nf1 0 -ni1 1 -fmt1 ascii -deterministicC F \
+    -hashLoadFactor 0.98  -cptNormT 100 \
+    -str ./params/align_markov_lat_sparse.str2 \
+    -inputM ./params/align_markov_lat_sparse.master \
+    -cppComm '-I./MISC/params/ -DMISC_DIR=./MISC' -vitVals -)],
+  [75],[ignore],[ignore])
+AT_CLEANUP

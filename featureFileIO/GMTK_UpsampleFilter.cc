@@ -114,7 +114,10 @@ UpsampleFilter::localTransform(Data32 const *inputSubMatrix,
   unsigned needed = stride * inputDescription.requestedCount;
   if (buffSize < needed) {
     buffer = (Data32 *) realloc(buffer, needed * sizeof(Data32));
-    assert(buffer);
+    if (!buffer) {
+      warning("UpsampleFilter: failed to allocate memory\n");
+      throw std::bad_alloc();
+    }
     buffSize = needed;
   }
   unsigned cnt = 0;

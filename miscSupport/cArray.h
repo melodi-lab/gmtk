@@ -64,8 +64,10 @@ class cArray {
       return;
     if (_size > 0) {
       ptr = (T*) malloc(sizeof(T)*_size);
-      if (ptr == NULL)
-	error("Out of memory in cArray");
+      if (ptr == NULL) {
+	warning("Out of memory in cArray");
+	throw std::bad_alloc();
+      }
     }
     // explicitly call default constructors
     T* ptr_p = ptr;
@@ -116,8 +118,10 @@ class cArray {
     }
 
     ptr = (T*) malloc(sizeof(T)*_size);
-    if (ptr == NULL)
-      error("Out of memory in cArray resize");
+    if (ptr == NULL) {
+      warning("Out of memory in cArray resize");
+      throw std::bad_alloc();
+    }
     // explicitly call default constructors for new
     T* ptr_p = ptr;
     T* ptr_endp = ptr + _size;
@@ -157,8 +161,10 @@ class cArray {
     if (arg_size > _size) {
       // allocate new larger size
       T* tmp = (T*) malloc(sizeof(T)*arg_size);
-      if (tmp == NULL)
-	error("Out of memory in cArray resize and copy");
+      if (tmp == NULL) {
+	warning("Out of memory in cArray resize and copy");
+	throw std::bad_alloc();
+      }
       // bit-wise copy over old portion
       ::memcpy((void*)tmp,(void*)ptr,sizeof(T)*_size);
       // and call default constructors only for new portion
@@ -180,8 +186,10 @@ class cArray {
       if (arg_size > 0) {
 	// allocate new smaller size
 	tmp = (T*) malloc(sizeof(T)*arg_size);
-	if (tmp == NULL)
-	  error("Out of memory in cArray reduce resize and copy");
+	if (tmp == NULL) {
+	  warning("Out of memory in cArray reduce resize and copy");
+	  throw std::bad_alloc();
+	}
 	// bit-wise copy over portion that will remain
 	::memcpy((void*)tmp,(void*)ptr,sizeof(T)*arg_size);
       } else {

@@ -293,7 +293,10 @@ BinaryFile::getFrames(unsigned first, unsigned count) {
   unsigned needed = count * numFeatures();
   if (needed > buffSize) {
     buffer = (Data32 *) realloc(buffer, needed * sizeof(Data32));
-    assert(buffer);
+    if (!buffer) {
+      warning("BinaryFile: failed to allocate memory\n");
+      throw std::bad_alloc();
+    }
     buffSize = needed;
   }
   first += (unsigned) startFrame;

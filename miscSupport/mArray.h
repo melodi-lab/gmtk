@@ -114,7 +114,10 @@ class mArray_nd {
 #ifdef HAVE_MMAP
       if (_usemmap) {
 	void *block = mmap(NULL, _size * sizeof(T), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-	assert(block);
+	if (block == MAP_FAILED) {
+	  warning("mArray: mmap failed to allocate virtual memory\n");
+	  throw std::bad_alloc();
+	}
 	ptr = new(block) T[_size];
       } else {
 	ptr = new T[_size];
@@ -134,7 +137,10 @@ class mArray_nd {
 #ifdef HAVE_MMAP
     if (_usemmap) {
       void *block = mmap(NULL, arg_size * sizeof(T), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-      assert(block);
+      if (block == MAP_FAILED) {
+	warning("mArray: mmap failed to allocate virtual memory\n");
+	throw std::bad_alloc();
+      }
       ptr = new(block) T[arg_size];
     } else {
       ptr = new T[arg_size];
@@ -229,7 +235,10 @@ class mArray_nd {
 #ifdef HAVE_MMAP
     if (_usemmap) {
       void *block = mmap(NULL, arg_size * sizeof(T), PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-      assert(block);
+      if (block == MAP_FAILED) {
+	warning("mArray: mmap failed to allocate virtual memory\n");
+	throw std::bad_alloc();
+      }
       tmp = new(block) T[arg_size];
     } else {
       tmp = new T[arg_size];

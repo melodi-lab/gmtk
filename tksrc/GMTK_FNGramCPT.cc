@@ -2018,6 +2018,7 @@ void FNGramCPT::setFNGramImp(FNGramImp *fngram) {
 
 	_contextEntriesStack.resize(1);
 	_contextEntriesStack[0] = (void *) malloc(sizeof(FNGramImp::BackoffGraphNode::HashEntry*) * 4 * _fngram->_numberOfBGNodes);
+	if (!_contextEntriesStack[0]) throw std::bad_alloc();
 	_numberOfActiveIterators = 0;
 }
 
@@ -2105,6 +2106,7 @@ void FNGramCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV*>& parents,
 	// TODO: change '4' to a #define.
 	if ( _numberOfActiveIterators >= _contextEntriesStack.size() * 4 ) {
 		void *tmpPtr = (void *) malloc(sizeof(FNGramImp::BackoffGraphNode::HashEntry*) * 4 * _fngram->_numberOfBGNodes);
+		if (!tmpPtr) throw std::bad_alloc();
 		_contextEntriesStack.push_back(tmpPtr);
 		ptr = (FNGramImp::BackoffGraphNode::HashEntry**)tmpPtr;
 	} else {
