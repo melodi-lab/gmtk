@@ -809,8 +809,8 @@ Arg Arg::Args[] = {
 
 
 
-int main(int argc, const char *argv[])
-{
+int main(int argc, const char *argv[]) {
+  try { // for catching std::bad_alloc(), indicating memory exhaustion
 
   int numFiles=0;
 
@@ -941,5 +941,8 @@ int main(int argc, const char *argv[])
     delete sr_rng;
 
     return EXIT_SUCCESS;
+  } catch (std::bad_alloc const &e) {
+    memory_error();
+  }
 }
 

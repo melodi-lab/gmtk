@@ -98,6 +98,7 @@ Arg Arg::Args[] = {
 
 int 
 main(int argc, char *argv[]) {
+  try { // for catching std::bad_alloc(), indicating memory exhaustion
 
   CODE_TO_COMPUTE_ENDIAN
 
@@ -195,5 +196,8 @@ main(int argc, char *argv[]) {
   delete outputFile;
 
   exit_program_with_status(0);
+  } catch (std::bad_alloc const &e) {
+    memory_error();
+  }
 }
 

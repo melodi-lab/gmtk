@@ -121,14 +121,20 @@ AffineFilter::localTransform(Data32 const *inputSubMatrix,
     unsigned workNeeded = inputDescription.numFrames * cols;
     if (workBuffSize < workNeeded) {
       workBuffer = (double *)realloc(workBuffer, workNeeded * sizeof(double));
-      assert(workBuffer);
+      if (!workBuffer) {
+	warning("AffineFilter: failed to allocate memory\n");
+	throw std::bad_alloc();
+      }
       workBuffSize = workNeeded;
     }
     
     unsigned xNeeded = inputDescription.numFrames * inputDescription.numContinuous;
     if (xBuffSize < xNeeded) {
       xBuffer = (double *)realloc(xBuffer, xNeeded * sizeof(double));
-      assert(xBuffer);
+      if (!xBuffer) {
+	warning("AffileFilter: failed to allocate memory\n");
+	throw std::bad_alloc();
+      }
       xBuffSize = xNeeded;
     }
 
@@ -156,7 +162,10 @@ AffineFilter::localTransform(Data32 const *inputSubMatrix,
     unsigned workNeeded = inputDescription.numFrames * inputDescription.numContinuous;
     if (workBuffSize < workNeeded) {
       workBuffer = (double *)realloc(workBuffer, workNeeded * sizeof(double));
-      assert(workBuffer);
+      if (!workBuffer) {
+	warning("AffileFilter: failed to allocate memory\n");
+	throw std::bad_alloc();
+      }
       workBuffSize = workNeeded;
     }
     
@@ -178,7 +187,10 @@ AffineFilter::localTransform(Data32 const *inputSubMatrix,
   unsigned needed = myOutput.numFrames * stride;
   if (needed > buffSize) {
     buffer = (Data32 *) realloc(buffer, needed * sizeof(Data32));
-    assert(buffer);
+    if (!buffer) {
+      warning("AffineFilter: failed to allocate memory\n");
+      throw std::bad_alloc();
+    }
     buffSize = needed;
   }
 

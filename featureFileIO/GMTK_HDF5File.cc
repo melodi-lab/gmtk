@@ -512,7 +512,10 @@ HDF5File::getFrames(unsigned first, unsigned count) {
   unsigned needed = count * nFeatures;
   if (needed > bufSize) {
     buffer = (Data32 *) realloc(buffer, needed * sizeof(Data32));
-    assert(buffer);
+    if (!buffer) {
+      warning("HDF5File: failed to allocate memory\n");
+      throw std::bad_alloc();
+    }
     bufSize = needed;
   }
   hsize_t memdim[1] = {needed};

@@ -535,7 +535,7 @@ JunctionTree::initializeViterbiTrigger(char *vitTrigger, set<string> &variableNa
     try {
       triggerEqn.parseFormula(vitTriggerExpr);
     }
-    catch( string error_message ){
+    catch( string const &error_message ){
       error("ERROR: In -%cVitTrigger '%s' :  %s", arg, vitTrigger, error_message.c_str());
     }
     catch( const char * const error_message ) {
@@ -2353,7 +2353,7 @@ JunctionTree::ceGatherIntoRoot(PartitionStructures& ps,
 	}
       }
     }
-  } catch (ZeroCliqueException &e) {
+  } catch (ZeroCliqueException const &e) {
     zeroClique = true; // abort this partition & segment
   }
   if (!zeroClique) {
@@ -2366,7 +2366,7 @@ JunctionTree::ceGatherIntoRoot(PartitionStructures& ps,
 	ceGatherFromIncommingSeparators(ps.maxCliquesSharedStructure[root],
 					pt.separatorCliques,
 					ps.separatorCliquesSharedStructure.ptr);
-    } catch (ZeroCliqueException &e) {
+    } catch (ZeroCliqueException const &e) {
       zeroClique = true; // abort this partition & segment
     }
     if (!zeroClique) {

@@ -12,6 +12,17 @@
  * Eigenanalysis
  */
 
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+#if defined(HAVE_SYSEXITS_H)
+#  include <sysexits.h>
+#endif
+#ifndef EX_TEMPFAIL
+// BSDish exit status encouraging the user to try again
+#  define EX_TEMPFAIL 75
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -205,7 +216,7 @@ eigenanalyasis(int n,
 
   if ((e = (double*)malloc(n*sizeof(double))) == NULL) {
     fprintf(stderr,"eigenanalyasis: Can't allocate memory\n");
-    exit(-1);
+    exit(EX_TEMPFAIL);
   }
 
   /* copy the cov to the vecs to not destroy it */
