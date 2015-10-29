@@ -71,11 +71,10 @@
 #include <wx/filename.h>
 
 //for .Xdefaults
-#ifndef __WXMSW__
+#if !defined(__WXMSW__) && !defined(GMTK_WX_OSX)
 #include<X11/Xlib.h>
 #include<X11/Xutil.h>
 #endif
-
 
 #if GMTK_WX_OSX
    // fix for ticket 64 is only needed prior to 2.9.2
@@ -1524,7 +1523,7 @@ bool GMTKStructVizApp::OnInit()
 	//load up any data that is in ~/.Xdefaults
 	//these are user defined defaults, they override the program
 	//defaults, they are not saved to the gvp file
-#ifndef __WXMSW__
+#if !defined(__WXMSW__) && !defined(GMTK_WX_OSX)
 	Display *display_name;
 	display_name = XOpenDisplay(NULL);
 

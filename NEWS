@@ -10,6 +10,9 @@ For general questions:  gmtk-users@u.washington.edu
 Subscribe to the email list at
   http://mailman.u.washington.edu/mailman/listinfo/gmtk-users
 
+Version 1.4.3  2015-10-29
+        * Minor gmtkViz tweaks to avoid requiring X11
+
 Version 1.4.2  2015-10-28
         * Consistently exit with status 75 on failure due to 
           memory exhaustion
