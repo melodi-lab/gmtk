@@ -17,8 +17,8 @@ long_description  The Graphical Models Toolkit is an open source \
                   toolkit for rapidly prototyping dynamic graphical models
 homepage          https://j.ee.washington.edu/trac/gmtk
 master_sites      http://melodi.ee.washington.edu/downloads/gmtk/
-checksums         rmd160 a8c4929e5cd80e5c622c90ea27ad4fabb5ecedfc \
-                  sha256 679ef679000f9f22e57265f50b8c2ab62b682cefbb6a72dcef81a196e1c2a0ea 
+checksums         rmd160 3cd7597094301dc8848ff06358cc19de5af011a7 \
+                  sha256 d0c40d0fca6b8756ffbe33b4ae7e066fa4a87dd80c1788f7d5160fd8ec070876 
 depends_lib       port:hdf5 \
                   port:${wxWidgets.port}
 configure.args    --with-wxdir=${wxWidgets.wxdir}
