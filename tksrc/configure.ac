@@ -207,6 +207,11 @@ case "${host}" in
 *cygwin*) AC_SUBST([XOPEN],[-D__USE_XOPEN2K]) ;;
 esac
 
+case "${host}" in
+*apple*) ;; # don't use X11 on OS X
+*) AC_SUBST([X_LIBS],[-lX11]) ;; 
+esac
+
 # Check for SSE headers
 AC_CHECK_HEADERS([emmintrin.h], [have_sse=yes])
 
