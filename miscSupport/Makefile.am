@@ -72,6 +72,7 @@ bp_range.h bp_range.cc \
 range.h range.cc \
 arguments.h arguments.cc \
 logp.h logp.cc \
+psp.h psp.cc \
 rand.h rand.cc \
 sArray.h sArray.cc \
 mArray.h mArray.cc \

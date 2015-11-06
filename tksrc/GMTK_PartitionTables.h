@@ -30,7 +30,9 @@
 #include "GMTK_RV.h"
 #include "GMTK_FileParser.h"
 #include "GMTK_GMTemplate.h"
+#include "GMTK_MaxCliqueBase.h"
 #include "GMTK_MaxClique.h"
+#include "GMTK_MaxCliqueTable.h"
 #include "GMTK_JT_Partition.h"
 
 #include "debug.h"
