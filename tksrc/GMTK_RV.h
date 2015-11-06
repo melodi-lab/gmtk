@@ -121,7 +121,11 @@ Each routine has:
 #include "logp.h"
 #include "GMTK_RVInfo.h"
 #include "GMTK_NamedObject.h"
-
+#if 0
+#include "GMTK_MaxCliqueBase.h"
+#include "GMTK_MaxCliqueTable.h"
+#include "GMTK_SeparatorClique.h"
+#endif
 
 // There are many types of RVs. This structure encodes the various
 // options in a current RV. Note that each different set of objects
@@ -143,6 +147,10 @@ struct RVType {
 
 class FileParser;
 class RngDecisionTree;
+class MaxCliqueBase;
+class MaxClique;
+class MaxCliqueTable;
+class SeparatorClique;
 
 class RV  {
   friend class FileParser;
@@ -150,6 +158,7 @@ class RV  {
   friend class GMTemplate;
   friend class JunctionTree;
   friend class SectionScheduler;
+  friend class MaxCliqueBase;
   friend class MaxClique;
   friend class MaxCliqueTable;
   friend class BoundaryTriangulate;

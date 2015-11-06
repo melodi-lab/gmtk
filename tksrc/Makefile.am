@@ -105,6 +105,17 @@ GMTK_SparseJoinInference.h GMTK_SparseJoinInference.cc \
 \
 GMTK_SectionSeparator.h \
 \
+GMTK_MaxCliqueBase.h GMTK_MaxCliqueBase.cc \
+GMTK_MaxClique.h GMTK_MaxClique.cc \
+GMTK_FactorClique.h GMTK_FactorClique.cc \
+GMTK_InferenceFactorClique.h GMTK_InferenceFactorClique.cc \
+GMTK_MaxCliqueTable.h GMTK_MaxCliqueTable.cc \
+GMTK_SeparatorClique.h GMTK_SeparatorClique.cc \
+GMTK_ConditionalSeparatorTable.h GMTK_ConditionalSeparatorTable.cc \
+GMTK_CliqueValueHolder.h GMTK_CliqueValueHolder.cc \
+GMTK_VHashMapUnsignedUnsignedKeyUpdatable.h \
+GMTK_VHashMapUnsignedUnsignedKeyUpdatable.cc \
+\
 hgstamp.h \
 GMTK_ZeroCliqueException \
 GMTK_Dense1DPMF.h GMTK_Dense1DPMF.cc \
@@ -138,7 +149,6 @@ GMTK_GMTemplate.h GMTK_GMTemplate.cc \
 GMTK_JunctionTree.h GMTK_JunctionTree.cc \
 GMTK_CountIterator.h \
 GMTK_GraphicalModel.h GMTK_GraphicalModel.cc \
-GMTK_MaxClique.h GMTK_MaxClique.cc \
 GMTK_BoundaryTriangulate.h GMTK_BoundaryTriangulate.cc \
 GMTK_Timer.h GMTK_Timer.cc \
 GMTK_Signals.h GMTK_Signals.cc \
