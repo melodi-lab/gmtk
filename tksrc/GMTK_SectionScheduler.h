@@ -140,6 +140,7 @@ class SectionScheduler {
   }
 
 
+  // within-section junction tree finding should happen in a SectionInferenceAlgorithm ?
 
   // The priority string for selecting the next edge when constructing
   // the junction tree. Default is in .cc file, and see .cc file for
@@ -147,11 +148,16 @@ class SectionScheduler {
   static const char* junctionTreeMSTpriorityStr;
 
 
+  // generalize to factored interface - multiple "clique" interface
+
   // The priority string for selecting which clique of a partition
   // (from the set of valid ones) should be used as the partition
   // interface clique. See .cc file in routine findInterfaceClique()
   // for documentation.
   static const char* interfaceCliquePriorityStr;
+
+
+  // move to SectionInferenceAlgorithm ?
   
   // Set to true if the JT should create extra separators for any
   // virtual evidence (VE) that might be usefully exploitable
@@ -221,6 +227,7 @@ class SectionScheduler {
   static const char* E1_n;
   
 
+  // generalize for factored interfaces - multiple "cliques"
 
   // Identities of cliques in junction trees: 
   // for P, 
@@ -254,6 +261,8 @@ class SectionScheduler {
   bool C_to_C_icliques_same;
   bool C_to_E_icliques_same;
 
+
+  // within-section message ordering should be in a SectionInferenceAlgorithm
 
   // Message passing orders for each section.  Increasing index
   // order is 'collect evidence' phase from left to right in direction
@@ -296,6 +305,10 @@ class SectionScheduler {
   // pointed to by the left interface clique in the section on the
   // right.
 
+
+  // These will need adjusting per SectionInferenceAlgorithm...
+
+
   // The section structures that hold structures for a set of
   // RVs unrolled enough to cover any actual length DGM.
   sArray <PartitionStructures> section_structure_array;
@@ -321,6 +334,9 @@ class SectionScheduler {
 
   // The fixed gm_template for this model, contains the pre-triangulated graph.
   GMTemplate   &gm_template;
+
+
+  // I think all below here belongs in SectionInferenceAlgorithm subclasses ?
 
 
 
