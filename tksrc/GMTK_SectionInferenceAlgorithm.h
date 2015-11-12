@@ -73,7 +73,8 @@ class SectionInferenceAlgorithm {
   // precondition: setCurrentInferenceShiftTo(t), section_posterior has recieved necessary messages
 
   virtual logpr probEvidence(PartitionTables *section_posterior) {
-  // FIXME  this should probably move to SectionScheduler ?
+  // FIXME  This should probably move to SectionScheduler ?
+    //      No, MaxCliqueTable (base class)
     if (inference_it->at_p() && myjt->P1.cliques.size() > 0) {
       return section_posterior->maxCliques[myjt->P_ri_to_C].sumProbabilities();
     } else if (inference_it->at_c() && myjt->Co.cliques.size() > 0) {
