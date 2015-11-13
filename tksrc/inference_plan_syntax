@@ -1,0 +1,24 @@
+# structure file ID - Rabin fingerprint would work nicely
+
+# creation time & options (cmd line args, m, s, method, etc.)
+
+boundary {
+  PC: # separators
+      0 # vars name frame name frame ...
+      ...
+  CC: # separators
+      0 # vars name frame name frame ...
+      ...
+  CE:# separators
+      0 # vars name frame name frame ...
+      ...
+}
+
+# algorithm_plan*
+
+sparse_join {
+  # P plan
+  # C plan
+  # E plan
+}
+...
