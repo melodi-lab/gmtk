@@ -107,12 +107,24 @@ SectionScheduler::printAllCliques(FILE *f,const bool normalize, const bool unlog
 				  const bool justPrintEntropy,
 				  ObservationFile *obs_file)
 {
-  SectionIterator stss_it(*this);
-  stss_it.set_to_first_entry();
+  // FIXME - Why 2 iterators? in the old (1.X) GMTK, setCurrentInferenceShiftTo()
+  //         adjusted the JunctionTree::inference_it member. The SectionScheduler
+  //         no longer has that member, so setCurrentInferenceShiftTo() takes the
+  //         SectionIterator to adjust as an argument. But in this code, the current
+  //         section is incremented via stss_it++ operations, thus 
+  //         setCurrentInferenceShiftTo(stss_it, stss_it.cur_st()) would find the
+  //         iterator already at the desired section and therefore skip updating the
+  //         RV frames. As a temporary hack, I added the second inference_it so it
+  //         can train a section behind stss_it and thus trigger the update. It would
+  //         be better to just iterate s/currentPartition/current_section/ over the
+  //         section_table_array indices.
+  SectionIterator stss_it(*this), inference_it(*this);
+  //  init_CC_CE_rvs(inference_it);
+  // stss_it.set_to_first_entry();
 
   char buff[2048];
   if (p_clique_print_range != NULL) {
-    setCurrentInferenceShiftTo(stss_it, stss_it.cur_st());
+    setCurrentInferenceShiftTo(inference_it, stss_it.cur_st());
     BP_Range::iterator it = p_clique_print_range->begin();
     if (obs_file)
       obs_file->setFrame(0);
@@ -126,7 +138,7 @@ SectionScheduler::printAllCliques(FILE *f,const bool normalize, const bool unlog
 				.maxCliquesSharedStructure[cliqueNum],
 				obs_file,normalize, unlog);
 	} else {
-	  sprintf(buff,"Partition %d (P), Clique %d:",stss_it.cur_st(),cliqueNum); 
+	  sprintf(buff,"Section %d (P), Clique %d:",stss_it.cur_st(),cliqueNum); 
 	  section_table_array[stss_it.cur_st()]
 	    ->maxCliques[cliqueNum]
 	    .printCliqueEntries(section_structure_array[stss_it.cur_ss()]
@@ -143,7 +155,9 @@ SectionScheduler::printAllCliques(FILE *f,const bool normalize, const bool unlog
     for (; !stss_it.at_last_entry(); stss_it++) {
       int currentPartition = stss_it.cur_st();
       BP_Range::iterator it = c_clique_print_range->begin();
-      setCurrentInferenceShiftTo(stss_it, currentPartition);
+      assert(inference_it.cur_st() != stss_it.cur_st());
+      setCurrentInferenceShiftTo(inference_it, currentPartition);
+      assert(inference_it.cur_st() == stss_it.cur_st());
       if (obs_file)
 	obs_file->setFrame(stss_it.cur_st());
       while (!it.at_end()) {
@@ -156,7 +170,7 @@ SectionScheduler::printAllCliques(FILE *f,const bool normalize, const bool unlog
 				 .maxCliquesSharedStructure[cliqueNum],
 				 obs_file,normalize,unlog);
 	  } else {
-	    sprintf(buff,"Partition %d (C), Clique %d:",currentPartition,cliqueNum); 
+	    sprintf(buff,"Section %d (C), Clique %d:",currentPartition,cliqueNum); 
 	    section_table_array[stss_it.cur_st()]
 	      ->maxCliques[cliqueNum].
 	      printCliqueEntries(section_structure_array[stss_it.cur_ss()]
@@ -173,7 +187,7 @@ SectionScheduler::printAllCliques(FILE *f,const bool normalize, const bool unlog
   }
 
   if (e_clique_print_range != NULL) {
-    setCurrentInferenceShiftTo(stss_it, stss_it.cur_st());
+    setCurrentInferenceShiftTo(inference_it, stss_it.cur_st());
     BP_Range::iterator it = e_clique_print_range->begin();
     if (obs_file)
       obs_file->setFrame(stss_it.cur_st());
@@ -187,7 +201,7 @@ SectionScheduler::printAllCliques(FILE *f,const bool normalize, const bool unlog
 				.maxCliquesSharedStructure[cliqueNum],
 				obs_file,normalize,unlog);
 	} else {
-	  sprintf(buff,"Partition %d (E), Clique %d:",stss_it.cur_st(),cliqueNum); 
+	  sprintf(buff,"Section %d (E), Clique %d:",stss_it.cur_st(),cliqueNum); 
 	  section_table_array[stss_it.cur_st()]
 	    ->maxCliques[cliqueNum]
 	    .printCliqueEntries(section_structure_array[stss_it.cur_ss()]
@@ -484,7 +498,7 @@ SectionScheduler::setCurrentInferenceShiftTo(SectionIterator &it, int pos)
 {
 
   if (it.at_entry(pos)) {
-    // printf("== Already at shift %d\n",pos);
+    //    printf("== Already at shift %d\n",pos);
     return;
   }
 
