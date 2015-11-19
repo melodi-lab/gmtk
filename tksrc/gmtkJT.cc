@@ -485,13 +485,14 @@ main(int argc,char*argv[])
 					cliquePosteriorNormalize,
 					cliquePosteriorUnlog,
 					clique_posterior_file);
+	// FIXME - move this to probEvidence() impl ?
+	printf("Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
+	       segment,
+	       probe.val(),
+	       probe.val()/numFrames,
+	       probe.val()/numUsableFrames);
+
       }
-      // TODO: move this to probEvidence() impl
-      printf("Segment %d, after Prob E: log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	     segment,
-	     probe.val(),
-	     probe.val()/numFrames,
-	     probe.val()/numUsableFrames);
     } catch (ZeroCliqueException &e) {
       warning("Segment %d aborted due to zero clique\n", segment);
     }

@@ -67,6 +67,27 @@ SectionScheduler::reportScoreStats() {
   // TODO: preconditions
 void 
 SectionScheduler::setCliquePrintRanges(char *p_range, char *c_range, char *e_range) {
+  if (p_range != NULL) {
+    BP_Range* tmp = new BP_Range(p_range,0,gm_template.P.cliques.size());
+    if (!tmp || tmp->length() <= 0)
+      delete tmp;
+    else
+      p_clique_print_range = tmp;
+  }
+  if (c_range != NULL) {
+    BP_Range* tmp = new BP_Range(c_range,0,gm_template.C.cliques.size());
+    if (!tmp || tmp->length() <= 0)
+      delete tmp;
+    else
+      c_clique_print_range = tmp;
+  }
+  if (e_range != NULL) {
+    BP_Range* tmp = new BP_Range(e_range,0,gm_template.E.cliques.size());
+    if (!tmp || tmp->length() <= 0)
+      delete tmp;
+    else
+      e_clique_print_range = tmp;
+  }
 }
 
 
@@ -80,6 +101,104 @@ void
 SectionScheduler::getCliquePosteriorSize(unsigned &p_size, unsigned &c_size, unsigned &e_size) {
 }
 
+
+void 
+SectionScheduler::printAllCliques(FILE *f,const bool normalize, const bool unlog,
+				  const bool justPrintEntropy,
+				  ObservationFile *obs_file)
+{
+  SectionIterator stss_it(*this);
+  stss_it.set_to_first_entry();
+
+  char buff[2048];
+  if (p_clique_print_range != NULL) {
+    setCurrentInferenceShiftTo(stss_it, stss_it.cur_st());
+    BP_Range::iterator it = p_clique_print_range->begin();
+    if (obs_file)
+      obs_file->setFrame(0);
+    while (!it.at_end()) {
+      const unsigned cliqueNum = (unsigned)(*it);
+      if (cliqueNum < section_structure_array[stss_it.cur_ss()].maxCliquesSharedStructure.size()) {
+	if (obs_file) {
+	  section_table_array[stss_it.cur_st()]
+	    ->maxCliques[cliqueNum]
+	    .printCliqueEntries(section_structure_array[stss_it.cur_ss()]
+				.maxCliquesSharedStructure[cliqueNum],
+				obs_file,normalize, unlog);
+	} else {
+	  sprintf(buff,"Partition %d (P), Clique %d:",stss_it.cur_st(),cliqueNum); 
+	  section_table_array[stss_it.cur_st()]
+	    ->maxCliques[cliqueNum]
+	    .printCliqueEntries(section_structure_array[stss_it.cur_ss()]
+				.maxCliquesSharedStructure[cliqueNum],
+				f,buff,normalize,unlog,justPrintEntropy);
+	}
+      }
+      it++;
+    }
+  }
+  stss_it++;
+
+  if (c_clique_print_range != NULL) {
+    for (; !stss_it.at_last_entry(); stss_it++) {
+      int currentPartition = stss_it.cur_st();
+      BP_Range::iterator it = c_clique_print_range->begin();
+      setCurrentInferenceShiftTo(stss_it, currentPartition);
+      if (obs_file)
+	obs_file->setFrame(stss_it.cur_st());
+      while (!it.at_end()) {
+	const unsigned cliqueNum = (unsigned)(*it);
+	if (cliqueNum < section_structure_array[stss_it.cur_ss()].maxCliquesSharedStructure.size()) {
+	  if (obs_file) {
+	    section_table_array[stss_it.cur_st()]
+	      ->maxCliques[cliqueNum].
+              printCliqueEntries(section_structure_array[stss_it.cur_ss()]
+				 .maxCliquesSharedStructure[cliqueNum],
+				 obs_file,normalize,unlog);
+	  } else {
+	    sprintf(buff,"Partition %d (C), Clique %d:",currentPartition,cliqueNum); 
+	    section_table_array[stss_it.cur_st()]
+	      ->maxCliques[cliqueNum].
+	      printCliqueEntries(section_structure_array[stss_it.cur_ss()]
+				 .maxCliquesSharedStructure[cliqueNum],
+				 f,buff,normalize,unlog,justPrintEntropy);
+	  }
+	}
+	it++;
+      }
+    }
+  } else {
+    // partNo = section_structure_array.size()-1;
+    stss_it.set_to_last_entry();
+  }
+
+  if (e_clique_print_range != NULL) {
+    setCurrentInferenceShiftTo(stss_it, stss_it.cur_st());
+    BP_Range::iterator it = e_clique_print_range->begin();
+    if (obs_file)
+      obs_file->setFrame(stss_it.cur_st());
+    while (!it.at_end()) {
+      const unsigned cliqueNum = (unsigned)(*it);
+      if (cliqueNum < section_structure_array[stss_it.cur_ss()].maxCliquesSharedStructure.size()) {
+	if (obs_file) {
+	  section_table_array[stss_it.cur_st()]
+	    ->maxCliques[cliqueNum]
+            .printCliqueEntries(section_structure_array[stss_it.cur_ss()]
+				.maxCliquesSharedStructure[cliqueNum],
+				obs_file,normalize,unlog);
+	} else {
+	  sprintf(buff,"Partition %d (E), Clique %d:",stss_it.cur_st(),cliqueNum); 
+	  section_table_array[stss_it.cur_st()]
+	    ->maxCliques[cliqueNum]
+	    .printCliqueEntries(section_structure_array[stss_it.cur_ss()]
+				.maxCliquesSharedStructure[cliqueNum],
+				f,buff,normalize,unlog,justPrintEntropy);
+	}
+      }
+      it++;
+    }
+  }
+}
 
 
 
@@ -323,7 +442,9 @@ SectionScheduler::shiftCEtoPosition(int pos, bool reset_observed)
     assert ( cur_ce_shift == 0 );
     // we need to get CC back to zero.
     adjustFramesBy (cur_CC_rvs, -cur_cc_shift * gm_template.chunkSkip()*fp.numFramesInC(),
-                    reset_observed);  // gmtkOnline can't observe old values - ticket #468  cur_cc_shift = 0;
+                    reset_observed);  // gmtkOnline can't observe old values - ticket #468
+    // FIXME - maybe reset_observed && !onlineViterbi
+    cur_cc_shift = 0;
   }
   int delta = pos - cur_ce_shift;
   adjustFramesBy (cur_CE_rvs, delta * gm_template.chunkSkip()*fp.numFramesInC());
@@ -514,7 +635,7 @@ SectionScheduler::unroll(const unsigned int numFrames,
 	  M,S, 
 	  fp.numFramesInP() + M * fp.numFramesInC() + fp.numFramesInE(),
 	  fp.numFramesInP() + M * fp.numFramesInC() + fp.numFramesInE());
-  const int numCoSectionTables = modifiedTemplateMaxUnrollAmount+1;
+  // unused const int numCoSectionTables = modifiedTemplateMaxUnrollAmount+1;
   const int numCoSectionStructures= modifiedTemplateMinUnrollAmount+1;
   const int numSectionStructures= modifiedTemplateMinUnrollAmount+3;
 
@@ -584,6 +705,7 @@ SectionScheduler::unroll(const unsigned int numFrames,
   //  2) we need a section for P, even if it is empty. (+1) 
   //  3) we need a section for E, even if it is empty. (+1)
   if (tableOption == LongTable) {
+#if 0
     // then we pre-allocate the table array to correspond to the
     // entire length of the segment. I.e., each table is unique.  With
     // this option, it is possible to store all of the tables in
@@ -598,7 +720,21 @@ SectionScheduler::unroll(const unsigned int numFrames,
     new (&section_table_array[sectionNo++])
       PartitionTables(E1);
     assert (sectionNo == section_table_array.size());
+#else
+
+    // s/PartitionTables/SectionTables/ is now a class hierarchy to 
+    // permit different SectionInferenceAlgorithm subclasses to do
+    // inference in each section. So, we can't instantiate the actual
+    // section_table_array entries until the particular SectionInferenceAlgorithm
+    // for the section in question has been chosen.
+
+    section_table_array.resize(modifiedTemplateMaxUnrollAmount+3);
+    for (unsigned p=0; p < section_table_array.size(); ++p) {
+      section_table_array[p] = NULL;
+    }
+#endif
   } else  if (tableOption == ShortTable) {
+#if 0
     // Then we pre-allocate the table array to correspond only to the
     // structure array, assuming that the tables are going to be
     // reused in some way. In this option, it is not possible to store
@@ -609,18 +745,26 @@ SectionScheduler::unroll(const unsigned int numFrames,
     // the real unrolling amount).
     section_table_array.resize(numSectionStructures);
     unsigned sectionNo = 0;
-    new (&section_table_array[sectionNo++]) PartitionTables(P1);
+    section_table_array[sectionNo++] = NULL;
     for (int p=0;p<numCoSectionStructures;p++) {
-      new (&section_table_array[sectionNo]) PartitionTables(Co);
+      section_table_array[sectionNo]) PartitionTables(Co);
       sectionNo++;
     }
     new (&section_table_array[sectionNo++])
       PartitionTables(E1);
     assert (sectionNo == section_structure_array.size());
+#else
+    // heterogeneous section_table_array; see LongTable case above 
+    section_table_array.resize(numSectionStructures);
+    for (unsigned p=0; p < section_table_array.size(); ++p) {
+      section_table_array[p] = NULL;
+    }
+#endif
   } else if (tableOption == ZeroTable) {
     section_table_array.clear();
   } else {
     // assume NoTouchTable, so leave it alone.
+    assert(tableOption == NoTouchTable);
   }
   
  #if 0 
