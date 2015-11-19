@@ -132,6 +132,13 @@ class SectionScheduler {
   // Returns the size (in # of floats) of the cliques selected by setCliquePrintRanges().
   virtual void getCliquePosteriorSize(unsigned &p_size, unsigned &c_size, unsigned &e_size);
 
+
+
+  virtual void printAllCliques(FILE *f,const bool normalize, const bool unlog,
+			       const bool justPrintEntropy,
+			       ObservationFile *obs_file = NULL);
+
+
   // Set the range of section #s that get elevated verbosity
   // P' = 0, C' \in 1, ..., T=2, E' = T-1
   virtual void setSectionDebugRange(Range const &rng) {
@@ -315,7 +322,7 @@ class SectionScheduler {
   // The section tables that hold the actual clique/separator tables
   // for a DGM. This might be much longer than the
   // section_structure_array but is certainly no shorter.
-  sArray <PartitionTables> section_table_array;
+  sArray <PartitionTables *> section_table_array;
 
 
   // range of cliques within each section to print out when doing

@@ -10,13 +10,46 @@
  *
  */
 
-#include "GMTK_SectionSeparator.h"
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+#if HAVE_HG_H
+#  include "hgstamp.h"
+#endif
+
+#include <vector>
+
+#include "general.h"
+
+VCID(HGID)
+
 #include "GMTK_SparseJoinInference.h"
 #include "GMTK_ZeroCliqueException.h"
 
+
+PartitionTables *
+SparseJoinInference::getSectionTables(unsigned t) { 
+  if (myjt->section_table_array[t] == NULL) {
+    // allocate s/PartitionTables/SectionTables/
+    if (t == 0) {
+      myjt->section_table_array[t] = new PartitionTables(myjt->P1);
+    } else if (t < myjt->section_table_array.size() - 1) {
+      myjt->section_table_array[t] = new PartitionTables(myjt->Co);
+    } else {
+      myjt->section_table_array[t] = new PartitionTables(myjt->E1);
+    }
+  }
+  // FIXME - assert typeof(section_table_array[t] == SparseJoinInferenceSectionTable)
+  return myjt->section_table_array[t];
+}
+
+
+
+
 // compute forward message for C'_t -> C'_{t+1} (aka gather into root)
-SectionSeparator *
-SparseJoinInference::computeForwardInterfaceSeparator(PartitionTables *section_posterior) {
+void
+SparseJoinInference::prepareForwardInterfaceSeparator(PartitionTables *cur_section) {
+  // FIXME - possibly pull this up to where this method is called for performance
   // we skip the first Co's LI separator if there is no P1
   // section, since otherwise we'll get zero probability.
   if (inference_it->at_first_c() && myjt->P1.cliques.size() == 0){
@@ -24,51 +57,28 @@ SparseJoinInference::computeForwardInterfaceSeparator(PartitionTables *section_p
   }
   // gather into the root of the current  section
   ceGatherIntoRoot(myjt->section_structure_array[inference_it->cur_ss()],
-		   *section_posterior,
+		   *cur_section,
 		   inference_it->cur_ri(),
 		   inference_it->cur_message_order(),
 		   inference_it->cur_nm(),
 		   inference_it->cur_st());
-#if 0
-  // TODO: support this?
-  if (sectionDoDist) {
-    deScatterOutofRoot(section_structure_array[inference_it->cur_ss()],
-		       *section_posterior,
-		       inference_it->cur_ri(),
-		       inference_it->cur_message_order(),
-		       inference_it->cur_nm(),
-		       inference_it->cur_st());
-  }
-#endif
-  // possibly print the P or C section information
-  if (inference_it->cur_section_clique_print_range() != NULL)
-    printAllCliques(myjt->section_structure_array[inference_it->cur_ss()],
-		    *section_posterior,
-		    inference_it->cur_st(),
-		    inference_it->cur_nm(),
-		    inference_it->cur_section_clique_print_range(),
-		    stdout,
-		    true, true, //cliquePosteriorNormalize,cliquePosteriorUnlog,
-		    false, NULL /*posteriorFile*/);
-  // TODO: support normalize, unlog, posterior file options above
 
   // if the LI separator was turned off, we need to turn it back on.
   if (inference_it->at_first_c() && myjt->P1.cliques.size() == 0)
     myjt->Co.useLISeparator();
-  return section_posterior;
 } 
 
 // recieve forward message for C'_{t-1} -> C'_t (sendForwardsCrossPartitions)
 void 
-SparseJoinInference::receiveForwardInterfaceSeparator(SectionSeparator *msg, PartitionTables *section_posterior) {
+SparseJoinInference::receiveForwardInterfaceSeparator(PartitionTables *prev_section, PartitionTables *cur_section) {
   PartitionStructures &previous_ps = myjt->section_structure_array[inference_it->prev_ss()];
-  PartitionTables     &previous_pt = *msg;
+  PartitionTables     &previous_pt = *prev_section;
   unsigned             previous_part_root = inference_it->prev_ri();
   const char*const     previous_part_type_name = inference_it->prev_nm();
   unsigned             previous_part_num = inference_it->prev_st();
 
   PartitionStructures &next_ps = myjt->section_structure_array[inference_it->cur_ss()];
-  PartitionTables     &next_pt = *section_posterior;
+  PartitionTables     &next_pt = *cur_section;
   unsigned             next_part_leaf = inference_it->cur_li();
   const char*const     next_part_type_name = inference_it->cur_nm();
   unsigned             next_part_num = inference_it->cur_st();
@@ -110,15 +120,75 @@ SparseJoinInference::receiveForwardInterfaceSeparator(SectionSeparator *msg, Par
 
 
 // compute backward message for C'_{t-1} <- C'_t (aka scatter out of root)
-SectionSeparator *
-SparseJoinInference::computeBackwardsInterfaceSeparator(SectionIterator &t) {
-  return NULL;
+void
+SparseJoinInference::prepareBackwardInterfaceSeparator(PartitionTables *cur_section) {
+  // FIXME - assert(typeof(cur_section) == SparseJoinSectionTables);
+  // FIXME - possibly pull this up to where this method is called for performance
+  if (inference_it->at_first_c() && myjt->P1.cliques.size() == 0) {
+    myjt->Co.skipLISeparator();    
+  } else if (!inference_it->has_c_section() && myjt->P1.cliques.size() == 0) {
+    myjt->E1.skipLISeparator();
+  }
+
+  deScatterOutofRoot(myjt->section_structure_array[inference_it->cur_ss()],
+		     *cur_section,
+		     inference_it->cur_ri(),
+		     inference_it->cur_message_order(),
+		     inference_it->cur_nm(),
+		     inference_it->cur_st());
+  
+  if (inference_it->at_first_c() && myjt->P1.cliques.size() == 0) {
+    myjt->Co.useLISeparator();
+  } else if (!inference_it->has_c_section() && myjt->P1.cliques.size() == 0) {
+    myjt->E1.useLISeparator();
+  }
+
+#if 0
+  if (viterbiScore)
+    recordPartitionViterbiValue(inference_it);
+#endif
 } 
 
 
-// recieve backward message for C'_t <- C'_{t+1} (sendBackwardCrossPartitions)
+// send backward message for C'_{t-1} <- C'_t (sendBackwardCrossPartitions)
 void 
-SparseJoinInference::receiveBackwardInterfaceSeparator(SectionSeparator const &msg) {
+SparseJoinInference::sendBackwardInterfaceSeparator(PartitionTables *prev_section, PartitionTables *cur_section) {
+  PartitionStructures &previous_ps = myjt->section_structure_array[inference_it->prev_ss()];
+  PartitionTables     &previous_pt = *prev_section;
+  unsigned             previous_part_root = inference_it->prev_ri();
+  const char*const     previous_part_type_name = inference_it->prev_nm();
+  unsigned             previous_part_num = inference_it->prev_st();
+
+  PartitionStructures &next_ps = myjt->section_structure_array[inference_it->cur_ss()];
+  PartitionTables     &next_pt = *cur_section;
+  unsigned             next_part_leaf = inference_it->cur_li();
+  const char*const     next_part_type_name = inference_it->cur_nm();
+  unsigned             next_part_num = inference_it->cur_st();
+
+  // check for empty partitions.
+  if (previous_ps.maxCliquesSharedStructure.size() == 0 || next_ps.maxCliquesSharedStructure.size() == 0)
+    return;
+
+  unsigned inferenceDebugLevel = IM::glbMsgLevel(IM::Inference);
+  unsigned inferenceMemoryDebugLevel = IM::glbMsgLevel(IM::InferenceMemory);
+
+  if (! myjt->section_debug_range.contains((int)previous_part_num)) {
+    IM::setGlbMsgLevel(IM::Inference, IM::glbMsgLevel(IM::DefaultModule));
+    IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
+  }
+
+  infoMsg(IM::Inference, IM::Mod,"DE: message %s,part[%d],clique(%d) <-- %s,part[%d],clique(%d)\n",
+	  previous_part_type_name,previous_part_num,previous_part_root,
+	  next_part_type_name,next_part_num,next_part_leaf);
+  previous_pt.maxCliques[previous_part_root].
+    deReceiveFromIncommingSeparator(previous_ps.maxCliquesSharedStructure[previous_part_root],
+				    next_pt.separatorCliques[next_ps.separatorCliquesSharedStructure.size()-1],
+				    next_ps.separatorCliquesSharedStructure[next_ps.separatorCliquesSharedStructure.size()-1]);
+
+  if (! myjt->section_debug_range.contains((int)previous_part_num)) {
+    IM::setGlbMsgLevel(IM::InferenceMemory, inferenceMemoryDebugLevel);
+    IM::setGlbMsgLevel(IM::Inference, inferenceDebugLevel);
+  }
 }
 
 
@@ -340,7 +410,7 @@ SparseJoinInference::deScatterOutofRoot(PartitionStructures &ss,
 }
 
 void 
-SparseJoinInference::deSendBackwardsCrossSections(PartitionStructures &previous_ss,
+SparseJoinInference::deSendBackwardCrossSections(PartitionStructures &previous_ss,
 						  PartitionTables &previous_st,
 						  const unsigned previous_section_root,
 						  const char *const previous_section_type_name,

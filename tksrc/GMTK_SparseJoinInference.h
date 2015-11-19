@@ -14,7 +14,6 @@
 #ifndef GMTK_SPARSEJOININFERENCE_H
 #define GMTK_SPARSEJOININFERENCE_H
 
-#include "GMTK_SectionSeparator.h"
 #include "GMTK_SectionScheduler.h"
 #include "GMTK_SectionIterator.h"
 #include "GMTK_SectionInferenceAlgorithm.h"
@@ -26,20 +25,33 @@ class SparseJoinInference : public SectionInferenceAlgorithm {
 
  SparseJoinInference(SectionScheduler *jt) : SectionInferenceAlgorithm(jt) {}
 
+
+  // allocate a new SectionTables for the indicated section - free with the below
+  PartitionTables *getSectionTables(JT_Partition& origin) { return new PartitionTables(origin); }
+  
+  // free a SectionTables allocated with the above
+  void releaseSectionTables(PartitionTables *tables) { delete tables; }
+  
+  // return a pointer to the SectionTables for section t - The memory is owned by
+  // this object; do not try to free it yourself
+  PartitionTables *getSectionTables(unsigned t);
+
+
   // All message actions are named from the perspective of C_t.
 
   // compute forward message for C'_t -> C'_{t+1} (aka gather into root)
-  SectionSeparator *computeForwardInterfaceSeparator(PartitionTables *section_posterior);
+  void prepareForwardInterfaceSeparator(PartitionTables *cur_section);
 
-  // recieve forward message for C'_{t-1} -> C'_t (sendForwardsCrossPartitions)
-  void receiveForwardInterfaceSeparator(SectionSeparator *msg, PartitionTables *section_posterior);
+  // receive forward message for C'_{t-1} -> C'_t (sendForwardsCrossPartitions)
+  void receiveForwardInterfaceSeparator(PartitionTables *prev_section, PartitionTables *cur_section);
 
 
   // compute backward message for C'_{t-1} <- C'_t (aka scatter out of root)
-  SectionSeparator *computeBackwardsInterfaceSeparator(SectionIterator &t);
+  void prepareBackwardInterfaceSeparator(PartitionTables *cur_section);
 
-  // recieve backward message for C'_t <- C'_{t+1} (sendBackwardCrossPartitions)
-  void receiveBackwardInterfaceSeparator(SectionSeparator const &msg);
+  // send backward message for C'_{t-1} <- C'_t (sendBackwardCrossPartitions)
+  void sendBackwardInterfaceSeparator(PartitionTables *prev_section, PartitionTables *cur_section);
+
 
  private:
 
@@ -87,17 +99,17 @@ class SparseJoinInference : public SectionInferenceAlgorithm {
 			  const char *const sect_type_name,
 			  const unsigned sect_num);
 
-  void deSendBackwardsCrossSections(PartitionStructures &previous_ss,
-				      PartitionTables &previous_st,
-				      const unsigned previous_section_root,
-				      const char *const previous_section_type_name,
-				      const unsigned previous_section_num,
-				      // 
-				      PartitionStructures &next_ss,
-				      PartitionTables &next_st,
-				      const unsigned next_section_leaf,
-				      const char *const next_section_type_name,
-				      const unsigned next_section_num);
+  void deSendBackwardCrossSections(PartitionStructures &previous_ss,
+				   PartitionTables &previous_st,
+				   const unsigned previous_section_root,
+				   const char *const previous_section_type_name,
+				   const unsigned previous_section_num,
+				   // 
+				   PartitionStructures &next_ss,
+				   PartitionTables &next_st,
+				   const unsigned next_section_leaf,
+				   const char *const next_section_type_name,
+				   const unsigned next_section_num);
 };
 
 #endif

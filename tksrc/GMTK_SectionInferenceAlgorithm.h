@@ -24,7 +24,6 @@
 
 #include "fileParser.h"
 
-#include "GMTK_SectionSeparator.h"
 #include "GMTK_PartitionTables.h"
 
 #include "GMTK_SectionScheduler.h"
@@ -44,24 +43,44 @@ class SectionInferenceAlgorithm {
     inference_it = it; 
   }
 
-  // All message actions are named from the perspective of C_t.
+
+  // allocate a new SectionTables for the indicated section - free with the below
+  virtual PartitionTables *getSectionTables(JT_Partition& origin) = 0;
+  
+  // free a SectionTables allocated with the above
+  virtual void releaseSectionTables(PartitionTables *tables) = 0;
+  
+  // return a pointer to the SectionTables for section t - The memory is owned by
+  // this object; do not try to free it yourself
+  virtual PartitionTables *getSectionTables(unsigned t) = 0;
+  
+  
+  // All message actions are named from the perspective of current section C'_t.
 
   // Precondition: jt->setInferenceShiftTo(inference_it, t)
 
 
-  // compute forward message for C'_t -> C'_{t+1} (aka gather into root)
-  virtual SectionSeparator *computeForwardInterfaceSeparator(PartitionTables *section_posterior) = 0; 
-//virtual void computeForwardInterfaceSeparator(unsigned t, PartitionTables *currentSection, SecionSeparator *msg) = 0; 
+  // Prepare to compute forward message(s) for C'_t -> C'_{t+1} (aka gather into root)
+  //   Precondition: C'_t's incoming (left interface) separators, if any, have been populated by
+  //                 a previous call of receiveForwardInterfaceSeparator() for C'_{t-1} -> C'_t
+  //   After this method, cur_section:
+  //     - has processed any message(s) from C'_{t-1}
+  //     - has processed all evidence in C'_t
+  //     - has updated its CliqueTables scores to reflect P(Q_t | X_{0:t})
+  //     - is ready to populate C'_{t+1}'s incoming (left interface) separators in the 
+  //       subsequent receiveForwardInterfaceSeparator() call
+  virtual void prepareForwardInterfaceSeparator(PartitionTables *cur_section) = 0; 
 
-  // recieve forward message for C'_{t-1} -> C'_t (sendForwardsCrossPartitions)
-  virtual void receiveForwardInterfaceSeparator(SectionSeparator *msg, PartitionTables *section_posterior) = 0;
+  // Receive forward message(s) for C'_{t-1} -> C'_t (aka sendForwardsCrossPartitions)
+  //    prev_section populates cur_section's incoming (left interface) separators
+  virtual void receiveForwardInterfaceSeparator(PartitionTables *prev_section, PartitionTables *cur_section) = 0;
 
 
   // compute backward message for C'_{t-1} <- C'_t (aka scatter out of root)
-  virtual SectionSeparator *computeBackwardsInterfaceSeparator(SectionIterator &t) = 0;
+  virtual void prepareBackwardInterfaceSeparator(PartitionTables *cur_section) = 0;
 
-  // recieve backward message for C'_t <- C'_{t+1} (sendBackwardCrossPartitions)
-  virtual void receiveBackwardInterfaceSeparator(SectionSeparator const &msg) = 0;
+  // send backward message for C'_{t-1} <- C'_t (sendBackwardCrossPartitions)
+  virtual void sendBackwardInterfaceSeparator(PartitionTables *prev_section, PartitionTables *cur_section) = 0;
 
 
 
@@ -86,12 +105,6 @@ class SectionInferenceAlgorithm {
     }
   }
 
-
-
-  virtual void printAllCliques(FILE *f,const bool normalize, const bool unlog,
-			       const bool justPrintEntropy,
-			       ObservationFile *pFile = NULL)
-  {}
 
   virtual void printAllCliques(PartitionStructures& ss,
 			       PartitionTables& st,

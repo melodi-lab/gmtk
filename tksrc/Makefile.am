@@ -103,8 +103,6 @@ GMTK_SmoothingTask.h GMTK_SmoothingTask.cc \
 GMTK_SectionInferenceAlgorithm.h \
 GMTK_SparseJoinInference.h GMTK_SparseJoinInference.cc \
 \
-GMTK_SectionSeparator.h \
-\
 GMTK_MaxCliqueBase.h GMTK_MaxCliqueBase.cc \
 GMTK_MaxClique.h GMTK_MaxClique.cc \
 GMTK_FactorClique.h GMTK_FactorClique.cc \
