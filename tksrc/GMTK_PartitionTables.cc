@@ -13,6 +13,13 @@
 
 
 
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+#if HAVE_HG_H
+#  include "hgstamp.h"
+#endif
+
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -37,8 +44,8 @@
 #include "GMTK_RV.h"
 #include "GMTK_DiscRV.h"
 #include "GMTK_GMTemplate.h"
-#include "GMTK_JunctionTree.h"
 #include "GMTK_GMParms.h"
+#include "GMTK_SectionIterator.h"
 
 
 ////////////////////////////////////////////////////////////////////
@@ -46,13 +53,6 @@
 //        Static variables used by classes
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
-
-#if HAVE_CONFIG_H
-#include <config.h>
-#endif
-#if HAVE_HG_H
-#include "hgstamp.h"
-#endif
 VCID(HGID)
 
 
@@ -80,6 +80,34 @@ PartitionTables::PartitionTables(JT_Partition& origin)
       ConditionalSeparatorTable(origin.separators[i]);
   }
 
+}
+
+
+void 
+PartitionTables::printAllCliques(FILE *f, BP_Range *clique_print_range,
+				 SectionIterator &stss_it, PartitionStructures &ss,
+				 const bool normalize, const bool unlog,
+				 const bool justPrintEntropy,
+				 ObservationFile *obs_file)
+{
+  char buff[2048];
+  BP_Range::iterator it = clique_print_range->begin();
+  if (obs_file)
+    obs_file->setFrame(stss_it.cur_st());
+  while (!it.at_end()) {
+    const unsigned cliqueNum = (unsigned)(*it);
+    if (cliqueNum < ss.maxCliquesSharedStructure.size()) {
+      if (obs_file) {
+	maxCliques[cliqueNum].printCliqueEntries(ss.maxCliquesSharedStructure[cliqueNum],
+						 obs_file,normalize, unlog);
+      } else {
+	sprintf(buff,"Section %d (%s), Clique %d:", stss_it.cur_st(), stss_it.cur_nm(), cliqueNum); 
+	maxCliques[cliqueNum].printCliqueEntries(ss.maxCliquesSharedStructure[cliqueNum],
+						 f,buff,normalize,unlog,justPrintEntropy);
+      }
+    }
+    it++;
+  }
 }
 
 

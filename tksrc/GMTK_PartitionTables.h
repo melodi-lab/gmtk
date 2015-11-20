@@ -33,6 +33,7 @@
 #include "GMTK_MaxCliqueBase.h"
 #include "GMTK_MaxClique.h"
 #include "GMTK_MaxCliqueTable.h"
+#include "GMTK_PartitionStructures.h"
 #include "GMTK_JT_Partition.h"
 
 #include "debug.h"
@@ -42,8 +43,7 @@ class GraphicalModel;
 class BoundaryTriangulate;
 class Partition;
 class GMTemplate;
-class JunctionTree;
-
+class SectionIterator;
 
 //
 // This object contains only the data tables that are expanded upon
@@ -78,7 +78,13 @@ class PartitionTables {
   : maxCliques(NULL), separatorCliques(NULL) {}
 
   PartitionTables(JT_Partition& origin);
-  ~PartitionTables() { clear(); }
+  virtual ~PartitionTables() { clear(); }
+
+  virtual void printAllCliques(FILE *f, BP_Range *clique_print_range,
+			       SectionIterator &stss_it, PartitionStructures &ss,
+			       const bool normalize, const bool unlog,
+			       const bool justPrintEntropy,
+			       ObservationFile *obs_file = NULL);
 
   // EM updating.
   void emIncrement(PartitionStructures& ps,
