@@ -119,67 +119,22 @@ SectionScheduler::printAllCliques(FILE *f,const bool normalize, const bool unlog
   //         be better to just iterate s/currentPartition/current_section/ over the
   //         section_table_array indices.
   SectionIterator stss_it(*this), inference_it(*this);
-  //  init_CC_CE_rvs(inference_it);
-  // stss_it.set_to_first_entry();
 
-  char buff[2048];
   if (p_clique_print_range != NULL) {
     setCurrentInferenceShiftTo(inference_it, stss_it.cur_st());
-    BP_Range::iterator it = p_clique_print_range->begin();
-    if (obs_file)
-      obs_file->setFrame(0);
-    while (!it.at_end()) {
-      const unsigned cliqueNum = (unsigned)(*it);
-      if (cliqueNum < section_structure_array[stss_it.cur_ss()].maxCliquesSharedStructure.size()) {
-	if (obs_file) {
-	  section_table_array[stss_it.cur_st()]
-	    ->maxCliques[cliqueNum]
-	    .printCliqueEntries(section_structure_array[stss_it.cur_ss()]
-				.maxCliquesSharedStructure[cliqueNum],
-				obs_file,normalize, unlog);
-	} else {
-	  sprintf(buff,"Section %d (P), Clique %d:",stss_it.cur_st(),cliqueNum); 
-	  section_table_array[stss_it.cur_st()]
-	    ->maxCliques[cliqueNum]
-	    .printCliqueEntries(section_structure_array[stss_it.cur_ss()]
-				.maxCliquesSharedStructure[cliqueNum],
-				f,buff,normalize,unlog,justPrintEntropy);
-	}
-      }
-      it++;
-    }
+    section_table_array[stss_it.cur_st()]->printAllCliques(f, p_clique_print_range, stss_it, 
+							   section_structure_array[stss_it.cur_ss()],
+							   normalize, unlog, justPrintEntropy, obs_file);
   }
   stss_it++;
 
   if (c_clique_print_range != NULL) {
     for (; !stss_it.at_last_entry(); stss_it++) {
       int currentPartition = stss_it.cur_st();
-      BP_Range::iterator it = c_clique_print_range->begin();
-      assert(inference_it.cur_st() != stss_it.cur_st());
       setCurrentInferenceShiftTo(inference_it, currentPartition);
-      assert(inference_it.cur_st() == stss_it.cur_st());
-      if (obs_file)
-	obs_file->setFrame(stss_it.cur_st());
-      while (!it.at_end()) {
-	const unsigned cliqueNum = (unsigned)(*it);
-	if (cliqueNum < section_structure_array[stss_it.cur_ss()].maxCliquesSharedStructure.size()) {
-	  if (obs_file) {
-	    section_table_array[stss_it.cur_st()]
-	      ->maxCliques[cliqueNum].
-              printCliqueEntries(section_structure_array[stss_it.cur_ss()]
-				 .maxCliquesSharedStructure[cliqueNum],
-				 obs_file,normalize,unlog);
-	  } else {
-	    sprintf(buff,"Section %d (C), Clique %d:",currentPartition,cliqueNum); 
-	    section_table_array[stss_it.cur_st()]
-	      ->maxCliques[cliqueNum].
-	      printCliqueEntries(section_structure_array[stss_it.cur_ss()]
-				 .maxCliquesSharedStructure[cliqueNum],
-				 f,buff,normalize,unlog,justPrintEntropy);
-	  }
-	}
-	it++;
-      }
+      section_table_array[stss_it.cur_st()]->printAllCliques(f, c_clique_print_range, stss_it,
+							     section_structure_array[stss_it.cur_ss()],
+							     normalize, unlog, justPrintEntropy, obs_file);
     }
   } else {
     // partNo = section_structure_array.size()-1;
@@ -188,29 +143,9 @@ SectionScheduler::printAllCliques(FILE *f,const bool normalize, const bool unlog
 
   if (e_clique_print_range != NULL) {
     setCurrentInferenceShiftTo(inference_it, stss_it.cur_st());
-    BP_Range::iterator it = e_clique_print_range->begin();
-    if (obs_file)
-      obs_file->setFrame(stss_it.cur_st());
-    while (!it.at_end()) {
-      const unsigned cliqueNum = (unsigned)(*it);
-      if (cliqueNum < section_structure_array[stss_it.cur_ss()].maxCliquesSharedStructure.size()) {
-	if (obs_file) {
-	  section_table_array[stss_it.cur_st()]
-	    ->maxCliques[cliqueNum]
-            .printCliqueEntries(section_structure_array[stss_it.cur_ss()]
-				.maxCliquesSharedStructure[cliqueNum],
-				obs_file,normalize,unlog);
-	} else {
-	  sprintf(buff,"Section %d (E), Clique %d:",stss_it.cur_st(),cliqueNum); 
-	  section_table_array[stss_it.cur_st()]
-	    ->maxCliques[cliqueNum]
-	    .printCliqueEntries(section_structure_array[stss_it.cur_ss()]
-				.maxCliquesSharedStructure[cliqueNum],
-				f,buff,normalize,unlog,justPrintEntropy);
-	}
-      }
-      it++;
-    }
+    section_table_array[stss_it.cur_st()]->printAllCliques(f, e_clique_print_range, stss_it,  
+							   section_structure_array[stss_it.cur_ss()],
+							   normalize, unlog, justPrintEntropy, obs_file);
   }
 }
 
