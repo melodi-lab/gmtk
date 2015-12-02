@@ -78,7 +78,8 @@
 #include "GMTK_MTCPT.h"
 #include "GMTK_Mixture.h"
 #include "GMTK_ObservationSource.h"
-#include "GMTK_JunctionTree.h"
+#include "GMTK_ZeroCliqueException.h"
+#include "GMTK_FactorClique.h"
 
 VCID(HGID)
 

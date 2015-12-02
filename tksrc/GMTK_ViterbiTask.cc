@@ -14,6 +14,13 @@
 
 #include "GMTK_ViterbiTask.h"
 
+ObservationFile *ViterbiTask::vitObsFile = NULL;
+char *ViterbiTask::vitObsFileName = NULL;
+char *ViterbiTask::vitObsListName = NULL;
+const char *ViterbiTask::vitObsNameSeparator = "_";
+const char *ViterbiTask::vitObsFileFmt = "pfile";
+bool  ViterbiTask::vitObsFileSwap = false;
+
 // This method is here just to make the compiler happy.
 // It should be overridden by the SectionScheduler subclass.
 

@@ -12,6 +12,12 @@
  */
 
 
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+#if HAVE_HG_H
+#  include "hgstamp.h"
+#endif
 
 #include <math.h>
 #include <stdlib.h>
@@ -38,7 +44,7 @@
 #include "GMTK_RV.h"
 #include "GMTK_DiscRV.h"
 #include "GMTK_GMTemplate.h"
-#include "GMTK_JunctionTree.h"
+#include "GMTK_SectionScheduler.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_PackCliqueValue.h"
 
@@ -48,12 +54,6 @@
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 
-#if HAVE_CONFIG_H
-#include <config.h>
-#endif
-#if HAVE_HG_H
-#include "hgstamp.h"
-#endif
 VCID(HGID)
 
 
@@ -119,7 +119,7 @@ PartitionStructures::PartitionStructures(JT_Partition& from_part,
     allrvs = res;
   }
 
-  if (JunctionTree::viterbiScore || JunctionTree::onlineViterbi) {
+  if (SectionScheduler::viterbiScore || SectionScheduler::onlineViterbi) {
 
     // set up a few members that are needed for computing and storing
     // values of this partition.

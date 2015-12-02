@@ -99,7 +99,8 @@ class MaxCliqueTable  : public IM
 {
   friend struct CliqueValueDescendingProbCompare;
   friend class PartitionStructures;
-  friend class PartitionTables;
+  friend class SectionTablesBase;
+  friend class SparseJoinSectionTables;
 
   // integer value to keep track of indenting when running in trace
   // mode. TODO: reentrant issues.

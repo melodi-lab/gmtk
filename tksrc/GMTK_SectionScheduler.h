@@ -57,15 +57,18 @@
 #include "GMTK_RV.h"
 
 #include "GMTK_PartitionStructures.h"
-#include "GMTK_PartitionTables.h"
+#include "GMTK_SectionTablesBase.h"
 
 class SectionIterator;
 
 class SectionScheduler {
   friend class SectionIterator;
-  // MUST be friends with all SectionInferenceAlgorithm subclasses
+  // MUST be friends with all SectionInferenceAlgorithm & SectionTablesBase subclasses
   friend class SectionInferenceAlgorithm;
   friend class SparseJoinInference;
+
+  friend class SectionTablesBase;
+  friend class SparseJoinSectionTables;
 
  public:
 
@@ -179,6 +182,112 @@ class SectionScheduler {
   // booleans to indicate where ve-seps should be used.
   enum VESeparatorWhere { VESEP_WHERE_P = 0x1, VESEP_WHERE_C = 0x2, VESEP_WHERE_E = 0x4 }; 
   static unsigned veSeparatorWhere;
+
+
+
+
+
+ 
+  // When doing inference of any kind, this variable determines
+  // if we should clear the clique and separator value cache
+  // between segments/utterances. It might be beneficial, for
+  // example, to retain the value cache around between segments/utterances
+  // if for example, there are many such values that are common. If
+  // not, on the other hand, setting this to true will cause
+  // an increase in memory use on each segment.
+  static bool perSegmentClearCliqueValueCache;
+
+  // Set to true if the JT weight that we compute should be an upper
+  // bound.  It is not guaranteed to be a tight upper bound, but is
+  // guaranteed to at least be *an* upper bound.
+  static bool jtWeightUpperBound;
+
+  // Set to true if the JT weight scoring mechansim should be more
+  // conservative, meaning it should not underestimate the charge of a
+  // node in a clique as much. See code for details.
+  static bool jtWeightMoreConservative;
+
+#if 0
+  // already moved into SectionScheduler
+
+  // The priority string for selecting the next edge when constructing
+  // the junction tree. Default is in .cc file, and see .cc file for
+  // what options are supported.
+  static const char* junctionTreeMSTpriorityStr;
+
+  // The priority string for selecting which clique of a partition
+  // (from the set of valid ones) should be used as the partition
+  // interface clique. See .cc file in routine findInterfaceClique()
+  // for documentation.
+  static const char* interfaceCliquePriorityStr;
+#endif 
+
+  // Set to > 0.0 if the JT weight that we compute should heavily
+  // penalize any unassigned iterated nodes. Penalty = factor
+  // that gets multiplied by number of unassigned iterated.
+  static float jtWeightPenalizeUnassignedIterated;
+  
+  // scaling factors (must be > 0 and <= 1) corresponding
+  // to how much the separator nodes' charge gets scaled. The more pruning
+  // we do during inference, the lower this should go.
+  static float jtWeightSparseNodeSepScale;
+  static float jtWeightDenseNodeSepScale;
+
+
+  // When doing scoring (prob(evidence)), do we make compute the 'viterbi'
+  // score (meaning the score of the most probable set of variables
+  // or P(evidence,best_hidden)), or the full inference score,
+  // namely \sum_hidden P(evidence,hidden)
+  static bool viterbiScore;
+
+  // if true, use mmap() to allocate memory for C_partition_values,
+  // otherwise use new
+  static bool mmapViterbi;
+  
+  // if ture, do distribute evidence just within the modified section
+  // to compute P(Q_t | X_{0:t})
+  static bool sectionDoDist;
+
+
+  // Viterbi printing triggers
+  static char *pVitTrigger;
+  static char *cVitTrigger;
+  static char *eVitTrigger;
+
+  static bool vitRunLength;
+
+  // For O(1) memory inference, write Viterbi values to this file for
+  // later printing by a separate program
+  static bool  binaryViterbiSwap;
+  static FILE *binaryViterbiFile;
+  static char *binaryViterbiFilename;
+  static gmtk_off_t binaryViterbiOffset;    // offset to start of current segment
+  static gmtk_off_t nextViterbiOffset;      // offset to start of next segment
+
+  // binary viterbi files should start with the cookie
+#define GMTK_VITERBI_COOKIE        "GMTKVIT\n"
+#define GMTK_VITERBI_COOKIE_NOLF   "GMTKVIT"
+#define GMTK_VITERBI_COOKIE_LENGTH 8
+  // cookie + BOM + k (for k-best) + # segements
+#define GMTK_VITERBI_HEADER_SIZE (sizeof(unsigned) + \
+                                  sizeof(unsigned) + \
+                                  sizeof(unsigned) + \
+                                  GMTK_VITERBI_COOKIE_LENGTH)
+
+
+  // online filtering/smoothing needs to take some Viterbi code
+  // paths but not others (particularly it should not allocate O(T)
+  // memory for the Viterbi values, but it should call the Viterbi
+  // versions of the MaxClique DE routines and setup the hidRVVector
+  // in the PartitionStructures). JunctionTree::onlineViterbi is only
+  // true in gmtkOnline so it can take the necessary code paths where
+  // viterbiScore needs to be false to avoid the unwanted code paths.
+  static bool onlineViterbi;
+
+  // should printAllCliques() print scores or probabilities?
+  static bool normalizePrintedCliques;
+
+
 
 
 
@@ -322,7 +431,7 @@ class SectionScheduler {
   // The section tables that hold the actual clique/separator tables
   // for a DGM. This might be much longer than the
   // section_structure_array but is certainly no shorter.
-  sArray <PartitionTables *> section_table_array;
+  sArray <SectionTablesBase *> section_table_array;
 
 
   // range of cliques within each section to print out when doing
@@ -379,6 +488,8 @@ class SectionScheduler {
     }
   };
 
+
+ public:
 
   virtual void setUpJTDataStructures(const char* varSectionAssignmentPrior,
 				     const char *varCliqueAssignmentPrior);
@@ -488,6 +599,28 @@ class SectionScheduler {
   // nodes in each clique.
   void sortCliqueAssignedNodesAndComputeDispositions(const char *varCliqueAssignmentPrior);
   void sortCliqueAssignedNodesAndComputeDispositions(JT_Partition& section, const char *varCliqueAssignmentPrior);
+
+
+
+  // return an upper bound on the weight of the junction tree in the
+  // given partition, where the JT weight is defined as the cost of
+  // doing collect evidence on this JT.
+  static double junctionTreeWeight(JT_Partition& part,
+				   const unsigned rootClique,
+				   set<RV*>* lp_nodes,
+				   set<RV*>* rp_nodes);
+
+  // Given a set of maxcliques for a partition, and an interface for
+  // this (can be left right, or any set including empty, the only
+  // condition is that it must be covered by at least one of the
+  // cliques), compute the junction tree for this set and return the
+  // estimated JT cost. This is a static routine so can be called from
+  // anywhere.
+  static double junctionTreeWeight(vector<MaxClique>& cliques,
+				   const set<RV*>& interfaceNodes,
+				   set<RV*>* lp_nodes,
+				   set<RV*>* rp_nodes);
+				   
 
 };
 

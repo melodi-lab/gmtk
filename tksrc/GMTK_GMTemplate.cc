@@ -45,10 +45,7 @@
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
 #include "GMTK_Mixture.h"
-#if 0
-#include "GMTK_ObservationMatrix.h"
-#endif
-#include "GMTK_JunctionTree.h"
+#include "GMTK_SectionScheduler.h"
 #include "GMTK_Section.h"
 
 #if HAVE_CONFIG_H
@@ -1079,7 +1076,7 @@ writeCliqueInformation(oDataStreamFile& os)
     }
     os.writeComment("  --- Prologue max clique weight = %f, total weight = %f, jt_weight = %f\n",
 	   p_maxWeight,p_totalWeight,
-		    JunctionTree::junctionTreeWeight(P.cliques,
+		    SectionScheduler::junctionTreeWeight(P.cliques,
 						     PCInterface_in_P,
 						     NULL,&PCInterface_in_P));
 
@@ -1101,7 +1098,7 @@ writeCliqueInformation(oDataStreamFile& os)
 	   S,
 	   c_totalWeight,
 	   c_totalWeight - log10((double)S),
-           JunctionTree::junctionTreeWeight(C.cliques,
+           SectionScheduler::junctionTreeWeight(C.cliques,
 					    CEInterface_in_C,
 					    &PCInterface_in_C,&CEInterface_in_C));
 
@@ -1121,7 +1118,7 @@ writeCliqueInformation(oDataStreamFile& os)
     const set <RV*> emptySet;
     os.writeComment("  --- Epilogue max clique weight = %f, total weight = %f, jt_weight = %f\n",
 	   e_maxWeight,e_totalWeight,
-           JunctionTree::junctionTreeWeight(E.cliques,
+           SectionScheduler::junctionTreeWeight(E.cliques,
 					    emptySet,
 					    &CEInterface_in_E,NULL));
 

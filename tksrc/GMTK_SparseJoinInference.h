@@ -18,7 +18,7 @@
 #include "GMTK_SectionIterator.h"
 #include "GMTK_SectionInferenceAlgorithm.h"
 
-#include "GMTK_PartitionTables.h"
+#include "GMTK_SparseJoinSectionTables.h"
 
 class SparseJoinInference : public SectionInferenceAlgorithm {
  public:
@@ -27,36 +27,48 @@ class SparseJoinInference : public SectionInferenceAlgorithm {
 
 
   // allocate a new SectionTables for the indicated section - free with the below
-  PartitionTables *getSectionTables(JT_Partition& origin) { return new PartitionTables(origin); }
+  SectionTablesBase *getSectionTables(JT_Partition& origin) { return new SparseJoinSectionTables(origin); }
   
   // free a SectionTables allocated with the above
-  void releaseSectionTables(PartitionTables *tables) { delete tables; }
+  void releaseSectionTables(SectionTablesBase *tables) {
+    if (tables) {
+      SparseJoinSectionTables *t = dynamic_cast<SparseJoinSectionTables *>(tables);
+      assert(t);
+      delete t;
+    }
+  }
   
   // return a pointer to the SectionTables for section t - The memory is owned by
   // this object; do not try to free it yourself
-  PartitionTables *getSectionTables(unsigned t);
+  SectionTablesBase *getSectionTables(unsigned t);
 
 
   // All message actions are named from the perspective of C_t.
 
-  // compute forward message for C'_t -> C'_{t+1} (aka gather into root)
-  void prepareForwardInterfaceSeparator(PartitionTables *cur_section);
+  // Prepare to compute forward message for C'_t -> C'_{t+1} (aka gather into root)
+  //   cur_section must be SparseJoinSectionTables
+  void prepareForwardInterfaceSeparator(SectionTablesBase *cur_section);
 
-  // receive forward message for C'_{t-1} -> C'_t (sendForwardsCrossPartitions)
-  void receiveForwardInterfaceSeparator(PartitionTables *prev_section, PartitionTables *cur_section);
+  // Receive forward message for C'_{t-1} -> C'_t (sendForwardsCrossPartitions)
+  //   cur_section must be SparseJoinSectionTables
+  //   prev_section may be any subclass of SectionTablesBase
+  void receiveForwardInterfaceSeparator(SectionTablesBase *prev_section, SectionTablesBase *cur_section);
 
 
-  // compute backward message for C'_{t-1} <- C'_t (aka scatter out of root)
-  void prepareBackwardInterfaceSeparator(PartitionTables *cur_section);
+  // Prepare to compute backward message for C'_{t-1} <- C'_t (aka scatter out of root)
+  //   cur_section must be SparseJoinSectionTables
+  void prepareBackwardInterfaceSeparator(SectionTablesBase *cur_section);
 
-  // send backward message for C'_{t-1} <- C'_t (sendBackwardCrossPartitions)
-  void sendBackwardInterfaceSeparator(PartitionTables *prev_section, PartitionTables *cur_section);
+  // Send backward message for C'_{t-1} <- C'_t (sendBackwardCrossPartitions)
+  //   cur_section must be SparseJoinSectionTables
+  //   prev_section may be any subclass of SectionTablesBase
+  void sendBackwardInterfaceSeparator(SectionTablesBase *prev_section, SectionTablesBase *cur_section);
 
 
  private:
 
   void ceGatherIntoRoot(PartitionStructures &ss,
-			PartitionTables &st,
+			SectionTablesBase &st,
 			// index of root clique in the section
 			const unsigned root,
 			// message order of the JT in this section
@@ -71,7 +83,7 @@ class SparseJoinInference : public SectionInferenceAlgorithm {
 
   void ceSendForwardsCrossSections(// previous section
 				   PartitionStructures &previous_ss,
-				   PartitionTables &previous_st,
+				   SectionTablesBase &previous_st,
 				   // root clique of the previous section (i.e., the
 				   // right interface clique) 
 				   const unsigned previous_sect_root,
@@ -83,7 +95,7 @@ class SparseJoinInference : public SectionInferenceAlgorithm {
 
 				   // next section
 				   PartitionStructures &next_ss,
-				   PartitionTables &next_st,
+				   SectionTablesBase &next_st,
 				   // leaf clique of next section (i.e., index number
 				   // of the left interface clique of next section)
 				   const unsigned next_sect_leaf,
@@ -93,20 +105,20 @@ class SparseJoinInference : public SectionInferenceAlgorithm {
 				   const unsigned next_sect_num);
 
   void deScatterOutofRoot(PartitionStructures &ss,
-			  PartitionTables &st,
+			  SectionTablesBase &st,
 			  const unsigned root,
 			  vector< pair<unsigned,unsigned> > &message_order,
 			  const char *const sect_type_name,
 			  const unsigned sect_num);
 
   void deSendBackwardCrossSections(PartitionStructures &previous_ss,
-				   PartitionTables &previous_st,
+				   SectionTablesBase &previous_st,
 				   const unsigned previous_section_root,
 				   const char *const previous_section_type_name,
 				   const unsigned previous_section_num,
 				   // 
 				   PartitionStructures &next_ss,
-				   PartitionTables &next_st,
+				   SectionTablesBase &next_st,
 				   const unsigned next_section_leaf,
 				   const char *const next_section_type_name,
 				   const unsigned next_section_num);

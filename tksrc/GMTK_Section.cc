@@ -12,6 +12,12 @@
  */
 
 
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+#if HAVE_HG_H
+#  include "hgstamp.h"
+#endif
 
 #include <math.h>
 #include <stdlib.h>
@@ -42,18 +48,8 @@
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
 #include "GMTK_Mixture.h"
-#if 0
-#include "GMTK_ObservationMatrix.h"
-#endif
-#include "GMTK_JunctionTree.h"
 #include "GMTK_Section.h"
 
-#if HAVE_CONFIG_H
-#include <config.h>
-#endif
-#if HAVE_HG_H
-#include "hgstamp.h"
-#endif
 VCID(HGID)
 
 

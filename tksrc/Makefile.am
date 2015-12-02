@@ -113,6 +113,8 @@ GMTK_ConditionalSeparatorTable.h GMTK_ConditionalSeparatorTable.cc \
 GMTK_CliqueValueHolder.h GMTK_CliqueValueHolder.cc \
 GMTK_VHashMapUnsignedUnsignedKeyUpdatable.h \
 GMTK_VHashMapUnsignedUnsignedKeyUpdatable.cc \
+GMTK_SectionTablesBase.h \
+GMTK_SparseJoinSectionTables.h GMTK_SparseJoinSectionTables.cc \
 \
 hgstamp.h \
 GMTK_ZeroCliqueException \
@@ -144,7 +146,6 @@ GMTK_LinMeanCondDiagGaussian.h GMTK_LinMeanCondDiagGaussian.cc \
 GMTK_RngDecisionTree.h GMTK_RngDecisionTree.cc \
 GMTK_NameCollection.h GMTK_NameCollection.cc \
 GMTK_GMTemplate.h GMTK_GMTemplate.cc \
-GMTK_JunctionTree.h GMTK_JunctionTree.cc \
 GMTK_CountIterator.h \
 GMTK_GraphicalModel.h GMTK_GraphicalModel.cc \
 GMTK_BoundaryTriangulate.h GMTK_BoundaryTriangulate.cc \
@@ -182,7 +183,6 @@ GMTK_NamedObject.h \
 GMTK_Arguments.h \
 GMTK_DiscRVType.h \
 GMTK_FactorInfo.h \
-GMTK_JunctionTreeNBestVals.h \
 GMTK_NamedObject.h \
 GMTK_ProgramDefaultParms.h \
 GMTK_ScPnSh_HidDiscRV.h \
@@ -206,15 +206,13 @@ GMTK_GammaComponent.h GMTK_GammaComponent.cc \
 GMTK_BetaComponent.h GMTK_BetaComponent.cc \
 GMTK_Section.h GMTK_Section.cc \
 GMTK_JT_Partition.h GMTK_JT_Partition.cc \
-GMTK_PartitionTables.h GMTK_PartitionTables.cc \
 GMTK_PartitionStructures.h GMTK_PartitionStructures.cc \
 GMTK_BinaryViterbiFileUtils.h GMTK_BinaryViterbiFileUtils.cc \
-GMTK_JunctionTreeMessagePassing.cc \
-GMTK_JunctionTreeIslandMessagePassing.cc \
 version.h
 
 # GMTK_MissingFeatureScaledDiagGaussian.cc 
 # GMTK_MissingFeatureScaledDiagGaussian.h 
+# GMTK_JunctionTreeNBestVals.h 
 
 libXOPT_a_SOURCES = \
 GMTK_DiagGaussianOpt.cc \
@@ -235,44 +233,46 @@ dlopen_cfunc_dts.cc
 
 
 bin_PROGRAMS = \
-gmtkTime \
-gmtkJT \
-gmtkEMtrain \
-gmtkKernel \
-gmtkViterbi \
-gmtkTriangulate \
-gmtkParmConvert \
-gmtkTFmerge \
-gmtkDTindex \
-gmtkNGramIndex \
-gmtkTie \
-gmtkModelInfo \
-gmtkOnline \
-gmtkPrint \
-gmtkMMItrain \
-$(dmlp_programs) $(GMTKVIZ) $(OSXBUNDLE)
+gmtkJT 
+
+#gmtkTime \
+#gmtkJT \
+#gmtkEMtrain \
+#gmtkKernel \
+#gmtkViterbi \
+#gmtkTriangulate \
+#gmtkParmConvert \
+#gmtkTFmerge \
+#gmtkDTindex \
+#gmtkNGramIndex \
+#gmtkTie \
+#gmtkModelInfo \
+#gmtkOnline \
+#gmtkPrint \
+#gmtkMMItrain \
+#$(dmlp_programs) $(GMTKVIZ) $(OSXBUNDLE)
 EXTRA_PROGRAMS = gmtkDMLPtrain gmtkViz gmtkViz.app abstest dmlp
 
-gmtkTie_SOURCES = gmtkTie.cc
+#gmtkTie_SOURCES = gmtkTie.cc
 
 gmtkJT_SOURCES = gmtkJT.cc
 
-gmtkTime_SOURCES = gmtkTime.cc
+#gmtkTime_SOURCES = gmtkTime.cc
 
-gmtkEMtrain_SOURCES = gmtkEMtrain.cc
+#gmtkEMtrain_SOURCES = gmtkEMtrain.cc
 
 
-gmtkDMLPtrain_SOURCES = gmtkDMLPtrain.cc
-gmtkDMLPtrain_CPPFLAGS = $(AM_CPPFLAGS) $(VERSIONFLAG)
-gmtkDMLPtrain_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(BLAS_CFLAGS) $(PTHREAD_CFLAGS) $(ISOCXX11FLAGS)
-gmtkDMLPtrain_LDADD = $(LDADD) $(PTHREAD_LIBS)
+#gmtkDMLPtrain_SOURCES = gmtkDMLPtrain.cc
+#gmtkDMLPtrain_CPPFLAGS = $(AM_CPPFLAGS) $(VERSIONFLAG)
+#gmtkDMLPtrain_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(EXCXXFLAGS) $(BLAS_CFLAGS) $(PTHREAD_CFLAGS) $(ISOCXX11FLAGS)
+#gmtkDMLPtrain_LDADD = $(LDADD) $(PTHREAD_LIBS)
 if BUILD_DMLP
-gmtkDMLPtrain_LDADD += $(builddir)/../deepMLP/libDMLP.a
+#gmtkDMLPtrain_LDADD += $(builddir)/../deepMLP/libDMLP.a
 endif
 if BUILD_PHIPAC
-gmtkDMLPtrain_LDADD += $(builddir)/../deepMLP/libPHiPAC.a
+#gmtkDMLPtrain_LDADD += $(builddir)/../deepMLP/libPHiPAC.a
 endif
-gmtkDMLPtrain_LDADD += $(BLAS_LIBS)
+#gmtkDMLPtrain_LDADD += $(BLAS_LIBS)
 
 dmlp_SOURCES = dmlp.cc
 dmlp_CPPFLAGS = $(AM_CPPFLAGS) $(VERSIONFLAG)
@@ -280,27 +280,27 @@ dmlp_CXXFLAGS = $(DEBUGFLAGS) $(OPTFLAGS) $(PTHREAD_CFLAGS)
 dmlp_LDADD = $(LDADD) $(PTHREAD_LIBS) 
 
 
-gmtkKernel_SOURCES = gmtkKernel.cc
+#gmtkKernel_SOURCES = gmtkKernel.cc
 
-gmtkViterbi_SOURCES = gmtkViterbi.cc
+#gmtkViterbi_SOURCES = gmtkViterbi.cc
 
-gmtkPrint_SOURCES = gmtkPrint.cc
+#gmtkPrint_SOURCES = gmtkPrint.cc
 
-gmtkTriangulate_SOURCES = gmtkTriangulate.cc
+#gmtkTriangulate_SOURCES = gmtkTriangulate.cc
 
-gmtkParmConvert_SOURCES = gmtkParmConvert.cc
+#gmtkParmConvert_SOURCES = gmtkParmConvert.cc
 
-gmtkModelInfo_SOURCES = gmtkModelInfo.cc
+#gmtkModelInfo_SOURCES = gmtkModelInfo.cc
 
-gmtkTFmerge_SOURCES = gmtkTFmerge.cc
+#gmtkTFmerge_SOURCES = gmtkTFmerge.cc
 
-gmtkDTindex_SOURCES = gmtkDTindex.cc
+#gmtkDTindex_SOURCES = gmtkDTindex.cc
 
-gmtkNGramIndex_SOURCES = gmtkNGramIndex.cc
+#gmtkNGramIndex_SOURCES = gmtkNGramIndex.cc
 
-gmtkOnline_SOURCES = gmtkOnline.cc
+#gmtkOnline_SOURCES = gmtkOnline.cc
 
-gmtkMMItrain_SOURCES = gmtkMMItrain.cc
+#gmtkMMItrain_SOURCES = gmtkMMItrain.cc
 
 #gmtkUnroll_SOURCES = gmtkUnroll.o  libGMTK.a ../miscSupport/libmiscSupport.a .NOEXPORT
 #	-@rm -f $@
@@ -308,10 +308,10 @@ gmtkMMItrain_SOURCES = gmtkMMItrain.cc
 
 
 
-gmtkViz_SOURCES = gmtkViz.cc
-gmtkViz_CXXFLAGS = $(VERSIONFLAG) $(VIZCXXFLAGS) $(DEBUGFLAGS) $(OPTFLAGS) $(X_CFLAGS) $(EXTRA_WX_FLAGS)
-gmtkViz_LDADD = $(LDADD) $(VIZLDFLAGS) $(X_PRE_LIBS) $(X_LIBS) $(X_EXTRA_LIBS) -lX11 $(OSXLDFLAGS)
-gmtkViz_app_SOURCES = Info.plist.in wxmac.icns
+#gmtkViz_SOURCES = gmtkViz.cc
+#gmtkViz_CXXFLAGS = $(VERSIONFLAG) $(VIZCXXFLAGS) $(DEBUGFLAGS) $(OPTFLAGS) $(X_CFLAGS) $(EXTRA_WX_FLAGS)
+#gmtkViz_LDADD = $(LDADD) $(VIZLDFLAGS) $(X_PRE_LIBS) $(X_LIBS) $(X_EXTRA_LIBS) -lX11 $(OSXLDFLAGS)
+#gmtkViz_app_SOURCES = Info.plist.in wxmac.icns
 
 if MAKE_BUNDLE
 gmtkViz.app: gmtkViz.app/Contents/PkgInfo

@@ -76,12 +76,8 @@
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
 #include "GMTK_Mixture.h"
-#if 0
-#  include "GMTK_ObservationMatrix.h"
-#else
-#  include "GMTK_ObservationSource.h"
-#endif
-#include "GMTK_JunctionTree.h"
+#include "GMTK_ObservationSource.h"
+#include "GMTK_SectionScheduler.h"
 
 #if HAVE_CONFIG_H
 #include <config.h>
@@ -1121,7 +1117,7 @@ MaxClique::computeVESeparators()
 	  !c->allParents[0]->switching()) {
 	// continue checking condition PCG
 	RV * p = c->allParents[0];
-	if ((JunctionTree::useVESeparators & JunctionTree::VESEP_PCG)  && 
+	if ((SectionScheduler::useVESeparators & SectionScheduler::VESEP_PCG)  && 
 	    (assignedProbNodes.find(p) !=  assignedProbNodes.end())) {
 
 	  float logProdCard = 
@@ -1146,7 +1142,7 @@ MaxClique::computeVESeparators()
 	  vesep.grandChild = c;
 	  veSeparators.push_back(vesep);
 	}
-      } else if ((JunctionTree::useVESeparators & JunctionTree::VESEP_PC) 
+      } else if ((SectionScheduler::useVESeparators & SectionScheduler::VESEP_PC) 
 		 &&
 		 (c->deterministic() && c->allParents.size() > 1)) {
 	// continue checking condition PC.

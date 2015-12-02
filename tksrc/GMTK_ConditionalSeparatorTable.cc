@@ -65,13 +65,14 @@
 #include "GMTK_GMTemplate.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_MaxClique.h"
-#include "GMTK_ConditionalSeparatorTable.h"
 #include "GMTK_MDCPT.h"
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
 #include "GMTK_Mixture.h"
 #include "GMTK_ObservationSource.h"
-#include "GMTK_JunctionTree.h"
+#include "GMTK_SeparatorClique.h"
+#include "GMTK_ConditionalSeparatorTable.h"
+
 VCID(HGID)
 
 

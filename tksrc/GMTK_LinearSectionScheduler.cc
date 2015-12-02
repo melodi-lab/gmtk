@@ -9,12 +9,21 @@
  *
  */
 
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif
+#if HAVE_HG_H
+#  include "hgstamp.h"
+#endif
+
+#include "GMTK_SectionTablesBase.h"
 #include "GMTK_LinearSectionScheduler.h"
 
 #include "GMTK_FileSource.h"
 #include "GMTK_StreamSource.h"
 
 
+VCID(HGID)
 
 LinearSectionScheduler::~LinearSectionScheduler() {}
 
@@ -44,8 +53,8 @@ LinearSectionScheduler::probEvidence(SectionInferenceAlgorithm *algorithm,
   algorithm->set_inference_it(&inference_it);
   init_CC_CE_rvs(inference_it);
   
-  PartitionTables *prev_sect_tab = NULL;
-  PartitionTables *cur_sect_tab = algorithm->getSectionTables(inference_it.cur_jt_section());
+  SectionTablesBase *prev_sect_tab = NULL;
+  SectionTablesBase *cur_sect_tab = algorithm->getSectionTables(inference_it.cur_jt_section());
   
   // do P'
   algorithm->prepareForwardInterfaceSeparator(cur_sect_tab);
@@ -69,7 +78,7 @@ LinearSectionScheduler::probEvidence(SectionInferenceAlgorithm *algorithm,
   //finished:
   
   if (numSectionsDone) *numSectionsDone = t;
-  logpr probE = algorithm->probEvidence(cur_sect_tab);
+  logpr probE = cur_sect_tab->probEvidence(inference_it, *this);
   algorithm->releaseSectionTables(prev_sect_tab);
   algorithm->releaseSectionTables(cur_sect_tab);
   return probE;
@@ -100,8 +109,8 @@ LinearSectionScheduler::forwardBackward(SectionInferenceAlgorithm *algorithm,
   
   infoMsg(IM::Low,"Collecting Evidence\n");
 
-  PartitionTables *prev_section = NULL, 
-                  *cur_section  = algorithm->getSectionTables(0);
+  SectionTablesBase *prev_section = NULL, 
+                    *cur_section  = algorithm->getSectionTables(0);
   // do P'
 
   // FIXME - move skipLISeparator check here? 
@@ -127,7 +136,7 @@ LinearSectionScheduler::forwardBackward(SectionInferenceAlgorithm *algorithm,
   assert ( inference_it.at_e() );
   infoMsg(IM::Low,"Done Collecting Evidence\n");
 
-  logpr probE = algorithm->probEvidence(cur_section);
+  logpr probE = cur_section->probEvidence(inference_it, *this);
   printf("Segment %u, after CE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
 	 observation_source->segmentNumber(),
 	 probE.val(),

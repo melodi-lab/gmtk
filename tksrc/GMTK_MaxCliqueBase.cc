@@ -69,7 +69,7 @@
 #include "GMTK_MTCPT.h"
 #include "GMTK_Mixture.h"
 #include "GMTK_ObservationSource.h"
-#include "GMTK_JunctionTree.h"
+#include "GMTK_SectionScheduler.h"
 
 VCID(HGID)
 
@@ -925,8 +925,8 @@ MaxCliqueBase
   // 	  weight_sep_dense,
   // 	  weight_remainder);
 
-  return JunctionTree::jtWeightSparseNodeSepScale*weight_sep_sparse + 
-    JunctionTree::jtWeightDenseNodeSepScale*weight_sep_dense 
+  return SectionScheduler::jtWeightSparseNodeSepScale*weight_sep_sparse + 
+    SectionScheduler::jtWeightDenseNodeSepScale*weight_sep_dense 
     + weight_remainder;
 #endif
 }

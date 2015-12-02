@@ -37,7 +37,6 @@
 #include "GMTK_RV.h"
 #include "GMTK_DiscRV.h"
 #include "GMTK_GMTemplate.h"
-#include "GMTK_JunctionTree.h"
 #include "GMTK_GMParms.h"
 #include "GMTK_JT_Partition.h"
 

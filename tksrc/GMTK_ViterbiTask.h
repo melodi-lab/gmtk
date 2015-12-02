@@ -27,6 +27,14 @@ class ViterbiTask {
 
  public:
 
+  static ObservationFile *vitObsFile;
+  static char *vitObsFileName;
+  static char *vitObsListName;
+  static const char *vitObsNameSeparator;
+  static const char *vitObsFileFmt;
+  static bool  vitObsFileSwap;
+  vector<string> vitObsVariableNames;
+
   virtual ~ViterbiTask() {}
 
   /*
