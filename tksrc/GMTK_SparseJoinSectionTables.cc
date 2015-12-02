@@ -84,9 +84,23 @@ SparseJoinSectionTables::SparseJoinSectionTables(JT_Partition& origin)
 
 void 
 SparseJoinSectionTables::projectToOutgoingSeparators(SectionIterator &stss_it,
+						     PartitionStructures &sourceSectionStructures, 
 						     ConditionalSeparatorTable *separatorTableArray,
-						     ConditionalSeparatorTable::SharedLocalStructure &sepSharedStructureArray)
+						     ConditionalSeparatorTable::SharedLocalStructure &sepSharedStructure)
 {
+
+  // Here the section sending the message (projecting to outgoing separators) knows
+  // it's using sparse join inference. So it's using SparseJoinSectionTables,
+  // SparseJoinMaxCliques, etc. In particular, the section knows how to find its
+  // cliques with outgoing separators (formerly just the single right interface clique),
+  // how many MaxCliques are in the section, and the MaxCliqueTable::SharedLocalStructure
+  // of each of those cliques...
+
+  // for each maxCliques[i] with an outgoing separator
+  unsigned i = stss_it.prev_ri();
+  //   for each of maxClique[i]'s outgoing separators j
+          maxCliques[i].ceSendToOutgoingSeparator(sourceSectionStructures.maxCliquesSharedStructure[i],
+						  *separatorTableArray /* [j] */, sepSharedStructure);
 }
 
 

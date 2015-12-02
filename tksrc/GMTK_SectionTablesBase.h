@@ -86,6 +86,7 @@ class SectionTablesBase {
   virtual logpr probEvidence(SectionIterator &inference_it, SectionScheduler &myjt) = 0;
 
   virtual void projectToOutgoingSeparators(SectionIterator &stss_it,
+					   PartitionStructures &sourceSectionStructures, 
 					   ConditionalSeparatorTable *separatorTableArray,
 					   ConditionalSeparatorTable::SharedLocalStructure &sepSharedStructureArray) = 0;
 
