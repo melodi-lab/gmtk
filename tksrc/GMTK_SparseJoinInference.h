@@ -68,7 +68,7 @@ class SparseJoinInference : public SectionInferenceAlgorithm {
  private:
 
   void ceGatherIntoRoot(PartitionStructures &ss,
-			SectionTablesBase &st,
+			SparseJoinSectionTables &st,
 			// index of root clique in the section
 			const unsigned root,
 			// message order of the JT in this section

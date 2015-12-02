@@ -40,8 +40,9 @@ class SparseJoinSectionTables : public SectionTablesBase {
   }
 
   void projectToOutgoingSeparators(SectionIterator &stss_it,
+				   PartitionStructures &sourceSectionStructures, 
 				   ConditionalSeparatorTable *separatorTableArray,
-				   ConditionalSeparatorTable::SharedLocalStructure &sepSharedStructureArray);
+				   ConditionalSeparatorTable::SharedLocalStructure &sepSharedStructure);
   
   void printAllCliques(FILE *f, BP_Range *clique_print_range,
 		       SectionIterator &stss_it, PartitionStructures &ss,
@@ -58,7 +59,7 @@ class SparseJoinSectionTables : public SectionTablesBase {
   void clear() {
     delete [] maxCliques;
     maxCliques = NULL;
-    SparseJoinSectionTables::clear();
+    SectionTablesBase::clear();
   }
 
   void init(PartitionStructures& ps);

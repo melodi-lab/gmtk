@@ -111,6 +111,7 @@ SparseJoinInference::receiveForwardInterfaceSeparator(SectionTablesBase *prev_se
   // don't know prev_section's class - need to add 
   //   SectionTablesBase::SendToOutgoingSeparators(ConditionalSeparatorClique *destination_separators, dest_shared_struct)
   prev_section->projectToOutgoingSeparators(*inference_it, 
+					    previous_ps,
 					    &(next_st->separatorCliques[next_ps.separatorCliquesSharedStructure.size()-1]),
 					    next_ps.separatorCliquesSharedStructure[next_ps.separatorCliquesSharedStructure.size()-1]);
 
@@ -242,7 +243,7 @@ SparseJoinInference::sendBackwardInterfaceSeparator(SectionTablesBase *prev_sect
  */
 void 
 SparseJoinInference::ceGatherIntoRoot(PartitionStructures &ss,
-				      SectionTablesBase &st,
+				      SparseJoinSectionTables &st,
 				      const unsigned root,
 				      vector< pair<unsigned,unsigned> > &message_order,
 				      const char *const section_type_name,
@@ -250,7 +251,7 @@ SparseJoinInference::ceGatherIntoRoot(PartitionStructures &ss,
 				      const bool clear_when_done,
 				      const bool also_clear_origins)
 {
-#if 0
+#if 1
   // first check that this is not an empty section.
   if (ss.maxCliquesSharedStructure.size() == 0)
     return;
