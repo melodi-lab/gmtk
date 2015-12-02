@@ -17,17 +17,17 @@
 #define GMTK_BINARYVITERBIFILEUTILS_H
 
 #include "vbyteswapping.h"
-#include "GMTK_JunctionTree.h"
+#include "GMTK_SectionScheduler.h"
 
 // only call this with integer types: [unsigned] {char,short,int,long}
 template<typename Z>
 int readVitZ(Z &x) {
-  if (fread(&x, sizeof(Z), 1, JunctionTree::binaryViterbiFile) != 1) {
+  if (fread(&x, sizeof(Z), 1, SectionScheduler::binaryViterbiFile) != 1) {
     char *err = strerror(errno);
     error("ERROR: Unable to read binary Viterbi file '%s': %s\n",
-	  JunctionTree::binaryViterbiFilename, err);
+	  SectionScheduler::binaryViterbiFilename, err);
   }
-  if (JunctionTree::binaryViterbiSwap) {
+  if (SectionScheduler::binaryViterbiSwap) {
     switch (sizeof(Z)) {
     case 1: return 1;
     case 2: x = swapb_short_short(x); break;
@@ -43,12 +43,12 @@ int readVitZ(Z &x) {
 // only call this with real types: {float,double}
 template<typename R>
 int readVitR(R &x) {
-  if (fread(&x, sizeof(R), 1, JunctionTree::binaryViterbiFile) != 1) {
+  if (fread(&x, sizeof(R), 1, SectionScheduler::binaryViterbiFile) != 1) {
     char *err = strerror(errno);
     error("ERROR: Unable to read binary Viterbi file '%s': %s\n",
-	  JunctionTree::binaryViterbiFilename, err);
+	  SectionScheduler::binaryViterbiFilename, err);
   }
-  if (JunctionTree::binaryViterbiSwap) {
+  if (SectionScheduler::binaryViterbiSwap) {
     switch (sizeof(R)) {
     case 4: x = swapb_f32_f32(x); break;
     case 8: x = swapb_f64_f64(x); break;

@@ -22,6 +22,8 @@
 
 class ProbEvidenceTask {
 
+  static bool probEvidenceTimeExpired;
+
  public:
 
   virtual ~ProbEvidenceTask() {}

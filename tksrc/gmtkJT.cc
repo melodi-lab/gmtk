@@ -81,7 +81,6 @@
 #include "GMTK_DlinkMatrix.h"
 #include "GMTK_ProgramDefaultParms.h"
 #include "GMTK_BoundaryTriangulate.h"
-#include "GMTK_JunctionTree.h"
 #include "GMTK_MaxClique.h"
 
 

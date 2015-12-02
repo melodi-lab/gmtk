@@ -42,14 +42,14 @@ class GraphicalModel;
 class BoundaryTriangulate;
 class Partition;
 class GMTemplate;
-class JunctionTree;
+class SectionScheduler;
 
 
 // A PartitionStructures partition is used to store partition
 // information for the final unrolled set of random variables. This
 // does not contain information about the clique tables.  
 class PartitionStructures {
-  friend class JunctionTree;
+  friend class SectionScheduler;
 public:
 
   // original partition that this has been cloned from.

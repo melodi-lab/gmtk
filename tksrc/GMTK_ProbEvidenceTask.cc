@@ -14,6 +14,8 @@
 
 #include "GMTK_ProbEvidenceTask.h"
 
+bool ProbEvidenceTask::probEvidenceTimeExpired = false;
+
 // This method is here just to make the compiler happy.
 // It should be overridden by the SectionScheduler subclass.
 

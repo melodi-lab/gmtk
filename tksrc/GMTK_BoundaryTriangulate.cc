@@ -39,10 +39,7 @@
 #include "GMTK_GMParms.h"
 #include "GMTK_MSCPT.h"
 #include "GMTK_MTCPT.h"
-#if 0
-#include "GMTK_ObservationMatrix.h"
-#endif
-#include "GMTK_JunctionTree.h"
+#include "GMTK_SectionScheduler.h"
 #include "GMTK_GraphicalModel.h"
 #include "GMTK_NetworkFlowTriangulate.h"
 #include "GMTK_CountIterator.h"
@@ -757,7 +754,7 @@ graphWeight(vector<MaxClique>& cliques,
   if (!useJTWeight)
     return graphWeight(cliques);
   else
-    return JunctionTree::junctionTreeWeight(cliques,interfaceNodes,lp_nodes,rp_nodes);
+    return SectionScheduler::junctionTreeWeight(cliques,interfaceNodes,lp_nodes,rp_nodes);
 }
 
 

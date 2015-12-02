@@ -77,7 +77,8 @@
 #include <map>
 
 class PartitionStructures;
-class PartitionTables;
+class SectionTablesBase;
+class SparseJoinSectionTables;
 class SeparatorClique;
 class ConditionalSeparatorTable;
 //class ConditionalSeparatorTable::SharedLocalStructure;
@@ -102,7 +103,9 @@ class ConditionalSeparatorTable : public IM
 {
   friend class MaxCliqueTable;
   friend class PartitionStructures;
-  friend class PartitionTables;
+  friend class SectionTablesBase;
+  friend class SparseJoinSectionTables;
+  friend class SparseJoinInference;
   friend class SeparatorClique;
 
   // Member functions that are shared accross multiple instances of

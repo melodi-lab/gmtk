@@ -75,7 +75,8 @@
 #include "GMTK_MTCPT.h"
 #include "GMTK_Mixture.h"
 #include "GMTK_ObservationSource.h"
-#include "GMTK_JunctionTree.h"
+#include "GMTK_SectionScheduler.h"
+#include "GMTK_ZeroCliqueException.h"
 
 VCID(HGID)
 
@@ -2180,7 +2181,7 @@ ceSendToOutgoingSeparator(MaxCliqueTable::SharedLocalStructure& sharedStructure,
     // same point), but we do it here anyway for numerical consistency
     // with the general case.
     for (unsigned cvn=0;cvn<numCliqueValuesUsed;) {
-      if (JunctionTree::viterbiScore) {
+      if (SectionScheduler::viterbiScore) {
 	// sv.remValues.ptr[0].p.assign_if_greater(cliqueValues.ptr[cvn].p);
 	// TODO: add k-best
 	if (cliqueValues.ptr[cvn].p > sv.remValues.ptr[0].p) {
@@ -2338,12 +2339,12 @@ ceSendToOutgoingSeparator(MaxCliqueTable::SharedLocalStructure& sharedStructure,
 	      sv.numRemValuesUsed = 1;	  
 	      // initialize and assign.
 	      sv.remValues.ptr[0].p = cliqueValues.ptr[cvn].p;
-	      if (JunctionTree::viterbiScore)
+	      if (SectionScheduler::viterbiScore)
 		sv.remValues.ptr[0].backPointer = cvn;
 	    } else {
 	      // already there so must have hit before.
 	      // we thus accumulate.
-	      if (JunctionTree::viterbiScore) {
+	      if (SectionScheduler::viterbiScore) {
 		// sv.remValues.ptr[0].p.assign_if_greater(cliqueValues.ptr[cvn].p);
 		if (cliqueValues.ptr[cvn].p > sv.remValues.ptr[0].p) {
 		  sv.remValues.ptr[0].p = cliqueValues.ptr[cvn].p;
@@ -2435,7 +2436,7 @@ ceSendToOutgoingSeparator(MaxCliqueTable::SharedLocalStructure& sharedStructure,
 
 	// We've finally got the entry, so accumulate the clique's
 	// probability into this separator's probability.
-	if (JunctionTree::viterbiScore) {
+	if (SectionScheduler::viterbiScore) {
 	  // sv.remValues.ptr[*remIndexp].p.assign_if_greater(cliqueValues.ptr[cvn].p);
 	  if (cliqueValues.ptr[cvn].p > sv.remValues.ptr[*remIndexp].p) {
 	    sv.remValues.ptr[*remIndexp].p = cliqueValues.ptr[cvn].p;
@@ -4807,7 +4808,7 @@ deReceiveFromIncommingSeparator(MaxCliqueTable::SharedLocalStructure& sharedStru
 				ConditionalSeparatorTable& sep,
 				ConditionalSeparatorTable::SharedLocalStructure& sepSharedStructure)
 {
-  if (JunctionTree::viterbiScore) {
+  if (SectionScheduler::viterbiScore) {
     return deReceiveFromIncommingSeparatorViterbi(sharedStructure,
 						  sep,
 						  sepSharedStructure);
@@ -5151,7 +5152,7 @@ deScatterToOutgoingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStruct
 			      ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray)
 {
 
-  if (JunctionTree::viterbiScore) {
+  if (SectionScheduler::viterbiScore) {
     // While we might think that there is nothing to do in this case
     // since if the RVs associated with the current clique have been
     // set to the appropriate clique table entry, the associated

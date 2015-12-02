@@ -34,7 +34,7 @@
 #define GMTK_FACTORCLIQUE_H
 
 #if HAVE_CONFIG_H
-#include <config.h>
+#  include <config.h>
 #endif
 
 
@@ -76,7 +76,7 @@ class FactorClique : public IM
   friend class GraphicalModel;
   friend class GMTemplate;
   friend class ConditionalSeparatorTable;
-  friend class JunctionTree;
+  friend class SectionScheduler;
 
 public:
 

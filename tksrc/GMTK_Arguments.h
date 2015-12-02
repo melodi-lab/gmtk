@@ -471,7 +471,7 @@ Arg("map",Arg::Opt,dlopenFilenames,"Deterministic mapping dynamic library file. 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   Arg("jtwUB",
-      Arg::Opt,JunctionTree::jtWeightUpperBound,
+      Arg::Opt,SectionScheduler::jtWeightUpperBound,
       "True means jtWeight is allways an upper bound on true JT weight, false means jtWeight is estimate"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
@@ -1093,7 +1093,7 @@ Arg("map",Arg::Opt,dlopenFilenames,"Deterministic mapping dynamic library file. 
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("clearCliqueValMem",Arg::Opt,JunctionTree::perSegmentClearCliqueValueCache,"Free clique/separator value cache for each segment"),
+  Arg("clearCliqueValMem",Arg::Opt,SectionScheduler::perSegmentClearCliqueValueCache,"Free clique/separator value cache for each segment"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
@@ -1113,7 +1113,7 @@ Arg("map",Arg::Opt,dlopenFilenames,"Deterministic mapping dynamic library file. 
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("mmapViterbiValues",Arg::Opt,JunctionTree::mmapViterbi,"Use mmap() to get memory to hold Viterbi values"),
+  Arg("mmapViterbiValues",Arg::Opt,SectionScheduler::mmapViterbi,"Use mmap() to get memory to hold Viterbi values"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
@@ -1333,7 +1333,7 @@ static bool  cliquePrintSwap       = false;
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("cliquePrintNormalize",Arg::Opt,JunctionTree::normalizePrintedCliques,"Normalize scores of each printed clique to probabilities."),
+  Arg("cliquePrintNormalize",Arg::Opt,SectionScheduler::normalizePrintedCliques,"Normalize scores of each printed clique to probabilities."),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
@@ -1411,7 +1411,7 @@ static bool  cliquePrintSwap       = false;
       infoMsg(IM::SoftWarning,"-doDistributeEvidence T is redundant with -island T\n");
     }
 #endif
-    if (JunctionTree::sectionDoDist) {
+    if (SectionScheduler::sectionDoDist) {
       error("ERROR: -sectionPartialDoDist T is not compatible with -island T\n");
     }
   }
@@ -1454,7 +1454,7 @@ static bool  cliquePrintSwap       = false;
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("numSmoothingSections",Arg::Opt,JunctionTree::numSmoothingPartitions,"Number of future modified sections to use for online smoothing"),
+  Arg("numSmoothingSections",Arg::Opt,SectionScheduler::numSmoothingPartitions,"Number of future modified sections to use for online smoothing"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
@@ -1569,8 +1569,8 @@ static const char* varCliqueAssignmentPrior = "COT";
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("jcap",Arg::Opt,JunctionTree::junctionTreeMSTpriorityStr,"Junction Tree Clique MST Sorting Priority. From Set: [D,E,S,U,V,W,H,O,L,Q]"),
-  Arg("icap",Arg::Opt,JunctionTree::interfaceCliquePriorityStr,"Interface Clique Priority Determiner Priority. From Set: [W,D,H,O,I]"),
+  Arg("jcap",Arg::Opt,SectionScheduler::junctionTreeMSTpriorityStr,"Junction Tree Clique MST Sorting Priority. From Set: [D,E,S,U,V,W,H,O,L,Q]"),
+  Arg("icap",Arg::Opt,SectionScheduler::interfaceCliquePriorityStr,"Interface Clique Priority Determiner Priority. From Set: [W,D,H,O,I]"),
 
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
@@ -1624,7 +1624,7 @@ static const char* varCliqueAssignmentPrior = "COT";
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("viterbiScore",Arg::Opt,JunctionTree::viterbiScore,"Compute p(o,h_max) (rather than sum_h p(o,h))"),
+  Arg("viterbiScore",Arg::Opt,SectionScheduler::viterbiScore,"Compute p(o,h_max) (rather than sum_h p(o,h))"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
@@ -1648,15 +1648,15 @@ static const char* varCliqueAssignmentPrior = "COT";
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
   Arg("doDistributeEvidence",Arg::Opt,doDistributeEvidence,"Also run distribute-evidence"),
-  Arg("sectionPartialDoDist",Arg::Opt,JunctionTree::sectionDoDist,"Compute P(Q_t|X_{0:t}), where Q_t are the hidden variables in modified section t and X_{0:t} is the evidence observed up to modified section t"),
+  Arg("sectionPartialDoDist",Arg::Opt,SectionScheduler::sectionDoDist,"Compute P(Q_t|X_{0:t}), where Q_t are the hidden variables in modified section t and X_{0:t} is the evidence observed up to modified section t"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
-  if (doDistributeEvidence && JunctionTree::sectionDoDist) {
+  if (doDistributeEvidence && SectionScheduler::sectionDoDist) {
     error("ERROR: cannot do both -doDistributeEvidence and -sectionDoDist\n");
   }
 #if defined(GMTK_ARG_ISLAND)
-  if (JunctionTree::sectionDoDist && island) {
+  if (SectionScheduler::sectionDoDist && island) {
     error("ERROR: -sectionPartialDoDist T is not compatible with -island T\n");
   }
 #endif
@@ -1699,7 +1699,7 @@ static const char* varCliqueAssignmentPrior = "COT";
   }
 #endif 
 
-  if (JunctionTree::sectionDoDist && onlyKeepSeparators) {
+  if (SectionScheduler::sectionDoDist && onlyKeepSeparators) {
     error("ERROR: -sectionPartialDoDist T is not compatible with -keepOnlyInterfaceSeparatorMemory T\n");
   }
  
@@ -2278,11 +2278,11 @@ static char * mVitValsFileName = (char *)"-";
 #ifndef GMTK_ONLINE_UNSUPPORTED
   // The current Viterbi to observation file writing code only works for original (not modified) partitions.
   // gmtkOnline only does modified partitiions, so these aren't supported.
-  Arg("vitObsFileName", Arg::Opt, JunctionTree::vitObsFileName, "Output filename for Viterbi observation file"),
-  Arg("vitObsListFileName", Arg::Opt, JunctionTree::vitObsListName, "Output list filename for Viterbi observation file (HDF5, HTK, ASCII, Binary)"),
-  Arg("vitObsNameSeparator", Arg::Opt, JunctionTree::vitObsNameSeparator, "String to use as separator when outputting HTK, ASCII, or binary Viterbi observation file"),
-  Arg("vitObsFileFormat", Arg::Opt, JunctionTree::vitObsFileFmt, "Output Viterbi observation file format (hdf5,htk,binary,ascii,flatascii,pfile)"),
-  Arg("vitObsFileSwap", Arg::Opt, JunctionTree::vitObsFileSwap, "Do byte swapping when outputting PFile, HTK, or binary Viterbi observation file"),
+  Arg("vitObsFileName", Arg::Opt, ViterbiTask::vitObsFileName, "Output filename for Viterbi observation file"),
+  Arg("vitObsListFileName", Arg::Opt, ViterbiTask::vitObsListName, "Output list filename for Viterbi observation file (HDF5, HTK, ASCII, Binary)"),
+  Arg("vitObsNameSeparator", Arg::Opt, ViterbiTask::vitObsNameSeparator, "String to use as separator when outputting HTK, ASCII, or binary Viterbi observation file"),
+  Arg("vitObsFileFormat", Arg::Opt, ViterbiTask::vitObsFileFmt, "Output Viterbi observation file format (hdf5,htk,binary,ascii,flatascii,pfile)"),
+  Arg("vitObsFileSwap", Arg::Opt, ViterbiTask::vitObsFileSwap, "Do byte swapping when outputting PFile, HTK, or binary Viterbi observation file"),
 #endif
 
   Arg("mVitValsFile",Arg::Opt,mVitValsFileName,"Modified Section Vit: file to print viterbi values in ASCII, '-' for stdout"),
@@ -2295,9 +2295,9 @@ static char * mVitValsFileName = (char *)"-";
   // Binary Viterbi output requires knowing in advance how many segments there are.
   // This is impossible with streaming input.
 #if defined(GMTK_ARGUMENTS_REQUIRE_BINARY_VIT_FILE)
-  Arg("binaryVitFile",Arg::Req,JunctionTree::binaryViterbiFilename,"File containing binary Viterbi values for printing"),
+  Arg("binaryVitFile",Arg::Req,SectionScheduler::binaryViterbiFilename,"File containing binary Viterbi values for printing"),
 #else
-  Arg("binaryVitFile",Arg::Opt,JunctionTree::binaryViterbiFilename,"File to write binary Viterbi values for later printing. Note that all values are stored in the file, not just those selected by the filter, trigger, and compression options below"),
+  Arg("binaryVitFile",Arg::Opt,SectionScheduler::binaryViterbiFilename,"File to write binary Viterbi values for later printing. Note that all values are stored in the file, not just those selected by the filter, trigger, and compression options below"),
 #endif
 #endif
 
@@ -2307,11 +2307,11 @@ static char * mVitValsFileName = (char *)"-";
   Arg("vitCaseSensitiveRegexFilter",Arg::Opt,vitCaseSensitiveRegexFilter,"Case sensitivity of the rv regular expression filter"),
 
 
-  Arg("pVitTrigger",Arg::Opt,JunctionTree::pVitTrigger, "Leaf node expression for Viteribi printing trigger in prolog"),
-  Arg("cVitTrigger",Arg::Opt,JunctionTree::cVitTrigger, "Leaf node expression for Viteribi printing trigger in chunk"),
-  Arg("eVitTrigger",Arg::Opt,JunctionTree::eVitTrigger, "Leaf node expression for Viteribi printing trigger in epilog"),
+  Arg("pVitTrigger",Arg::Opt,SectionScheduler::pVitTrigger, "Leaf node expression for Viteribi printing trigger in prolog"),
+  Arg("cVitTrigger",Arg::Opt,SectionScheduler::cVitTrigger, "Leaf node expression for Viteribi printing trigger in chunk"),
+  Arg("eVitTrigger",Arg::Opt,SectionScheduler::eVitTrigger, "Leaf node expression for Viteribi printing trigger in epilog"),
 
-  Arg("vitRunLengthCompress",Arg::Opt,JunctionTree::vitRunLength, "Only print a chunk when its Viterbi values differ from the previous chunk"),
+  Arg("vitRunLengthCompress",Arg::Opt,SectionScheduler::vitRunLength, "Only print a chunk when its Viterbi values differ from the previous chunk"),
 
 #ifndef GMTK_ONLINE_UNSUPPORTED
   // These are based on original partitions - gmtkOnline only does modified partitions
@@ -2345,15 +2345,15 @@ static char * mVitValsFileName = (char *)"-";
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
-  if (JunctionTree::binaryViterbiFilename) {
+  if (SectionScheduler::binaryViterbiFilename) {
 #if defined(GMTK_VITERBI_FILE_WRITE)
-    JunctionTree::binaryViterbiFile = fopen(JunctionTree::binaryViterbiFilename, "w+b");
+    SectionScheduler::binaryViterbiFile = fopen(SectionScheduler::binaryViterbiFilename, "w+b");
 #else
-    JunctionTree::binaryViterbiFile = fopen(JunctionTree::binaryViterbiFilename, "rb");
+    SectionScheduler::binaryViterbiFile = fopen(SectionScheduler::binaryViterbiFilename, "rb");
 #endif
-    if (!JunctionTree::binaryViterbiFile) {
+    if (!SectionScheduler::binaryViterbiFile) {
       char *err = strerror(errno);
-      error("ERROR: Failed to open '%s': %s\n", JunctionTree::binaryViterbiFilename, err);
+      error("ERROR: Failed to open '%s': %s\n", SectionScheduler::binaryViterbiFilename, err);
     }
   }
 
@@ -2361,11 +2361,11 @@ static char * mVitValsFileName = (char *)"-";
     error("%s: Can't use both -vitPrintRange and -vitFrameRange\n", argerr);
   }
 
-  if ( vitFrameRangeFilter && ! (vitValsFileName || JunctionTree::vitObsFileName)) {
+  if ( vitFrameRangeFilter && ! (vitValsFileName || SectionScheduler::vitObsFileName)) {
     error("%s: -vitFrameRange requires -vitValsFile or -vitObsFileName to be specified\n", argerr);
   }
 
-  if (JunctionTree::vitObsFileName && (vitValsFileName || mVitValsFileName) ) {
+  if (SectionScheduler::vitObsFileName && (vitValsFileName || mVitValsFileName) ) {
     error("%s: -vitObsFileName cannot be used with -vitValsFileName or -mVitValsFileName\n", argerr);
   }
 #else
@@ -2484,19 +2484,19 @@ static char * mVitValsFileName = (char *)"-";
 
 
   Arg("jtwPUI",
-      Arg::Opt,JunctionTree::jtWeightPenalizeUnassignedIterated,
+      Arg::Opt,SectionScheduler::jtWeightPenalizeUnassignedIterated,
       "Amount jtWeight should penalize cliques with unassigned iterated nodes (0.0 means no penalty)"),
 
   Arg("jtwMC",
-      Arg::Opt,JunctionTree::jtWeightMoreConservative,
+      Arg::Opt,SectionScheduler::jtWeightMoreConservative,
       "True means jtWeight should be more conservative (more upper bound like) regarding charges to some nodes"),
 
   Arg("jtwSNSC",
-      Arg::Opt,JunctionTree::jtWeightSparseNodeSepScale,
+      Arg::Opt,SectionScheduler::jtWeightSparseNodeSepScale,
       "Amount to scale charge of a sparse node in a clique's incomming separator"),
 
   Arg("jtwDNSC",
-      Arg::Opt,JunctionTree::jtWeightDenseNodeSepScale,
+      Arg::Opt,SectionScheduler::jtWeightDenseNodeSepScale,
       "Amount to scale charge of a dense node in a clique's incomming separator"),
 
   Arg("pfCobWeight",

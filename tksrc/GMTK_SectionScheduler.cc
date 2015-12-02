@@ -26,15 +26,44 @@ const char* SectionScheduler::P1_n = "P'";
 const char* SectionScheduler::Co_n = "C'";
 const char* SectionScheduler::E1_n = "E'";
 
+
+// clear all memory on each new segment.
+bool SectionScheduler::perSegmentClearCliqueValueCache = true;
 // turns on or off VE separators, and determins the type to use PC, or PCG. 
 unsigned SectionScheduler::useVESeparators = (VESEP_PC | VESEP_PCG);
 // turn off VE separators by default.
 unsigned SectionScheduler::veSeparatorWhere = 0;
 // uncomment to turn on VE separators.
 // unsigned SectionScheduler::veSeparatorWhere = (VESEP_WHERE_P | VESEP_WHERE_C | VESEP_WHERE_E);
-
+bool SectionScheduler::jtWeightUpperBound = false;
+bool SectionScheduler::jtWeightMoreConservative = false;
+float SectionScheduler::jtWeightPenalizeUnassignedIterated = 0.0;
+float SectionScheduler::jtWeightSparseNodeSepScale = 1.0;
+float SectionScheduler::jtWeightDenseNodeSepScale = 1.0;
 const char* SectionScheduler::junctionTreeMSTpriorityStr = "DSU";
 const char* SectionScheduler::interfaceCliquePriorityStr = "W";
+
+bool SectionScheduler::viterbiScore = false;
+bool SectionScheduler::onlineViterbi = false;
+bool SectionScheduler::mmapViterbi = true;
+bool SectionScheduler::sectionDoDist = false;
+bool SectionScheduler::binaryViterbiSwap = false;
+
+char * SectionScheduler::pVitTrigger = NULL;
+char * SectionScheduler::cVitTrigger = NULL;
+char * SectionScheduler::eVitTrigger = NULL;
+bool   SectionScheduler::vitRunLength = false;
+
+FILE * SectionScheduler::binaryViterbiFile = NULL;
+char * SectionScheduler::binaryViterbiFilename = NULL;
+off_t  SectionScheduler::binaryViterbiOffset;
+off_t  SectionScheduler::nextViterbiOffset;
+bool SectionScheduler::normalizePrintedCliques = true;
+
+
+
+
+
 
 
 struct PairUnsigned1stElementCompare {  
@@ -3419,3 +3448,213 @@ SectionScheduler::setUpJTDataStructures(const char* varSectionAssignmentPrior,
 
   sortCliqueAssignedNodesAndComputeDispositions(varCliqueAssignmentPrior);
 }
+
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * SectionScheduler::junctionTreeWeight()
+ *
+ * Compute the 'junction tree weight' (roughly, the log10(cost of
+ * doing inference)) for the set of cliques given in cliques. Note,
+ * cliques *must* be a valid set of maxcliques of a junction tree --
+ * if they are not, unexpected results are returned.
+ *
+ * Note also, this returns an upper bound on the cost of a JT in this
+ * section, rather than the actual cost. It returns an upper bound
+ * since it assumes that the separator driven iteration will be at
+ * full cardinality (it can't tell the difference between previous
+ * assigned nodes which have been heavily cut back and previous
+ * unassigned nodes which are really at full cardinality). Therefore,
+ * this routine returns the conservative upper bound. The goal
+ * is to minimize this upper bound.
+ *
+ *
+ * Preconditions:
+ *   The section must have been fully instantiated. I.e.,
+ *   we must have that assignRVsToCliques have been called.
+ *
+ * Postconditions:
+ *   The weight, as inference would do it, of this clique is 
+ *   computed.
+ *
+ * Side Effects:
+ *   none.
+ *
+ * Results:
+ *   the weight
+ *
+ *-----------------------------------------------------------------------
+ */
+double
+SectionScheduler::junctionTreeWeight(JT_Partition& part,
+				 const unsigned rootClique,
+				 set<RV*>* lp_nodes,
+				 set<RV*>* rp_nodes)
+{
+  // check for case of empty E or P section.
+  if (part.cliques.size() == 0)
+    return 0;
+
+  MaxClique& curClique = part.cliques[rootClique];
+
+  set <RV*> empty;
+  // @@ add in unassigned in section information to next call
+  double weight = curClique.weightInJunctionTree(part.unassignedInPartition,
+						 jtWeightUpperBound,
+						 jtWeightMoreConservative,
+						 true,
+						 lp_nodes,rp_nodes);
+  // double weight = curClique.weight();
+  for (unsigned childNo=0;
+       childNo<curClique.children.size();childNo++) {
+    double child_weight = junctionTreeWeight(part,
+					     curClique.children[childNo],lp_nodes,rp_nodes);
+    // i.e., log addition for weight = weight + child_weight
+    weight = log10add(weight,child_weight);
+  }
+  return weight;
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * SectionScheduler::junctionTreeWeight()
+ *
+ * Given a set of maxcliques for a section, and an interface for
+ * this (can be left right, or any set including empty, the only
+ * condition is that it must be covered by at least one of the
+ * cliques), compute the junction tree for this set and return the
+ * estimated JT cost. This is a static routine so can be called from
+ * anywhere.
+ *
+ * Preconditions:
+ *   one of the cliques must cover interface nodes. I.e.,
+ *   there must be an i such that cliques[i].nodes >= interfaceNodes.
+ *
+ * Postconditions:
+ *   An estimate of the weight, as in inference, of this clique set is 
+ *   computed and returned.
+ *
+ * Side Effects:
+ *   none.
+ *
+ * Results:
+ *   the weight
+ *
+ *-----------------------------------------------------------------------
+ */
+double
+SectionScheduler::junctionTreeWeight(vector<MaxClique>& cliques,
+				 const set<RV*>& interfaceNodes,
+				 set<RV*>* lp_nodes,
+				 set<RV*>* rp_nodes)
+
+{
+
+  // const bool is_P_section = (lp_nodes == NULL);
+  const bool is_E_section = (rp_nodes == NULL);
+
+  // might be a section that is empty.
+  if (cliques.size() == 0)
+    return 0.0;
+
+  Section part;
+  const set <RV*> emptySet;
+  part.cliques = cliques;
+
+
+  // set up the nodes into part
+  for (unsigned i=0;i<cliques.size();i++) {
+    // while we're at it, clear up the JT structures we're
+    // about to create.
+    cliques[i].clearJTStructures();
+    set_union(emptySet.begin(),emptySet.end(),
+	      cliques[i].nodes.begin(),cliques[i].nodes.end(),
+	      inserter(part.nodes,part.nodes.end()));
+  }
+  createSectionJunctionTree(part);
+
+  // a JT version of this section.
+  JT_Partition jt_part(part,emptySet,interfaceNodes);
+
+  bool tmp;
+  unsigned root;
+  if (!is_E_section) 
+    jt_part.findRInterfaceClique(root,tmp,interfaceCliquePriorityStr);
+  else {
+    // 'E_root_clique case'
+    // Presumably, this is an E section, so the root should be done
+    // same as E_root_clique computed above.
+    // "update E_root_clique"
+    // root = 0; 
+    // currently, find max weight clique.
+    double weight = -10e20;
+    for (unsigned i=0;i<cliques.size();i++) {
+      if (MaxClique::computeWeight(cliques[i].nodes) > weight) {
+	root = i;
+      }
+    }
+  }
+
+  createDirectedGraphOfCliques(jt_part,root);
+  assignRVsToCliques("candidate section",jt_part,root,"","");
+
+  vector< pair<unsigned,unsigned> > message_order;
+  vector< unsigned > leaf_cliques;
+  setUpMessagePassingOrder(jt_part,
+			   root,
+			   message_order,
+			   ~0x0,
+			   leaf_cliques);
+
+  // Note that since we're calling createSeparators(jt_part,msg_order)
+  // here directly, this means that the left interface clique will not
+  // have its separator to the left section filled in.
+  createSeparators(jt_part,message_order);
+
+  computeSeparatorIterationOrders(jt_part);
+  getCumulativeUnassignedIteratedNodes(jt_part,root);
+
+  // If the code is changed so that jt weight needs the sorted
+  // assigned nodes or the dispositions, we'll need to make a static version of
+  // the following routine and call it here.
+  // sortCliqueAssignedNodesAndComputeDispositions();
+
+  // return jt_part.cliques[root].cumulativeUnassignedIteratedNodes.size();
+  double weight = junctionTreeWeight(jt_part,root,lp_nodes,rp_nodes);
+
+  if (jtWeightPenalizeUnassignedIterated > 0.0) {
+    unsigned badness_count=0;
+    set <RV*>::iterator it;
+    for (it = jt_part.cliques[root].cumulativeUnassignedIteratedNodes.begin();
+	 it != jt_part.cliques[root].cumulativeUnassignedIteratedNodes.end();
+	 it++) 
+      {
+	RV* rv = (*it);
+
+	assert ( rv-> discrete() );
+	DiscRV* drv = (DiscRV*)rv;
+	if (!drv->sparse())
+	  continue;
+
+	// if it has not at all been assigned in this section, we
+	// assume it has been assigned in previous section, and dont'
+	// count it's cost.
+	if (jt_part.unassignedInPartition.find(rv) ==
+	    jt_part.unassignedInPartition.end())
+	  continue;
+
+	badness_count ++;
+      }
+    weight = badness_count*jtWeightPenalizeUnassignedIterated + weight;
+  }
+  return weight;
+
+  // return badness_count*1000 + weight;
+  // return badness_count;
+
+}
+

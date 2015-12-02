@@ -17,12 +17,12 @@
 #include "GMTK_BinaryViterbiFileUtils.h"
 
 void readVitIntVector(size_t len, unsigned *ptr) {
-  if (fread(ptr, sizeof(unsigned), len, JunctionTree::binaryViterbiFile) != len) {
+  if (fread(ptr, sizeof(unsigned), len, SectionScheduler::binaryViterbiFile) != len) {
     char *err = strerror(errno);
     error("ERROR: faild to read Viterbi values from '%s': %s\n", 
-	  JunctionTree::binaryViterbiFilename, err);
+	  SectionScheduler::binaryViterbiFilename, err);
   }
-  if (JunctionTree::binaryViterbiSwap) {
+  if (SectionScheduler::binaryViterbiSwap) {
     swapb_vi32_vi32(len, (int *)ptr, (int *)ptr);
   }
 }
