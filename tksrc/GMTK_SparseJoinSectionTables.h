@@ -43,6 +43,11 @@ class SparseJoinSectionTables : public SectionTablesBase {
 				   PartitionStructures &sourceSectionStructures, 
 				   ConditionalSeparatorTable *separatorTableArray,
 				   ConditionalSeparatorTable::SharedLocalStructure &sepSharedStructure);
+
+  void receiveBackwardsSeparators(SectionIterator &stss_it,
+				  PartitionStructures &sourceSectionStructures, 
+				  ConditionalSeparatorTable *separatorTableArray,
+				  ConditionalSeparatorTable::SharedLocalStructure &sepSharedStructure);
   
   void printAllCliques(FILE *f, BP_Range *clique_print_range,
 		       SectionIterator &stss_it, PartitionStructures &ss,

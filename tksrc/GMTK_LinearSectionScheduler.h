@@ -65,7 +65,8 @@ class LinearSectionScheduler : public SectionScheduler,
 			unsigned *numUsableFrames = NULL,
 			const bool cliquePosteriorNormalize = true,
 			const bool cliquePosteriorUnlog = true,
-			ObservationFile *posteriorFile = NULL);
+			ObservationFile *posteriorFile = NULL,
+			const bool doDistributeEvidence = false);
 
   logpr viterbi(SectionInferenceAlgorithm *algorithm,
 		unsigned nBest = 1,

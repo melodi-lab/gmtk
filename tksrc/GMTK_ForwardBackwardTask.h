@@ -44,7 +44,8 @@ class ForwardBackwardTask {
 				unsigned *numUsableFrames = NULL,
 				const bool cliquePosteriorNormalize = true,
 				const bool cliquePosteriorUnlog = true,
-				ObservationFile *posteriorFile = NULL);
+				ObservationFile *posteriorFile = NULL,
+				const bool doDistributeEvidence = false);
 };
 
 #endif

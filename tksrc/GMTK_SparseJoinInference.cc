@@ -108,8 +108,12 @@ SparseJoinInference::receiveForwardInterfaceSeparator(SectionTablesBase *prev_se
 	  next_part_num,
 	  next_part_leaf);
 
-  // don't know prev_section's class - need to add 
-  //   SectionTablesBase::SendToOutgoingSeparators(ConditionalSeparatorClique *destination_separators, dest_shared_struct)
+  // We don't know the inference algorithm, and hence the SectionTablesBase subclass,
+  // used for prev_section. But we do know that next_st is a SparseJoinSectionTables, since
+  // we're running SparseJoinInference on that section. So we know how to find next_st's
+  // incoming separators. Thus prev_section can figure out for itself how to project 
+  // itself down onto next_st's incoming separators (all SectionInferenceAlgorithms 
+  // speak the same section separator data structure).
   prev_section->projectToOutgoingSeparators(*inference_it, 
 					    previous_ps,
 					    &(next_st->separatorCliques[next_ps.separatorCliquesSharedStructure.size()-1]),
@@ -153,7 +157,8 @@ SparseJoinInference::prepareBackwardInterfaceSeparator(SectionTablesBase *cur_se
   }
 
 #if 0
-  if (viterbiScore)
+  // FIXME - add API to get/set Viterbi values as sets of RVs
+  if (myjt->viterbiScore)
     recordPartitionViterbiValue(inference_it);
 #endif
 } 
@@ -198,12 +203,28 @@ SparseJoinInference::sendBackwardInterfaceSeparator(SectionTablesBase *prev_sect
     deReceiveFromIncommingSeparator(previous_ps.maxCliquesSharedStructure[previous_part_root],
 				    next_st->separatorCliques[next_ps.separatorCliquesSharedStructure.size()-1],
 				    next_ps.separatorCliquesSharedStructure[next_ps.separatorCliquesSharedStructure.size()-1]);
+#else
+  // We don't know the inference algorithm, and hence the SectionTablesBase subclass,
+  // used for prev_section. But we do know that next_st is a SparseJoinSectionTables, since
+  // we're running SparseJoinInference on that section. So we know how to find next_st's
+  // outgoing (for the backwards pass) separators. Thus prev_section can figure out for itself 
+  // how to project receive next_st's interface separators (all SectionInferenceAlgorithms 
+  // speak the same section separator data structure).
+  prev_section->receiveBackwardsSeparators(*inference_it,
+					   previous_ps,
+					   &(next_st->separatorCliques[next_ps.separatorCliquesSharedStructure.size()-1]),
+					   next_ps.separatorCliquesSharedStructure[next_ps.separatorCliquesSharedStructure.size()-1]);
 #endif
-  if (! myjt->section_debug_range.contains((int)previous_part_num)) {
+  if (IM::messageGlb(IM::InferenceMemory, IM::Med+9)) {
+    // FIXME - previous_st->reportMemoryUsageTo(previous_ps,stdout);
+  }
+
+  if (! myjt->section_debug_range.contains((int)next_part_num)) {
     IM::setGlbMsgLevel(IM::InferenceMemory, inferenceMemoryDebugLevel);
     IM::setGlbMsgLevel(IM::Inference, inferenceDebugLevel);
   }
 }
+
 
 
 
@@ -251,7 +272,6 @@ SparseJoinInference::ceGatherIntoRoot(PartitionStructures &ss,
 				      const bool clear_when_done,
 				      const bool also_clear_origins)
 {
-#if 1
   // first check that this is not an empty section.
   if (ss.maxCliquesSharedStructure.size() == 0)
     return;
@@ -333,31 +353,34 @@ SparseJoinInference::ceGatherIntoRoot(PartitionStructures &ss,
   if (zeroClique) {
     throw ZeroCliqueException(); // continue to abort segment
   }
-#endif
 }
 
 
 /*-
  *-----------------------------------------------------------------------
- * SparseJoinInference::ceSendForwardsCrossSections
+ * JunctionTree::deScatterOutofRoot
  *   
- *   Collect Evidence Send To Next Section: This routine sends a
- *   message from the right interface clique of a left (or previous)
- *   section to the left interface clique of a right (or next)
- *   section in the section series. It is assumed that the right
- *   interface clique has had all its incomming messages sent to it.
+ *   Distribute Evidence Scatter Outof Root: This routine does a
+ *   distribute evidence pass for this section, and scatters all
+ *   messages outof the root within the current section. It does so
+ *   using the message order given in the argument 'message_order',
+ *   and scatters out of the provided root clique (which is the right
+ *   interface clique of this section). By "Scatter", I mean it
+ *   sends messages from the root clique distributing everything
+ *   ultimately to all leaf cliques in this section.
  *
  * See Also:
- *   Dual routine: SparseJoinInference::deSendBackwardsCrossSections()
+ *   Dual routine: JunctionTree::ceGatherIntoRoot()
  *
  *
  * Preconditions:
- *   It is assumed that:
- *     1) the right interface of the previous section must have had
- *        all messages sent to it.
- * 
+ *   It is assumed that either:
+ *     1) this is the ritht-most section
+ *  or 2) that the right interface clique within this section has had a message
+ *        sent to it from the right neighbor section.
+ *
  * Postconditions:
- *     the left interface of the next section is now set up.
+ *     All cliques in the section have all messages but one sent to it.
  *
  * Side Effects:
  *     all sections will have been instantiated to the extent that the messages (with
@@ -368,76 +391,60 @@ SparseJoinInference::ceGatherIntoRoot(PartitionStructures &ss,
  *
  *-----------------------------------------------------------------------
  */
+
 void 
-SparseJoinInference::ceSendForwardsCrossSections(PartitionStructures &previous_ss,
-						 SectionTablesBase &previous_st,
-						 const unsigned previous_sect_root,
-						 const char *const previous_sect_type_name,
-						 const unsigned previous_sect_num,
-						 PartitionStructures &next_ss,
-						 SectionTablesBase &next_st,
-						 const unsigned next_sect_leaf,
-						 const char *const next_sect_type_name,
-						 const unsigned next_sect_num)
+SparseJoinInference::deScatterOutofRoot(// the section
+					PartitionStructures &ss, 
+					SparseJoinSectionTables &st,
+					// root (right interface clique) of this section
+					const unsigned root,
+					vector< pair<unsigned,unsigned> > &message_order,
+					// name (debugging/status msgs)
+					const char *const sect_type_name,
+					// section number (debugging/status msgs)
+					const unsigned sect_num)
 {
-#if 0
-  // check for empty sections.
-  if (previous_ss.maxCliquesSharedStructure.size() == 0 || next_ss.maxCliquesSharedStructure.size() == 0)
+  // first check that this is not an empty section.
+  if (ss.maxCliquesSharedStructure.size() == 0)
     return;
 
-  unsigned inference_debug_level = IM::glbMsgLevel(IM::Inference);
-  unsigned inference_memory_debug_level = IM::glbMsgLevel(IM::InferenceMemory);
+  unsigned inferenceDebugLevel = IM::glbMsgLevel(IM::Inference);
+  unsigned inferenceMemoryDebugLevel = IM::glbMsgLevel(IM::InferenceMemory);
 
-  if (! myjt->section_debug_range.contains((int)next_sect_num)) {
+  if (! myjt->section_debug_range.contains((int)sect_num)) {
     IM::setGlbMsgLevel(IM::Inference, IM::glbMsgLevel(IM::DefaultModule));
     IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
   }
 
+  infoMsg(IM::Inference, IM::Med+5,"DE: distributing out of section root %s,section[%d]: clique %d\n",
+	  sect_type_name,sect_num,root);
+  st.maxCliques[root].
+    deScatterToOutgoingSeparators(ss.maxCliquesSharedStructure[root],
+				  st.separatorCliques,
+				  ss.separatorCliquesSharedStructure.ptr);
+  for (unsigned msgNoP1=message_order.size();msgNoP1 > 0; msgNoP1 --) {
+    const unsigned to = message_order[msgNoP1-1].first;
+    const unsigned from = message_order[msgNoP1-1].second;
+    infoMsg(IM::Inference, IM::Mod,"DE: message %s,section[%d]: clique %d <-- clique %d\n",
+	    sect_type_name, sect_num, to, from);
+    st.maxCliques[to].
+      deReceiveFromIncommingSeparator(ss.maxCliquesSharedStructure[to],
+				      st.separatorCliques,
+				      ss.separatorCliquesSharedStructure.ptr);
 
-  infoMsg(IM::Inference, IM::Mod,"CE: message %s,section[%d],clique(%d) --> %s,section[%d],clique(%d)\n",
-	  previous_sect_type_name,
-	  previous_sect_num,
-	  previous_sect_root,
-	  next_sect_type_name,
-	  next_sect_num,
-	  next_sect_leaf);
-  previous_st.maxCliques[previous_sect_root].
-    ceSendToOutgoingSeparator(previous_ss.maxCliquesSharedStructure[previous_sect_root],
-			      next_st.separatorCliques[next_ss.separatorCliquesSharedStructure.size()-1],
-			      next_ss.separatorCliquesSharedStructure[next_ss.separatorCliquesSharedStructure.size()-1]);
-
-  if (IM::messageGlb(IM::InferenceMemory, IM::Med+9)) {
-    previous_st.reportMemoryUsageTo(previous_ss,stdout);
+    infoMsg(IM::Inference, IM::Med+5,"DE: distributing out of %s,section[%d]: clique %d\n",
+	    sect_type_name, sect_num, to);
+    st.maxCliques[to].
+      deScatterToOutgoingSeparators(ss.maxCliquesSharedStructure[to],
+				    st.separatorCliques,
+				    ss.separatorCliquesSharedStructure.ptr);
   }
 
-  if (! myjt->section_debug_range.contains((int)next_sect_num)) {
-    IM::setGlbMsgLevel(IM::InferenceMemory, inference_memory_debug_level);
-    IM::setGlbMsgLevel(IM::Inference, inference_debug_level);
+  if (! myjt->section_debug_range.contains((int)sect_num)) {
+    IM::setGlbMsgLevel(IM::InferenceMemory, inferenceMemoryDebugLevel);
+    IM::setGlbMsgLevel(IM::Inference, inferenceDebugLevel);
   }
-#endif
+
+
 }
 
-void 
-SparseJoinInference::deScatterOutofRoot(PartitionStructures &ss,
-					SectionTablesBase &st,
-					const unsigned root,
-					vector< pair<unsigned,unsigned> > &message_order,
-					const char *const sect_type_name,
-					const unsigned sect_num)
-{
-}
-
-void 
-SparseJoinInference::deSendBackwardCrossSections(PartitionStructures &previous_ss,
-						  SectionTablesBase &previous_st,
-						  const unsigned previous_section_root,
-						  const char *const previous_section_type_name,
-						  const unsigned previous_section_num,
-						  // 
-						  PartitionStructures &next_ss,
-						  SectionTablesBase &next_st,
-						  const unsigned next_section_leaf,
-						  const char *const next_section_type_name,
-						  const unsigned next_section_num)
-{
-}

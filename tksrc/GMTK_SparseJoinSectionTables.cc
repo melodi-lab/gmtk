@@ -105,6 +105,28 @@ SparseJoinSectionTables::projectToOutgoingSeparators(SectionIterator &stss_it,
 
 
 void 
+SparseJoinSectionTables::receiveBackwardsSeparators(SectionIterator &stss_it,
+						    PartitionStructures &sourceSectionStructures, 
+						    ConditionalSeparatorTable *separatorTableArray,
+						    ConditionalSeparatorTable::SharedLocalStructure &sepSharedStructure)
+{
+
+  // Here the section receiving the message (separators) knows
+  // it's using sparse join inference. So it's using SparseJoinSectionTables,
+  // SparseJoinMaxCliques, etc. In particular, the section knows how to find its
+  // cliques with incoming messages (formerly just the single right interface clique),
+  // how many MaxCliques are in the section, and the MaxCliqueTable::SharedLocalStructure
+  // of each of those cliques...
+
+  // for each maxCliques[i] with an incoming message
+  unsigned i = stss_it.prev_ri();
+  //   for each of maxClique[i]'s cross-section separators j
+          maxCliques[i].deReceiveFromIncommingSeparator(sourceSectionStructures.maxCliquesSharedStructure[i],
+							*separatorTableArray /* [j] */, sepSharedStructure);
+}
+
+
+void 
 SparseJoinSectionTables::printAllCliques(FILE *f, BP_Range *clique_print_range,
 					 SectionIterator &stss_it, PartitionStructures &ss,
 					 const bool normalize, const bool unlog,

@@ -89,7 +89,8 @@ LinearSectionScheduler::forwardBackward(SectionInferenceAlgorithm *algorithm,
 					unsigned *numUsableFrames,
 					const bool cliquePosteriorNormalize,
 					const bool cliquePosteriorUnlog,
-					ObservationFile *posteriorFile)
+					ObservationFile *posteriorFile,
+					const bool doDistributeEvidence)
 {
   assert(algorithm);
   FileSource *observation_source = dynamic_cast<FileSource *>(obs_source);
@@ -143,67 +144,64 @@ LinearSectionScheduler::forwardBackward(SectionInferenceAlgorithm *algorithm,
 	 probE.val() / observation_source->numFrames(),
 	 probE.val() / nUsableFrames);
 
-#if 0
   // Distribute Evidence (backwards pass)
 
-  // FIXME - if (doDistributeEvidence) {
-  // if (JunctionTree::viterbiScore) myjt.setRootToMaxCliqueValue(); // fix #529
-  infoMsg(IM::Low,"Distributing Evidence\n");
-
-  assert(t=T);
-  assert(inference_it.cur_st() == T-1);
-  assert(inference_it.get_st_len() == T);
-
-  for (t=T-1; t > 0; --t) {
-
-    setCurrentInferenceShiftTo(inference_it, t);
-    prev_section = algorithm->getSectionTables(t-1);
-    cur_section  = algorithm->getSectionTables(t);
-
-    // FIXME - move skipLISeparator check here? 
+  if (doDistributeEvidence) {
+    // FIXME - uncomment this
+    // if (SectionScheduler::viterbiScore) myjt.setRootToMaxCliqueValue(); // fix #529
+    infoMsg(IM::Low,"Distributing Evidence\n");
+    
+    assert(t=T);
+    assert(inference_it.cur_st() == T-1);
+    assert(inference_it.get_st_len() == T);
+    
+    for (t=T-1; t > 0; --t) {
+      
+      setCurrentInferenceShiftTo(inference_it, t);
+      prev_section = algorithm->getSectionTables(t-1);
+      cur_section  = algorithm->getSectionTables(t);
+      
+      // FIXME - move skipLISeparator check here? 
+      algorithm->prepareBackwardInterfaceSeparator(cur_section);
+      // FIXME - move useLISeparator check here? 
+      
+#if 0
+      // FIXME - enable to support Viterbi/n-best
+      if (viterbiScore) {
+	recordPartitionViterbiValue(inference_it);
+      }
+#endif
+      
+      algorithm->sendBackwardInterfaceSeparator(prev_section, cur_section);
+    }
+    setCurrentInferenceShiftTo(inference_it, 0);
+    cur_section = prev_section; // work on P'
     algorithm->prepareBackwardInterfaceSeparator(cur_section);
-    // FIXME - move useLISeparator check here? 
-
 #if 0
     // FIXME - enable to support Viterbi/n-best
     if (viterbiScore) {
       recordPartitionViterbiValue(inference_it);
     }
 #endif
-
-    algorithm->sendBackwardInterfaceSeparator(prev_section, cur_section);
+    
+    infoMsg(IM::Low,"Done Distributing Evidence\n");
   }
-  setCurrentInferenceShiftTo(inference_it, 0);
-  cur_section = prev_section; // work on P'
-  algorithm->prepareBackwardInterfaceSeparator(cur_section);
-#if 0
-  // FIXME - enable to support Viterbi/n-best
-  if (viterbiScore) {
-    recordPartitionViterbiValue(inference_it);
-  }
-#endif
-
-  infoMsg(IM::Low,"Done Distributing Evidence\n");
-#endif  
-
-#if 0
-  // FIXME - commented out temporarily for refactor code movement
-
-  if (JunctionTree::viterbiScore)
+    
+  if (viterbiScore)
     infoMsg(IM::SoftWarning,"NOTE: Clique sums will be different since viteri option is active\n");
   if (IM::messageGlb(IM::Low)) {
-    myjt.printProbEvidenceAccordingToAllCliques();
-    probe = myjt.probEvidence();
+    // FIXME - uncomment this
+    // myjt.printProbEvidenceAccordingToAllCliques();
+    logpr probe = cur_section->probEvidence(inference_it, *this);
     printf("Segment %d, after DE, log(prob(evidence)) = %f, per frame =%f, per numUFrams = %f\n",
-	   segment,
-	   probe.val(),
-	   probe.val()/numFrames,
-	   probe.val()/numUsableFrames);
+      observation_source->segmentNumber(),
+      probe.val(),
+      probe.val()/observation_source->numFrames(),
+      probe.val()/nUsableFrames);
   }
-#endif
-
-  if (p_clique_print_range || c_clique_print_range || e_clique_print_range) {
     
+  if (p_clique_print_range || c_clique_print_range || e_clique_print_range) {
+      
 #if 0
     // FIXME - commented out temporarily for refactor code movement
     if (cliqueOutputName && !pCliqueFile) {
@@ -213,33 +211,31 @@ LinearSectionScheduler::forwardBackward(SectionInferenceAlgorithm *algorithm,
       cliqueSize = (cliqueSize > eSize) ? cliqueSize : eSize;
       
       if (pPartCliquePrintRange && pSize != cliqueSize) {
-	error("ERROR: incompatible cliques selected for file output\n");
+         error("ERROR: incompatible cliques selected for file output\n");
       }
       if (cPartCliquePrintRange && cSize != cliqueSize) {
-	error("ERROR: incompatible cliques selected for file output\n");
+        error("ERROR: incompatible cliques selected for file output\n");
       }
       if (ePartCliquePrintRange && eSize != cliqueSize) {
-	error("ERROR: incompatible cliques selected for file output\n");
+        error("ERROR: incompatible cliques selected for file output\n");
       }
       myjt.printCliqueOrders(stdout);
       pCliqueFile = instantiateWriteFile(cliqueListName, cliqueOutputName, cliquePrintSeparator,
-					 cliquePrintFormat, cliqueSize, 0, cliquePrintSwap);
+                                         cliquePrintFormat, cliqueSize, 0, cliquePrintSwap);
     }
 #endif
 
     // FIXME - for heterogeneous section inference algorithms, will need to loop over
     //         section_table_array telling sections to print themselves...
     printAllCliques(stdout,cliquePosteriorNormalize,cliquePosteriorUnlog,false /* FIXME - cliquePrintOnlyEntropy */, posteriorFile);
-    
+      
 #if 0
     if (pCliqueFile) {
       pCliqueFile->endOfSegment();
     }
 #endif
-
+      
   }
-
-
 
   return probE;
 }
