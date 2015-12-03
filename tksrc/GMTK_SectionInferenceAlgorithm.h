@@ -39,7 +39,7 @@ class SectionInferenceAlgorithm {
   virtual ~SectionInferenceAlgorithm() {}
 
   void set_inference_it(SectionIterator *it) { 
-    assert(inference_it);
+    assert(it);
     inference_it = it; 
   }
 
