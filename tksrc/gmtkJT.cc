@@ -469,7 +469,8 @@ main(int argc,char*argv[])
 					      &numUsableFrames,
 					      cliquePosteriorNormalize, 
 					      cliquePosteriorUnlog,
-					      clique_posterior_file);
+					      clique_posterior_file,
+					      doDistributeEvidence);
 	
       } else {  // doing the probability of evidence task (forward pass only)
 

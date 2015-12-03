@@ -22,7 +22,8 @@ ForwardBackwardTask::forwardBackward(SectionInferenceAlgorithm *algorithm,
 				     unsigned *numUsableFrames,
 				     const bool cliquePosteriorNormalize,
 				     const bool cliquePosteriorUnlog,
-				     ObservationFile *posteriorFile)
+				     ObservationFile *posteriorFile,
+				     const bool doDistributeEvidence)
 {
   assert(false); // nothing should call this method
   // just here to make the vtable non-empty
