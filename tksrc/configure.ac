@@ -293,7 +293,11 @@ AC_SEARCH_LIBS([dlopen], [dl dld], [], [
 m4_include([../deepMLP/blas_check])
 
 # Checks for header files.
-AC_PATH_XTRA
+case "${host}" in
+*apple*) ;; # don't use X11 on OS X
+*) AC_PATH_XTRA ;;
+esac
+
 AC_CHECK_HEADERS([float.h stdlib.h string.h sys/time.h unistd.h dlfcn.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
