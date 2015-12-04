@@ -188,7 +188,7 @@ LinearSectionScheduler::forwardBackward(SectionInferenceAlgorithm *algorithm,
   }
     
   if (viterbiScore)
-    infoMsg(IM::SoftWarning,"NOTE: Clique sums will be different since viteri option is active\n");
+    infoMsg(IM::SoftWarning,"NOTE: Clique sums will be different since viterbi option is active\n");
   if (IM::messageGlb(IM::Low)) {
     // FIXME - uncomment this
     // myjt.printProbEvidenceAccordingToAllCliques();
