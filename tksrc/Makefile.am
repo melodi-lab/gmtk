@@ -89,35 +89,44 @@ $(builddir)/../IEEEFloatingpoint/libIEEEsupport.a
 noinst_LIBRARIES = libXOPT.a libGMTK.a
 
 libGMTK_a_SOURCES = \
+GMTK_ProbEvidenceTask.h    GMTK_ProbEvidenceTask.cc \
+GMTK_ForwardBackwardTask.h GMTK_ForwardBackwardTask.cc \
+GMTK_ViterbiTask.h         GMTK_ViterbiTask.cc \
+GMTK_SmoothingTask.h       GMTK_SmoothingTask.cc \
+\
 GMTK_SectionIterator.h \
-GMTK_SectionScheduler.h GMTK_SectionScheduler.cc \
-GMTK_LinearSectionScheduler.h GMTK_LinearSectionScheduler.cc \
-GMTK_IslandSectionScheduler.h GMTK_IslandSectionScheduler.cc \
+GMTK_SectionScheduler.h             GMTK_SectionScheduler.cc \
+GMTK_LinearSectionScheduler.h       GMTK_LinearSectionScheduler.cc \
+GMTK_IslandSectionScheduler.h       GMTK_IslandSectionScheduler.cc \
 GMTK_ArchipelagosSectionScheduler.h GMTK_ArchipelagosSectionScheduler.cc \
 \
-GMTK_ProbEvidenceTask.h GMTK_ProbEvidenceTask.cc \
-GMTK_ForwardBackwardTask.h GMTK_ForwardBackwardTask.cc \
-GMTK_ViterbiTask.h GMTK_ViterbiTask.cc \
-GMTK_SmoothingTask.h GMTK_SmoothingTask.cc \
-\
 GMTK_SectionInferenceAlgorithm.h \
-GMTK_SparseJoinInference.h GMTK_SparseJoinInference.cc \
+GMTK_SparseJoinInference.h       GMTK_SparseJoinInference.cc \
+GMTK_PedagogicalInference.h      GMTK_PedagogicalInference.cc \
+\
+GMTK_SectionTablesBase.h \
+GMTK_SparseJoinSectionTables.h  GMTK_SparseJoinSectionTables.cc \
+GMTK_PedagogicalSectionTables.h GMTK_PedagogicalSectionTables.cc \
 \
 GMTK_MaxCliqueBase.h GMTK_MaxCliqueBase.cc \
-GMTK_MaxClique.h GMTK_MaxClique.cc \
-GMTK_FactorClique.h GMTK_FactorClique.cc \
+GMTK_MaxClique.h     GMTK_MaxClique.cc \
+\
+GMTK_FactorClique.h          GMTK_FactorClique.cc \
 GMTK_InferenceFactorClique.h GMTK_InferenceFactorClique.cc \
-GMTK_MaxCliqueTable.h GMTK_MaxCliqueTable.cc \
-GMTK_SeparatorClique.h GMTK_SeparatorClique.cc \
+\
+GMTK_MaxCliqueTableBase.h     GMTK_MaxCliqueTableBase.cc \
+GMTK_PedagogicalClique.h      GMTK_PedagogicalClique.cc \
+GMTK_PedagogicalCliqueTable.h GMTK_PedagogicalCliqueTable.cc \
+GMTK_MaxCliqueTable.h         GMTK_MaxCliqueTable.cc \
+\
+GMTK_SeparatorClique.h           GMTK_SeparatorClique.cc \
 GMTK_ConditionalSeparatorTable.h GMTK_ConditionalSeparatorTable.cc \
-GMTK_CliqueValueHolder.h GMTK_CliqueValueHolder.cc \
+GMTK_CliqueValueHolder.h         GMTK_CliqueValueHolder.cc \
 GMTK_VHashMapUnsignedUnsignedKeyUpdatable.h \
 GMTK_VHashMapUnsignedUnsignedKeyUpdatable.cc \
-GMTK_SectionTablesBase.h \
-GMTK_SparseJoinSectionTables.h GMTK_SparseJoinSectionTables.cc \
 \
 hgstamp.h \
-GMTK_ZeroCliqueException \
+GMTK_ZeroCliqueException.h \
 GMTK_Dense1DPMF.h GMTK_Dense1DPMF.cc \
 GMTK_Sparse1DPMF.h GMTK_Sparse1DPMF.cc \
 GMTK_MeanVector.h GMTK_MeanVector.cc \

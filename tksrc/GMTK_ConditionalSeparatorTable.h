@@ -102,10 +102,13 @@ class MaxCliqueTable;
 class ConditionalSeparatorTable : public IM
 {
   friend class MaxCliqueTable;
+  friend class PedagogicalCliqueTable;
   friend class PartitionStructures;
   friend class SectionTablesBase;
   friend class SparseJoinSectionTables;
+  friend class PedagogicalSectionTables;
   friend class SparseJoinInference;
+  friend class PedagogicalInference;
   friend class SeparatorClique;
 
   // Member functions that are shared accross multiple instances of

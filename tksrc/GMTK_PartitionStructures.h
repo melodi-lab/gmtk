@@ -32,6 +32,7 @@
 #include "GMTK_GMTemplate.h"
 #include "GMTK_MaxClique.h"
 #include "GMTK_MaxCliqueTable.h"
+#include "GMTK_PedagogicalCliqueTable.h"
 #include "GMTK_ConditionalSeparatorTable.h"
 #include "GMTK_JT_Partition.h"
 
@@ -60,6 +61,7 @@ public:
   // reused for many different data instances of a MaxCliqueTable and
   // a ConditionalSeparatorTable.
   sArray< MaxCliqueTable::SharedLocalStructure > maxCliquesSharedStructure;
+  sArray< PedagogicalCliqueTable::SharedLocalStructure > pedagogicalCliquesSharedStructure;
   sArray< ConditionalSeparatorTable::SharedLocalStructure > separatorCliquesSharedStructure;
 
   // Store factor cliques somewhere that can be shared. (factorCliques
