@@ -1,5 +1,5 @@
 /*
- * GMTK_SparseJoinSectionTables.h
+ * GMTK_PedagogicalSectionTables.h
  *   
  * Written by Jeff Bilmes <bilmes@ee.washington.edu>
  *
@@ -10,23 +10,23 @@
  */
 
 
-#ifndef GMTK_SPARSEJOINSECTIONTABLES_H
-#define GMTK_SPARSEJOINSECTIONTABLES_H
+#ifndef GMTK_PEDAGOGICALSECTIONTABLES_H
+#define GMTK_PEDAGOGICALSECTIONTABLES_H
 
 #include "GMTK_SectionTablesBase.h"
-#include "GMTK_MaxCliqueTable.h"
+#include "GMTK_PedagogicalCliqueTable.h"
 
-class SparseJoinSectionTables : public SectionTablesBase {
+class PedagogicalSectionTables : public SectionTablesBase {
  public:
 
-  MaxCliqueTable* maxCliques;
+  PedagogicalCliqueTable* maxCliques;
 
   // Create a dummy/invalid table for arrays that can be written over.
-  SparseJoinSectionTables() : maxCliques(NULL) {}
+  PedagogicalSectionTables() : maxCliques(NULL) {}
 
-  SparseJoinSectionTables(JT_Partition& origin);
+  PedagogicalSectionTables(JT_Partition& origin);
 
-  ~SparseJoinSectionTables() { clear(); }
+  ~PedagogicalSectionTables() { clear(); }
 
   logpr probEvidence(SectionIterator &inference_it, SectionScheduler &myjt) {
     if (inference_it.at_p() && myjt.P1.cliques.size() > 0) {

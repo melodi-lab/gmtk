@@ -66,9 +66,11 @@ class SectionScheduler {
   // MUST be friends with all SectionInferenceAlgorithm & SectionTablesBase subclasses
   friend class SectionInferenceAlgorithm;
   friend class SparseJoinInference;
+  friend class PedagogicalInference;
 
   friend class SectionTablesBase;
   friend class SparseJoinSectionTables;
+  friend class PedagogicalSectionTables;
 
  public:
 

@@ -30,8 +30,8 @@
 // adding everything for exact inference to the base class.
 
 
-#ifndef GMTK_MAXCLIQUETABLE_H
-#define GMTK_MAXCLIQUETABLE_H
+#ifndef GMTK_PEDAGOGICALCLIQUETABLE_H
+#define GMTK_PEDAGOGICALCLIQUETABLE_H
 
 #if HAVE_CONFIG_H
 #  include <config.h>
@@ -93,7 +93,7 @@ class MaxClique;
 // long segments (e.g., genomes), and we definitely do not want these
 // objects to have to have all MaxClique's member variables which
 // would be highly redundant.
-class MaxCliqueTable  : public IM
+class PedagogicalCliqueTable  : public IM
 {
   friend struct CliqueValueDescendingProbCompare;
   friend class PartitionStructures;
@@ -114,7 +114,7 @@ class MaxCliqueTable  : public IM
   struct SharedLocalStructure {
     // The original maxclique from which this object has been created
     // and where we get access to some data structures that are common
-    // to all MaxCliqueTable's of this particular base clique.
+    // to all PedagogicalCliqueTable's of this particular base clique.
     MaxClique* origin;
 
     // Non-STL "fast" versions of arrays that exist in the final
@@ -265,24 +265,24 @@ public:
   // non-functional reference objects (in order to create an array of
   // these objects and then initialize them later with appropriate
   // references). Do not use until after proper re-constructor.
-  MaxCliqueTable() {}
+  PedagogicalCliqueTable() {}
   // normal constructor (i.e., re-constructor).
-  MaxCliqueTable(MaxClique& origin);
+  PedagogicalCliqueTable(MaxClique& origin);
   void init(MaxClique& origin);
 
   // destructor
-  ~MaxCliqueTable() {}
+  ~PedagogicalCliqueTable() {}
 
   ///////////////////////////////////////////////////////////////////////////////
   // collect evidence functions.
 
-  void ceGatherFromIncommingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+  void ceGatherFromIncommingSeparators(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
 				       ConditionalSeparatorTable* separatorTableArray,
 				       ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray);
 				       
 
   // special case when the clique is fully observed.
-  void ceGatherFromIncommingSeparatorsCliqueObserved(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+  void ceGatherFromIncommingSeparatorsCliqueObserved(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
 						     ConditionalSeparatorTable* separatorCliqueArray,
 						     ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray,
 						     logpr& maxCEValue);
@@ -290,7 +290,7 @@ public:
 
   ////////////////////////////////////////////////////////////////////////////
   // iterate unassigned nodes
-  void inline ceIterateUnassignedIteratedNodes(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+  void inline ceIterateUnassignedIteratedNodes(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
 					       logpr cliqueBeamThresholdEstimate,
 					       logpr& maxCEValue,
 					       const unsigned nodeNumber,
@@ -306,7 +306,7 @@ public:
 					    nodeNumber,
 					    p);
   }
-  void ceIterateUnassignedIteratedNodesRecurse(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+  void ceIterateUnassignedIteratedNodesRecurse(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
 					       logpr cliqueBeamThresholdEstimate,
 					       logpr& maxCEValue,
 					       const unsigned nodeNumber,
@@ -315,7 +315,7 @@ public:
   ///////////////////////////////////////
   // iterate separators
 
-  void inline ceIterateSeparators(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+  void inline ceIterateSeparators(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
 				  ConditionalSeparatorTable* separatorTableArray,
 				  ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray,
 				  logpr cliqueBeamThresholdEstimate,
@@ -336,7 +336,7 @@ public:
 			       maxCEValue,
 			       sepNumber,p);
   }
-  void ceIterateSeparatorsRecurse(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+  void ceIterateSeparatorsRecurse(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
 				  ConditionalSeparatorTable* separatorTableArray,
 				  ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray,
 				  logpr cliqueBeamThresholdEstimate,
@@ -348,17 +348,17 @@ public:
   // iterate assigned nodes.
 
 
-  void ceIterateAssignedNodesRecurse(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+  void ceIterateAssignedNodesRecurse(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
 				     logpr cliqueBeamThresholdEstimate,
 				     logpr& maxCEValue,
 				     const unsigned nodeNumber,
 				     const logpr p);
-  void ceIterateAssignedNodesNoRecurse(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+  void ceIterateAssignedNodesNoRecurse(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
 				       logpr cliqueBeamThresholdEstimate,
 				       logpr& maxCEValue,
 				       const logpr p);
 
-  void inline ceIterateAssignedNodes(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+  void inline ceIterateAssignedNodes(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
 				     logpr cliqueBeamThresholdEstimate,
 				     logpr& maxCEValue,
 				     const unsigned nodeNumber,
@@ -386,11 +386,11 @@ public:
 
   /////////////////////////////////////////
   // a version that automatically selects which separator to use within partition from the clique.
-  void ceSendToOutgoingSeparator(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+  void ceSendToOutgoingSeparator(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
 				 ConditionalSeparatorTable* separatorTableArray,
 				 ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray);
   // a version with an explicit outgoing separator.
-  void ceSendToOutgoingSeparator(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+  void ceSendToOutgoingSeparator(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
 				 ConditionalSeparatorTable& sep,
 				 ConditionalSeparatorTable::SharedLocalStructure&);
 
@@ -403,7 +403,7 @@ public:
     // clear out all memory used by this inference clique.
     cliqueValues.clear();
   }
-  void clearCliqueAndIncommingSeparatorMemory(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+  void clearCliqueAndIncommingSeparatorMemory(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
 					      ConditionalSeparatorTable*,
 					      ConditionalSeparatorTable::SharedLocalStructure*);
 
@@ -428,7 +428,7 @@ public:
   void ceCliqueUniformSamplePrunedCliquePortion(MaxClique& origin,
 						const unsigned origNumCliqueValuesUsed);
 
-  void ceDoCliqueScoreNormalization(MaxCliqueTable::SharedLocalStructure& sharedStructure);
+  void ceDoCliqueScoreNormalization(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure);
 
 
 #ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
@@ -440,25 +440,25 @@ public:
   // distribute evidence functions.
   /////////////////////////////////////////
 
-  void deScatterToOutgoingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+  void deScatterToOutgoingSeparators(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
 				     ConditionalSeparatorTable* separatorTableArray,
 				     ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray);
 
 
-  void deScatterToOutgoingSeparatorsViterbi(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+  void deScatterToOutgoingSeparatorsViterbi(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
 					    ConditionalSeparatorTable* separatorTableArray,
 					    ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray);
 
   // a version that automatically selects which separator to use within partition from the clique.
-  void deReceiveFromIncommingSeparator(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+  void deReceiveFromIncommingSeparator(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
 				       ConditionalSeparatorTable* separatorTableArray,
 				       ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray);
   // a version with an explicit incomming separator
-  void deReceiveFromIncommingSeparator(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+  void deReceiveFromIncommingSeparator(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
 				       ConditionalSeparatorTable&,
 				       ConditionalSeparatorTable::SharedLocalStructure&);
   // a version specific to viterbi decoding.
-  void deReceiveFromIncommingSeparatorViterbi(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+  void deReceiveFromIncommingSeparatorViterbi(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
 					      ConditionalSeparatorTable&,
 					      ConditionalSeparatorTable::SharedLocalStructure&);
 
@@ -484,18 +484,18 @@ public:
 
   // compute the max probability and return its value, and also
   // optionally sets the rvs to its max value.
-  logpr maxProbability(MaxCliqueTable::SharedLocalStructure&,
+  logpr maxProbability(PedagogicalCliqueTable::SharedLocalStructure&,
 		       bool setCliqueToMaxValue = true);
   // a faster version that just operates on the table.
   logpr maxProb();
 
   // print all clique values and prob to given file.
-  void printCliqueEntries(MaxCliqueTable::SharedLocalStructure&,
+  void printCliqueEntries(PedagogicalCliqueTable::SharedLocalStructure&,
 			  FILE*f,const char*str=NULL,
 			  const bool normalize = true, const bool unlog = true,
 			  const bool justPrintEntropy = false);
   
-  void printCliqueEntries(MaxCliqueTable::SharedLocalStructure&,
+  void printCliqueEntries(PedagogicalCliqueTable::SharedLocalStructure&,
 			  ObservationFile *f, const bool normalize = true, 
 			  const bool unlog = true);
   
@@ -512,13 +512,13 @@ public:
   class CliqueValueIndex {
 
     SharedLocalStructure *sharedStructure;
-    MaxCliqueTable       *table;
+    PedagogicalCliqueTable       *table;
 
   public:
     unsigned index;
 
     CliqueValueIndex(SharedLocalStructure *sharedStructure, 
-		     MaxCliqueTable       *table,
+		     PedagogicalCliqueTable       *table,
 		     unsigned index)
       : sharedStructure(sharedStructure), table(table), index(index)
     {}
@@ -550,7 +550,7 @@ public:
 
 
   // EM accumulation support.
-  void emIncrement(MaxCliqueTable::SharedLocalStructure&,
+  void emIncrement(PedagogicalCliqueTable::SharedLocalStructure&,
 		   const logpr probE, 
 		   const bool localCliqueNormalization = false,
 		   const double emTrainingBeam = -LZERO);
