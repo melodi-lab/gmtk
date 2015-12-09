@@ -114,8 +114,6 @@ GMTK_MaxClique.h     GMTK_MaxClique.cc \
 GMTK_FactorClique.h          GMTK_FactorClique.cc \
 GMTK_InferenceFactorClique.h GMTK_InferenceFactorClique.cc \
 \
-GMTK_MaxCliqueTableBase.h     GMTK_MaxCliqueTableBase.cc \
-GMTK_PedagogicalClique.h      GMTK_PedagogicalClique.cc \
 GMTK_PedagogicalCliqueTable.h GMTK_PedagogicalCliqueTable.cc \
 GMTK_MaxCliqueTable.h         GMTK_MaxCliqueTable.cc \
 \
