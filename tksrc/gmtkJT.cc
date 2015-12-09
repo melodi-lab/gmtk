@@ -56,22 +56,20 @@
 #include "GMTK_BinaryFile.h"
 #include "GMTK_Filter.h"
 #include "GMTK_Stream.h"
-
-// Section scheduling
-#include "GMTK_SectionScheduler.h"
-#include "GMTK_LinearSectionScheduler.h"
-#include "GMTK_IslandSectionScheduler.h"
-#include "GMTK_ArchipelagosSectionScheduler.h"
+#include "GMTK_ZeroCliqueException.h"
 
 // Supported inference tasks
 #include "GMTK_ProbEvidenceTask.h"
 #include "GMTK_ForwardBackwardTask.h"
 
+// Section scheduling
+#include "GMTK_LinearSectionScheduler.h"
+#include "GMTK_IslandSectionScheduler.h"
+#include "GMTK_ArchipelagosSectionScheduler.h"
+
 // Supported within-sectin inference algorithms
-#include "GMTK_ZeroCliqueException.h"
-#include "GMTK_SectionScheduler.h"
-#include "GMTK_SectionInferenceAlgorithm.h"
 #include "GMTK_SparseJoinInference.h"
+#include "GMTK_PedagogicalInference.h"
 
 #include "GMTK_MixtureCommon.h"
 #include "GMTK_GaussianComponent.h"
@@ -347,18 +345,21 @@ main(int argc,char*argv[])
 
   // Setup the within-section inference implementation
 
+  // FIXME - move these to arguments
+  bool pedagogical = true, sparse_join = false;
+
   SectionInferenceAlgorithm *section_inference_alg = NULL;
   if (false) {
 #ifdef GMTK_PEDAGOGICALINFERENCE_H
   } else if (pedagogical) {
-    section_inference_alg = new PedagogicalInference();
+    section_inference_alg = new PedagogicalInference(section_scheduler);
 #endif
 #ifdef GMTK_LOOPYBELIEFINFERENCE_H
   } else if (loopy) {
-    section_inference_alg = new LoopyBeliefInference();
+    section_inference_alg = new LoopyBeliefInference(section_scheduler);
 #endif
 #ifdef GMTK_SPARSEJOININFERENCE_H
-  } else {
+  } else if (sparse_join) {
     section_inference_alg = new SparseJoinInference(section_scheduler); // current "standard" algorithm
 #endif
   }

@@ -161,6 +161,7 @@ class RV  {
   friend class MaxCliqueBase;
   friend class MaxClique;
   friend class MaxCliqueTable;
+  friend class PedagogicalCliqueTable;
   friend class BoundaryTriangulate;
   friend class SwRV;
   friend class SeparatorClique;

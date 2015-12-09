@@ -76,12 +76,16 @@ PartitionStructures::PartitionStructures(JT_Partition& from_part,
 
   // first allocate space with empty (and unusable) entries
   maxCliquesSharedStructure.resize(origin.cliques.size());
+  pedagogicalCliquesSharedStructure.resize(origin.cliques.size());
   separatorCliquesSharedStructure.resize(origin.separators.size());
 
   // then actually re-construct the objects in the array appropriately.
   for (unsigned i=0;i<maxCliquesSharedStructure.size();i++) {
     new (&maxCliquesSharedStructure[i]) 
       MaxCliqueTable::SharedLocalStructure(origin.cliques[i],
+					   newRvs,ppf,frameDelta);
+    new (&pedagogicalCliquesSharedStructure[i]) 
+      PedagogicalCliqueTable::SharedLocalStructure(origin.cliques[i],
 					   newRvs,ppf,frameDelta);
   }
   for (unsigned i=0;i<separatorCliquesSharedStructure.size();i++) {

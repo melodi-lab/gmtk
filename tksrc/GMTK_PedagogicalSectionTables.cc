@@ -99,7 +99,7 @@ PedagogicalSectionTables::projectToOutgoingSeparators(SectionIterator &stss_it,
   // for each maxCliques[i] with an outgoing separator
   unsigned i = stss_it.prev_ri();
   //   for each of maxClique[i]'s outgoing separators j
-          maxCliques[i].ceSendToOutgoingSeparator(sourceSectionStructures.maxCliquesSharedStructure[i],
+          maxCliques[i].ceSendToOutgoingSeparator(sourceSectionStructures.pedagogicalCliquesSharedStructure[i],
 						  *separatorTableArray /* [j] */, sepSharedStructure);
 }
 
@@ -121,7 +121,7 @@ PedagogicalSectionTables::receiveBackwardsSeparators(SectionIterator &stss_it,
   // for each maxCliques[i] with an incoming message
   unsigned i = stss_it.prev_ri();
   //   for each of maxClique[i]'s cross-section separators j
-          maxCliques[i].deReceiveFromIncommingSeparator(sourceSectionStructures.maxCliquesSharedStructure[i],
+          maxCliques[i].deReceiveFromIncommingSeparator(sourceSectionStructures.pedagogicalCliquesSharedStructure[i],
 							*separatorTableArray /* [j] */, sepSharedStructure);
 }
 
@@ -139,13 +139,13 @@ PedagogicalSectionTables::printAllCliques(FILE *f, BP_Range *clique_print_range,
     obs_file->setFrame(stss_it.cur_st());
   while (!it.at_end()) {
     const unsigned cliqueNum = (unsigned)(*it);
-    if (cliqueNum < ss.maxCliquesSharedStructure.size()) {
+    if (cliqueNum < ss.pedagogicalCliquesSharedStructure.size()) {
       if (obs_file) {
-	maxCliques[cliqueNum].printCliqueEntries(ss.maxCliquesSharedStructure[cliqueNum],
+	maxCliques[cliqueNum].printCliqueEntries(ss.pedagogicalCliquesSharedStructure[cliqueNum],
 						 obs_file,normalize, unlog);
       } else {
 	sprintf(buff,"Section %d (%s), Clique %d:", stss_it.cur_st(), stss_it.cur_nm(), cliqueNum); 
-	maxCliques[cliqueNum].printCliqueEntries(ss.maxCliquesSharedStructure[cliqueNum],
+	maxCliques[cliqueNum].printCliqueEntries(ss.pedagogicalCliquesSharedStructure[cliqueNum],
 						 f,buff,normalize,unlog,justPrintEntropy);
       }
     }
@@ -190,8 +190,8 @@ PedagogicalSectionTables::emIncrement(PartitionStructures& ps,
 			     const bool localCliqueNormalization,
 			     const double emTrainingBeam)
 {
-  for (unsigned cliqueNo=0;cliqueNo < ps.maxCliquesSharedStructure.size(); cliqueNo++ ) {
-    maxCliques[cliqueNo].emIncrement(ps.maxCliquesSharedStructure[cliqueNo],
+  for (unsigned cliqueNo=0;cliqueNo < ps.pedagogicalCliquesSharedStructure.size(); cliqueNo++ ) {
+    maxCliques[cliqueNo].emIncrement(ps.pedagogicalCliquesSharedStructure[cliqueNo],
 				     probE,localCliqueNormalization,emTrainingBeam);
   }
 }
@@ -199,8 +199,8 @@ PedagogicalSectionTables::emIncrement(PartitionStructures& ps,
 
 void PedagogicalSectionTables::init(PartitionStructures& ps)
 {
-  for (unsigned cliqueNo=0;cliqueNo<ps.maxCliquesSharedStructure.size();cliqueNo++)
-    maxCliques[cliqueNo].init(*(ps.maxCliquesSharedStructure[cliqueNo].origin));
+  for (unsigned cliqueNo=0;cliqueNo<ps.pedagogicalCliquesSharedStructure.size();cliqueNo++)
+    maxCliques[cliqueNo].init(*(ps.pedagogicalCliquesSharedStructure[cliqueNo].origin));
   for (unsigned sepNo=0;sepNo<ps.separatorCliquesSharedStructure.size();sepNo++)
     separatorCliques[sepNo].init(*(ps.separatorCliquesSharedStructure[sepNo].origin));
 }
@@ -228,8 +228,8 @@ void PedagogicalSectionTables::init(PartitionStructures& ps)
 void
 PedagogicalSectionTables::reportMemoryUsageTo(PartitionStructures& ps,FILE *f)
 {
-  for (unsigned cliqueNo=0;cliqueNo < ps.maxCliquesSharedStructure.size(); cliqueNo++ ) {
-    maxCliques[cliqueNo].reportMemoryUsageTo(*(ps.maxCliquesSharedStructure[cliqueNo].origin),f);
+  for (unsigned cliqueNo=0;cliqueNo < ps.pedagogicalCliquesSharedStructure.size(); cliqueNo++ ) {
+    maxCliques[cliqueNo].reportMemoryUsageTo(*(ps.pedagogicalCliquesSharedStructure[cliqueNo].origin),f);
   }
   for (unsigned i=0;i<ps.separatorCliquesSharedStructure.size();i++) {
     separatorCliques[i].reportMemoryUsageTo(*(ps.separatorCliquesSharedStructure[i].origin),f);
