@@ -496,15 +496,21 @@ ceGatherFromIncommingSeparators(PedagogicalCliqueTable::SharedLocalStructure& sh
     }
 
     maxCEValue.set_to_zero();
+    logpr p = 1.0;
     // next, do the actual collect message.
     if (origin.hashableNodes.size() == 0) {
       ceGatherFromIncommingSeparatorsCliqueObserved(sharedStructure,
 						    separatorTableArray,
 						    sepSharedStructureArray,
 						    maxCEValue);
+    } else if (true /* !origin.ceSeparatorDrivenInference */) { 
+      ceGatherFromIncommingSeparatorsCliqueDriven(sharedStructure,
+						  separatorTableArray,
+						  sepSharedStructureArray,
+						  cliqueBeamThresholdEstimate,
+						  maxCEValue); // max value that is returned
     } else {
       // if we're still here, we do regular separator driven inference.
-      logpr p = 1.0;
       if (origin.ceReceiveSeparators.size() == 0) {
 	if (origin.unassignedIteratedNodes.size() == 0) {
 	  ceIterateAssignedNodes(sharedStructure,
@@ -782,6 +788,28 @@ ceGatherFromIncommingSeparatorsCliqueObserved(PedagogicalCliqueTable::SharedLoca
     printRVSetAndValues(stdout,sharedStructure.fNodes);
   }
 
+}
+
+
+
+
+
+void
+PedagogicalCliqueTable::
+ceGatherFromIncommingSeparatorsCliqueDriven(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
+					    ConditionalSeparatorTable* separatorTableArray,
+					    ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray,
+					    logpr cliqueBeamThresholdEstimate,
+					    logpr& maxCEValue)
+{
+  logpr p = 1.0;
+  // syntactic convenience variables.
+  MaxClique& origin = *(sharedStructure.origin);
+  if (origin.unassignedIteratedNodes.size() == 0) {
+    ceIterateAssignedNodesCliqueDriven(sharedStructure, cliqueBeamThresholdEstimate, maxCEValue, 0, p);
+  } else {
+    //    ceIterateUnassignedNodesCliqueDriven(sharedStructure, ,0,p);
+  }
 }
 
 
@@ -1523,6 +1551,21 @@ PedagogicalCliqueTable::ceIterateAssignedNodesRecurse(PedagogicalCliqueTable::Sh
   traceIndent--;
 
 }
+
+
+
+
+
+
+void 
+PedagogicalCliqueTable::ceIterateAssignedNodesCliqueDriven(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
+							   logpr cliqueBeamThresholdEstimate,
+							   logpr& maxCEValue,
+							   const unsigned nodeNumber,
+							   const logpr p)
+{
+}
+
 
 
 
