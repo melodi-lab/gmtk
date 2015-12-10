@@ -280,6 +280,12 @@ public:
 				       ConditionalSeparatorTable* separatorTableArray,
 				       ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray);
 				       
+  // clique driven pedagogical inference
+  void ceGatherFromIncommingSeparatorsCliqueDriven(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
+						   ConditionalSeparatorTable* separatorCliqueArray,
+						   ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray,
+						   logpr cliqueBeamThresholdEstimate,
+						   logpr& maxCEValue);
 
   // special case when the clique is fully observed.
   void ceGatherFromIncommingSeparatorsCliqueObserved(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
@@ -347,12 +353,18 @@ public:
   ///////////////////////////////////////
   // iterate assigned nodes.
 
+  void ceIterateAssignedNodesCliqueDriven(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
+					  logpr cliqueBeamThresholdEstimate,
+					  logpr& maxCEValue,
+					  const unsigned nodeNumber,
+					  const logpr p);
 
   void ceIterateAssignedNodesRecurse(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
 				     logpr cliqueBeamThresholdEstimate,
 				     logpr& maxCEValue,
 				     const unsigned nodeNumber,
 				     const logpr p);
+
   void ceIterateAssignedNodesNoRecurse(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
 				       logpr cliqueBeamThresholdEstimate,
 				       logpr& maxCEValue,
