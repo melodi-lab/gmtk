@@ -296,6 +296,15 @@ public:
 
   ////////////////////////////////////////////////////////////////////////////
   // iterate unassigned nodes
+
+  void ceIterateUnassignedNodesCliqueDriven(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
+					    ConditionalSeparatorTable *separatorTableArray,
+					    ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray,
+					    logpr cliqueBeamThresholdEstimate,
+					    logpr& maxCEValue,
+					    const unsigned nodeNumber,
+					    const logpr p);
+  
   void inline ceIterateUnassignedIteratedNodes(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
 					       logpr cliqueBeamThresholdEstimate,
 					       logpr& maxCEValue,
@@ -354,10 +363,12 @@ public:
   // iterate assigned nodes.
 
   void ceIterateAssignedNodesCliqueDriven(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
+					  ConditionalSeparatorTable *separatorTableArray,
+					  ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray,
 					  logpr cliqueBeamThresholdEstimate,
 					  logpr& maxCEValue,
 					  const unsigned nodeNumber,
-					  const logpr p);
+					  logpr p);
 
   void ceIterateAssignedNodesRecurse(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
 				     logpr cliqueBeamThresholdEstimate,

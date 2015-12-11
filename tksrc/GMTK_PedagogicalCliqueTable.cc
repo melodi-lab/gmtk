@@ -806,9 +806,11 @@ ceGatherFromIncommingSeparatorsCliqueDriven(PedagogicalCliqueTable::SharedLocalS
   // syntactic convenience variables.
   MaxClique& origin = *(sharedStructure.origin);
   if (origin.unassignedIteratedNodes.size() == 0) {
-    ceIterateAssignedNodesCliqueDriven(sharedStructure, cliqueBeamThresholdEstimate, maxCEValue, 0, p);
+    ceIterateAssignedNodesCliqueDriven(sharedStructure, separatorTableArray, sepSharedStructureArray,
+				       cliqueBeamThresholdEstimate, maxCEValue, 0, p);
   } else {
-    //    ceIterateUnassignedNodesCliqueDriven(sharedStructure, ,0,p);
+    ceIterateUnassignedNodesCliqueDriven(sharedStructure, separatorTableArray, sepSharedStructureArray,
+					 cliqueBeamThresholdEstimate, maxCEValue, 0, p);
   }
 }
 
@@ -1091,6 +1093,98 @@ PedagogicalCliqueTable::ceIterateSeparatorsRecurse(PedagogicalCliqueTable::Share
   //  if (message(Inference, High+5))
   traceIndent--;
 }
+
+
+
+
+
+
+
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceMaxClique::ceIterateUnassignedNodesCliqueDriven()
+ *
+ *    Stub for gather from the incomming separators, but rather than
+ *    do separator driven inference, iterate over the clique directly
+ *    and check the CE incomming separators on each clique iteration
+ *    to ensure compatibility. Therefore, the computation here is
+ *    truely order of the state space of the cliques (rather than
+ *    having lots to do with what comes in as a separator). The
+ *    computation here is also fairly well reflected by the standard
+ *    "weight" measure of clique costs that is used fairly often.
+ *
+ *    This routine recursively iterates through any unassigned nodes
+ *    in the clique, and when done calls the corresponding routine
+ *    for the assigned clique nodes.
+ *
+ * Preconditions:
+ *      Same as the separator driven case. The only difference here is
+ *      that the separators need to be set up so that they don't
+ *      have any intersection with respect to each other. 
+ *
+ * Postconditions:
+ *      Same as the separator driven case.
+ *
+ * Side Effects:
+ *      Same as the separator driven case.
+ *
+ * Results:
+ *     nothing
+ *
+ *-----------------------------------------------------------------------
+ */
+
+void 
+PedagogicalCliqueTable::ceIterateUnassignedNodesCliqueDriven(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
+							     ConditionalSeparatorTable *separatorTableArray,
+							     ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray,
+							     logpr cliqueBeamThresholdEstimate,
+							     logpr& maxCEValue,
+							     const unsigned nodeNumber,
+							     const logpr p)
+{
+  if (nodeNumber == sharedStructure.fUnassignedIteratedNodes.size()) {
+    ceIterateAssignedNodesCliqueDriven(sharedStructure, separatorTableArray, sepSharedStructureArray,
+				       cliqueBeamThresholdEstimate, maxCEValue, 0, p);
+    return;
+  }
+  RV* rv = sharedStructure.fUnassignedIteratedNodes[nodeNumber];
+  infoMsg(Giga,"Starting Unassigned iteration of rv %s(%d), nodeNumber = %d, p = %f\n",
+	  rv->name().c_str(),rv->frame(),nodeNumber,p.val());
+
+  if (rv->hidden()) {
+    // only discrete RVs can be hidden for now.
+    DiscRV* drv = (DiscRV*)rv;
+    // do the loop right here
+    drv->val = 0;
+    do {
+      infoMsg(Giga,"Unassigned iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
+	      rv->name().c_str(),rv->frame(),drv->val,nodeNumber,p.val());
+      // continue on, effectively multiplying p by unity.
+      ceIterateUnassignedNodesCliqueDriven(sharedStructure, separatorTableArray, sepSharedStructureArray,
+					   cliqueBeamThresholdEstimate, maxCEValue, nodeNumber+1, p);
+    } while (++drv->val < drv->cardinality);
+  } else {
+    // observed, either discrete or continuous
+    if (rv->discrete()) {
+      // DiscRV* drv = (DiscRV*)rv;
+      // TODO: for observed variables, do this once at the begining
+      // before any looping here.
+      // drv->setToObservedValue();
+      infoMsg(Giga,"Unassigned iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
+	      rv->name().c_str(),rv->frame(),RV2DRV(rv)->val,nodeNumber,p.val());
+    } else {
+      // nothing to do since we get continuous observed
+      // value indirectly
+      infoMsg(Giga,"Unassigned iteration of rv %s(%d)=C, nodeNumber = %d, p = %f\n",
+	      rv->name().c_str(),rv->frame(),nodeNumber,p.val());
+    }
+    // continue on, effectively multiplying p by unity.
+    ceIterateUnassignedNodesCliqueDriven(sharedStructure, separatorTableArray, sepSharedStructureArray,
+					 cliqueBeamThresholdEstimate, maxCEValue, nodeNumber+1, p);
+  }
+}
+
 
 
 /*-
@@ -1557,13 +1651,302 @@ PedagogicalCliqueTable::ceIterateAssignedNodesRecurse(PedagogicalCliqueTable::Sh
 
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * InferenceMaxClique::ceIterateAssignedNodesCliqueDriven()
+ *
+ *    Stub for gather from the incomming separators, but rather than
+ *    do separator driven inference, iterate over the clique directly
+ *    and check the CE incomming separators on each clique iteration
+ *    to ensure compatibility. Therefore, the computation here is
+ *    truely order of the state space of the cliques (rather than
+ *    having lots to do with what comes in as a separator). The
+ *    computation here is also fairly well reflected by the standard
+ *    "weight" measure of clique costs that is used fairly often.
+ *
+ *    This routine is the one that does the actual work. It
+ *    recursively (and as topologically as possible) iterates through
+ *    all "assigned" nodes in the clique. Once all nodes in the clique are
+ *    instantiated, it checks all incomming separators to make sure
+ *    they are compatible and if so multiply in any probability.
+ *
+ *    Note that this routine is most faithfull to the equations
+ *    implied by the GDL equations.
+ *
+ * Preconditions:
+ *      Same as the separator driven case. The only difference here is
+ *      that the separators need to be set up so that they don't
+ *      have any intersection with respect to each other. 
+ *
+ * Postconditions:
+ *      Same as the separator driven case.
+ *
+ * Side Effects:
+ *      Same as the separator driven case.
+ *
+ * Results:
+ *     nothing
+ *
+ *-----------------------------------------------------------------------
+ */
+
 void 
-PedagogicalCliqueTable::ceIterateAssignedNodesCliqueDriven(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
+PedagogicalCliqueTable::ceIterateAssignedNodesCliqueDriven(PedagogicalCliqueTable::SharedLocalStructure &sharedStructure,
+							   ConditionalSeparatorTable *separatorTableArray,
+							   ConditionalSeparatorTable::SharedLocalStructure *sepSharedStructureArray,
 							   logpr cliqueBeamThresholdEstimate,
 							   logpr& maxCEValue,
 							   const unsigned nodeNumber,
-							   const logpr p)
+							   logpr p)
 {
+  MaxClique& origin = *(sharedStructure.origin);
+  if (nodeNumber == sharedStructure.fSortedAssignedNodes.size()) {
+    // time to store maxclique value and total probability, p is
+    // current clique probability.
+
+    // Now, we iterate through all incoming CE separators, make sure the entry 
+    // for the current clique value it exists, and if it does, multiply by separator probability.
+    for (unsigned sepNumber=0; sepNumber < origin.ceReceiveSeparators.size(); sepNumber++) {
+      // get a handy reference to the current separator
+      ConditionalSeparatorTable& sep = 
+	separatorTableArray[origin.ceReceiveSeparators[sepNumber]];
+      // keep a local variable copy of this around to avoid potential dereferencing.
+      ConditionalSeparatorTable::AISeparatorValue * const
+	sepSeparatorValuesPtr = sep.separatorValues->ptr; 
+
+      // unsigned packedVal[128];
+      // If these assertions fail (at some time in the future, probably in
+      // the year 2150), then it is fine to increase 128 to something larger.
+      // In fact, 128 is so large, lets not even do the assert.
+      // assert ( sep.origin.accPacker.packedLen() < 128 );
+      // assert ( sep.origin.remPacker.packedLen() < 128 );
+
+      /*
+       * There are 3 cases.
+       * 1) AI exists and REM exist
+       * 2) AI exists and REM doesnt exist
+       * 3) AI does not exist, but REM exists
+       * AI not exist and REM not exist can't occur.
+       */
+
+      unsigned accIndex;
+      // TODO: optimize this check away out of loop.
+      ConditionalSeparatorTable::SharedLocalStructure &sepLocalStruct = sepSharedStructureArray[origin.ceReceiveSeparators[sepNumber]];
+      SeparatorClique sepCliqueOrigin = *(sepLocalStruct.origin);
+      if (sepCliqueOrigin.hAccumulatedIntersection.size() > 0) {
+	// an accumulated intersection exists.
+
+	sepCliqueOrigin.accPacker.pack((unsigned**)sepLocalStruct.accDiscreteValuePtrs.ptr,
+				  &CliqueBuffer::packedVal[0]);
+	unsigned* accIndexp =
+	  sep.iAccHashMap->find(&CliqueBuffer::packedVal[0]);
+
+	
+	// If it doesn't exist in this separator, then it must have
+	// zero probability some where. We therefore do not insert it
+	// into this clique, and continue on with next cliuqe value.
+	if ( accIndexp == NULL )
+	  return;
+
+	accIndex = *accIndexp;
+
+	// TODO: optimize this check out of loop.
+	if (sepLocalStruct.remDiscreteValuePtrs.size() == 0) {
+	  // 2) AI exists and REM doesnt exist
+	  // Then this separator is entirely covered by one or 
+	  // more other separators earlier in the order.
+
+	  // go ahead and insert it here to the 1st entry (entry 0).
+
+	  // handy reference for readability.
+	  ConditionalSeparatorTable::AISeparatorValue& sv
+	    = sepSeparatorValuesPtr[accIndex];
+
+	  // Multiply in the separator values probability into the clique value's current entry.
+	  p *= sv.remValues.ptr[0].p;
+	  // done, move on to next separator.
+	  continue; 
+	}
+      } else {
+	// no accumulated intersection exists, everything
+	// is in the remainder.
+	accIndex = 0;
+      }
+
+      if (sepLocalStruct.remDiscreteValuePtrs.size() > 0) {
+	// if we're here, then we must have some remainder pointers,
+	// meaning something in the separator was hidden.
+
+
+	// Do the remainder exists in this separator.
+	// 
+	// either:
+	//   1) AI exists and REM exist
+	//     or
+	//   3) AI does not exist (accIndex == 0), but REM exists
+	// 
+
+	// keep handy reference for readability.
+	ConditionalSeparatorTable::AISeparatorValue& sv
+	  = sepSeparatorValuesPtr[accIndex];
+
+	sepCliqueOrigin.remPacker.pack((unsigned**)sepLocalStruct.remDiscreteValuePtrs.ptr,
+				  &CliqueBuffer::packedVal[0]);
+
+	unsigned* remIndexp =
+	  sv.iRemHashMap.find(&CliqueBuffer::packedVal[0]);
+
+	// If it doesn't exist in this separator, then it must have
+	// zero probability some where. We therefore do not insert it
+	// into this clique, and continue on with next clique value.
+	if ( remIndexp == NULL )
+	  return;
+
+	// We've finally got the sep entry.  Multiply in the separator
+	// values probability into the clique value's current entry.
+	p *= sv.remValues.ptr[*remIndexp].p;
+      } else {
+	// separator consists of all observed values. We just multiply
+	// in the one entry the separator, that is guaranteed to be at
+	// postiion 0,0. The key thing is that we must not do ANY hash
+	// lookup as there are no hash tables in a separator without
+	// hidden variables.
+
+	ConditionalSeparatorTable::AISeparatorValue& sv
+	  = sepSeparatorValuesPtr[accIndex];
+
+	// Where was this allocated?  Search in file for key string
+	// "ALLOCATE_REMVALUES_ALL_OBSERVED'
+	p *= sv.remValues.ptr[0].p;
+      }
+    }
+
+
+    // keep track of the max clique probability right here.
+    if (p > maxCEValue)
+      maxCEValue = p;
+
+    if (numCliqueValuesUsed >= cliqueValues.size()) {
+      // TODO: optimize this.
+      // cliqueValues.resizeAndCopy(cliqueValues.size()*2);
+      if (numCliqueValuesUsed >= origin.cliqueValueSpaceManager.currentSize())
+	origin.cliqueValueSpaceManager.advanceToNextSize();
+      cliqueValues.resizeAndCopy(origin.cliqueValueSpaceManager.currentSize());
+    }
+
+    // TODO: figure out if it is possible to get around doing this
+    // check (or to help branch prediction predict it, since it will
+    // be different for differnet cliques). Answer: We can do this
+    // check once at beginning of iteration of assigned nodes, and
+    // have two versions of this code.
+    if (origin.packer.packedLen() <= IMC_NWWOH) {
+      // pack the clique values directly into place
+      origin.packer.pack(
+			 (unsigned**)sharedStructure.discreteValuePtrs.ptr,
+			 (unsigned*)&(cliqueValues.ptr[numCliqueValuesUsed].val[0]));
+    } else {
+      // Deal with the hash table to re-use clique values.
+      // First, grab pointer to storge where next clique value would
+      // be stored if it ends up being used.
+      unsigned *pcv = origin.valueHolder.curCliqueValuePtr();
+      // Next, pack the clique values into this position.
+      origin.packer.pack((unsigned**)sharedStructure.discreteValuePtrs.ptr,(unsigned*)pcv);
+      // Look it up in the hash table.
+      bool foundp;
+      unsigned *key;
+      key = origin.cliqueValueHashSet.insert(pcv,foundp);
+      if (!foundp) {
+	// if it was not found, need to claim this storage that we
+	// just used.
+	origin.valueHolder.allocateCurCliqueValue();
+      }
+      // Save the pointer to whatever the hash table decided to use.
+      cliqueValues.ptr[numCliqueValuesUsed].ptr = key;
+    }
+    // save the probability
+    cliqueValues.ptr[numCliqueValuesUsed].p = p;
+    numCliqueValuesUsed++;
+
+    // we are now done with this maxclique value.
+    return;
+  }
+
+  RV* rv = sharedStructure.fSortedAssignedNodes[nodeNumber];
+  // do the loop right here
+
+  infoMsg(Giga,"Starting assigned iteration of rv %s(%d), nodeNumber=%d, p = %f\n",
+	  rv->name().c_str(),rv->frame(),nodeNumber,p.val());
+
+  switch (origin.dispositionSortedAssignedNodes[nodeNumber]) {
+  case MaxClique::AN_NOTSEP_PROB_SPARSEDENSE:
+  case MaxClique::AN_SEP_PROB_SPARSEDENSE:
+    {
+      logpr cur_p;
+      rv->begin(cur_p);
+      do {
+	// At each step, we compute probability
+	if (message(Giga)) {
+	  if (!rv->discrete()) {
+	    infoMsg(Giga,"Assigned iteration and prob application of rv %s(%d)=C, nodeNumber =%d, cur_p = %f, p = %f\n",
+		    rv->name().c_str(),rv->frame(),nodeNumber,cur_p.val(),p.val());
+	  } else {
+	    DiscRV* drv = (DiscRV*)rv;
+	    infoMsg(Giga,"Assigned CPT iteration and prob application of rv %s(%d)=%d, nodeNumber =%d, cur_p = %f, p = %f\n",
+		    rv->name().c_str(),rv->frame(),drv->val,nodeNumber,cur_p.val(),p.val());
+	  }
+	}
+	// if at any step, we get zero, then back out.
+	if (!cur_p.essentially_zero()) {
+	  // Continue, updating probability by cur_p, contributing this
+	  // probability to the clique potential.
+	  ceIterateAssignedNodesCliqueDriven(sharedStructure, separatorTableArray, sepSharedStructureArray,
+					     cliqueBeamThresholdEstimate, maxCEValue, nodeNumber+1, p*cur_p);
+	}
+      } while (rv->next(cur_p));
+    }
+    break;
+
+  case MaxClique::AN_NOTSEP_NOTPROB_DENSE:
+    {
+      DiscRV* drv = (DiscRV*)rv;
+      // do the loop right here
+      drv->val = 0;
+      do {
+	infoMsg(Giga,"Assigned card iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
+		rv->name().c_str(),rv->frame(),drv->val,nodeNumber,p.val());
+	// Continue, do not update probability!!
+	ceIterateAssignedNodesCliqueDriven(sharedStructure, separatorTableArray, sepSharedStructureArray,
+					   cliqueBeamThresholdEstimate, maxCEValue, nodeNumber+1, p);
+      } while (++drv->val < drv->cardinality);
+    }
+    break;
+
+  default: // all other cases, we do CPT iteration removing zeros without updating probabilities.
+    {
+      logpr cur_p;
+      rv->begin(cur_p);
+      do {
+	// At each step, we compute probability
+	if (message(Giga)) {
+	  if (!rv->discrete()) {
+	    infoMsg(Giga,"Assigned iteration of rv %s(%d)=C, nodeNumber =%d, p = %f\n",
+		    rv->name().c_str(),rv->frame(),nodeNumber,p.val());
+	  } else {
+	    DiscRV* drv = (DiscRV*)rv;
+	    infoMsg(Giga,"Assigned CPT iteration and zero removal of rv %s(%d)=%d, nodeNumber =%d, cur_p = %f, p = %f\n",
+		    rv->name().c_str(),rv->frame(),drv->val,nodeNumber,cur_p.val(),p.val());
+	  }
+	}
+	// if at any step, we get zero, then back out.
+	if (!cur_p.essentially_zero()) {
+	  // Continue, do not update probability!!
+	  ceIterateAssignedNodesCliqueDriven(sharedStructure, separatorTableArray, sepSharedStructureArray,
+					     cliqueBeamThresholdEstimate, maxCEValue, nodeNumber+1, p);
+	}
+      } while (rv->next(cur_p));
+    }
+    break;
+  }
 }
 
 
