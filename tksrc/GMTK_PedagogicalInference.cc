@@ -50,6 +50,7 @@ void
 PedagogicalInference::prepareForwardInterfaceSeparator(SectionTablesBase *cur_section) {
   PedagogicalSectionTables *section = dynamic_cast<PedagogicalSectionTables *>(cur_section);
   assert(section);
+  assert(inference_it);
 
   // FIXME - possibly pull this up to where this method is called for performance
   // we skip the first Co's LI separator if there is no P1
@@ -73,6 +74,9 @@ PedagogicalInference::prepareForwardInterfaceSeparator(SectionTablesBase *cur_se
 // recieve forward message for C'_{t-1} -> C'_t (sendForwardsCrossPartitions)
 void 
 PedagogicalInference::receiveForwardInterfaceSeparator(SectionTablesBase *prev_section, SectionTablesBase *cur_section) {
+  assert(prev_section);
+  assert(cur_section);
+  assert(inference_it);
   PartitionStructures &previous_ps = myjt->section_structure_array[inference_it->prev_ss()];
   unsigned             previous_part_root = inference_it->prev_ri();
   const char*const     previous_part_type_name = inference_it->prev_nm();
@@ -133,6 +137,8 @@ PedagogicalInference::receiveForwardInterfaceSeparator(SectionTablesBase *prev_s
 // compute backward message for C'_{t-1} <- C'_t (aka scatter out of root)
 void
 PedagogicalInference::prepareBackwardInterfaceSeparator(SectionTablesBase *cur_section) {
+  assert(cur_section);
+  assert(inference_it);
   PedagogicalSectionTables *section = dynamic_cast<PedagogicalSectionTables *>(cur_section);
   assert(section);
 
@@ -167,6 +173,9 @@ PedagogicalInference::prepareBackwardInterfaceSeparator(SectionTablesBase *cur_s
 // send backward message for C'_{t-1} <- C'_t (sendBackwardCrossPartitions)
 void 
 PedagogicalInference::sendBackwardInterfaceSeparator(SectionTablesBase *prev_section, SectionTablesBase *cur_section) {
+  assert(prev_section);
+  assert(cur_section);
+  assert(inference_it);
   PartitionStructures &previous_ps = myjt->section_structure_array[inference_it->prev_ss()];
   unsigned             previous_part_root = inference_it->prev_ri();
   const char*const     previous_part_type_name = inference_it->prev_nm();
