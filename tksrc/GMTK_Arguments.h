@@ -639,6 +639,32 @@ Arg("map",Arg::Opt,dlopenFilenames,"Deterministic mapping dynamic library file. 
 /*************************************************************************************************************/
 /*************************************************************************************************************/
 /*************************************************************************************************************/
+//Dynamic Ckbeam
+
+#if defined(GMTK_ARG_DCKBEAM)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+
+    Arg("dckbeam_frac",Arg::Opt,MaxClique::dynamicMaxNumStatesFraction,"Fractions for dynamic ckbeam pruning of the max state space", Arg::ARRAY, MaxClique::MAX_NUM_DCKBEAM),
+    Arg("dckbeam_value",Arg::Opt,MaxClique::dynamicMaxNumStatesValue,"Values for dynamic ckbeam pruning of the max state space (0 = no pruning)", Arg::ARRAY, MaxClique::MAX_NUM_DCKBEAM),
+
+    
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+    if (MaxClique::checkDynamicBeamError()) {
+      error("ERROR: -dckbeam arguments incorrectly specified");
+    }
+
+#else
+#endif
+#endif  // defined(GMTK_ARG_DCKBEAM)
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
 
 
 #if defined(GMTK_ARG_CCBEAM)

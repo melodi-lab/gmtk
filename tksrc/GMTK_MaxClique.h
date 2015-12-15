@@ -297,6 +297,56 @@ class MaxClique : public IM {
   static unsigned cliqueBeamMaxNumStates;
   // fraction of clique to retain, forcibly pruning away everything else. Must be
 
+
+    const static unsigned MAX_NUM_DCKBEAM = 99;
+    static double dynamicMaxNumStatesFraction[MAX_NUM_DCKBEAM];
+    static unsigned dynamicMaxNumStatesValue[MAX_NUM_DCKBEAM];
+    static unsigned dynamicValidFractionNum;
+
+    static unsigned numFrames;
+    static void setNumFrames(const unsigned numFramesInput) {
+        numFrames = numFramesInput;
+    }
+
+    static bool checkDynamicBeamError(){
+        //fprintf(stderr, "Checking Dynamic Beam: %d\n", MAX_NUM_DCKBEAM);
+        //for(unsigned i=0; i<MAX_NUM_DCKBEAM; i++) {
+        //    fprintf(stderr, "%f, %d\n", dynamicMaxNumStatesFraction[i], dynamicMaxNumStatesValue[i]);
+        //}
+
+        for(unsigned i=0; i<MAX_NUM_DCKBEAM; i++) {
+            if(dynamicMaxNumStatesFraction[i] < 0 || dynamicMaxNumStatesValue[i] < 0) {
+                fprintf(stderr, "fraction or beam cannot be negative");
+                return true;
+            }
+            if(dynamicMaxNumStatesFraction[i] == 0 && dynamicMaxNumStatesValue[i] > 0) {
+                fprintf(stderr, "beam cannot be positive if fraction is 0.0");
+                return true;
+            }
+            if(dynamicMaxNumStatesFraction[i] == 0 && dynamicMaxNumStatesValue[i] == 0) {
+                dynamicValidFractionNum = i;
+                break;
+            }
+        }
+
+        double frac_sum = 0.0;
+        for(unsigned i=0; i<dynamicValidFractionNum; i++) {
+            frac_sum += dynamicMaxNumStatesFraction[i];
+        }
+
+        double frac_cumulative = 0.0;
+
+        //if(dynamicValidFractionNum > 0) fprintf(stderr, "Normalized Dynamic Beam:\n");
+        for(unsigned i=0; i<dynamicValidFractionNum; i++) {
+            frac_cumulative += dynamicMaxNumStatesFraction[i];
+            dynamicMaxNumStatesFraction[i] = frac_cumulative / frac_sum;
+            //fprintf(stderr, "%f, %d\n", dynamicMaxNumStatesFraction[i], dynamicMaxNumStatesValue[i]);
+        }
+
+        return false;
+    }
+
+
   // between 0 and 1 (i.e., 0 < v <= 1).
   static float cliqueBeamRetainFraction;
   // a version for clustered states
@@ -1810,7 +1860,7 @@ public:
   // Pruning
   /////////////////////////////////////////
 
-  void ceDoAllPruning(MaxClique& origin,logpr maxCEValue);
+  void ceDoAllPruning(MaxCliqueTable::SharedLocalStructure& sharedStructure,logpr maxCEValue);
   void ceCliqueBeamPrune(MaxClique& origin,logpr maxCEValue);
   unsigned ceCliqueStatePrune(const unsigned k,
 			      CliqueValue*,

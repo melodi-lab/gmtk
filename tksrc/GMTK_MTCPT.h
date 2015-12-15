@@ -101,6 +101,7 @@ public:
 					      logpr& p)
   {
     _val = dt->query(parents,drv);
+
     if (_val >= card()) {
       warning("ERROR: Deterministic CPT '%s' of card %d querying DT '%s' received value %d",
 	      name().c_str(),

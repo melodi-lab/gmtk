@@ -7752,6 +7752,99 @@ float flowMinNoDWeightHelper(const set<RV*>& rvs) {
   return MaxClique::computeWeight(rvs, NULL, false);
 }
 
+
+/*
+ * Mode:
+ * 0: grow
+ * 1: shrink
+ * 2: 
+ */
+
+float flowMinWeightDModularHelper(const set<RV*> & rvs, const set<RV*> & cond_rvs, int mode) {
+    float fx = MaxClique::computeWeight(rvs, NULL, true);
+    float fy = MaxClique::computeWeight(cond_rvs, NULL, true);
+    float weight = 0.0;
+        
+    if (mode == 0) {
+        //In the conditioned set(Y) but not in the set to evaluate(X)
+        for (set<RV*>::iterator j=cond_rvs.begin(); j != cond_rvs.end(); ++ j) {
+            RV *const rv = (*j);
+            set<RV*> rvs_copy(rvs);
+            rvs_copy.erase(rv);
+            
+            //if(rvs.find(rv) == rvs.end()) {
+            weight += (fx - MaxClique::computeWeight(rvs_copy, NULL, true));
+            //}
+        }
+        
+        //In the set to evaluate(X) but not in the conditioned set(Y)
+        for (set<RV*>::iterator j=rvs.begin(); j != rvs.end(); ++ j) {
+            RV *const rv = (*j);
+
+            if(cond_rvs.find(rv) == cond_rvs.end()) {
+                set<RV*> rv_only_set(cond_rvs);
+                rv_only_set.insert(rv);
+            
+                weight += (MaxClique::computeWeight(rv_only_set, NULL, true) - fy);
+            }
+        }
+        
+    }
+    else if (mode == 1) {
+        //In the conditioned set(Y) but not in the set to evaluate(X)
+        for (set<RV*>::iterator j=cond_rvs.begin(); j != cond_rvs.end(); ++ j) {
+            RV *const rv = (*j);
+            set<RV*> cond_rvs_copy(cond_rvs);
+            cond_rvs_copy.erase(rv);
+            
+            weight += (fy - MaxClique::computeWeight(cond_rvs_copy, NULL, true));
+        }
+        
+        //In the set to evaluate(X) but not in the conditioned set(Y)
+        for (set<RV*>::iterator j=rvs.begin(); j != rvs.end(); ++ j) {
+            RV *const rv = (*j);
+            
+            if(cond_rvs.find(rv) == cond_rvs.end()) {
+                set<RV*> rv_only_set;
+                rv_only_set.insert(rv);
+            
+                weight += MaxClique::computeWeight(rv_only_set, NULL, true);
+            }
+        }
+    
+    }
+    else if (mode == 2) {
+        //In the conditioned set(Y) but not in the set to evaluate(X)
+        for (set<RV*>::iterator j=cond_rvs.begin(); j != cond_rvs.end(); ++ j) {
+            RV *const rv = (*j);
+            set<RV*> rvs_copy(rvs);
+            rvs_copy.erase(rv);
+            
+            weight += (fx - MaxClique::computeWeight(rvs_copy, NULL, true));
+        }
+        
+        //In the set to evaluate(X) but not in the conditioned set(Y)
+        for (set<RV*>::iterator j=rvs.begin(); j != rvs.end(); ++ j) {
+            RV *const rv = (*j);
+            
+            if(cond_rvs.find(rv) == cond_rvs.end()) {
+                set<RV*> rv_only_set;
+                rv_only_set.insert(rv);
+            
+                weight += MaxClique::computeWeight(rv_only_set, NULL, true);
+            }
+        }
+    
+    }
+    else {
+        printf("Invalid Mode for min weight deterministic modular upper bound. Should be one of {0, 1, 2}.");
+        return 0.0;
+    }
+    
+    return weight;
+}
+
+
 /*-
  *-----------------------------------------------------------------------
  * BoundaryTriangulate::findBestInterface()
@@ -7981,6 +8074,8 @@ BoundaryTriangulate::findBestInterface(
       }
 
       // find best boundary by network flow algorithm.
+      
+      /*
       GMTK2Network network(cw, C_l, C2, finalLI);
       double flow = network.findMaxFlow();
       std::set<RV*> bestC_l; 
@@ -7988,6 +8083,60 @@ BoundaryTriangulate::findBestInterface(
       network.findBoundary(bestC_l, leftBestC_l);
       C_l = bestC_l;
       left_C_l = leftBestC_l; 
+      */
+      
+      
+      std::set<RV*> bestC_l;
+      std::set<RV*> leftBestC_l; 
+      
+      GMTK2Network network(cw, C_l, C2, finalLI);
+      double flow = network.findMaxFlow();
+      double best_flow = flow;
+      network.findBoundary(bestC_l, leftBestC_l);
+      
+      float (*cw2)(const set<RV*>&, const set<RV*>&, int) = NULL;
+      cw2 = &flowMinWeightDModularHelper;
+      
+      int iteration = 0;
+      
+      while(1) {
+          
+          int best_mode_index = -1;
+          
+          std::set<RV*> bestC_l_tmp;
+          std::set<RV*> leftBestC_l_tmp;
+          
+          for (int mode=0; mode < 3; ++ mode) {
+              GMTK2Network network_sub(cw2, bestC_l, mode, C_l, C2, finalLI);
+              flow = network_sub.findMaxFlow();
+              
+              printf("+++++ Iter %d, mode %d, flow %f, best flow %f\n", iteration, mode, flow, best_flow);
+              
+              if (flow > best_flow) {
+                  best_mode_index = mode;
+                  best_flow = flow;
+                  
+                  bestC_l_tmp.clear();
+                  leftBestC_l_tmp.clear();
+                  
+                  network_sub.findBoundary(bestC_l_tmp, leftBestC_l_tmp);
+              }
+          }
+          
+          printf("Iter %d, best flow %f, best mode %d\n", iteration, best_flow, best_mode_index);
+          ++ iteration;
+          if (best_mode_index == -1) break;
+          else {
+              bestC_l = bestC_l_tmp;
+              leftBestC_l = leftBestC_l_tmp;
+          }
+      
+      }
+      
+      
+      
+      
+      
       
       if (message(Tiny)) {
 	printf("Best flow found is %f\n", flow); 
