@@ -1,0 +1,8 @@
+
+# test and dev model snake
+
+
+AT_SETUP([snake: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/snake/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/snake && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

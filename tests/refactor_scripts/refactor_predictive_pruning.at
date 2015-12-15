@@ -1,0 +1,8 @@
+
+# test and dev model predictive_pruning
+
+
+AT_SETUP([predictive_pruning: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/predictive_pruning/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/predictive_pruning && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

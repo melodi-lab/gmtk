@@ -1,0 +1,8 @@
+
+# test and dev model ticket425
+
+
+AT_SETUP([ticket425: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/ticket425/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/ticket425 && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

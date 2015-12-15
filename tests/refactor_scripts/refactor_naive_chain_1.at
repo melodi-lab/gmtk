@@ -1,0 +1,8 @@
+
+# test and dev model naive_chain_1
+
+
+AT_SETUP([naive_chain_1: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/naive_chain_1/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/naive_chain_1 && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

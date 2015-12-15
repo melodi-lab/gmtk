@@ -1,0 +1,8 @@
+
+# test and dev model xwrd_w_ve_pics
+
+
+AT_SETUP([xwrd_w_ve_pics: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/xwrd_w_ve_pics/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/xwrd_w_ve_pics && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

@@ -1,0 +1,8 @@
+
+# test and dev model muri_uw
+
+
+AT_SETUP([muri_uw: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/muri_uw/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/muri_uw && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

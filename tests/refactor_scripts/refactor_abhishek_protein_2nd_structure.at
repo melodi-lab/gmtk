@@ -1,0 +1,8 @@
+
+# test and dev model abhishek_protein_2nd_structure
+
+
+AT_SETUP([abhishek_protein_2nd_structure: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/abhishek_protein_2nd_structure/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/abhishek_protein_2nd_structure && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

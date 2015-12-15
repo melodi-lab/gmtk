@@ -1,0 +1,8 @@
+
+# test and dev model shared_dlink
+
+
+AT_SETUP([shared_dlink: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/shared_dlink/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/shared_dlink && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

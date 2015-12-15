@@ -1,0 +1,8 @@
+
+# test and dev model static_example
+
+
+AT_SETUP([static_example: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/static_example/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/static_example && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

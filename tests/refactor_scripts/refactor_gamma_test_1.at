@@ -1,0 +1,8 @@
+
+# test and dev model gamma_test_1
+
+
+AT_SETUP([gamma_test_1: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/gamma_test_1/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/gamma_test_1 && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

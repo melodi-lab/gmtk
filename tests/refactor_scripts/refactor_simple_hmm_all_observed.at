@@ -1,0 +1,8 @@
+
+# test and dev model simple_hmm_all_observed
+
+
+AT_SETUP([simple_hmm_all_observed: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/simple_hmm_all_observed/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/simple_hmm_all_observed && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

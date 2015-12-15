@@ -1,0 +1,8 @@
+
+# test and dev model dbn
+
+
+AT_SETUP([dbn: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/dbn/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/dbn && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

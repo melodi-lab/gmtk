@@ -1,0 +1,8 @@
+
+# test and dev model debug_accumulator
+
+
+AT_SETUP([debug_accumulator: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/debug_accumulator/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/debug_accumulator && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

@@ -1,0 +1,8 @@
+
+# test and dev model hoffman_switching_weight_issue
+
+
+AT_SETUP([hoffman_switching_weight_issue: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/hoffman_switching_weight_issue/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/hoffman_switching_weight_issue && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

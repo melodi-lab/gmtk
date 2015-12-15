@@ -1,0 +1,8 @@
+
+# test and dev model ticket161.train.share
+
+
+AT_SETUP([ticket161.train.share: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/ticket161.train.share/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/ticket161.train.share && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

@@ -1,0 +1,8 @@
+
+# test and dev model CMM
+
+
+AT_SETUP([CMM: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/CMM/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/CMM && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
