@@ -177,6 +177,11 @@ class sArray_nd {
   }
 
 
+	unsigned size() {
+		return _size;
+	}
+
+
   void resize(int arg_size) {
     if (arg_size < 0)
       coredump("Error: Sarray:resize arg_size < 0");
@@ -223,6 +228,7 @@ class sArray_nd {
   void resizeAndCopy(const int arg_size) {
     if (arg_size < 0)
       coredump("Error: Sarray:resize arg_size < 0");
+
     T* tmp = new T[arg_size];
     const int nsize = (_size<arg_size?_size:arg_size);
     ::memcpy((void*)tmp,(void*)ptr,sizeof(T)*nsize);
@@ -235,7 +241,19 @@ class sArray_nd {
     ptr = tmp;
   }
 
-	
+    void resizeAndCopyShallowDeletion(const int arg_size) {
+        if (arg_size < 0)
+          coredump("Error: Sarray:resize arg_size < 0");
+        T* tmp = new T[arg_size];
+        const int nsize = (_size<arg_size?_size:arg_size);
+        ::memcpy((void*)tmp,(void*)ptr,sizeof(T)*nsize);
+        
+        //delete ptr;
+        _size = arg_size;
+        ptr = tmp;
+    }
+
+
 
   void growIfNeededAndCopy(int arg_size) {
     if (arg_size > _size)
@@ -252,6 +270,13 @@ class sArray_nd {
     if (arg_size > _size)
       resizeAndCopy((int)(f*arg_size+1.0));
   }
+
+    void growByFIfNeededAndCopyShallowDeletion(const float f, int arg_size) {
+        assert ( f >= 1.0 );
+        if (arg_size > _size)
+            resizeAndCopyShallowDeletion((int)(f*arg_size+1.0));
+    }
+
 
   void swapPtrs(sArray_nd<T>& sa) {
     if (_size != sa._size)
@@ -289,6 +314,16 @@ class sArray_nd {
     ptr = NULL;
     _size = 0;
   }
+
+    inline void reset(int arg_size=0) {
+        delete [] ptr;
+        _size = arg_size;
+        ptr = NULL;
+        if (_size < 0)
+          coredump("Error: sArray::sArray arg_size < 0");
+        if (_size > 0)
+          ptr = new T[_size];
+    }
 
   inline bool contains(T& x)
   {

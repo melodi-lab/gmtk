@@ -54,9 +54,27 @@ class GMTK2Network : public networkFlow::Network {
     init(computeWeight, cLeft, cMiddle, cRight);
   }
   
+  
+  GMTK2Network(float (*computeWeight)(const set<RV*>&, const set<RV*>&, int), 
+           const std::set<RV*>& cond_rvs,
+           int mode,
+	       const std::set<RV*>& cLeft, 
+	       const std::set<RV*>& cMiddle, 
+	       const std::set<RV*>& cRight) : 
+    _cLeft(cLeft), _cRight(cRight), _cMiddle(cMiddle) {
+    init(computeWeight, cond_rvs, mode, cLeft, cMiddle, cRight);
+  }
 
   
   void init(float (*computeWeight)(const set<RV*>&), 
+	    const std::set<RV*>& cLeft, 
+	    const std::set<RV*>& cMiddle, 
+	    const std::set<RV*>& cRight);
+	    
+	    
+    void init(float (*computeWeight)(const set<RV*>&, const set<RV*>&, int),
+        const std::set<RV*>& cond_rvs,
+        int mode,
 	    const std::set<RV*>& cLeft, 
 	    const std::set<RV*>& cMiddle, 
 	    const std::set<RV*>& cRight);

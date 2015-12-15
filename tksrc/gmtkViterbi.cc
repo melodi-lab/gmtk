@@ -132,6 +132,7 @@ VCID(HGID)
 #define GMTK_ARG_CBEAM
 #define GMTK_ARG_CPBEAM
 #define GMTK_ARG_CKBEAM
+#define GMTK_ARG_DCKBEAM
 #define GMTK_ARG_CCBEAM
 #define GMTK_ARG_CRBEAM
 #define GMTK_ARG_CMBEAM
@@ -567,6 +568,9 @@ main(int argc,char*argv[])
 	    0,gomFS->numSegments()-1);
 
     const unsigned numFrames = GM_Parms.setSegment(segment);
+    
+    //Set total number of frames for dyamic beam
+    MaxClique::setNumFrames(numFrames);
 
     try {
       logpr probe;

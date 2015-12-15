@@ -342,6 +342,19 @@ unsigned MaxClique::cliqueBeamClusterMaxNumStates = NO_PRUNING_CLIQUEBEAMCLUSTER
 unsigned
 MaxClique::cliqueBeamMaxNumStates = 0;
 
+
+
+/*
+ * Dyanmic ckbeam
+ */
+    const unsigned MaxClique::MAX_NUM_DCKBEAM;
+    double MaxClique::dynamicMaxNumStatesFraction[];
+    unsigned MaxClique::dynamicMaxNumStatesValue[];
+    unsigned MaxClique::dynamicValidFractionNum = 0;
+
+    unsigned MaxClique::numFrames = 0;
+    
+
 /*
  * Fraction of clique to retain. Default (1.0) means prune nothing.
  *
@@ -2432,6 +2445,7 @@ ceGatherFromIncommingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStru
   // below this estimated threshold, they are pruned.
   logpr cliqueBeamThresholdEstimate;
 
+
   while (cliqueExpansionTry < origin.cliqueBeamBuildMaxExpansions) {
 
     traceIndent=-1; 
@@ -2477,6 +2491,8 @@ ceGatherFromIncommingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStru
       origin.prevMaxCEValPrediction = 0;
     }
 
+
+
     maxCEValue.set_to_zero();
     // next, do the actual collect message.
     if (origin.hashableNodes.size() == 0) {
@@ -2512,6 +2528,9 @@ ceGatherFromIncommingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStru
       }
     }
 
+
+
+
     if (numCliqueValuesUsed == 0) {
       // if we have a zero clique, print message and possibly continue
       // with expanded clique.
@@ -2525,6 +2544,7 @@ ceGatherFromIncommingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStru
     }
     cliqueExpansionTry ++;
   }
+
 
   // check if we have a zero clique, and if we do, print message and exit.
   // TODO: rather than exit, pop back to the top and allow continuation and/or
@@ -2563,7 +2583,7 @@ ceGatherFromIncommingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStru
   // being used, we prune here, *before* we copy things out of the
   // temporary pool so that pruned entries are not inserted into
   // permanent locations.
-  ceDoAllPruning(origin,maxCEValue);
+  ceDoAllPruning(sharedStructure, maxCEValue);
 
 
 #ifdef USE_TEMPORARY_LOCAL_CLIQUE_VALUE_POOL
@@ -2887,12 +2907,14 @@ MaxCliqueTable::ceIterateSeparatorsRecurse(MaxCliqueTable::SharedLocalStructure&
 			maxCEValue,
 			sepNumber+1,
 			p);
+
     goto ceIterateSeparatorsFinished;
   }
 
 
   unsigned sepValueNumber;  
   if (sepOrigin.hAccumulatedIntersection.size() > 0) {
+
     // look up existing intersected values to see if we have a match
     // and only proceed if we do.
 
@@ -2964,6 +2986,7 @@ MaxCliqueTable::ceIterateSeparatorsRecurse(MaxCliqueTable::SharedLocalStructure&
       // Search for tag 'ALLOCATE_REMVALUES_OPTION' in this file for
       // more info why remValues.ptr[0] exists.
       // Note: could do more separator pruning here.
+
       ceIterateSeparators(sharedStructure,
 			  separatorTableArray,
 			  sepSharedStructureArray,
@@ -3566,6 +3589,7 @@ MaxCliqueTable::ceIterateAssignedNodesNoRecurse(MaxCliqueTable::SharedLocalStruc
     return;
 
 
+
   // parray has to be 1 offset, storing p in entry -1
   logpr* parray = origin.probArrayStorage.ptr + 1;
   parray[-1] = p;
@@ -3586,11 +3610,14 @@ MaxCliqueTable::ceIterateAssignedNodesNoRecurse(MaxCliqueTable::SharedLocalStruc
 
     case MaxClique::AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB: 
       rv->begin(cur_p);
+//fprintf(stdout, "begin\n");
       goto applyProbTag;
     case MaxClique::AN_COMPUTE_AND_APPLY_PROB:
       rv->probGivenParents(cur_p);
       {
       applyProbTag:
+
+//fprintf(stdout, "pgp: %f\n", cur_p.val());
 	// check for possible zero (could occur with
 	// zero score or observations).
 	parray[nodeNumber] = parray[nodeNumber-1]*cur_p;
@@ -3667,6 +3694,7 @@ MaxCliqueTable::ceIterateAssignedNodesNoRecurse(MaxCliqueTable::SharedLocalStruc
     // add a clique value to the clique.
     {
       const logpr final_p = parray[nodeNumber];
+
 
       // time to store clique value and total probability, p is current
       // clique probability.
@@ -4574,10 +4602,12 @@ MaxCliqueTable::ceCliqueBeamPrune(MaxClique& origin,
  *-----------------------------------------------------------------------
  */
 void 
-MaxCliqueTable::ceDoAllPruning(MaxClique& origin,
+MaxCliqueTable::ceDoAllPruning(MaxCliqueTable::SharedLocalStructure& sharedStructure,
 			       logpr maxCEValue)
 {
 
+
+    MaxClique& origin = *(sharedStructure.origin);
 
   // if all observed and/or deterministic clique, then only one state,
   // so nothing to prune.
@@ -4607,6 +4637,36 @@ MaxCliqueTable::ceDoAllPruning(MaxClique& origin,
   //   printf("nms = %d, pf = %f, ncv = %d, k = %d\n",origin.cliqueBeamMaxNumStates,
   // origin.cliqueBeamRetainFraction,numCliqueValuesUsed,k);
   // printf("starting k pruning with state space %d\n",numCliqueValuesUsed); fflush(stdout);
+
+
+    unsigned frame_min = sharedStructure.rv_w_min_frame_num->frame();
+    unsigned frame_max = sharedStructure.rv_w_max_frame_num->frame();
+    double frac_min = frame_min * 1.0 / MaxClique::numFrames;
+    double frac_max = frame_max * 1.0 / MaxClique::numFrames;
+
+    if(origin.dynamicValidFractionNum > 0) {
+
+
+        unsigned local_max = 0;
+
+        for(unsigned i=0; i<origin.dynamicValidFractionNum; i++) {
+            if(frac_min < origin.dynamicMaxNumStatesFraction[i]) {
+                local_max = max(local_max, origin.dynamicMaxNumStatesValue[i]);
+                break;
+            }
+        }
+
+        for(unsigned i=0; i<origin.dynamicValidFractionNum; i++) {
+            if(frac_max < origin.dynamicMaxNumStatesFraction[i]) {
+                local_max = max(local_max, origin.dynamicMaxNumStatesValue[i]);
+                break;
+            }
+        }
+
+        k = min(k, local_max);
+    }
+
+
 
   if (k < numCliqueValuesUsed) {
     infoMsg(IM::Inference, IM::Med,"Clique k-beam pruning with k=%d: Original clique state space = %d\n",k,

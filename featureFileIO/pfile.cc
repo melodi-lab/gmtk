@@ -23,7 +23,7 @@
 // This is the verision string that appears in the PFile header
 
 static const char* pfile_version0_string = 
-    "-pfile_header version 0 size 32768";
+    "-pfile_header version 0 size 131072";
 
 //
 // Much of the code below was taken from Quicknet's implmenetation of

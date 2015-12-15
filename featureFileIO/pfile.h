@@ -30,7 +30,7 @@
 #include "general.h"
 
 // This is the size of the PFile header
-#define PFILE_HEADER_SIZE (32768)
+#define PFILE_HEADER_SIZE (131072)
 
 // a print command for size_t similar to what you might find in inttypes.h
 #define PRIst "zu"
