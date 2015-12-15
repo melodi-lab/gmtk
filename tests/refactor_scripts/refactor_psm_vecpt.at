@@ -1,0 +1,8 @@
+
+# test and dev model psm_vecpt
+
+
+AT_SETUP([psm_vecpt: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/psm_vecpt/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/psm_vecpt && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

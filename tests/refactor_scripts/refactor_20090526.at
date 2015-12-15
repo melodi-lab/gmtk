@@ -1,0 +1,8 @@
+
+# test and dev model 20090526
+
+
+AT_SETUP([20090526: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/20090526/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/20090526 && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

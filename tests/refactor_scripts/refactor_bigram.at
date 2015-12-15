@@ -1,0 +1,8 @@
+
+# test and dev model bigram
+
+
+AT_SETUP([bigram: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/bigram/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/bigram && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

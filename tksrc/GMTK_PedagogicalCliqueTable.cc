@@ -1699,10 +1699,18 @@ PedagogicalCliqueTable::ceIterateAssignedNodesCliqueDriven(PedagogicalCliqueTabl
 							   const unsigned nodeNumber,
 							   logpr p)
 {
+  if (nodeNumber < sharedStructure.fSortedAssignedNodes.size())
+    infoMsg(Inference, Huge, "ceIterateAssignedNodesCliqueDriven(..., nodeNumber %u / %u, ...)\n", 
+	    nodeNumber+1, sharedStructure.fSortedAssignedNodes.size());
   MaxClique& origin = *(sharedStructure.origin);
   if (nodeNumber == sharedStructure.fSortedAssignedNodes.size()) {
     // time to store maxclique value and total probability, p is
     // current clique probability.
+
+    if (message(Inference, Huge)) {
+      printf("  [node # %u] checking against separators: ", nodeNumber);
+      printRVSetAndValues(stdout,sharedStructure.fNodes);
+    }
 
     // Now, we iterate through all incoming CE separators, make sure the entry 
     // for the current clique value it exists, and if it does, multiply by separator probability.
@@ -1745,8 +1753,10 @@ PedagogicalCliqueTable::ceIterateAssignedNodesCliqueDriven(PedagogicalCliqueTabl
 	// If it doesn't exist in this separator, then it must have
 	// zero probability some where. We therefore do not insert it
 	// into this clique, and continue on with next cliuqe value.
-	if ( accIndexp == NULL )
+	if ( accIndexp == NULL ) {
+	  infoMsg(Inference, Huge, "  entry pruned by separator %u / %u\n", sepNumber, origin.ceReceiveSeparators.size());
 	  return;
+	}
 
 	accIndex = *accIndexp;
 
@@ -1758,6 +1768,9 @@ PedagogicalCliqueTable::ceIterateAssignedNodesCliqueDriven(PedagogicalCliqueTabl
 
 	  // go ahead and insert it here to the 1st entry (entry 0).
 
+	  infoMsg(Inference, Huge, "  sep %u / %u : AI exists, REM doesnt, multiplying sep val i 1st entry\n",
+		  sepNumber, origin.ceReceiveSeparators.size());
+
 	  // handy reference for readability.
 	  ConditionalSeparatorTable::AISeparatorValue& sv
 	    = sepSeparatorValuesPtr[accIndex];
@@ -1768,6 +1781,10 @@ PedagogicalCliqueTable::ceIterateAssignedNodesCliqueDriven(PedagogicalCliqueTabl
 	  continue; 
 	}
       } else {
+
+	  infoMsg(Inference, Huge, "  sep %u / %u : AI doesnt exist, everything in REM\n",
+		  sepNumber, origin.ceReceiveSeparators.size());
+
 	// no accumulated intersection exists, everything
 	// is in the remainder.
 	accIndex = 0;
@@ -1777,6 +1794,8 @@ PedagogicalCliqueTable::ceIterateAssignedNodesCliqueDriven(PedagogicalCliqueTabl
 	// if we're here, then we must have some remainder pointers,
 	// meaning something in the separator was hidden.
 
+	infoMsg(Inference, Huge, "  sep %u / %u : there must be remainder pointers -> something in sep was hidden\n",
+		sepNumber, origin.ceReceiveSeparators.size());
 
 	// Do the remainder exists in this separator.
 	// 
@@ -1790,17 +1809,32 @@ PedagogicalCliqueTable::ceIterateAssignedNodesCliqueDriven(PedagogicalCliqueTabl
 	ConditionalSeparatorTable::AISeparatorValue& sv
 	  = sepSeparatorValuesPtr[accIndex];
 
+	infoMsg(Inference, Huge, "  sep %u / %u : got sepSeparatorValuesPtr[%u]\n",
+		sepNumber, origin.ceReceiveSeparators.size(), accIndex);
+
 	sepCliqueOrigin.remPacker.pack((unsigned**)sepLocalStruct.remDiscreteValuePtrs.ptr,
 				  &CliqueBuffer::packedVal[0]);
+
+	infoMsg(Inference, Huge, "  sep %u / %u : packed sepLocalStruct.remDiscreteValuePtrs.ptr to CliqueBuffer::packedVal[0]\n",
+		sepNumber, origin.ceReceiveSeparators.size());
 
 	unsigned* remIndexp =
 	  sv.iRemHashMap.find(&CliqueBuffer::packedVal[0]);
 
+	infoMsg(Inference, Huge, "  sep %u / %u : looked up CliqueBuffer::packedVal[0]\n",
+		sepNumber, origin.ceReceiveSeparators.size());
+
 	// If it doesn't exist in this separator, then it must have
 	// zero probability some where. We therefore do not insert it
 	// into this clique, and continue on with next clique value.
-	if ( remIndexp == NULL )
+	if ( remIndexp == NULL ) {
+	  infoMsg(Inference, Huge, "  sep %u / %u : REM doesnt exist in this sep -> pruning\n",
+		  sepNumber, origin.ceReceiveSeparators.size());
 	  return;
+	}
+
+	infoMsg(Inference, Huge, "  sep %u / %u : REM found in this sep -> multiplying sep val into clique\n",
+		sepNumber, origin.ceReceiveSeparators.size());
 
 	// We've finally got the sep entry.  Multiply in the separator
 	// values probability into the clique value's current entry.
@@ -1812,8 +1846,14 @@ PedagogicalCliqueTable::ceIterateAssignedNodesCliqueDriven(PedagogicalCliqueTabl
 	// lookup as there are no hash tables in a separator without
 	// hidden variables.
 
+	infoMsg(Inference, Huge, "  sep %u / %u : fully observed sep -> multiplying sep val into clique\n",
+		sepNumber, origin.ceReceiveSeparators.size());
+
 	ConditionalSeparatorTable::AISeparatorValue& sv
 	  = sepSeparatorValuesPtr[accIndex];
+
+	infoMsg(Inference, Huge, "  sep %u / %u : got sepSeparatorValuesPtr[%u]\n",
+		sepNumber, origin.ceReceiveSeparators.size(), accIndex);
 
 	// Where was this allocated?  Search in file for key string
 	// "ALLOCATE_REMVALUES_ALL_OBSERVED'
@@ -1867,6 +1907,17 @@ PedagogicalCliqueTable::ceIterateAssignedNodesCliqueDriven(PedagogicalCliqueTabl
     cliqueValues.ptr[numCliqueValuesUsed].p = p;
     numCliqueValuesUsed++;
 
+    if (message(Inference, High)) {
+      // see https://j.ee.washington.edu/trac/gmtk/ticket/214#comment:14
+      if (message(Inference, High+5))
+	psp2(stdout,spi*(traceIndent+1));
+      infoMsg(Inference, High,"CI:Inserting %d-clique ent #%d,pr=%f,sm=%f:",
+	      sharedStructure.fNodes.size(),
+	      (numCliqueValuesUsed-1),
+	      cliqueValues.ptr[numCliqueValuesUsed-1].p.val(),sumProbabilities().val());
+      printRVSetAndValues(stdout,sharedStructure.fNodes);
+    }
+
     // we are now done with this maxclique value.
     return;
   }
@@ -1874,24 +1925,30 @@ PedagogicalCliqueTable::ceIterateAssignedNodesCliqueDriven(PedagogicalCliqueTabl
   RV* rv = sharedStructure.fSortedAssignedNodes[nodeNumber];
   // do the loop right here
 
-  infoMsg(Giga,"Starting assigned iteration of rv %s(%d), nodeNumber=%d, p = %f\n",
-	  rv->name().c_str(),rv->frame(),nodeNumber,p.val());
+  infoMsg(Inference, Giga,"Starting assigned iteration of rv %s(%d), nodeNumber=%d, p = %f, disp %s\n",
+	  rv->name().c_str(),rv->frame(),nodeNumber,p.val(), MaxClique::disp2str(origin.dispositionSortedAssignedNodes[nodeNumber]));
 
   switch (origin.dispositionSortedAssignedNodes[nodeNumber]) {
   case MaxClique::AN_NOTSEP_PROB_SPARSEDENSE:
   case MaxClique::AN_SEP_PROB_SPARSEDENSE:
     {
       logpr cur_p;
+printf("  >                 nodes: "); printRVSetAndValues(stdout, sharedStructure.fNodes, true);
+printf("  > sorted assgined nodes: "); printRVSetAndValues(stdout, sharedStructure.fSortedAssignedNodes, true);
+printf("  >      unassgined nodes: "); printRVSetAndValues(stdout, sharedStructure.fUnassignedIteratedNodes, true);
+printf("  >    determinable nodes: "); printRVSetAndValues(stdout, sharedStructure.fDeterminableNodes, true);
+rv->printNameFrameValue(stdout, false); printf("   "); printRVSetAndValues(stdout, rv->allParents,false); printf("   ");
       rv->begin(cur_p);
+rv->printNameFrameValue(stdout, true);
       do {
 	// At each step, we compute probability
-	if (message(Giga)) {
+	if (message(Inference, Giga)) {
 	  if (!rv->discrete()) {
-	    infoMsg(Giga,"Assigned iteration and prob application of rv %s(%d)=C, nodeNumber =%d, cur_p = %f, p = %f\n",
+	    infoMsg(Inference, Giga,"Assigned iteration and prob application of rv %s(%d)=C, nodeNumber =%d, cur_p = %f, p = %f\n",
 		    rv->name().c_str(),rv->frame(),nodeNumber,cur_p.val(),p.val());
 	  } else {
 	    DiscRV* drv = (DiscRV*)rv;
-	    infoMsg(Giga,"Assigned CPT iteration and prob application of rv %s(%d)=%d, nodeNumber =%d, cur_p = %f, p = %f\n",
+	    infoMsg(Inference, Giga,"Assigned CPT iteration and prob application of rv %s(%d)=%d, nodeNumber =%d, cur_p = %f, p = %f\n",
 		    rv->name().c_str(),rv->frame(),drv->val,nodeNumber,cur_p.val(),p.val());
 	  }
 	}
@@ -1912,7 +1969,7 @@ PedagogicalCliqueTable::ceIterateAssignedNodesCliqueDriven(PedagogicalCliqueTabl
       // do the loop right here
       drv->val = 0;
       do {
-	infoMsg(Giga,"Assigned card iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
+	infoMsg(Inference, Giga,"Assigned card iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
 		rv->name().c_str(),rv->frame(),drv->val,nodeNumber,p.val());
 	// Continue, do not update probability!!
 	ceIterateAssignedNodesCliqueDriven(sharedStructure, separatorTableArray, sepSharedStructureArray,
@@ -1929,11 +1986,11 @@ PedagogicalCliqueTable::ceIterateAssignedNodesCliqueDriven(PedagogicalCliqueTabl
 	// At each step, we compute probability
 	if (message(Giga)) {
 	  if (!rv->discrete()) {
-	    infoMsg(Giga,"Assigned iteration of rv %s(%d)=C, nodeNumber =%d, p = %f\n",
+	    infoMsg(Inference, Giga,"Assigned iteration of rv %s(%d)=C, nodeNumber =%d, p = %f\n",
 		    rv->name().c_str(),rv->frame(),nodeNumber,p.val());
 	  } else {
 	    DiscRV* drv = (DiscRV*)rv;
-	    infoMsg(Giga,"Assigned CPT iteration and zero removal of rv %s(%d)=%d, nodeNumber =%d, cur_p = %f, p = %f\n",
+	    infoMsg(Inference, Giga,"Assigned CPT iteration and zero removal of rv %s(%d)=%d, nodeNumber =%d, cur_p = %f, p = %f\n",
 		    rv->name().c_str(),rv->frame(),drv->val,nodeNumber,cur_p.val(),p.val());
 	  }
 	}

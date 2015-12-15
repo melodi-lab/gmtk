@@ -1,0 +1,8 @@
+
+# test and dev model dvecpt
+
+
+AT_SETUP([dvecpt: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/dvecpt/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/dvecpt && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

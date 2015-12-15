@@ -1,0 +1,8 @@
+
+# test and dev model thad_june
+
+
+AT_SETUP([thad_june: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/thad_june/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/thad_june && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

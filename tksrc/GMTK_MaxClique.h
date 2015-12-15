@@ -342,6 +342,18 @@ class MaxClique : public MaxCliqueBase {
   };
 
 
+  static char const *disp2str(AssignedNodeDisposition d) {
+    switch (d) {
+    case 0: return "AN_NOTSEP_PROB_SPARSEDENSE/AN_CPT_ITERATION_COMPUTE_AND_APPLY_PROB";
+    case 1: return "AN_NOTSEP_NOTPROB_SPARSE/AN_CPT_ITERATION_COMPUTE_PROB_REMOVE_ZEROS";
+    case 2: return "AN_NOTSEP_NOTPROB_DENSE/AN_CARD_ITERATION";
+    case 3: return "AN_SEP_PROB_SPARSEDENSE/AN_COMPUTE_AND_APPLY_PROB";
+    case 4: return "AN_SEP_NOTPROB_SPARSEDENSE_PRVASSIGNED/AN_SEP_NOTPROB_DENSE_NOTPRVASSIGNED/AN_CONTINUE";
+    case 5: return "AN_SEP_NOTPROB_SPARSE_NOTPRVASSIGNED/AN_CONTINUE_COMPUTE_PROB_REMOVE_ZEROS";
+    default: assert(false);
+    }
+  }
+
   // USED ONLY IN JUNCTION TREE INFERENCE 
   // Predicate for each each sorted assigned node, used to say what
   // should be done to that node during assigned node iteration.

@@ -1,0 +1,8 @@
+
+# test and dev model ajit-0clique
+
+
+AT_SETUP([ajit-0clique: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/ajit-0clique/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/ajit-0clique && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

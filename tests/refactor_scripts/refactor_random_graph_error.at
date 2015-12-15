@@ -1,0 +1,8 @@
+
+# test and dev model random_graph_error
+
+
+AT_SETUP([random_graph_error: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/random_graph_error/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/random_graph_error && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

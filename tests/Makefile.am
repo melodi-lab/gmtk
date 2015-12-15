@@ -29,6 +29,7 @@ $(srcdir)/package.m4: $(top_srcdir)/configure.ac
 
 TESTSUITE = $(srcdir)/testsuite
 TESTANDDEV= $(srcdir)/testanddev
+REFACTORSUITE = $(srcdir)/refactor
 
 include autoconf_tests
 
@@ -41,16 +42,23 @@ update-tests:
 	 $(AWK) 'BEGIN{print "LOCAL_TEST_AND_DEV = \\"}             \
 	              {print $$0 " \\"}                             \
 	           END{print "testanddev.at"}' >> autoconf_tests
+	(cd $(srcdir); ls refactor_scripts/refactor_*.at) |         \
+	 $(AWK) 'BEGIN{print "REFACTOR_TEST_AND_DEV = \\"}          \
+	              {print $$0 " \\"}                             \
+	           END{print "refactor.at"}' >> autoconf_tests
 
-EXTRA_DIST =          \
-atlocal.in            \
-testsuite.at          \
-testanddev.at         \
-$(srcdir)/package.m4  \
-$(TESTSUITE)          \
-$(TESTANDDEV)         \
-$(LOCAL_GMTK_AT)      \
-$(LOCAL_TEST_AND_DEV) \
+
+EXTRA_DIST =             \
+atlocal.in               \
+testsuite.at             \
+testanddev.at            \
+$(srcdir)/package.m4     \
+$(TESTSUITE)             \
+$(TESTANDDEV)            \
+$(REFACTORSUITE)         \
+$(LOCAL_GMTK_AT)         \
+$(LOCAL_TEST_AND_DEV)    \
+$(REFACTOR_TEST_AND_DEV) \
 autoconf_tests
 
 
@@ -66,7 +74,14 @@ $(srcdir)/testanddev.at:
 	find $(srcdir) -type f -name test_and_dev_\*.at | sort | \
 	  $(AWK) '{print "m4_include(["$$1"])"}' >> $@
 
-check-local: atconfig atlocal $(TESTSUITE) $(TESTANDDEV) gmtk_tests.at
+$(srcdir)/refactor.at:
+	echo "AT_COPYRIGHT([Copyright (C) 2015 Jeff Bilmes])" > $@
+	echo "AT_INIT([GMTK Refactor Test Suite])" >> $@
+	echo "AT_COLOR_TESTS" >> $@
+	find $(srcdir) -type f -name refactor_\*.at | sort | \
+	  $(AWK) '{print "m4_include(["$$1"])"}' >> $@
+
+check-local: atconfig atlocal $(TESTSUITE) $(TESTANDDEV) $(REFACTORSUITE) gmtk_tests.at
 	$(SHELL) '$(TESTSUITE)' $(TESTSUITEFLAGS)
 
 
@@ -77,7 +92,7 @@ check-local: atconfig atlocal $(TESTSUITE) $(TESTANDDEV) gmtk_tests.at
 # separate test suite for the installed programs that doesn't require
 # the extra test programs...
 
-installcheck-local: atconfig atlocal $(TESTSUITE) $(TESTANDDEV) gmtk_tests.at
+installcheck-local: atconfig atlocal $(TESTSUITE) $(TESTANDDEV) $(REFACTORSUITE) gmtk_tests.at
 	$(SHELL) '$(TESTSUITE)' \
 	AUTOTEST_PATH='$(bindir):$(abs_top_builddir)/tksrc:$(abs_top_builddir)/miscSupport:$(abs_top_builddir)/deepMLP' \
 	$(TESTSUITEFLAGS)
@@ -90,11 +105,15 @@ clean-local:
 	test ! -f $(TESTANDDEV)   || $(SHELL) '$(TESTANDDEV)' --clean
 	test ! -f testanddev.at   || rm testanddev.at
 #	test ! -f $(TESTANDDEV)   || rm $(TESTANDDEV)
+	test ! -f $(REFACTORSUITE)|| $(SHELL) '$(REFACTORSUITE)' --clean
+	test ! -f refactor.at     || rm refactor.at
+#	test ! -f $(REFACTORSUITE)|| rm $(REFACTORSUITE)
 
 distclean-local:
 	test ! -f atconfig || rm atconfig
 	test ! -f $(TESTSUITE).log  || rm $(TESTSUITE).log 
 	test ! -f $(TESTANDDEV).log || rm $(TESTANDDEV).log 
+	test ! -f $(REFACTORSUITE).log || rm $(REFACTORSUITE).log 
 
 AUTOM4TE = $(SHELL) $(top_srcdir)/missing --run autom4te
 AUTOTEST = $(AUTOM4TE) --language=autotest
@@ -103,5 +122,9 @@ $(TESTSUITE): $(srcdir)/testsuite.at $(srcdir)/gmtk_tests.at $(srcdir)/package.m
 	mv $@.tmp $@
 
 $(TESTANDDEV): $(srcdir)/testanddev.at $(srcdir)/package.m4
+	$(AUTOTEST) -I '$(srcdir)' -o $@.tmp $@.at
+	mv $@.tmp $@
+
+$(REFACTORSUITE): $(srcdir)/refactor.at $(srcdir)/package.m4
 	$(AUTOTEST) -I '$(srcdir)' -o $@.tmp $@.at
 	mv $@.tmp $@

@@ -1,0 +1,8 @@
+
+# test and dev model assist/discrete_model_MSBGPS
+
+
+AT_SETUP([assist/discrete_model_MSBGPS: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/assist/discrete_model_MSBGPS/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/assist/discrete_model_MSBGPS && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

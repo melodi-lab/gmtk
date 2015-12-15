@@ -1,0 +1,8 @@
+
+# test and dev model sheila_bug
+
+
+AT_SETUP([sheila_bug: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/sheila_bug/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/sheila_bug && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

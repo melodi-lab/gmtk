@@ -1,0 +1,8 @@
+
+# test and dev model grass
+
+
+AT_SETUP([grass: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/grass/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/grass && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

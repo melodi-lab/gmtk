@@ -1,0 +1,8 @@
+
+# test and dev model zafer_abort
+
+
+AT_SETUP([zafer_abort: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/zafer_abort/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/zafer_abort && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP

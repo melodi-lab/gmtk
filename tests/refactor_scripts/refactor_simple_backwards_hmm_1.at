@@ -1,0 +1,8 @@
+
+# test and dev model simple_backwards_hmm_1
+
+
+AT_SETUP([simple_backwards_hmm_1: jtcommand])
+AT_SKIP_IF([test ! -x $TEST_AND_DEV/simple_backwards_hmm_1/jtcommand])
+AT_CHECK([(cd $TEST_AND_DEV/simple_backwards_hmm_1 && ulimit -v 8000000 &&            ulimit -t 120 && ./jtcommand)], [], [ignore], [ignore])
+AT_CLEANUP
