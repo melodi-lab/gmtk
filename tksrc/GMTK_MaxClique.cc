@@ -1048,6 +1048,36 @@ MaxClique::printAllJTInfo(FILE*f,const unsigned indent,const set<RV*>& unassigne
 
 /*-
  *-----------------------------------------------------------------------
+ * MaxClique::computeUnassignedCliqueNodes()
+ *   Compute the unassignedNodes variable
+ *
+ * Preconditions:
+ *   Nodes and assignedNodes must be filled in.
+ *   Note that this routine is a nop if we're doing separator driven inference.
+ *
+ * Postconditions:
+ *   Unassigned nodes udpated.
+ *
+ * Side Effects:
+ *   changes member variable unasssignedNodes
+ *
+ * Results:
+ *     nothing
+ *
+ *-----------------------------------------------------------------------
+ */
+void 
+MaxClique::computeUnassignedCliqueNodes()
+{
+  unassignedNodes.clear();
+  set_difference(nodes.begin(),nodes.end(),
+		 assignedNodes.begin(),assignedNodes.end(),
+		 inserter(unassignedNodes,unassignedNodes.end()));
+}
+
+
+/*-
+ *-----------------------------------------------------------------------
  * MaxClique::computeVESeparators()
  *   
  * computes initial information about any VE separators that

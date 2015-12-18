@@ -274,6 +274,24 @@ SharedLocalStructure(MaxClique& _origin,
     fUnassignedIteratedNodes[i++] = nrv;
   }
 
+  fUnassignedNodes.resize(origin->unassignedNodes.size());
+  for (it = origin->unassignedNodes.begin();
+       it != origin->unassignedNodes.end();
+       it++) {
+    RV* rv = (*it);
+    RVInfo::rvParent rvp;
+    rvp.first = rv->name();
+    rvp.second = rv->frame()+frameDelta;    
+    
+    if ( ppf.find(rvp) == ppf.end() ) {
+      coredump("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+	       rv->name().c_str(),rv->frame(),frameDelta,
+	       rvp.first.c_str(),rvp.second);
+    }
+    RV* nrv = newRvs[ppf[rvp]];
+    fUnassignedNodes[i++] = nrv;
+  }
+
   // Clique values only store/hash values of hidden (thus necessarily
   // discrete) variables since they are the only thing that change.
   discreteValuePtrs.resize(origin->hashableNodes.size());
@@ -805,7 +823,7 @@ ceGatherFromIncommingSeparatorsCliqueDriven(PedagogicalCliqueTable::SharedLocalS
   logpr p = 1.0;
   // syntactic convenience variables.
   MaxClique& origin = *(sharedStructure.origin);
-  if (origin.unassignedIteratedNodes.size() == 0) {
+  if (origin.unassignedNodes.size() == 0) {
     ceIterateAssignedNodesCliqueDriven(sharedStructure, separatorTableArray, sepSharedStructureArray,
 				       cliqueBeamThresholdEstimate, maxCEValue, 0, p);
   } else {
@@ -1143,13 +1161,13 @@ PedagogicalCliqueTable::ceIterateUnassignedNodesCliqueDriven(PedagogicalCliqueTa
 							     const unsigned nodeNumber,
 							     const logpr p)
 {
-  if (nodeNumber == sharedStructure.fUnassignedIteratedNodes.size()) {
+  if (nodeNumber == sharedStructure.fUnassignedNodes.size()) {
     ceIterateAssignedNodesCliqueDriven(sharedStructure, separatorTableArray, sepSharedStructureArray,
 				       cliqueBeamThresholdEstimate, maxCEValue, 0, p);
     return;
   }
-  RV* rv = sharedStructure.fUnassignedIteratedNodes[nodeNumber];
-  infoMsg(Giga,"Starting Unassigned iteration of rv %s(%d), nodeNumber = %d, p = %f\n",
+  RV* rv = sharedStructure.fUnassignedNodes[nodeNumber];
+  infoMsg(Inference, Giga,"Starting Unassigned iteration of rv %s(%d), nodeNumber = %d, p = %f\n",
 	  rv->name().c_str(),rv->frame(),nodeNumber,p.val());
 
   if (rv->hidden()) {
@@ -1158,7 +1176,7 @@ PedagogicalCliqueTable::ceIterateUnassignedNodesCliqueDriven(PedagogicalCliqueTa
     // do the loop right here
     drv->val = 0;
     do {
-      infoMsg(Giga,"Unassigned iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
+      infoMsg(Inference, Giga,"Unassigned iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
 	      rv->name().c_str(),rv->frame(),drv->val,nodeNumber,p.val());
       // continue on, effectively multiplying p by unity.
       ceIterateUnassignedNodesCliqueDriven(sharedStructure, separatorTableArray, sepSharedStructureArray,
@@ -1171,12 +1189,12 @@ PedagogicalCliqueTable::ceIterateUnassignedNodesCliqueDriven(PedagogicalCliqueTa
       // TODO: for observed variables, do this once at the begining
       // before any looping here.
       // drv->setToObservedValue();
-      infoMsg(Giga,"Unassigned iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
+      infoMsg(Inference, Giga,"Unassigned iteration of rv %s(%d)=%d, nodeNumber = %d, p = %f\n",
 	      rv->name().c_str(),rv->frame(),RV2DRV(rv)->val,nodeNumber,p.val());
     } else {
       // nothing to do since we get continuous observed
       // value indirectly
-      infoMsg(Giga,"Unassigned iteration of rv %s(%d)=C, nodeNumber = %d, p = %f\n",
+      infoMsg(Inference, Giga,"Unassigned iteration of rv %s(%d)=C, nodeNumber = %d, p = %f\n",
 	      rv->name().c_str(),rv->frame(),nodeNumber,p.val());
     }
     // continue on, effectively multiplying p by unity.
@@ -1699,9 +1717,6 @@ PedagogicalCliqueTable::ceIterateAssignedNodesCliqueDriven(PedagogicalCliqueTabl
 							   const unsigned nodeNumber,
 							   logpr p)
 {
-  if (nodeNumber < sharedStructure.fSortedAssignedNodes.size())
-    infoMsg(Inference, Huge, "ceIterateAssignedNodesCliqueDriven(..., nodeNumber %u / %u, ...)\n", 
-	    nodeNumber+1, sharedStructure.fSortedAssignedNodes.size());
   MaxClique& origin = *(sharedStructure.origin);
   if (nodeNumber == sharedStructure.fSortedAssignedNodes.size()) {
     // time to store maxclique value and total probability, p is
@@ -1740,7 +1755,7 @@ PedagogicalCliqueTable::ceIterateAssignedNodesCliqueDriven(PedagogicalCliqueTabl
       unsigned accIndex;
       // TODO: optimize this check away out of loop.
       ConditionalSeparatorTable::SharedLocalStructure &sepLocalStruct = sepSharedStructureArray[origin.ceReceiveSeparators[sepNumber]];
-      SeparatorClique sepCliqueOrigin = *(sepLocalStruct.origin);
+      SeparatorClique &sepCliqueOrigin = *(sepLocalStruct.origin);
       if (sepCliqueOrigin.hAccumulatedIntersection.size() > 0) {
 	// an accumulated intersection exists.
 
@@ -1768,9 +1783,6 @@ PedagogicalCliqueTable::ceIterateAssignedNodesCliqueDriven(PedagogicalCliqueTabl
 
 	  // go ahead and insert it here to the 1st entry (entry 0).
 
-	  infoMsg(Inference, Huge, "  sep %u / %u : AI exists, REM doesnt, multiplying sep val i 1st entry\n",
-		  sepNumber, origin.ceReceiveSeparators.size());
-
 	  // handy reference for readability.
 	  ConditionalSeparatorTable::AISeparatorValue& sv
 	    = sepSeparatorValuesPtr[accIndex];
@@ -1781,10 +1793,6 @@ PedagogicalCliqueTable::ceIterateAssignedNodesCliqueDriven(PedagogicalCliqueTabl
 	  continue; 
 	}
       } else {
-
-	  infoMsg(Inference, Huge, "  sep %u / %u : AI doesnt exist, everything in REM\n",
-		  sepNumber, origin.ceReceiveSeparators.size());
-
 	// no accumulated intersection exists, everything
 	// is in the remainder.
 	accIndex = 0;
@@ -1793,9 +1801,6 @@ PedagogicalCliqueTable::ceIterateAssignedNodesCliqueDriven(PedagogicalCliqueTabl
       if (sepLocalStruct.remDiscreteValuePtrs.size() > 0) {
 	// if we're here, then we must have some remainder pointers,
 	// meaning something in the separator was hidden.
-
-	infoMsg(Inference, Huge, "  sep %u / %u : there must be remainder pointers -> something in sep was hidden\n",
-		sepNumber, origin.ceReceiveSeparators.size());
 
 	// Do the remainder exists in this separator.
 	// 
@@ -1812,29 +1817,35 @@ PedagogicalCliqueTable::ceIterateAssignedNodesCliqueDriven(PedagogicalCliqueTabl
 	infoMsg(Inference, Huge, "  sep %u / %u : got sepSeparatorValuesPtr[%u]\n",
 		sepNumber, origin.ceReceiveSeparators.size(), accIndex);
 
+#if 0
+verify blah.revDiscreteValuePtrs is the correct source for packing (maybe PedCliqueTable::sharedStruct.discreteValuePtrs?)
+verify blah.revDiscreteValuePtrs matches the iterated RVs
+port over NWWOH
+port over maxCEValue
+port over clique value space manager?
+port over temp clique value pool
+#endif
+#if 0
+sepCliqueOrigin.printAllJTInfo(stdout);
+ printf("packing:");
+for (unsigned i=0; i < sepLocalStruct.remDiscreteValuePtrs.size(); ++i) {
+  DiscRV *rv = (DiscRV *)(sepCliqueOrigin.hRemainder[i]);
+  printf ("  %s(%u)@%p/%p", rv->name().c_str(), rv->frame(), &(rv->val), sepLocalStruct.remDiscreteValuePtrs[i]);
+}
+printf("\n");
+#endif
 	sepCliqueOrigin.remPacker.pack((unsigned**)sepLocalStruct.remDiscreteValuePtrs.ptr,
 				  &CliqueBuffer::packedVal[0]);
 
-	infoMsg(Inference, Huge, "  sep %u / %u : packed sepLocalStruct.remDiscreteValuePtrs.ptr to CliqueBuffer::packedVal[0]\n",
-		sepNumber, origin.ceReceiveSeparators.size());
-
 	unsigned* remIndexp =
 	  sv.iRemHashMap.find(&CliqueBuffer::packedVal[0]);
-
-	infoMsg(Inference, Huge, "  sep %u / %u : looked up CliqueBuffer::packedVal[0]\n",
-		sepNumber, origin.ceReceiveSeparators.size());
 
 	// If it doesn't exist in this separator, then it must have
 	// zero probability some where. We therefore do not insert it
 	// into this clique, and continue on with next clique value.
 	if ( remIndexp == NULL ) {
-	  infoMsg(Inference, Huge, "  sep %u / %u : REM doesnt exist in this sep -> pruning\n",
-		  sepNumber, origin.ceReceiveSeparators.size());
 	  return;
 	}
-
-	infoMsg(Inference, Huge, "  sep %u / %u : REM found in this sep -> multiplying sep val into clique\n",
-		sepNumber, origin.ceReceiveSeparators.size());
 
 	// We've finally got the sep entry.  Multiply in the separator
 	// values probability into the clique value's current entry.
@@ -1846,14 +1857,8 @@ PedagogicalCliqueTable::ceIterateAssignedNodesCliqueDriven(PedagogicalCliqueTabl
 	// lookup as there are no hash tables in a separator without
 	// hidden variables.
 
-	infoMsg(Inference, Huge, "  sep %u / %u : fully observed sep -> multiplying sep val into clique\n",
-		sepNumber, origin.ceReceiveSeparators.size());
-
 	ConditionalSeparatorTable::AISeparatorValue& sv
 	  = sepSeparatorValuesPtr[accIndex];
-
-	infoMsg(Inference, Huge, "  sep %u / %u : got sepSeparatorValuesPtr[%u]\n",
-		sepNumber, origin.ceReceiveSeparators.size(), accIndex);
 
 	// Where was this allocated?  Search in file for key string
 	// "ALLOCATE_REMVALUES_ALL_OBSERVED'
@@ -1933,13 +1938,7 @@ PedagogicalCliqueTable::ceIterateAssignedNodesCliqueDriven(PedagogicalCliqueTabl
   case MaxClique::AN_SEP_PROB_SPARSEDENSE:
     {
       logpr cur_p;
-printf("  >                 nodes: "); printRVSetAndValues(stdout, sharedStructure.fNodes, true);
-printf("  > sorted assgined nodes: "); printRVSetAndValues(stdout, sharedStructure.fSortedAssignedNodes, true);
-printf("  >      unassgined nodes: "); printRVSetAndValues(stdout, sharedStructure.fUnassignedIteratedNodes, true);
-printf("  >    determinable nodes: "); printRVSetAndValues(stdout, sharedStructure.fDeterminableNodes, true);
-rv->printNameFrameValue(stdout, false); printf("   "); printRVSetAndValues(stdout, rv->allParents,false); printf("   ");
       rv->begin(cur_p);
-rv->printNameFrameValue(stdout, true);
       do {
 	// At each step, we compute probability
 	if (message(Inference, Giga)) {

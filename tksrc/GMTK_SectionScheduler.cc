@@ -2266,6 +2266,46 @@ SectionScheduler::assignRVToClique(const char *const sectionName,
 
 
 
+/*-
+ *-----------------------------------------------------------------------
+ * SectionScheduler::computeUnassignedCliqueNodes()
+ *    Go through each clique and compute the unassigned nodes.
+ *    This is only done when ceSeparatorDrivenInference == false.
+ *
+ * Preconditions:
+ *     Must be called in appropriate order (setUpDataStructures).
+ *
+ * Postconditions:
+ *     Cliques have this member variable filled in.
+ *
+ * Side Effects:
+ *     Will change the clique data member variables
+ *
+ * Results:
+ *     None.
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+SectionScheduler::computeUnassignedCliqueNodes(JT_Partition& part)
+{
+  if (true /* MaxClique::ceSeparatorDrivenInference == false */ ) {
+    // these are only needed by clique driven inference.
+    for (unsigned cliqueNum=0;cliqueNum<part.cliques.size();cliqueNum++) {
+      part.cliques[cliqueNum].computeUnassignedCliqueNodes();
+    }
+  }
+}
+void
+SectionScheduler::computeUnassignedCliqueNodes()
+{
+  computeUnassignedCliqueNodes(P1);
+  computeUnassignedCliqueNodes(Co);
+  computeUnassignedCliqueNodes(E1);
+}
+
+
+
 
 
 /*-
@@ -3436,6 +3476,7 @@ SectionScheduler::setUpJTDataStructures(const char* varSectionAssignmentPrior,
   createDirectedGraphOfCliques();
   assignRVsToCliques(varSectionAssignmentPrior,varCliqueAssignmentPrior);
   assignFactorsToCliques();
+  computeUnassignedCliqueNodes();
   // TODO: assignScoringFactorsToCliques();
   setUpMessagePassingOrders();
   // create seps and VE seps.
