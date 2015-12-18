@@ -266,6 +266,19 @@ class MaxClique : public MaxCliqueBase {
 
 
   // USED ONLY IN JUNCTION TREE INFERENCE 
+  // The set of nodes that are simply not assigned. In other words,
+  // these nodes can be defined as:
+  // 
+  //    unassignedNodes = nodes - assignedNodes;
+  //
+  // Computed in JunctionTree::assignRVsToCliques().
+  // Used to:
+  //  1) These nodes are used for iteration when doing
+  //     clique driven inference.
+  set<RV*> unassignedNodes;
+
+
+  // USED ONLY IN JUNCTION TREE INFERENCE 
   // This enum defines the different things that could
   // happen to an assigned node in a clique during CE assigned node iteration.
   // TODO: come up with better (and only one name) for each of the below.

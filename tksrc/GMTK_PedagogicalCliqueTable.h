@@ -126,6 +126,7 @@ class PedagogicalCliqueTable  : public IM
     sArray< RV*> fNodes;
     sArray< RV*> fSortedAssignedNodes;
     sArray< RV*> fUnassignedIteratedNodes;
+    sArray< RV*> fUnassignedNodes;
     sArray< RV*> fDeterminableNodes;
     // Direct pointers to the values within the discrete hidden RVs
     // within this clique.  Note, the observed discrete and continuous

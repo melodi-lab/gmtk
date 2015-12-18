@@ -346,7 +346,7 @@ main(int argc,char*argv[])
   // Setup the within-section inference implementation
 
   // FIXME - move these to arguments
-  bool pedagogical = false, sparse_join = true;
+  bool pedagogical = true, sparse_join = false;
 
   SectionInferenceAlgorithm *section_inference_alg = NULL;
   if (false) {
