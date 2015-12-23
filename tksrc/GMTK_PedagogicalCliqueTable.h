@@ -19,7 +19,7 @@
  *
  *   meaning that cliques are taken to be max cliques.
  *
- * Copyright (C) 2001 Jeff Bilmes
+ * Copyright (C) 2015 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
  * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
@@ -305,60 +305,6 @@ public:
 					    logpr& maxCEValue,
 					    const unsigned nodeNumber,
 					    const logpr p);
-  
-  void inline ceIterateUnassignedIteratedNodes(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
-					       logpr cliqueBeamThresholdEstimate,
-					       logpr& maxCEValue,
-					       const unsigned nodeNumber,
-					       const logpr p)
-  {
-    if (nodeNumber == sharedStructure.fUnassignedIteratedNodes.size()) {
-      ceIterateAssignedNodes(sharedStructure,cliqueBeamThresholdEstimate,maxCEValue,0,p);
-      return;
-    }
-    ceIterateUnassignedIteratedNodesRecurse(sharedStructure,
-					    cliqueBeamThresholdEstimate,
-					    maxCEValue,
-					    nodeNumber,
-					    p);
-  }
-  void ceIterateUnassignedIteratedNodesRecurse(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
-					       logpr cliqueBeamThresholdEstimate,
-					       logpr& maxCEValue,
-					       const unsigned nodeNumber,
-					       const logpr p);
-
-  ///////////////////////////////////////
-  // iterate separators
-
-  void inline ceIterateSeparators(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
-				  ConditionalSeparatorTable* separatorTableArray,
-				  ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray,
-				  logpr cliqueBeamThresholdEstimate,
-				  logpr& maxCEValue,
-				  const unsigned sepNumber,
-				  const logpr p) 
-  {
-    if (sepNumber == sharedStructure.origin->ceReceiveSeparators.size()) {
-      // move on to the iterated nodes.
-      ceIterateUnassignedIteratedNodes(sharedStructure,
-				       cliqueBeamThresholdEstimate,
-				       maxCEValue,
-				       0,p);
-      return;
-    }
-    ceIterateSeparatorsRecurse(sharedStructure,separatorTableArray,sepSharedStructureArray,
-			       cliqueBeamThresholdEstimate,
-			       maxCEValue,
-			       sepNumber,p);
-  }
-  void ceIterateSeparatorsRecurse(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
-				  ConditionalSeparatorTable* separatorTableArray,
-				  ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray,
-				  logpr cliqueBeamThresholdEstimate,
-				  logpr& maxCEValue,
-				  const unsigned sepNumber,
-				  const logpr p);
 
   ///////////////////////////////////////
   // iterate assigned nodes.
@@ -370,42 +316,6 @@ public:
 					  logpr& maxCEValue,
 					  const unsigned nodeNumber,
 					  logpr p);
-
-  void ceIterateAssignedNodesRecurse(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
-				     logpr cliqueBeamThresholdEstimate,
-				     logpr& maxCEValue,
-				     const unsigned nodeNumber,
-				     const logpr p);
-
-  void ceIterateAssignedNodesNoRecurse(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
-				       logpr cliqueBeamThresholdEstimate,
-				       logpr& maxCEValue,
-				       const logpr p);
-
-  void inline ceIterateAssignedNodes(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
-				     logpr cliqueBeamThresholdEstimate,
-				     logpr& maxCEValue,
-				     const unsigned nodeNumber,
-				     const logpr p)
-  {
-    // apply factors so far from separators or unassigned nodes.
-
-    // if (true || sharedStructure.fSortedAssignedNodes.size() == 0 || message(High)) {
-    if (sharedStructure.fSortedAssignedNodes.size() == 0 || message(Inference,High)) {
-      // let recursive version handle degenerate or message full case
-      ceIterateAssignedNodesRecurse(sharedStructure,
-				    cliqueBeamThresholdEstimate,
-				    maxCEValue,
-				    0,
-				    p);
-    } else {
-      // ceIterateAssignedNodesRecurse(part,0,p);
-      ceIterateAssignedNodesNoRecurse(sharedStructure,
-				      cliqueBeamThresholdEstimate,
-				      maxCEValue,
-				      p);
-    }
-  }
 
 
   /////////////////////////////////////////

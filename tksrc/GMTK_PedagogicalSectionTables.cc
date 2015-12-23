@@ -90,7 +90,7 @@ PedagogicalSectionTables::projectToOutgoingSeparators(SectionIterator &stss_it,
 {
 
   // Here the section sending the message (projecting to outgoing separators) knows
-  // it's using sparse join inference. So it's using PedagogicalSectionTables,
+  // it's using pedagogical inference. So it's using PedagogicalSectionTables,
   // PedagogicalMaxCliques, etc. In particular, the section knows how to find its
   // cliques with outgoing separators (formerly just the single right interface clique),
   // how many MaxCliques are in the section, and the PedagogicalCliqueTable::SharedLocalStructure
@@ -112,7 +112,7 @@ PedagogicalSectionTables::receiveBackwardsSeparators(SectionIterator &stss_it,
 {
 
   // Here the section receiving the message (separators) knows
-  // it's using sparse join inference. So it's using PedagogicalSectionTables,
+  // it's using pedagogical inference. So it's using PedagogicalSectionTables,
   // PedagogicalMaxCliques, etc. In particular, the section knows how to find its
   // cliques with incoming messages (formerly just the single right interface clique),
   // how many MaxCliques are in the section, and the PedagogicalCliqueTable::SharedLocalStructure
