@@ -266,7 +266,7 @@ SharedLocalStructure(MaxClique& _origin,
     rvp.second = rv->frame()+frameDelta;    
 
     if ( ppf.find(rvp) == ppf.end() ) {
-      coredump("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+      coredump("ERROR: can't find unassigned iterated rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
 	       rv->name().c_str(),rv->frame(),frameDelta,
 	       rvp.first.c_str(),rvp.second);
     }
@@ -274,6 +274,7 @@ SharedLocalStructure(MaxClique& _origin,
     fUnassignedIteratedNodes[i++] = nrv;
   }
 
+  i=0;
   fUnassignedNodes.resize(origin->unassignedNodes.size());
   for (it = origin->unassignedNodes.begin();
        it != origin->unassignedNodes.end();
@@ -284,7 +285,7 @@ SharedLocalStructure(MaxClique& _origin,
     rvp.second = rv->frame()+frameDelta;    
     
     if ( ppf.find(rvp) == ppf.end() ) {
-      coredump("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+      coredump("ERROR: can't find unassigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
 	       rv->name().c_str(),rv->frame(),frameDelta,
 	       rvp.first.c_str(),rvp.second);
     }
@@ -324,7 +325,7 @@ SharedLocalStructure(MaxClique& _origin,
     rvp.first = rv->name();
     rvp.second = rv->frame()+frameDelta;    
     if ( ppf.find(rvp) == ppf.end() ) {
-      warning("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+      warning("ERROR: can't find determinable rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
 	      rv->name().c_str(),rv->frame(),frameDelta,
 	      rvp.first.c_str(),rvp.second);
       assert ( ppf.find(rvp) != ppf.end() );
