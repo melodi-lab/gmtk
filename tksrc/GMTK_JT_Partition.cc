@@ -62,6 +62,33 @@ VCID(HGID)
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 
+static void
+cloneInterface(vector< set<RV*> > &destination_interface,
+	       const vector< set<RV*> > &source_interface,
+	       const map < RVInfo::rvParent, unsigned > &ppf)
+{
+  destination_interface.resize(source_interface.size());
+  for (unsigned i=0; i < source_interface.size(); ++i) {
+    destination_interface[i].clear();
+    for (it =  source_interface[i].begin();
+	 it != source_interface[i].end();
+	 it++) 
+    {
+      RV* rv = (*it);
+      RVInfo::rvParent rvp;
+      rvp.first = rv->name();
+      rvp.second = rv->frame()+liFrameDelta;    
+
+      if ( ppf.find(rvp) == ppf.end() ) {
+	coredump("INTERNAL ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set, from from_liVars\n",
+		 rv->name().c_str(),rv->frame(),liFrameDelta,
+		 rvp.first.c_str(),rvp.second);
+      }
+      RV* nrv = newRvs[ppf[rvp]];
+      destination_interface[i].insert(nrv);
+    }
+  }
+}
 
 /*-
  *-----------------------------------------------------------------------
@@ -102,10 +129,10 @@ JT_Partition::JT_Partition(
 		       // their own frame deltas since they might be
 		       // different.
 		       // Left interface:
-		       const set <RV*>& from_liVars,
+		       const vector< set <RV*> > &from_liVars,
 		       const unsigned int liFrameDelta,
 		       // Right interface:
-		       const set <RV*>& from_riVars,
+		       const vector< set <RV*> > &from_riVars,
 		       const unsigned int riFrameDelta,
 		       // Information todo the mapping.
 		       vector <RV*>& newRvs,
@@ -116,64 +143,8 @@ JT_Partition::JT_Partition(
   triMethod = from_part.triMethod;
   numVEseps = 0;
 
-  set<RV*>::iterator it;
-
-  // clone over nodes RVs.  
-  // TODO: make this next code a routine
-  //  nodesClone() since it is used in several places.
-  for (it = from_part.nodes.begin();
-       it != from_part.nodes.end();
-       it++) {
-    RV* rv = (*it);
-    RVInfo::rvParent rvp;
-    rvp.first = rv->name();
-    rvp.second = rv->frame()+frameDelta;    
-
-    if ( ppf.find(rvp) == ppf.end() ) {
-      coredump("INTERNAL ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set, from from_part2\n",
-	    rv->name().c_str(),rv->frame(),frameDelta,
-	    rvp.first.c_str(),rvp.second);
-    }
-
-    RV* nrv = newRvs[ppf[rvp]];
-    nodes.insert(nrv);
-  }
-  liNodes.clear();
-  for (it = from_liVars.begin();
-       it != from_liVars.end();
-       it++) {
-    RV* rv = (*it);
-    RVInfo::rvParent rvp;
-    rvp.first = rv->name();
-    rvp.second = rv->frame()+liFrameDelta;    
-
-    if ( ppf.find(rvp) == ppf.end() ) {
-      coredump("INTERNAL ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set, from from_liVars\n",
-	    rv->name().c_str(),rv->frame(),liFrameDelta,
-	    rvp.first.c_str(),rvp.second);
-    }
-
-    RV* nrv = newRvs[ppf[rvp]];
-    liNodes.insert(nrv);
-  }
-  riNodes.clear();
-  for (it = from_riVars.begin();
-       it != from_riVars.end();
-       it++) {
-    RV* rv = (*it);
-    RVInfo::rvParent rvp;
-    rvp.first = rv->name();
-    rvp.second = rv->frame()+riFrameDelta;    
-
-    if ( ppf.find(rvp) == ppf.end() ) {
-      coredump("INTERNAL ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set, from from_riVars\n",
-	    rv->name().c_str(),rv->frame(),riFrameDelta,
-	    rvp.first.c_str(),rvp.second);
-    }
-
-    RV* nrv = newRvs[ppf[rvp]];
-    riNodes.insert(nrv);
-  }
+  cloneInterface(liNodes, from_liVars, ppf);
+  cloneInterface(riNodes, from_riVars, ppf);
 
   // make the cliques.
   cliques.reserve(from_part.cliques.size());
@@ -236,9 +207,9 @@ JT_Partition::clearCliqueAndIncommingSeparatorMemoryForClique(unsigned cliqueNo)
 JT_Partition::JT_Partition(
  Section& from_part,
  // Left interface:
- const set <RV*>& from_liVars,
+ const vector< set <RV*> > &from_liVars,
  // Right interface:
- const set <RV*>& from_riVars
+ const vector< set <RV*> > &from_riVars
  )
 {
   nodes = from_part.nodes;

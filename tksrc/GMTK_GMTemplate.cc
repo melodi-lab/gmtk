@@ -28,6 +28,7 @@
 #include <iterator>
 #include <map>
 #include <set>
+#include <vector>
 #include <algorithm>
 
 #include "general.h"
@@ -542,30 +543,39 @@ writePartitions(oDataStreamFile& os, string& str)
   os.writeComment("---\n");
   os.writeComment("--- PC information : variables and their neighbors\n");
   buffer.clear();
-  for (set<RV*>::iterator i=PCInterface_in_C.begin();
-       i != PCInterface_in_C.end(); i++) {
-    RV* rv = (*i);
-    sprintf(buff,"%s(%d) :",rv->name().c_str(),rv->frame());
-    buffer = buff;
-    for (set<RV*>::iterator j=rv->neighbors.begin();
-	 j != rv->neighbors.end(); j++) {
-      sprintf(buff," %s(%d),",
-	      (*j)->name().c_str(),(*j)->frame());
-      buffer += buff;
+  for (unsigned k=0; k < PCInterface_in_C.size(); ++k) {
+    for (set<RV*>::iterator i=PCInterface_in_C[k].begin();
+	 i != PCInterface_in_C[k].end(); i++) 
+    {
+      RV* rv = (*i);
+      sprintf(buff,"%s(%d) :",rv->name().c_str(),rv->frame());
+      buffer = buff;
+      for (set<RV*>::iterator j=rv->neighbors.begin();
+	   j != rv->neighbors.end(); j++) 
+      {
+	sprintf(buff," %s(%d),",
+		(*j)->name().c_str(),(*j)->frame());
+	buffer += buff;
+      }
+      os.writeComment("%s\n",buffer.c_str());
     }
-    os.writeComment("%s\n",buffer.c_str());
   }
   // Then write it out in machine readable form not as a comment
   os.writeComment("--- PC interface definition\n");
   os.write(PC_interface_name);
   os.write(PCInterface_in_C.size());
-  for (set<RV*>::iterator i = PCInterface_in_C.begin();
-       i != PCInterface_in_C.end(); i++) {
-    RV* rv = (*i);
-    os.write(rv->name().c_str(),"rv name");
-    os.write(rv->frame(),"rv frame");
-  }
   os.nl();
+  for (unsigned k=0; k < PCInterface_in_C.size(); ++k) {
+    os.write(k); os.write(PCInterface_in_C[k].size());
+    for (set<RV*>::iterator i = PCInterface_in_C[k].begin();
+	 i != PCInterface_in_C[k].end(); i++) 
+    {
+      RV* rv = (*i);
+      os.write(rv->name().c_str(),"rv name");
+      os.write(rv->frame(),"rv frame");
+    }
+    os.nl();
+  }
 
 
   // First write it out in human readable form as a comment.
@@ -573,31 +583,39 @@ writePartitions(oDataStreamFile& os, string& str)
   os.writeComment("---\n");
   os.writeComment("--- CE information : variables and their neighbors\n");
   buffer.clear();
-  for (set<RV*>::iterator i=CEInterface_in_C.begin();
-       i != CEInterface_in_C.end(); i++) {
-    RV* rv = (*i);
-    sprintf(buff,"%s(%d) :",rv->name().c_str(),rv->frame());
-    buffer = buff;
-    for (set<RV*>::iterator j=rv->neighbors.begin();
-	 j != rv->neighbors.end(); j++) {
-      sprintf(buff," %s(%d),",
-	      (*j)->name().c_str(),(*j)->frame());
-      buffer += buff;
+  for (unsigned k=0; k < CEInterface_in_C.size(); ++k) {
+    for (set<RV*>::iterator i=CEInterface_in_C[k].begin();
+	 i != CEInterface_in_C[k].end(); i++) 
+    {
+      RV* rv = (*i);
+      sprintf(buff,"%s(%d) :",rv->name().c_str(),rv->frame());
+      buffer = buff;
+      for (set<RV*>::iterator j=rv->neighbors.begin();
+	   j != rv->neighbors.end(); j++) 
+      {
+	sprintf(buff," %s(%d),",
+		(*j)->name().c_str(),(*j)->frame());
+	buffer += buff;
+      }
+      os.writeComment("%s\n",buffer.c_str());
     }
-    os.writeComment("%s\n",buffer.c_str());
   }
   // Then write it out in machine readable form not as a comment
   os.writeComment("--- CE interface definition\n");
   os.write(CE_interface_name);
   os.write(CEInterface_in_C.size());
-  for (set<RV*>::iterator i = CEInterface_in_C.begin();
-       i != CEInterface_in_C.end(); i++) {
-    RV* rv = (*i);
-    os.write(rv->name().c_str(),"rv name");
-    os.write(rv->frame(),"rv frame");
-  }
   os.nl();
-
+  for (unsigned k=0; k < CEInterface_in_C.size(); ++k) {
+    os.write(k); os.write(CEInterface_in_C[k].size());
+    for (set<RV*>::iterator i = CEInterface_in_C[k].begin();
+	 i != CEInterface_in_C[k].end(); i++) 
+    {
+      RV* rv = (*i);
+      os.write(rv->name().c_str(),"rv name");
+      os.write(rv->frame(),"rv frame");
+    }
+    os.nl();
+  }
 }
 
 /*-
@@ -764,26 +782,39 @@ readPartitions(iDataStreamFile& is)
   //////////////////////////////////////////////
   // next, read in the interface definitions. //
   //////////////////////////////////////////////
-  set<RV*> loc_PCInterface;
-  set<RV*> loc_CEInterface;
+  vector< set<RV*> > loc_PCInterface;
+  vector< set<RV*> > loc_CEInterface;
 
   // get PC interface
   is.read(str_tmp,"PC interface name");
   if (str_tmp != PC_interface_name)
     error("ERROR: PC interface information in file '%s' line %d is invalid for given graph structure\n",
 	  is.fileName(),is.lineNo());
-  is.read(setSize,"PC interface set size");
-  for (unsigned i=0;i<setSize;i++) {
-    RVInfo::rvParent par;
-    is.read(par.first,"parent name");
-    is.read(par.second,"parent position");
 
-    map < RVInfo::rvParent, unsigned >::iterator loc;
-    loc = positions.find(par);
-    if (loc == positions.end())
-      error("ERROR: PC interface information in file '%s' line %d is invalid for given graph structure\n",
-	    is.fileName(),is.lineNo());
-    loc_PCInterface.insert(unrolled_rvs[(*loc).second]);
+  unsigned numInterfaceSeparators;
+  is.read(numInterfaceSeparators, "Number of PC interface separators");
+  loc_PCInterface.resize(numInterfaceSeparators);
+  for (unsigned curSep=0; curSep < numInterfaceSeparators; ++curSep) {
+    unsigned sepNum;
+    is.read(sepNum, "Current PC separator index");
+    if (sepNum != curSep) {
+      error("ERROR: PC interface information in file '%s' line %d expected separator number %u but got %u\n",
+	    is.fileName(), is.lineNo(), curSep, sepNum);
+    }
+
+    is.read(setSize,"PC interface set size");
+    for (unsigned i=0;i<setSize;i++) {
+      RVInfo::rvParent par;
+      is.read(par.first,"parent name");
+      is.read(par.second,"parent position");
+
+      map < RVInfo::rvParent, unsigned >::iterator loc;
+      loc = positions.find(par);
+      if (loc == positions.end())
+	error("ERROR: PC interface information in file '%s' line %d is invalid for given graph structure\n",
+	      is.fileName(),is.lineNo());
+      loc_PCInterface[curSep].insert(unrolled_rvs[(*loc).second]);
+    }
   }
 
   // get CE interface
@@ -791,18 +822,30 @@ readPartitions(iDataStreamFile& is)
   if (str_tmp != CE_interface_name)
     error("ERROR: CE interface information in file '%s' line %d is invalid for given graph structure\n",
 	  is.fileName(),is.lineNo());
-  is.read(setSize,"CE interface set size");
-  for (unsigned i=0;i<setSize;i++) {
-    RVInfo::rvParent par;
-    is.read(par.first,"parent name");
-    is.read(par.second,"parent position");
 
-    map < RVInfo::rvParent, unsigned >::iterator loc;
-    loc = positions.find(par);
-    if (loc == positions.end())
-      error("ERROR: CE interface information in file '%s' line %d is invalid for given graph structure\n",
-	    is.fileName(),is.lineNo());
-    loc_CEInterface.insert(unrolled_rvs[(*loc).second]);
+  is.read(numInterfaceSeparators, "Number of CE interface separators");
+  loc_CEInterface.resize(numInterfaceSeparators);
+  for (unsigned curSep=0; curSep < numInterfaceSeparators; ++curSep) {
+    unsigned sepNum;
+    is.read(sepNum, "Current CE separator index");
+    if (sepNum != curSep) {
+      error("ERROR: CE interface information in file '%s' line %d expected separator number %u but got %u\n",
+	    is.fileName(), is.lineNo(), curSep, sepNum);
+    }
+
+    is.read(setSize,"CE interface set size");
+    for (unsigned i=0;i<setSize;i++) {
+      RVInfo::rvParent par;
+      is.read(par.first,"parent name");
+      is.read(par.second,"parent position");
+
+      map < RVInfo::rvParent, unsigned >::iterator loc;
+      loc = positions.find(par);
+      if (loc == positions.end())
+	error("ERROR: CE interface information in file '%s' line %d is invalid for given graph structure\n",
+	      is.fileName(),is.lineNo());
+      loc_CEInterface[curSep].insert(unrolled_rvs[(*loc).second]);
+    }
   }
 
   /////////////////////////////////////////////////////////////////////
@@ -826,7 +869,7 @@ readPartitions(iDataStreamFile& is)
  * Postconditions:
  *   The internal partition and interface variables are created. 
  *   Properties of the internal partitions are as follows:
- *     1) Each set of variasbles in each parititon are different C++ RVs, even the
+ *     1) Each set of variables in each parititon are different C++ RVs, even the
  *        common interfaces are distinct C++ variables (but they correspond to the same
  *        actual RVs).
  *     2) All sets of interface variables in all partitions are completed.
@@ -849,8 +892,8 @@ GMTemplate::
 createPartitions(const set<RV*>& arg_P,
 		 const set<RV*>& arg_C,
 		 const set<RV*>& arg_E,
-		 const set<RV*>& arg_PCInterface,
-		 const set<RV*>& arg_CEInterface)
+		 const vector< set<RV*> > &arg_PCInterface,
+		 const vector< set<RV*> > &arg_CEInterface)
 {
 
   // delete old stuff
@@ -866,6 +909,16 @@ createPartitions(const set<RV*>& arg_P,
 
   setUpClonedPartitionGraph(arg_P,arg_C,arg_E,P.nodes,C.nodes,E.nodes,P_in_to_out,C_in_to_out,E_in_to_out);
 
+#if 1
+  // complete the PC interface in P
+  completeInterface(arg_PCInterface, P_in_to_out, PCInterface_in_P);
+  // complete the PC interface in C
+  completeInterface(arg_PCInterface, C_in_to_out, PCInterface_in_C);
+  // complete the CE interface in C
+  completeInterface(arg_CEInterface, C_in_to_out, CEInterface_in_C);
+  // complete the CE interface in E
+  completeInterface(arg_CEInterface, E_in_to_out, CEInterface_in_E);
+#else
   // complete the PC interface in P
   PCInterface_in_P.clear();
   for (set<RV*>::iterator i=arg_PCInterface.begin();
@@ -897,9 +950,24 @@ createPartitions(const set<RV*>& arg_P,
     CEInterface_in_E.insert(E_in_to_out[(*i)]);
   }
   MaxClique::makeComplete(CEInterface_in_E);
-
+#endif
 }
 
+void
+GMTemplate::
+completeInterface(const vector< set<RV*> > &arg_interface, 
+		  map < RV*, RV* > &in_to_out,
+		  vector< set<RV*> > &interface) 
+{
+  interface.resize( arg_interface.size() );
+  for (unsigned j=0; j < arg_interface.size(); ++j) {
+    interface[j].clear();
+    for (set<RV*>::iterator i=arg_interface[j].begin(); i != arg_interface[j].end(); i++) {
+      interface[j].insert(in_to_out[(*i)]);
+    }
+    MaxClique::makeComplete(interface[j]);
+  }
+}
 
 
 /*-
@@ -1115,7 +1183,7 @@ writeCliqueInformation(oDataStreamFile& os)
       else
 	e_totalWeight = log10add(curWeight,e_totalWeight);
     }
-    const set <RV*> emptySet;
+    const vector< set <RV*> > emptySet;
     os.writeComment("  --- Epilogue max clique weight = %f, total weight = %f, jt_weight = %f\n",
 	   e_maxWeight,e_totalWeight,
            SectionScheduler::junctionTreeWeight(E.cliques,

@@ -291,9 +291,9 @@ private:
   // are availalbe). These variables, if not set to NULL, contain
   // pointers to these. These are set in the main public triangulation routine.
   // Left-partition nodes (NULL if no left partition relative to current partition)
-  set<RV*> *lp_nodes;
+  vector< set<RV*> > *lp_nodes;
   // right partition nodes.
-  set<RV*> *rp_nodes;  
+  vector< set<RV*> > *rp_nodes;  
 
   void setUpForP(GMTemplate& gm_template) {
     lp_nodes = NULL;

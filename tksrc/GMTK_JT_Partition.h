@@ -67,13 +67,13 @@ public:
   // the left interface clique, find a clique that is a superset of
   // these nodes. Empty if there is no such set (e.g., for a P
   // partition)
-  set <RV*> liNodes;
+  vector< set <RV*> > liNodes;
 
   // Interface nodes on the "right" of this partition. I.e., to
   // compute the root clique of this partition, we find a clique that
   // is a superset of these nodes. Empty if there is no such set
   // (e.g., for an E partition).
-  set <RV*> riNodes;
+  vector< set <RV*> > riNodes;
 
   // Nodes that are not assigned in this partition. If all nodes are
   // forward-time directed, we are guaranteed that they will be
@@ -126,17 +126,17 @@ public:
 	       // (say for an P or E partition). These have
 	       // their own frame deltas since they might be
 	       // different.
-	       const set <RV*>& from_liVars,
+	       const vector< set <RV*> > &from_liVars,
 	       const unsigned int liFrameDelta,
-	       const set <RV*>& from_riVars,
+	       const vector< set <RV*> > &from_riVars,
 	       const unsigned int riFrameDelta,
 	       // Information todo the mapping.
 	       vector <RV*>& newRvs,
 	       map < RVInfo::rvParent, unsigned >& ppf);
 
   JT_Partition(Section& from_part,
-	       const set <RV*>& from_liVars,
-	       const set <RV*>& from_riVars);
+	       const vector< set <RV*> > &from_liVars,
+	       const vector< set <RV*> > &from_riVars);
   
 
   // returns the left and right interface clique. If not defined,
