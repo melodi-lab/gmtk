@@ -146,13 +146,13 @@ public:
   Section E;
 
   // Interface between P and C, variables in P
-  set<RV*> PCInterface_in_P;
+  vector< set<RV*> > PCInterface_in_P;
   // Interface between P and C, variables in C
-  set<RV*> PCInterface_in_C;
+  vector< set<RV*> > PCInterface_in_C;
   // Interface between C and E, variables in C
-  set<RV*> CEInterface_in_C;
+  vector< set<RV*> > CEInterface_in_C;
   // Interface between C and E, variables in E
-  set<RV*> CEInterface_in_E;
+  vector< set<RV*> > CEInterface_in_E;
 
   // public interface
 
@@ -201,11 +201,22 @@ public:
   unsigned chunkSkip() { return S; }
 
   // Read partition information into file
+  void createPartitions(const set<RV*> &P,
+			const set<RV*> &C,
+			const set<RV*> &E,
+			const vector< set<RV*> > &PCInterface,
+			const vector< set<RV*> > &CEInterface);
+#if 0
   void createPartitions(const set<RV*>& P,
 			const set<RV*>& C,
 			const set<RV*>& E,
-			const set<RV*>& PCInterface,
-			const set<RV*>& CEInterface);
+			const set<RV*> &PCInterface,
+			const set<RV*> &CEInterface);
+#endif
+
+  void completeInterface(const vector< set<RV*> > &arg_interface, 
+			 map < RV*, RV* > &in_to_out,
+			 vector< set<RV*> > &interface);
 
   // Write partition information into file
   void writePartitions(oDataStreamFile& os,string& str);

@@ -965,7 +965,8 @@ MaxClique::printAllJTInfo(FILE*f,const unsigned indent,const set<RV*>& unassigne
 			  const bool upperBound,
 			  const bool moreConservative,
 			  const bool useDeterminism,
-			  set<RV*>* lp_nodes,set<RV*>* rp_nodes)
+			  vector< set<RV*> > *lp_nodes,
+			  vector< set<RV*> > *rp_nodes)
 {
 
   // TODO: also print out nubmer of bits for acc and rem.

@@ -124,8 +124,8 @@ class MaxClique : public MaxCliqueBase {
 			     const bool upperBound,
 			     const bool moreConservative,
 			     const bool useDeterminism,
-			     set<RV*>* lp_nodes,
-			     set<RV*>* rp_nodes) const { 
+			     vector< set<RV*> > *lp_nodes,
+			     vector< set<RV*> > *rp_nodes) const { 
     // We pass in all the arguments needed to the static routine that
     // actually does the work.
     return computeWeightInJunctionTree(nodes,
@@ -643,7 +643,8 @@ class MaxClique : public MaxCliqueBase {
 		      const bool upperBound,
 		      const bool moreConservative,
 		      const bool useDeterminism,
-		      set<RV*>* lp_nodes,set<RV*>* rp_nodes);
+		      vector< set<RV*> > *lp_nodes,
+		      vector< set<RV*> > *rp_nodes);
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // used to clear out hash table memory between segments
