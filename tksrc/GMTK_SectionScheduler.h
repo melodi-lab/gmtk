@@ -613,8 +613,8 @@ class SectionScheduler {
   // doing collect evidence on this JT.
   static double junctionTreeWeight(JT_Partition& part,
 				   const unsigned rootClique,
-				   set<RV*>* lp_nodes,
-				   set<RV*>* rp_nodes);
+				   vector< set<RV*> > *lp_nodes,
+				   vector< set<RV*> > *rp_nodes);
 
   // Given a set of maxcliques for a partition, and an interface for
   // this (can be left right, or any set including empty, the only
@@ -623,9 +623,9 @@ class SectionScheduler {
   // estimated JT cost. This is a static routine so can be called from
   // anywhere.
   static double junctionTreeWeight(vector<MaxClique>& cliques,
-				   const set<RV*>& interfaceNodes,
-				   set<RV*>* lp_nodes,
-				   set<RV*>* rp_nodes);
+				   const vector< set<RV*> > &interfaceNodes,
+				   vector< set<RV*> > *lp_nodes,
+				   vector< set<RV*> > *rp_nodes);
 				   
 
 };

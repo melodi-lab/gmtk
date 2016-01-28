@@ -488,7 +488,6 @@ ceGatherFromIncommingSeparators(PedagogicalCliqueTable::SharedLocalStructure& sh
     }
 
     maxCEValue.set_to_zero();
-    logpr p = 1.0;
     // next, do the actual collect message.
     if (origin.hashableNodes.size() == 0) {
       ceGatherFromIncommingSeparatorsCliqueObserved(sharedStructure,

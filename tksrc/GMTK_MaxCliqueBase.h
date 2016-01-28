@@ -295,8 +295,8 @@ class MaxCliqueBase : public IM {
 					   const set<RV*>& cumulativeUnassignedIteratedNodes,
 					   const set<RV*>& separatorNodes,
 					   const set<RV*>& unassignedInPartition,
-					   set<RV*>* lp_nodes,
-					   set<RV*>* rp_nodes,
+					   vector< set<RV*> > *lp_nodes,
+					   vector< set<RV*> > *rp_nodes,
 					   const bool upperBound,
 					   const bool moreConservative,
 					   const bool useDeterminism);

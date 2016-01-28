@@ -56,7 +56,7 @@ class JT_Partition : public Section {
 
   friend class JunctionTree;
 
-  void findInterfaceCliques(const set <RV*>& iNodes,
+  void findInterfaceCliques(const vector< set <RV*> > &iNodes,
 			    unsigned& iClique,
 			    bool& iCliqueSameAsInterface,
 			    const string priorityStr);
