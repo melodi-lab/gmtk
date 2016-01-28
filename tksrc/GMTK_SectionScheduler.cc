@@ -1204,18 +1204,18 @@ SectionScheduler::create_base_sections()
   fp.unroll(M + S - 1,
 	    section_unrolled_rvs,section_ppf);
 
-  set <RV*> empty;
+  vector< set <RV*> > empty;
 
   // copy P section 
-  new (&P1) JT_Partition(gm_template.P,0*S*fp.numFramesInC(),
-			 empty,0*S*fp.numFramesInC(),
-			 gm_template.PCInterface_in_P,0*S*fp.numFramesInC(),
+  new (&P1) JT_Partition(gm_template.P, 0*S*fp.numFramesInC(),
+			 empty, 0*S*fp.numFramesInC(),
+			 gm_template.PCInterface_in_P, 0*S*fp.numFramesInC(),
 			 section_unrolled_rvs,section_ppf);
 
   // copy E section
-  new (&E1) JT_Partition(gm_template.E,0*S*fp.numFramesInC(),
-			 gm_template.CEInterface_in_E,0*S*fp.numFramesInC(),
-			 empty,0*S*fp.numFramesInC(),
+  new (&E1) JT_Partition(gm_template.E, 0*S*fp.numFramesInC(),
+			 gm_template.CEInterface_in_E, 0*S*fp.numFramesInC(),
+			 empty, 0*S*fp.numFramesInC(),
 			 section_unrolled_rvs,section_ppf);
 
   if (gm_template.usesLeftInterface()) {
@@ -3531,17 +3531,18 @@ SectionScheduler::setUpJTDataStructures(const char* varSectionAssignmentPrior,
  */
 double
 SectionScheduler::junctionTreeWeight(JT_Partition& part,
-				 const unsigned rootClique,
-				 set<RV*>* lp_nodes,
-				 set<RV*>* rp_nodes)
+				     const unsigned rootClique,
+				     vector< set<RV*> > *lp_nodes,
+				     vector< set<RV*> > *rp_nodes)
 {
   // check for case of empty E or P section.
   if (part.cliques.size() == 0)
     return 0;
 
+  // FIXME: make this the sum of the now multiple root-ish cliques?
+
   MaxClique& curClique = part.cliques[rootClique];
 
-  set <RV*> empty;
   // @@ add in unassigned in section information to next call
   double weight = curClique.weightInJunctionTree(part.unassignedInPartition,
 						 jtWeightUpperBound,
@@ -3589,9 +3590,9 @@ SectionScheduler::junctionTreeWeight(JT_Partition& part,
  */
 double
 SectionScheduler::junctionTreeWeight(vector<MaxClique>& cliques,
-				 const set<RV*>& interfaceNodes,
-				 set<RV*>* lp_nodes,
-				 set<RV*>* rp_nodes)
+				     const vector < set<RV*> > &interfaceNodes,
+				     vector< set<RV*> > *lp_nodes,
+				     vector< set<RV*> > *rp_nodes)
 
 {
 
@@ -3604,6 +3605,7 @@ SectionScheduler::junctionTreeWeight(vector<MaxClique>& cliques,
 
   Section part;
   const set <RV*> emptySet;
+  const vector< set <RV*> > emptyInterface;
   part.cliques = cliques;
 
 
@@ -3619,7 +3621,7 @@ SectionScheduler::junctionTreeWeight(vector<MaxClique>& cliques,
   createSectionJunctionTree(part);
 
   // a JT version of this section.
-  JT_Partition jt_part(part,emptySet,interfaceNodes);
+  JT_Partition jt_part(part,emptyInterface,interfaceNodes);
 
   bool tmp;
   unsigned root;

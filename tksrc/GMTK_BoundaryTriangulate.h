@@ -241,7 +241,7 @@ private:
 		     const bool useJTWeight,
 		     // if useJTWeight is true, this gives nodes that
 		     // root must cover.
-		     const set<RV*>& interfaceNodes);
+		     const vector< set<RV*> > &interfaceNodes);
   
   void fillAccordingToCliques(
     const vector<MaxClique>& cliques 
@@ -315,7 +315,7 @@ private:
                        // use JT weight rather than sum of weight
 		       const bool jtWeight,
 		       // nodes that a JT root must contain (ok to be empty).
-		       const set<RV*>& nodesRootMustContain,
+		       const vector< set<RV*> > &nodesRootMustContain,
 		       // triangulation heuristic method
 		       const TriangulateHeuristics& tri_heur,
 		       // original neighbor structures
@@ -331,7 +331,7 @@ private:
 			    // use JT weight rather than sum of weight
 			    const bool jtWeight,
 			    // nodes that a JT root must contain (ok to be empty).
-			    const set<RV*>& nodesRootMustContain,
+			    const vector< set<RV*> > &nodesRootMustContain,
 			    // triangulation heuristic method
 			    const TriangulateHeuristics& tri_heur,
 			    // original neighbor structures
@@ -353,7 +353,7 @@ private:
 			    // use JT weight rather than sum of weight
 			    const bool jtWeight,
 			    // nodes that a JT root must contain (ok to be empty).
-			    const set<RV*>& nodesRootMustContain,
+			    const vector< set<RV*> > &nodesRootMustContain,
 			    // triangulation heuristic method
 			    const string& tri_heur_str,
 			    // original neighbor structures
@@ -390,7 +390,7 @@ private:
 				  // weight to best
 				  double& best_weight)
   {
-    const set <RV*> emptySet;
+    const vector< set <RV*> > emptySet;
     triangulatePartition(nodes, false, emptySet, tri_heur, orgnl_nghbrs,
 			 best_cliques, best_meth_str, best_weight);
 
@@ -420,7 +420,7 @@ private:
   void triangulateSimulatedAnnealing(
     const set<RV*>& nodes,
     const bool                  jtWeight,
-    const set<RV*>& nodesRootMustContain,
+    const vector< set<RV*> > &nodesRootMustContain,
     vector<MaxClique>&          best_cliques,
     vector<RV*>&    best_order,
     string&                     comment 
@@ -483,7 +483,7 @@ private:
     // use JT weight rather than sum of weight
     const bool jtWeight,
     // nodes that a JT root must contain (ok to be empty).
-    const set<RV*>& nodesRootMustContain,
+    const vector< set<RV*> > &nodesRootMustContain,
     // triangulation heuristic method
     const string& tri_heur_str,
     // original neighbor structures
@@ -507,7 +507,7 @@ private:
   // triangulate by exhaustive search, takes a *LONG* time.
   void triangulateExhaustiveSearch(const set<RV*>&    nodes,
 				   const bool         jtWeight,
-				   const set<RV*>&    nodesRootMustContain,
+				   const vector< set<RV*> > &nodesRootMustContain,
 				   const SavedGraph&  orgnl_nghbrs,
 				   vector<MaxClique>& cliques
 				   );
@@ -527,7 +527,7 @@ private:
   double tryEliminationHeuristics(
     const set<RV*>&    nodes,
     const bool         jtWeight,
-    const set<RV*>&    nodesRootMustContain,
+    const vector< set<RV*> > &nodesRootMustContain,
     SavedGraph&        orgnl_nghbrs,
     vector<MaxClique>& best_cliques,
     string&            best_method,
@@ -541,7 +541,7 @@ private:
   double tryNonEliminationHeuristics(
     const set<RV*>& nodes,
     const bool                  jtWeight,
-    const set<RV*>& nrmc,         // nrmc = nodes root must contain
+    const vector< set<RV*> > &nrmc,         // nrmc = nodes root must contain
     SavedGraph&        orgnl_nghbrs,
     vector<MaxClique>&          best_cliques,
     string&                     best_method,
@@ -851,7 +851,7 @@ private:
   unsigned annealChain(
     vector<triangulateNode>&  nodes,
     const bool jtWeight,
-    const set<RV*>& nodesRootMustContain,
+    const vector< set<RV*> > &nodesRootMustContain,
     vector<triangulateNode*>& crrnt_order,
     vector<triangulateNode*>& triangulate_best_order,
     double&                   best_graph_weight,
@@ -886,7 +886,7 @@ private:
     double&                           weight_sum,         
     double&                           weight_sqr_sum,
     const bool                  jtWeight,
-    const set<RV*>& nodesRootMustContain,
+    const vector< set<RV*> > &nodesRootMustContain,
     const bool                        use_temperature = true
   );
 

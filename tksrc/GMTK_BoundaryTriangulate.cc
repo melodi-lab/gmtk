@@ -749,7 +749,7 @@ double
 BoundaryTriangulate::
 graphWeight(vector<MaxClique>& cliques,		     
 	    const bool useJTWeight,
-	    const set<RV*>& interfaceNodes)
+	    const vector< set<RV*> > &interfaceNodes)
 {
   if (!useJTWeight)
     return graphWeight(cliques);
@@ -1513,13 +1513,15 @@ BoundaryTriangulate
 {
   // now we need to make a bunch of sets to be unioned
   // together to get the partitions.
-  set<RV*> C_l_u1C1;
-  set<RV*> C_l_u1C2;
+  vector< set<RV*> > C_l_u1C1;
+  vector< set<RV*> > C_l_u1C2;
 
   set<RV*> left_C_l_u1C1;
   set<RV*> left_C_l_u1C2;
 
   assert (M > 0);
+
+  // FIXME: interfaces must now be vectors of RV* sets
 
   for (set<RV*>::iterator i = C_l_u2C2.begin();
        i!= C_l_u2C2.end(); i++) {
@@ -1527,8 +1529,8 @@ BoundaryTriangulate
     assert (C2_u2_to_C1_u1.find((*i)) != C2_u2_to_C1_u1.end());
     assert (C2_u2_to_C2_u1.find((*i)) != C2_u2_to_C2_u1.end());
 
-    C_l_u1C1.insert(C2_u2_to_C1_u1[(*i)]);
-    C_l_u1C2.insert(C2_u2_to_C2_u1[(*i)]);
+    C_l_u1C1[0].insert(C2_u2_to_C1_u1[(*i)]);
+    C_l_u1C2[0].insert(C2_u2_to_C2_u1[(*i)]);
   }
 
   for (set<RV*>::iterator i = left_C_l_u2C2.begin();
@@ -1562,7 +1564,7 @@ BoundaryTriangulate
   // Finish P
   set<RV*> P = P_u1;
   set_union(left_C_l_u1C1.begin(),left_C_l_u1C1.end(),
-	    C_l_u1C1.begin(),C_l_u1C1.end(),
+	    C_l_u1C1[0].begin(),C_l_u1C1[0].end(),
 	    inserter(P,P.end()));
 
 
@@ -1585,8 +1587,8 @@ BoundaryTriangulate
 	    E.begin(),E.end(),
 	    inserter(tmp2,tmp2.end()));
   // printf("tmp2=:");printRVSet(stdout,tmp2);
-  set_union(C_l_u1C2.begin(),C_l_u1C2.end(),
-	    C_l_u1C1.begin(),C_l_u1C1.end(),
+  set_union(C_l_u1C2[0].begin(),C_l_u1C2[0].end(),
+	    C_l_u1C1[0].begin(),C_l_u1C1[0].end(),
 	    inserter(tmp3,tmp3.end()));
   // printf("tmp3=:");printRVSet(stdout,tmp3);
   set_union(Cextra_u1.begin(),Cextra_u1.end(),
@@ -1674,7 +1676,7 @@ BoundaryTriangulate
   double best_P_weight = DBL_MAX;
   double best_C_weight = DBL_MAX;
   double best_E_weight = DBL_MAX;
-  const set <RV*> emptySet;
+  const vector< set <RV*> > emptySet;
 
 
   if (gm_template.P.nodes.size() == 0)
@@ -1891,7 +1893,7 @@ triangulateOnce(// input: nodes to be triangulated
 	    // use JT weight rather than sum of weight
 	    const bool jtWeight,
 	    // nodes that a JT root must contain (ok to be empty).
-	    const set<RV*>& nodesRootMustContain,
+	    const vector< set<RV*> > &nodesRootMustContain,
 	    // triangulation heuristic method
 	    const TriangulateHeuristics& tri_heur,
 	    // original neighbor structures
@@ -1986,7 +1988,7 @@ BoundaryTriangulate
 ::triangulatePartition(
   const set<RV*>& nodes,  // nodes to be triangulated
   const bool jtWeight,                // use JT weight rather than sum of weight
-  const set<RV*>& nodesRootMustContain, // nodes that a JT root must
+  const vector< set<RV*> > &nodesRootMustContain, // nodes that a JT root must
                                                     // contain (ok to be empty).
   const TriangulateHeuristics& tri_heur,    // triangulation method
   SavedGraph& orgnl_nghbrs,   // original neighbor structures
@@ -2978,7 +2980,7 @@ BoundaryTriangulate::
 triangulateSimulatedAnnealing(
   const set<RV*>& nodes,
   const bool jtWeight,
-  const set<RV*>& nodesRootMustContain,
+  const vector< set<RV*> > &nodesRootMustContain,
   vector<MaxClique>&          best_cliques,
   vector<RV*>&    best_order,
   string&                     parameter_string 
@@ -3256,7 +3258,7 @@ BoundaryTriangulate::
 annealChain(
   vector<triangulateNode>&          nodes,
   const bool jtWeight,
-  const set<RV*>& nodesRootMustContain,
+  const vector< set<RV*> > &nodesRootMustContain,
   vector<triangulateNode*>&         crrnt_order,
   vector<triangulateNode*>&         best_order,
   double&                           best_graph_weight,
@@ -3740,7 +3742,7 @@ triangulateRandom(
   vector<edge>                    missing;
   vector<triangulateNghbrPairType> dummy_triangulation;
   const bool                       jtWeight = false;
-  const set<RV*>                   nodesRootMustContain;
+  const vector< set<RV*> >         nodesRootMustContain;
 
   vector<triangulateNode>::iterator crrnt_node; 
   vector<triangulateNode>::iterator end_node;
@@ -3826,13 +3828,13 @@ edgeAnnealChain(
   vector<edge>&                     missing,
   const unsigned                    iterations,
   const double                      temperature,
-  vector<triangulateNghbrPairType>& best_triangulation,
+  vector<triangulateNghbrPairType> &best_triangulation,
   double&                           best_graph_weight,
   double&                           best_this_weight,
   double&                           weight_sum,         
   double&                           weight_sqr_sum,
   const bool                        jtWeight,
-  const set<RV*>&                   nodesRootMustContain,
+  const vector< set<RV*> >         &nodesRootMustContain,
   const bool                        use_temperature 
   )
 {
@@ -5395,7 +5397,7 @@ triangulateCompleteFrame(
   // use JT weight rather than sum of weight
   const bool jtWeight,
   // nodes that a JT root must contain (ok to be empty).
-  const set<RV*>& nodesRootMustContain,
+  const vector< set<RV*> > &nodesRootMustContain,
   // triangulation heuristic method
   const string& tri_heur_str,
   // original neighbor structures
@@ -5838,7 +5840,7 @@ BoundaryTriangulate::
 triangulateExhaustiveSearch( 
   const set<RV*>&  nodes,
   const bool                   jtWeight,
-  const set<RV*>&  nodesRootMustContain,
+  const vector< set<RV*> > &nodesRootMustContain,
   const SavedGraph&            orgnl_nghbrs,
   vector<MaxClique>&           best_cliques   
   )
@@ -6395,7 +6397,7 @@ unrollAndTriangulate(// triangulate heuristics
 {
   TriangulateHeuristics tri_heur;
   parseTriHeuristicString(tri_heur_str,tri_heur);
-  const set <RV*> emptySet;
+  const vector< set <RV*> > emptySet;
 
     vector <RV*> rvs;
     map < RVInfo::rvParent, unsigned > pos;
@@ -6586,7 +6588,7 @@ BoundaryTriangulate
   double best_P_weight = DBL_MAX;
   double best_C_weight = DBL_MAX;
   double best_E_weight = DBL_MAX;
-  const set <RV*> emptySet;
+  const vector< set <RV*> > emptySet;
 
   ////////////////////////////////////////////////////////////////////////
   // Save the untriangulated graphs so that they can be quickly restored
@@ -6795,7 +6797,7 @@ BoundaryTriangulate::
 tryEliminationHeuristics(
   const set<RV*>&  nodes,
   const bool                   jtWeight,
-  const set<RV*>&  nrmc,         // nrmc = nodes root must contain
+  const vector< set<RV*> >    &nrmc,         // nrmc = nodes root must contain
   SavedGraph&                  orgnl_nghbrs,
   vector<MaxClique>&           best_cliques, // output: resulting max cliques
   string&                      best_method,  // output: best method name 
@@ -6945,7 +6947,7 @@ BoundaryTriangulate::
 tryNonEliminationHeuristics(
   const set<RV*>& nodes,
   const bool                  jtWeight,
-  const set<RV*>& nrmc,         // nrmc = nodes root must contain
+  const vector< set<RV*> >   &nrmc,         // nrmc = nodes root must contain
   SavedGraph&                 orgnl_nghbrs,
   vector<MaxClique>&          cliques,
   string&                     best_method,

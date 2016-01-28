@@ -65,8 +65,12 @@ VCID(HGID)
 static void
 cloneInterface(vector< set<RV*> > &destination_interface,
 	       const vector< set<RV*> > &source_interface,
-	       const map < RVInfo::rvParent, unsigned > &ppf)
+	       vector <RV*> &newRvs,
+	       map < RVInfo::rvParent, unsigned > &ppf,
+	       unsigned frame_delta)
 {
+  set<RV*>::iterator it;
+
   destination_interface.resize(source_interface.size());
   for (unsigned i=0; i < source_interface.size(); ++i) {
     destination_interface[i].clear();
@@ -77,11 +81,11 @@ cloneInterface(vector< set<RV*> > &destination_interface,
       RV* rv = (*it);
       RVInfo::rvParent rvp;
       rvp.first = rv->name();
-      rvp.second = rv->frame()+liFrameDelta;    
+      rvp.second = rv->frame()+frame_delta;    
 
       if ( ppf.find(rvp) == ppf.end() ) {
 	coredump("INTERNAL ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set, from from_liVars\n",
-		 rv->name().c_str(),rv->frame(),liFrameDelta,
+		 rv->name().c_str(),rv->frame(),frame_delta,
 		 rvp.first.c_str(),rvp.second);
       }
       RV* nrv = newRvs[ppf[rvp]];
@@ -89,6 +93,31 @@ cloneInterface(vector< set<RV*> > &destination_interface,
     }
   }
 }
+
+static void 
+cloneNodes(const set<RV*> &from_nodes, set<RV*> &dest_nodes, vector <RV*> &newRvs,
+	   unsigned frame_delta, map < RVInfo::rvParent, unsigned > &ppf)
+{
+  set<RV*>::iterator it;
+  for (it = from_nodes.begin();
+       it != from_nodes.end();
+       it++) 
+  {
+    RV* rv = (*it);
+    RVInfo::rvParent rvp;
+    rvp.first = rv->name();
+    rvp.second = rv->frame()+frame_delta;    
+
+    if ( ppf.find(rvp) == ppf.end() ) {
+      coredump("INTERNAL ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set, from from_part2\n",
+	    rv->name().c_str(),rv->frame(),frame_delta,
+	    rvp.first.c_str(),rvp.second);
+    }
+    RV* nrv = newRvs[ppf[rvp]];
+    dest_nodes.insert(nrv);
+  }
+}
+
 
 /*-
  *-----------------------------------------------------------------------
@@ -143,8 +172,9 @@ JT_Partition::JT_Partition(
   triMethod = from_part.triMethod;
   numVEseps = 0;
 
-  cloneInterface(liNodes, from_liVars, ppf);
-  cloneInterface(riNodes, from_riVars, ppf);
+  cloneNodes(from_part.nodes, nodes, newRvs, frameDelta, ppf);
+  cloneInterface(liNodes, from_liVars, newRvs, ppf, liFrameDelta);
+  cloneInterface(riNodes, from_riVars, newRvs, ppf, riFrameDelta);
 
   // make the cliques.
   cliques.reserve(from_part.cliques.size());
@@ -269,24 +299,30 @@ struct PriorityCliqueCompare {
   }
 };
 void
-JT_Partition::findInterfaceCliques(const set <RV*>& iNodes,
+JT_Partition::findInterfaceCliques(const vector< set <RV*> > &iNodes,
 				   unsigned& iClique,
 				   bool& iCliqueSameAsInterface,
 				   const string priorityStr)
 {
-  if (iNodes.size() > 0) {
+
+  // FIXME: what to do with multiple interface separators?
+  //        make iClique a vector too?
+  assert(iNodes.size() > 0);
+  set<RV*> single_separator_nodes = iNodes[0];
+
+  if (single_separator_nodes.size() > 0) {
     vector < PriorityClique > pcArray;
 
     for (unsigned cliqueNo=0;cliqueNo<cliques.size();cliqueNo++) {
-      // check that clique fully covers iNodes 
+      // check that clique fully covers single_separator_nodes 
       set<RV*> res;
       set_intersection(cliques[cliqueNo].nodes.begin(),
 		       cliques[cliqueNo].nodes.end(),
-		       iNodes.begin(),
-		       iNodes.end(),
+		       single_separator_nodes.begin(),
+		       single_separator_nodes.end(),
 		       inserter(res,res.end()));
       
-      if (res.size() == iNodes.size()) {
+      if (res.size() == single_separator_nodes.size()) {
 	// we've found a candidate.
 
 	// Priority for determining which clique becomes the interface
