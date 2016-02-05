@@ -92,6 +92,9 @@ private:
 
 public:
 
+  static unsigned iFTsize() { return sizeof(iFT); }
+  static unsigned FTsize()  { return sizeof(FT);  }
+
 #ifdef _TABLE_
   static bool table_init();
 #endif

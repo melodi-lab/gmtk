@@ -97,6 +97,7 @@ using namespace std;
 #include "error.h"
 #include "arguments.h"
 
+#include "logp.h"
 
 /*-
  *-----------------------------------------------------------------------
@@ -1100,6 +1101,26 @@ void Arg::usage(const char* filter,bool stdErrPrint, const char *programDescript
   while (this_variation++ < longest_variation)
     fprintf(destStream," ");
   fprintf(destStream,"   File to obtain additional arguments from {}\n");
+
+  fprintf(destStream, "\nBuild options:\n\n");
+#if PIPE_ASCII_FILES_THROUGH_CPP
+  fprintf(destStream, "Preprocess ASCII files: YES\n");
+#else
+  fprintf(destStream, "Preprocess ASCII files: NO\n");
+#endif
+#if ENABLE_GZIP
+  fprintf(destStream, "Allow GZIP compressed ASCII files: YES\n");
+#else
+  fprintf(destStream, "Allow GZIP compressed ASCII files: NO\n");
+#endif
+#if ENABLE_BZIP2
+  fprintf(destStream, "Allow BZIP2 compressed ASCII files: YES\n");
+#else
+  fprintf(destStream, "Allow BZIP2 compressed ASCII files: NO\n");
+#endif
+  fprintf(destStream, "Floating point: IEEE%u main / IEEE%u temporary\n",
+    logpr::FTsize()*8, logpr::iFTsize()*8);
+
 }
 
 
