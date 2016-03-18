@@ -210,6 +210,7 @@ dlopen_cfunc_dts.cc
 
 
 bin_PROGRAMS = \
+gmtkTri2IA \
 gmtkTime \
 gmtkJT \
 gmtkEMtrain \
@@ -227,6 +228,8 @@ gmtkPrint \
 gmtkMMItrain \
 $(dmlp_programs) $(GMTKVIZ) $(OSXBUNDLE)
 EXTRA_PROGRAMS = gmtkDMLPtrain gmtkViz gmtkViz.app abstest dmlp
+
+gmtkTri2IA_SOURCES = gmtkTri2IA.cc
 
 gmtkTie_SOURCES = gmtkTie.cc
 

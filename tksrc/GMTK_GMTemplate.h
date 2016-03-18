@@ -80,6 +80,12 @@ private:
   static const string PC_interface_name;
   static const string CE_interface_name;
 
+  static const string P_section_name;
+  static const string C_section_name;
+  static const string E_section_name;
+  static const string PC_separator_name;
+  static const string CE_separator_name;
+
   ////////////////////////////
   // clear up everything.
   void clear() {
@@ -207,6 +213,7 @@ public:
 			const set<RV*>& CEInterface);
 
   // Write partition information into file
+  void writeSections(oDataStreamFile &os);
   void writePartitions(oDataStreamFile& os,string& str);
 
   // Read partition information into file

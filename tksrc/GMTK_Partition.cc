@@ -124,6 +124,105 @@ Partition::Partition(Partition& from_part,
 ////////////////////////////////////////////////////////////////////
 
 
+void
+writeRVSet(oDataStreamFile& os, set<RV*> const &rvs, char const *comment) {
+  // assigned prob nodes n (name frame)^n
+  os.write(rvs.size()); 
+  for (set<RV*>::iterator j=rvs.begin(); j != rvs.end(); j++) {
+    RV* rv = (*j);
+    os.write(rv->name().c_str());
+    os.write(rv->frame());
+  }
+  os.writeComment(comment);
+  os.nl();
+}
+
+void
+Partition::
+writeInferenceArchitecture(oDataStreamFile& os, char section_name) {
+  // First write out the cliques in commented form for the user
+
+  // TODO: convert tri method string to have no spaces/tabs.
+
+
+  os.writeComment("---- %d total max-cliques \n",cliques.size());
+  if (triMethod.size() > 0)
+    os.writeComment("---- Triangulation came from method: %s\n",triMethod.c_str());
+
+
+  double maxWeight = -1.0;
+  double totalWeight = -1.0; // starting flag
+  for (unsigned i=0;i<cliques.size();i++) {
+    double curWeight = cliques[i].weight();
+    if (curWeight > maxWeight) maxWeight = curWeight;
+    if (totalWeight == -1.0)
+      totalWeight = curWeight;
+    else
+      totalWeight = log10add(curWeight,totalWeight);
+    os.writeComment("%d : %d  %f\n",
+		    i,
+		    cliques[i].nodes.size(),curWeight);
+    for (set<RV*>::iterator j=cliques[i].nodes.begin();
+	 j != cliques[i].nodes.end(); j++) {
+      RV* rv = (*j);
+      os.writeComment("   %s(%d)\n",rv->name().c_str(),rv->frame());
+    }
+  }
+  os.writeComment("Maximum clique state space = 1e%f, total state space = 1e%f\n",maxWeight,totalWeight);
+  // Then write out the same information in a less human-readable but more machine
+  // readable format.
+
+
+  os.write("default "); os.write(section_name); os.write("SPARSE_JOIN"); os.nl();
+  if (triMethod.size() > 0) {
+    // remove all white space to turn into string token.
+    for (unsigned i=0;i<triMethod.size();i++) {
+      if (isspace(triMethod[i]))
+	triMethod[i] = '_';
+    }
+    os.write(triMethod.c_str());
+  } else {
+    os.write("UNKNOWN_TRIANGULATION_METHOD");
+  }
+  os.nl();
+
+  os.write(cliques.size()); // number of cliques
+  os.nl();
+  for (unsigned i=0;i<cliques.size();i++) {
+    os.write(i); // clique number i
+    char buf[16];
+    sprintf(buf, "C%03u ", i);
+    os.write(buf);
+    os.write(cliques[i].nodes.size());  // number of nodes in clique number i
+    for (set<RV*>::iterator j=cliques[i].nodes.begin();
+	 j != cliques[i].nodes.end(); j++) {
+      RV* rv = (*j);
+      os.write(rv->name().c_str());
+      os.write(rv->frame());
+    }
+    os.nl();
+
+    // sorted assigned nodes n (name frame disposition)^n
+    os.write(cliques[i].sortedAssignedNodes.size());
+    for (unsigned j=0; j < cliques[i].sortedAssignedNodes.size(); ++j) {
+      os.write(cliques[i].sortedAssignedNodes[j]->name());
+      os.write(cliques[i].sortedAssignedNodes[j]->frame());
+      os.write((int)cliques[i].dispositionSortedAssignedNodes[j]);
+    }
+    os.writeComment("sorted assigned (name frame disposition)");
+    os.nl();
+
+    // assigned prob nodes n (name frame)^n
+    writeRVSet(os, cliques[i].assignedProbNodes, "assigned prob nodes");
+    writeRVSet(os, cliques[i].cumulativeAssignedNodes, "cumulative assigned nodes");
+    writeRVSet(os, cliques[i].cumulativeAssignedProbNodes, "cumulative assigned prob nodes");
+    writeRVSet(os, cliques[i].unionIncommingCESeps, "union incomming seps");
+    writeRVSet(os, cliques[i].unassignedIteratedNodes, "unassigned iterated");
+    writeRVSet(os, cliques[i].cumulativeUnassignedIteratedNodes, "cumulative unassigned iterated");
+    os.writeComment(""); os.nl();
+  }
+}
+
 /*-
  *-----------------------------------------------------------------------
  * Partition::writeMaxCliques()

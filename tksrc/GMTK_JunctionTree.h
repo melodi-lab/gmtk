@@ -1091,6 +1091,7 @@ public:
   // Print all information about the JT. Must
   // have had computeSeparatorIterationOrders() called
   // already.
+  void printAllIAInfo(char const* fileName, bool writeComments);
   void printAllJTInfo(const char* fileName);
   void printAllJTInfo(FILE* f,JT_Partition& part,const unsigned root,
 		      set <RV*>* lp_nodes,set <RV*>* rp_nodes);

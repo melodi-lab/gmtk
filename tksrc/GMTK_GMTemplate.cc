@@ -73,6 +73,12 @@ const string GMTemplate::E_partition_name("E_PARTITION");
 const string GMTemplate::PC_interface_name("PC_PARTITION");
 const string GMTemplate::CE_interface_name("CE_PARTITION");
 
+const string GMTemplate::P_section_name("P_SECTION");
+const string GMTemplate::C_section_name("C_SECTION");
+const string GMTemplate::E_section_name("E_SECTION");
+const string GMTemplate::PC_separator_name("PC_INTERFACE");
+const string GMTemplate::CE_separator_name("CE_INTERFACE");
+
 const string GMTemplate::fileExtension(".trifile");
 
 
@@ -347,6 +353,227 @@ cloneRVShell(const set<RV*>& in,
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 
+
+
+void
+GMTemplate::
+writeSections(oDataStreamFile& os) {
+  string buffer;
+  char buff[2048];
+
+  // Write out current time/date.
+  os.nl();
+  os.writeComment("---\n");
+  {
+    time_t tloc;
+    struct tm*tms;
+    time(&tloc);
+    tms = localtime(&tloc);
+    strftime(buff,2048,"%A %B %d %Y, %H:%M:%S %Z",tms);
+  }
+  os.writeComment("GMTK Inference Architecture File Created: %s\n",buff);
+  os.writeComment("---\n");
+  os.nl();
+
+
+  // number of chunks in which to find interface boundary
+  os.nl();
+  os.writeComment("---\n");
+  os.writeComment("--- M, number of chunks in which to find interface boundary\n");
+  os.write(M);
+  os.nl();
+
+  // chunk skip
+  os.nl();
+  os.writeComment("---\n");
+  os.writeComment("--- S, chunk skip\n");
+  os.write(S);
+  os.nl();
+
+  // interface method
+  os.nl();
+  os.writeComment("---\n");
+  os.writeComment("--- interface method\n");
+  os.write((leftInterface?"LEFT":"RIGHT"));
+  os.nl();
+
+
+  // write out information about method used to create current
+  // boundary
+  os.nl();
+  os.writeComment("---\n");
+  os.writeComment("--- boundary method\n");
+  // printf("about to write boundary method = %s\n",boundaryMethod.c_str());
+  if (boundaryMethod.size() > 0) {
+    // make sure string has no white space.
+    for (unsigned i=0;i<boundaryMethod.size();i++) {
+      if (isspace(boundaryMethod[i]))
+	boundaryMethod[i] = '_';
+    }
+    os.write(boundaryMethod.c_str());
+  } else {
+    os.write("UNKNOWN_BOUNDARY_METHOD");
+  }
+  os.nl();  
+
+
+  // next write it out in human readable form as a comment.
+  os.nl();
+  os.writeComment("---\n");
+  os.writeComment("--- P section information: variables and their neighbors\n");
+  buffer.clear();
+  for (set<RV*>::iterator i=P.nodes.begin();
+       i != P.nodes.end(); i++) {
+    RV* rv = (*i);
+    sprintf(buff,"%s(%d) :",rv->name().c_str(),rv->frame());
+    buffer = buff;
+    for (set<RV*>::iterator j=rv->neighbors.begin();
+	 j != rv->neighbors.end(); j++) {
+      sprintf(buff," %s(%d),",
+	      (*j)->name().c_str(),(*j)->frame());
+      buffer += buff;
+    }
+    os.writeComment("%s\n",buffer.c_str());
+  }
+  // Then write it out in machine readable form not as a comment
+  os.writeComment("--- P section definition\n");
+  os.write(P_section_name);
+  os.write(P.nodes.size());
+  for (set<RV*>::iterator i = P.nodes.begin();
+       i != P.nodes.end(); i++) {
+    RV* rv = (*i);
+    os.write(rv->name().c_str(),"rv name");
+    os.write(rv->frame(),"rv frame");
+  }
+  os.nl();
+
+  // First write it out in human readable form as a comment.
+  os.nl();
+  os.writeComment("---\n");
+  os.writeComment("--- C section information: variables and their neighbors\n");
+  buffer.clear();
+  for (set<RV*>::iterator i=C.nodes.begin();
+       i != C.nodes.end(); i++) {
+    RV* rv = (*i);
+    sprintf(buff,"%s(%d) :",rv->name().c_str(),rv->frame());
+    buffer = buff;
+    for (set<RV*>::iterator j=rv->neighbors.begin();
+	 j != rv->neighbors.end(); j++) {
+      sprintf(buff," %s(%d),",
+	      (*j)->name().c_str(),(*j)->frame());
+      buffer += buff;
+    }
+    os.writeComment("%s\n",buffer.c_str());
+  }
+  // Then write it out in machine readable form not as a comment
+  os.writeComment("--- C section definition\n");
+  os.write(C_section_name);
+  os.write(C.nodes.size());
+  for (set<RV*>::iterator i = C.nodes.begin();
+       i != C.nodes.end(); i++) {
+    RV* rv = (*i);
+    os.write(rv->name().c_str(),"rv name");
+    os.write(rv->frame(),"rv frame");
+  }
+  os.nl();
+
+
+  // First write it out in human readable form as a comment.
+  os.nl();
+  os.writeComment("---\n");
+  os.writeComment("--- E section information: variables and their neighbors\n");
+  buffer.clear();
+  for (set<RV*>::iterator i=E.nodes.begin();
+       i != E.nodes.end(); i++) {
+    RV* rv = (*i);
+    sprintf(buff,"%s(%d) :",rv->name().c_str(),rv->frame());
+    buffer = buff;
+    for (set<RV*>::iterator j=rv->neighbors.begin();
+	 j != rv->neighbors.end(); j++) {
+      sprintf(buff," %s(%d),",
+	      (*j)->name().c_str(),(*j)->frame());
+      buffer += buff;
+    }
+    os.writeComment("%s\n",buffer.c_str());
+  }
+  // Then write it out in machine readable form not as a comment
+  os.writeComment("--- E section definition\n");
+  os.write(E_section_name);
+  os.write(E.nodes.size());
+  for (set<RV*>::iterator i = E.nodes.begin();
+       i != E.nodes.end(); i++) {
+    RV* rv = (*i);
+    os.write(rv->name().c_str(),"rv name");
+    os.write(rv->frame(),"rv frame");
+  }
+  os.nl();
+
+
+  // First write it out in human readable form as a comment.
+  os.nl();
+  os.writeComment("---\n");
+  os.writeComment("--- PC information : variables and their neighbors\n");
+  buffer.clear();
+  for (set<RV*>::iterator i=PCInterface_in_C.begin();
+       i != PCInterface_in_C.end(); i++) {
+    RV* rv = (*i);
+    sprintf(buff,"%s(%d) :",rv->name().c_str(),rv->frame());
+    buffer = buff;
+    for (set<RV*>::iterator j=rv->neighbors.begin();
+	 j != rv->neighbors.end(); j++) {
+      sprintf(buff," %s(%d),",
+	      (*j)->name().c_str(),(*j)->frame());
+      buffer += buff;
+    }
+    os.writeComment("%s\n",buffer.c_str());
+  }
+  // Then write it out in machine readable form not as a comment
+  os.writeComment("--- PC interface definition\n");
+  os.write(PC_separator_name);
+  os.write(" 1"); os.nl();
+  os.write("0 ");
+  os.write(PCInterface_in_C.size());
+  for (set<RV*>::iterator i = PCInterface_in_C.begin();
+       i != PCInterface_in_C.end(); i++) {
+    RV* rv = (*i);
+    os.write(rv->name().c_str(),"rv name");
+    os.write(rv->frame(),"rv frame");
+  }
+  os.nl();
+
+
+  // First write it out in human readable form as a comment.
+  os.nl();
+  os.writeComment("---\n");
+  os.writeComment("--- CE information : variables and their neighbors\n");
+  buffer.clear();
+  for (set<RV*>::iterator i=CEInterface_in_C.begin();
+       i != CEInterface_in_C.end(); i++) {
+    RV* rv = (*i);
+    sprintf(buff,"%s(%d) :",rv->name().c_str(),rv->frame());
+    buffer = buff;
+    for (set<RV*>::iterator j=rv->neighbors.begin();
+	 j != rv->neighbors.end(); j++) {
+      sprintf(buff," %s(%d),",
+	      (*j)->name().c_str(),(*j)->frame());
+      buffer += buff;
+    }
+    os.writeComment("%s\n",buffer.c_str());
+  }
+  // Then write it out in machine readable form not as a comment
+  os.writeComment("--- CE interface definition\n");
+  os.write(CE_separator_name);
+  os.write(" 1"); os.nl();
+  os.write("0 ");
+  os.write(CEInterface_in_C.size());
+  for (set<RV*>::iterator i = CEInterface_in_C.begin();
+       i != CEInterface_in_C.end(); i++) {
+    RV* rv = (*i);
+    os.write(rv->name().c_str(),"rv name");
+    os.write(rv->frame(),"rv frame");
+  }
+  os.nl();
+}
 
 /*-
  *-----------------------------------------------------------------------
