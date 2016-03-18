@@ -121,6 +121,7 @@ tksrc/gmtkMMItrain
 tksrc/gmtkTie
 tksrc/gmtkTime
 tksrc/gmtkTriangulate
+tksrc/gmtkTri2IA
 tksrc/gmtkViterbi
 tksrc/gmtkOnline
 tksrc/gmtkPrint

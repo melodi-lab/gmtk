@@ -348,7 +348,20 @@ Arg("map",Arg::Opt,dlopenFilenames,"Deterministic mapping dynamic library file. 
 #endif
 #endif // defined(GMTK_ARG_TRI_FILE)
 
+#if defined(GMTK_ARG_IA_FILE)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
 
+  static char *iaFileName = NULL;
+  static bool writeComments = true;
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("iaFile", Arg::Opt, iaFileName, "Inference architecture file for strFile"),
+  Arg("writeComments",Arg::Opt,writeComments,"true/false status of if we should write comments in ouptut inference architecture files"),
+
+#else
+#endif
+#endif // defined(GMTK_ARG_IA_FILE)
 
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
