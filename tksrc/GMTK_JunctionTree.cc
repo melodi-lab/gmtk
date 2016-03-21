@@ -3505,7 +3505,7 @@ JunctionTree::printAllIAInfo(char const* fileName, bool writeComments) {
   os.write(0); os.nl();
   os.writeComment("---- P right interface\n");
   os.write(1); os.nl();
-  os.write(cliqueName(P_ri_to_C)); os.nl();
+  os.write(0); os.write(cliqueName(P_ri_to_C)); os.nl();
   os.nl();
 
   os.writeComment("---\n");
@@ -3515,10 +3515,10 @@ JunctionTree::printAllIAInfo(char const* fileName, bool writeComments) {
   writeMsgOrder(os, Co_message_order);
   os.writeComment("---- C left interface\n");
   os.write(1); os.nl();
-  os.write(cliqueName(C_li_to_C)); os.nl();
+  os.write(0); os.write(cliqueName(C_li_to_C)); os.nl();
   os.writeComment("---- C right interface\n");
   os.write(1); os.nl();
-  os.write(cliqueName(C_ri_to_C)); os.nl();
+  os.write(0); os.write(cliqueName(C_ri_to_C)); os.nl();
   os.nl();
 
   os.writeComment("---\n");
@@ -3528,7 +3528,7 @@ JunctionTree::printAllIAInfo(char const* fileName, bool writeComments) {
   writeMsgOrder(os, E1_message_order);
   os.writeComment("---- E left interface\n");
   os.write(1); os.nl();
-  os.write(cliqueName(E_li_to_C)); os.nl();
+  os.write(0); os.write(cliqueName(E_li_to_C)); os.nl();
   os.writeComment("---- E has no right interface\n");
   os.write(0); os.nl();
 }
