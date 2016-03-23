@@ -88,6 +88,10 @@ VCID(HGID)
 #define GMTK_ARG_VAR_FLOOR
 #define GMTK_ARG_VAR_FLOOR_ON_READ
 
+/*************************          MEMORY MANAGEMENT OPTIONS         *******************************************/
+#define GMTK_ARG_MEMORY_MANAGEMENT_OPTIONS
+#define GMTK_ARG_MEM_GROWTH
+
 
 /****************************         GENERAL OPTIONS             ***********************************************/
 #define GMTK_ARG_GENERAL_OPTIONS
