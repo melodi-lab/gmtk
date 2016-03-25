@@ -585,7 +585,7 @@ computeFillIn(const set<RV*>& nodes)
     // actually produce the set intersection and then use its size.
     // Done - RR 7/11/12
     count_iterator<set <RV*> > tmp;
-    set_intersection(nodes.begin(),nodes.end(),
+    tmp = set_intersection(nodes.begin(),nodes.end(),
 		     (*j)->neighbors.begin(),(*j)->neighbors.end(),
 		     tmp);
 
@@ -8249,7 +8249,7 @@ findBestInterfaceRecurse(
       // proper subset of (left_C_l U {v}) = next_left_C_l.
 
       count_iterator<set <RV*> > tmp;      
-      set_difference(C2_1.begin(),C2_1.end(),
+      tmp = set_difference(C2_1.begin(),C2_1.end(),
 		     next_left_C_l.begin(),next_left_C_l.end(),
 		     tmp);
       if (tmp.count() == 0)

@@ -10,6 +10,9 @@ For general questions:  gmtk-users@u.washington.edu
 Subscribe to the email list at
   http://mailman.u.washington.edu/mailman/listinfo/gmtk-users
 
+Version 1.4.5  2016-03-
+        * Fixed serious bug in some set operations
+
 Version 1.4.4  2016-01-06
         * Minor build system tweak to avoid requiring X11 on OS X
 

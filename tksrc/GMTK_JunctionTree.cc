@@ -1325,9 +1325,10 @@ JunctionTree::insertFactorClique(FactorClique& factorClique,FactorInfo& factor)
 
   count_iterator<set <RV*> > res;
   // first try P1
-  set_intersection(factorClique.nodes.begin(),factorClique.nodes.end(),
-		   P1.nodes.begin(),P1.nodes.end(),
-		   res);
+  res = set_intersection(factorClique.nodes.begin(),factorClique.nodes.end(),
+			 P1.nodes.begin(),P1.nodes.end(),
+			 res);
+
   if (res.count() == factorClique.nodes.size()) {
     // then fully contained in P1
     infoMsg(IM::Giga,"insertFactorClique: inserting factor %s(%d) into partition %s\n",
@@ -1335,23 +1336,23 @@ JunctionTree::insertFactorClique(FactorClique& factorClique,FactorInfo& factor)
     P1.factorCliques.push_back(factorClique);
   } else {
     // try Co
-    set_intersection(factorClique.nodes.begin(),factorClique.nodes.end(),
-		     Co.nodes.begin(),Co.nodes.end(),
-		     res);
+    res.reset();
+    res = set_intersection(factorClique.nodes.begin(),factorClique.nodes.end(),
+			   Co.nodes.begin(),Co.nodes.end(),
+			   res);
     if (res.count() == factorClique.nodes.size()) {
-      // then fully contained in P1
-//Co ?
+      // then fully contained in Co ?
       infoMsg(IM::Giga,"insertFactorClique: inserting factor %s(%d) into partition %s\n",
 	      factor.name.c_str(),factor.frame,Co_n);
       Co.factorCliques.push_back(factorClique);
     } else {
       // try E1
-      set_intersection(factorClique.nodes.begin(),factorClique.nodes.end(),
-		       E1.nodes.begin(),E1.nodes.end(),
-		       res);
+      res.reset();
+      res = set_intersection(factorClique.nodes.begin(),factorClique.nodes.end(),
+			     E1.nodes.begin(),E1.nodes.end(),
+			     res);
       if (res.count() == factorClique.nodes.size()) {
-	// then fully contained in P1
-//E1 ?
+	// then fully contained in E1 ?
 	infoMsg(IM::Giga,"insertFactorClique: inserting factor %s(%d) into partition %s\n",
 		factor.name.c_str(),factor.frame,E1_n);
 	E1.factorCliques.push_back(factorClique);
@@ -2006,17 +2007,18 @@ JunctionTree::assignRVToClique(const char *const partName,
       // to this clique if many of its parents are already doing so, which
       // might produce a clique with good pruning behavior.
       count_iterator<set <RV*> > res;
-      set_intersection(curClique.assignedProbNodes.begin(),
-		       curClique.assignedProbNodes.end(),
-		       parSet.begin(),parSet.end(),
-		       res);
+      res = set_intersection(curClique.assignedProbNodes.begin(),
+			     curClique.assignedProbNodes.end(),
+			     parSet.begin(),parSet.end(),
+			     res);
       int num_parents_with_probability = (int) res.count();
       // Previous Parents (earlier in the junction tree) with their
       // probabilities in Junction Tree.  We add this to the above.
-      set_intersection(curClique.cumulativeAssignedProbNodes.begin(),
-		       curClique.cumulativeAssignedProbNodes.end(),
-		       parSet.begin(),parSet.end(),
-		       res);
+      res.reset();
+      res = set_intersection(curClique.cumulativeAssignedProbNodes.begin(),
+			     curClique.cumulativeAssignedProbNodes.end(),
+			     parSet.begin(),parSet.end(),
+			     res);
       num_parents_with_probability += (int) res.count();
       // negate so that lower is preferable.
       num_parents_with_probability *= -1;
@@ -2905,9 +2907,9 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
 		      inserter(sep_union_set,sep_union_set.end()));
 	  }
 	  sep_intr_set.reset();
-	  set_intersection(sep_i.nodes.begin(),sep_i.nodes.end(),
-			   sep_union_set.begin(),sep_union_set.end(),
-			   sep_intr_set);
+	  sep_intr_set = set_intersection(sep_i.nodes.begin(),sep_i.nodes.end(),
+					  sep_union_set.begin(),sep_union_set.end(),
+					  sep_intr_set);
 	  sepIntersections[i].first = sep_intr_set.count();
 	}
 
@@ -2978,9 +2980,9 @@ JunctionTree::computeSeparatorIterationOrder(MaxClique& clique,
 
 	  }
 	  sep_intr_set.reset();
-	  set_intersection(sep_i.nodes.begin(),sep_i.nodes.end(),
-			   sep_union_set.begin(),sep_union_set.end(),
-			   sep_intr_set);
+	  sep_intr_set = set_intersection(sep_i.nodes.begin(),sep_i.nodes.end(),
+					  sep_union_set.begin(),sep_union_set.end(),
+					  sep_intr_set);
 	  sepIntersections[i-firstVESeparator].first = sep_intr_set.count();
 	}
 
