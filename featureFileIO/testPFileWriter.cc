@@ -34,6 +34,8 @@
 #include "GMTK_Stream.h"
 unsigned chunkSize = 1;
 
+// just here to make linker happy
+void showBuildOptions() {}
 
 #define GMTK_ARG_OBS_FILES
 #define GMTK_ARG_CPP_CMD_OPTS

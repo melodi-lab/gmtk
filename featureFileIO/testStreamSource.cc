@@ -25,6 +25,9 @@ static const char * gmtk_version_id = PACKAGE_STRING;
 static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 2004";
 #endif
 
+// just here to make linker happy
+void showBuildOptions() {}
+
 #include "GMTK_StreamSource.h"
 #include "GMTK_ASCIIStream.h"
 #include "GMTK_Filter.h"

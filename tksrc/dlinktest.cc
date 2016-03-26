@@ -61,6 +61,9 @@
 
 VCID(HGID)
 
+// just here to make linker happy
+void showBuildOptions() {}
+
 /*************************   INPUT OBSERVATION STREAM HANDLING  *******************************************/
 #define GMTK_ARG_STREAM_INPUT
 /*************************   INPUT TRAINABLE PARAMETER FILE HANDLING  *******************************************/

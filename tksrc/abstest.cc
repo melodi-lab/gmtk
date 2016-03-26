@@ -50,6 +50,9 @@
 
 VCID(HGID)
 
+// just here to make linker happy
+void showBuildOptions() {}
+
 unsigned radius=0, labelOffset, obsOffset=0, numFeaturesPerFrame, outputSize;
 bool oneHot;
 static char const *trainingSchedule = "linear";

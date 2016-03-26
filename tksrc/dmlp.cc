@@ -69,6 +69,10 @@
 #include "GMTK_DeepVECPT.h"
 
 VCID(HGID)
+
+// just here to make linker happy
+void showBuildOptions() {}
+
 static char const *dVeCptName           = NULL;
 
 #define GMTK_ARG_OBS_FILES

@@ -75,6 +75,8 @@ VCID(HGID)
 
 #include "GMTK_WordOrganization.h"
 
+// just here to make linker happy
+void showBuildOptions() {}
 
 /*************************   INPUT STRUCTURE PARAMETER FILE HANDLING  *******************************************/
 #define GMTK_ARG_INPUT_MODEL_FILE_HANDLING

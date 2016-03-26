@@ -1389,9 +1389,6 @@ bool Arg::parse(int argc,char** argv, const char *programDescription)
 #endif
     exit(0);
   }
-  if (cnt==0 && rc == ARG_MISSING) {
-    Arg::checkMissing(true);
-  }
 
   arg_ptr = searchArgs(Args, "showConfigurationOptions");
   if (arg_ptr != NULL) {
@@ -1401,6 +1398,11 @@ bool Arg::parse(int argc,char** argv, const char *programDescription)
     showBuildOptions();
     exit(0);
   }
+
+  if (cnt==0 && rc == ARG_MISSING) {
+    Arg::checkMissing(true);
+  }
+
 
 //   ////////////////////////////////////////////////////////////////////
 //   // This section deals with help arguments and info level.  Should move to a subroutine
@@ -1453,6 +1455,9 @@ bool Arg::parse(int argc,char** argv, const char *programDescription)
 
 
 #ifdef MAIN
+
+// just here to make linker happy
+void showBuildOptions() {}
 
 /*
  * arguments without flags
