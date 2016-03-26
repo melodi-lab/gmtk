@@ -50,14 +50,69 @@
 
 VCID(HGID)
 
-
-
 /*
  * command line arguments
  */
 static char * lmFile = NULL;
 static char* vocabFile = NULL;
 static bool outBin = false;
+static bool showConfigOptions = false;
+
+
+void
+showBuildOptions() {
+  if (showConfigOptions) {
+    printf("\nBuild configuration options:\n\n");
+#    if PIPE_ASCII_FILES_THROUGH_CPP
+    printf("Preprocess ASCII files: YES\n");
+    printf("  Current preprocessing command: %s\n", CPP_Command());
+#    else
+    printf("Preprocess ASCII files: NO\n");
+#    endif
+#    if ENABLE_GZIP
+    printf("Allow GZIP compressed ASCII files: YES\n");
+#    else
+    printf("Allow GZIP compressed ASCII files: NO\n");
+#    endif
+#    if ENABLE_BZIP2
+    printf("Allow BZIP2 compressed ASCII files: YES\n");
+#    else
+    printf("Allow BZIP2 compressed ASCII files: NO\n");
+#    endif
+#    if HAVE_HDF5
+    printf("HDF5 support: YES\n");
+#    else
+    printf("HDF5 support: NO\n");
+#    endif
+    printf("\n");
+    printf("Floating point: IEEE%u main / IEEE%u temporary\n",
+    logpr::FTsize()*8, logpr::iFTsize()*8);
+    printf("LZERO %f\n", LZERO);
+#    if _TABLE_
+    printf("logp implementation: TABLE\n");
+//#  elif smart
+//#  elif renorm
+#    else
+    printf("logp implementation: log\n");
+#    endif
+#    if HAVE_BLAS
+    printf("BLAS: YES\n");
+#    else
+    printf("BLAS: NO\n");
+#    endif
+#    if HAVE_MKL
+    printf("MKL: YES\n");
+#    else
+    printf("MKL: NO\n");
+#    endif
+#    if USE_PHIPAC
+    printf("Use internal PhiPac DGEMM: YES\n");
+#    else
+    printf("Use internal PhiPac DGEMM: NO\n");
+#    endif
+    printf("\n");
+  } // if (showConfigOptions)
+}
 
 
 #define GMTK_ARG_VERSION
@@ -75,6 +130,7 @@ Arg Arg::Args[] = {
 
 	/////////////////////////////////////////////////////////////
 	// input parameter/structure file handling
+        Arg("showConfigurationOptions", Arg::Opt, showConfigOptions,"Show build-time configuration options"),
 
         Arg("\n*** Input files ***\n"),
 

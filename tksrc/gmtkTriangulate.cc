@@ -86,6 +86,7 @@ VCID(HGID)
 #define GMTK_ARG_ALLOC_DENSE_CPTS
 
 /****************************         GENERAL OPTIONS             ***********************************************/
+#define GMTK_ARG_BUILD_INFO
 #define GMTK_ARG_SEED
 #define GMTK_ARG_SKIP_STARTUP_CHECKS
 #define GMTK_ARG_VERSION

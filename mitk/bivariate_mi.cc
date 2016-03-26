@@ -210,6 +210,9 @@ usage(const char* message = 0)
 
 
 
+// not used; just here to make linker happy
+void showBuildOptions() {}
+
 // ======================================================================
 // ======================================================================
 // -------------- Code for Linear cor-coef based MI computation ---------

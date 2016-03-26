@@ -31,6 +31,7 @@
 #include "arguments.h"
 #include "rand.h"
 
+#include "GMTK_ShowBuildOptions.h"
 #include "GMTK_ObservationSource.h"
 #include "GMTK_FileSource.h"
 #include "GMTK_CreateFileSource.h"

@@ -1328,6 +1328,8 @@ public:
 
 IMPLEMENT_APP(GMTKStructVizApp)
 
+#include "GMTK_ShowBuildOptions.h"
+
 #include "arguments.h"
 bool help = false;
 bool print_version_and_exit = false;
@@ -1347,6 +1349,7 @@ Arg Arg::Args[] = {
 	 "Additional CPP command line" ),
 	Arg("\n*** General options ***\n"),
 	Arg("version",Arg::Opt,print_version_and_exit,"Print GMTK version number and exit."),
+	Arg("showConfigurationOptions", Arg::Opt, showConfigOptions,"Show build-time configuration options"),
 	Arg("verbosity",Arg::Opt,verbosity,"Verbosity (0 <= v <= 100) of informational/debugging msgs"),
 	Arg( "help", Arg::Tog, help, "print this message" ),
 	Arg()
