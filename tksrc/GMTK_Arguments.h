@@ -1177,7 +1177,7 @@ showBuildOptions() {
     printf("\n");
     printf("Floating point: IEEE%u main / IEEE%u temporary\n",
     logpr::FTsize()*8, logpr::iFTsize()*8);
-    printf("LZERO %f\n", LZERO);
+    printf("LZERO %e\n", LZERO);
 #    if _TABLE_
     printf("logp implementation: TABLE\n");
 //#  elif smart
@@ -1196,9 +1196,9 @@ showBuildOptions() {
     printf("MKL: NO\n");
 #    endif
 #    if USE_PHIPAC
-    printf("Use internal PhiPac DGEMM: YES\n");
+    printf("Use internal PHiPAC DGEMM: YES\n");
 #    else
-    printf("Use internal PhiPac DGEMM: NO\n");
+    printf("Use internal PHiPAC DGEMM: NO\n");
 #    endif
     printf("\n");
   } // if (showConfigOptions)

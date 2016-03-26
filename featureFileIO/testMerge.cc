@@ -41,6 +41,9 @@
 #include "GMTK_AffineFilter.h"
 #include "GMTK_Stream.h"
 
+// just here to make linker happy
+void showBuildOptions() {}
+
 #define GMTK_ARG_OBS_FILES
 #define GMTK_ARG_CPP_CMD_OPTS
 #define GMTK_ARG_OBS_MATRIX_XFORMATION

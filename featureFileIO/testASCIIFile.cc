@@ -30,6 +30,9 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "GMTK_ASCIIFile.h"
 #include "arguments.h"
 
+// just here to make linker happy
+void showBuildOptions() {}
+
 #define MAX_OBJECTS 10
 
 char *input_fname[MAX_OBJECTS] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};  // Input file name.
