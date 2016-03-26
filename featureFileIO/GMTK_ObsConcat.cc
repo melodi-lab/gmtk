@@ -42,6 +42,7 @@
 #include "arguments.h"
 #include "GMTK_WordOrganization.h"
 
+#include "GMTK_ShowBuildOptions.h"
 #include "GMTK_ObsPrint.h"
 #include "GMTK_ObsKLT.h"
 #include "GMTK_ObsStats.h"

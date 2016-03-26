@@ -1356,6 +1356,9 @@ Arg::parseArgsFromCommandLine(int argc,char**argv)
  *
  *-----------------------------------------------------------------------
  */
+
+extern void showBuildOptions();
+
 bool Arg::parse(int argc,char** argv, const char *programDescription)
 {
   ArgsRetCode rc;
@@ -1390,6 +1393,14 @@ bool Arg::parse(int argc,char** argv, const char *programDescription)
     Arg::checkMissing(true);
   }
 
+  arg_ptr = searchArgs(Args, "showConfigurationOptions");
+  if (arg_ptr != NULL) {
+    cnt = arg_ptr->getCount();
+  }
+  if (cnt > 0) {
+    showBuildOptions();
+    exit(0);
+  }
 
 //   ////////////////////////////////////////////////////////////////////
 //   // This section deals with help arguments and info level.  Should move to a subroutine

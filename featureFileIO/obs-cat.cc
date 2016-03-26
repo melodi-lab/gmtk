@@ -29,6 +29,7 @@
 #include "vbyteswapping.h"
 #include "rand.h"
 
+#include "GMTK_ShowBuildOptions.h"
 #include "GMTK_WordOrganization.h"
 #include "GMTK_ObservationSource.h"
 #include "GMTK_ASCIIStream.h"

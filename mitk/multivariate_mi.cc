@@ -238,7 +238,8 @@ Arg Arg::Args[] = {
 
 
 
-
+// not used; just here to make linker happy
+void showBuildOptions() {}
 
 /////////////////////////////////////////////////////////////////////////
 

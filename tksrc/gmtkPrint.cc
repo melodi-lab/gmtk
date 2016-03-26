@@ -126,6 +126,7 @@ VCID(HGID)
 
 /****************************         GENERAL OPTIONS             ***********************************************/
 #define GMTK_ARG_GENERAL_OPTIONS
+#define GMTK_ARG_BUILD_INFO
 #define GMTK_ARG_SEED
 #define GMTK_ARG_SKIP_STARTUP_CHECKS
 #define GMTK_ARG_VERB

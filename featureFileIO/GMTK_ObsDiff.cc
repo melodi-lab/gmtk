@@ -40,6 +40,7 @@ static const char * gmtk_version_id = "GMTK Version 0.2b Tue Jan 20 22:59:41 200
 #include "GMTK_WordOrganization.h"
 #include "rand.h"
 
+#include "GMTK_ShowBuildOptions.h"
 #include "GMTK_ObsPrint.h"
 #include "GMTK_ObsKLT.h"
 #include "GMTK_ObsStats.h"
