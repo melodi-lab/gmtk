@@ -55,10 +55,22 @@
 #include "GMTK_MaxClique.h"
 
 #include "GMTK_ObservationSource.h"
+#include "GMTK_FileSource.h"
+#include "GMTK_CreateFileSource.h"
+#include "GMTK_ASCIIFile.h"
+#include "GMTK_FlatASCIIFile.h"
+#include "GMTK_PFileFile.h"
+#include "GMTK_HTKFile.h"
+#include "GMTK_HDF5File.h"
+#include "GMTK_BinaryFile.h"
+#include "GMTK_Filter.h"
+#include "GMTK_Stream.h"
 
 VCID(HGID)
 
 
+/*****************************   OBSERVATION INPUT FILE HANDLING   **********************************************/
+#define GMTK_ARG_OBS_FILES
 
 
 /*************************   INPUT TRAINABLE PARAMETER FILE HANDLING  *******************************************/
@@ -135,6 +147,7 @@ Arg Arg::Args[] = {
 RAND rnd(seedme);
 GMParms GM_Parms;
 
+FileSource *gomFS;
 ObservationSource *globalObservationMatrix;
 
 int
@@ -169,7 +182,11 @@ main(int argc,char*argv[]) {
 #include "GMTK_Arguments.h"
 #undef GMTK_ARGUMENTS_CHECK_ARGS
       
-      
+   infoMsg(IM::Max,"Opening Files ...\n");
+  gomFS = instantiateFileSource();
+  globalObservationMatrix = gomFS;
+
+  infoMsg(IM::Max,"Finished opening files.\n");     
       
       
       /////////////////////////////////////////////
