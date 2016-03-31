@@ -72,7 +72,6 @@ VCID(HGID)
 /*****************************   OBSERVATION INPUT FILE HANDLING   **********************************************/
 #define GMTK_ARG_OBS_FILES
 
-
 /*************************   INPUT TRAINABLE PARAMETER FILE HANDLING  *******************************************/
 #define GMTK_ARG_INPUT_TRAINABLE_FILE_HANDLING
 #define GMTK_ARG_CPP_CMD_OPTS
@@ -104,6 +103,10 @@ VCID(HGID)
 #define GMTK_ARG_MEMORY_MANAGEMENT_OPTIONS
 #define GMTK_ARG_MEM_GROWTH
 
+/****************************      FILE RANGE OPTIONS             ***********************************************/
+#define GMTK_ARG_FILE_RANGE_OPTIONS
+#define GMTK_ARG_DCDRNG
+#define GMTK_ARG_START_END_SKIP
 
 /****************************         GENERAL OPTIONS             ***********************************************/
 #define GMTK_ARG_GENERAL_OPTIONS
@@ -114,7 +117,9 @@ VCID(HGID)
 #define GMTK_ARG_VERSION
 #define GMTK_ARG_CLIQUE_PRINT
 
-
+/************************  OBSERVATION MATRIX TRANSFORMATION OPTIONS   ******************************************/
+#define GMTK_ARG_OBS_MATRIX_OPTIONS
+#define GMTK_ARG_OBS_MATRIX_XFORMATION
 
 
 #define GMTK_ARGUMENTS_DEFINITION
