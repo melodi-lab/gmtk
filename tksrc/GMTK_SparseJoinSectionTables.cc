@@ -86,7 +86,7 @@ void
 SparseJoinSectionTables::projectToOutgoingSeparators(SectionIterator &stss_it,
 						     PartitionStructures &sourceSectionStructures, 
 						     ConditionalSeparatorTable *separatorTableArray,
-						     ConditionalSeparatorTable::SharedLocalStructure &sepSharedStructure)
+						     ConditionalSeparatorTable::SharedLocalStructure *sepSharedStructure)
 {
 
   // Here the section sending the message (projecting to outgoing separators) knows
@@ -95,12 +95,38 @@ SparseJoinSectionTables::projectToOutgoingSeparators(SectionIterator &stss_it,
   // cliques with outgoing separators (formerly just the single right interface clique),
   // how many MaxCliques are in the section, and the MaxCliqueTable::SharedLocalStructure
   // of each of those cliques...
+#if 1
+#  if 1
+  vector<unsigned> roots(stss_it.prev_ri());
+  for (unsigned i=0, n=roots.size(); i < n; ++i) {
+    maxCliques[roots[i]].ceSendToOutgoingSeparator(sourceSectionStructures.maxCliquesSharedStructure[roots[i]],
+						   separatorTableArray[i], 
+						   sepSharedStructure[i]);
 
-  // for each maxCliques[i] with an outgoing separator
-  unsigned i = stss_it.prev_ri();
-  //   for each of maxClique[i]'s outgoing separators j
-          maxCliques[i].ceSendToOutgoingSeparator(sourceSectionStructures.maxCliquesSharedStructure[i],
-						  *separatorTableArray /* [j] */, sepSharedStructure);
+
+
+    // correct 1.x code
+#if 0
+  previous_pt.maxCliques[previous_part_root].
+    ceSendToOutgoingSeparator(previous_ps.maxCliquesSharedStructure[previous_part_root],
+			      next_pt.separatorCliques[next_ps.separatorCliquesSharedStructure.size()-1],
+			      next_ps.separatorCliquesSharedStructure[next_ps.separatorCliquesSharedStructure.size()-1]);
+#endif
+  }
+#  else
+  for (unsigned i=0, n=stss_it.prev_ri_size(); i < n; ++i) {
+    maxCliques[i].ceSendToOutgoingSeparator(sourceSectionStructures.maxCliquesSharedStructure[i],
+					    *separatorTableArray, sepSharedStructure);
+  }
+#  endif
+#else
+  unsigned first_interface_clique = stss_it.prev_ri();
+  unsigned last_interface_clique = first_interface_clique + stss_it.prev_ri_size();
+  for (unsigned i = first_interface_clique; i < last_interface_clique; ++i) {
+    maxCliques[i].ceSendToOutgoingSeparator(sourceSectionStructures.maxCliquesSharedStructure[i],
+					    *separatorTableArray, sepSharedStructure);
+  }
+#endif
 }
 
 
@@ -117,12 +143,19 @@ SparseJoinSectionTables::receiveBackwardsSeparators(SectionIterator &stss_it,
   // cliques with incoming messages (formerly just the single right interface clique),
   // how many MaxCliques are in the section, and the MaxCliqueTable::SharedLocalStructure
   // of each of those cliques...
-
-  // for each maxCliques[i] with an incoming message
-  unsigned i = stss_it.prev_ri();
-  //   for each of maxClique[i]'s cross-section separators j
-          maxCliques[i].deReceiveFromIncommingSeparator(sourceSectionStructures.maxCliquesSharedStructure[i],
-							*separatorTableArray /* [j] */, sepSharedStructure);
+#if 1
+  for (unsigned i=0, n=stss_it.prev_ri_size(); i < n; ++i) {
+    maxCliques[i].deReceiveFromIncommingSeparator(sourceSectionStructures.maxCliquesSharedStructure[i],
+						  *separatorTableArray, sepSharedStructure);
+  }
+#else
+  unsigned first_interface_clique = stss_it.prev_ri();
+  unsigned last_interface_clique = first_interface_clique + stss_it.prev_ri_size();
+  for (unsigned i = first_interface_clique; i < last_interface_clique; ++i) {
+    maxCliques[i].deReceiveFromIncommingSeparator(sourceSectionStructures.maxCliquesSharedStructure[i],
+						  *separatorTableArray, sepSharedStructure);
+  }
+#endif
 }
 
 

@@ -176,16 +176,30 @@ JT_Partition::JT_Partition(
   cloneInterface(liNodes, from_liVars, newRvs, ppf, liFrameDelta);
   cloneInterface(riNodes, from_riVars, newRvs, ppf, riFrameDelta);
 
+  section_li = from_part.section_li;
+  section_ri = from_part.section_ri;
+  ia_message_order = from_part.ia_message_order;
+  clique_name_dictionary = from_part.clique_name_dictionary;
+
   // make the cliques.
+assert(from_part.cliques.size() > 0);
+#if 1
   cliques.reserve(from_part.cliques.size());
+#else
+  cliques.resize(from_part.cliques.size());
+#endif
   // 
   // NOTE: It is ***CRUCIAL*** for the cliques in the cloned partition
   // to be inserted in the *SAME ORDER* as in the partition being
   // cloned. If this is not done, inference will crash.
+
+  set<RV*> empty;
   for (unsigned i=0;i<from_part.cliques.size();i++) {
-    cliques.push_back(MaxClique(from_part.cliques[i],
-				newRvs,ppf,frameDelta));
+    cliques.push_back(MaxClique(empty)); // length the vector
+    new (&(cliques[i])) MaxClique(from_part.cliques[i], newRvs,ppf,frameDelta, true);
   }
+assert(cliques.size() > 0);
+assert(cliques.size() == from_part.cliques.size());
 }
 
 
@@ -298,31 +312,26 @@ struct PriorityCliqueCompare {
     return (a.weights) > (b.weights);
   }
 };
+
 void
-JT_Partition::findInterfaceCliques(const vector< set <RV*> > &iNodes,
+JT_Partition::findInterfaceCliques(const set <RV*>& iNodes,
 				   unsigned& iClique,
 				   bool& iCliqueSameAsInterface,
 				   const string priorityStr)
 {
-
-  // FIXME: what to do with multiple interface separators?
-  //        make iClique a vector too?
-  assert(iNodes.size() > 0);
-  set<RV*> single_separator_nodes = iNodes[0];
-
-  if (single_separator_nodes.size() > 0) {
+  if (iNodes.size() > 0) {
     vector < PriorityClique > pcArray;
 
     for (unsigned cliqueNo=0;cliqueNo<cliques.size();cliqueNo++) {
-      // check that clique fully covers single_separator_nodes 
+      // check that clique fully covers iNodes 
       set<RV*> res;
       set_intersection(cliques[cliqueNo].nodes.begin(),
 		       cliques[cliqueNo].nodes.end(),
-		       single_separator_nodes.begin(),
-		       single_separator_nodes.end(),
+		       iNodes.begin(),
+		       iNodes.end(),
 		       inserter(res,res.end()));
       
-      if (res.size() == single_separator_nodes.size()) {
+      if (res.size() == iNodes.size()) {
 	// we've found a candidate.
 
 	// Priority for determining which clique becomes the interface
@@ -448,16 +457,17 @@ JT_Partition::findInterfaceCliques(const vector< set <RV*> > &iNodes,
  *-----------------------------------------------------------------------
  */
 void
-JT_Partition::findLInterfaceClique(unsigned& liClique,bool& liCliqueSameAsInterface,const string priorityStr)
+JT_Partition::findLInterfaceClique(unsigned &liClique,bool& liCliqueSameAsInterface,const string priorityStr)
 {
-  findInterfaceCliques(liNodes,liClique,liCliqueSameAsInterface,priorityStr);
+  // FIXME - liNodes[0] is bogus 
+  findInterfaceCliques(liNodes[0],liClique,liCliqueSameAsInterface,priorityStr);
 }
 void
-JT_Partition::findRInterfaceClique(unsigned& riClique,bool& riCliqueSameAsInterface,const string priorityStr)
+JT_Partition::findRInterfaceClique(unsigned &riClique,bool& riCliqueSameAsInterface,const string priorityStr)
 {
-  findInterfaceCliques(riNodes,riClique,riCliqueSameAsInterface,priorityStr);
+  // FIXME - bogus
+  findInterfaceCliques(riNodes[0],riClique,riCliqueSameAsInterface,priorityStr);
 }
-
 
 
 

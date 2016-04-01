@@ -85,7 +85,7 @@ class SectionTablesBase {
   virtual void projectToOutgoingSeparators(SectionIterator &stss_it,
 					   PartitionStructures &sourceSectionStructures, 
 					   ConditionalSeparatorTable *separatorTableArray,
-					   ConditionalSeparatorTable::SharedLocalStructure &sepSharedStructureArray) = 0;
+					   ConditionalSeparatorTable::SharedLocalStructure *sepSharedStructureArray) = 0;
 
   virtual void receiveBackwardsSeparators(SectionIterator &stss_it,
 					  PartitionStructures &sourceSectionStructures, 

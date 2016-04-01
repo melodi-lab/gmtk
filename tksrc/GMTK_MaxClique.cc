@@ -15,7 +15,6 @@
 
 
 
-
 /*
  * TODO: turn this into multiple files
  *   mc, mctable CE, mctable DE, mctable prune, csctable
@@ -319,7 +318,7 @@ MaxClique::MaxClique(MaxClique& from_clique,
   neighbors = from_clique.neighbors;
   children = from_clique.children;
   ceReceiveSeparators = from_clique.ceReceiveSeparators;
-  ceSendSeparator = from_clique.ceSendSeparator;
+  ceSendSeparators = from_clique.ceSendSeparators;
 
   if (cliqueBeamBuildBeam != (-LZERO)) {
     // then we're doing clique build pruning.
@@ -385,6 +384,325 @@ MaxClique::MaxClique(MaxClique& from_clique,
   }
 
 }
+
+
+
+
+MaxClique::MaxClique(MaxClique& from_clique,
+		     vector <RV*>& newRvs,
+		     map < RVInfo::rvParent, unsigned >& ppf,
+		     unsigned int frameDelta,
+		     bool dummy)
+
+  : MaxCliqueBase(), // MaxCliqueBase(from_clique.nodes), 
+     cliqueValueSpaceManager(1,     // starting size
+			     spaceMgrGrowthRate,   // growth rate
+			     1,     // growth addition
+			     spaceMgrDecayRate)    // decay rate 
+{
+  set<RV*>::iterator it;
+
+
+  // clone over nodes RVs.
+  for (it = from_clique.nodes.begin();
+       it != from_clique.nodes.end();
+       it++) {
+    RV* rv = (*it);
+    RVInfo::rvParent rvp;
+    rvp.first = rv->name();
+    rvp.second = rv->frame()+frameDelta;    
+
+    if ( ppf.find(rvp) == ppf.end() ) {
+      coredump("ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+	       rv->name().c_str(),rv->frame(),frameDelta,
+	       rvp.first.c_str(),rvp.second);
+    }
+
+    RV* nrv = newRvs[ppf[rvp]];
+    nodes.insert(nrv);
+  }
+
+  // and clone over assigned nodes and sorted assigned nodes
+  sortedAssignedNodes.reserve(from_clique.sortedAssignedNodes.size());
+  for (unsigned i=0;i<from_clique.sortedAssignedNodes.size();i++) {
+    RV* rv = from_clique.sortedAssignedNodes[i];
+    RVInfo::rvParent rvp;
+    rvp.first = rv->name();
+    rvp.second = rv->frame()+frameDelta;    
+
+    if ( ppf.find(rvp) == ppf.end() ) {
+      coredump("ERROR: can't find sorted assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+	       rv->name().c_str(),rv->frame(),frameDelta,
+	       rvp.first.c_str(),rvp.second);
+    }
+
+    RV* nrv = newRvs[ppf[rvp]];
+    sortedAssignedNodes.push_back(nrv);
+  }
+#if 1
+  dispositionSortedAssignedNodes.resize(from_clique.dispositionSortedAssignedNodes.len());
+  for (int i=0; i < from_clique.dispositionSortedAssignedNodes.len(); ++i) {
+    if (from_clique.dispositionSortedAssignedNodes[i] < 0 || 5 <from_clique.dispositionSortedAssignedNodes[i])
+      printf("BOGUS disposition %d\n", from_clique.dispositionSortedAssignedNodes[i]);
+    dispositionSortedAssignedNodes[i] = from_clique.dispositionSortedAssignedNodes[i];
+  }
+#else
+  dispositionSortedAssignedNodes.copyOtherIntoSelf(from_clique.dispositionSortedAssignedNodes);
+#endif
+  for (it = from_clique.assignedNodes.begin();
+       it != from_clique.assignedNodes.end(); ++it) 
+  {
+    RV* rv = *it;
+    RVInfo::rvParent rvp;
+    rvp.first = rv->name();
+    rvp.second = rv->frame()+frameDelta;    
+
+    if ( ppf.find(rvp) == ppf.end() ) {
+      coredump("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+	       rv->name().c_str(),rv->frame(),frameDelta,
+	       rvp.first.c_str(),rvp.second);
+    }
+    RV* nrv = newRvs[ppf[rvp]];
+    assignedNodes.insert(nrv);
+  }
+
+  // assignedProbNodes
+  for (it = from_clique.assignedProbNodes.begin();
+       it != from_clique.assignedProbNodes.end(); ++it) 
+  {
+    RV* rv = *it;
+    RVInfo::rvParent rvp;
+    rvp.first = rv->name();
+    rvp.second = rv->frame()+frameDelta;    
+
+    if ( ppf.find(rvp) == ppf.end() ) {
+      coredump("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+	       rv->name().c_str(),rv->frame(),frameDelta,
+	       rvp.first.c_str(),rvp.second);
+    }
+    RV* nrv = newRvs[ppf[rvp]];
+    assignedProbNodes.insert(nrv);
+  }
+
+
+  // unionIncommingCESeps
+  for (it = from_clique.unionIncommingCESeps.begin();
+       it != from_clique.unionIncommingCESeps.end(); ++it) 
+  {
+    RV* rv = *it;
+    RVInfo::rvParent rvp;
+    rvp.first = rv->name();
+    rvp.second = rv->frame()+frameDelta;    
+
+    if ( ppf.find(rvp) == ppf.end() ) {
+      coredump("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+	       rv->name().c_str(),rv->frame(),frameDelta,
+	       rvp.first.c_str(),rvp.second);
+    }
+    RV* nrv = newRvs[ppf[rvp]];
+    unionIncommingCESeps.insert(nrv);
+  }
+
+  // cumulativeAssignedProbNodes
+  for (it = from_clique.cumulativeAssignedProbNodes.begin();
+       it != from_clique.cumulativeAssignedProbNodes.end(); ++it) 
+  {
+    RV* rv = *it;
+    RVInfo::rvParent rvp;
+    rvp.first = rv->name();
+    rvp.second = rv->frame()+frameDelta;    
+
+    if ( ppf.find(rvp) == ppf.end() ) {
+      coredump("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+	       rv->name().c_str(),rv->frame(),frameDelta,
+	       rvp.first.c_str(),rvp.second);
+    }
+    RV* nrv = newRvs[ppf[rvp]];
+    cumulativeAssignedProbNodes.insert(nrv);
+  }
+
+
+  // do unassignedIteratedNodes
+  for (it = from_clique.unassignedIteratedNodes.begin();
+       it != from_clique.unassignedIteratedNodes.end();
+       it++) {
+    RV* rv = (*it);
+    RVInfo::rvParent rvp;
+    rvp.first = rv->name();
+    rvp.second = rv->frame()+frameDelta;    
+
+    if ( ppf.find(rvp) == ppf.end() ) {
+      coredump("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+	       rv->name().c_str(),rv->frame(),frameDelta,
+	       rvp.first.c_str(),rvp.second);
+    }
+    RV* nrv = newRvs[ppf[rvp]];
+    unassignedIteratedNodes.insert(nrv);
+  }
+
+  // do cumulativeAssignedNodes
+  for (it = from_clique.cumulativeAssignedNodes.begin();
+       it != from_clique.cumulativeAssignedNodes.end();
+       it++) {
+    RV* rv = (*it);
+    RVInfo::rvParent rvp;
+    rvp.first = rv->name();
+    rvp.second = rv->frame()+frameDelta;    
+
+    if ( ppf.find(rvp) == ppf.end() ) {
+      coredump("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
+	       rv->name().c_str(),rv->frame(),frameDelta,
+	       rvp.first.c_str(),rvp.second);
+    }
+    RV* nrv = newRvs[ppf[rvp]];
+    cumulativeAssignedNodes.insert(nrv);
+  }
+
+  // these are just integer indices, so we can copy them.
+  neighbors = from_clique.neighbors;
+  children = from_clique.children;
+  ceReceiveSeparators = from_clique.ceReceiveSeparators;
+  ceSendSeparators = from_clique.ceSendSeparators;
+
+  if (cliqueBeamBuildBeam != (-LZERO)) {
+    // then we're doing clique build pruning.
+    if (cliqueBeamBuildFilter == NULL || strlen(cliqueBeamBuildFilter) == 0 || strncmp(cliqueBeamBuildFilter,"fixed",5) == 0 ) {
+      maxCEValuePredictor = 
+	counted_ptr<AdaptiveFilter>(new FixedFilter());
+    } else if ( strncmp(cliqueBeamBuildFilter,"lms",3) == 0 ) {
+      // TODO: make a routine to parse arguments like this.
+
+      // expecting syntax of the form "lms,3,0.9"
+      unsigned order = 3;
+      double lr = 0.9;
+      unsigned slen = strlen(cliqueBeamBuildFilter);
+      if (slen > 4) {
+	char *startp = &cliqueBeamBuildFilter[4];
+	char *endp;
+	unsigned tmp = strtol(startp, &endp, 10);
+	if (endp != startp) {
+	  order = tmp;
+	  if (*endp == ',') {
+	    startp = endp+1;
+	    double d = strtod(startp, &endp);
+	    if (endp != startp) {
+	      lr = d;
+	    }
+	  }
+	}
+      }
+      // fprintf(stderr,"lms order = %d, lr = %f\n",order,lr);
+      maxCEValuePredictor = 
+	counted_ptr<AdaptiveFilter>(new LMSFilter(order,lr));
+    } else if ( strncmp(cliqueBeamBuildFilter,"rls",3) == 0 ) {
+      // expecting syntax of the form "rls,3,1.0"
+      unsigned order = 3;
+      double fc = 1.0;
+      unsigned slen = strlen(cliqueBeamBuildFilter);
+      if (slen > 4) {
+	char *startp = &cliqueBeamBuildFilter[4];
+	char *endp;
+	unsigned tmp = strtol(startp, &endp, 10);
+	if (endp != startp) {
+	  order = tmp;
+	  if (*endp == ',') {
+	    startp = endp+1;
+	    double d = strtod(startp, &endp);
+	    if (endp != startp) {
+	      fc = d;
+	    }
+	  }
+	}
+      }
+      // fprintf(stderr,"rls order = %d, fc = %f\n",order,fc);
+      maxCEValuePredictor =
+	counted_ptr<AdaptiveFilter>(new RLSFilter(order,fc));
+    } else {
+      error("Error: unknown clique build beam pruning filter type '%s'\n",
+	    cliqueBeamBuildFilter);
+    }
+    prevMaxCEValPrediction = 0.0;
+  } else {
+    // nothing to do.
+    // maxCEValuePredictor = NULL;
+  }
+//checkClique(from_clique);
+}
+
+
+bool
+foundRV(string const &name, unsigned frame, set<RV*> const &target) {
+  for (set<RV*>::iterator it = target.begin();
+       it != target.end(); ++it)
+  {
+    if ((*it)->name() == name && (*it)->frame() == frame) return true;
+  }
+  return false;
+}
+bool
+foundRV(string const &name, unsigned frame, vector<RV*> const &target) {
+  for (unsigned i=0; i < target.size(); ++i) {
+    if (target[i]->name() == name && target[i]->frame() == frame) return true;
+  }
+  return false;
+}
+bool
+rvSetEqual(set<RV*> const &s1, set<RV*> const &s2) {
+  if (s1.size() != s2.size()) return false;
+  for (set<RV*>::iterator it = s1.begin(); it != s1.end(); ++it) {
+    if (!foundRV((*it)->name(), (*it)->frame(), s2)) return false;
+  }
+  return true;
+}
+bool
+rvSetEqual(vector<RV*> const &v1, vector<RV*> const &v2) {
+  if (v1.size() != v2.size()) return false;
+  for (unsigned i=0; i < v1.size(); ++i) {
+    if (!foundRV(v1[i]->name(), v1[i]->frame(), v2)) return false;
+  }
+  return true;
+}
+bool
+sameDispositions(sArray<MaxClique::AssignedNodeDisposition> const &d1, 
+		 sArray<MaxClique::AssignedNodeDisposition> const &d2) 
+{
+  if (d1.len() != d2.len()) return false;
+  for (int i=0; i < d1.len(); ++i) {
+    if (d1[i] != d2[i]) return false;
+  }
+  return true;
+}
+void 
+MaxClique::checkClique(MaxClique const &target) {
+assert(0);
+  assert(rvSetEqual(assignedNodes, target.assignedNodes));
+  assert(rvSetEqual(sortedAssignedNodes, target.sortedAssignedNodes));
+  if (!rvSetEqual(assignedProbNodes, target.assignedProbNodes)) {
+    printf("clique clone fail (assignedProbNodes):\n");
+    printRVSet(stdout,assignedProbNodes);
+    printRVSet(stdout,target.assignedProbNodes);
+    assert(0);
+  }
+  assert(rvSetEqual(cumulativeAssignedNodes, target.cumulativeAssignedNodes));
+  assert(rvSetEqual(cumulativeAssignedProbNodes, target.cumulativeAssignedProbNodes));
+  assert(rvSetEqual(unionIncommingCESeps, target.unionIncommingCESeps));
+  assert(rvSetEqual(unassignedIteratedNodes, target.unassignedIteratedNodes));
+  assert(rvSetEqual(unassignedNodes, target.unassignedNodes));
+  if (!sameDispositions(dispositionSortedAssignedNodes, target.dispositionSortedAssignedNodes)) {
+    printf("clique clone fail (dispositions):\n");
+    for (int i=0; i < dispositionSortedAssignedNodes.len(); ++i) {
+      printf(" %d", dispositionSortedAssignedNodes[i]);
+    }
+    printf("\n");
+    for (int i=0; i < target.dispositionSortedAssignedNodes.len(); ++i) {
+      printf(" %d", target.dispositionSortedAssignedNodes[i]);
+    }
+    printf("\n");
+    assert(0);
+  }
+}
+
+
 
 
 /*-
@@ -936,6 +1254,87 @@ MaxClique::sortAndAssignDispositions(const char *varCliqueAssignmentPrior)
 }
 
 
+void
+MaxClique::sortAndAssignDispositions() {
+
+#if 0
+  if (!varCliqueAssignmentPrior || strlen(varCliqueAssignmentPrior) == 0) {
+    // then in this case, we don't try to remove any AN_CONTINUE nodes
+    // nor do we do any sorting.  TODO: change things so that there
+    // are never any AN_CONTINUE dispositions regardless of if we sort
+    // or not.
+    computeSortedAssignedNodesDispositions();
+  } else {
+
+    // the first thing we do is compute the node disposistions. We don't
+    // actually use the disposistions here, as we use this routine just
+    // to tell us if there are any AN_CONTINUE nodes in the clique, and
+    // if there are, we remove them (since they are wasteful). The
+    // variable nodesToRemove is a boolean telling us if there
+    // are any such nodes to remove.
+    bool nodesToRemove =  computeSortedAssignedNodesDispositions();
+
+
+    if (nodesToRemove == false) {
+      // just sort and leave.
+      GraphicalModel::topologicalSortWPriority(assignedNodes,
+					       assignedNodes,
+					       sortedAssignedNodes,
+					       varCliqueAssignmentPrior);
+      // potentially need to re-compute disposistions if sorting order
+      // changed anything. These are the final and real dispositions
+      // used.
+      nodesToRemove = computeSortedAssignedNodesDispositions();
+      assert (!nodesToRemove);
+    } else {
+
+      // so there are nodes to remove, we go through remove the
+      // nodes, re-sort, and then recompute the dispositions (yes, a bit
+      // wasteful but this happens only once).
+
+      set<RV*> toSortNodes;
+      for (unsigned i=0;i<dispositionSortedAssignedNodes.size();i++) {
+	if (dispositionSortedAssignedNodes[i] != AN_CONTINUE) {
+	  toSortNodes.insert(sortedAssignedNodes[i]);
+	}
+      }
+      GraphicalModel::topologicalSortWPriority(toSortNodes,
+					       toSortNodes,
+					       sortedAssignedNodes,
+					       varCliqueAssignmentPrior);
+      // now re-compute dispositions.
+      nodesToRemove = computeSortedAssignedNodesDispositions();
+      assert (!nodesToRemove);
+    }
+  }
+#endif
+
+  // next, we compute the continuation scores. We need one more (+1)
+  // continuation score than there are sorted assigned nodes because
+  // we may want to do pruning at the very last node.
+  sortedAssignedContinuationScores.resize(sortedAssignedNodes.size()+1);
+  if (cliqueBeamContinuationHeuristic && cliqueBeamBuildBeam != (-LZERO) /* ie, default -cpbeam meaning no pruning */ ) {
+    // TODO: do something better than just using global max value, like local max value
+    // of the current rv.
+    sortedAssignedContinuationScores.ptr[sortedAssignedNodes.size()] = 1.0;
+    for (int i = (sortedAssignedContinuationScores.size()-2); i>=0; i--) {
+      sortedAssignedContinuationScores.ptr[i]
+	= sortedAssignedContinuationScores.ptr[i+1] * 
+	sortedAssignedNodes[i]->maxValue();
+    }
+  } else {
+    for (unsigned i=0;i<sortedAssignedContinuationScores.size();i++)
+      sortedAssignedContinuationScores.ptr[i] = 1.0;
+  }
+
+  //   for (unsigned i=0;i<sortedAssignedContinuationScores.size();i++) {
+  //     printf("sortedAssignedContinuationScores[%d] = %f\n",i,
+  // 	   sortedAssignedContinuationScores.ptr[i].valref());
+  //   }
+
+}
+
+
 
 
 /*-
@@ -1041,8 +1440,97 @@ MaxClique::printAllJTInfo(FILE*f,const unsigned indent,const set<RV*>& unassigne
   fprintf(f,"%ld incomming VE Separators\n",(unsigned long)veSeparators.size());
 
   psp(f,indent*2);
-  fprintf(f,"Send Sep: %d\n",ceSendSeparator);
+  fprintf(f,"Send Sep:");
+  for (unsigned i=0; i < ceSendSeparators.size(); ++i)
+    fprintf(f," %d\n",ceSendSeparators[i]);
+}
 
+
+
+void
+MaxClique::printAllJTInfo(FILE*f,const unsigned indent,const set<RV*>& unassignedInPartition,
+			  const bool upperBound,
+			  const bool moreConservative,
+			  const bool useDeterminism,
+			  set<RV*> *lp_nodes,
+			  set<RV*> *rp_nodes)
+{
+
+  // TODO: also print out nubmer of bits for acc and rem.
+
+  psp(f,indent*2);
+  fprintf(f,"Clique information: %d packed bits, %d unsigned words (%d splits), weight = %f, jt_weight = %f\n",
+	  packer.packedLenBits(),packer.packedLen(),packer.numSplits(),weight(), 0.0
+	  /*weightInJunctionTree(unassignedInPartition,
+			       upperBound,
+			       moreConservative,
+			       useDeterminism,
+			       lp_nodes,rp_nodes)*/);
+
+
+  psp(f,indent*2);
+  fprintf(f,"%ld Nodes: ",(unsigned long)nodes.size()); printRVSetAndCards(f,nodes);
+
+  psp(f,indent*2);
+  fprintf(f,"%ld Assigned: ",(unsigned long)assignedNodes.size()); printRVSet(f,assignedNodes);
+
+  psp(f,indent*2);
+  fprintf(f,"%ld Assigned Sorted: ",(unsigned long)sortedAssignedNodes.size()); printRVSetAndCards(f,sortedAssignedNodes);
+
+  psp(f,indent*2);
+  fprintf(f,"%d Dispositions:",dispositionSortedAssignedNodes.size());
+  for (unsigned i=0;i<dispositionSortedAssignedNodes.size();i++)
+    fprintf(f," %d",dispositionSortedAssignedNodes[i]);
+  fprintf(f,"\n");
+
+
+  psp(f,indent*2);
+  fprintf(f,"%ld Assigned Prob: ",(unsigned long)assignedProbNodes.size()); printRVSet(f,assignedProbNodes);  
+
+  psp(f,indent*2);
+  fprintf(f,"%ld Cum Assigned Prob: ",(unsigned long)cumulativeAssignedProbNodes.size()); printRVSet(f,cumulativeAssignedProbNodes);  
+
+  psp(f,indent*2);
+  fprintf(f,"%ld Union Incomming Seps: ",(unsigned long)unionIncommingCESeps.size()); printRVSet(f,unionIncommingCESeps);
+
+  psp(f,indent*2);
+  fprintf(f,"%ld Unassigned Iterated: ",(unsigned long)unassignedIteratedNodes.size()); printRVSet(f,unassignedIteratedNodes);
+
+
+  psp(f,indent*2);
+  fprintf(f,"%ld Cumulative Unassigned: ",(unsigned long)cumulativeUnassignedIteratedNodes.size()); printRVSet(f,cumulativeUnassignedIteratedNodes);
+
+  if (hiddenNodes.size() == hashableNodes.size()) {
+    psp(f,indent*2);
+    fprintf(f,"%ld Hidden/Hashable: ",(unsigned long)hiddenNodes.size()); printRVSetAndCards(f,hiddenNodes);
+  } else {
+    psp(f,indent*2);
+    fprintf(f,"%ld Hidden: ",(unsigned long)hiddenNodes.size()); printRVSetAndCards(f,hiddenNodes);
+
+    psp(f,indent*2);
+    fprintf(f,"%ld Hashable: ",(unsigned long)hashableNodes.size()); printRVSetAndCards(f,hashableNodes);
+  }
+
+
+  psp(f,indent*2);
+  fprintf(f,"%ld Clique Neighbors: ",(unsigned long)neighbors.size());
+  for (unsigned i=0;i<neighbors.size();i++) fprintf(f,"%d,",neighbors[i]); fprintf(f,"\n");
+
+  psp(f,indent*2);
+  fprintf(f,"%ld Clique Children: ",(unsigned long)children.size());
+  for (unsigned i=0;i<children.size();i++) fprintf(f,"%d,",children[i]); fprintf(f,"\n");
+
+  psp(f,indent*2);
+  fprintf(f,"%ld Receive Seps: ",(unsigned long)ceReceiveSeparators.size());
+  for (unsigned i=0;i<ceReceiveSeparators.size();i++) fprintf(f,"%d,",ceReceiveSeparators[i]); fprintf(f,"\n");
+
+  psp(f,indent*2);
+  fprintf(f,"%ld incomming VE Separators\n",(unsigned long)veSeparators.size());
+
+  psp(f,indent*2);
+  fprintf(f,"Send Sep:");
+  for (unsigned i=0; i < ceSendSeparators.size(); ++i)
+    fprintf(f," %d\n",ceSendSeparators[i]);
 }
 
 

@@ -322,9 +322,14 @@
 	return "RIGHT_INVALID";
     }
 
+
+    // FIXME: These (interface index & size accessors) need to move to 
+    //        someplace "inference acrchitecture"-specific
+
+
     // the current section's root clique number 
     // (equivalently, its right interface clique)
-    unsigned cur_ri() {
+    vector<unsigned> cur_ri() {
       // also see SectionScheduler::computeSectionInterfaces()
       if (at_first_entry())
 	return jt.P_ri_to_C;
@@ -334,17 +339,27 @@
 	return jt.C_ri_to_C;
     }
     // the previous section's right interface clique number
-    unsigned prev_ri() {
+    vector<unsigned> prev_ri() {
       if (at_p())
-	return ~0x0; // invalid
+	return vector<unsigned> (1,~0x0); // invalid
       else if (prev_at_p())
 	return jt.P_ri_to_C;
       else 
 	return jt.C_ri_to_C;
     }
-    unsigned next_ri() {
-      if (at_e())
+
+    unsigned prev_ri_size() {
+      if (at_p())
 	return ~0x0; // invalid
+      else if (prev_at_p())
+	return jt.P_ri_to_C_size;
+      else 
+	return jt.C_ri_to_C_size;
+    }
+
+    vector<unsigned> next_ri() {
+      if (at_e())
+	return vector<unsigned> (1,~0x0); // invalid
       else if (next_at_e())
 	return jt.E_root_clique;
       else 
@@ -352,28 +367,28 @@
     }
 
     // the current section's left interface clique number
-    unsigned cur_li() {
+    vector<unsigned> cur_li() {
       // also see SectionScheduler::computeSectionInterfaces()
       if (at_first_entry())
-	return 0; // invalid entry
+	return vector<unsigned> (1,0); // invalid entry
       else if (at_last_entry())
 	return jt.E_li_to_C;
       else 
 	return jt.C_li_to_C;
     }
 
-    unsigned prev_li() {
+    vector<unsigned> prev_li() {
       if (at_p())
-	return ~0x0; // invalid
+	return vector<unsigned> (1,~0x0); // invalid
       else if (prev_at_p())
-	return ~0x0; // invalid
+	return vector<unsigned> (1,~0x0); // invalid
       else 
 	return jt.C_li_to_C;
     }
 
-    unsigned next_li() {
+    vector<unsigned> next_li() {
       if (at_e())
-	return ~0x0; // invalid
+	return vector<unsigned> (1,~0x0); // invalid
       else if (next_at_e())
 	return jt.E_li_to_C;
       else 
@@ -394,6 +409,15 @@
 	return jt.P1;
       else if (at_last_entry())
 	return jt.E1;
+      else 
+	return jt.Co;
+    }
+
+    JT_Partition &prev_jt_section() {
+      if (at_p())
+	return jt.P1; // invalid
+      else if (prev_at_p())
+	return jt.P1;
       else 
 	return jt.Co;
     }
@@ -419,9 +443,10 @@
 
       fprintf(f," at_p()=%d,at_c()=%d,at_e()=%d,at_last_c()=%d,at_first_c()=%d,next_at_p()=%d,next_at_c()=%d,next_at_e()=%d,prev_at_p()=%d,prev_at_c()=%d,prev_at_e()=%d\n",
 	     at_p(),at_c(),at_e(),at_last_c(),at_first_c(),next_at_p(),next_at_c(),next_at_e(),prev_at_p(),prev_at_c(),prev_at_e());
+      // FIXME - print all interface nodes, not just the first
       fprintf(f," cur_li()=%d,prev_li()=%d,next_li()=%d, cur_ri()=%d,prev_ri()=%d,next_ri()=%d\n",
-	      cur_li(),prev_li(),next_li(),
-	      cur_ri(),prev_ri(),next_ri());
+	      cur_li()[0],prev_li()[0],next_li()[0],
+	      cur_ri()[0],prev_ri()[0],next_ri()[0]);
       fprintf(f," cur_nm()=%s,prev_nm()=%s,next_nm()=%s\n",
 	     cur_nm(),prev_nm(),next_nm());
     }

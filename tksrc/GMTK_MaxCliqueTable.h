@@ -386,9 +386,9 @@ public:
 
   /////////////////////////////////////////
   // a version that automatically selects which separator to use within partition from the clique.
-  void ceSendToOutgoingSeparator(MaxCliqueTable::SharedLocalStructure& sharedStructure,
-				 ConditionalSeparatorTable* separatorTableArray,
-				 ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray);
+  void ceSendToOutgoingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+				  ConditionalSeparatorTable* separatorTableArray,
+				  ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray);
   // a version with an explicit outgoing separator.
   void ceSendToOutgoingSeparator(MaxCliqueTable::SharedLocalStructure& sharedStructure,
 				 ConditionalSeparatorTable& sep,

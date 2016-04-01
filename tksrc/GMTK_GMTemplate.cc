@@ -65,11 +65,14 @@ VCID(HGID)
 ////////////////////////////////////////////////////////////////////
 
 
-const string GMTemplate::P_partition_name("P_PARTITION");
-const string GMTemplate::C_partition_name("C_PARTITION");
-const string GMTemplate::E_partition_name("E_PARTITION");
-const string GMTemplate::PC_interface_name("PC_PARTITION");
-const string GMTemplate::CE_interface_name("CE_PARTITION");
+const string GMTemplate::P_partition_name("P_SECTION");
+const string GMTemplate::C_partition_name("C_SECTION");
+const string GMTemplate::E_partition_name("E_SECTION");
+const string GMTemplate::PC_interface_name("PC_INTERFACE");
+const string GMTemplate::CE_interface_name("CE_INTERFACE");
+
+const string GMTemplate::sparse_join_alg_name("SPARSE_JOIN");
+const string GMTemplate::pedagogical_alg_name("PEDAGOGICAL");
 
 const string GMTemplate::fileExtension(".trifile");
 
@@ -816,7 +819,6 @@ readPartitions(iDataStreamFile& is)
       loc_PCInterface[curSep].insert(unrolled_rvs[(*loc).second]);
     }
   }
-
   // get CE interface
   is.read(str_tmp,"CE interface name");
   if (str_tmp != CE_interface_name)
@@ -1257,19 +1259,79 @@ writeCliqueInformation(oDataStreamFile& os)
  *
  *-----------------------------------------------------------------------
  */
+
+void
+accumulateNamePos2Var(map<RVInfo::rvParent, RV*> &model_namePos2Var, Section const &S) {
+  for (set<RV*>::iterator i = S.nodes.begin(); i != S.nodes.end(); ++i) {
+    RV *rv = *i;
+    RVInfo::rvParent par;
+    par.first  = rv->name();
+    par.second = rv->frame();
+    model_namePos2Var[par] = rv;
+  }
+}
+
 void
 GMTemplate::
-readMaxCliques(iDataStreamFile& is)
+readMaxCliques(iDataStreamFile& is,  
+	       string const &ia_name,
+	       char section_type,
+	       string const &section_inf_alg)
 {
-  P.readMaxCliques(is);
-  C.readMaxCliques(is);
+  map< RVInfo::rvParent, RV* > model_namePos2Var;
+  accumulateNamePos2Var(model_namePos2Var, E); // E C P so rv will be from earliest section
+  accumulateNamePos2Var(model_namePos2Var, C);
+  accumulateNamePos2Var(model_namePos2Var, P);
+
+  P.readMaxCliques(is, ia_name, section_type, section_inf_alg, model_namePos2Var);
+  C.readMaxCliques(is, ia_name, section_type, section_inf_alg, model_namePos2Var);
   // C can't be empty.
   if (C.cliques.size() == 0)
     error("ERROR: reading file '%s' near line %d. Number of cliques in the C partition must be >= 1\n",
 	  is.fileName(),is.lineNo());
-  E.readMaxCliques(is);
+  E.readMaxCliques(is, ia_name, section_type, section_inf_alg, model_namePos2Var);
 }
 
+
+void
+GMTemplate::
+readInferenceArchitectures(iDataStreamFile &is) {
+  // FIXME - implement ia identifiers and section inference algorithm support
+  map< RVInfo::rvParent, RV* > model_namePos2Var;
+  accumulateNamePos2Var(model_namePos2Var, E); // E C P so rv will be from earliest section
+  accumulateNamePos2Var(model_namePos2Var, C);
+  accumulateNamePos2Var(model_namePos2Var, P);
+
+  for (unsigned i=0; i < 3; ++i) { // FIXME - N ias, index ia stanzas
+    string ia_name, section_inference_alg;
+    char section_type;
+    is.read(ia_name, "inference architecture identifier");
+    is.read(section_type, "section type");
+    is.read(section_inference_alg, "section inference algorithm");
+
+    switch (section_type) {
+    case 'P': 
+      P.readMaxCliques(is, ia_name, section_type, section_inference_alg, model_namePos2Var); 
+      P.readInferenceArchitectureDefinition(is, ia_name, section_type, section_inference_alg);
+      break;
+    case 'C': 
+      C.readMaxCliques(is, ia_name, section_type, section_inference_alg, model_namePos2Var); 
+      C.readInferenceArchitectureDefinition(is, ia_name, section_type, section_inference_alg);
+      break;
+    case 'E': 
+      E.readMaxCliques(is, ia_name, section_type, section_inference_alg, model_namePos2Var); 
+      E.readInferenceArchitectureDefinition(is, ia_name, section_type, section_inference_alg);
+      break;
+    default: error("Unknown section type '%c', must be P C or E.", section_type);
+    }
+    if (section_inference_alg == sparse_join_alg_name) {
+    } else if (section_inference_alg == pedagogical_alg_name) {
+    } else {
+      error("Unkown section inference algorithm '%s', must be SPARSE_JOIN or PEDAGOGICAL.",
+	    section_inference_alg.c_str());
+    }
+  }
+}
 
 
 /*-

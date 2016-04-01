@@ -1325,16 +1325,17 @@ PedagogicalCliqueTable::clearCliqueAndIncommingSeparatorMemory(PedagogicalClique
  */
 void 
 PedagogicalCliqueTable::
-ceSendToOutgoingSeparator(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
-			  ConditionalSeparatorTable* separatorTableArray,
-			  ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray)
+ceSendToOutgoingSeparators(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
+			   ConditionalSeparatorTable* separatorTableArray,
+			   ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray)
 {
   // syntactic convenience variables.
   MaxClique& origin = *(sharedStructure.origin);
-  ceSendToOutgoingSeparator(sharedStructure,
-			    separatorTableArray[origin.ceSendSeparator],
-			    sepSharedStructureArray[origin.ceSendSeparator]
-			    );
+  for (unsigned i=0, n=origin.ceSendSeparators.size(); i < n; ++i) {
+    ceSendToOutgoingSeparator(sharedStructure,
+			      separatorTableArray[origin.ceSendSeparators[i]],
+			      sepSharedStructureArray[origin.ceSendSeparators[i]]);
+  }
 }
 void 
 PedagogicalCliqueTable::
@@ -4065,10 +4066,12 @@ deReceiveFromIncommingSeparator(PedagogicalCliqueTable::SharedLocalStructure& sh
 				ConditionalSeparatorTable* separatorTableArray,
 				ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray)
 {
+  // FIXME - this needs to be deGatherFromIncomingSeparators()
+
   MaxClique& origin = *(sharedStructure.origin);
   deReceiveFromIncommingSeparator(sharedStructure,
-				  separatorTableArray[origin.ceSendSeparator],
-				  sepSharedStructureArray[origin.ceSendSeparator]
+				  separatorTableArray[origin.ceSendSeparators[0]],
+				  sepSharedStructureArray[origin.ceSendSeparators[0]]
 				  );
 }
 void 

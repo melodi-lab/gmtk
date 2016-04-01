@@ -19,6 +19,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <utility>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -48,9 +49,21 @@ public:
   // The cliques themselves, used to store the current triangulation
   // of each of the sections.
   vector<MaxClique> cliques;
-  
+
   // a string with information about the method used to form the cliques
   string triMethod;
+
+
+
+  // FIXME - this is section inference algorithm specific
+  vector<unsigned> section_ri, section_li;
+  map<string, vector<pair<unsigned, unsigned > > > ia_message_order;
+
+
+  //  map<string, string> ia_name_to_section_inf_alg;
+  map<string, map<string, unsigned> > clique_name_dictionary;
+
+
 
   Section() {}
 
@@ -77,7 +90,15 @@ public:
   void clearCliques() { cliques.clear(); triMethod.clear(); }
 
   void writeMaxCliques(oDataStreamFile& os);  
-  void readMaxCliques(iDataStreamFile& is);
+  void readMaxCliques(iDataStreamFile& is,  
+		      string const &ia_name,
+		      char section_type,
+		      string const &section_inf_alg,
+		      map< RVInfo::rvParent, RV* > &model_namePos2Var);
+  void readInferenceArchitectureDefinition(iDataStreamFile &is,
+					   string const &ia_name,
+					   char section_type,
+					   string const &section_inf_alg);
   void triangulateSectionsByCliqueCompletion();
   void setCliquesFromAnotherSection(Section& p);
   void reportScoreStats();

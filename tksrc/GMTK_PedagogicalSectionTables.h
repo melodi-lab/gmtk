@@ -29,21 +29,26 @@ class PedagogicalSectionTables : public SectionTablesBase {
   ~PedagogicalSectionTables() { clear(); }
 
   logpr probEvidence(SectionIterator &inference_it, SectionScheduler &myjt) {
+    logpr result;
     if (inference_it.at_p() && myjt.P1.cliques.size() > 0) {
-      return maxCliques[myjt.P_ri_to_C].sumProbabilities();
+      for (unsigned i=0; i < myjt.P_ri_to_C.size(); ++i) {
+	result += maxCliques[myjt.P_ri_to_C[i]].sumProbabilities();
+      }
     } else if (inference_it.at_c() && myjt.Co.cliques.size() > 0) {
-      return maxCliques[myjt.C_ri_to_C].sumProbabilities();
+      for (unsigned i=0; i < myjt.C_ri_to_C.size(); ++i) {
+	result += maxCliques[myjt.C_ri_to_C[i]].sumProbabilities();
+      }
     } else if (inference_it.at_e()) {
-      return maxCliques[myjt.E_root_clique].sumProbabilities();
-    } else {
-      return logpr();
+      for (unsigned i=0; i < myjt.E_root_clique.size(); ++i)
+         result += maxCliques[myjt.E_root_clique[i]].sumProbabilities();
     }
+    return result;
   }
 
   void projectToOutgoingSeparators(SectionIterator &stss_it,
 				   PartitionStructures &sourceSectionStructures, 
 				   ConditionalSeparatorTable *separatorTableArray,
-				   ConditionalSeparatorTable::SharedLocalStructure &sepSharedStructure);
+				   ConditionalSeparatorTable::SharedLocalStructure *sepSharedStructure);
 
   void receiveBackwardsSeparators(SectionIterator &stss_it,
 				  PartitionStructures &sourceSectionStructures, 

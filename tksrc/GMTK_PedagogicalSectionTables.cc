@@ -86,7 +86,7 @@ void
 PedagogicalSectionTables::projectToOutgoingSeparators(SectionIterator &stss_it,
 						     PartitionStructures &sourceSectionStructures, 
 						     ConditionalSeparatorTable *separatorTableArray,
-						     ConditionalSeparatorTable::SharedLocalStructure &sepSharedStructure)
+						     ConditionalSeparatorTable::SharedLocalStructure *sepSharedStructure)
 {
 
   // Here the section sending the message (projecting to outgoing separators) knows
@@ -96,11 +96,22 @@ PedagogicalSectionTables::projectToOutgoingSeparators(SectionIterator &stss_it,
   // how many MaxCliques are in the section, and the PedagogicalCliqueTable::SharedLocalStructure
   // of each of those cliques...
 
-  // for each maxCliques[i] with an outgoing separator
-  unsigned i = stss_it.prev_ri();
-  //   for each of maxClique[i]'s outgoing separators j
-          maxCliques[i].ceSendToOutgoingSeparator(sourceSectionStructures.pedagogicalCliquesSharedStructure[i],
-						  *separatorTableArray /* [j] */, sepSharedStructure);
+#if 0
+  // FIXME
+#if 1
+  for (unsigned i=0, n=stss_it.prev_ri_size(); i < n; ++i) {
+    maxCliques[i].ceSendToOutgoingSeparator(sourceSectionStructures.pedagogicalCliquesSharedStructure[i],
+					    *separatorTableArray, sepSharedStructure);
+  }
+#else
+  unsigned first_interface_clique = stss_it.prev_ri();
+  unsigned last_interface_clique = first_interface_clique + stss_it.prev_ri_size();
+  for (unsigned i = first_interface_clique; i < last_interface_clique; ++i) {
+    maxCliques[i].ceSendToOutgoingSeparator(sourceSectionStructures.pedagogicalCliquesSharedStructure[i],
+					    *separatorTableArray, sepSharedStructure);
+  }
+#endif
+#endif
 }
 
 
@@ -118,11 +129,19 @@ PedagogicalSectionTables::receiveBackwardsSeparators(SectionIterator &stss_it,
   // how many MaxCliques are in the section, and the PedagogicalCliqueTable::SharedLocalStructure
   // of each of those cliques...
 
-  // for each maxCliques[i] with an incoming message
-  unsigned i = stss_it.prev_ri();
-  //   for each of maxClique[i]'s cross-section separators j
-          maxCliques[i].deReceiveFromIncommingSeparator(sourceSectionStructures.pedagogicalCliquesSharedStructure[i],
-							*separatorTableArray /* [j] */, sepSharedStructure);
+#if 1
+  for (unsigned i=0, n=stss_it.prev_ri_size(); i < n; ++i) {
+    maxCliques[i].deReceiveFromIncommingSeparator(sourceSectionStructures.pedagogicalCliquesSharedStructure[i],
+						  *separatorTableArray, sepSharedStructure);
+  }
+#else
+  unsigned first_interface_clique = stss_it.prev_ri();
+  unsigned last_interface_clique = first_interface_clique + stss_it.prev_ri_size();
+  for (unsigned i = first_interface_clique; i < last_interface_clique; ++i) {
+    maxCliques[i].deReceiveFromIncommingSeparator(sourceSectionStructures.pedagogicalCliquesSharedStructure[i],
+						  *separatorTableArray, sepSharedStructure);
+  }
+#endif
 }
 
 
