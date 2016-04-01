@@ -49,7 +49,7 @@ class GMTemplate : public IM
   friend class Triangulate;
   friend class Section;
   friend class BoundaryTriangulate;
-  friend class JunctionTree;
+  friend class SectionScheduler;
 
   // the file parser for this model.
   FileParser& fp;
@@ -79,6 +79,9 @@ private:
   static const string E_partition_name;
   static const string PC_interface_name;
   static const string CE_interface_name;
+
+  static const string sparse_join_alg_name;
+  static const string pedagogical_alg_name;
 
   ////////////////////////////
   // clear up everything.
@@ -229,7 +232,12 @@ public:
 
   // Read clique information into file, and triangulate
   // the resulting paritions while reading the cliques.
-  void readMaxCliques(iDataStreamFile& is);
+  void readMaxCliques(iDataStreamFile& is,
+		      string const &ia_name,
+		      char section_type,
+		      string const &section_inf_alg);
+
+  void readInferenceArchitectures(iDataStreamFile &is);
 
   // given the cliques, triangulate the partitions.
   void triangulatePartitionsByCliqueCompletion();

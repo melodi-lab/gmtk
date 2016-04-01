@@ -56,8 +56,8 @@ class JT_Partition : public Section {
 
   friend class JunctionTree;
 
-  void findInterfaceCliques(const vector< set <RV*> > &iNodes,
-			    unsigned& iClique,
+  void findInterfaceCliques(const set <RV*>  &iNodes,
+			    unsigned &iClique,
 			    bool& iCliqueSameAsInterface,
 			    const string priorityStr);
 public:
@@ -141,9 +141,9 @@ public:
 
   // returns the left and right interface clique. If not defined,
   // sets the variable to ~0x0.
-  void findLInterfaceClique(unsigned& liClique,bool& liCliqueSameAsInterface,
+  void findLInterfaceClique(unsigned &liClique, bool &liCliqueSameAsInterface,
 			    const string priorityStr);
-  void findRInterfaceClique(unsigned& riClique,bool& riCliqueSameAsInterface,
+  void findRInterfaceClique(unsigned &riClique, bool &riCliqueSameAsInterface,
 			    const string priorityStr);
 
   // return the index of the clique with max/min weight.

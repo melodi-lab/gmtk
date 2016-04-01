@@ -445,7 +445,7 @@ Arg("map",Arg::Opt,dlopenFilenames,"Deterministic mapping dynamic library file. 
 #ifdef GMTK_ARG_JT_INFO_FILE_DEF_VAL
     static char *jtFileName = GMTK_ARG_JT_INFO_FILE_DEF_VAL;
 #else
-    const static char *jtFileName = "jt_info.txt";
+    const static char *jtFileName = "ia_info.txt";
 #endif
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)

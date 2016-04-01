@@ -67,6 +67,15 @@ class PedagogicalInference : public SectionInferenceAlgorithm {
 
  private:
 
+void ceGatherIntoRoot(PartitionStructures &ss,
+		      PedagogicalSectionTables &st,
+		      vector<unsigned> const &roots,
+		      vector< pair<unsigned,unsigned> > &message_order,
+		      const char *const section_type_name,
+		      const unsigned section_num,
+		      const bool clear_when_done=false,
+		      const bool also_clear_origins=false);
+
   void ceGatherIntoRoot(PartitionStructures &ss,
 			PedagogicalSectionTables &st,
 			// index of root clique in the section

@@ -101,7 +101,6 @@ class MaxClique : public MaxCliqueBase {
 
   // basic constructor with a set of nodes
  MaxClique(set<RV*> arg) : MaxCliqueBase(arg) {}
-
   // TODO: Figure out polymorphicness of copy ctor
 
   // Clone constructor from another MaxClique, but that uses a new set
@@ -112,6 +111,14 @@ class MaxClique : public MaxCliqueBase {
 	    map < RVInfo::rvParent, unsigned >& ppf,
 	    const unsigned int frameDelta = 0);
 
+  // clone more of clique than the above...
+  MaxClique(MaxClique& from_clique,
+	    vector <RV*>& newRvs,
+	    map < RVInfo::rvParent, unsigned >& ppf,
+	    unsigned int frameDelta,
+	    bool dummy);
+
+  void checkClique(MaxClique const &target);
 
   virtual ~MaxClique() { 
     // TODO: do this right so that it works with tmp values in these objects.
@@ -483,7 +490,7 @@ class MaxClique : public MaxCliqueBase {
   // distribute evidence stage).  Again, ints indexing into parent
   // partition. Set to ~0x0 when the appropriate separator lives in
   // another partition (and so needs to be explicitly given).
-  unsigned ceSendSeparator;
+  vector<unsigned> ceSendSeparators;
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // structure used to pack and unpack clique values for this
@@ -634,7 +641,9 @@ class MaxClique : public MaxCliqueBase {
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // sort the node and assign the dispositions.
-  void sortAndAssignDispositions(const char *varCliqueAssignmentPrior);
+  void sortAndAssignDispositions(); // new
+
+  void sortAndAssignDispositions(const char *varCliqueAssignmentPrior); // old
 
 
   // USED ONLY IN JUNCTION TREE INFERENCE
@@ -645,6 +654,12 @@ class MaxClique : public MaxCliqueBase {
 		      const bool useDeterminism,
 		      vector< set<RV*> > *lp_nodes,
 		      vector< set<RV*> > *rp_nodes);
+  void printAllJTInfo(FILE* f,const unsigned indent,const set<RV*>& unassignedInPartition,
+		      const bool upperBound,
+		      const bool moreConservative,
+		      const bool useDeterminism,
+		      set<RV*> *lp_nodes,
+		      set<RV*> *rp_nodes);
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // used to clear out hash table memory between segments

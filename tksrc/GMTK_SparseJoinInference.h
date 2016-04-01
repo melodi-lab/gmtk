@@ -70,6 +70,20 @@ class SparseJoinInference : public SectionInferenceAlgorithm {
   void ceGatherIntoRoot(PartitionStructures &ss,
 			SparseJoinSectionTables &st,
 			// index of root clique in the section
+			vector<unsigned> const &roots,
+			// message order of the JT in this section
+			vector< pair<unsigned,unsigned> > &message_order,
+			// the name of the section (for debugging/status msgs)
+			const char *const section_type_name,
+			// number of the section in unrolled graph 
+			// (for printing/debugging/status msgs only)
+			const unsigned section_num,
+			const bool clear_when_done = false,
+			const bool also_clear_origins = false);
+
+  void ceGatherIntoRoot(PartitionStructures &ss,
+			SparseJoinSectionTables &st,
+			// index of root clique in the section
 			const unsigned root,
 			// message order of the JT in this section
 			vector< pair<unsigned,unsigned> > &message_order,

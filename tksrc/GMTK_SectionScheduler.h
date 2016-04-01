@@ -120,6 +120,21 @@ class SectionScheduler {
   // Formerly JunctionTree::printAllJTInfo()
   virtual void printInferencePlanSummary(char const *fileName);
 
+  void printAllJTInfo(FILE* f,
+		      JT_Partition& part,
+		      vector<unsigned> const &roots,
+		      set <RV*>* lp_nodes,
+		      set <RV*>* rp_nodes);
+  void printAllJTInfoCliques(FILE* f,
+			     JT_Partition& part,
+			     unsigned root,
+			     const unsigned treeLevel,
+			     set <RV*>* lp_nodes,
+			     set <RV*>* rp_nodes);
+  
+  void printMessageOrder(FILE *f, vector< pair<unsigned,unsigned> >& message_order);
+
+
   // Formerly GMTemplate::reportScoreStats()
   virtual void reportScoreStats();
 
@@ -350,25 +365,29 @@ class SectionScheduler {
   // Identities of cliques in junction trees: 
   // for P, 
   //    P's right  interface to C (a root in a JT section)
-  unsigned P_ri_to_C; 
+  vector<unsigned> P_ri_to_C; 
+  unsigned P_ri_to_C_size; // # of cliques in factored interface
+
   //    The next one does not exist since we currently always do CE first.
   // unsigned P_li_clique; 
+
   // 
   // for C
   //    C's left interface to P
-  unsigned C_li_to_P;
+  vector<unsigned> C_li_to_P;
   //    C's left interface to C (same as C_li_to_P)
-  unsigned C_li_to_C;
+  vector<unsigned> C_li_to_C;
   //    C's right interface to C (a root in a JT section)
-  unsigned C_ri_to_C;
+  vector<unsigned> C_ri_to_C;
+  unsigned C_ri_to_C_size; // # of cliques in factored interface
   //    C's right interface to E (a root in a JT section) (same as C_ri_to_C)
-  unsigned C_ri_to_E;
+  vector<unsigned> C_ri_to_E;
   // 
   // for E, 
   // E's left interface to C
-  unsigned E_li_to_C;
+  vector<unsigned> E_li_to_C;
   // root inside of E.
-  unsigned E_root_clique;
+  vector<unsigned> E_root_clique;
 
 
   // Booleans telling if the interface cliques of the two partitions
@@ -499,8 +518,12 @@ class SectionScheduler {
   // create the three junction trees for the basic sections.
   void createSectionJunctionTrees(const string pStr = junctionTreeMSTpriorityStr);
 
+  void createSectionJunctionForests();
+
   // create a junction tree within a section.
   static void createSectionJunctionTree(Section& section, const string pStr = junctionTreeMSTpriorityStr);
+
+  static void createSectionJunctionForest(Section& section, string const &ia_name_and_section);
 
   // routine to find the interface cliques of the sections
   void computeSectionInterfaces();
@@ -522,8 +545,10 @@ class SectionScheduler {
 						  const unsigned root,
 						  vector< bool >& visited);
 
-  static void createDirectedGraphOfCliques(JT_Partition &section, const unsigned root);
+  static void createDirectedGraphOfCliques(JT_Partition &section, unsigned root);
+  static void createDirectedGraphOfCliques(JT_Partition &section, vector<unsigned> const &root);
   static void getCumulativeAssignedNodes(JT_Partition &section, const unsigned root);
+  static void getCumulativeAssignedNodes(JT_Partition &section, vector<unsigned> const &root);
   static void getCumulativeUnassignedIteratedNodes(JT_Partition &section,const unsigned root);
 
 
@@ -532,6 +557,9 @@ class SectionScheduler {
 					      vector< pair<unsigned,unsigned> >&order,
 					      const unsigned excludeFromLeafCliques,
 					      vector< unsigned>& leaf_cliques);
+
+  // do a bit of setup for the upcomming inference round.
+  void prepareForNextInferenceRound();
 
   static void assignRVToClique(const char *const sectionName,
 			       JT_Partition &section,
@@ -603,7 +631,10 @@ class SectionScheduler {
   // section's cliques relative to each clique's incomming separators, and while
   // doing so, also set the dispositions for each of the resulting
   // nodes in each clique.
-  void sortCliqueAssignedNodesAndComputeDispositions(const char *varCliqueAssignmentPrior);
+  void sortCliqueAssignedNodesAndComputeDispositions(); // new
+  void sortCliqueAssignedNodesAndComputeDispositions(JT_Partition& section);
+
+  void sortCliqueAssignedNodesAndComputeDispositions(const char *varCliqueAssignmentPrior); // old
   void sortCliqueAssignedNodesAndComputeDispositions(JT_Partition& section, const char *varCliqueAssignmentPrior);
 
 
@@ -627,6 +658,12 @@ class SectionScheduler {
 				   vector< set<RV*> > *lp_nodes,
 				   vector< set<RV*> > *rp_nodes);
 				   
+  // used to clear out hash table memory between segments
+  void clearCliqueSepValueCache(bool force=false) {
+    P1.clearCliqueSepValueCache(force);
+    Co.clearCliqueSepValueCache(force);
+    E1.clearCliqueSepValueCache(force);
+  }
 
 };
 
