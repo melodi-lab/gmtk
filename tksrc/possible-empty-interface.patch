@@ -1,0 +1,30 @@
+diff -r a7a37a2a98da tksrc/GMTK_SectionScheduler.cc
+--- a/tksrc/GMTK_SectionScheduler.cc	Tue Apr 05 22:09:44 2016 -0700
++++ b/tksrc/GMTK_SectionScheduler.cc	Wed Apr 06 00:24:56 2016 -0700
+@@ -812,12 +812,12 @@
+ 							       false // does not have a li separator
+ 							       );
+   for (int p=0;p<numCoSectionStructures;p++) {
+-    new (&section_structure_array[sectionNo]) PartitionStructures(Co,cur_unrolled_rvs,cur_ppf,p*S*fp.numFramesInC());
++    new (&section_structure_array[sectionNo]) PartitionStructures(Co,cur_unrolled_rvs,cur_ppf,p*S*fp.numFramesInC(), Co.liNodes.size() > 0);
+     sectionNo++;
+   }
+   new (&section_structure_array[sectionNo++]) 
+     PartitionStructures(E1,cur_unrolled_rvs,cur_ppf,
+-			modifiedTemplateMinUnrollAmount*S*fp.numFramesInC());
++			modifiedTemplateMinUnrollAmount*S*fp.numFramesInC(), E1.liNodes.size() > 0);
+ 
+    
+   // 
+diff -r a7a37a2a98da tksrc/GMTK_SparseJoinInference.cc
+--- a/tksrc/GMTK_SparseJoinInference.cc	Tue Apr 05 22:09:44 2016 -0700
++++ b/tksrc/GMTK_SparseJoinInference.cc	Wed Apr 06 00:24:56 2016 -0700
+@@ -115,7 +115,7 @@
+   // itself down onto next_st's incoming separators (all SectionInferenceAlgorithms 
+   // speak the same section separator data structure).
+   unsigned li_size = inference_it->cur_li().size();
+-  prev_section->projectToOutgoingSeparators(*inference_it, 
++  if (li_size > 0) prev_section->projectToOutgoingSeparators(*inference_it, 
+ 					    previous_ps,
+ 					    &(next_st->separatorCliques[next_ps.separatorCliquesSharedStructure.size()-li_size]),
+ 					    &(next_ps.separatorCliquesSharedStructure[next_ps.separatorCliquesSharedStructure.size()-li_size]));

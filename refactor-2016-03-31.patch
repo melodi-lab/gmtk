@@ -1,0 +1,3148 @@
+diff -r 4d50d832ada4 tksrc/GMTK_Arguments.h
+--- a/tksrc/GMTK_Arguments.h	Wed Jan 27 16:07:27 2016 -0800
++++ b/tksrc/GMTK_Arguments.h	Fri Apr 01 00:48:07 2016 -0700
+@@ -445,7 +445,7 @@
+ #ifdef GMTK_ARG_JT_INFO_FILE_DEF_VAL
+     static char *jtFileName = GMTK_ARG_JT_INFO_FILE_DEF_VAL;
+ #else
+-    const static char *jtFileName = "jt_info.txt";
++    const static char *jtFileName = "ia_info.txt";
+ #endif
+ 
+ #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+diff -r 4d50d832ada4 tksrc/GMTK_GMTemplate.cc
+--- a/tksrc/GMTK_GMTemplate.cc	Wed Jan 27 16:07:27 2016 -0800
++++ b/tksrc/GMTK_GMTemplate.cc	Fri Apr 01 00:48:07 2016 -0700
+@@ -65,11 +65,14 @@
+ ////////////////////////////////////////////////////////////////////
+ 
+ 
+-const string GMTemplate::P_partition_name("P_PARTITION");
+-const string GMTemplate::C_partition_name("C_PARTITION");
+-const string GMTemplate::E_partition_name("E_PARTITION");
+-const string GMTemplate::PC_interface_name("PC_PARTITION");
+-const string GMTemplate::CE_interface_name("CE_PARTITION");
++const string GMTemplate::P_partition_name("P_SECTION");
++const string GMTemplate::C_partition_name("C_SECTION");
++const string GMTemplate::E_partition_name("E_SECTION");
++const string GMTemplate::PC_interface_name("PC_INTERFACE");
++const string GMTemplate::CE_interface_name("CE_INTERFACE");
++
++const string GMTemplate::sparse_join_alg_name("SPARSE_JOIN");
++const string GMTemplate::pedagogical_alg_name("PEDAGOGICAL");
+ 
+ const string GMTemplate::fileExtension(".trifile");
+ 
+@@ -816,7 +819,6 @@
+       loc_PCInterface[curSep].insert(unrolled_rvs[(*loc).second]);
+     }
+   }
+-
+   // get CE interface
+   is.read(str_tmp,"CE interface name");
+   if (str_tmp != CE_interface_name)
+@@ -1257,20 +1259,80 @@
+  *
+  *-----------------------------------------------------------------------
+  */
++
++void
++accumulateNamePos2Var(map<RVInfo::rvParent, RV*> &model_namePos2Var, Section const &S) {
++  for (set<RV*>::iterator i = S.nodes.begin(); i != S.nodes.end(); ++i) {
++    RV *rv = *i;
++    RVInfo::rvParent par;
++    par.first  = rv->name();
++    par.second = rv->frame();
++    model_namePos2Var[par] = rv;
++  }
++}
++
+ void
+ GMTemplate::
+-readMaxCliques(iDataStreamFile& is)
++readMaxCliques(iDataStreamFile& is,  
++	       string const &ia_name,
++	       char section_type,
++	       string const &section_inf_alg)
+ {
+-  P.readMaxCliques(is);
+-  C.readMaxCliques(is);
++  map< RVInfo::rvParent, RV* > model_namePos2Var;
++  accumulateNamePos2Var(model_namePos2Var, E); // E C P so rv will be from earliest section
++  accumulateNamePos2Var(model_namePos2Var, C);
++  accumulateNamePos2Var(model_namePos2Var, P);
++
++  P.readMaxCliques(is, ia_name, section_type, section_inf_alg, model_namePos2Var);
++  C.readMaxCliques(is, ia_name, section_type, section_inf_alg, model_namePos2Var);
+   // C can't be empty.
+   if (C.cliques.size() == 0)
+     error("ERROR: reading file '%s' near line %d. Number of cliques in the C partition must be >= 1\n",
+ 	  is.fileName(),is.lineNo());
+-  E.readMaxCliques(is);
++  E.readMaxCliques(is, ia_name, section_type, section_inf_alg, model_namePos2Var);
+ }
+ 
+ 
++void
++GMTemplate::
++readInferenceArchitectures(iDataStreamFile &is) {
++  // FIXME - implement ia identifiers and section inference algorithm support
++  map< RVInfo::rvParent, RV* > model_namePos2Var;
++  accumulateNamePos2Var(model_namePos2Var, E); // E C P so rv will be from earliest section
++  accumulateNamePos2Var(model_namePos2Var, C);
++  accumulateNamePos2Var(model_namePos2Var, P);
++
++  for (unsigned i=0; i < 3; ++i) { // FIXME - N ias, index ia stanzas
++    string ia_name, section_inference_alg;
++    char section_type;
++    is.read(ia_name, "inference architecture identifier");
++    is.read(section_type, "section type");
++    is.read(section_inference_alg, "section inference algorithm");
++
++    switch (section_type) {
++    case 'P': 
++      P.readMaxCliques(is, ia_name, section_type, section_inference_alg, model_namePos2Var); 
++      P.readInferenceArchitectureDefinition(is, ia_name, section_type, section_inference_alg);
++      break;
++    case 'C': 
++      C.readMaxCliques(is, ia_name, section_type, section_inference_alg, model_namePos2Var); 
++      C.readInferenceArchitectureDefinition(is, ia_name, section_type, section_inference_alg);
++      break;
++    case 'E': 
++      E.readMaxCliques(is, ia_name, section_type, section_inference_alg, model_namePos2Var); 
++      E.readInferenceArchitectureDefinition(is, ia_name, section_type, section_inference_alg);
++      break;
++    default: error("Unknown section type '%c', must be P C or E.", section_type);
++    }
++    if (section_inference_alg == sparse_join_alg_name) {
++    } else if (section_inference_alg == pedagogical_alg_name) {
++    } else {
++      error("Unkown section inference algorithm '%s', must be SPARSE_JOIN or PEDAGOGICAL.",
++	    section_inference_alg.c_str());
++    }
++  }
++}
++
+ 
+ /*-
+  *-----------------------------------------------------------------------
+diff -r 4d50d832ada4 tksrc/GMTK_GMTemplate.h
+--- a/tksrc/GMTK_GMTemplate.h	Wed Jan 27 16:07:27 2016 -0800
++++ b/tksrc/GMTK_GMTemplate.h	Fri Apr 01 00:48:07 2016 -0700
+@@ -49,7 +49,7 @@
+   friend class Triangulate;
+   friend class Section;
+   friend class BoundaryTriangulate;
+-  friend class JunctionTree;
++  friend class SectionScheduler;
+ 
+   // the file parser for this model.
+   FileParser& fp;
+@@ -80,6 +80,9 @@
+   static const string PC_interface_name;
+   static const string CE_interface_name;
+ 
++  static const string sparse_join_alg_name;
++  static const string pedagogical_alg_name;
++
+   ////////////////////////////
+   // clear up everything.
+   void clear() {
+@@ -229,7 +232,12 @@
+ 
+   // Read clique information into file, and triangulate
+   // the resulting paritions while reading the cliques.
+-  void readMaxCliques(iDataStreamFile& is);
++  void readMaxCliques(iDataStreamFile& is,
++		      string const &ia_name,
++		      char section_type,
++		      string const &section_inf_alg);
++
++  void readInferenceArchitectures(iDataStreamFile &is);
+ 
+   // given the cliques, triangulate the partitions.
+   void triangulatePartitionsByCliqueCompletion();
+diff -r 4d50d832ada4 tksrc/GMTK_JT_Partition.cc
+--- a/tksrc/GMTK_JT_Partition.cc	Wed Jan 27 16:07:27 2016 -0800
++++ b/tksrc/GMTK_JT_Partition.cc	Fri Apr 01 00:48:07 2016 -0700
+@@ -176,16 +176,30 @@
+   cloneInterface(liNodes, from_liVars, newRvs, ppf, liFrameDelta);
+   cloneInterface(riNodes, from_riVars, newRvs, ppf, riFrameDelta);
+ 
++  section_li = from_part.section_li;
++  section_ri = from_part.section_ri;
++  ia_message_order = from_part.ia_message_order;
++  clique_name_dictionary = from_part.clique_name_dictionary;
++
+   // make the cliques.
++assert(from_part.cliques.size() > 0);
++#if 1
+   cliques.reserve(from_part.cliques.size());
++#else
++  cliques.resize(from_part.cliques.size());
++#endif
+   // 
+   // NOTE: It is ***CRUCIAL*** for the cliques in the cloned partition
+   // to be inserted in the *SAME ORDER* as in the partition being
+   // cloned. If this is not done, inference will crash.
++
++  set<RV*> empty;
+   for (unsigned i=0;i<from_part.cliques.size();i++) {
+-    cliques.push_back(MaxClique(from_part.cliques[i],
+-				newRvs,ppf,frameDelta));
++    cliques.push_back(MaxClique(empty)); // length the vector
++    new (&(cliques[i])) MaxClique(from_part.cliques[i], newRvs,ppf,frameDelta, true);
+   }
++assert(cliques.size() > 0);
++assert(cliques.size() == from_part.cliques.size());
+ }
+ 
+ 
+@@ -298,31 +312,26 @@
+     return (a.weights) > (b.weights);
+   }
+ };
++
+ void
+-JT_Partition::findInterfaceCliques(const vector< set <RV*> > &iNodes,
++JT_Partition::findInterfaceCliques(const set <RV*>& iNodes,
+ 				   unsigned& iClique,
+ 				   bool& iCliqueSameAsInterface,
+ 				   const string priorityStr)
+ {
+-
+-  // FIXME: what to do with multiple interface separators?
+-  //        make iClique a vector too?
+-  assert(iNodes.size() > 0);
+-  set<RV*> single_separator_nodes = iNodes[0];
+-
+-  if (single_separator_nodes.size() > 0) {
++  if (iNodes.size() > 0) {
+     vector < PriorityClique > pcArray;
+ 
+     for (unsigned cliqueNo=0;cliqueNo<cliques.size();cliqueNo++) {
+-      // check that clique fully covers single_separator_nodes 
++      // check that clique fully covers iNodes 
+       set<RV*> res;
+       set_intersection(cliques[cliqueNo].nodes.begin(),
+ 		       cliques[cliqueNo].nodes.end(),
+-		       single_separator_nodes.begin(),
+-		       single_separator_nodes.end(),
++		       iNodes.begin(),
++		       iNodes.end(),
+ 		       inserter(res,res.end()));
+       
+-      if (res.size() == single_separator_nodes.size()) {
++      if (res.size() == iNodes.size()) {
+ 	// we've found a candidate.
+ 
+ 	// Priority for determining which clique becomes the interface
+@@ -448,19 +457,20 @@
+  *-----------------------------------------------------------------------
+  */
+ void
+-JT_Partition::findLInterfaceClique(unsigned& liClique,bool& liCliqueSameAsInterface,const string priorityStr)
++JT_Partition::findLInterfaceClique(unsigned &liClique,bool& liCliqueSameAsInterface,const string priorityStr)
+ {
+-  findInterfaceCliques(liNodes,liClique,liCliqueSameAsInterface,priorityStr);
++  // FIXME - liNodes[0] is bogus 
++  findInterfaceCliques(liNodes[0],liClique,liCliqueSameAsInterface,priorityStr);
+ }
+ void
+-JT_Partition::findRInterfaceClique(unsigned& riClique,bool& riCliqueSameAsInterface,const string priorityStr)
++JT_Partition::findRInterfaceClique(unsigned &riClique,bool& riCliqueSameAsInterface,const string priorityStr)
+ {
+-  findInterfaceCliques(riNodes,riClique,riCliqueSameAsInterface,priorityStr);
++  // FIXME - bogus
++  findInterfaceCliques(riNodes[0],riClique,riCliqueSameAsInterface,priorityStr);
+ }
+ 
+ 
+ 
+-
+ /*-
+  *-----------------------------------------------------------------------
+  * JT_Partition::cliqueWith{Max,Min}Weight()
+diff -r 4d50d832ada4 tksrc/GMTK_JT_Partition.h
+--- a/tksrc/GMTK_JT_Partition.h	Wed Jan 27 16:07:27 2016 -0800
++++ b/tksrc/GMTK_JT_Partition.h	Fri Apr 01 00:48:07 2016 -0700
+@@ -56,8 +56,8 @@
+ 
+   friend class JunctionTree;
+ 
+-  void findInterfaceCliques(const vector< set <RV*> > &iNodes,
+-			    unsigned& iClique,
++  void findInterfaceCliques(const set <RV*>  &iNodes,
++			    unsigned &iClique,
+ 			    bool& iCliqueSameAsInterface,
+ 			    const string priorityStr);
+ public:
+@@ -141,9 +141,9 @@
+ 
+   // returns the left and right interface clique. If not defined,
+   // sets the variable to ~0x0.
+-  void findLInterfaceClique(unsigned& liClique,bool& liCliqueSameAsInterface,
++  void findLInterfaceClique(unsigned &liClique, bool &liCliqueSameAsInterface,
+ 			    const string priorityStr);
+-  void findRInterfaceClique(unsigned& riClique,bool& riCliqueSameAsInterface,
++  void findRInterfaceClique(unsigned &riClique, bool &riCliqueSameAsInterface,
+ 			    const string priorityStr);
+ 
+   // return the index of the clique with max/min weight.
+diff -r 4d50d832ada4 tksrc/GMTK_MaxClique.cc
+--- a/tksrc/GMTK_MaxClique.cc	Wed Jan 27 16:07:27 2016 -0800
++++ b/tksrc/GMTK_MaxClique.cc	Fri Apr 01 00:48:07 2016 -0700
+@@ -15,7 +15,6 @@
+ 
+ 
+ 
+-
+ /*
+  * TODO: turn this into multiple files
+  *   mc, mctable CE, mctable DE, mctable prune, csctable
+@@ -319,7 +318,7 @@
+   neighbors = from_clique.neighbors;
+   children = from_clique.children;
+   ceReceiveSeparators = from_clique.ceReceiveSeparators;
+-  ceSendSeparator = from_clique.ceSendSeparator;
++  ceSendSeparators = from_clique.ceSendSeparators;
+ 
+   if (cliqueBeamBuildBeam != (-LZERO)) {
+     // then we're doing clique build pruning.
+@@ -387,6 +386,325 @@
+ }
+ 
+ 
++
++
++MaxClique::MaxClique(MaxClique& from_clique,
++		     vector <RV*>& newRvs,
++		     map < RVInfo::rvParent, unsigned >& ppf,
++		     unsigned int frameDelta,
++		     bool dummy)
++
++  : MaxCliqueBase(), // MaxCliqueBase(from_clique.nodes), 
++     cliqueValueSpaceManager(1,     // starting size
++			     spaceMgrGrowthRate,   // growth rate
++			     1,     // growth addition
++			     spaceMgrDecayRate)    // decay rate 
++{
++  set<RV*>::iterator it;
++
++
++  // clone over nodes RVs.
++  for (it = from_clique.nodes.begin();
++       it != from_clique.nodes.end();
++       it++) {
++    RV* rv = (*it);
++    RVInfo::rvParent rvp;
++    rvp.first = rv->name();
++    rvp.second = rv->frame()+frameDelta;    
++
++    if ( ppf.find(rvp) == ppf.end() ) {
++      coredump("ERROR: can't find rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
++	       rv->name().c_str(),rv->frame(),frameDelta,
++	       rvp.first.c_str(),rvp.second);
++    }
++
++    RV* nrv = newRvs[ppf[rvp]];
++    nodes.insert(nrv);
++  }
++
++  // and clone over assigned nodes and sorted assigned nodes
++  sortedAssignedNodes.reserve(from_clique.sortedAssignedNodes.size());
++  for (unsigned i=0;i<from_clique.sortedAssignedNodes.size();i++) {
++    RV* rv = from_clique.sortedAssignedNodes[i];
++    RVInfo::rvParent rvp;
++    rvp.first = rv->name();
++    rvp.second = rv->frame()+frameDelta;    
++
++    if ( ppf.find(rvp) == ppf.end() ) {
++      coredump("ERROR: can't find sorted assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
++	       rv->name().c_str(),rv->frame(),frameDelta,
++	       rvp.first.c_str(),rvp.second);
++    }
++
++    RV* nrv = newRvs[ppf[rvp]];
++    sortedAssignedNodes.push_back(nrv);
++  }
++#if 1
++  dispositionSortedAssignedNodes.resize(from_clique.dispositionSortedAssignedNodes.len());
++  for (int i=0; i < from_clique.dispositionSortedAssignedNodes.len(); ++i) {
++    if (from_clique.dispositionSortedAssignedNodes[i] < 0 || 5 <from_clique.dispositionSortedAssignedNodes[i])
++      printf("BOGUS disposition %d\n", from_clique.dispositionSortedAssignedNodes[i]);
++    dispositionSortedAssignedNodes[i] = from_clique.dispositionSortedAssignedNodes[i];
++  }
++#else
++  dispositionSortedAssignedNodes.copyOtherIntoSelf(from_clique.dispositionSortedAssignedNodes);
++#endif
++  for (it = from_clique.assignedNodes.begin();
++       it != from_clique.assignedNodes.end(); ++it) 
++  {
++    RV* rv = *it;
++    RVInfo::rvParent rvp;
++    rvp.first = rv->name();
++    rvp.second = rv->frame()+frameDelta;    
++
++    if ( ppf.find(rvp) == ppf.end() ) {
++      coredump("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
++	       rv->name().c_str(),rv->frame(),frameDelta,
++	       rvp.first.c_str(),rvp.second);
++    }
++    RV* nrv = newRvs[ppf[rvp]];
++    assignedNodes.insert(nrv);
++  }
++
++  // assignedProbNodes
++  for (it = from_clique.assignedProbNodes.begin();
++       it != from_clique.assignedProbNodes.end(); ++it) 
++  {
++    RV* rv = *it;
++    RVInfo::rvParent rvp;
++    rvp.first = rv->name();
++    rvp.second = rv->frame()+frameDelta;    
++
++    if ( ppf.find(rvp) == ppf.end() ) {
++      coredump("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
++	       rv->name().c_str(),rv->frame(),frameDelta,
++	       rvp.first.c_str(),rvp.second);
++    }
++    RV* nrv = newRvs[ppf[rvp]];
++    assignedProbNodes.insert(nrv);
++  }
++
++
++  // unionIncommingCESeps
++  for (it = from_clique.unionIncommingCESeps.begin();
++       it != from_clique.unionIncommingCESeps.end(); ++it) 
++  {
++    RV* rv = *it;
++    RVInfo::rvParent rvp;
++    rvp.first = rv->name();
++    rvp.second = rv->frame()+frameDelta;    
++
++    if ( ppf.find(rvp) == ppf.end() ) {
++      coredump("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
++	       rv->name().c_str(),rv->frame(),frameDelta,
++	       rvp.first.c_str(),rvp.second);
++    }
++    RV* nrv = newRvs[ppf[rvp]];
++    unionIncommingCESeps.insert(nrv);
++  }
++
++  // cumulativeAssignedProbNodes
++  for (it = from_clique.cumulativeAssignedProbNodes.begin();
++       it != from_clique.cumulativeAssignedProbNodes.end(); ++it) 
++  {
++    RV* rv = *it;
++    RVInfo::rvParent rvp;
++    rvp.first = rv->name();
++    rvp.second = rv->frame()+frameDelta;    
++
++    if ( ppf.find(rvp) == ppf.end() ) {
++      coredump("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
++	       rv->name().c_str(),rv->frame(),frameDelta,
++	       rvp.first.c_str(),rvp.second);
++    }
++    RV* nrv = newRvs[ppf[rvp]];
++    cumulativeAssignedProbNodes.insert(nrv);
++  }
++
++
++  // do unassignedIteratedNodes
++  for (it = from_clique.unassignedIteratedNodes.begin();
++       it != from_clique.unassignedIteratedNodes.end();
++       it++) {
++    RV* rv = (*it);
++    RVInfo::rvParent rvp;
++    rvp.first = rv->name();
++    rvp.second = rv->frame()+frameDelta;    
++
++    if ( ppf.find(rvp) == ppf.end() ) {
++      coredump("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
++	       rv->name().c_str(),rv->frame(),frameDelta,
++	       rvp.first.c_str(),rvp.second);
++    }
++    RV* nrv = newRvs[ppf[rvp]];
++    unassignedIteratedNodes.insert(nrv);
++  }
++
++  // do cumulativeAssignedNodes
++  for (it = from_clique.cumulativeAssignedNodes.begin();
++       it != from_clique.cumulativeAssignedNodes.end();
++       it++) {
++    RV* rv = (*it);
++    RVInfo::rvParent rvp;
++    rvp.first = rv->name();
++    rvp.second = rv->frame()+frameDelta;    
++
++    if ( ppf.find(rvp) == ppf.end() ) {
++      coredump("ERROR: can't find assigned rv %s(%d+%d)=%s(%d) in unrolled RV set\n",
++	       rv->name().c_str(),rv->frame(),frameDelta,
++	       rvp.first.c_str(),rvp.second);
++    }
++    RV* nrv = newRvs[ppf[rvp]];
++    cumulativeAssignedNodes.insert(nrv);
++  }
++
++  // these are just integer indices, so we can copy them.
++  neighbors = from_clique.neighbors;
++  children = from_clique.children;
++  ceReceiveSeparators = from_clique.ceReceiveSeparators;
++  ceSendSeparators = from_clique.ceSendSeparators;
++
++  if (cliqueBeamBuildBeam != (-LZERO)) {
++    // then we're doing clique build pruning.
++    if (cliqueBeamBuildFilter == NULL || strlen(cliqueBeamBuildFilter) == 0 || strncmp(cliqueBeamBuildFilter,"fixed",5) == 0 ) {
++      maxCEValuePredictor = 
++	counted_ptr<AdaptiveFilter>(new FixedFilter());
++    } else if ( strncmp(cliqueBeamBuildFilter,"lms",3) == 0 ) {
++      // TODO: make a routine to parse arguments like this.
++
++      // expecting syntax of the form "lms,3,0.9"
++      unsigned order = 3;
++      double lr = 0.9;
++      unsigned slen = strlen(cliqueBeamBuildFilter);
++      if (slen > 4) {
++	char *startp = &cliqueBeamBuildFilter[4];
++	char *endp;
++	unsigned tmp = strtol(startp, &endp, 10);
++	if (endp != startp) {
++	  order = tmp;
++	  if (*endp == ',') {
++	    startp = endp+1;
++	    double d = strtod(startp, &endp);
++	    if (endp != startp) {
++	      lr = d;
++	    }
++	  }
++	}
++      }
++      // fprintf(stderr,"lms order = %d, lr = %f\n",order,lr);
++      maxCEValuePredictor = 
++	counted_ptr<AdaptiveFilter>(new LMSFilter(order,lr));
++    } else if ( strncmp(cliqueBeamBuildFilter,"rls",3) == 0 ) {
++      // expecting syntax of the form "rls,3,1.0"
++      unsigned order = 3;
++      double fc = 1.0;
++      unsigned slen = strlen(cliqueBeamBuildFilter);
++      if (slen > 4) {
++	char *startp = &cliqueBeamBuildFilter[4];
++	char *endp;
++	unsigned tmp = strtol(startp, &endp, 10);
++	if (endp != startp) {
++	  order = tmp;
++	  if (*endp == ',') {
++	    startp = endp+1;
++	    double d = strtod(startp, &endp);
++	    if (endp != startp) {
++	      fc = d;
++	    }
++	  }
++	}
++      }
++      // fprintf(stderr,"rls order = %d, fc = %f\n",order,fc);
++      maxCEValuePredictor =
++	counted_ptr<AdaptiveFilter>(new RLSFilter(order,fc));
++    } else {
++      error("Error: unknown clique build beam pruning filter type '%s'\n",
++	    cliqueBeamBuildFilter);
++    }
++    prevMaxCEValPrediction = 0.0;
++  } else {
++    // nothing to do.
++    // maxCEValuePredictor = NULL;
++  }
++//checkClique(from_clique);
++}
++
++
++bool
++foundRV(string const &name, unsigned frame, set<RV*> const &target) {
++  for (set<RV*>::iterator it = target.begin();
++       it != target.end(); ++it)
++  {
++    if ((*it)->name() == name && (*it)->frame() == frame) return true;
++  }
++  return false;
++}
++bool
++foundRV(string const &name, unsigned frame, vector<RV*> const &target) {
++  for (unsigned i=0; i < target.size(); ++i) {
++    if (target[i]->name() == name && target[i]->frame() == frame) return true;
++  }
++  return false;
++}
++bool
++rvSetEqual(set<RV*> const &s1, set<RV*> const &s2) {
++  if (s1.size() != s2.size()) return false;
++  for (set<RV*>::iterator it = s1.begin(); it != s1.end(); ++it) {
++    if (!foundRV((*it)->name(), (*it)->frame(), s2)) return false;
++  }
++  return true;
++}
++bool
++rvSetEqual(vector<RV*> const &v1, vector<RV*> const &v2) {
++  if (v1.size() != v2.size()) return false;
++  for (unsigned i=0; i < v1.size(); ++i) {
++    if (!foundRV(v1[i]->name(), v1[i]->frame(), v2)) return false;
++  }
++  return true;
++}
++bool
++sameDispositions(sArray<MaxClique::AssignedNodeDisposition> const &d1, 
++		 sArray<MaxClique::AssignedNodeDisposition> const &d2) 
++{
++  if (d1.len() != d2.len()) return false;
++  for (int i=0; i < d1.len(); ++i) {
++    if (d1[i] != d2[i]) return false;
++  }
++  return true;
++}
++void 
++MaxClique::checkClique(MaxClique const &target) {
++assert(0);
++  assert(rvSetEqual(assignedNodes, target.assignedNodes));
++  assert(rvSetEqual(sortedAssignedNodes, target.sortedAssignedNodes));
++  if (!rvSetEqual(assignedProbNodes, target.assignedProbNodes)) {
++    printf("clique clone fail (assignedProbNodes):\n");
++    printRVSet(stdout,assignedProbNodes);
++    printRVSet(stdout,target.assignedProbNodes);
++    assert(0);
++  }
++  assert(rvSetEqual(cumulativeAssignedNodes, target.cumulativeAssignedNodes));
++  assert(rvSetEqual(cumulativeAssignedProbNodes, target.cumulativeAssignedProbNodes));
++  assert(rvSetEqual(unionIncommingCESeps, target.unionIncommingCESeps));
++  assert(rvSetEqual(unassignedIteratedNodes, target.unassignedIteratedNodes));
++  assert(rvSetEqual(unassignedNodes, target.unassignedNodes));
++  if (!sameDispositions(dispositionSortedAssignedNodes, target.dispositionSortedAssignedNodes)) {
++    printf("clique clone fail (dispositions):\n");
++    for (int i=0; i < dispositionSortedAssignedNodes.len(); ++i) {
++      printf(" %d", dispositionSortedAssignedNodes[i]);
++    }
++    printf("\n");
++    for (int i=0; i < target.dispositionSortedAssignedNodes.len(); ++i) {
++      printf(" %d", target.dispositionSortedAssignedNodes[i]);
++    }
++    printf("\n");
++    assert(0);
++  }
++}
++
++
++
++
+ /*-
+  *-----------------------------------------------------------------------
+  * MaxClique::clearCliqueValueCache()
+@@ -936,6 +1254,87 @@
+ }
+ 
+ 
++void
++MaxClique::sortAndAssignDispositions() {
++
++#if 0
++  if (!varCliqueAssignmentPrior || strlen(varCliqueAssignmentPrior) == 0) {
++    // then in this case, we don't try to remove any AN_CONTINUE nodes
++    // nor do we do any sorting.  TODO: change things so that there
++    // are never any AN_CONTINUE dispositions regardless of if we sort
++    // or not.
++    computeSortedAssignedNodesDispositions();
++  } else {
++
++    // the first thing we do is compute the node disposistions. We don't
++    // actually use the disposistions here, as we use this routine just
++    // to tell us if there are any AN_CONTINUE nodes in the clique, and
++    // if there are, we remove them (since they are wasteful). The
++    // variable nodesToRemove is a boolean telling us if there
++    // are any such nodes to remove.
++    bool nodesToRemove =  computeSortedAssignedNodesDispositions();
++
++
++    if (nodesToRemove == false) {
++      // just sort and leave.
++      GraphicalModel::topologicalSortWPriority(assignedNodes,
++					       assignedNodes,
++					       sortedAssignedNodes,
++					       varCliqueAssignmentPrior);
++      // potentially need to re-compute disposistions if sorting order
++      // changed anything. These are the final and real dispositions
++      // used.
++      nodesToRemove = computeSortedAssignedNodesDispositions();
++      assert (!nodesToRemove);
++    } else {
++
++      // so there are nodes to remove, we go through remove the
++      // nodes, re-sort, and then recompute the dispositions (yes, a bit
++      // wasteful but this happens only once).
++
++      set<RV*> toSortNodes;
++      for (unsigned i=0;i<dispositionSortedAssignedNodes.size();i++) {
++	if (dispositionSortedAssignedNodes[i] != AN_CONTINUE) {
++	  toSortNodes.insert(sortedAssignedNodes[i]);
++	}
++      }
++      GraphicalModel::topologicalSortWPriority(toSortNodes,
++					       toSortNodes,
++					       sortedAssignedNodes,
++					       varCliqueAssignmentPrior);
++      // now re-compute dispositions.
++      nodesToRemove = computeSortedAssignedNodesDispositions();
++      assert (!nodesToRemove);
++    }
++  }
++#endif
++
++  // next, we compute the continuation scores. We need one more (+1)
++  // continuation score than there are sorted assigned nodes because
++  // we may want to do pruning at the very last node.
++  sortedAssignedContinuationScores.resize(sortedAssignedNodes.size()+1);
++  if (cliqueBeamContinuationHeuristic && cliqueBeamBuildBeam != (-LZERO) /* ie, default -cpbeam meaning no pruning */ ) {
++    // TODO: do something better than just using global max value, like local max value
++    // of the current rv.
++    sortedAssignedContinuationScores.ptr[sortedAssignedNodes.size()] = 1.0;
++    for (int i = (sortedAssignedContinuationScores.size()-2); i>=0; i--) {
++      sortedAssignedContinuationScores.ptr[i]
++	= sortedAssignedContinuationScores.ptr[i+1] * 
++	sortedAssignedNodes[i]->maxValue();
++    }
++  } else {
++    for (unsigned i=0;i<sortedAssignedContinuationScores.size();i++)
++      sortedAssignedContinuationScores.ptr[i] = 1.0;
++  }
++
++  //   for (unsigned i=0;i<sortedAssignedContinuationScores.size();i++) {
++  //     printf("sortedAssignedContinuationScores[%d] = %f\n",i,
++  // 	   sortedAssignedContinuationScores.ptr[i].valref());
++  //   }
++
++}
++
++
+ 
+ 
+ /*-
+@@ -1041,8 +1440,97 @@
+   fprintf(f,"%ld incomming VE Separators\n",(unsigned long)veSeparators.size());
+ 
+   psp(f,indent*2);
+-  fprintf(f,"Send Sep: %d\n",ceSendSeparator);
++  fprintf(f,"Send Sep:");
++  for (unsigned i=0; i < ceSendSeparators.size(); ++i)
++    fprintf(f," %d\n",ceSendSeparators[i]);
++}
+ 
++
++
++void
++MaxClique::printAllJTInfo(FILE*f,const unsigned indent,const set<RV*>& unassignedInPartition,
++			  const bool upperBound,
++			  const bool moreConservative,
++			  const bool useDeterminism,
++			  set<RV*> *lp_nodes,
++			  set<RV*> *rp_nodes)
++{
++
++  // TODO: also print out nubmer of bits for acc and rem.
++
++  psp(f,indent*2);
++  fprintf(f,"Clique information: %d packed bits, %d unsigned words (%d splits), weight = %f, jt_weight = %f\n",
++	  packer.packedLenBits(),packer.packedLen(),packer.numSplits(),weight(), 0.0
++	  /*weightInJunctionTree(unassignedInPartition,
++			       upperBound,
++			       moreConservative,
++			       useDeterminism,
++			       lp_nodes,rp_nodes)*/);
++
++
++  psp(f,indent*2);
++  fprintf(f,"%ld Nodes: ",(unsigned long)nodes.size()); printRVSetAndCards(f,nodes);
++
++  psp(f,indent*2);
++  fprintf(f,"%ld Assigned: ",(unsigned long)assignedNodes.size()); printRVSet(f,assignedNodes);
++
++  psp(f,indent*2);
++  fprintf(f,"%ld Assigned Sorted: ",(unsigned long)sortedAssignedNodes.size()); printRVSetAndCards(f,sortedAssignedNodes);
++
++  psp(f,indent*2);
++  fprintf(f,"%d Dispositions:",dispositionSortedAssignedNodes.size());
++  for (unsigned i=0;i<dispositionSortedAssignedNodes.size();i++)
++    fprintf(f," %d",dispositionSortedAssignedNodes[i]);
++  fprintf(f,"\n");
++
++
++  psp(f,indent*2);
++  fprintf(f,"%ld Assigned Prob: ",(unsigned long)assignedProbNodes.size()); printRVSet(f,assignedProbNodes);  
++
++  psp(f,indent*2);
++  fprintf(f,"%ld Cum Assigned Prob: ",(unsigned long)cumulativeAssignedProbNodes.size()); printRVSet(f,cumulativeAssignedProbNodes);  
++
++  psp(f,indent*2);
++  fprintf(f,"%ld Union Incomming Seps: ",(unsigned long)unionIncommingCESeps.size()); printRVSet(f,unionIncommingCESeps);
++
++  psp(f,indent*2);
++  fprintf(f,"%ld Unassigned Iterated: ",(unsigned long)unassignedIteratedNodes.size()); printRVSet(f,unassignedIteratedNodes);
++
++
++  psp(f,indent*2);
++  fprintf(f,"%ld Cumulative Unassigned: ",(unsigned long)cumulativeUnassignedIteratedNodes.size()); printRVSet(f,cumulativeUnassignedIteratedNodes);
++
++  if (hiddenNodes.size() == hashableNodes.size()) {
++    psp(f,indent*2);
++    fprintf(f,"%ld Hidden/Hashable: ",(unsigned long)hiddenNodes.size()); printRVSetAndCards(f,hiddenNodes);
++  } else {
++    psp(f,indent*2);
++    fprintf(f,"%ld Hidden: ",(unsigned long)hiddenNodes.size()); printRVSetAndCards(f,hiddenNodes);
++
++    psp(f,indent*2);
++    fprintf(f,"%ld Hashable: ",(unsigned long)hashableNodes.size()); printRVSetAndCards(f,hashableNodes);
++  }
++
++
++  psp(f,indent*2);
++  fprintf(f,"%ld Clique Neighbors: ",(unsigned long)neighbors.size());
++  for (unsigned i=0;i<neighbors.size();i++) fprintf(f,"%d,",neighbors[i]); fprintf(f,"\n");
++
++  psp(f,indent*2);
++  fprintf(f,"%ld Clique Children: ",(unsigned long)children.size());
++  for (unsigned i=0;i<children.size();i++) fprintf(f,"%d,",children[i]); fprintf(f,"\n");
++
++  psp(f,indent*2);
++  fprintf(f,"%ld Receive Seps: ",(unsigned long)ceReceiveSeparators.size());
++  for (unsigned i=0;i<ceReceiveSeparators.size();i++) fprintf(f,"%d,",ceReceiveSeparators[i]); fprintf(f,"\n");
++
++  psp(f,indent*2);
++  fprintf(f,"%ld incomming VE Separators\n",(unsigned long)veSeparators.size());
++
++  psp(f,indent*2);
++  fprintf(f,"Send Sep:");
++  for (unsigned i=0; i < ceSendSeparators.size(); ++i)
++    fprintf(f," %d\n",ceSendSeparators[i]);
+ }
+ 
+ 
+diff -r 4d50d832ada4 tksrc/GMTK_MaxClique.h
+--- a/tksrc/GMTK_MaxClique.h	Wed Jan 27 16:07:27 2016 -0800
++++ b/tksrc/GMTK_MaxClique.h	Fri Apr 01 00:48:07 2016 -0700
+@@ -101,7 +101,6 @@
+ 
+   // basic constructor with a set of nodes
+  MaxClique(set<RV*> arg) : MaxCliqueBase(arg) {}
+-
+   // TODO: Figure out polymorphicness of copy ctor
+ 
+   // Clone constructor from another MaxClique, but that uses a new set
+@@ -112,6 +111,14 @@
+ 	    map < RVInfo::rvParent, unsigned >& ppf,
+ 	    const unsigned int frameDelta = 0);
+ 
++  // clone more of clique than the above...
++  MaxClique(MaxClique& from_clique,
++	    vector <RV*>& newRvs,
++	    map < RVInfo::rvParent, unsigned >& ppf,
++	    unsigned int frameDelta,
++	    bool dummy);
++
++  void checkClique(MaxClique const &target);
+ 
+   virtual ~MaxClique() { 
+     // TODO: do this right so that it works with tmp values in these objects.
+@@ -483,7 +490,7 @@
+   // distribute evidence stage).  Again, ints indexing into parent
+   // partition. Set to ~0x0 when the appropriate separator lives in
+   // another partition (and so needs to be explicitly given).
+-  unsigned ceSendSeparator;
++  vector<unsigned> ceSendSeparators;
+ 
+   // USED ONLY IN JUNCTION TREE INFERENCE
+   // structure used to pack and unpack clique values for this
+@@ -634,7 +641,9 @@
+ 
+   // USED ONLY IN JUNCTION TREE INFERENCE
+   // sort the node and assign the dispositions.
+-  void sortAndAssignDispositions(const char *varCliqueAssignmentPrior);
++  void sortAndAssignDispositions(); // new
++
++  void sortAndAssignDispositions(const char *varCliqueAssignmentPrior); // old
+ 
+ 
+   // USED ONLY IN JUNCTION TREE INFERENCE
+@@ -645,6 +654,12 @@
+ 		      const bool useDeterminism,
+ 		      vector< set<RV*> > *lp_nodes,
+ 		      vector< set<RV*> > *rp_nodes);
++  void printAllJTInfo(FILE* f,const unsigned indent,const set<RV*>& unassignedInPartition,
++		      const bool upperBound,
++		      const bool moreConservative,
++		      const bool useDeterminism,
++		      set<RV*> *lp_nodes,
++		      set<RV*> *rp_nodes);
+ 
+   // USED ONLY IN JUNCTION TREE INFERENCE
+   // used to clear out hash table memory between segments
+diff -r 4d50d832ada4 tksrc/GMTK_MaxCliqueTable.cc
+--- a/tksrc/GMTK_MaxCliqueTable.cc	Wed Jan 27 16:07:27 2016 -0800
++++ b/tksrc/GMTK_MaxCliqueTable.cc	Fri Apr 01 00:48:07 2016 -0700
+@@ -1340,6 +1340,7 @@
+       do {
+ 	if (message(Inference, Huge)) {
+ 	  psp2(stdout,spi*traceIndent);
++printf("H %c DOI %c ", rv->hidden() ? 'T' : 'F', rv->discreteObservedImmediate() ? 'T' : 'F');
+ 	  printf("A%d:assigned iter/prob app, Pr[",nodeNumber);
+ 	  rv->printNameFrameValue(stdout,false);
+ 	  if (message(Inference, Mega)) {
+@@ -2056,16 +2057,17 @@
+  */
+ void 
+ MaxCliqueTable::
+-ceSendToOutgoingSeparator(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+-			  ConditionalSeparatorTable* separatorTableArray,
+-			  ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray)
++ceSendToOutgoingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStructure,
++			   ConditionalSeparatorTable* separatorTableArray,
++			   ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray)
+ {
+   // syntactic convenience variables.
+   MaxClique& origin = *(sharedStructure.origin);
+-  ceSendToOutgoingSeparator(sharedStructure,
+-			    separatorTableArray[origin.ceSendSeparator],
+-			    sepSharedStructureArray[origin.ceSendSeparator]
+-			    );
++  for (unsigned i=0, n=origin.ceSendSeparators.size(); i < n; ++i) {
++    ceSendToOutgoingSeparator(sharedStructure,
++			      separatorTableArray[origin.ceSendSeparators[i]],
++			      sepSharedStructureArray[origin.ceSendSeparators[i]]);
++  }
+ }
+ void 
+ MaxCliqueTable::
+@@ -4796,10 +4798,12 @@
+ 				ConditionalSeparatorTable* separatorTableArray,
+ 				ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray)
+ {
++  // FIXME - this needs to be deGatherFromIncomingSeparators()
++
+   MaxClique& origin = *(sharedStructure.origin);
+   deReceiveFromIncommingSeparator(sharedStructure,
+-				  separatorTableArray[origin.ceSendSeparator],
+-				  sepSharedStructureArray[origin.ceSendSeparator]
++				  separatorTableArray[origin.ceSendSeparators[0]],
++				  sepSharedStructureArray[origin.ceSendSeparators[0]]
+ 				  );
+ }
+ void 
+diff -r 4d50d832ada4 tksrc/GMTK_MaxCliqueTable.h
+--- a/tksrc/GMTK_MaxCliqueTable.h	Wed Jan 27 16:07:27 2016 -0800
++++ b/tksrc/GMTK_MaxCliqueTable.h	Fri Apr 01 00:48:07 2016 -0700
+@@ -386,9 +386,9 @@
+ 
+   /////////////////////////////////////////
+   // a version that automatically selects which separator to use within partition from the clique.
+-  void ceSendToOutgoingSeparator(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+-				 ConditionalSeparatorTable* separatorTableArray,
+-				 ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray);
++  void ceSendToOutgoingSeparators(MaxCliqueTable::SharedLocalStructure& sharedStructure,
++				  ConditionalSeparatorTable* separatorTableArray,
++				  ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray);
+   // a version with an explicit outgoing separator.
+   void ceSendToOutgoingSeparator(MaxCliqueTable::SharedLocalStructure& sharedStructure,
+ 				 ConditionalSeparatorTable& sep,
+diff -r 4d50d832ada4 tksrc/GMTK_PedagogicalCliqueTable.cc
+--- a/tksrc/GMTK_PedagogicalCliqueTable.cc	Wed Jan 27 16:07:27 2016 -0800
++++ b/tksrc/GMTK_PedagogicalCliqueTable.cc	Fri Apr 01 00:48:07 2016 -0700
+@@ -1325,16 +1325,17 @@
+  */
+ void 
+ PedagogicalCliqueTable::
+-ceSendToOutgoingSeparator(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
+-			  ConditionalSeparatorTable* separatorTableArray,
+-			  ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray)
++ceSendToOutgoingSeparators(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
++			   ConditionalSeparatorTable* separatorTableArray,
++			   ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray)
+ {
+   // syntactic convenience variables.
+   MaxClique& origin = *(sharedStructure.origin);
+-  ceSendToOutgoingSeparator(sharedStructure,
+-			    separatorTableArray[origin.ceSendSeparator],
+-			    sepSharedStructureArray[origin.ceSendSeparator]
+-			    );
++  for (unsigned i=0, n=origin.ceSendSeparators.size(); i < n; ++i) {
++    ceSendToOutgoingSeparator(sharedStructure,
++			      separatorTableArray[origin.ceSendSeparators[i]],
++			      sepSharedStructureArray[origin.ceSendSeparators[i]]);
++  }
+ }
+ void 
+ PedagogicalCliqueTable::
+@@ -4065,10 +4066,12 @@
+ 				ConditionalSeparatorTable* separatorTableArray,
+ 				ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray)
+ {
++  // FIXME - this needs to be deGatherFromIncomingSeparators()
++
+   MaxClique& origin = *(sharedStructure.origin);
+   deReceiveFromIncommingSeparator(sharedStructure,
+-				  separatorTableArray[origin.ceSendSeparator],
+-				  sepSharedStructureArray[origin.ceSendSeparator]
++				  separatorTableArray[origin.ceSendSeparators[0]],
++				  sepSharedStructureArray[origin.ceSendSeparators[0]]
+ 				  );
+ }
+ void 
+diff -r 4d50d832ada4 tksrc/GMTK_PedagogicalCliqueTable.h
+--- a/tksrc/GMTK_PedagogicalCliqueTable.h	Wed Jan 27 16:07:27 2016 -0800
++++ b/tksrc/GMTK_PedagogicalCliqueTable.h	Fri Apr 01 00:48:07 2016 -0700
+@@ -320,9 +320,9 @@
+ 
+   /////////////////////////////////////////
+   // a version that automatically selects which separator to use within partition from the clique.
+-  void ceSendToOutgoingSeparator(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
+-				 ConditionalSeparatorTable* separatorTableArray,
+-				 ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray);
++  void ceSendToOutgoingSeparators(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
++				  ConditionalSeparatorTable* separatorTableArray,
++				  ConditionalSeparatorTable::SharedLocalStructure* sepSharedStructureArray);
+   // a version with an explicit outgoing separator.
+   void ceSendToOutgoingSeparator(PedagogicalCliqueTable::SharedLocalStructure& sharedStructure,
+ 				 ConditionalSeparatorTable& sep,
+diff -r 4d50d832ada4 tksrc/GMTK_PedagogicalInference.cc
+--- a/tksrc/GMTK_PedagogicalInference.cc	Wed Jan 27 16:07:27 2016 -0800
++++ b/tksrc/GMTK_PedagogicalInference.cc	Fri Apr 01 00:48:07 2016 -0700
+@@ -78,14 +78,14 @@
+   assert(cur_section);
+   assert(inference_it);
+   PartitionStructures &previous_ps = myjt->section_structure_array[inference_it->prev_ss()];
+-  unsigned             previous_part_root = inference_it->prev_ri();
++  vector<unsigned>     previous_part_root = inference_it->prev_ri();
+   const char*const     previous_part_type_name = inference_it->prev_nm();
+   unsigned             previous_part_num = inference_it->prev_st();
+ 
+   PartitionStructures &next_ps = myjt->section_structure_array[inference_it->cur_ss()];
+   PedagogicalSectionTables *next_st = dynamic_cast<PedagogicalSectionTables *>(cur_section);
+   assert(next_st);
+-  unsigned             next_part_leaf = inference_it->cur_li();
++  vector<unsigned>     next_part_leaf = inference_it->cur_li();
+   const char*const     next_part_type_name = inference_it->cur_nm();
+   unsigned             next_part_num = inference_it->cur_st();
+ 
+@@ -103,7 +103,7 @@
+     IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
+   }
+ 
+-
++#if 0
+   infoMsg(IM::Inference, IM::Mod,"CE: message %s,part[%d],clique(%d) --> %s,part[%d],clique(%d)\n",
+ 	  previous_part_type_name,
+ 	  previous_part_num,
+@@ -111,18 +111,24 @@
+ 	  next_part_type_name,
+ 	  next_part_num,
+ 	  next_part_leaf);
+-
++#endif
+   // We don't know the inference algorithm, and hence the SectionTablesBase subclass,
+   // used for prev_section. But we do know that next_st is a PedagogicalSectionTables, since
+   // we're running PedagogicalInference on that section. So we know how to find next_st's
+   // incoming separators. Thus prev_section can figure out for itself how to project 
+   // itself down onto next_st's incoming separators (all SectionInferenceAlgorithms 
+   // speak the same section separator data structure).
++
++
++
++#if 0
++
++  // FIXME
+   prev_section->projectToOutgoingSeparators(*inference_it, 
+ 					    previous_ps,
+ 					    &(next_st->separatorCliques[next_ps.separatorCliquesSharedStructure.size()-1]),
+ 					    next_ps.separatorCliquesSharedStructure[next_ps.separatorCliquesSharedStructure.size()-1]);
+-
++#endif
+   if (IM::messageGlb(IM::InferenceMemory, IM::Med+9)) {
+     // FIXME - previous_st->reportMemoryUsageTo(previous_ps,stdout);
+   }
+@@ -148,14 +154,14 @@
+   } else if (!inference_it->has_c_section() && myjt->P1.cliques.size() == 0) {
+     myjt->E1.skipLISeparator();
+   }
+-  
++#if 0  
+   deScatterOutofRoot(myjt->section_structure_array[inference_it->cur_ss()],
+ 		     *section,
+ 		     inference_it->cur_ri(),
+ 		     inference_it->cur_message_order(),
+ 		     inference_it->cur_nm(),
+ 		     inference_it->cur_st());
+-  
++#endif  
+   if (inference_it->at_first_c() && myjt->P1.cliques.size() == 0) {
+     myjt->Co.useLISeparator();
+   } else if (!inference_it->has_c_section() && myjt->P1.cliques.size() == 0) {
+@@ -177,7 +183,7 @@
+   assert(cur_section);
+   assert(inference_it);
+   PartitionStructures &previous_ps = myjt->section_structure_array[inference_it->prev_ss()];
+-  unsigned             previous_part_root = inference_it->prev_ri();
++  vector<unsigned>     previous_part_root = inference_it->prev_ri();
+   const char*const     previous_part_type_name = inference_it->prev_nm();
+   unsigned             previous_part_num = inference_it->prev_st();
+ 
+@@ -185,7 +191,7 @@
+   PedagogicalSectionTables *next_st = dynamic_cast<PedagogicalSectionTables *>(cur_section);
+   assert(next_st);
+ 
+-  unsigned             next_part_leaf = inference_it->cur_li();
++  vector<unsigned>     next_part_leaf = inference_it->cur_li();
+   const char*const     next_part_type_name = inference_it->cur_nm();
+   unsigned             next_part_num = inference_it->cur_st();
+ 
+@@ -202,10 +208,11 @@
+     IM::setGlbMsgLevel(IM::Inference, IM::glbMsgLevel(IM::DefaultModule));
+     IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
+   }
+-
++#if 0
+   infoMsg(IM::Inference, IM::Mod,"DE: message %s,part[%d],clique(%d) <-- %s,part[%d],clique(%d)\n",
+ 	  previous_part_type_name,previous_part_num,previous_part_root,
+ 	  next_part_type_name,next_part_num,next_part_leaf);
++#endif
+ #if 0
+   // FIXME - call prev_section->projectToIncomingSeporator()
+   prevous_st->maxCliques[previous_part_root].
+@@ -273,6 +280,22 @@
+  */
+ void 
+ PedagogicalInference::ceGatherIntoRoot(PartitionStructures &ss,
++				       PedagogicalSectionTables &st,
++				       vector<unsigned> const &roots,
++				       vector< pair<unsigned,unsigned> > &message_order,
++				       const char *const section_type_name,
++				       const unsigned section_num,
++				       const bool clear_when_done,
++				       const bool also_clear_origins)
++{
++  // FIXME - just run through the whole message order as below once,
++  //         then do final gather from incoming seps for each root
++  for (unsigned i=0; i < roots.size(); ++i) {
++    ceGatherIntoRoot(ss,st,roots[i],message_order,section_type_name,section_num,clear_when_done,also_clear_origins);
++  }
++}
++void 
++PedagogicalInference::ceGatherIntoRoot(PartitionStructures &ss,
+ 				      PedagogicalSectionTables &st,
+ 				      const unsigned root,
+ 				      vector< pair<unsigned,unsigned> > &message_order,
+@@ -313,9 +336,9 @@
+ 	      "CE: message %s,section[%d]: clique %d --> clique %d\n",
+ 	      section_type_name,section_num,from,to);
+       st.maxCliques[from].
+-	ceSendToOutgoingSeparator(ss.pedagogicalCliquesSharedStructure[from],
+-				  st.separatorCliques,
+-				  ss.separatorCliquesSharedStructure.ptr);
++	ceSendToOutgoingSeparators(ss.pedagogicalCliquesSharedStructure[from],
++				   st.separatorCliques,
++				   ss.separatorCliquesSharedStructure.ptr);
+ 
+       // TODO: if we are just computing probE here, we should delete
+       // memory in st.maxCliques[from]. Also, if we're only doing probE,
+diff -r 4d50d832ada4 tksrc/GMTK_PedagogicalInference.h
+--- a/tksrc/GMTK_PedagogicalInference.h	Wed Jan 27 16:07:27 2016 -0800
++++ b/tksrc/GMTK_PedagogicalInference.h	Fri Apr 01 00:48:07 2016 -0700
+@@ -67,6 +67,15 @@
+ 
+  private:
+ 
++void ceGatherIntoRoot(PartitionStructures &ss,
++		      PedagogicalSectionTables &st,
++		      vector<unsigned> const &roots,
++		      vector< pair<unsigned,unsigned> > &message_order,
++		      const char *const section_type_name,
++		      const unsigned section_num,
++		      const bool clear_when_done=false,
++		      const bool also_clear_origins=false);
++
+   void ceGatherIntoRoot(PartitionStructures &ss,
+ 			PedagogicalSectionTables &st,
+ 			// index of root clique in the section
+diff -r 4d50d832ada4 tksrc/GMTK_PedagogicalSectionTables.cc
+--- a/tksrc/GMTK_PedagogicalSectionTables.cc	Wed Jan 27 16:07:27 2016 -0800
++++ b/tksrc/GMTK_PedagogicalSectionTables.cc	Fri Apr 01 00:48:07 2016 -0700
+@@ -86,7 +86,7 @@
+ PedagogicalSectionTables::projectToOutgoingSeparators(SectionIterator &stss_it,
+ 						     PartitionStructures &sourceSectionStructures, 
+ 						     ConditionalSeparatorTable *separatorTableArray,
+-						     ConditionalSeparatorTable::SharedLocalStructure &sepSharedStructure)
++						     ConditionalSeparatorTable::SharedLocalStructure *sepSharedStructure)
+ {
+ 
+   // Here the section sending the message (projecting to outgoing separators) knows
+@@ -96,11 +96,22 @@
+   // how many MaxCliques are in the section, and the PedagogicalCliqueTable::SharedLocalStructure
+   // of each of those cliques...
+ 
+-  // for each maxCliques[i] with an outgoing separator
+-  unsigned i = stss_it.prev_ri();
+-  //   for each of maxClique[i]'s outgoing separators j
+-          maxCliques[i].ceSendToOutgoingSeparator(sourceSectionStructures.pedagogicalCliquesSharedStructure[i],
+-						  *separatorTableArray /* [j] */, sepSharedStructure);
++#if 0
++  // FIXME
++#if 1
++  for (unsigned i=0, n=stss_it.prev_ri_size(); i < n; ++i) {
++    maxCliques[i].ceSendToOutgoingSeparator(sourceSectionStructures.pedagogicalCliquesSharedStructure[i],
++					    *separatorTableArray, sepSharedStructure);
++  }
++#else
++  unsigned first_interface_clique = stss_it.prev_ri();
++  unsigned last_interface_clique = first_interface_clique + stss_it.prev_ri_size();
++  for (unsigned i = first_interface_clique; i < last_interface_clique; ++i) {
++    maxCliques[i].ceSendToOutgoingSeparator(sourceSectionStructures.pedagogicalCliquesSharedStructure[i],
++					    *separatorTableArray, sepSharedStructure);
++  }
++#endif
++#endif
+ }
+ 
+ 
+@@ -118,11 +129,19 @@
+   // how many MaxCliques are in the section, and the PedagogicalCliqueTable::SharedLocalStructure
+   // of each of those cliques...
+ 
+-  // for each maxCliques[i] with an incoming message
+-  unsigned i = stss_it.prev_ri();
+-  //   for each of maxClique[i]'s cross-section separators j
+-          maxCliques[i].deReceiveFromIncommingSeparator(sourceSectionStructures.pedagogicalCliquesSharedStructure[i],
+-							*separatorTableArray /* [j] */, sepSharedStructure);
++#if 1
++  for (unsigned i=0, n=stss_it.prev_ri_size(); i < n; ++i) {
++    maxCliques[i].deReceiveFromIncommingSeparator(sourceSectionStructures.pedagogicalCliquesSharedStructure[i],
++						  *separatorTableArray, sepSharedStructure);
++  }
++#else
++  unsigned first_interface_clique = stss_it.prev_ri();
++  unsigned last_interface_clique = first_interface_clique + stss_it.prev_ri_size();
++  for (unsigned i = first_interface_clique; i < last_interface_clique; ++i) {
++    maxCliques[i].deReceiveFromIncommingSeparator(sourceSectionStructures.pedagogicalCliquesSharedStructure[i],
++						  *separatorTableArray, sepSharedStructure);
++  }
++#endif
+ }
+ 
+ 
+diff -r 4d50d832ada4 tksrc/GMTK_PedagogicalSectionTables.h
+--- a/tksrc/GMTK_PedagogicalSectionTables.h	Wed Jan 27 16:07:27 2016 -0800
++++ b/tksrc/GMTK_PedagogicalSectionTables.h	Fri Apr 01 00:48:07 2016 -0700
+@@ -29,21 +29,26 @@
+   ~PedagogicalSectionTables() { clear(); }
+ 
+   logpr probEvidence(SectionIterator &inference_it, SectionScheduler &myjt) {
++    logpr result;
+     if (inference_it.at_p() && myjt.P1.cliques.size() > 0) {
+-      return maxCliques[myjt.P_ri_to_C].sumProbabilities();
++      for (unsigned i=0; i < myjt.P_ri_to_C.size(); ++i) {
++	result += maxCliques[myjt.P_ri_to_C[i]].sumProbabilities();
++      }
+     } else if (inference_it.at_c() && myjt.Co.cliques.size() > 0) {
+-      return maxCliques[myjt.C_ri_to_C].sumProbabilities();
++      for (unsigned i=0; i < myjt.C_ri_to_C.size(); ++i) {
++	result += maxCliques[myjt.C_ri_to_C[i]].sumProbabilities();
++      }
+     } else if (inference_it.at_e()) {
+-      return maxCliques[myjt.E_root_clique].sumProbabilities();
+-    } else {
+-      return logpr();
++      for (unsigned i=0; i < myjt.E_root_clique.size(); ++i)
++         result += maxCliques[myjt.E_root_clique[i]].sumProbabilities();
+     }
++    return result;
+   }
+ 
+   void projectToOutgoingSeparators(SectionIterator &stss_it,
+ 				   PartitionStructures &sourceSectionStructures, 
+ 				   ConditionalSeparatorTable *separatorTableArray,
+-				   ConditionalSeparatorTable::SharedLocalStructure &sepSharedStructure);
++				   ConditionalSeparatorTable::SharedLocalStructure *sepSharedStructure);
+ 
+   void receiveBackwardsSeparators(SectionIterator &stss_it,
+ 				  PartitionStructures &sourceSectionStructures, 
+diff -r 4d50d832ada4 tksrc/GMTK_Section.cc
+--- a/tksrc/GMTK_Section.cc	Wed Jan 27 16:07:27 2016 -0800
++++ b/tksrc/GMTK_Section.cc	Fri Apr 01 00:48:07 2016 -0700
+@@ -203,6 +203,46 @@
+ }
+ 
+ 
++
++string
++makeDictionaryKey(string const &ia_name, char section_type) {
++  return string(ia_name + ":" + section_type);
++}
++
++RV *
++getRVfromIS(iDataStreamFile &is, 
++	    map < RVInfo::rvParent, RV* > &namePos2Var,
++	    char const *member_name, 
++	    unsigned clique_index, unsigned rv_index)
++{
++  RVInfo::rvParent par;
++  is.read(par.first,"RV name");
++  is.read(par.second,"RV frame");
++  
++  map < RVInfo::rvParent, RV* >::iterator loc;
++  loc = namePos2Var.find(par);
++  if (loc == namePos2Var.end())
++    error("ERROR: reading file %s line %d, %s %d has %d'th variable %s(%d) that does not exist.\n",
++	  is.fileName(), is.lineNo(), member_name, clique_index, rv_index, par.first.c_str(), par.second);
++  return (*loc).second;
++}
++
++void
++readRVSetFromIS(iDataStreamFile &is,
++		char const *err_msg, char const *member_name,
++		unsigned clique_idx, 
++		map < RVInfo::rvParent, RV* > &namePos2Var,
++		set<RV*> &rv_set)
++{
++  unsigned num_rvs;
++  is.read(num_rvs, err_msg);
++  for (unsigned j=0; j < num_rvs; ++j) {
++    RV *rv = getRVfromIS(is, namePos2Var, member_name, clique_idx, j);
++    rv_set.insert(rv);
++  }
++}
++
++
+ /*-
+  *-----------------------------------------------------------------------
+  * Section::readMaxCliques()
+@@ -224,9 +264,14 @@
+  */
+ void
+ Section::
+-readMaxCliques(iDataStreamFile& is)
++readMaxCliques(iDataStreamFile& is,
++	       string const &ia_name,
++	       char section_type,
++	       string const &section_inf_alg,
++	       map< RVInfo::rvParent, RV* > &model_namePos2Var)
+ {
+ 
++  string dictionary_key = makeDictionaryKey(ia_name, section_type);
+ 
+   // read triangulation method used to produce these cliques.
+   is.read(triMethod,"triangulation method string");
+@@ -234,7 +279,6 @@
+   // read number of cliques
+   unsigned numCliques;
+   is.read(numCliques,"number of cliques");
+-
+ #if 0
+   // remove check for numCliques being > 0 since we now allow for empty sections.
+   if (numCliques == 0)
+@@ -242,7 +286,8 @@
+ 	  is.fileName(),is.lineNo());
+ #endif
+ 
+-  // create a map for easy access to set of nodes
++  // create a map for easy access to set of nodes in this section
++  // model_namePos2Var includes all model RVs for cumulative sets
+   map < RVInfo::rvParent, RV* > namePos2Var;
+   for (set<RV*>::iterator i=nodes.begin();
+        i != nodes.end(); i++) {
+@@ -253,6 +298,8 @@
+     namePos2Var[par] = rv;
+   }
+ 
++  vector<unsigned> disposition_vector;
++  cliques.reserve(numCliques); // required to avoid dtor of MaxCliques due to resizing, which breaks sArray members
+   for (unsigned i=0;i<numCliques;i++) {
+     set<RV*> clique;
+     
+@@ -261,36 +308,80 @@
+     if (cliqueNo != i)
+       error("ERROR: reading file %s, line %d, bad cliqueNo (= %d) when reading cliques, out of sequence, should be = %d instead.\n",
+ 	    is.fileName(),is.lineNo(),cliqueNo,i);
+-    
++    string clique_name;
++    is.read(clique_name, "clique name");
++
++    if (clique_name_dictionary[ dictionary_key ].find(clique_name) != clique_name_dictionary[ dictionary_key ].end()) {
++      error("ERROR: clique name '%s' already defined in file '%s' line %d\n",
++	    clique_name.c_str(), is.fileName(), is.lineNo());
++    }
++    clique_name_dictionary[ dictionary_key ][ clique_name ] = i;
++
+     unsigned cliqueSize;
+     is.read(cliqueSize,"clique size value");
+ 
+ #if 0
+-    // remove check for min clique size of 1.
+-    if (cliqueSize <= 1)
+-      error("ERROR: reading file %s line %d, cliqueSize %d must be >= 2\n",
+-	    is.fileName(),is.lineNo(),cliqueSize);
+-#endif    
++    // unsigned can never be less than 0
+     if (cliqueSize <= 0)
+       error("ERROR: reading file %s line %d, reading clique number %d, but clique size %d must be >= 1\n",
+ 	    is.fileName(),is.lineNo(),i,cliqueSize);
+-
++#endif
+ 
+     for (unsigned j=0;j<cliqueSize;j++) {
+-
+-      RVInfo::rvParent par;
+-      is.read(par.first,"parent name");
+-      is.read(par.second,"parent position");
+-
+-      map < RVInfo::rvParent, RV* >::iterator loc;
+-      loc = namePos2Var.find(par);
+-      if (loc == namePos2Var.end())
+-	error("ERROR: reading file %s line %d, clique specification %d has %d'th variable %s(%d) that does not exist in section.\n",
+-	      is.fileName(),is.lineNo(),i,j,par.first.c_str(),par.second);
+-      RV* rv = (*loc).second;
++      RV *rv = getRVfromIS(is, namePos2Var, "clique RV node specification", i, j);
+       clique.insert(rv);
+     }
++    assert(cliques.size() == i);
++
+     cliques.push_back(MaxClique(clique));
++assert(cliques[cliques.size()-1].dispositionSortedAssignedNodes.ptr == NULL);
++    disposition_vector.clear();
++    // read cliques[i].assigedNodes & sortedAssignedNodes & dispostitions
++    unsigned num_sorted_assigned;
++    is.read(num_sorted_assigned, "number of sorted assigned RVs");
++    for (unsigned j=0; j < num_sorted_assigned; ++j) {
++      RV *rv = getRVfromIS(is, namePos2Var, "clique assigned RV specification", i, j);
++      unsigned disposition;
++      is.read(disposition, "assigned RV disposition");
++//printf("read RV: %s(%d) %u", rv->name().c_str(), rv->frame(), disposition);
++      cliques[i].assignedNodes.insert(rv);
++      if (disposition != MaxClique::AN_CONTINUE) {
++//printf("  sass %lu/%lu = %u", cliques[i].sortedAssignedNodes.size(), disposition_vector.size(),disposition);
++	cliques[i].sortedAssignedNodes.push_back(rv);
++	disposition_vector.push_back(disposition);
++      }
++//printf("\n");
++    }
++    cliques[i].dispositionSortedAssignedNodes.resize(disposition_vector.size());
++    for (unsigned j=0; j < disposition_vector.size(); ++j) {
++      cliques[i].dispositionSortedAssignedNodes[j] = (MaxClique::AssignedNodeDisposition)disposition_vector[j];
++    }
++    // read cliques[i].assignedProbNodes
++    readRVSetFromIS(is, "number of assigned probability RVs", "clique assigned probability RV specification",
++		    i, namePos2Var, cliques[i].assignedProbNodes);
++    // read cliques[i].cumulativeAssignedNodes
++    readRVSetFromIS(is, "number of cumulative assigned RVs", "cumulative assigned RV specification",
++		    i, model_namePos2Var, cliques[i].cumulativeAssignedNodes);
++
++    // read cliques[i].cumulativeAssignedProbNodes
++    readRVSetFromIS(is, "number of cumulative assigned probability RVs", 
++		    "cumulative assigned probability RV specification",
++		    i, model_namePos2Var, cliques[i].cumulativeAssignedProbNodes);
++
++    // read cliques[i].unionIncomingCESeps
++    readRVSetFromIS(is, "number of incomming separator RVs", 
++		    "incomming separator RV specification",
++		    i, namePos2Var, cliques[i].unionIncommingCESeps);
++
++    // read cliques[i].unassignedIteratedNodes
++    readRVSetFromIS(is, "number of unassigned iterated RVs", 
++		    "unassigned iterated RV specification",
++		    i, namePos2Var, cliques[i].unassignedIteratedNodes);
++
++    // read cliques[i].cumulativteUnassignedIteratedNodes
++    readRVSetFromIS(is, "number of cumulative unassigned iterated RVs", 
++		    "cumulative unassigned iterated RV specification",
++		    i, model_namePos2Var, cliques[i].cumulativeUnassignedIteratedNodes);
+   }
+ 
+ }
+@@ -355,6 +446,71 @@
+ }
+ 
+ 
++void
++readSectionInterface(iDataStreamFile &is, char const *side, map<string, unsigned> &dictionary, 
++		     vector<unsigned> &interface) 
++{
++  unsigned i_size;
++  string msg(string(side) + string(" interface size"));
++  is.read(i_size, msg.c_str());
++  for (unsigned j=0; j < i_size; ++j) {
++    unsigned root_clique_idx;
++    is.read(root_clique_idx, string(string(side)+string(" interface source clique index")).c_str());
++    if (root_clique_idx != j) {
++      error("ERROR: expected %s interface source clique number %u, but got %u at line %d of '%s'\n",
++	    side, j, root_clique_idx, is.lineNo(), is.fileName());
++    }
++    string root_clique_name;
++    is.read(root_clique_name, string(string(side) + string(" interface source clique name")).c_str());
++    if (dictionary.find(root_clique_name) == dictionary.end()) {
++      error("ERROR: unknown clique name '%s' at %s interface %u at line %d in file '%s'\n",
++	    root_clique_name.c_str(), side, j, is.lineNo(), is.fileName());
++    }
++    interface.push_back( dictionary[root_clique_name] );
++  }
++}
++
++
++void 
++Section::readInferenceArchitectureDefinition(iDataStreamFile &is,
++					     string const &ia_name,
++					     char section_type,
++					     string const &section_inf_alg)
++{
++  string dictionary_key = makeDictionaryKey(ia_name, section_type);
++  map<string, unsigned> &dictionary = clique_name_dictionary[ dictionary_key ];
++
++  vector< pair<unsigned, unsigned> > msg_order;
++
++  unsigned num_msgs;
++  is.read(num_msgs, "number of messages");
++  for (unsigned i=0; i < num_msgs; ++i) {
++    unsigned index;
++    is.read(index, "message number");
++    if (index != i) {
++      error("ERROR: reading file '$s' line %d, bad message number (= %u) out of sequence, should be %u instead.\n",
++	    is.fileName(), is.lineNo(), index, i);
++    }
++    string source_clique_name, dest_clique_name;
++    is.read(source_clique_name, "message source clique name");
++    if (dictionary.find(source_clique_name) == dictionary.end()) {
++      error("ERROR: unknown source clique name '%s' in message %u at line %d in file '%s'\n", 
++	    source_clique_name.c_str(), i, is.lineNo(), is.fileName());
++    }
++    is.read(dest_clique_name, "message destination clique name");
++    if (dictionary.find(dest_clique_name) == dictionary.end()) {
++      error("ERROR: unknown source clique name '%s' in message %u at line %d in file '%s'\n", 
++	    dest_clique_name.c_str(), i, is.lineNo(), is.fileName());
++    }
++    pair<unsigned, unsigned> msg(dictionary[source_clique_name], dictionary[dest_clique_name]);
++    msg_order.push_back(msg);
++  }
++  ia_message_order[dictionary_key] = msg_order;
++
++  // read section's left interface cliques
++  readSectionInterface(is, "left", dictionary, section_li);
++  readSectionInterface(is, "right", dictionary, section_ri);
++}
+ 
+ /*-
+  *-----------------------------------------------------------------------
+diff -r 4d50d832ada4 tksrc/GMTK_Section.h
+--- a/tksrc/GMTK_Section.h	Wed Jan 27 16:07:27 2016 -0800
++++ b/tksrc/GMTK_Section.h	Fri Apr 01 00:48:07 2016 -0700
+@@ -19,6 +19,7 @@
+ #include <vector>
+ #include <string>
+ #include <map>
++#include <utility>
+ 
+ #include <stdio.h>
+ #include <stdlib.h>
+@@ -48,10 +49,22 @@
+   // The cliques themselves, used to store the current triangulation
+   // of each of the sections.
+   vector<MaxClique> cliques;
+-  
++
+   // a string with information about the method used to form the cliques
+   string triMethod;
+ 
++
++
++  // FIXME - this is section inference algorithm specific
++  vector<unsigned> section_ri, section_li;
++  map<string, vector<pair<unsigned, unsigned > > > ia_message_order;
++
++
++  //  map<string, string> ia_name_to_section_inf_alg;
++  map<string, map<string, unsigned> > clique_name_dictionary;
++
++
++
+   Section() {}
+ 
+   // Clone constructor from another Section, but that uses a new set
+@@ -77,7 +90,15 @@
+   void clearCliques() { cliques.clear(); triMethod.clear(); }
+ 
+   void writeMaxCliques(oDataStreamFile& os);  
+-  void readMaxCliques(iDataStreamFile& is);
++  void readMaxCliques(iDataStreamFile& is,  
++		      string const &ia_name,
++		      char section_type,
++		      string const &section_inf_alg,
++		      map< RVInfo::rvParent, RV* > &model_namePos2Var);
++  void readInferenceArchitectureDefinition(iDataStreamFile &is,
++					   string const &ia_name,
++					   char section_type,
++					   string const &section_inf_alg);
+   void triangulateSectionsByCliqueCompletion();
+   void setCliquesFromAnotherSection(Section& p);
+   void reportScoreStats();
+diff -r 4d50d832ada4 tksrc/GMTK_SectionIterator.h
+--- a/tksrc/GMTK_SectionIterator.h	Wed Jan 27 16:07:27 2016 -0800
++++ b/tksrc/GMTK_SectionIterator.h	Fri Apr 01 00:48:07 2016 -0700
+@@ -322,9 +322,14 @@
+ 	return "RIGHT_INVALID";
+     }
+ 
++
++    // FIXME: These (interface index & size accessors) need to move to 
++    //        someplace "inference acrchitecture"-specific
++
++
+     // the current section's root clique number 
+     // (equivalently, its right interface clique)
+-    unsigned cur_ri() {
++    vector<unsigned> cur_ri() {
+       // also see SectionScheduler::computeSectionInterfaces()
+       if (at_first_entry())
+ 	return jt.P_ri_to_C;
+@@ -334,17 +339,27 @@
+ 	return jt.C_ri_to_C;
+     }
+     // the previous section's right interface clique number
+-    unsigned prev_ri() {
++    vector<unsigned> prev_ri() {
+       if (at_p())
+-	return ~0x0; // invalid
++	return vector<unsigned> (1,~0x0); // invalid
+       else if (prev_at_p())
+ 	return jt.P_ri_to_C;
+       else 
+ 	return jt.C_ri_to_C;
+     }
+-    unsigned next_ri() {
++
++    unsigned prev_ri_size() {
++      if (at_p())
++	return ~0x0; // invalid
++      else if (prev_at_p())
++	return jt.P_ri_to_C_size;
++      else 
++	return jt.C_ri_to_C_size;
++    }
++
++    vector<unsigned> next_ri() {
+       if (at_e())
+-	return ~0x0; // invalid
++	return vector<unsigned> (1,~0x0); // invalid
+       else if (next_at_e())
+ 	return jt.E_root_clique;
+       else 
+@@ -352,28 +367,28 @@
+     }
+ 
+     // the current section's left interface clique number
+-    unsigned cur_li() {
++    vector<unsigned> cur_li() {
+       // also see SectionScheduler::computeSectionInterfaces()
+       if (at_first_entry())
+-	return 0; // invalid entry
++	return vector<unsigned> (1,0); // invalid entry
+       else if (at_last_entry())
+ 	return jt.E_li_to_C;
+       else 
+ 	return jt.C_li_to_C;
+     }
+ 
+-    unsigned prev_li() {
++    vector<unsigned> prev_li() {
+       if (at_p())
+-	return ~0x0; // invalid
++	return vector<unsigned> (1,~0x0); // invalid
+       else if (prev_at_p())
+-	return ~0x0; // invalid
++	return vector<unsigned> (1,~0x0); // invalid
+       else 
+ 	return jt.C_li_to_C;
+     }
+ 
+-    unsigned next_li() {
++    vector<unsigned> next_li() {
+       if (at_e())
+-	return ~0x0; // invalid
++	return vector<unsigned> (1,~0x0); // invalid
+       else if (next_at_e())
+ 	return jt.E_li_to_C;
+       else 
+@@ -398,6 +413,15 @@
+ 	return jt.Co;
+     }
+ 
++    JT_Partition &prev_jt_section() {
++      if (at_p())
++	return jt.P1; // invalid
++      else if (prev_at_p())
++	return jt.P1;
++      else 
++	return jt.Co;
++    }
++
+     BP_Range* cur_section_clique_print_range() {
+       if (at_p())
+ 	return jt.p_clique_print_range;
+@@ -419,9 +443,10 @@
+ 
+       fprintf(f," at_p()=%d,at_c()=%d,at_e()=%d,at_last_c()=%d,at_first_c()=%d,next_at_p()=%d,next_at_c()=%d,next_at_e()=%d,prev_at_p()=%d,prev_at_c()=%d,prev_at_e()=%d\n",
+ 	     at_p(),at_c(),at_e(),at_last_c(),at_first_c(),next_at_p(),next_at_c(),next_at_e(),prev_at_p(),prev_at_c(),prev_at_e());
++      // FIXME - print all interface nodes, not just the first
+       fprintf(f," cur_li()=%d,prev_li()=%d,next_li()=%d, cur_ri()=%d,prev_ri()=%d,next_ri()=%d\n",
+-	      cur_li(),prev_li(),next_li(),
+-	      cur_ri(),prev_ri(),next_ri());
++	      cur_li()[0],prev_li()[0],next_li()[0],
++	      cur_ri()[0],prev_ri()[0],next_ri()[0]);
+       fprintf(f," cur_nm()=%s,prev_nm()=%s,next_nm()=%s\n",
+ 	     cur_nm(),prev_nm(),next_nm());
+     }
+diff -r 4d50d832ada4 tksrc/GMTK_SectionScheduler.cc
+--- a/tksrc/GMTK_SectionScheduler.cc	Wed Jan 27 16:07:27 2016 -0800
++++ b/tksrc/GMTK_SectionScheduler.cc	Fri Apr 01 00:48:07 2016 -0700
+@@ -20,6 +20,7 @@
+ 
+ #include "GMTK_SectionScheduler.h"
+ #include "GMTK_SectionInferenceAlgorithm.h"
++#include "GMTK_ObsDiscRV.h"
+ 
+ // default names of the three sections for printing/debugging messages.
+ const char* SectionScheduler::P1_n = "P'";
+@@ -81,6 +82,143 @@
+ // Formerly JunctionTree::printAllJTInfo()
+ void 
+ SectionScheduler::printInferencePlanSummary(char const *fileName) {
++  FILE* f;
++  if ((fileName == NULL)
++      ||
++      ((f = ::fopen(fileName,"w")) == NULL))
++    return;
++
++
++  // print partition (clique,separator) information
++
++  fprintf(f,"===============================\n");
++  fprintf(f,"   P1 partition information: JT_weight = %f\n",
++	  0.0 /*junctionTreeWeight(P1,P_ri_to_C,NULL,&Co.nodes)*/);
++  printAllJTInfo(f,P1,P_ri_to_C,NULL,&Co.nodes);
++  fprintf(f,"\n\n");
++
++  fprintf(f,"===============================\n");
++  fprintf(f,"   Co partition information: JT_weight = %f\n",
++	  0.0 /*junctionTreeWeight(Co,C_ri_to_E,&P1.nodes,&E1.nodes)*/);
++  printAllJTInfo(f,Co,C_ri_to_C,&P1.nodes,&E1.nodes);
++  fprintf(f,"\n\n");
++
++  fprintf(f,"===============================\n");
++  fprintf(f,"   E1 partition information: JT_weight = %f\n",
++	  0.0 /*junctionTreeWeight(E1,E_root_clique, &Co.nodes,NULL)*/);
++  printAllJTInfo(f,E1,E_root_clique,&Co.nodes,NULL);
++  fprintf(f,"\n\n");
++
++  // print message order information
++  fprintf(f,"===============================\n\n");    
++
++  fprintf(f,"===============================\n");  
++  fprintf(f,"   P1 message order\n");
++  printMessageOrder(f,P1_message_order);
++  fprintf(f,"\n\n");
++
++  fprintf(f,"===============================\n");  
++  fprintf(f,"   Co message order\n");
++  printMessageOrder(f,Co_message_order);
++  fprintf(f,"\n\n");
++
++  fprintf(f,"===============================\n");  
++  fprintf(f,"   E1 message order\n");
++  printMessageOrder(f,E1_message_order);
++  fprintf(f,"\n\n");
++
++
++  fclose(f);
++}
++
++
++void
++SectionScheduler::printAllJTInfo(FILE* f,
++			     JT_Partition& part,
++			     vector<unsigned> const &roots,
++			     set <RV*>* lp_nodes,
++			     set <RV*>* rp_nodes)
++
++{
++  // print cliques information
++  fprintf(f,"=== Clique Information ===\n");
++  fprintf(f,"Number of cliques = %ld\n",(unsigned long)part.cliques.size());
++  if (part.cliques.size() > 0)
++    for (unsigned i=0; i < roots.size(); ++i)
++      printAllJTInfoCliques(f,part,roots[i],0,lp_nodes,rp_nodes);
++
++  // print separator information
++  fprintf(f,"\n=== Separator Information ===\n");
++  fprintf(f,"Number of separators = %ld\n",(unsigned long)part.separators.size());
++  for (unsigned sepNo=0;sepNo<part.separators.size();sepNo++) {
++    fprintf(f,"== Separator number: %d\n",sepNo);
++    part.separators[sepNo].printAllJTInfo(f);
++  }
++
++}
++
++
++void
++SectionScheduler::printAllJTInfoCliques(FILE* f,
++				    JT_Partition& part,
++				    unsigned root,
++				    const unsigned treeLevel,
++				    set <RV*>* lp_nodes,
++				    set <RV*>* rp_nodes)
++{
++  const bool is_P_partition = (lp_nodes == NULL);
++  const bool is_E_partition = (rp_nodes == NULL);
++  // can't be both.
++  assert ( !(is_P_partition && is_E_partition) );
++
++  // print clique's information
++  for (unsigned i=0;i<treeLevel;i++) fprintf(f,"  ");
++  fprintf(f,"== Clique number: %d",root);
++  if (treeLevel == 0)
++    fprintf(f,", root/right-interface clique");
++  if (treeLevel == 0) {
++    if (!is_E_partition)
++      fprintf(f,", root/right-interface clique");
++    else
++      fprintf(f,", root clique");
++  }
++  if (part.cliques[root].ceReceiveSeparators.size() >
++      part.cliques[root].numVESeparators() + part.cliques[root].children.size() ) {
++    if (part.cliques[root].ceReceiveSeparators.size() > 1 + part.cliques[root].numVESeparators()) 
++      fprintf(f,", left-interface clique");
++    else
++      fprintf(f,", leaf/left-interface clique");
++  } else {
++    assert ( part.cliques[root].ceReceiveSeparators.size() == 
++	     part.cliques[root].children.size() + part.cliques[root].numVESeparators());
++    if (part.cliques[root].ceReceiveSeparators.size() == part.cliques[root].numVESeparators()) 
++      fprintf(f,", leaf");
++  }
++  fprintf(f,"\n");
++  part.cliques[root].printAllJTInfo(f,treeLevel,part.unassignedInPartition,
++				    jtWeightUpperBound,
++				    jtWeightMoreConservative,
++				    true,
++				    lp_nodes,rp_nodes);
++  for (unsigned childNo=0;
++       childNo<part.cliques[root].children.size();childNo++) {
++    unsigned child = part.cliques[root].children[childNo];
++    printAllJTInfoCliques(f,part,child,treeLevel+1,lp_nodes,rp_nodes);
++  }
++}
++
++
++
++void
++SectionScheduler::printMessageOrder(FILE *f,
++				vector< pair<unsigned,unsigned> >& message_order)
++{
++  fprintf(f,"Number of messages: %ld\n",(unsigned long)message_order.size());
++  for (unsigned m=0;m<message_order.size();m++) {
++    const unsigned from = message_order[m].first;
++    const unsigned to = message_order[m].second;
++    fprintf(f,"  %d: %d --> %d\n",m,from,to);
++  }
+ }
+ 
+   // Formerly GMTemplate::reportScoreStats()
+@@ -275,6 +413,17 @@
+ }
+ 
+ 
++void checkDisps(sArray< MaxClique::AssignedNodeDisposition > const &d) {
++  for (int i=0; i < d.len(); ++i) {
++    assert(0 <= d[i] && d[i] <= 5);
++  }
++}
++
++void checkDisps(Section const &s) {
++  for (unsigned i=0; i < s.cliques.size(); ++i) {
++    checkDisps(s.cliques[i].dispositionSortedAssignedNodes);
++  }
++}
+ 
+   // Initialize stuff at the model-level. See prepareForSegment() for segment-level initialization.
+   // TODO: explain parameters
+@@ -297,14 +446,18 @@
+ 	  tri_file.fileName(),fp.fileNameParsing.c_str());
+   }
+   gm_template.readPartitions(tri_file);
+-  gm_template.readMaxCliques(tri_file);
++  gm_template.readInferenceArchitectures(tri_file);
+ 
+   infoMsg(IM::Max,"Triangulating graph...\n");
+ 
++#if 0
++  gm_template.triangulateSectionsByInferenceArchitecture();
++#else
+   // TODO: It looks like this is really just adding the edges to make the
+   //       cliques specified in the tri file actual cliques in the "graph"
+   //       by adding any missing edges. 
+   gm_template.triangulatePartitionsByCliqueCompletion();
++#endif
+ 
+   if (1) { 
+     // check that graph is indeed triangulated.
+@@ -324,7 +477,6 @@
+   ////////////////////////////////////////////////////////////////////
+   // CREATE JUNCTION TREE DATA STRUCTURES
+   infoMsg(IM::Default,"Creating Junction Tree\n"); fflush(stdout);
+-
+   setUpJTDataStructures(varSectionAssignmentPrior,varCliqueAssignmentPrior);
+   prepareForUnrolling();
+   infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
+@@ -636,18 +788,12 @@
+   // takes up much memory.
+   fp.unroll(basicTemplateMinUnrollAmount,cur_unrolled_rvs,cur_ppf);
+ 
+-
+-#if 0 
+-
+-  // FIXME  this is just commented out temporarily as refactoring moves code
+-
+   // set the observed variables for now, but these may/will be modified later.
+   setObservedRVs(cur_unrolled_rvs);
+ 
+   prepareForNextInferenceRound();
+   // this clears the shared caches in the origin cliques
+   clearCliqueSepValueCache(perSegmentClearCliqueValueCache);
+-#endif
+ 
+   // clear out the old and pre-allocate for new size.
+   section_structure_array.clear();
+@@ -798,6 +944,22 @@
+   infoMsg(IM::Giga,"Done creating P,C,E section JTs\n");
+ }
+ 
++// create the three junction forests for the basic sections
++// from edges specified in trifile
++void 
++SectionScheduler::createSectionJunctionForests() {
++  infoMsg(IM::Giga,"Creating of P section JT\n");
++  createSectionJunctionForest(gm_template.P, string("default:P"));
++  infoMsg(IM::Giga,"Creating of C section JT\n");
++  createSectionJunctionForest(gm_template.C, string("default:C"));
++  infoMsg(IM::Giga,"Creating of E section JT\n");
++#if 1
++  createSectionJunctionForest(gm_template.E, string("default:E"));
++#else
++  createSectionJunctionTree(gm_template.E,pStr);
++#endif
++  infoMsg(IM::Giga,"Done creating P,C,E section JTs\n");
++}
+ 
+ 
+ ////////////////////////////////////////////////////////////////////
+@@ -810,6 +972,90 @@
+ 
+ 
+ 
++
++/*-
++ *-----------------------------------------------------------------------
++ * JunctionTree::createSectionJunctionForest()
++ *   Create a mini-junction forest from the cliques in the given section.
++ *   This uses the edges specified by the message order given in the trifile
++ *
++ *   TODO: move this routine to a MaxClique class at some point.
++ *   TODO: do this during triangulation time.
++ *   TODO: this is section inference algorithm-specific
++ *
++ * Preconditions:
++ *   The section must be instantiated with cliques 
++ *
++ * Postconditions:
++ *   The cliques in the section are now such that they
++ *   form a junction tree over cliques within that section.
++ *
++ * Side Effects:
++ *   Modifies all neighbors variables within the cliques within the
++ *   section.
++ *
++ * Results:
++ *   none
++ *
++ *-----------------------------------------------------------------------
++ */
++void printUintSet(set<unsigned> s) {
++  for (set<unsigned>::iterator it=s.begin(); it != s.end(); ++it) 
++    printf(" %u", *it);
++  printf("\n");
++}
++void 
++SectionScheduler::createSectionJunctionForest(Section& section, string const &ia_name_and_section) {
++  const unsigned num_max_cliques = section.cliques.size();
++
++  infoMsg(IM::Giga,"Starting create JT\n");
++  vector<set<unsigned> > clique_neighbors(num_max_cliques); // set of ith clique's neighbors
++  vector< pair<unsigned, unsigned> > &msg_order = section.ia_message_order[ia_name_and_section];
++
++  if (num_max_cliques == 0) {
++    // Nothing to do.
++    // This could happen if the section is empty which might occur
++    // for empty P's and E's. C should never be empty.
++    return;
++  } else if (num_max_cliques == 1) {
++    // then nothing to do
++    infoMsg(IM::Giga,"Section has only one clique\n");
++    return;
++  } else {
++    
++    infoMsg(IM::Giga,"Section has %d cliques\n",num_max_cliques);
++    if (section.ia_message_order.find(ia_name_and_section) == section.ia_message_order.end()) {
++      error("ERROR: no message order found for inference architecture '%s'\n", 
++	    ia_name_and_section.c_str());
++    }
++    for (unsigned msg_num=0; msg_num < msg_order.size(); ++msg_num) {
++      unsigned i = msg_order[msg_num].first;
++      unsigned j = msg_order[msg_num].second;
++      clique_neighbors[i].insert(j);
++      clique_neighbors[j].insert(i);
++    }
++  }
++
++  // copy neighbor sets to vectors
++  for (unsigned i=0; i < section.cliques.size(); ++i) {
++    section.cliques[i].neighbors.clear();
++    for (set<unsigned>::iterator it = clique_neighbors[i].begin();
++	 it != clique_neighbors[i].end();
++	 ++it)
++    {
++      section.cliques[i].neighbors.push_back(*it);
++    }
++  }
++}
++
++
++
++
++
++
++
++
++
+ /*-
+  *-----------------------------------------------------------------------
+  * JunctionTree::createSectionJunctionTree()
+@@ -1212,11 +1458,14 @@
+ 			 gm_template.PCInterface_in_P, 0*S*fp.numFramesInC(),
+ 			 section_unrolled_rvs,section_ppf);
+ 
++  P1_message_order = P1.ia_message_order[string("default:P")];
+   // copy E section
++assert(gm_template.E.cliques.size() > 0);
+   new (&E1) JT_Partition(gm_template.E, 0*S*fp.numFramesInC(),
+ 			 gm_template.CEInterface_in_E, 0*S*fp.numFramesInC(),
+ 			 empty, 0*S*fp.numFramesInC(),
+ 			 section_unrolled_rvs,section_ppf);
++  E1_message_order = E1.ia_message_order[string("default:E")];
+ 
+   if (gm_template.usesLeftInterface()) {
+     // left interface case
+@@ -1269,7 +1518,7 @@
+ 			     section_unrolled_rvs,section_ppf);
+     }
+   }
+-
++  Co_message_order = Co.ia_message_order[string("default:C")];
+ }
+ 
+ // routine to find the interface cliques of the sections
+@@ -1299,13 +1548,50 @@
+  */
+ void 
+ SectionScheduler::computeSectionInterfaces() {
++
+   // set up the base sections
+   create_base_sections();
+ 
++
++#if 1
++  P_ri_to_C = P1.section_ri;
++  P_ri_to_C_size = P_ri_to_C.size(); // gm_template.PCInterface_in_P.size();
++  E_li_to_C = E1.section_li;
++  
++  C_li_to_P = Co.section_li;
++  C_li_to_C = C_li_to_P;
++  C_ri_to_E = Co.section_ri;
++  C_ri_to_C = C_ri_to_E;
++
++  // sanity check
++  assert (C_ri_to_C == C_ri_to_E);
++  
++  C_ri_to_C_size = C_ri_to_C.size(); //gm_template.CEInterface_in_C.size();
++
++  
++  set<unsigned> potential_E_roots;
++  for (unsigned i=0; i < E1.cliques.size(); ++i) {
++    potential_E_roots.insert(i);
++  }
++  for (vector<pair<unsigned,unsigned> >::iterator it = E1_message_order.begin();
++       it != E1_message_order.end();
++       ++it)
++  {
++    potential_E_roots.erase((*it).first); // roots cannot be message source
++  }
++  for (set<unsigned>::iterator it = potential_E_roots.begin();
++       it != potential_E_roots.end();
++       ++it)
++  {
++    E_root_clique.push_back(*it);
++  }
++
++#else
+   // Use base sections to find the various interface cliques.
+   bool P_riCliqueSameAsInterface;
+   bool E_liCliqueSameAsInterface;
+   P1.findRInterfaceClique(P_ri_to_C,P_riCliqueSameAsInterface,interfaceCliquePriorityStr);
++  P_ri_to_C_size = gm_template.PCInterface_in_P.size();
+   E1.findLInterfaceClique(E_li_to_C,E_liCliqueSameAsInterface,interfaceCliquePriorityStr);
+ 
+   // Note that here, we do the same for both left and right interface,
+@@ -1334,7 +1620,6 @@
+       Co_riCliqueSameAsInterface && E_liCliqueSameAsInterface;
+ 
+   } else { // right interface
+-    // left interface case
+ 
+     bool Co_liCliqueSameAsInterface;
+     bool Co_riCliqueSameAsInterface;
+@@ -1355,17 +1640,19 @@
+ 
+     C_to_E_icliques_same =
+       Co_riCliqueSameAsInterface && E_liCliqueSameAsInterface;
+-
+   }
++  C_ri_to_C_size = gm_template.CEInterface_in_C.size();
+ 
+   // TODO: see if it is possible to choose a better root for E.  
+   // TODO: make command line heuristics for choosing E-root-clique as well.
+   // E order, clique 0 could be choosen as root arbitrarily.  
+   // E_root_clique = 0;
+   // E_root_clique = E1.cliqueWithMinWeight();
+-  E_root_clique = E1.cliqueWithMaxWeight();
++  E_root_clique.resize(1);
++  E_root_clique[0] = E1.cliqueWithMaxWeight();
+   // If this is updated, need also to update in all other places
+   // the code, search for string "update E_root_clique"
++#endif
+ }
+ 
+ 
+@@ -1621,6 +1908,37 @@
+ }
+ 
+ 
++/*-
++ *-----------------------------------------------------------------------
++ * SectionScheduler::prepareForNextInferenceRound()
++ *   does a bit if setup for next inference round.
++ *
++ * Preconditions:
++ *   The sections must be validly instantiated with cliques, and
++ *   the routine assignRVsToCliques() must have been called.
++ *
++ * Postconditions:
++ *   initial values are re-initialized.
++ *
++ * Side Effects:
++ *   modifies a few variables in sections.
++ *
++ * Results:
++ *   none
++ *
++ *-----------------------------------------------------------------------
++ */
++void
++SectionScheduler::prepareForNextInferenceRound()
++{
++  for (unsigned c=0;c<P1.cliques.size();c++)
++    P1.cliques[c].prepareForNextInferenceRound();
++  for (unsigned c=0;c<Co.cliques.size();c++)
++    Co.cliques[c].prepareForNextInferenceRound();
++  for (unsigned c=0;c<E1.cliques.size();c++)
++    E1.cliques[c].prepareForNextInferenceRound();
++}
++
+ // root the JT
+ /*-
+  *-----------------------------------------------------------------------
+@@ -1645,6 +1963,17 @@
+  *
+  *-----------------------------------------------------------------------
+  */
++void
++printChildren(char name, vector<MaxClique> &cliques) {
++  printf("%c children:\n", name);
++  for (unsigned i=0; i < cliques.size(); ++i) {
++    printf("  %u:", i);
++    for (unsigned j=0; j < cliques[i].children.size(); ++j)
++      printf(" %u", cliques[i].children[j]);
++    printf("\n");
++  }
++}
++
+ void 
+ SectionScheduler::createDirectedGraphOfCliques() {
+   createDirectedGraphOfCliques(P1, P_ri_to_C);
+@@ -1682,8 +2011,24 @@
+  *
+  *-----------------------------------------------------------------------
+  */
++void
++SectionScheduler::createDirectedGraphOfCliques(JT_Partition& part,
++					   const unsigned root)
++{
++  // check for empty partitions, possible for P or E.
++  if (part.cliques.size() == 0)
++    return;
++
++  // make sure none have been so far visited
++  vector< bool > visited(part.cliques.size());
++  for (unsigned i=0;i<part.cliques.size();i++) {
++    visited[i] = false;
++    part.cliques[i].children.clear();
++  }
++  createDirectedGraphOfCliquesRecurse(part,root,visited);
++}
+ void 
+-SectionScheduler::createDirectedGraphOfCliques(JT_Partition& section, const unsigned root) {
++SectionScheduler::createDirectedGraphOfCliques(JT_Partition& section, vector<unsigned> const &roots) {
+   // check for empty sections, possible for P or E.
+   if (section.cliques.size() == 0)
+     return;
+@@ -1694,7 +2039,31 @@
+     visited[i] = false;
+     section.cliques[i].children.clear();
+   }
+-  createDirectedGraphOfCliquesRecurse(section,root,visited);
++
++  // The undirected graph is built from the message order specified in 
++  // the trifile inference architecture, and thus may not be connected.
++  // In GMTK 1.X, the undirected graph was built with the MST code 
++  // in JunctionTree::createPartitionJunctionTrees(), which treats all
++  // the cliques as a complete graph ensuring the undirected graph is
++  // connected. But in GMTK 2.X, the undirected graph may not be connected, 
++  // necessitating a loop over the roots to produce a directed junction forest.
++
++  for (unsigned i=0; i < roots.size(); ++i) {
++    if (!visited[roots[i]]) {
++      createDirectedGraphOfCliquesRecurse(section,roots[i],visited);
++    }
++  }
++  // Furthermore, there may be connected components in the undirected 
++  // graph that do not contain any "root" (interface) cliques, so we 
++  // still have to look for any unvisited cliques.
++
++  for (unsigned i=0;i<section.cliques.size();i++) {
++    if (!visited[i]) {
++      createDirectedGraphOfCliquesRecurse(section,i,visited);
++    }
++  }
++
++
+ }
+ 
+ void
+@@ -1747,18 +2116,29 @@
+  *-----------------------------------------------------------------------
+  */
+ void 
+-SectionScheduler::assignRVsToCliques(const char* varSectionAssignmentPrior, const char *varCliqueAssignmentPrior) {
++SectionScheduler::
++assignRVsToCliques(const char* varSectionAssignmentPrior, const char *varCliqueAssignmentPrior) {
++#if 1
++#else
+   if (P1.nodes.size() > 0) {
+     infoMsg(IM::Giga,"assigning rvs to P1 section\n");
+-    assignRVsToCliques(P1_n,P1,P_ri_to_C,varSectionAssignmentPrior,varCliqueAssignmentPrior);
++    assignRVsToCliques(P1_n,P1,/*P_ri_to_C*/ P1.connected_jt_root,varSectionAssignmentPrior,varCliqueAssignmentPrior);
+     // accumulate what occured in P1 so Co can use it. 
++#if 1
++    unionRVs(P1.cliques[P1.connected_jt_root].cumulativeAssignedNodes,
++	     P1.cliques[P1.connected_jt_root].assignedNodes,
++	     Co.cliques[C_li_to_P].cumulativeAssignedNodes);
++    unionRVs(P1.cliques[P_ri_to_C].cumulativeAssignedProbNodes,
++	     P1.cliques[P_ri_to_C].assignedProbNodes,
++	     Co.cliques[C_li_to_P].cumulativeAssignedProbNodes);
++#else
+     unionRVs(P1.cliques[P_ri_to_C].cumulativeAssignedNodes,
+ 	     P1.cliques[P_ri_to_C].assignedNodes,
+ 	     Co.cliques[C_li_to_P].cumulativeAssignedNodes);
+     unionRVs(P1.cliques[P_ri_to_C].cumulativeAssignedProbNodes,
+ 	     P1.cliques[P_ri_to_C].assignedProbNodes,
+ 	     Co.cliques[C_li_to_P].cumulativeAssignedProbNodes);
+-
++#endif
+     // printf("P1's cum ass prob:");
+     // printRVSet(stdout,P1.cliques[P_ri_to_C].cumulativeAssignedProbNodes);
+     // printf("P1's ass prob:");
+@@ -1768,7 +2148,7 @@
+ 
+   }
+   infoMsg(IM::Max,"assigning rvs to Co section\n");
+-  assignRVsToCliques(Co_n,Co,C_ri_to_C,varSectionAssignmentPrior,varCliqueAssignmentPrior);
++  assignRVsToCliques(Co_n,Co,/*C_ri_to_C*/ Co.connected_jt_root,varSectionAssignmentPrior,varCliqueAssignmentPrior);
+ 
+   if (E1.nodes.size() > 0) {
+     infoMsg(IM::Max,"assigning rvs to E section\n");
+@@ -1779,7 +2159,7 @@
+     unionRVs(Co.cliques[C_ri_to_E].cumulativeAssignedProbNodes,
+ 	     Co.cliques[C_ri_to_E].assignedProbNodes,
+ 	     E1.cliques[E_li_to_C].cumulativeAssignedProbNodes);
+-    assignRVsToCliques(E1_n,E1,E_root_clique,varSectionAssignmentPrior,varCliqueAssignmentPrior);
++    assignRVsToCliques(E1_n,E1,/*E_root_clique*/ E1.connected_jt_root,varSectionAssignmentPrior,varCliqueAssignmentPrior);
+   }
+ 
+   // lastly, check to make sure all nodes have been assigned to to
+@@ -1814,6 +2194,7 @@
+     printRVSet(stderr,nodesThatGiveNoProb);
+     coredump("Possibly corrupt trifile. Exiting program ...");
+   }
++#endif
+ }
+ 
+ /*-
+@@ -1988,7 +2369,7 @@
+  *    Helper routine for assignRVsToCliques() above.
+  *
+  * Preconditions:
+- *     Must be called only byy assignRVsToCliques().
++ *     Must be called only by assignRVsToCliques().
+  *
+  * Postconditions:
+  *     the random variable might be assigned (but the assignment
+@@ -2395,6 +2776,13 @@
+  *
+  *-----------------------------------------------------------------------
+  */
++
++void
++SectionScheduler::getCumulativeAssignedNodes(JT_Partition &section, vector<unsigned> const &roots) {
++  for (unsigned i=0; i < roots.size(); ++i) {
++    getCumulativeAssignedNodes(section, roots[i]);
++  }
++}
+ void
+ SectionScheduler::getCumulativeAssignedNodes(JT_Partition& section,
+ 					     const unsigned root)
+@@ -2475,6 +2863,7 @@
+ void
+ SectionScheduler::getCumulativeUnassignedIteratedNodes()
+ {
++#if 0
+   set<RV*> res;
+ 
+   if (P1.cliques.size() > 0) {
+@@ -2502,6 +2891,7 @@
+     E1.cliques[E_li_to_C].cumulativeUnassignedIteratedNodes = res;
+     getCumulativeUnassignedIteratedNodes(E1,E_root_clique);
+   }
++#endif
+ }
+ 
+ 
+@@ -2537,6 +2927,7 @@
+  */
+ void 
+ SectionScheduler::setUpMessagePassingOrders() {
++#if 0
+   setUpMessagePassingOrder(P1,
+ 			   P_ri_to_C,
+ 			   P1_message_order,
+@@ -2552,6 +2943,7 @@
+ 			   E1_message_order,
+ 			   E_li_to_C,
+ 			   E1_leaf_cliques);
++#endif
+ }
+ 
+ /*-
+@@ -2667,12 +3059,12 @@
+ 
+   // first set up all the cliques so that they know who their separators are.
+   for (unsigned p=0; p < order.size(); p++) {
+-    const unsigned left = order[p].first;
+-    const unsigned right = order[p].second;    
++    const unsigned from = order[p].first;
++    const unsigned to   = order[p].second;    
+     const unsigned sepNo = section.separators.size();
+-    section.separators.push_back(SeparatorClique(section.cliques[left],section.cliques[right]));
+-    section.cliques[left].ceSendSeparator = sepNo;
+-    section.cliques[right].ceReceiveSeparators.push_back(sepNo);
++    section.separators.push_back(SeparatorClique(section.cliques[from],section.cliques[to]));
++    section.cliques[from].ceSendSeparators.push_back(sepNo);
++    section.cliques[to].ceReceiveSeparators.push_back(sepNo);
+   }
+ }
+ 
+@@ -2718,12 +3110,15 @@
+ void 
+ SectionScheduler::createSeparators() {
+   if (P1.cliques.size() > 0) { 
+-    createSeparators(P1,
+-		     P1_message_order);
++    createSeparators(P1, P1_message_order);
+ 
+     // set to invalid value, since the ri clique sends to a separator
+     // in the next section, rather than internal to this section.
+-    P1.cliques[P_ri_to_C].ceSendSeparator = ~0x0; 
++
++    // placeholders for outgoing separators from P to C
++    for (unsigned i=0; i < P1.section_ri.size(); ++i) {
++      P1.cliques[ P1.section_ri[i] /* P_ri_to_C */ ].ceSendSeparators.push_back(~0x0); 
++    }
+ 
+     // insert VE seps last
+     if (useVESeparators && (veSeparatorWhere & VESEP_WHERE_P)) {
+@@ -2740,8 +3135,7 @@
+   assert ( Co.cliques.size() > 0 );
+ 
+   // first create the normal seprators
+-  createSeparators(Co,
+-		   Co_message_order);
++  createSeparators(Co, Co_message_order);
+ 
+   // Next, potentially insert VE seps, before the last one.
+   if (useVESeparators && (veSeparatorWhere & VESEP_WHERE_C)) {
+@@ -2763,9 +3157,37 @@
+       // 
+       // Note that the interface separator always has to be the last
+       // separator inserted.
++
++#if 0
++// FIXME - This will be problematic for supporting multiple inference
++//         architectures at inference time: ia_name:C knows which clique #s
++//         to use for its interfaces, but it won't know anything about the
++//         cliques in the sections to the left or right being interfaced to/from.
++//         Could either dynamically construct the separators at inference time
++//         once the other section's inference architecture is known (probably
++//         expensive), or pre-compute all possible X:P_to_Y:C and Y:C_to_Z:E
++//         combinations at use the proper one once the inference architecture
++//         being interfaced with is known.
++
+       Co.separators.push_back(SeparatorClique(P1.cliques[P_ri_to_C],Co.cliques[C_li_to_P]));
+       // update right sections LI clique to include new separator
+       Co.cliques[C_li_to_P].ceReceiveSeparators.push_back(Co.separators.size()-1);
++#else
++
++      if (P1.section_ri.size() != Co.section_li.size()) {
++	// FIXME - add ia_names to error message
++	error("ERROR: PC interface size mismatch\n");
++      }
++      
++      // build PC separators in C (i.e., P's right & C's left interface separators)
++      for (unsigned i=0; i < P1.section_ri.size(); ++i) {
++	unsigned P_ri_clique_num = P1.section_ri[i], 
++                 C_li_clique_num = Co.section_li[i];
++	Co.separators.push_back(SeparatorClique(P1.cliques[P_ri_clique_num], 
++						Co.cliques[C_li_clique_num]));
++	Co.cliques[C_li_clique_num].ceReceiveSeparators.push_back(Co.separators.size()-1);
++      }
++#endif
+     } else {
+       // Then P1 is empty. We insert a dummy separator that has
+       // been set up so that C'_i can go to C'_{i+1}. For i>0 this
+@@ -2773,7 +3195,7 @@
+       // inference not to use this separator since it will have
+       // nothing in it.
+ 
+-      if (Co.liNodes.size() > 0) {
++      if (Co.section_li.size() > 0) {
+ 	// then there will at least be a Ci <-> C_{i+1}
+ 	// intersection. I.e., we are guaranteed that the chunks are
+ 	// not disconnected from each other. This can happen if C
+@@ -2782,7 +3204,14 @@
+ 	// variables in Ci with their parents in C_{i+1}. It is not
+ 	// possible in this case for a child in Ci to have a parent in
+ 	// C_{i-1} since we're in the size(P) == 0 case here.
+-	Co.separators.push_back(SeparatorClique(Co.cliques[C_li_to_P],Co.cliques[C_li_to_P]));
++	for (unsigned i=0; i < Co.section_li.size(); ++i) {
++	  // FIXME - the GMTK 1.X code has C_li_to_P -> C_li_to_P ?
++	  unsigned C_ri_clique_num = Co.section_ri[i],
++                   C_li_clique_num = Co.section_li[i];
++	  Co.separators.push_back(SeparatorClique(Co.cliques[C_ri_clique_num],
++						  Co.cliques[C_li_clique_num]));
++	  Co.cliques[C_li_clique_num].ceReceiveSeparators.push_back(Co.separators.size()-1);
++	}
+       } else {
+ 	// then there will not be a Ci <-> C_{i+1} intersection.  We
+ 	// need to create an empty separator since the chunks are
+@@ -2790,32 +3219,41 @@
+ 	set<RV*> empty;
+ 	MaxClique mc(empty);
+ 	Co.separators.push_back(SeparatorClique(mc,mc));
++	for (unsigned i=0; i < Co.section_li.size(); ++i) {
++	  // update right sections LI clique to include new separator
++	  Co.cliques[Co.section_li[i]].ceReceiveSeparators.push_back(Co.separators.size()-1);
++	}
+       }
+-      // update right sections LI clique to include new separator
+-      Co.cliques[C_li_to_P].ceReceiveSeparators.push_back(Co.separators.size()-1);
+     }
+   } else {
+     // right interface case
+     assert ( P1.cliques.size() > 0 );
+ 
+-    // Note that the interface separator always has to be the last
+-    // separator inserted.
+-    Co.separators.push_back(SeparatorClique(P1.cliques[P_ri_to_C],Co.cliques[C_li_to_P]));
+-    // update right sections LI clique to include new separator
+-    Co.cliques[C_li_to_P].ceReceiveSeparators.push_back(Co.separators.size()-1);
+-
++    if (P1.section_ri.size() != Co.section_li.size()) {
++      // FIXME - add ia_names to error message
++      error("ERROR: PC interface size mismatch\n");
++    }
++
++    // Note that the interface separator always has to be the last separator inserted.
++    for (unsigned i=0; i < Co.section_li.size(); ++i) {
++      unsigned P_ri_clique_num = P1.section_ri[i],
++	       C_li_clique_num = Co.section_li[i];
++      Co.separators.push_back(SeparatorClique(P1.cliques[P_ri_clique_num],
++					      Co.cliques[C_li_clique_num]));
++      // update right sections LI clique to include new separator
++      Co.cliques[C_li_clique_num].ceReceiveSeparators.push_back(Co.separators.size()-1);
++    }
+   }
+ 
+-  // don't update left sections RI clique's send separator since
+-  // handled explicitly
+-  Co.cliques[C_ri_to_C].ceSendSeparator = ~0x0; //set to invalid value
+-
++  // don't update left sections RI clique's send separator since handled explicitly
++  for (unsigned i=0; i < Co.section_ri.size(); ++i) {
++    Co.cliques[ Co.section_ri[i] ].ceSendSeparators.push_back(~0x0); //set to invalid value
++  }
+ 
+   if (E1.cliques.size() > 0) { 
+ 
+     // normal separators
+-    createSeparators(E1,
+-		     E1_message_order);
++    createSeparators(E1, E1_message_order);
+ 
+ 
+     // Next, potentially insert any VE seps, before final one.
+@@ -2827,14 +3265,26 @@
+ 
+     // Final LI separator one is guaranteed *always* to be the
+     // interface separator to the left section.
++
++    if(Co.section_ri.size() != E1.section_li.size()) {
++      // FIXME - add ia_names to error message
++      error("ERROR: CE interface size mismatch\n");
++    }
+     // 
+     // Create separator of interface cliques. Co is never empty. Note that the interface
+     // separator always has to be the last separator inserted.
+-    E1.separators.push_back(SeparatorClique(Co.cliques[C_ri_to_E],E1.cliques[E_li_to_C]));
+-    // update right sections LI clique to include new separator
+-    E1.cliques[E_li_to_C].ceReceiveSeparators.push_back(E1.separators.size()-1);
++    for (unsigned i=0; i < Co.section_ri.size(); ++i) {
++      unsigned C_ri_clique_num = Co.section_ri[i],
++	       E_li_clique_num = E1.section_li[i];
++      E1.separators.push_back(SeparatorClique(Co.cliques[C_ri_clique_num],
++					      E1.cliques[E_li_clique_num]));
++      // update right sections LI clique to include new separator
++      E1.cliques[E_li_clique_num].ceReceiveSeparators.push_back(E1.separators.size()-1);
++    }
+     // don't update left sections RI clique's send separator since handeled explicitly
+-    E1.cliques[E_root_clique].ceSendSeparator = ~0x0; //set to invalid value
++    for (unsigned i=0; i < E_root_clique.size(); ++i) {
++      E1.cliques[E_root_clique[i]].ceSendSeparators.push_back(~0x0); //set to invalid value
++    }
+   }
+ }
+ 
+@@ -3438,6 +3888,27 @@
+ }
+ 
+ 
++void 
++SectionScheduler::sortCliqueAssignedNodesAndComputeDispositions(JT_Partition& section) {
++  for (unsigned i=0; i < section.cliques.size(); i++) {
++    section.cliques[i].sortAndAssignDispositions();
++    if (IM::messageGlb(IM::Inference, IM::Max)) {
++      printf("Clique %d variables after sort:",i);
++      printRVSet(stdout,section.cliques[i].sortedAssignedNodes,true);
++    }
++  }
++}
++
++void 
++SectionScheduler::sortCliqueAssignedNodesAndComputeDispositions() {
++  // printf("sorting P1\n");
++  sortCliqueAssignedNodesAndComputeDispositions(P1);
++  // printf("sorting Co\n");
++  sortCliqueAssignedNodesAndComputeDispositions(Co);
++  // printf("sorting E1\n");
++  sortCliqueAssignedNodesAndComputeDispositions(E1);
++}
++
+  
+ /*-
+  *-----------------------------------------------------------------------
+@@ -3470,24 +3941,28 @@
+ 					const char *varCliqueAssignmentPrior)
+ {
+   // main() routine for this class.
+-  createSectionJunctionTrees(junctionTreeMSTpriorityStr);
+-  computeSectionInterfaces();
+-  createFactorCliques();
+-  createDirectedGraphOfCliques();
+-  assignRVsToCliques(varSectionAssignmentPrior,varCliqueAssignmentPrior);
+-  assignFactorsToCliques();
+-  computeUnassignedCliqueNodes();
++
++  createSectionJunctionForests();   // create undirected graph with edges in clique[i].neighbors
++
++  computeSectionInterfaces();       // setup left & right interfaces
++  //createFactorCliques();
++  createDirectedGraphOfCliques();   // create junction forest with edges in clique[i].children
++  //  assignRVsToCliques(varSectionAssignmentPrior,varCliqueAssignmentPrior);
++  //assignFactorsToCliques();
++  //  computeUnassignedCliqueNodes();
+   // TODO: assignScoringFactorsToCliques();
+-  setUpMessagePassingOrders();
++  //setUpMessagePassingOrders();
+   // create seps and VE seps.
+-  createSeparators();
++  createSeparators();               // create within- & between-section separators per message order
++
+   computeSeparatorIterationOrders();
+ 
+   // -- -- used only to compute weight.
+   getCumulativeUnassignedIteratedNodes(); 
+   // -- --
+ 
+-  sortCliqueAssignedNodesAndComputeDispositions(varCliqueAssignmentPrior);
++sortCliqueAssignedNodesAndComputeDispositions();
++  //sortCliqueAssignedNodesAndComputeDispositions(varCliqueAssignmentPrior);
+ }
+ 
+ 
+diff -r 4d50d832ada4 tksrc/GMTK_SectionScheduler.h
+--- a/tksrc/GMTK_SectionScheduler.h	Wed Jan 27 16:07:27 2016 -0800
++++ b/tksrc/GMTK_SectionScheduler.h	Fri Apr 01 00:48:07 2016 -0700
+@@ -120,6 +120,21 @@
+   // Formerly JunctionTree::printAllJTInfo()
+   virtual void printInferencePlanSummary(char const *fileName);
+ 
++  void printAllJTInfo(FILE* f,
++		      JT_Partition& part,
++		      vector<unsigned> const &roots,
++		      set <RV*>* lp_nodes,
++		      set <RV*>* rp_nodes);
++  void printAllJTInfoCliques(FILE* f,
++			     JT_Partition& part,
++			     unsigned root,
++			     const unsigned treeLevel,
++			     set <RV*>* lp_nodes,
++			     set <RV*>* rp_nodes);
++  
++  void printMessageOrder(FILE *f, vector< pair<unsigned,unsigned> >& message_order);
++
++
+   // Formerly GMTemplate::reportScoreStats()
+   virtual void reportScoreStats();
+ 
+@@ -350,25 +365,29 @@
+   // Identities of cliques in junction trees: 
+   // for P, 
+   //    P's right  interface to C (a root in a JT section)
+-  unsigned P_ri_to_C; 
++  vector<unsigned> P_ri_to_C; 
++  unsigned P_ri_to_C_size; // # of cliques in factored interface
++
+   //    The next one does not exist since we currently always do CE first.
+   // unsigned P_li_clique; 
++
+   // 
+   // for C
+   //    C's left interface to P
+-  unsigned C_li_to_P;
++  vector<unsigned> C_li_to_P;
+   //    C's left interface to C (same as C_li_to_P)
+-  unsigned C_li_to_C;
++  vector<unsigned> C_li_to_C;
+   //    C's right interface to C (a root in a JT section)
+-  unsigned C_ri_to_C;
++  vector<unsigned> C_ri_to_C;
++  unsigned C_ri_to_C_size; // # of cliques in factored interface
+   //    C's right interface to E (a root in a JT section) (same as C_ri_to_C)
+-  unsigned C_ri_to_E;
++  vector<unsigned> C_ri_to_E;
+   // 
+   // for E, 
+   // E's left interface to C
+-  unsigned E_li_to_C;
++  vector<unsigned> E_li_to_C;
+   // root inside of E.
+-  unsigned E_root_clique;
++  vector<unsigned> E_root_clique;
+ 
+ 
+   // Booleans telling if the interface cliques of the two partitions
+@@ -499,9 +518,13 @@
+   // create the three junction trees for the basic sections.
+   void createSectionJunctionTrees(const string pStr = junctionTreeMSTpriorityStr);
+ 
++  void createSectionJunctionForests();
++
+   // create a junction tree within a section.
+   static void createSectionJunctionTree(Section& section, const string pStr = junctionTreeMSTpriorityStr);
+ 
++  static void createSectionJunctionForest(Section& section, string const &ia_name_and_section);
++
+   // routine to find the interface cliques of the sections
+   void computeSectionInterfaces();
+ 
+@@ -522,8 +545,10 @@
+ 						  const unsigned root,
+ 						  vector< bool >& visited);
+ 
+-  static void createDirectedGraphOfCliques(JT_Partition &section, const unsigned root);
++  static void createDirectedGraphOfCliques(JT_Partition &section, unsigned root);
++  static void createDirectedGraphOfCliques(JT_Partition &section, vector<unsigned> const &root);
+   static void getCumulativeAssignedNodes(JT_Partition &section, const unsigned root);
++  static void getCumulativeAssignedNodes(JT_Partition &section, vector<unsigned> const &root);
+   static void getCumulativeUnassignedIteratedNodes(JT_Partition &section,const unsigned root);
+ 
+ 
+@@ -533,6 +558,9 @@
+ 					      const unsigned excludeFromLeafCliques,
+ 					      vector< unsigned>& leaf_cliques);
+ 
++  // do a bit of setup for the upcomming inference round.
++  void prepareForNextInferenceRound();
++
+   static void assignRVToClique(const char *const sectionName,
+ 			       JT_Partition &section,
+ 			       const unsigned root,
+@@ -603,7 +631,10 @@
+   // section's cliques relative to each clique's incomming separators, and while
+   // doing so, also set the dispositions for each of the resulting
+   // nodes in each clique.
+-  void sortCliqueAssignedNodesAndComputeDispositions(const char *varCliqueAssignmentPrior);
++  void sortCliqueAssignedNodesAndComputeDispositions(); // new
++  void sortCliqueAssignedNodesAndComputeDispositions(JT_Partition& section);
++
++  void sortCliqueAssignedNodesAndComputeDispositions(const char *varCliqueAssignmentPrior); // old
+   void sortCliqueAssignedNodesAndComputeDispositions(JT_Partition& section, const char *varCliqueAssignmentPrior);
+ 
+ 
+@@ -627,6 +658,12 @@
+ 				   vector< set<RV*> > *lp_nodes,
+ 				   vector< set<RV*> > *rp_nodes);
+ 				   
++  // used to clear out hash table memory between segments
++  void clearCliqueSepValueCache(bool force=false) {
++    P1.clearCliqueSepValueCache(force);
++    Co.clearCliqueSepValueCache(force);
++    E1.clearCliqueSepValueCache(force);
++  }
+ 
+ };
+ 
+diff -r 4d50d832ada4 tksrc/GMTK_SectionTablesBase.h
+--- a/tksrc/GMTK_SectionTablesBase.h	Wed Jan 27 16:07:27 2016 -0800
++++ b/tksrc/GMTK_SectionTablesBase.h	Fri Apr 01 00:48:07 2016 -0700
+@@ -85,7 +85,7 @@
+   virtual void projectToOutgoingSeparators(SectionIterator &stss_it,
+ 					   PartitionStructures &sourceSectionStructures, 
+ 					   ConditionalSeparatorTable *separatorTableArray,
+-					   ConditionalSeparatorTable::SharedLocalStructure &sepSharedStructureArray) = 0;
++					   ConditionalSeparatorTable::SharedLocalStructure *sepSharedStructureArray) = 0;
+ 
+   virtual void receiveBackwardsSeparators(SectionIterator &stss_it,
+ 					  PartitionStructures &sourceSectionStructures, 
+diff -r 4d50d832ada4 tksrc/GMTK_SparseJoinInference.cc
+--- a/tksrc/GMTK_SparseJoinInference.cc	Wed Jan 27 16:07:27 2016 -0800
++++ b/tksrc/GMTK_SparseJoinInference.cc	Fri Apr 01 00:48:07 2016 -0700
+@@ -74,14 +74,14 @@
+ void 
+ SparseJoinInference::receiveForwardInterfaceSeparator(SectionTablesBase *prev_section, SectionTablesBase *cur_section) {
+   PartitionStructures &previous_ps = myjt->section_structure_array[inference_it->prev_ss()];
+-  unsigned             previous_part_root = inference_it->prev_ri();
++  vector<unsigned>     previous_part_root = inference_it->prev_ri();
+   const char*const     previous_part_type_name = inference_it->prev_nm();
+   unsigned             previous_part_num = inference_it->prev_st();
+ 
+   PartitionStructures &next_ps = myjt->section_structure_array[inference_it->cur_ss()];
+   SparseJoinSectionTables *next_st = dynamic_cast<SparseJoinSectionTables *>(cur_section);
+   assert(next_st);
+-  unsigned             next_part_leaf = inference_it->cur_li();
++  vector<unsigned>     next_part_leaf = inference_it->cur_li();
+   const char*const     next_part_type_name = inference_it->cur_nm();
+   unsigned             next_part_num = inference_it->cur_st();
+ 
+@@ -99,7 +99,7 @@
+     IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
+   }
+ 
+-
++#if 0
+   infoMsg(IM::Inference, IM::Mod,"CE: message %s,part[%d],clique(%d) --> %s,part[%d],clique(%d)\n",
+ 	  previous_part_type_name,
+ 	  previous_part_num,
+@@ -107,17 +107,18 @@
+ 	  next_part_type_name,
+ 	  next_part_num,
+ 	  next_part_leaf);
+-
++#endif
+   // We don't know the inference algorithm, and hence the SectionTablesBase subclass,
+   // used for prev_section. But we do know that next_st is a SparseJoinSectionTables, since
+   // we're running SparseJoinInference on that section. So we know how to find next_st's
+   // incoming separators. Thus prev_section can figure out for itself how to project 
+   // itself down onto next_st's incoming separators (all SectionInferenceAlgorithms 
+   // speak the same section separator data structure).
++  unsigned li_size = inference_it->cur_li().size();
+   prev_section->projectToOutgoingSeparators(*inference_it, 
+ 					    previous_ps,
+-					    &(next_st->separatorCliques[next_ps.separatorCliquesSharedStructure.size()-1]),
+-					    next_ps.separatorCliquesSharedStructure[next_ps.separatorCliquesSharedStructure.size()-1]);
++					    &(next_st->separatorCliques[next_ps.separatorCliquesSharedStructure.size()-li_size]),
++					    &(next_ps.separatorCliquesSharedStructure[next_ps.separatorCliquesSharedStructure.size()-li_size]));
+ 
+   if (IM::messageGlb(IM::InferenceMemory, IM::Med+9)) {
+     // FIXME - previous_st->reportMemoryUsageTo(previous_ps,stdout);
+@@ -143,13 +144,14 @@
+     myjt->E1.skipLISeparator();
+   }
+   
++#if 0
+   deScatterOutofRoot(myjt->section_structure_array[inference_it->cur_ss()],
+ 		     *section,
+ 		     inference_it->cur_ri(),
+ 		     inference_it->cur_message_order(),
+ 		     inference_it->cur_nm(),
+ 		     inference_it->cur_st());
+-  
++#endif
+   if (inference_it->at_first_c() && myjt->P1.cliques.size() == 0) {
+     myjt->Co.useLISeparator();
+   } else if (!inference_it->has_c_section() && myjt->P1.cliques.size() == 0) {
+@@ -168,7 +170,7 @@
+ void 
+ SparseJoinInference::sendBackwardInterfaceSeparator(SectionTablesBase *prev_section, SectionTablesBase *cur_section) {
+   PartitionStructures &previous_ps = myjt->section_structure_array[inference_it->prev_ss()];
+-  unsigned             previous_part_root = inference_it->prev_ri();
++  vector<unsigned>     previous_part_root = inference_it->prev_ri();
+   const char*const     previous_part_type_name = inference_it->prev_nm();
+   unsigned             previous_part_num = inference_it->prev_st();
+ 
+@@ -176,7 +178,7 @@
+   SparseJoinSectionTables *next_st = dynamic_cast<SparseJoinSectionTables *>(cur_section);
+   assert(next_st);
+ 
+-  unsigned             next_part_leaf = inference_it->cur_li();
++  vector<unsigned>     next_part_leaf = inference_it->cur_li();
+   const char*const     next_part_type_name = inference_it->cur_nm();
+   unsigned             next_part_num = inference_it->cur_st();
+ 
+@@ -193,10 +195,11 @@
+     IM::setGlbMsgLevel(IM::Inference, IM::glbMsgLevel(IM::DefaultModule));
+     IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
+   }
+-
++#if 0
+   infoMsg(IM::Inference, IM::Mod,"DE: message %s,part[%d],clique(%d) <-- %s,part[%d],clique(%d)\n",
+ 	  previous_part_type_name,previous_part_num,previous_part_root,
+ 	  next_part_type_name,next_part_num,next_part_leaf);
++#endif
+ #if 0
+   // FIXME - call prev_section->projectToIncomingSeporator()
+   prevous_st->maxCliques[previous_part_root].
+@@ -265,6 +268,113 @@
+ void 
+ SparseJoinInference::ceGatherIntoRoot(PartitionStructures &ss,
+ 				      SparseJoinSectionTables &st,
++				      vector<unsigned> const &roots,
++				      vector< pair<unsigned,unsigned> > &message_order,
++				      const char *const section_type_name,
++				      const unsigned section_num,
++				      const bool clear_when_done,
++				      const bool also_clear_origins)
++{
++#if 1
++  // first check that this is not an empty section.
++  if (ss.maxCliquesSharedStructure.size() == 0)
++    return;
++
++  unsigned inference_debug_level = IM::glbMsgLevel(IM::Inference);
++  unsigned inference_memory_debug_level = IM::glbMsgLevel(IM::InferenceMemory);
++
++  if (! myjt->section_debug_range.contains((int)section_num)) {
++    IM::setGlbMsgLevel(IM::Inference, IM::glbMsgLevel(IM::DefaultModule));
++    IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
++  }
++
++  bool zeroClique = false;
++  try {
++    // Now, do section messages.
++    for (unsigned msgNo=0;msgNo < message_order.size(); msgNo ++) {
++      const unsigned from = message_order[msgNo].first;
++      const unsigned to = message_order[msgNo].second;
++      infoMsg(IM::Inference, IM::Med+5,
++	      "CE: gathering into %s,section[%d]: clique %d\n",
++	      section_type_name,section_num,from);
++
++      // this may now throw an exception on zero clique errors - RR
++      st.maxCliques[from].
++	ceGatherFromIncommingSeparators(ss.maxCliquesSharedStructure[from],
++					st.separatorCliques,
++					ss.separatorCliquesSharedStructure.ptr);
++  
++      infoMsg(IM::Inference, IM::Mod,
++	      "CE: message %s,section[%d]: clique %d --> clique %d\n",
++	      section_type_name,section_num,from,to);
++      st.maxCliques[from].
++	ceSendToOutgoingSeparators(ss.maxCliquesSharedStructure[from],
++				   st.separatorCliques,
++				   ss.separatorCliquesSharedStructure.ptr);
++
++      // TODO: if we are just computing probE here, we should delete
++      // memory in st.maxCliques[from]. Also, if we're only doing probE,
++      // we should not keep the cliques around at all, only the outgoing
++      // separator.
++      if (clear_when_done) {
++	st.maxCliques[from].
++	  clearCliqueAndIncommingSeparatorMemory(ss.maxCliquesSharedStructure[from],
++						 st.separatorCliques,
++						 ss.separatorCliquesSharedStructure.ptr);
++
++	if (also_clear_origins) {
++	  // then clear out the origin memory used for inference.
++	  ss.origin.clearCliqueAndIncommingSeparatorMemoryForClique(from); 
++	}
++      }
++    }
++  } catch (ZeroCliqueException &e) {
++    zeroClique = true; // abort this section & segment
++  }
++  if (!zeroClique) {
++    // collect to section's root cliques
++    set<unsigned> gathered_roots;
++    for (unsigned i=0; i < roots.size(); ++i) {
++      unsigned root = roots[i];
++      if (gathered_roots.find(root) != gathered_roots.end()) continue;
++      gathered_roots.insert(root);
++      infoMsg(IM::Inference, IM::Med+5,
++	      "CE: gathering into section root %s,section[%d]: clique %d\n",
++	      section_type_name,section_num,root);
++      try {
++	st.maxCliques[root].
++	  ceGatherFromIncommingSeparators(ss.maxCliquesSharedStructure[root],
++					  st.separatorCliques,
++					  ss.separatorCliquesSharedStructure.ptr);
++      } catch (ZeroCliqueException &e) {
++	zeroClique = true; // abort this section & segment
++      }
++      if (!zeroClique) {
++	if (IM::messageGlb(IM::InferenceMemory, IM::Med+9)) {
++	  st.reportMemoryUsageTo(ss,stdout);
++	}
++      }
++    }
++  }
++  if (! myjt->section_debug_range.contains((int)section_num)) {
++    IM::setGlbMsgLevel(IM::InferenceMemory, inference_memory_debug_level);
++    IM::setGlbMsgLevel(IM::Inference, inference_debug_level);
++  }
++  if (zeroClique) {
++    throw ZeroCliqueException(); // continue to abort segment
++  }
++#else
++  // FIXME - just run through the whole message order as below once,
++  //         then do final gather from incoming seps for each root
++
++  for (unsigned i=0; i < roots.size(); ++i) {
++    ceGatherIntoRoot(ss,st,roots[i],message_order,section_type_name,section_num,clear_when_done,also_clear_origins);
++  }
++#endif
++}
++void 
++SparseJoinInference::ceGatherIntoRoot(PartitionStructures &ss,
++				      SparseJoinSectionTables &st,
+ 				      const unsigned root,
+ 				      vector< pair<unsigned,unsigned> > &message_order,
+ 				      const char *const section_type_name,
+@@ -304,9 +414,9 @@
+ 	      "CE: message %s,section[%d]: clique %d --> clique %d\n",
+ 	      section_type_name,section_num,from,to);
+       st.maxCliques[from].
+-	ceSendToOutgoingSeparator(ss.maxCliquesSharedStructure[from],
+-				  st.separatorCliques,
+-				  ss.separatorCliquesSharedStructure.ptr);
++	ceSendToOutgoingSeparators(ss.maxCliquesSharedStructure[from],
++				   st.separatorCliques,
++				   ss.separatorCliquesSharedStructure.ptr);
+ 
+       // TODO: if we are just computing probE here, we should delete
+       // memory in st.maxCliques[from]. Also, if we're only doing probE,
+diff -r 4d50d832ada4 tksrc/GMTK_SparseJoinInference.h
+--- a/tksrc/GMTK_SparseJoinInference.h	Wed Jan 27 16:07:27 2016 -0800
++++ b/tksrc/GMTK_SparseJoinInference.h	Fri Apr 01 00:48:07 2016 -0700
+@@ -70,6 +70,20 @@
+   void ceGatherIntoRoot(PartitionStructures &ss,
+ 			SparseJoinSectionTables &st,
+ 			// index of root clique in the section
++			vector<unsigned> const &roots,
++			// message order of the JT in this section
++			vector< pair<unsigned,unsigned> > &message_order,
++			// the name of the section (for debugging/status msgs)
++			const char *const section_type_name,
++			// number of the section in unrolled graph 
++			// (for printing/debugging/status msgs only)
++			const unsigned section_num,
++			const bool clear_when_done = false,
++			const bool also_clear_origins = false);
++
++  void ceGatherIntoRoot(PartitionStructures &ss,
++			SparseJoinSectionTables &st,
++			// index of root clique in the section
+ 			const unsigned root,
+ 			// message order of the JT in this section
+ 			vector< pair<unsigned,unsigned> > &message_order,
+diff -r 4d50d832ada4 tksrc/GMTK_SparseJoinSectionTables.cc
+--- a/tksrc/GMTK_SparseJoinSectionTables.cc	Wed Jan 27 16:07:27 2016 -0800
++++ b/tksrc/GMTK_SparseJoinSectionTables.cc	Fri Apr 01 00:48:07 2016 -0700
+@@ -86,7 +86,7 @@
+ SparseJoinSectionTables::projectToOutgoingSeparators(SectionIterator &stss_it,
+ 						     PartitionStructures &sourceSectionStructures, 
+ 						     ConditionalSeparatorTable *separatorTableArray,
+-						     ConditionalSeparatorTable::SharedLocalStructure &sepSharedStructure)
++						     ConditionalSeparatorTable::SharedLocalStructure *sepSharedStructure)
+ {
+ 
+   // Here the section sending the message (projecting to outgoing separators) knows
+@@ -95,12 +95,38 @@
+   // cliques with outgoing separators (formerly just the single right interface clique),
+   // how many MaxCliques are in the section, and the MaxCliqueTable::SharedLocalStructure
+   // of each of those cliques...
++#if 1
++#  if 1
++  vector<unsigned> roots(stss_it.prev_ri());
++  for (unsigned i=0, n=roots.size(); i < n; ++i) {
++    maxCliques[roots[i]].ceSendToOutgoingSeparator(sourceSectionStructures.maxCliquesSharedStructure[roots[i]],
++						   separatorTableArray[i], 
++						   sepSharedStructure[i]);
+ 
+-  // for each maxCliques[i] with an outgoing separator
+-  unsigned i = stss_it.prev_ri();
+-  //   for each of maxClique[i]'s outgoing separators j
+-          maxCliques[i].ceSendToOutgoingSeparator(sourceSectionStructures.maxCliquesSharedStructure[i],
+-						  *separatorTableArray /* [j] */, sepSharedStructure);
++
++
++    // correct 1.x code
++#if 0
++  previous_pt.maxCliques[previous_part_root].
++    ceSendToOutgoingSeparator(previous_ps.maxCliquesSharedStructure[previous_part_root],
++			      next_pt.separatorCliques[next_ps.separatorCliquesSharedStructure.size()-1],
++			      next_ps.separatorCliquesSharedStructure[next_ps.separatorCliquesSharedStructure.size()-1]);
++#endif
++  }
++#  else
++  for (unsigned i=0, n=stss_it.prev_ri_size(); i < n; ++i) {
++    maxCliques[i].ceSendToOutgoingSeparator(sourceSectionStructures.maxCliquesSharedStructure[i],
++					    *separatorTableArray, sepSharedStructure);
++  }
++#  endif
++#else
++  unsigned first_interface_clique = stss_it.prev_ri();
++  unsigned last_interface_clique = first_interface_clique + stss_it.prev_ri_size();
++  for (unsigned i = first_interface_clique; i < last_interface_clique; ++i) {
++    maxCliques[i].ceSendToOutgoingSeparator(sourceSectionStructures.maxCliquesSharedStructure[i],
++					    *separatorTableArray, sepSharedStructure);
++  }
++#endif
+ }
+ 
+ 
+@@ -117,12 +143,19 @@
+   // cliques with incoming messages (formerly just the single right interface clique),
+   // how many MaxCliques are in the section, and the MaxCliqueTable::SharedLocalStructure
+   // of each of those cliques...
+-
+-  // for each maxCliques[i] with an incoming message
+-  unsigned i = stss_it.prev_ri();
+-  //   for each of maxClique[i]'s cross-section separators j
+-          maxCliques[i].deReceiveFromIncommingSeparator(sourceSectionStructures.maxCliquesSharedStructure[i],
+-							*separatorTableArray /* [j] */, sepSharedStructure);
++#if 1
++  for (unsigned i=0, n=stss_it.prev_ri_size(); i < n; ++i) {
++    maxCliques[i].deReceiveFromIncommingSeparator(sourceSectionStructures.maxCliquesSharedStructure[i],
++						  *separatorTableArray, sepSharedStructure);
++  }
++#else
++  unsigned first_interface_clique = stss_it.prev_ri();
++  unsigned last_interface_clique = first_interface_clique + stss_it.prev_ri_size();
++  for (unsigned i = first_interface_clique; i < last_interface_clique; ++i) {
++    maxCliques[i].deReceiveFromIncommingSeparator(sourceSectionStructures.maxCliquesSharedStructure[i],
++						  *separatorTableArray, sepSharedStructure);
++  }
++#endif
+ }
+ 
+ 
+diff -r 4d50d832ada4 tksrc/GMTK_SparseJoinSectionTables.h
+--- a/tksrc/GMTK_SparseJoinSectionTables.h	Wed Jan 27 16:07:27 2016 -0800
++++ b/tksrc/GMTK_SparseJoinSectionTables.h	Fri Apr 01 00:48:07 2016 -0700
+@@ -29,21 +29,27 @@
+   ~SparseJoinSectionTables() { clear(); }
+ 
+   logpr probEvidence(SectionIterator &inference_it, SectionScheduler &myjt) {
++    logpr result(1.0);
+     if (inference_it.at_p() && myjt.P1.cliques.size() > 0) {
+-      return maxCliques[myjt.P_ri_to_C].sumProbabilities();
++      for (unsigned i=0; i < myjt.P_ri_to_C.size(); ++i) {
++	result *= maxCliques[myjt.P_ri_to_C[i]].sumProbabilities();
++      }
+     } else if (inference_it.at_c() && myjt.Co.cliques.size() > 0) {
+-      return maxCliques[myjt.C_ri_to_C].sumProbabilities();
++     for (unsigned i=0; i < myjt.C_ri_to_C.size(); ++i) {
++      result *= maxCliques[myjt.C_ri_to_C[i]].sumProbabilities();
++     }
+     } else if (inference_it.at_e()) {
+-      return maxCliques[myjt.E_root_clique].sumProbabilities();
+-    } else {
+-      return logpr();
++     for (unsigned i=0; i < myjt.E_root_clique.size(); ++i) {
++      result *= maxCliques[myjt.E_root_clique[i]].sumProbabilities();
++     }
+     }
++    return result;
+   }
+ 
+   void projectToOutgoingSeparators(SectionIterator &stss_it,
+ 				   PartitionStructures &sourceSectionStructures, 
+ 				   ConditionalSeparatorTable *separatorTableArray,
+-				   ConditionalSeparatorTable::SharedLocalStructure &sepSharedStructure);
++				   ConditionalSeparatorTable::SharedLocalStructure *sepSharedStructure);
+ 
+   void receiveBackwardsSeparators(SectionIterator &stss_it,
+ 				  PartitionStructures &sourceSectionStructures, 
+diff -r 4d50d832ada4 tksrc/gmtkJT.cc
+--- a/tksrc/gmtkJT.cc	Wed Jan 27 16:07:27 2016 -0800
++++ b/tksrc/gmtkJT.cc	Fri Apr 01 00:48:07 2016 -0700
+@@ -346,7 +346,7 @@
+   // Setup the within-section inference implementation
+ 
+   // FIXME - move these to arguments
+-  bool pedagogical = true, sparse_join = !pedagogical;
++  bool pedagogical = false, sparse_join = !pedagogical;
+ 
+   SectionInferenceAlgorithm *section_inference_alg = NULL;
+   if (false) {
