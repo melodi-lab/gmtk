@@ -182,12 +182,7 @@ JT_Partition::JT_Partition(
   clique_name_dictionary = from_part.clique_name_dictionary;
 
   // make the cliques.
-assert(from_part.cliques.size() > 0);
-#if 1
   cliques.reserve(from_part.cliques.size());
-#else
-  cliques.resize(from_part.cliques.size());
-#endif
   // 
   // NOTE: It is ***CRUCIAL*** for the cliques in the cloned partition
   // to be inserted in the *SAME ORDER* as in the partition being
@@ -198,8 +193,6 @@ assert(from_part.cliques.size() > 0);
     cliques.push_back(MaxClique(empty)); // length the vector
     new (&(cliques[i])) MaxClique(from_part.cliques[i], newRvs,ppf,frameDelta, true);
   }
-assert(cliques.size() > 0);
-assert(cliques.size() == from_part.cliques.size());
 }
 
 
