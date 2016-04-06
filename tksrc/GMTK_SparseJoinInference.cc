@@ -52,11 +52,19 @@ SparseJoinInference::prepareForwardInterfaceSeparator(SectionTablesBase *cur_sec
   assert(section);
 
   // FIXME - possibly pull this up to where this method is called for performance
+
   // we skip the first Co's LI separator if there is no P1
   // section, since otherwise we'll get zero probability.
   if (inference_it->at_first_c() && myjt->P1.cliques.size() == 0){
     myjt->Co.skipLISeparator();
   }
+  // it might be that E is the first section as well, say if this is
+  // a static graph, and in this case we need in this case to skip the
+  // incomming separator, which doesn't exist.
+  if (!inference_it->has_c_section() && myjt->P1.cliques.size() == 0) {
+    myjt->E1.skipLISeparator();
+  }
+
   // gather into the root of the current  section
   ceGatherIntoRoot(myjt->section_structure_array[inference_it->cur_ss()],
 		   *section,
@@ -66,8 +74,12 @@ SparseJoinInference::prepareForwardInterfaceSeparator(SectionTablesBase *cur_sec
 		   inference_it->cur_st());
 
   // if the LI separator was turned off, we need to turn it back on.
-  if (inference_it->at_first_c() && myjt->P1.cliques.size() == 0)
+  if (!inference_it->has_c_section() && myjt->P1.cliques.size() == 0) {
+    myjt->E1.useLISeparator();
+  }
+  if (inference_it->at_first_c() && myjt->P1.cliques.size() == 0) {
     myjt->Co.useLISeparator();
+  }
 } 
 
 // recieve forward message for C'_{t-1} -> C'_t (sendForwardsCrossPartitions)
