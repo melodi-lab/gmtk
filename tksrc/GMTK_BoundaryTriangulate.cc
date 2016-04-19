@@ -1513,8 +1513,8 @@ BoundaryTriangulate
 {
   // now we need to make a bunch of sets to be unioned
   // together to get the partitions.
-  vector< set<RV*> > C_l_u1C1;
-  vector< set<RV*> > C_l_u1C2;
+  vector< set<RV*> > C_l_u1C1(1);
+  vector< set<RV*> > C_l_u1C2(1);
 
   set<RV*> left_C_l_u1C1;
   set<RV*> left_C_l_u1C2;

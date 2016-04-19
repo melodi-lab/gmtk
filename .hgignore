@@ -107,6 +107,7 @@ deepMLP/phipacTest
 tksrc/abstest
 tksrc/flat2vit
 tksrc/unrevisioned
+tksrc/gmtkMFA
 tksrc/gmtkDTindex
 tksrc/gmtkEMtrain
 tksrc/gmtkDMLPtrain
