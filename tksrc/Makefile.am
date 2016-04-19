@@ -240,6 +240,7 @@ dlopen_cfunc_dts.cc
 
 
 bin_PROGRAMS = \
+gmtkMFA        \
 gmtkJT 
 
 #gmtkTime \
@@ -263,6 +264,8 @@ EXTRA_PROGRAMS = gmtkDMLPtrain gmtkViz gmtkViz.app abstest dmlp
 #gmtkTie_SOURCES = gmtkTie.cc
 
 gmtkJT_SOURCES = gmtkJT.cc
+
+gmtkMFA_SOURCES = gmtkMFA.cc
 
 #gmtkTime_SOURCES = gmtkTime.cc
 

@@ -74,7 +74,7 @@ const string GMTemplate::CE_interface_name("CE_INTERFACE");
 const string GMTemplate::sparse_join_alg_name("SPARSE_JOIN");
 const string GMTemplate::pedagogical_alg_name("PEDAGOGICAL");
 
-const string GMTemplate::fileExtension(".trifile");
+const string GMTemplate::fileExtension(".ia");
 
 
 /*-
