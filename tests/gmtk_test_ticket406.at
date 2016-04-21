@@ -85,7 +85,7 @@ AT_CLEANUP
 
 AT_SETUP([Triggers: bin modified sections (ticket 406)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
-export GMTK_TEST_DIR=$(mktemp -d $TEST_AND_DEV/GMTKTESTSUIE.XXXXXX)
+export GMTK_TEST_DIR=$(mktemp -d $TEST_AND_DEV/GMTKTESTSUITE.XXXXXX)
 AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
            gmtkViterbi -iswp1 -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
                        -inputMasterFile PARAMS/nonTrainable.master          \
@@ -114,7 +114,7 @@ AT_CLEANUP
 
 AT_SETUP([Triggers: bin original sections (ticket 406)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
-export GMTK_TEST_DIR=$(mktemp -d $TEST_AND_DEV/GMTKTESTSUIE.XXXXXX) 
+export GMTK_TEST_DIR=$(mktemp -d $TEST_AND_DEV/GMTKTESTSUITE.XXXXXX) 
 AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
            gmtkViterbi -iswp1 -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
                        -inputMasterFile PARAMS/nonTrainable.master          \
@@ -239,7 +239,7 @@ AT_CLEANUP
 
 AT_SETUP([Run-length: bin modified sections (ticket 406)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
-export GMTK_TEST_DIR=$(mktemp -d $TEST_AND_DEV/GMTKTESTSUIE.XXXXXX)
+export GMTK_TEST_DIR=$(mktemp -d $TEST_AND_DEV/GMTKTESTSUITE.XXXXXX)
 AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
            gmtkViterbi -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0        \
                        -inputMasterFile PARAMS/nonTrainable.master          \
@@ -269,7 +269,7 @@ AT_CLEANUP
 
 AT_SETUP([Run-length: bin original sections (ticket 406)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
-export GMTK_TEST_DIR=$(mktemp -d $TEST_AND_DEV/GMTKTESTSUIE.XXXXXX)
+export GMTK_TEST_DIR=$(mktemp -d $TEST_AND_DEV/GMTKTESTSUITE.XXXXXX)
 AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
            gmtkViterbi -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0        \
                        -inputMasterFile PARAMS/nonTrainable.master          \
