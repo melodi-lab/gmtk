@@ -79,6 +79,90 @@ struct PairUnsigned1stElementCompare {
 
 
 
+string
+cliqueName(unsigned clique_num) {
+  char buf[16];
+  sprintf(buf, "C%03u", clique_num);
+  return string(buf);
+}
+
+void
+writeMsgOrder(oDataStreamFile &os, vector< pair<unsigned,unsigned> > const &msgs) {
+  os.write(msgs.size()); os.nl();
+  for (unsigned i=0; i < msgs.size(); ++i) {
+    os.write(i); 
+    os.write(cliqueName(msgs[i].first)); 
+    os.write(cliqueName(msgs[i].second));     
+    os.nl();
+  }
+}
+
+
+void 
+SectionScheduler::printAllIAInfo(char const* fileName, bool writeComments) {
+  assert(fileName);
+
+  oDataStreamFile os(fileName);
+  os.setWriteCommentsStatus(writeComments);
+  fp.writeGMId(os);
+  gm_template.writeSections(os);
+
+  os.nl();
+  os.writeComment("---\n");
+  os.writeComment("---- P inference architecture\n");
+  P1.writeInferenceArchitecture(os, 'P');
+  os.writeComment("---- within-section message order\n");
+  writeMsgOrder(os, P1_message_order);
+  os.writeComment("---- P has no left interface\n");
+  os.write(0); os.nl();
+  os.writeComment("---- P right interface\n");
+  if (P1.cliques.size() > 0) {
+    os.write(P_ri_to_C.size()); os.nl();
+    for (unsigned i=0; i < P_ri_to_C.size(); ++i) {
+      os.write(i); os.write(cliqueName(P_ri_to_C[i])); os.nl();
+    }
+  } else {
+    os.write(0); os.nl();
+  }
+  os.nl();
+
+  os.writeComment("---\n");
+  os.writeComment("---- C inference architecture\n");
+  Co.writeInferenceArchitecture(os, 'C');
+  os.writeComment("---- within-section message order\n");
+  writeMsgOrder(os, Co_message_order);
+  os.writeComment("---- C left interface\n");
+  os.write(C_li_to_C.size()); os.nl();
+  for (unsigned i=0; i < C_li_to_C.size(); ++i) {
+    os.write(i); os.write(cliqueName(C_li_to_C[i])); os.nl();
+  }
+  os.writeComment("---- C right interface\n");
+  os.write(C_ri_to_C.size()); os.nl();
+  for (unsigned i=0; i < C_ri_to_C.size(); ++i) {
+    os.write(i); os.write(cliqueName(C_ri_to_C[i])); os.nl();
+  }
+  os.nl();
+
+  os.writeComment("---\n");
+  os.writeComment("---- E inference architecture\n");
+  E1.writeInferenceArchitecture(os, 'E');
+  os.writeComment("---- within-section message order\n");
+  writeMsgOrder(os, E1_message_order);
+  os.writeComment("---- E left interface\n");
+  if (E1.cliques.size() > 0) {
+    os.write(E_li_to_C.size()); os.nl();
+    for (unsigned i=0; i < E_li_to_C.size(); ++i) {
+      os.write(i); os.write(cliqueName(E_li_to_C[i])); os.nl();
+    }
+  } else {
+    os.write(0); os.nl();
+  }
+  os.writeComment("---- E has no right interface\n");
+  os.write(0); os.nl();
+}
+
+
+
 // Formerly JunctionTree::printAllJTInfo()
 void 
 SectionScheduler::printInferencePlanSummary(char const *fileName) {

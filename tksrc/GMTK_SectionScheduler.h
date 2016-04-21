@@ -120,6 +120,8 @@ class SectionScheduler {
   // Formerly JunctionTree::printAllJTInfo()
   virtual void printInferencePlanSummary(char const *fileName);
 
+  void printAllIAInfo(char const* fileName, bool writeComments);
+
   void printAllJTInfo(FILE* f,
 		      JT_Partition& part,
 		      vector<unsigned> const &roots,

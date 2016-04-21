@@ -89,7 +89,8 @@ public:
 
   void clearCliques() { cliques.clear(); triMethod.clear(); }
 
-  void writeMaxCliques(oDataStreamFile& os);  
+  void writeMaxCliques(oDataStreamFile& os);
+  void writeInferenceArchitecture(oDataStreamFile& os, char section_name);
   void readMaxCliques(iDataStreamFile& is,  
 		      string const &ia_name,
 		      char section_type,

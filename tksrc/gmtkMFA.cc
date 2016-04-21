@@ -59,6 +59,7 @@ VCID(HGID)
 #include "GMTK_BoundaryTriangulate.h"
 
 #include "GMTK_SectionScheduler.h"
+#include "GMTK_LinearSectionScheduler.h"
 
 /*************************   INPUT TRAINABLE PARAMETER FILE HANDLING  *******************************************/
 #define GMTK_ARG_CPP_CMD_OPTS
@@ -483,6 +484,15 @@ main(int argc,char*argv[])
 			   jtWeight,
 			   gm_template);
 
+  SectionScheduler *myjt = new LinearSectionScheduler(gm_template, fp, gomFS);
+printf("writing IA to %s\n", output_tri_file.c_str());
+  myjt->printAllIAInfo(output_tri_file.c_str(), writeComments);
+
+
+
+
+
+#if 0
   //      backupTriFile(output_tri_file);
   oDataStreamFile os(output_tri_file.c_str());
   os.setWriteCommentsStatus(writeComments);
@@ -493,14 +503,6 @@ main(int argc,char*argv[])
   gm_template.writeMaxCliques(os);
   triangulator.ensurePartitionsAreChordal(gm_template);
 
-
-
-
-
-
-
-
-#if 0
 
   if (jut >= 0) {
     // then Just Unroll, Triangulate, and report on quality of triangulation.
