@@ -5,7 +5,7 @@
 
 AT_SETUP([O(Tn) space aurora Viterbi (ticket 545)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
-AT_CHECK([export GMTK_TEST_DIR=$(mktemp -d) 
+AT_CHECK([export GMTK_TEST_DIR=$(mktemp -d $TEST_AND_DEV/GMTKTESTSUITE.XXXXXX) 
  (cd $TEST_AND_DEV/auroraTutorial &&
   gmtkViterbi -of1 DATA/small.pfile -iswp1 T         \
     -inputMasterFile PARAMS/nonTrainable.master      \
@@ -26,7 +26,7 @@ AT_CLEANUP
 
 AT_SETUP([O(Tn) space TIMIT Viterbi (ticket 545)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/timit/system])
-AT_CHECK([export GMTK_TEST_DIR=$(mktemp -d $TEST_AND_DEV/GMTKTESTSUIE.XXXXXX) 
+AT_CHECK([export GMTK_TEST_DIR=$(mktemp -d $TEST_AND_DEV/GMTKTESTSUITE.XXXXXX) 
  (cd $TEST_AND_DEV/timit/system &&
   gmtkViterbi  \
     -of1 ./LISTS/test_mfcc_noSA.scp -nf1 39 -fmt1 htk -iswp1 T \
@@ -54,7 +54,7 @@ AT_CLEANUP
 AT_SETUP([O(Tn) space 7-word Viterbi (ticket 545)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/7-word])
 AT_XFAIL_IF([true])
-AT_CHECK([export GMTK_TEST_DIR=$(mktemp -d $TEST_AND_DEV/GMTKTESTSUIE.XXXXXX) 
+AT_CHECK([export GMTK_TEST_DIR=$(mktemp -d $TEST_AND_DEV/GMTKTESTSUITE.XXXXXX) 
  (cd $TEST_AND_DEV/7-word &&
   gmtkViterbi  \
     -strF ./params/model_3t3c7Wa.str \
@@ -81,7 +81,7 @@ AT_CLEANUP
 
 AT_SETUP([O(Tn) space static Viterbi (ticket 545)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/static_example])
-AT_CHECK([export GMTK_TEST_DIR=$(mktemp -d $TEST_AND_DEV/GMTKTESTSUIE.XXXXXX)
+AT_CHECK([export GMTK_TEST_DIR=$(mktemp -d $TEST_AND_DEV/GMTKTESTSUITE.XXXXXX)
  (cd $TEST_AND_DEV/static_example &&
   gmtkViterbi \
     -iswp1 F -of1 data_list_one_utt_20_frames \
@@ -102,7 +102,7 @@ AT_CLEANUP
 
 AT_SETUP([O(Tn) space triphone Viterbi (ticket 545)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/triphone_hmm])
-AT_CHECK([export GMTK_TEST_DIR=$(mktemp -d $TEST_AND_DEV/GMTKTESTSUIE.XXXXXX) 
+AT_CHECK([export GMTK_TEST_DIR=$(mktemp -d $TEST_AND_DEV/GMTKTESTSUITE.XXXXXX) 
  (cd $TEST_AND_DEV/triphone_hmm &&
   gmtkViterbi \
     -of1 misc/stream1.0:1546 -nf1 60 -dcdrng 0:19 \
