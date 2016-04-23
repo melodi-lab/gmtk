@@ -1606,10 +1606,27 @@ BoundaryTriangulate
 
   // create the template with these partition definitions.
 
+
+  // \begin{MFA}
+  vector< set<RV*> > C_l_u1C1_MFA;
+  vector< set<RV*> > C_l_u1C2_MFA;
+  // convert single set of interface variables to vector of singletons
+  for (set<RV*>::iterator it = C_l_u1C1[0].begin(); it != C_l_u1C1[0].end(); ++it) {
+    set<RV*> singleton;
+    singleton.insert(*it);
+    C_l_u1C1_MFA.push_back(singleton);
+  }
+  for (set<RV*>::iterator it = C_l_u1C2[0].begin(); it != C_l_u1C2[0].end(); ++it) {
+    set<RV*> singleton;
+    singleton.insert(*it);
+    C_l_u1C2_MFA.push_back(singleton);
+  }
+  // \end{MFA}
+
   if (findingLeftInterface)
-    gm_template.createPartitions(P,C,E,C_l_u1C1,C_l_u1C2);
+    gm_template.createPartitions(P, C, E, C_l_u1C1_MFA, C_l_u1C2_MFA);
   else // we are finding right interface, need to swap arguments. 
-    gm_template.createPartitions(E,C,P,C_l_u1C2,C_l_u1C1);
+    gm_template.createPartitions(E, C, P, C_l_u1C2_MFA, C_l_u1C1_MFA);
 
 
 }
