@@ -73,6 +73,11 @@ VCID(HGID)
 #define GMTK_ARG_CHECK_TRI_FILE_CARD
 #define GMTK_ARG_OUTPUT_TRI_FILE
 
+/****************************         INFERENCE OPTIONS           ***********************************************/
+#define GMTK_ARG_INFERENCE_OPTIONS
+#define GMTK_ARG_CLIQUE_VAR_ITER_ORDERS
+#define GMTK_ARG_JT_OPTIONS
+
 /************************            TRIANGULATION OPTIONS             ******************************************/
 #define GMTK_ARG_TRIANGULATION_OPTIONS
 #define GMTK_ARG_LOAD_PARAMETERS
@@ -485,6 +490,9 @@ main(int argc,char*argv[])
 			   gm_template);
 
   SectionScheduler *myjt = new LinearSectionScheduler(gm_template, fp, gomFS);
+
+  myjt->setUpDataStructures(varPartitionAssignmentPrior,varCliqueAssignmentPrior);
+
 printf("writing IA to %s\n", output_tri_file.c_str());
   myjt->printAllIAInfo(output_tri_file.c_str(), writeComments);
 

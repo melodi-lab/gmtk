@@ -92,6 +92,10 @@ class SectionScheduler {
 				   char const *varCliqueAssignmentPrior,
 				   bool checkTriFileCards);
 
+  // gmtkMFA version
+  virtual void setUpDataStructures(char const *varSectionAssignmentPrior,
+				   char const *varCliqueAssignmentPrior);
+
 
   // Prepare to do inference on segment of length T. Note that this
   // is the analog of the current JunctionTree::unroll() which sets up the
