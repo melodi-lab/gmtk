@@ -569,6 +569,33 @@ SectionScheduler::setUpDataStructures(iDataStreamFile &tri_file,
 
 
 
+// gmtkMFA version
+void 
+SectionScheduler::setUpDataStructures(char const *varSectionAssignmentPrior,
+				      char const *varCliqueAssignmentPrior)
+{
+  createSectionJunctionTrees(junctionTreeMSTpriorityStr);
+#if 0
+  computePartitionInterfaces();
+  createFactorCliques();
+  createDirectedGraphOfCliques();
+  assignRVsToCliques(varPartitionAssignmentPrior,varCliqueAssignmentPrior);
+  assignFactorsToCliques();
+  // TODO: assignScoringFactorsToCliques();
+  setUpMessagePassingOrders();
+  // create seps and VE seps.
+  createSeparators();
+  computeSeparatorIterationOrders();
+
+  // -- -- used only to compute weight.
+  getCumulativeUnassignedIteratedNodes(); 
+  // -- --
+
+  sortCliqueAssignedNodesAndComputeDispositions(varCliqueAssignmentPrior);
+#endif
+}
+
+
 /*
  *  init_CC_CE_rvs(it)
  *    given an iterator representing an unrolled segment,
