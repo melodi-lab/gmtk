@@ -575,10 +575,12 @@ SectionScheduler::setUpDataStructures(char const *varSectionAssignmentPrior,
 				      char const *varCliqueAssignmentPrior)
 {
   createSectionJunctionTrees(junctionTreeMSTpriorityStr);
-#if 0
-  computePartitionInterfaces();
+#if 1
+  computeSectionInterfaces();
   createFactorCliques();
   createDirectedGraphOfCliques();
+// FIXME - should be an argument
+static const char* varPartitionAssignmentPrior = "COI";
   assignRVsToCliques(varPartitionAssignmentPrior,varCliqueAssignmentPrior);
   assignFactorsToCliques();
   // TODO: assignScoringFactorsToCliques();
@@ -1209,304 +1211,304 @@ SectionScheduler::createSectionJunctionTree(Section& section, const string junct
     // then nothing to do
     infoMsg(IM::Giga,"Section has only one clique\n");
     return;
-  } else if (numMaxCliques == 2) {
-    // then JT is easy, just connect the two cliques.
-    infoMsg(IM::Giga,"Section has only two cliques\n");
-    section.cliques[0].neighbors.push_back(1);
-    section.cliques[1].neighbors.push_back(0);
-  } else {
+  }
 
-    infoMsg(IM::Giga,"Section has only %d cliques\n",numMaxCliques);
+  infoMsg(IM::Giga,"Section has %d cliques\n",numMaxCliques);
 
-    // Run max spanning tree to construct JT from set of cliques.
-    // This is basically Krusgal's algorithm, but without using the
-    // fast data structures (it doesn't need to be that fast
-    // since it is run one time per section, for all inference
-    // runs of any length.
+  // Build the edge weight matrix representation of the clique graph.
+  vector< Edge > edges;
+  edges.reserve((numMaxCliques*(numMaxCliques-1))/2);
 
-    // Create a vector of sets, corresponding to the trees associated
-    // with each clique. Non-empty set intersection corresponds to
-    // tree overlap. Each set contains the clique indices in teh set.
-    vector < set<unsigned> >  findSet;
-    findSet.resize(numMaxCliques);
-    for (unsigned i=0;i<numMaxCliques;i++) {
-      set<unsigned> iset;
-      iset.insert(i);
-      findSet[i] = iset;
-    }
+  for (unsigned i=0;i<numMaxCliques;i++) {
+    for (unsigned j=i+1;j<numMaxCliques;j++) {
+      set<RV*> sep_set;
+      set_intersection(section.cliques[i].nodes.begin(),
+		       section.cliques[i].nodes.end(),
+		       section.cliques[j].nodes.begin(),
+		       section.cliques[j].nodes.end(),
+		       inserter(sep_set,sep_set.end()));
+      Edge e;
+      // define the edge
+      e.clique1 = i; e.clique2 = j; 
+      // !!!************************!!!
+      // !!!** MUST DO THIS FIRST **!!!
+      // !!!************************!!!
+      // First push sep set size. To get a JT, we *MUST*
+      // always choose from among the cliques that
+      // have the largest intersection size.
+      e.weights.push_back((double)sep_set.size());
+      // now that the size is there, we have many other options.
 
-    vector< Edge > edges;
-    edges.reserve((numMaxCliques*(numMaxCliques-1))/2);
+      // All gets sorted in decreasing order, so that larger values
+      // have priority. Thus, the remaining items we push back in
+      // the case of ties.  
+      //
+      // *** Larger numbers are prefered. ***
+      //
+      // Options to include by priority of junctionTreeMSTpriorityStr:
+      //   * D: number of deterministic nodes in separator 
+      //   * E: number of deterministic nodes in union of cliques.
+      //   * S: neg. weight of separator
+      //   * U: neg. weight of union of cliques
+      //   * V: neg. frame number variance in separator
+      //   * W: neg. frame number variance in union
+      //   * H: number of hidden nodes in separator
+      //   * O: number of observed nodes in separator
+      //   * L: number of hidden nodes in union
+      //   * Q: number of observed nodes in union
+      //
+      //  Any can be preceeded by a '-' sign to flip effect. E.g., D-E-SU
+      //
+      // Default case: DSU
+      //
+      // TODO: Other ideas for this:
+      //        a) maximize number of variables in same frame (or near each other) (like variance)
+      //        b) minimize number of neighbors in each clique (i.e., 
+      //           if cliques already have neighbors, choose the ones with fewer.
+      //        c) integrate with RV value assignment to minimize
+      //           the number of unassigned clique nodes (since they're
+      //           iterated over w/o knowledge of any parents. If this
+      //           ends up being a search, make this be offline, in with gmtkTriangulate
+      // 
 
-    for (unsigned i=0;i<numMaxCliques;i++) {
-      for (unsigned j=i+1;j<numMaxCliques;j++) {
-	set<RV*> sep_set;
-	set_intersection(section.cliques[i].nodes.begin(),
-			 section.cliques[i].nodes.end(),
-			 section.cliques[j].nodes.begin(),
-			 section.cliques[j].nodes.end(),
-			 inserter(sep_set,sep_set.end()));
-	Edge e;
-	// define the edge
-	e.clique1 = i; e.clique2 = j; 
-	// !!!************************!!!
-	// !!!** MUST DO THIS FIRST **!!!
-	// !!!************************!!!
-	// First push sep set size. To get a JT, we *MUST*
-	// always choose from among the cliques that
-	// have the largest intersection size.
-	e.weights.push_back((double)sep_set.size());
-	// now that the size is there, we have many other options.
+      float mult = 1.0;
+      for (unsigned charNo=0;charNo< junctionTreeMSTpriorityStr.size(); charNo++) {
+	const char curCase = toupper(junctionTreeMSTpriorityStr[charNo]);
+	if (curCase == '-') {
+	  mult = -1.0;
+	  continue;
+	}
 
-	// All gets sorted in decreasing order, so that larger values
-	// have priority. Thus, the remaining items we push back in
-	// the case of ties.  
-	//
-	// *** Larger numbers are prefered. ***
-	//
-	// Options to include by priority of junctionTreeMSTpriorityStr:
-	//   * D: number of deterministic nodes in separator 
-	//   * E: number of deterministic nodes in union of cliques.
-	//   * S: neg. weight of separator
-	//   * U: neg. weight of union of cliques
-	//   * V: neg. frame number variance in separator
-	//   * W: neg. frame number variance in union
-	//   * H: number of hidden nodes in separator
-	//   * O: number of observed nodes in separator
-	//   * L: number of hidden nodes in union
-	//   * Q: number of observed nodes in union
-	//
-	//  Any can be preceeded by a '-' sign to flip effect. E.g., D-E-SU
-	//
-	// Default case: DSU
-	//
-	// TODO: Other ideas for this:
-	//        a) maximize number of variables in same frame (or near each other) (like variance)
-	//        b) minimize number of neighbors in each clique (i.e., 
-	//           if cliques already have neighbors, choose the ones with fewer.
-	//        c) integrate with RV value assignment to minimize
-	//           the number of unassigned clique nodes (since they're
-	//           iterated over w/o knowledge of any parents. If this
-	//           ends up being a search, make this be offline, in with gmtkTriangulate
-	// 
+	if (curCase == 'D') {
 
-	float mult = 1.0;
-	for (unsigned charNo=0;charNo< junctionTreeMSTpriorityStr.size(); charNo++) {
-	  const char curCase = toupper(junctionTreeMSTpriorityStr[charNo]);
-	  if (curCase == '-') {
-	    mult = -1.0;
-	    continue;
+	  // push back number of deterministic nodes in
+	  // the separator
+	  set<RV*>::iterator it;
+	  set<RV*>::iterator it_end = sep_set.end();
+	  unsigned numDeterministicNodes = 0;
+	  for (it = sep_set.begin(); it != it_end; it++) {
+	    RV* rv = (*it);
+	    if (rv->discrete() && RV2DRV(rv)->deterministic())
+	      numDeterministicNodes++;
 	  }
+	  e.weights.push_back(mult*(double)numDeterministicNodes);
 
-	  if (curCase == 'D') {
+	} else if (curCase == 'E' || curCase == 'L' || curCase == 'Q' || curCase == 'W') {
+	  // push back negative weight of two cliques together.
+	  set<RV*> clique_union;
+	  set_union(section.cliques[i].nodes.begin(),
+		    section.cliques[i].nodes.end(),
+		    section.cliques[j].nodes.begin(),
+		    section.cliques[j].nodes.end(),
+		    inserter(clique_union,clique_union.end()));
 
+	  if (curCase == 'E') {
 	    // push back number of deterministic nodes in
-	    // the separator
+	    // the union
 	    set<RV*>::iterator it;
-	    set<RV*>::iterator it_end = sep_set.end();
+	    set<RV*>::iterator it_end = clique_union.end();
 	    unsigned numDeterministicNodes = 0;
-	    for (it = sep_set.begin(); it != it_end; it++) {
+	    for (it = clique_union.begin(); it != it_end; it++) {
 	      RV* rv = (*it);
 	      if (rv->discrete() && RV2DRV(rv)->deterministic())
 		numDeterministicNodes++;
 	    }
 	    e.weights.push_back(mult*(double)numDeterministicNodes);
-
-	  } else if (curCase == 'E' || curCase == 'L' || curCase == 'Q' || curCase == 'W') {
-	    // push back negative weight of two cliques together.
-	    set<RV*> clique_union;
-	    set_union(section.cliques[i].nodes.begin(),
-		      section.cliques[i].nodes.end(),
-		      section.cliques[j].nodes.begin(),
-		      section.cliques[j].nodes.end(),
-		      inserter(clique_union,clique_union.end()));
-
-	    if (curCase == 'E') {
-	      // push back number of deterministic nodes in
-	      // the union
-	      set<RV*>::iterator it;
-	      set<RV*>::iterator it_end = clique_union.end();
-	      unsigned numDeterministicNodes = 0;
-	      for (it = clique_union.begin(); it != it_end; it++) {
-		RV* rv = (*it);
-		if (rv->discrete() && RV2DRV(rv)->deterministic())
-		  numDeterministicNodes++;
-	      }
-	      e.weights.push_back(mult*(double)numDeterministicNodes);
-	    } else if (curCase == 'L') {
-	      set<RV*>::iterator it;
-	      set<RV*>::iterator it_end = clique_union.end();
-	      unsigned numHidden = 0;
-	      for (it = clique_union.begin(); it != it_end; it++) {
-		RV* rv = (*it);
-		if (rv->hidden())
-		  numHidden++;
-	      }
-	      e.weights.push_back(mult*(double)numHidden);
-	    } else if (curCase == 'Q') {
-	      set<RV*>::iterator it;
-	      set<RV*>::iterator it_end = clique_union.end();
-	      unsigned numObserved = 0;
-	      for (it = clique_union.begin(); it != it_end; it++) {
-		RV* rv = (*it);
-		if (rv->observed())
-		  numObserved++;
-	      }
-	      e.weights.push_back(mult*(double)numObserved);
-	    } else if (curCase == 'W') {
-	      // compute frame number variance in union, push back
-	      // negative to prefer smalller frame variance (i.e.,
-	      // connect things that on average are close to each
-	      // other in time).
-	      set<RV*>::iterator it;
-	      set<RV*>::iterator it_end = clique_union.end();
-	      double sum = 0;
-	      double sumSq = 0;
-	      for (it = clique_union.begin(); it != it_end; it++) {
-		RV* rv = (*it);
-		sum += rv->frame();
-		sumSq += rv->frame()*rv->frame();
-	      }
-	      double invsize = 1.0/(double)clique_union.size();
-	      double variance = invsize*(sumSq - sum*sum*invsize);
-	      e.weights.push_back(mult*(double)-variance);
-	    }
-	  } else if (curCase == 'S') {
-
-	    // push back negative weight of separator, to prefer
-	    // least negative (smallest)  weight, since larger numbers
-	    // are prefered.
-	    e.weights.push_back(-(double)MaxClique::computeWeight(sep_set));
-
-	    // printf("weight of clique %d = %f, %d = %f\n",
-	    // i,section.cliques[i].weight(),
-	    // j,section.cliques[j].weight());
-
-	  } else if (curCase == 'U') {
-
-	    // push back negative weight of two cliques together.
-	    set<RV*> clique_union;
-	    set_union(section.cliques[i].nodes.begin(),
-		      section.cliques[i].nodes.end(),
-		      section.cliques[j].nodes.begin(),
-		      section.cliques[j].nodes.end(),
-		      inserter(clique_union,clique_union.end()));
-	    e.weights.push_back(-(double)MaxClique::computeWeight(clique_union));
-	  } else if (curCase == 'V') {
-	    // compute frame number variance in separator, push back
-	    // negative to prefer smalller frame variance (i.e.,
-	    // connect things that on average are close to each
-	    // other in time).
+	  } else if (curCase == 'L') {
 	    set<RV*>::iterator it;
-	    set<RV*>::iterator it_end = sep_set.end();
-	    double sum = 0;
-	    double sumSq = 0;
-	    for (it = sep_set.begin(); it != it_end; it++) {
-	      RV* rv = (*it);
-	      sum += rv->frame();
-	      sumSq += rv->frame()*rv->frame();
-	    }
-	    if (sep_set.size() == 0) {
-	      e.weights.push_back(mult*(double)-FLT_MAX);
-	    } else {
-	      double invsize = 1.0/(double)sep_set.size();
-	      double variance = invsize*(sumSq - sum*sum*invsize);
-	      e.weights.push_back(mult*(double)-variance);
-	    }
-	  } else if (curCase == 'H') {
-	    set<RV*>::iterator it;
-	    set<RV*>::iterator it_end = sep_set.end();
+	    set<RV*>::iterator it_end = clique_union.end();
 	    unsigned numHidden = 0;
-	    for (it = sep_set.begin(); it != it_end; it++) {
+	    for (it = clique_union.begin(); it != it_end; it++) {
 	      RV* rv = (*it);
 	      if (rv->hidden())
 		numHidden++;
 	    }
 	    e.weights.push_back(mult*(double)numHidden);
-	  } else if (curCase == 'O') {
+	  } else if (curCase == 'Q') {
 	    set<RV*>::iterator it;
-	    set<RV*>::iterator it_end = sep_set.end();
+	    set<RV*>::iterator it_end = clique_union.end();
 	    unsigned numObserved = 0;
-	    for (it = sep_set.begin(); it != it_end; it++) {
+	    for (it = clique_union.begin(); it != it_end; it++) {
 	      RV* rv = (*it);
 	      if (rv->observed())
 		numObserved++;
 	    }
 	    e.weights.push_back(mult*(double)numObserved);
-	  } else {
-	    error("ERROR: Unrecognized junction tree clique sort order letter '%c' in string '%s'\n",curCase,junctionTreeMSTpriorityStr.c_str());
+	  } else if (curCase == 'W') {
+	    // compute frame number variance in union, push back
+	    // negative to prefer smalller frame variance (i.e.,
+	    // connect things that on average are close to each
+	    // other in time).
+	    set<RV*>::iterator it;
+	    set<RV*>::iterator it_end = clique_union.end();
+	    double sum = 0;
+	    double sumSq = 0;
+	    for (it = clique_union.begin(); it != it_end; it++) {
+	      RV* rv = (*it);
+	      sum += rv->frame();
+	      sumSq += rv->frame()*rv->frame();
+	    }
+	    double invsize = 1.0/(double)clique_union.size();
+	    double variance = invsize*(sumSq - sum*sum*invsize);
+	    e.weights.push_back(mult*(double)-variance);
 	  }
-	  mult = 1.0;
-	}
+	} else if (curCase == 'S') {
 
-	// add the edge.
-	edges.push_back(e);
-	if (IM::messageGlb(IM::Giga)) {
-	  infoMsg(IM::Giga,"Edge (%d,%d) has sep size %.0f, ",
-		  i,j,
-		  e.weights[0]);
-	  for (unsigned charNo=0;charNo< junctionTreeMSTpriorityStr.size(); charNo++) {
-	    const char curCase = toupper(junctionTreeMSTpriorityStr[charNo]);
-	    infoMsg(IM::Giga,"%c,weight[%d] = %f, ",curCase,charNo+1,e.weights[charNo+1]);
+	  // push back negative weight of separator, to prefer
+	  // least negative (smallest)  weight, since larger numbers
+	  // are prefered.
+	  e.weights.push_back(-(double)MaxClique::computeWeight(sep_set));
+
+	  // printf("weight of clique %d = %f, %d = %f\n",
+	  // i,section.cliques[i].weight(),
+	  // j,section.cliques[j].weight());
+
+	} else if (curCase == 'U') {
+
+	  // push back negative weight of two cliques together.
+	  set<RV*> clique_union;
+	  set_union(section.cliques[i].nodes.begin(),
+		    section.cliques[i].nodes.end(),
+		    section.cliques[j].nodes.begin(),
+		    section.cliques[j].nodes.end(),
+		    inserter(clique_union,clique_union.end()));
+	  e.weights.push_back(-(double)MaxClique::computeWeight(clique_union));
+	} else if (curCase == 'V') {
+	  // compute frame number variance in separator, push back
+	  // negative to prefer smalller frame variance (i.e.,
+	  // connect things that on average are close to each
+	  // other in time).
+	  set<RV*>::iterator it;
+	  set<RV*>::iterator it_end = sep_set.end();
+	  double sum = 0;
+	  double sumSq = 0;
+	  for (it = sep_set.begin(); it != it_end; it++) {
+	    RV* rv = (*it);
+	    sum += rv->frame();
+	    sumSq += rv->frame()*rv->frame();
 	  }
-	  infoMsg(IM::Giga,"\n");
+	  if (sep_set.size() == 0) {
+	    e.weights.push_back(mult*(double)-FLT_MAX);
+	  } else {
+	    double invsize = 1.0/(double)sep_set.size();
+	    double variance = invsize*(sumSq - sum*sum*invsize);
+	    e.weights.push_back(mult*(double)-variance);
+	  }
+	} else if (curCase == 'H') {
+	  set<RV*>::iterator it;
+	  set<RV*>::iterator it_end = sep_set.end();
+	  unsigned numHidden = 0;
+	  for (it = sep_set.begin(); it != it_end; it++) {
+	    RV* rv = (*it);
+	    if (rv->hidden())
+	      numHidden++;
+	  }
+	  e.weights.push_back(mult*(double)numHidden);
+	} else if (curCase == 'O') {
+	  set<RV*>::iterator it;
+	  set<RV*>::iterator it_end = sep_set.end();
+	  unsigned numObserved = 0;
+	  for (it = sep_set.begin(); it != it_end; it++) {
+	    RV* rv = (*it);
+	    if (rv->observed())
+	      numObserved++;
+	  }
+	  e.weights.push_back(mult*(double)numObserved);
+	} else {
+	  error("ERROR: Unrecognized junction tree clique sort order letter '%c' in string '%s'\n",
+		curCase, junctionTreeMSTpriorityStr.c_str());
 	}
+	mult = 1.0;
+      }
+
+      // add the edge.
+      edges.push_back(e);
+      if (IM::messageGlb(IM::Giga)) {
+	infoMsg(IM::Giga,"Edge (%d,%d) has sep size %.0f, ",
+		i,j,
+		e.weights[0]);
+	for (unsigned charNo=0;charNo< junctionTreeMSTpriorityStr.size(); charNo++) {
+	  const char curCase = toupper(junctionTreeMSTpriorityStr[charNo]);
+	  infoMsg(IM::Giga,"%c,weight[%d] = %f, ",curCase,charNo+1,e.weights[charNo+1]);
+	}
+	infoMsg(IM::Giga,"\n");
       }
     }
+  }
+  // sort in decreasing order by edge weight which in this
+  // case is the sep-set size.
+  sort(edges.begin(),edges.end(),EdgeCompare());
 
-    // sort in decreasing order by edge weight which in this
-    // case is the sep-set size.
-    sort(edges.begin(),edges.end(),EdgeCompare());
-
-    unsigned joinsPlusOne = 1;
-    for (unsigned i=0;i<edges.size();i++) {
-      infoMsg(IM::Giga,"Edge %d has sep size %.0f\n",
-	      i,
-	      edges[i].weights[0]);
-
-      set<unsigned>& iset1 = findSet[edges[i].clique1];
-      set<unsigned>& iset2 = findSet[edges[i].clique2];
-      if (iset1 != iset2) {
-	// merge the two sets
-	set<unsigned> new_set;
-	set_union(iset1.begin(),iset1.end(),
-		  iset2.begin(),iset2.end(),
-		  inserter(new_set,new_set.end()));
-	// make sure that all members of the set point to the
-	// new set.
-	set<unsigned>::iterator ns_iter;
-	for (ns_iter = new_set.begin(); ns_iter != new_set.end(); ns_iter ++) {
-	  const unsigned clique = *ns_iter;
-	  findSet[clique] = new_set;
-	}
-	infoMsg(IM::Giga,"Joining cliques %d and %d (edge %d) with intersection size %.0f\n",
-		edges[i].clique1,edges[i].clique2,i,edges[i].weights[0]);
-
-	if (edges[i].weights[0] == 0.0) {
-	  if (IM::messageGlb(IM::High)) {
-	    // there is no way to know the difference here if the
-	    // graph is non-triangualted or is simply disconnected
-	    // (which is ok). A non-triangulated graph might have
-	    // resulted from the user editing the trifile, but we
-	    // presume that MCS has already checked for this when
-	    // reading in the trifiles. We just issue an informative
-	    // message just in case.
-	    printf("NOTE: junction tree creation joining two cliques (%d and %d) with size 0 set intersection. Either disconnected (which is ok) or non-triangulated (which is bad) graph.\n",
-		   edges[i].clique1,edges[i].clique2);
-	    // TODO: print out two cliques that are trying to be joined.
-	    printf("Clique %d: ",edges[i].clique1);
-	    section.cliques[edges[i].clique1].printCliqueNodes(stdout);
-	    printf("Clique %d: ",edges[i].clique2);
-	    section.cliques[edges[i].clique2].printCliqueNodes(stdout);
-	  }
-	}
-
-	section.cliques[edges[i].clique1].neighbors.push_back(edges[i].clique2);
-	section.cliques[edges[i].clique2].neighbors.push_back(edges[i].clique1);
-
-	if (++joinsPlusOne == numMaxCliques)
-	  break;
+  // Run max spanning tree to construct JT from set of cliques.
+  // This is basically Krusgal's algorithm, but without using the
+  // fast data structures (it doesn't need to be that fast
+  // since it is run one time per section, for all inference
+  // runs of any length.
+  
+  // Create a vector of sets, corresponding to the trees associated
+  // with each clique. Non-empty set intersection corresponds to
+  // tree overlap. Each set contains the clique indices in teh set.
+  vector < set<unsigned> >  findSet;
+  findSet.resize(numMaxCliques);
+  for (unsigned i=0;i<numMaxCliques;i++) {
+    set<unsigned> iset;
+    iset.insert(i);
+    findSet[i] = iset;
+  }
+  
+  unsigned joinsPlusOne = 1;
+  for (unsigned i=0;i<edges.size();i++) {
+    infoMsg(IM::Giga,"Edge %d has sep size %.0f\n",
+	    i,
+	    edges[i].weights[0]);
+    
+    set<unsigned>& iset1 = findSet[edges[i].clique1];
+    set<unsigned>& iset2 = findSet[edges[i].clique2];
+    if (iset1 != iset2) {
+      // merge the two sets
+      set<unsigned> new_set;
+      set_union(iset1.begin(),iset1.end(),
+		iset2.begin(),iset2.end(),
+		inserter(new_set,new_set.end()));
+      // make sure that all members of the set point to the
+      // new set.
+      set<unsigned>::iterator ns_iter;
+      for (ns_iter = new_set.begin(); ns_iter != new_set.end(); ns_iter ++) {
+	const unsigned clique = *ns_iter;
+	findSet[clique] = new_set;
       }
+      if (edges[i].weights[0] == 0.0) {
+	if (IM::messageGlb(IM::High)) {
+	  // there is no way to know the difference here if the
+	  // graph is non-triangualted or is simply disconnected
+	  // (which is ok). A non-triangulated graph might have
+	  // resulted from the user editing the trifile, but we
+	  // presume that MCS has already checked for this when
+	  // reading in the trifiles. We just issue an informative
+	  // message just in case.
+	  printf("NOTE: junction tree creation not joining two cliques (%d and %d) with size 0 set intersection. Either disconnected (which is ok) or non-triangulated (which is bad) graph.\n",
+		 edges[i].clique1,edges[i].clique2);
+	  // TODO: print out two cliques that are trying to be joined.
+	  printf("Clique %d: ",edges[i].clique1);
+	  section.cliques[edges[i].clique1].printCliqueNodes(stdout);
+	  printf("Clique %d: ",edges[i].clique2);
+	  section.cliques[edges[i].clique2].printCliqueNodes(stdout);
+        }
+      } else {
+        // Only use non-empty sep set edges to construct junction forest
+        // to avoid connecting a disconnected graph 
+        infoMsg(IM::Giga,"Joining cliques %d and %d (edge %d) with intersection size %.0f\n",
+	       edges[i].clique1,edges[i].clique2,i,edges[i].weights[0]);
+        section.cliques[edges[i].clique1].neighbors.push_back(edges[i].clique2);
+        section.cliques[edges[i].clique2].neighbors.push_back(edges[i].clique1);
+      }
+      // Early termination optimization: there are (n)(n-1)/2 edges to iterate 
+      //   over, but a spanning forest can use at most n-1.  I think it's safe to
+      //   count zero weight edges here - actually, if the edges are sorted with
+      //   sep set size as the major key, I think we could break on 
+      //   weights[0] == 0.0  -RR
+      if (++joinsPlusOne == numMaxCliques)
+	break;
     }
   }
 }
