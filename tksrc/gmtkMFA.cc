@@ -491,7 +491,7 @@ main(int argc,char*argv[])
 
   SectionScheduler *myjt = new LinearSectionScheduler(gm_template, fp, gomFS);
 
-  myjt->setUpDataStructures(varPartitionAssignmentPrior,varCliqueAssignmentPrior);
+  myjt->setUpDataStructures(varSectionAssignmentPrior,varCliqueAssignmentPrior);
 
 printf("writing IA to %s\n", output_tri_file.c_str());
   myjt->printAllIAInfo(output_tri_file.c_str(), writeComments);

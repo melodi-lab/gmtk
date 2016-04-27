@@ -141,9 +141,9 @@ public:
 
   // returns the left and right interface clique. If not defined,
   // sets the variable to ~0x0.
-  void findLInterfaceClique(unsigned &liClique, bool &liCliqueSameAsInterface,
+  void findLInterfaceClique(vector<unsigned> &liClique, bool &liCliqueSameAsInterface,
 			    const string priorityStr);
-  void findRInterfaceClique(unsigned &riClique, bool &riCliqueSameAsInterface,
+  void findRInterfaceClique(vector<unsigned> &riClique, bool &riCliqueSameAsInterface,
 			    const string priorityStr);
 
   // return the index of the clique with max/min weight.

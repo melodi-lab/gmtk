@@ -375,7 +375,7 @@ main(int argc,char*argv[])
   {
     // do this in scope so that is gets deleted now rather than later.
     iDataStreamFile is(tri_file.c_str());
-    section_scheduler->setUpDataStructures(is, varPartitionAssignmentPrior,varCliqueAssignmentPrior, checkTriFileCards);
+    section_scheduler->setUpDataStructures(is, varSectionAssignmentPrior,varCliqueAssignmentPrior, checkTriFileCards);
   }
 
   ForwardBackwardTask *fwd_bkwd_alg = NULL;
