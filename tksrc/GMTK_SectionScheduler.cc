@@ -596,7 +596,6 @@ SectionScheduler::setUpDataStructures(char const *varSectionAssignmentPrior,
 #endif
 }
 
-
 /*
  *  init_CC_CE_rvs(it)
  *    given an iterator representing an unrolled segment,
@@ -1186,7 +1185,7 @@ SectionScheduler::createSectionJunctionForest(Section& section, string const &ia
  *
  * Side Effects:
  *   Modifies all neighbors variables within the cliques within the
- *   section.
+ *   section. Also initializes the Section's connected_components.
  *
  * Results:
  *   none
@@ -1201,6 +1200,8 @@ SectionScheduler::createSectionJunctionTree(Section& section, const string junct
 
   infoMsg(IM::Giga,"Starting create JT\n");
 
+  section.connected_components.clear();
+
   if (numMaxCliques == 0) {
     // Nothing to do.
     // This could happen if the section is empty which might occur
@@ -1209,6 +1210,8 @@ SectionScheduler::createSectionJunctionTree(Section& section, const string junct
   } else if (numMaxCliques == 1) {
     // then nothing to do
     infoMsg(IM::Giga,"Section has only one clique\n");
+    section.connected_components.resize(1);
+    section.connected_components[0].insert(0); // the single clique is the only component
     return;
   }
 
@@ -1439,7 +1442,7 @@ SectionScheduler::createSectionJunctionTree(Section& section, const string junct
   sort(edges.begin(),edges.end(),EdgeCompare());
 
   // Run max spanning tree to construct JT from set of cliques.
-  // This is basically Krusgal's algorithm, but without using the
+  // This is basically Kruskal's algorithm, but without using the
   // fast data structures (it doesn't need to be that fast
   // since it is run one time per section, for all inference
   // runs of any length.
@@ -1457,47 +1460,49 @@ SectionScheduler::createSectionJunctionTree(Section& section, const string junct
   
   unsigned joinsPlusOne = 1;
   for (unsigned i=0;i<edges.size();i++) {
-    infoMsg(IM::Giga,"Edge %d has sep size %.0f\n",
+    infoMsg(IM::Giga,"Edge %u has sep size %.0f\n",
 	    i,
 	    edges[i].weights[0]);
     
-    set<unsigned>& iset1 = findSet[edges[i].clique1];
-    set<unsigned>& iset2 = findSet[edges[i].clique2];
-    if (iset1 != iset2) {
-      // merge the two sets
-      set<unsigned> new_set;
-      set_union(iset1.begin(),iset1.end(),
-		iset2.begin(),iset2.end(),
-		inserter(new_set,new_set.end()));
-      // make sure that all members of the set point to the
-      // new set.
-      set<unsigned>::iterator ns_iter;
-      for (ns_iter = new_set.begin(); ns_iter != new_set.end(); ns_iter ++) {
-	const unsigned clique = *ns_iter;
-	findSet[clique] = new_set;
+    if (edges[i].weights[0] == 0.0) {
+      if (IM::messageGlb(IM::High)) {
+	// there is no way to know the difference here if the
+	// graph is non-triangualted or is simply disconnected
+	// (which is ok). A non-triangulated graph might have
+	// resulted from the user editing the trifile, but we
+	// presume that MCS has already checked for this when
+	// reading in the trifiles. We just issue an informative
+	// message just in case.
+	printf("NOTE: junction tree creation not joining two cliques (%d and %d) with size 0 set intersection. Either disconnected (which is ok) or non-triangulated (which is bad) graph.\n",
+	       edges[i].clique1,edges[i].clique2);
+	// TODO: print out two cliques that are trying to be joined.
+	printf("Clique %d: ",edges[i].clique1);
+	section.cliques[edges[i].clique1].printCliqueNodes(stdout);
+	printf("Clique %d: ",edges[i].clique2);
+	section.cliques[edges[i].clique2].printCliqueNodes(stdout);
       }
-      if (edges[i].weights[0] == 0.0) {
-	if (IM::messageGlb(IM::High)) {
-	  // there is no way to know the difference here if the
-	  // graph is non-triangualted or is simply disconnected
-	  // (which is ok). A non-triangulated graph might have
-	  // resulted from the user editing the trifile, but we
-	  // presume that MCS has already checked for this when
-	  // reading in the trifiles. We just issue an informative
-	  // message just in case.
-	  printf("NOTE: junction tree creation not joining two cliques (%d and %d) with size 0 set intersection. Either disconnected (which is ok) or non-triangulated (which is bad) graph.\n",
-		 edges[i].clique1,edges[i].clique2);
-	  // TODO: print out two cliques that are trying to be joined.
-	  printf("Clique %d: ",edges[i].clique1);
-	  section.cliques[edges[i].clique1].printCliqueNodes(stdout);
-	  printf("Clique %d: ",edges[i].clique2);
-	  section.cliques[edges[i].clique2].printCliqueNodes(stdout);
-        }
-      } else {
-        // Only use non-empty sep set edges to construct junction forest
-        // to avoid connecting a disconnected graph 
+    } else {
+      // Only use non-empty sep set edges to construct junction forest
+      // to avoid connecting a disconnected graph 
+
+      set<unsigned>& iset1 = findSet[edges[i].clique1];
+      set<unsigned>& iset2 = findSet[edges[i].clique2];
+      if (iset1 != iset2) {
+	// merge the two sets
+	set<unsigned> new_set;
+	set_union(iset1.begin(),iset1.end(),
+		  iset2.begin(),iset2.end(),
+		  inserter(new_set,new_set.end()));
+	// make sure that all members of the set point to the
+	// new set.
+	set<unsigned>::iterator ns_iter;
+	for (ns_iter = new_set.begin(); ns_iter != new_set.end(); ns_iter ++) {
+	  const unsigned clique = *ns_iter;
+	  findSet[clique] = new_set;
+	}
+
         infoMsg(IM::Giga,"Joining cliques %d and %d (edge %d) with intersection size %.0f\n",
-	       edges[i].clique1,edges[i].clique2,i,edges[i].weights[0]);
+		edges[i].clique1,edges[i].clique2,i,edges[i].weights[0]);
         section.cliques[edges[i].clique1].neighbors.push_back(edges[i].clique2);
         section.cliques[edges[i].clique2].neighbors.push_back(edges[i].clique1);
       }
@@ -1510,6 +1515,43 @@ SectionScheduler::createSectionJunctionTree(Section& section, const string junct
 	break;
     }
   }
+  
+  // Initialize connected components using left-over Kruskal union-find data
+
+  // For clique # i, findSet[i] is the set of cliques in the same
+  // connected component as clique # i. If clique #s i and j are in
+  // the same connected component, findSet[i] == findSet[j], so we
+  // want to find the set of unique findSet values.
+
+  // visited[i] = if we already know clique #i's connected component
+  vector<bool> visited(numMaxCliques, false); 
+  unsigned num_components = 0;
+  for (unsigned i = 0; i < numMaxCliques; ++i) {
+    set<unsigned> &i_set = findSet[i];
+    set<unsigned>::iterator it = i_set.begin(); // first clique # in this connected component
+    if (! visited[*it] ) {
+      // we've discovered a new component
+      section.connected_components.push_back(set<unsigned>()); // grow the connected_components vector
+      for ( ; it != i_set.end(); ++it) {
+	section.connected_components[num_components].insert(*it);
+	visited[*it] = true;
+      }
+      num_components += 1;
+    }
+  }
+
+  printf("connected components:\n");
+  for (unsigned i=0; i < num_components; ++i) {
+    printf("  %u: ", i);
+    set<unsigned> &cc = section.connected_components[i];
+    for (set<unsigned>::iterator it = cc.begin(); it != cc.end(); ++it) {
+      printf("%u {", *it);
+      printRVSet(stdout, section.cliques[*it].nodes, false);
+      printf("}  ");
+    }
+    printf("\n");
+  }
+
 }
 
 
@@ -1871,6 +1913,11 @@ printf("P -> C interface:\n");
   P1.findRInterfaceClique(P_ri_to_C,P_riCliqueSameAsInterface,interfaceCliquePriorityStr);
 printf("C <- E interface:\n");
   E1.findLInterfaceClique(E_li_to_C,E_liCliqueSameAsInterface,interfaceCliquePriorityStr);
+
+
+  twiddle according to use left/right interface. see JunctionTree::computePartitionInterface()
+  pick roots for P, C, E sub JTs - not necessarily interface cliques as there might be no temporal edges
+		      - here, or in computeMessageOrders ?
 
   P_ri_to_C = P1.section_ri;
   P_ri_to_C_size = P_ri_to_C.size(); // gm_template.PCInterface_in_P.size();
@@ -4363,7 +4410,7 @@ SectionScheduler::junctionTreeWeight(vector<MaxClique>& cliques,
     double weight = -10e20;
     for (unsigned i=0;i<cliques.size();i++) {
       if (MaxClique::computeWeight(cliques[i].nodes) > weight) {
-	// FIXME - should call find?InterfaceClique() on E
+	// FIXME - should this be the sum of the max weights in each connected component?
 	root[0] = i;
       }
     }

@@ -50,6 +50,9 @@ public:
   // of each of the sections.
   vector<MaxClique> cliques;
 
+  // Connected components of the junction forest
+  vector< set<unsigned> > connected_components;
+ 
   // a string with information about the method used to form the cliques
   string triMethod;
 

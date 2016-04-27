@@ -461,8 +461,9 @@ JT_Partition::findLInterfaceClique(vector<unsigned> &liClique,bool& liCliqueSame
     liClique.push_back(i_clique);
 printf("li clique # %u {", i_clique);
 printRVSet(stdout, cliques[i_clique].nodes, false);
-printf("} for interface vars ");
-printRVSet(stdout, liNodes[i], true);
+printf("} for interface vars {");
+printRVSet(stdout, liNodes[i], false);
+printf("}\n");
     liCliqueSameAsInterface = liCliqueSameAsInterface && iCliqueSameAsInterface;
   }
 }
@@ -478,8 +479,9 @@ JT_Partition::findRInterfaceClique(vector<unsigned> &riClique,bool& riCliqueSame
     riClique.push_back(i_clique);
 printf("ri clique # %u {", i_clique);
 printRVSet(stdout, cliques[i_clique].nodes, false);
-printf("} for interface vars ");
-printRVSet(stdout, riNodes[i], true);
+printf("} for interface vars {");
+printRVSet(stdout, riNodes[i], false);
+printf("}\n");
     riCliqueSameAsInterface = riCliqueSameAsInterface && iCliqueSameAsInterface;
   }
 }
