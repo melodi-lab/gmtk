@@ -539,3 +539,19 @@ JT_Partition::cliqueWithMinWeight()
 }
 
 
+// for each connected component, find the clique with maximum weight
+void 
+JT_Partition::findSubtreeCliquesWithMaxWeight(vector<unsigned> &heaviest_cliques) {
+  heaviest_cliques.clear();
+  for (unsigned component=0; component < connected_components.size(); ++component) {
+    double weight = DBL_MAX;
+    unsigned res = ~0x0;
+    set<unsigned> &subtree = connected_components[component];
+    for (set<unsigned>::iterator it = subtree.begin(); it != subtree.end(); ++it) {
+      if (MaxClique::computeWeight(cliques[*it].nodes) < weight) {
+	res = *it;
+      }
+    }
+    heaviest_cliques.push_back(res);
+  }
+}

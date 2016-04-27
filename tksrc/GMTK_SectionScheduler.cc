@@ -1914,44 +1914,46 @@ printf("P -> C interface:\n");
 printf("C <- E interface:\n");
   E1.findLInterfaceClique(E_li_to_C,E_liCliqueSameAsInterface,interfaceCliquePriorityStr);
 
-
-  twiddle according to use left/right interface. see JunctionTree::computePartitionInterface()
+#if 0
   pick roots for P, C, E sub JTs - not necessarily interface cliques as there might be no temporal edges
 		      - here, or in computeMessageOrders ?
+#endif
 
-  P_ri_to_C = P1.section_ri;
-  P_ri_to_C_size = P_ri_to_C.size(); // gm_template.PCInterface_in_P.size();
-  E_li_to_C = E1.section_li;
-  
-  C_li_to_P = Co.section_li;
-  C_li_to_C = C_li_to_P;
-  C_ri_to_E = Co.section_ri;
-  C_ri_to_C = C_ri_to_E;
+  P_ri_to_C_size = P_ri_to_C.size();
 
+  bool Co_liCliqueSameAsInterface;
+  bool Co_riCliqueSameAsInterface;
+  if (gm_template.usesLeftInterface()) {
+    // left interface case
+    
+    Co.findLInterfaceClique(C_li_to_C,Co_liCliqueSameAsInterface,interfaceCliquePriorityStr);
+    C_li_to_P = C_li_to_C;
 
-  // FIXME - need to pick an E root for each connected component, no right interface
-  // sanity check
-  assert (C_ri_to_C == C_ri_to_E);
-  
-  C_ri_to_C_size = C_ri_to_C.size(); //gm_template.CEInterface_in_C.size();
+    Co.findRInterfaceClique(C_ri_to_E,Co_riCliqueSameAsInterface,interfaceCliquePriorityStr);
+    C_ri_to_C = C_ri_to_E;
+    C_ri_to_C_size = C_ri_to_C.size();
 
-  
-  set<unsigned> potential_E_roots;
-  for (unsigned i=0; i < E1.cliques.size(); ++i) {
-    potential_E_roots.insert(i);
+  } else {
+    // right interface case
+
+    Co.findLInterfaceClique(C_li_to_P,Co_liCliqueSameAsInterface,interfaceCliquePriorityStr);
+    C_li_to_C = C_li_to_P;
+
+    Co.findRInterfaceClique(C_ri_to_C,Co_riCliqueSameAsInterface,interfaceCliquePriorityStr);
+    C_ri_to_E = C_ri_to_C;
+    C_ri_to_C_size = C_ri_to_C.size();
   }
-  for (vector<pair<unsigned,unsigned> >::iterator it = E1_message_order.begin();
-       it != E1_message_order.end();
-       ++it)
-  {
-    potential_E_roots.erase((*it).first); // roots cannot be message source
-  }
-  for (set<unsigned>::iterator it = potential_E_roots.begin();
-       it != potential_E_roots.end();
-       ++it)
-  {
-    E_root_clique.push_back(*it);
-  }
+
+  P_to_C_icliques_same =
+    P_riCliqueSameAsInterface && Co_liCliqueSameAsInterface;
+  
+  C_to_C_icliques_same =
+    Co_riCliqueSameAsInterface && Co_liCliqueSameAsInterface;    
+  
+  C_to_E_icliques_same =
+    Co_riCliqueSameAsInterface && E_liCliqueSameAsInterface;
+  
+  E1.findSubtreeCliquesWithMaxWeight(E_root_clique);
 }
 
 
