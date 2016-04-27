@@ -450,16 +450,38 @@ JT_Partition::findInterfaceCliques(const set <RV*>& iNodes,
  *-----------------------------------------------------------------------
  */
 void
-JT_Partition::findLInterfaceClique(unsigned &liClique,bool& liCliqueSameAsInterface,const string priorityStr)
+JT_Partition::findLInterfaceClique(vector<unsigned> &liClique,bool& liCliqueSameAsInterface,const string priorityStr)
 {
-  // FIXME - liNodes[0] is bogus 
-  findInterfaceCliques(liNodes[0],liClique,liCliqueSameAsInterface,priorityStr);
+  liClique.clear();
+  liCliqueSameAsInterface = true;
+  for (unsigned i=0; i < liNodes.size(); ++i) {
+    unsigned i_clique;
+    bool iCliqueSameAsInterface;
+    findInterfaceCliques(liNodes[i], i_clique, iCliqueSameAsInterface, priorityStr);
+    liClique.push_back(i_clique);
+printf("li clique # %u {", i_clique);
+printRVSet(stdout, cliques[i_clique].nodes, false);
+printf("} for interface vars ");
+printRVSet(stdout, liNodes[i], true);
+    liCliqueSameAsInterface = liCliqueSameAsInterface && iCliqueSameAsInterface;
+  }
 }
 void
-JT_Partition::findRInterfaceClique(unsigned &riClique,bool& riCliqueSameAsInterface,const string priorityStr)
+JT_Partition::findRInterfaceClique(vector<unsigned> &riClique,bool& riCliqueSameAsInterface,const string priorityStr)
 {
-  // FIXME - bogus
-  findInterfaceCliques(riNodes[0],riClique,riCliqueSameAsInterface,priorityStr);
+  riClique.clear();
+  riCliqueSameAsInterface = true;
+  for (unsigned i=0; i < riNodes.size(); ++i) {
+    unsigned i_clique;
+    bool iCliqueSameAsInterface;
+    findInterfaceCliques(riNodes[i], i_clique, iCliqueSameAsInterface, priorityStr);
+    riClique.push_back(i_clique);
+printf("ri clique # %u {", i_clique);
+printRVSet(stdout, cliques[i_clique].nodes, false);
+printf("} for interface vars ");
+printRVSet(stdout, riNodes[i], true);
+    riCliqueSameAsInterface = riCliqueSameAsInterface && iCliqueSameAsInterface;
+  }
 }
 
 

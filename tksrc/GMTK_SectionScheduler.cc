@@ -576,12 +576,11 @@ SectionScheduler::setUpDataStructures(char const *varSectionAssignmentPrior,
 {
   createSectionJunctionTrees(junctionTreeMSTpriorityStr);
 #if 1
-  computeSectionInterfaces();
+  computeSectionInterfacesMFA();
   createFactorCliques();
   createDirectedGraphOfCliques();
-// FIXME - should be an argument
-static const char* varPartitionAssignmentPrior = "COI";
-  assignRVsToCliques(varPartitionAssignmentPrior,varCliqueAssignmentPrior);
+
+  assignRVsToCliques(varSectionAssignmentPrior,varCliqueAssignmentPrior);
   assignFactorsToCliques();
   // TODO: assignScoringFactorsToCliques();
   setUpMessagePassingOrders();
@@ -1634,6 +1633,88 @@ assert(gm_template.E.cliques.size() > 0);
   Co_message_order = Co.ia_message_order[string("default:C")];
 }
 
+// This version supports mean field approximation inference architecture
+void
+SectionScheduler::create_base_sections_mfa()
+{
+
+  // first create the unrolled set of random variables corresponding
+  // to this JT. Unroll corresponding to 1 [P' C' E']. (see GMTemplate::computeUnrollParameters
+  // for more documentation on this).
+
+  unsigned M = gm_template.maxNumChunksInBoundary();
+  unsigned S = gm_template.chunkSkip();
+
+  fp.unroll(M + S - 1,
+	    section_unrolled_rvs,section_ppf);
+
+  vector< set <RV*> > empty;
+
+  // copy P section 
+  new (&P1) JT_Partition(gm_template.P, 0*S*fp.numFramesInC(),
+			 empty, 0*S*fp.numFramesInC(),
+			 gm_template.PCInterface_in_P, 0*S*fp.numFramesInC(),
+			 section_unrolled_rvs,section_ppf);
+
+  // copy E section
+  new (&E1) JT_Partition(gm_template.E, 0*S*fp.numFramesInC(),
+			 gm_template.CEInterface_in_E, 0*S*fp.numFramesInC(),
+			 empty, 0*S*fp.numFramesInC(),
+			 section_unrolled_rvs,section_ppf);
+
+  if (gm_template.usesLeftInterface()) {
+    // left interface case
+    // Template has a (P)(C)(CE) = (P')(C')(E')
+
+    // An E' in the LI case must be E' = [ C E ], so there is never an
+    // empty E here (since C is never empty).
+    assert ( E1.cliques.size() > 0 );
+
+    // there might be an empty P1, though, so we need to check for that.
+    if (P1.cliques.size() > 0) {
+      // neither P1 nor E1 are empty.
+      new (&Co) JT_Partition(gm_template.C,0*S*fp.numFramesInC(),
+			     gm_template.PCInterface_in_C,0*S*fp.numFramesInC(),			   
+			     gm_template.CEInterface_in_C,0*S*fp.numFramesInC(),
+			     section_unrolled_rvs,section_ppf);
+    } else {
+      // P1 is empty. For Co's left interface, we use its right
+      // interface since there is no interface to P1. The reason why
+      // this is valid is that E' = [C E], and E can't connect to C1
+      // in [C1 C2 E], so C2's li to C1 is the same as E's li to C' in
+      // [C' E']. We do need to shift E'ls li to C' to the left by S
+      // though.
+      new (&Co) JT_Partition(gm_template.C,0*S*fp.numFramesInC(),
+			     gm_template.CEInterface_in_C,-1*S*fp.numFramesInC(),			   
+			     gm_template.CEInterface_in_C,0*S*fp.numFramesInC(),
+			     section_unrolled_rvs,section_ppf);
+    }
+  } else {
+    // right interface case, symmetric to the left interface case above.
+    // Right interface case.
+    // Template has a (PC)(C)(E) = (P')(C')(E')
+
+    // An P' in the RI case must be P' = [ P C ], so
+    // there is never an empty P' here.
+    assert ( P1.cliques.size() > 0 );
+
+    // there might be an empty E1, though, so we need to check for that.
+
+    if (E1.cliques.size() > 0) {
+      // neither E1 nor P1 are empty.
+      new (&Co) JT_Partition(gm_template.C,0*S*fp.numFramesInC(),
+			     gm_template.PCInterface_in_C,0*S*fp.numFramesInC(),			   
+			     gm_template.CEInterface_in_C,0*S*fp.numFramesInC(),
+			     section_unrolled_rvs,section_ppf);
+    } else {
+      new (&Co) JT_Partition(gm_template.C,0*S*fp.numFramesInC(),
+			     gm_template.PCInterface_in_C,0*S*fp.numFramesInC(),			   
+			     gm_template.PCInterface_in_C,1*S*fp.numFramesInC(),
+			     section_unrolled_rvs,section_ppf);
+    }
+  }
+}
+
 // routine to find the interface cliques of the sections
 /*-
  *-----------------------------------------------------------------------
@@ -1768,6 +1849,63 @@ SectionScheduler::computeSectionInterfaces() {
 #endif
 }
 
+// This version supports mean field approximation inference architecture
+void 
+SectionScheduler::computeSectionInterfacesMFA() {
+
+
+  // FIXME - put these somewhere
+#if 0
+  P1_message_order = P1.ia_message_order[string("default:P")];
+  E1_message_order = E1.ia_message_order[string("default:E")];
+  Co_message_order = Co.ia_message_order[string("default:C")];
+#endif
+
+  // set up the base sections
+  create_base_sections_mfa();
+
+  printf("Finding interface clique(s) amoung:\n");
+  bool P_riCliqueSameAsInterface;
+  bool E_liCliqueSameAsInterface;
+printf("P -> C interface:\n");
+  P1.findRInterfaceClique(P_ri_to_C,P_riCliqueSameAsInterface,interfaceCliquePriorityStr);
+printf("C <- E interface:\n");
+  E1.findLInterfaceClique(E_li_to_C,E_liCliqueSameAsInterface,interfaceCliquePriorityStr);
+
+  P_ri_to_C = P1.section_ri;
+  P_ri_to_C_size = P_ri_to_C.size(); // gm_template.PCInterface_in_P.size();
+  E_li_to_C = E1.section_li;
+  
+  C_li_to_P = Co.section_li;
+  C_li_to_C = C_li_to_P;
+  C_ri_to_E = Co.section_ri;
+  C_ri_to_C = C_ri_to_E;
+
+
+  // FIXME - need to pick an E root for each connected component, no right interface
+  // sanity check
+  assert (C_ri_to_C == C_ri_to_E);
+  
+  C_ri_to_C_size = C_ri_to_C.size(); //gm_template.CEInterface_in_C.size();
+
+  
+  set<unsigned> potential_E_roots;
+  for (unsigned i=0; i < E1.cliques.size(); ++i) {
+    potential_E_roots.insert(i);
+  }
+  for (vector<pair<unsigned,unsigned> >::iterator it = E1_message_order.begin();
+       it != E1_message_order.end();
+       ++it)
+  {
+    potential_E_roots.erase((*it).first); // roots cannot be message source
+  }
+  for (set<unsigned>::iterator it = potential_E_roots.begin();
+       it != potential_E_roots.end();
+       ++it)
+  {
+    E_root_clique.push_back(*it);
+  }
+}
 
 
 
@@ -4212,7 +4350,7 @@ SectionScheduler::junctionTreeWeight(vector<MaxClique>& cliques,
   JT_Partition jt_part(part,emptyInterface,interfaceNodes);
 
   bool tmp;
-  unsigned root;
+  vector<unsigned> root( max(1U, (unsigned)interfaceNodes.size()) );
   if (!is_E_section) 
     jt_part.findRInterfaceClique(root,tmp,interfaceCliquePriorityStr);
   else {
@@ -4225,18 +4363,19 @@ SectionScheduler::junctionTreeWeight(vector<MaxClique>& cliques,
     double weight = -10e20;
     for (unsigned i=0;i<cliques.size();i++) {
       if (MaxClique::computeWeight(cliques[i].nodes) > weight) {
-	root = i;
+	// FIXME - should call find?InterfaceClique() on E
+	root[0] = i;
       }
     }
   }
 
-  createDirectedGraphOfCliques(jt_part,root);
-  assignRVsToCliques("candidate section",jt_part,root,"","");
+  createDirectedGraphOfCliques(jt_part,root[0]);
+  assignRVsToCliques("candidate section",jt_part,root[0],"","");
 
   vector< pair<unsigned,unsigned> > message_order;
   vector< unsigned > leaf_cliques;
   setUpMessagePassingOrder(jt_part,
-			   root,
+			   root[0],
 			   message_order,
 			   ~0x0,
 			   leaf_cliques);
@@ -4247,7 +4386,7 @@ SectionScheduler::junctionTreeWeight(vector<MaxClique>& cliques,
   createSeparators(jt_part,message_order);
 
   computeSeparatorIterationOrders(jt_part);
-  getCumulativeUnassignedIteratedNodes(jt_part,root);
+  getCumulativeUnassignedIteratedNodes(jt_part,root[0]);
 
   // If the code is changed so that jt weight needs the sorted
   // assigned nodes or the dispositions, we'll need to make a static version of
@@ -4255,13 +4394,13 @@ SectionScheduler::junctionTreeWeight(vector<MaxClique>& cliques,
   // sortCliqueAssignedNodesAndComputeDispositions();
 
   // return jt_part.cliques[root].cumulativeUnassignedIteratedNodes.size();
-  double weight = junctionTreeWeight(jt_part,root,lp_nodes,rp_nodes);
+  double weight = junctionTreeWeight(jt_part,root[0],lp_nodes,rp_nodes);
 
   if (jtWeightPenalizeUnassignedIterated > 0.0) {
     unsigned badness_count=0;
     set <RV*>::iterator it;
-    for (it = jt_part.cliques[root].cumulativeUnassignedIteratedNodes.begin();
-	 it != jt_part.cliques[root].cumulativeUnassignedIteratedNodes.end();
+    for (it = jt_part.cliques[root[0]].cumulativeUnassignedIteratedNodes.begin();
+	 it != jt_part.cliques[root[0]].cumulativeUnassignedIteratedNodes.end();
 	 it++) 
       {
 	RV* rv = (*it);

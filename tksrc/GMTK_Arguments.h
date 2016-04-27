@@ -1544,12 +1544,12 @@ static bool  cliquePrintSwap       = false;
 #if defined(GMTK_ARG_CLIQUE_VAR_ITER_ORDERS)
 #if defined(GMTK_ARGUMENTS_DEFINITION)
 
-static const char* varPartitionAssignmentPrior = "COI";
+static const char* varSectionAssignmentPrior = "COI";
 static const char* varCliqueAssignmentPrior = "COT";
 
 #elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
 
-  Arg("vsap",Arg::Opt,varPartitionAssignmentPrior,"Variable section assignment priority. Sequence of chars in set [C,D,O,B,S,I,A,F,N]"),  
+  Arg("vsap",Arg::Opt,varSectionAssignmentPrior,"Variable section assignment priority. Sequence of chars in set [C,D,O,B,S,I,A,F,N]"),  
   Arg("vcap",Arg::Opt,varCliqueAssignmentPrior,"Variable clique sorting priority. Sequence of chars in set [C,D,O,B,S,I,A,F,N,T,M,+,.]"),
 
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)

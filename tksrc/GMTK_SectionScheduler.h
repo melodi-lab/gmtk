@@ -495,6 +495,7 @@ class SectionScheduler {
   // A version of unroll that starts with the gm_template and fills up
   // base sections.
   void create_base_sections();
+  void create_base_sections_mfa();
   void insertFactorClique(FactorClique& factorClique,FactorInfo& factor);
 
 
@@ -533,6 +534,7 @@ class SectionScheduler {
 
   // routine to find the interface cliques of the sections
   void computeSectionInterfaces();
+  void computeSectionInterfacesMFA();
 
   // routine to create the factors in the appropriate sections
   void createFactorCliques();
