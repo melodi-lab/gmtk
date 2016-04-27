@@ -149,7 +149,9 @@ public:
   // return the index of the clique with max/min weight.
   unsigned cliqueWithMaxWeight();
   unsigned cliqueWithMinWeight();
-
+  
+  // for each connected component, find the clique with maximum weight
+  void findSubtreeCliquesWithMaxWeight(vector<unsigned> &heaviest_cliques);
 
   void clearCliqueSepValueCache(bool force = false) {
     for (unsigned i=0;i<cliques.size();i++)
