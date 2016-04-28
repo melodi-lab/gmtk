@@ -166,8 +166,9 @@ JT_Partition::JT_Partition(
 		       // Information todo the mapping.
 		       vector <RV*>& newRvs,
 		       map < RVInfo::rvParent, unsigned >& ppf)
-
 {
+  connected_components = from_part.connected_components;
+  subtree_roots = from_part.subtree_roots;
 
   triMethod = from_part.triMethod;
   numVEseps = 0;
@@ -249,6 +250,8 @@ JT_Partition::JT_Partition(
  const vector< set <RV*> > &from_riVars
  )
 {
+  connected_components = from_part.connected_components;
+  subtree_roots = from_part.subtree_roots;
   nodes = from_part.nodes;
   triMethod = from_part.triMethod;
   numVEseps = 0;
@@ -517,7 +520,9 @@ JT_Partition::cliqueWithMaxWeight()
   // TODO: for empty P or E partitions, this next assertion will need to be removed.
   // assert ( cliques.size() > 0 );
   for (unsigned i=0;i<cliques.size();i++) {
-    if (MaxClique::computeWeight(cliques[i].nodes) > weight) {
+    double wt = MaxClique::computeWeight(cliques[i].nodes);
+    if (wt > weight) {
+      weight = wt;
       res = i;
     }
   }
@@ -531,7 +536,9 @@ JT_Partition::cliqueWithMinWeight()
   // TODO: for empty P or E partitions, this next assertion will need to be removed.
   // assert ( cliques.size() > 0 );
   for (unsigned i=0;i<cliques.size();i++) {
-    if (MaxClique::computeWeight(cliques[i].nodes) < weight) {
+    double wt = MaxClique::computeWeight(cliques[i].nodes);
+    if (wt < weight) {
+      weight = wt;
       res = i;
     }
   }
@@ -540,18 +547,70 @@ JT_Partition::cliqueWithMinWeight()
 
 
 // for each connected component, find the clique with maximum weight
+unsigned 
+JT_Partition::cliqueWithMaxWeight(set<unsigned> const &subtree) {
+  double weight = DBL_MIN;
+  unsigned res = ~0x0;
+  for (set<unsigned>::iterator it = subtree.begin(); it != subtree.end(); ++it) {
+    double wt = MaxClique::computeWeight(cliques[*it].nodes);
+    if (wt > weight) {
+      weight = wt;
+      res = *it;
+    }
+  }
+  return res;
+}
+
 void 
 JT_Partition::findSubtreeCliquesWithMaxWeight(vector<unsigned> &heaviest_cliques) {
   heaviest_cliques.clear();
   for (unsigned component=0; component < connected_components.size(); ++component) {
-    double weight = DBL_MAX;
-    unsigned res = ~0x0;
     set<unsigned> &subtree = connected_components[component];
-    for (set<unsigned>::iterator it = subtree.begin(); it != subtree.end(); ++it) {
-      if (MaxClique::computeWeight(cliques[*it].nodes) < weight) {
-	res = *it;
+    heaviest_cliques.push_back( cliqueWithMaxWeight(subtree) );
+  }
+}
+
+void sv_intersect(set<unsigned> const &s, vector<unsigned> const &v, vector<unsigned> &intersection) {
+  intersection.clear();
+  for (unsigned i=0; i < v.size(); ++i) {
+    if (s.find(v[i]) != s.end()) intersection.push_back(v[i]);
+  }
+
+for (set<unsigned>::iterator i=s.begin(); i != s.end(); ++i) printf(" %u", *i); 
+printf(" \\cap");
+for (unsigned i=0; i < v.size(); ++i) printf(" %u", v[i]);
+printf(" =");
+for (unsigned i=0; i < intersection.size(); ++i) printf(" %u", intersection[i]);
+printf("\n");
+}
+
+void
+JT_Partition::findSubtreeRoots(vector<unsigned> const &interface_cliques) {
+  subtree_roots.clear();
+  subtree_roots.resize(connected_components.size());
+
+  for (unsigned i=0; i < connected_components.size(); ++i) {
+    set<unsigned> const &subtree = connected_components[i];
+    vector<unsigned> interface_cliques_in_subtree;
+    sv_intersect(subtree, interface_cliques, interface_cliques_in_subtree);
+    if (interface_cliques_in_subtree.size() == 0) {
+      // This subtree has no interface cliques, so just pick the heaviest clique
+      subtree_roots[i] = cliqueWithMaxWeight(subtree);
+printf("   for component %u picking heaviest clique %u\n", i, subtree_roots[i]);
+    } else {
+      // This subtree has at least one interface clique. Pick the heaviest 
+      // interface clique as the root of the subtree.
+      unsigned subtree_root = ~0x0;
+      double weight = DBL_MIN;
+      for (unsigned j=0; j < interface_cliques_in_subtree.size(); ++j) {
+	double wt = MaxClique::computeWeight(cliques[interface_cliques_in_subtree[j]].nodes);
+	if (wt > weight) {
+	  subtree_root = interface_cliques_in_subtree[j];
+	  weight = wt;
+	}
       }
+      subtree_roots[i] = subtree_root;
+printf("   for component %u picking heaviest interface clique %u\n", i, subtree_roots[i]);
     }
-    heaviest_cliques.push_back(res);
   }
 }
