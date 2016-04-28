@@ -53,6 +53,9 @@ public:
   // Connected components of the junction forest
   vector< set<unsigned> > connected_components;
  
+  // Root clique of each connected component
+  vector<unsigned> subtree_roots;
+
   // a string with information about the method used to form the cliques
   string triMethod;
 

@@ -549,6 +549,7 @@ class SectionScheduler {
 
   // root the JT
   void createDirectedGraphOfCliques();
+  void createDirectedGraphOfCliques(JT_Partition &section);
   static void createDirectedGraphOfCliquesRecurse(JT_Partition& section,
 						  const unsigned root,
 						  vector< bool >& visited);

@@ -1909,15 +1909,10 @@ SectionScheduler::computeSectionInterfacesMFA() {
   printf("Finding interface clique(s) amoung:\n");
   bool P_riCliqueSameAsInterface;
   bool E_liCliqueSameAsInterface;
-printf("P -> C interface:\n");
+printf("P -> C interface (in P):\n");
   P1.findRInterfaceClique(P_ri_to_C,P_riCliqueSameAsInterface,interfaceCliquePriorityStr);
-printf("C <- E interface:\n");
+printf("C <- E interface (in E):\n");
   E1.findLInterfaceClique(E_li_to_C,E_liCliqueSameAsInterface,interfaceCliquePriorityStr);
-
-#if 0
-  pick roots for P, C, E sub JTs - not necessarily interface cliques as there might be no temporal edges
-		      - here, or in computeMessageOrders ?
-#endif
 
   P_ri_to_C_size = P_ri_to_C.size();
 
@@ -1925,10 +1920,11 @@ printf("C <- E interface:\n");
   bool Co_riCliqueSameAsInterface;
   if (gm_template.usesLeftInterface()) {
     // left interface case
-    
+printf("C <- C interface:\n");
     Co.findLInterfaceClique(C_li_to_C,Co_liCliqueSameAsInterface,interfaceCliquePriorityStr);
     C_li_to_P = C_li_to_C;
 
+printf("C -> C interface:\n");
     Co.findRInterfaceClique(C_ri_to_E,Co_riCliqueSameAsInterface,interfaceCliquePriorityStr);
     C_ri_to_C = C_ri_to_E;
     C_ri_to_C_size = C_ri_to_C.size();
@@ -1936,9 +1932,11 @@ printf("C <- E interface:\n");
   } else {
     // right interface case
 
+printf("C <- C interface:\n");
     Co.findLInterfaceClique(C_li_to_P,Co_liCliqueSameAsInterface,interfaceCliquePriorityStr);
     C_li_to_C = C_li_to_P;
 
+printf("C -> C interface:\n");
     Co.findRInterfaceClique(C_ri_to_C,Co_riCliqueSameAsInterface,interfaceCliquePriorityStr);
     C_ri_to_E = C_ri_to_C;
     C_ri_to_C_size = C_ri_to_C.size();
@@ -1952,8 +1950,20 @@ printf("C <- E interface:\n");
   
   C_to_E_icliques_same =
     Co_riCliqueSameAsInterface && E_liCliqueSameAsInterface;
-  
+
+  // root junction subtress
+
+  P1.findSubtreeRoots(P_ri_to_C);
+printf("P subtree root cliques: "); for (unsigned i=0; i < P1.subtree_roots.size(); ++i) printf(" %u", P1.subtree_roots[i]); printf("\n");
+  if (gm_template.usesLeftInterface()) {
+    Co.findSubtreeRoots(C_ri_to_E);
+  } else { // right interface
+    Co.findSubtreeRoots(C_ri_to_C);
+  }
+printf("C subtree root cliques: "); for (unsigned i=0; i < Co.subtree_roots.size(); ++i) printf(" %u", Co.subtree_roots[i]); printf("\n");
   E1.findSubtreeCliquesWithMaxWeight(E_root_clique);
+  E1.subtree_roots = E_root_clique;
+printf("E subtree root cliques: "); for (unsigned i=0; i < E1.subtree_roots.size(); ++i) printf(" %u", E1.subtree_roots[i]); printf("\n");
 }
 
 
@@ -2276,15 +2286,23 @@ printChildren(char name, vector<MaxClique> &cliques) {
 
 void 
 SectionScheduler::createDirectedGraphOfCliques() {
-  createDirectedGraphOfCliques(P1, P_ri_to_C);
-  if (gm_template.usesLeftInterface()) {
-    createDirectedGraphOfCliques(Co, C_ri_to_E);
-  } else { // right interface
-    createDirectedGraphOfCliques(Co, C_ri_to_C);
-  }
-  createDirectedGraphOfCliques(E1, E_root_clique);
+  createDirectedGraphOfCliques(P1);
+  createDirectedGraphOfCliques(Co);
+  createDirectedGraphOfCliques(E1);
 }
 
+
+void
+SectionScheduler::createDirectedGraphOfCliques(JT_Partition &section) {
+  vector< bool > visited(section.cliques.size());
+  for (unsigned i=0; i < section.cliques.size(); i++) {
+    visited[i] = false;
+    section.cliques[i].children.clear();
+  }
+  for (unsigned i=0; i < section.connected_components.size(); ++i) {
+    createDirectedGraphOfCliquesRecurse(section, section.subtree_roots[i], visited);
+  }
+}
 
 /*-
  *-----------------------------------------------------------------------

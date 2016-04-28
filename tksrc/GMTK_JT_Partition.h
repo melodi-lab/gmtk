@@ -150,8 +150,13 @@ public:
   unsigned cliqueWithMaxWeight();
   unsigned cliqueWithMinWeight();
   
-  // for each connected component, find the clique with maximum weight
+  // For each connected component, find the root clique.
+  //   For components with no interface cliques, pick the clique in component with maximum weight
+  //   For components with interface cliques, pick the heaviest interface clique in the component
   void findSubtreeCliquesWithMaxWeight(vector<unsigned> &heaviest_cliques);
+  unsigned cliqueWithMaxWeight(set<unsigned> const &subtree);
+  void findSubtreeRoots(vector<unsigned> const &interface_cliques);
+
 
   void clearCliqueSepValueCache(bool force = false) {
     for (unsigned i=0;i<cliques.size();i++)
