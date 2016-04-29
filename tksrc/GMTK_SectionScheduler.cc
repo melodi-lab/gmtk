@@ -2345,6 +2345,7 @@ SectionScheduler::createDirectedGraphOfCliques(JT_Partition& part,
   }
   createDirectedGraphOfCliquesRecurse(part,root,visited);
 }
+
 void 
 SectionScheduler::createDirectedGraphOfCliques(JT_Partition& section, vector<unsigned> const &roots) {
   // check for empty sections, possible for P or E.
@@ -2436,48 +2437,38 @@ SectionScheduler::createDirectedGraphOfCliquesRecurse(JT_Partition& section,
 void 
 SectionScheduler::
 assignRVsToCliques(const char* varSectionAssignmentPrior, const char *varCliqueAssignmentPrior) {
-#if 1
-#else
   if (P1.nodes.size() > 0) {
     infoMsg(IM::Giga,"assigning rvs to P1 section\n");
-    assignRVsToCliques(P1_n,P1,/*P_ri_to_C*/ P1.connected_jt_root,varSectionAssignmentPrior,varCliqueAssignmentPrior);
-    // accumulate what occured in P1 so Co can use it. 
-#if 1
-    unionRVs(P1.cliques[P1.connected_jt_root].cumulativeAssignedNodes,
-	     P1.cliques[P1.connected_jt_root].assignedNodes,
-	     Co.cliques[C_li_to_P].cumulativeAssignedNodes);
-    unionRVs(P1.cliques[P_ri_to_C].cumulativeAssignedProbNodes,
-	     P1.cliques[P_ri_to_C].assignedProbNodes,
-	     Co.cliques[C_li_to_P].cumulativeAssignedProbNodes);
-#else
-    unionRVs(P1.cliques[P_ri_to_C].cumulativeAssignedNodes,
-	     P1.cliques[P_ri_to_C].assignedNodes,
-	     Co.cliques[C_li_to_P].cumulativeAssignedNodes);
-    unionRVs(P1.cliques[P_ri_to_C].cumulativeAssignedProbNodes,
-	     P1.cliques[P_ri_to_C].assignedProbNodes,
-	     Co.cliques[C_li_to_P].cumulativeAssignedProbNodes);
-#endif
-    // printf("P1's cum ass prob:");
-    // printRVSet(stdout,P1.cliques[P_ri_to_C].cumulativeAssignedProbNodes);
-    // printf("P1's ass prob:");
-    // printRVSet(stdout,P1.cliques[P_ri_to_C].assignedProbNodes);
-    // printf("Co's cum ass prob:");
-    // printRVSet(stdout,Co.cliques[C_li_to_P].cumulativeAssignedProbNodes);
+    assignRVsToCliques(P1_n, P1, P_ri_to_C, varSectionAssignmentPrior, varCliqueAssignmentPrior);
 
+    // accumulate what occured in P1 so Co can use it. 
+    assert(P_ri_to_C.size() == C_li_to_P.size());
+    for (unsigned i=0; i < P_ri_to_C.size(); ++i) {
+      unionRVs(P1.cliques[ P_ri_to_C[i] ].cumulativeAssignedNodes,
+	       P1.cliques[ P_ri_to_C[i] ].assignedNodes,
+	       Co.cliques[ C_li_to_P[i] ].cumulativeAssignedNodes);
+      unionRVs(P1.cliques[ P_ri_to_C[i] ].cumulativeAssignedProbNodes,
+	       P1.cliques[ P_ri_to_C[i] ].assignedProbNodes,
+	       Co.cliques[ C_li_to_P[i] ].cumulativeAssignedProbNodes);
+    }
   }
   infoMsg(IM::Max,"assigning rvs to Co section\n");
-  assignRVsToCliques(Co_n,Co,/*C_ri_to_C*/ Co.connected_jt_root,varSectionAssignmentPrior,varCliqueAssignmentPrior);
+  assignRVsToCliques(Co_n, Co, C_ri_to_C, varSectionAssignmentPrior, varCliqueAssignmentPrior);
 
   if (E1.nodes.size() > 0) {
     infoMsg(IM::Max,"assigning rvs to E section\n");
     // accumulate what occured in P1,Co so E1 can use it. 
-    unionRVs(Co.cliques[C_ri_to_E].cumulativeAssignedNodes,
-	     Co.cliques[C_ri_to_E].assignedNodes,
-	     E1.cliques[E_li_to_C].cumulativeAssignedNodes);
-    unionRVs(Co.cliques[C_ri_to_E].cumulativeAssignedProbNodes,
-	     Co.cliques[C_ri_to_E].assignedProbNodes,
-	     E1.cliques[E_li_to_C].cumulativeAssignedProbNodes);
-    assignRVsToCliques(E1_n,E1,/*E_root_clique*/ E1.connected_jt_root,varSectionAssignmentPrior,varCliqueAssignmentPrior);
+    assert(C_ri_to_E.size() == E_li_to_C.size());
+    for (unsigned i=0; i < C_ri_to_E.size(); ++i) {
+      unionRVs(Co.cliques[ C_ri_to_E[i] ].cumulativeAssignedNodes,
+	       Co.cliques[ C_ri_to_E[i] ].assignedNodes,
+	       E1.cliques[ E_li_to_C[i] ].cumulativeAssignedNodes);
+      unionRVs(Co.cliques[ C_ri_to_E[i] ].cumulativeAssignedProbNodes,
+	       Co.cliques[ C_ri_to_E[i] ].assignedProbNodes,
+	       E1.cliques[ E_li_to_C[i] ].cumulativeAssignedProbNodes);
+    }
+    vector<unsigned> empty_interface;
+    assignRVsToCliques(E1_n, E1, empty_interface, varSectionAssignmentPrior, varCliqueAssignmentPrior);
   }
 
   // lastly, check to make sure all nodes have been assigned to to
@@ -2488,15 +2479,20 @@ assignRVsToCliques(const char* varSectionAssignmentPrior, const char *varCliqueA
   unionRVs(P1.nodes,Co.nodes,allNodes);
   unionRVs(Co.nodes,E1.nodes,allNodes,true);
   set <RV*> allAssignedProbNodes;
-  if (E1.cliques.size() > 0)
-    unionRVs(E1.cliques[E_root_clique].cumulativeAssignedProbNodes,
-	     E1.cliques[E_root_clique].assignedProbNodes,
-	     allAssignedProbNodes);
-  else 
-    unionRVs(Co.cliques[C_ri_to_E].cumulativeAssignedProbNodes,
-	     Co.cliques[C_ri_to_E].assignedProbNodes,
-	     allAssignedProbNodes);
 
+  if (E1.cliques.size() > 0) {
+    for (unsigned i=0; i < E_root_clique.size(); ++i) {
+      unionRVs(E1.cliques[ E_root_clique[i] ].cumulativeAssignedProbNodes,
+	       E1.cliques[ E_root_clique[i] ].assignedProbNodes,
+	       allAssignedProbNodes, true);
+    }
+  } else { 
+    for (unsigned i=0; i < C_ri_to_E.size(); ++i) {
+      unionRVs(Co.cliques[ C_ri_to_E[i] ].cumulativeAssignedProbNodes,
+	       Co.cliques[ C_ri_to_E[i] ].assignedProbNodes,
+	       allAssignedProbNodes, true);
+    }
+  }
   set <RV*> nodesThatGiveNoProb;
 // 153: OK nodesThatGiveNoProb printed in error message
 // 153:    though we could use count_iterator to be efficient in
@@ -2512,7 +2508,6 @@ assignRVsToCliques(const char* varSectionAssignmentPrior, const char *varCliqueA
     printRVSet(stderr,nodesThatGiveNoProb);
     coredump("Possibly corrupt trifile. Exiting program ...");
   }
-#endif
 }
 
 /*-
@@ -2557,7 +2552,7 @@ assignRVsToCliques(const char* varSectionAssignmentPrior, const char *varCliqueA
 void 
 SectionScheduler::assignRVsToCliques(const char *const sectionName,
 				     JT_Partition &section,
-				     const unsigned rootClique,
+				     vector<unsigned> const &interfaceCliques,
 				     const char* varSectionAssignmentPrior,
 				     const char *varCliqueAssignmentPrior)
 {
@@ -2570,114 +2565,118 @@ SectionScheduler::assignRVsToCliques(const char *const sectionName,
   // the ordering).  This will also be beneficial when sampling hidden
   // continuous nodes.
   infoMsg(IM::Giga,"Sorting section variables using priority order (%s)\n",
-	  (varSectionAssignmentPrior?varSectionAssignmentPrior:"NULL"));
+	  (varSectionAssignmentPrior ? varSectionAssignmentPrior : "NULL"));
 
   GraphicalModel::topologicalSortWPriority(section.nodes,section.nodes,sortedNodes,varSectionAssignmentPrior);
 
   // printf("have %d sorted nodes and %d cliques\n",sortedNodes.size(),section.cliques.size());
 
-  // update the cumulative RV assignments before we begin.
-  getCumulativeAssignedNodes(section,rootClique);
+  for (unsigned i=0; i < section.subtree_roots.size(); ++i) {
+    unsigned rootClique = section.subtree_roots[i];
 
-  for (unsigned n=0;n<sortedNodes.size();n++) {
-
-    RV* rv = sortedNodes[n];
-
-    // precompute the parents set for set intersection operations.
-    // The one stored in the rv is a vector, but we need a set, so we
-    // pre-compute it here. While we're at it, we compute if all
-    // parents are observed since the behaviour is a bit
-    // different in this case.
-    // TODO: check if this is really necessary, as in template routines vector is a container
-    //       so can be used as needed.
-    set<RV*> parSet;
-    bool allParentsObserved=true;
-    for (unsigned p=0;p<rv->allParents.size();p++) {
-      // TODO: see if there is a faster STL way to go from vector to set.
-      // fprintf(stderr,"about to insert rv with address %X\n",(void*)rv->allPossibleParents[p]);
-      parSet.insert(rv->allParents[p]);
-      if (rv->allParents[p]->hidden())
-	allParentsObserved = false;
-    }
-
-    // create a map to keep track of the scores of a given clique in
-    // which RV should produce probability.  This utilizes the fact
-    // that the multimap stores values in *ascending* order based on
-    // key (here the score), and so the first one (i.e.,
-    // scoreSet.begin()) should have the lowest weight.
-    multimap < vector<double>, unsigned> scoreSet;
-
-    unsigned numberOfTimesAssigned = 0;
-    assignRVToClique(sectionName,
-		     section,rootClique,
-		     0,
-		     rv,
-		     numberOfTimesAssigned,
-		     parSet,allParentsObserved,
-		     scoreSet);
-    infoMsg(IM::Max,
-	    "Section %s: random variable %s(%d) with its parents contained in %d cliques\n",
-	    sectionName,
-	    rv->name().c_str(),rv->frame(),numberOfTimesAssigned);
-
-    if (numberOfTimesAssigned > 0) {
-      // then it was assigned in this section at least once, but we
-      // still need to check if it should give probability to some
-      // clique within this section. We need to check both if the
-      // scoreSet has a value, and also if it was not assigned, since
-      // the scoreSet might have obtained a value from a branch of the
-      // JT below which didn't have this rv assigned with probability.
-
-      if ((scoreSet.size() > 0)  &&
-	  (section.cliques[rootClique].cumulativeAssignedProbNodes.find(rv) == 
-	   section.cliques[rootClique].cumulativeAssignedProbNodes.end())) {
-
-	// Then the node will be a probability contributer to one clique
-	// in this section.
-
-	// We choose one of those cliques to be the one the node
-	// contributes probabilty to.
-	unsigned clique_num = (*(scoreSet.begin())).second;
-	section.cliques[clique_num].assignedProbNodes.insert(rv);
-	if (IM::messageGlb(IM::Max)) {
-	  infoMsg(IM::Max,
-		  "Section %s: random variable %s(%d) giving probability to clique %d.\n",
-		  sectionName,
-		  rv->name().c_str(),rv->frame(),clique_num);
-	}
+    // update the cumulative RV assignments before we begin.
+    getCumulativeAssignedNodes(section,rootClique);
+    
+    for (unsigned n=0;n<sortedNodes.size();n++) {
+      
+      RV* rv = sortedNodes[n];
+      
+      // precompute the parents set for set intersection operations.
+      // The one stored in the rv is a vector, but we need a set, so we
+      // pre-compute it here. While we're at it, we compute if all
+      // parents are observed since the behaviour is a bit
+      // different in this case.
+      // TODO: check if this is really necessary, as in template routines vector is a container
+      //       so can be used as needed.
+      set<RV*> parSet;
+      bool allParentsObserved=true;
+      for (unsigned p=0;p<rv->allParents.size();p++) {
+	// TODO: see if there is a faster STL way to go from vector to set.
+	// fprintf(stderr,"about to insert rv with address %X\n",(void*)rv->allPossibleParents[p]);
+	parSet.insert(rv->allParents[p]);
+	if (rv->allParents[p]->hidden())
+	  allParentsObserved = false;
       }
-
-      // update the cumulative RV assignments.
-      getCumulativeAssignedNodes(section,rootClique);
-
-    } else {
-
-      // rv was not assigned to this section, it must be the case
-      // that it will be assigned to a different section. This
-      // could come from the section before or the section after
-      // the current section. If there are only forward-directed
-      // arrows, it will come from the previous section (and vice
-      // versa if there are only backwards going edges). If we have
-      // both directed edges, it could be assigned in either left or
-      // right section.
-
-      // Note that it is impossible for a node to be assigned to give
-      // probabiltiy in two sections. The reason is the
-      // following. The only nodes that live in both sections are
-      // the interface nodes.  These nodes have been special cased
-      // above using the 'alreadyAProbContributer' variable, and
-      // since we keep cumulative track of nodes that are to
-      // provide probability, we won't do this more than once
-      // across sections.
-
-      infoMsg(IM::Max,"Section %s: random variable %s(%d) not assigned in current section\n",sectionName,
-	      rv->name().c_str(),rv->frame());
-      // in any event, keep track of this node, perhaps useful for jtWeight.
-      section.unassignedInPartition.insert(rv);
+      
+      // create a map to keep track of the scores of a given clique in
+      // which RV should produce probability.  This utilizes the fact
+      // that the multimap stores values in *ascending* order based on
+      // key (here the score), and so the first one (i.e.,
+      // scoreSet.begin()) should have the lowest weight.
+      multimap < vector<double>, unsigned> scoreSet;
+      
+      unsigned numberOfTimesAssigned = 0;
+      assignRVToClique(sectionName,
+		       section,rootClique,
+		       0,
+		       rv,
+		       numberOfTimesAssigned,
+		       parSet,allParentsObserved,
+		       scoreSet);
+      infoMsg(IM::Max,
+	      "Section %s: random variable %s(%d) with its parents contained in %d cliques\n",
+	      sectionName,
+	      rv->name().c_str(),rv->frame(),numberOfTimesAssigned);
+      
+      if (numberOfTimesAssigned > 0) {
+	// then it was assigned in this section at least once, but we
+	// still need to check if it should give probability to some
+	// clique within this section. We need to check both if the
+	// scoreSet has a value, and also if it was not assigned, since
+	// the scoreSet might have obtained a value from a branch of the
+	// JT below which didn't have this rv assigned with probability.
+	
+	if ((scoreSet.size() > 0)  &&
+	    (section.cliques[rootClique].cumulativeAssignedProbNodes.find(rv) == 
+	     section.cliques[rootClique].cumulativeAssignedProbNodes.end())) {
+	  
+	  // Then the node will be a probability contributer to one clique
+	  // in this section.
+	  
+	  // We choose one of those cliques to be the one the node
+	  // contributes probabilty to.
+	  unsigned clique_num = (*(scoreSet.begin())).second;
+	  section.cliques[clique_num].assignedProbNodes.insert(rv);
+	  if (IM::messageGlb(IM::Max)) {
+	    infoMsg(IM::Max,
+		    "Section %s: random variable %s(%d) giving probability to clique %d.\n",
+		    sectionName,
+		    rv->name().c_str(),rv->frame(),clique_num);
+	  }
+	}
+	
+	// update the cumulative RV assignments.
+	getCumulativeAssignedNodes(section,rootClique);
+	
+      } else {
+	
+	// rv was not assigned to this section, it must be the case
+	// that it will be assigned to a different section. This
+	// could come from the section before or the section after
+	// the current section. If there are only forward-directed
+	// arrows, it will come from the previous section (and vice
+	// versa if there are only backwards going edges). If we have
+	// both directed edges, it could be assigned in either left or
+	// right section.
+	
+	// Note that it is impossible for a node to be assigned to give
+	// probabiltiy in two sections. The reason is the
+	// following. The only nodes that live in both sections are
+	// the interface nodes.  These nodes have been special cased
+	// above using the 'alreadyAProbContributer' variable, and
+	// since we keep cumulative track of nodes that are to
+	// provide probability, we won't do this more than once
+	// across sections.
+	
+	infoMsg(IM::Max,"Section %s: random variable %s(%d) not assigned in current section\n",sectionName,
+		rv->name().c_str(),rv->frame());
+	// in any event, keep track of this node, perhaps useful for jtWeight.
+	section.unassignedInPartition.insert(rv);
+      }
     }
   }
 }
-
+ 
 
 
 
@@ -4403,7 +4402,7 @@ SectionScheduler::junctionTreeWeight(vector<MaxClique>& cliques,
 
 
   // set up the nodes into part
-  for (unsigned i=0;i<cliques.size();i++) {
+  for (unsigned i=0; i < cliques.size(); i++) {
     // while we're at it, clear up the JT structures we're
     // about to create.
     cliques[i].clearJTStructures();
@@ -4417,10 +4416,13 @@ SectionScheduler::junctionTreeWeight(vector<MaxClique>& cliques,
   JT_Partition jt_part(part,emptyInterface,interfaceNodes);
 
   bool tmp;
-  vector<unsigned> root( max(1U, (unsigned)interfaceNodes.size()) );
+  vector<unsigned> root(jt_part.connected_components.size());
   if (!is_E_section) 
-    jt_part.findRInterfaceClique(root,tmp,interfaceCliquePriorityStr);
+    jt_part.findRInterfaceClique(root, tmp, interfaceCliquePriorityStr);
   else {
+#if 1
+    jt_part.findSubtreeCliquesWithMaxWeight(root);
+#else
     // 'E_root_clique case'
     // Presumably, this is an E section, so the root should be done
     // same as E_root_clique computed above.
@@ -4434,18 +4436,32 @@ SectionScheduler::junctionTreeWeight(vector<MaxClique>& cliques,
 	root[0] = i;
       }
     }
+#endif
   }
-
+  jt_part.subtree_roots = root;
+#if 1
+  createDirectedGraphOfCliques(jt_part);
+  assignRVsToCliques("candidate section", jt_part, root, "", "");
+#else
   createDirectedGraphOfCliques(jt_part,root[0]);
-  assignRVsToCliques("candidate section",jt_part,root[0],"","");
-
+  assignRVsToCliques("candidate section", jt_part, root[0], "", "");
+#endif
   vector< pair<unsigned,unsigned> > message_order;
   vector< unsigned > leaf_cliques;
+
+#if 1
   setUpMessagePassingOrder(jt_part,
 			   root[0],
 			   message_order,
 			   ~0x0,
 			   leaf_cliques);
+#else
+  setUpMessagePassingOrder(jt_part,
+			   root[0],
+			   message_order,
+			   ~0x0,
+			   leaf_cliques);
+#endif
 
   // Note that since we're calling createSeparators(jt_part,msg_order)
   // here directly, this means that the left interface clique will not
@@ -4453,7 +4469,12 @@ SectionScheduler::junctionTreeWeight(vector<MaxClique>& cliques,
   createSeparators(jt_part,message_order);
 
   computeSeparatorIterationOrders(jt_part);
+
+#if 1
   getCumulativeUnassignedIteratedNodes(jt_part,root[0]);
+#else
+  getCumulativeUnassignedIteratedNodes(jt_part,root);
+#endif
 
   // If the code is changed so that jt weight needs the sorted
   // assigned nodes or the dispositions, we'll need to make a static version of
@@ -4461,11 +4482,18 @@ SectionScheduler::junctionTreeWeight(vector<MaxClique>& cliques,
   // sortCliqueAssignedNodesAndComputeDispositions();
 
   // return jt_part.cliques[root].cumulativeUnassignedIteratedNodes.size();
+#if 1
   double weight = junctionTreeWeight(jt_part,root[0],lp_nodes,rp_nodes);
+#else
+  // sum up subtree weights?
+#endif
 
   if (jtWeightPenalizeUnassignedIterated > 0.0) {
     unsigned badness_count=0;
     set <RV*>::iterator it;
+
+// FIXME - root[0]
+
     for (it = jt_part.cliques[root[0]].cumulativeUnassignedIteratedNodes.begin();
 	 it != jt_part.cliques[root[0]].cumulativeUnassignedIteratedNodes.end();
 	 it++) 

@@ -549,7 +549,7 @@ class SectionScheduler {
 
   // root the JT
   void createDirectedGraphOfCliques();
-  void createDirectedGraphOfCliques(JT_Partition &section);
+  static void createDirectedGraphOfCliques(JT_Partition &section);
   static void createDirectedGraphOfCliquesRecurse(JT_Partition& section,
 						  const unsigned root,
 						  vector< bool >& visited);
@@ -589,8 +589,8 @@ class SectionScheduler {
 			  const char *varCliqueAssignmentPrior);
 
   static void assignRVsToCliques(const char *const sectionName,
-				 JT_Partition&section,
-				 const unsigned rootClique,
+				 JT_Partition &section,
+				 vector<unsigned> const &rootClique,
 				 const char* varSectionAssignmentPrior,
 				 const char *varCliqueAssignmentPrior);
 
