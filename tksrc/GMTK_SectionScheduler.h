@@ -564,7 +564,6 @@ class SectionScheduler {
   static void setUpMessagePassingOrderRecurse(JT_Partition &section,
 					      const unsigned root,
 					      vector< pair<unsigned,unsigned> >&order,
-					      const unsigned excludeFromLeafCliques,
 					      vector< unsigned>& leaf_cliques);
 
   // do a bit of setup for the upcomming inference round.
@@ -607,9 +606,7 @@ class SectionScheduler {
   // traversal using the previously selected root.
   void setUpMessagePassingOrders();
   static void setUpMessagePassingOrder(JT_Partition& section,
-				       const unsigned root,
 				       vector< pair<unsigned,unsigned> >&order,
-				       const unsigned excludeFromLeafCliques,
 				       vector< unsigned>& leaf_cliques);
 
   // Separator creation, meaning create the seperator objects

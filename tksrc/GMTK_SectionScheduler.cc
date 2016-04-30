@@ -1911,8 +1911,10 @@ SectionScheduler::computeSectionInterfacesMFA() {
   bool E_liCliqueSameAsInterface;
 printf("P -> C interface (in P):\n");
   P1.findRInterfaceClique(P_ri_to_C,P_riCliqueSameAsInterface,interfaceCliquePriorityStr);
+  P1.section_ri = P_ri_to_C;
 printf("C <- E interface (in E):\n");
   E1.findLInterfaceClique(E_li_to_C,E_liCliqueSameAsInterface,interfaceCliquePriorityStr);
+  E1.section_li = E_li_to_C;
 
   P_ri_to_C_size = P_ri_to_C.size();
 
@@ -1923,11 +1925,13 @@ printf("C <- E interface (in E):\n");
 printf("C <- C interface:\n");
     Co.findLInterfaceClique(C_li_to_C,Co_liCliqueSameAsInterface,interfaceCliquePriorityStr);
     C_li_to_P = C_li_to_C;
+    Co.section_li = C_li_to_P;
 
 printf("C -> C interface:\n");
     Co.findRInterfaceClique(C_ri_to_E,Co_riCliqueSameAsInterface,interfaceCliquePriorityStr);
     C_ri_to_C = C_ri_to_E;
     C_ri_to_C_size = C_ri_to_C.size();
+    Co.section_ri = C_ri_to_C;
 
   } else {
     // right interface case
@@ -1935,10 +1939,12 @@ printf("C -> C interface:\n");
 printf("C <- C interface:\n");
     Co.findLInterfaceClique(C_li_to_P,Co_liCliqueSameAsInterface,interfaceCliquePriorityStr);
     C_li_to_C = C_li_to_P;
+    Co.section_li = C_li_to_P;
 
 printf("C -> C interface:\n");
     Co.findRInterfaceClique(C_ri_to_C,Co_riCliqueSameAsInterface,interfaceCliquePriorityStr);
     C_ri_to_E = C_ri_to_C;
+    Co.section_ri = C_ri_to_E;
     C_ri_to_C_size = C_ri_to_C.size();
   }
 
@@ -3244,21 +3250,15 @@ SectionScheduler::getCumulativeUnassignedIteratedNodes()
  */
 void 
 SectionScheduler::setUpMessagePassingOrders() {
-#if 0
+#if 1
   setUpMessagePassingOrder(P1,
-			   P_ri_to_C,
 			   P1_message_order,
-			   ~0x0,
 			   P1_leaf_cliques);
   setUpMessagePassingOrder(Co,
-			   C_ri_to_C,
 			   Co_message_order,
-			   C_li_to_P,
 			   Co_leaf_cliques);
   setUpMessagePassingOrder(E1,
-			   E_root_clique,
 			   E1_message_order,
-			   E_li_to_C,
 			   E1_leaf_cliques);
 #endif
 }
@@ -3290,19 +3290,23 @@ SectionScheduler::setUpMessagePassingOrders() {
  */
 void 
 SectionScheduler::setUpMessagePassingOrder(JT_Partition &section,
-					   const unsigned root,
 					   vector< pair<unsigned,unsigned> >&order,
-					   const unsigned excludeFromLeafCliques,
 					   vector< unsigned>& leaf_cliques) 
 {
+  order.clear();
   // first, handle case for potential empty P or E section. 
   if (section.cliques.size() == 0)
     return;
-
-  order.clear();
-  // a tree of N nodes has N-1 edges.
-  order.reserve(section.cliques.size() - 1);
-  setUpMessagePassingOrderRecurse(section,root,order,excludeFromLeafCliques,leaf_cliques);
+  
+  unsigned num_msgs = 0;
+  for (unsigned i=0; i < section.connected_components.size(); ++i) {
+    // a tree of N nodes has N-1 edges.
+    num_msgs += section.connected_components[i].size() - 1;
+  }
+  order.reserve(num_msgs);
+  for (unsigned i=0; i < section.subtree_roots.size(); ++i) {
+    setUpMessagePassingOrderRecurse(section, section.subtree_roots[i], order,leaf_cliques);
+  }
 }
 
 /*-
@@ -3314,17 +3318,23 @@ SectionScheduler::setUpMessagePassingOrder(JT_Partition &section,
  *   routine for documentation.
  * 
  *-----------------------------------------------------------------------
- */					
+ */	
+
+bool contains(vector<unsigned> const &v, unsigned element) {
+  for (unsigned i=0; i < v.size(); ++i) 
+    if (v[i] == element) return true;
+  return false;
+}
+
 void
 SectionScheduler::setUpMessagePassingOrderRecurse(JT_Partition &section,
 					      const unsigned root,
 					      vector< pair<unsigned,unsigned> >& order,
-					      const unsigned excludeFromLeafCliques,
 					      vector < unsigned >& leaf_cliques)
 {
   if (section.cliques[root].children.size() == 0) {
     // store leaf nodes here if children.size() == 0.
-    if (root != excludeFromLeafCliques)
+    if (root != ~0x0U && !contains(section.section_li, root))
       leaf_cliques.push_back(root);
   } else {
     for (unsigned childNo=0;
@@ -3332,7 +3342,7 @@ SectionScheduler::setUpMessagePassingOrderRecurse(JT_Partition &section,
 	 childNo++) {
       const unsigned child = section.cliques[root].children[childNo];
       setUpMessagePassingOrderRecurse(section,child,order,
-				      excludeFromLeafCliques,leaf_cliques);
+				      leaf_cliques);
       pair<unsigned,unsigned> msg;
       msg.first = child;
       msg.second = root;
@@ -4451,9 +4461,7 @@ SectionScheduler::junctionTreeWeight(vector<MaxClique>& cliques,
 
 #if 1
   setUpMessagePassingOrder(jt_part,
-			   root[0],
 			   message_order,
-			   ~0x0,
 			   leaf_cliques);
 #else
   setUpMessagePassingOrder(jt_part,
