@@ -3186,26 +3186,33 @@ SectionScheduler::getCumulativeUnassignedIteratedNodes(JT_Partition &section,
 void
 SectionScheduler::getCumulativeUnassignedIteratedNodes()
 {
-#if 0
   set<RV*> res;
+  res.clear();
 
   if (P1.cliques.size() > 0) {
-    // TODO: this should be a member function in P1.
-    getCumulativeUnassignedIteratedNodes(P1,P_ri_to_C);
-    res.clear();
-    set_union(P1.cliques[P_ri_to_C].unassignedIteratedNodes.begin(),
-	      P1.cliques[P_ri_to_C].unassignedIteratedNodes.end(),
-	      P1.cliques[P_ri_to_C].cumulativeUnassignedIteratedNodes.begin(),
-	      P1.cliques[P_ri_to_C].cumulativeUnassignedIteratedNodes.end(),	    
-	      inserter(res,res.end()));
+    for (unsigned i=0; i < P1.subtree_roots.size(); ++i) {
+      // TODO: this should be a member function in P1.
+      getCumulativeUnassignedIteratedNodes(P1, P1.subtree_roots[i]);
+      set_union(P1.cliques[P1.subtree_roots[i]].unassignedIteratedNodes.begin(),
+		P1.cliques[P1.subtree_roots[i]].unassignedIteratedNodes.end(),
+		P1.cliques[P1.subtree_roots[i]].cumulativeUnassignedIteratedNodes.begin(),
+		P1.cliques[P1.subtree_roots[i]].cumulativeUnassignedIteratedNodes.end(),	    
+		inserter(res,res.end()));
+    }
   }
 
   // Co is never empty.
-  Co.cliques[C_li_to_P].cumulativeUnassignedIteratedNodes = res;
-  getCumulativeUnassignedIteratedNodes(Co,C_ri_to_C);
+  // FIXME - what to put here? C li clique(s)?  equals what? P root? P ri?
+  for (unsigned i=0; i < C_li_to_P.size(); ++i) {
+    Co.cliques[ C_li_to_P[i] ].cumulativeUnassignedIteratedNodes = res;
+  }
+  for (unsigned i=0; i < Co.subtree_roots.size(); ++i) {
+    getCumulativeUnassignedIteratedNodes(Co, Co.subtree_roots[i]);
+  }
 
+  res.clear();
   if (E1.cliques.size() > 0) {
-    res.clear();
+    for ()
     set_union(Co.cliques[C_ri_to_C].unassignedIteratedNodes.begin(),
 	      Co.cliques[C_ri_to_C].unassignedIteratedNodes.begin(),
 	      Co.cliques[C_ri_to_C].cumulativeUnassignedIteratedNodes.begin(),
