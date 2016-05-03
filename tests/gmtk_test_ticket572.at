@@ -14,6 +14,11 @@ AT_SKIP_IF([test x"$GMTK_ENABLE_HDF5_TESTS" = x""])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/simple_hmm_1])
 AT_SKIP_IF([test ! -f $TEST_AND_DEV/pfiles/ex_short.pfile])
 
+# ticket 586 - The HDF5 library must be compiled by the same
+#              compiler as GMTK or there may be ABI incompatibility
+AT_SKIP_IF(test `uname` = Darwin -a x$CXX != xclang++)
+AT_SKIP_IF(test `uname` = Linux -a x$CXX != x)
+
 AT_CHECK([(cd $TEST_AND_DEV/simple_hmm_1 && \
   gmtkJT -iswp1 -strFile ex.str -of1 ../pfiles/ex_short.pfile -nf1 26 \
          -inputMasterFile ex.params \
