@@ -3212,16 +3212,20 @@ SectionScheduler::getCumulativeUnassignedIteratedNodes()
 
   res.clear();
   if (E1.cliques.size() > 0) {
-    for ()
-    set_union(Co.cliques[C_ri_to_C].unassignedIteratedNodes.begin(),
-	      Co.cliques[C_ri_to_C].unassignedIteratedNodes.begin(),
-	      Co.cliques[C_ri_to_C].cumulativeUnassignedIteratedNodes.begin(),
-	      Co.cliques[C_ri_to_C].cumulativeUnassignedIteratedNodes.begin(),	    
-	      inserter(res,res.end()));
-    E1.cliques[E_li_to_C].cumulativeUnassignedIteratedNodes = res;
-    getCumulativeUnassignedIteratedNodes(E1,E_root_clique);
+    for (unsigned i=0; i < Co.subtree_roots.size(); ++i) {
+      set_union(Co.cliques[Co.subtree_roots[i]].unassignedIteratedNodes.begin(),
+		Co.cliques[Co.subtree_roots[i]].unassignedIteratedNodes.begin(),
+		Co.cliques[Co.subtree_roots[i]].cumulativeUnassignedIteratedNodes.begin(),
+		Co.cliques[Co.subtree_roots[i]].cumulativeUnassignedIteratedNodes.begin(),	    
+		inserter(res,res.end()));
+    }
+    for (unsigned i=0; i < E_li_to_C.size(); ++i) {
+      E1.cliques[ E_li_to_C[i] ].cumulativeUnassignedIteratedNodes = res;
+    }
+    for (unsigned i=0; i < E1.subtree_roots.size(); ++i) {
+      getCumulativeUnassignedIteratedNodes(E1, E1.subtree_roots[i]);
+    }
   }
-#endif
 }
 
 
