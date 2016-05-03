@@ -33,6 +33,6 @@ AT_CHECK([mapdir=`pwd` && (cd $TEST_AND_DEV/didea_vesep_testCliquePrint && \
   -pCliquePrintRange 2 -cCliquePrintRange 1 -eCliquePrintRange 2 \
   -doDistributeEvidence T -componentCache T -cliquePosteriorUnlog F \
   -cliqueOutputFileName /dev/null -cliquePrintFormat flatascii -dcdrng 0 \
-  -map1 $mapdir/dlopen_cfunc_dts.so)],
+  -map1 "$mapdir/dlopen_cfunc_dts.so")],
          [],[ignore],[ignore])
 AT_CLEANUP
