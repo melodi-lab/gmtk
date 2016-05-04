@@ -479,12 +479,14 @@ JT_Partition::findRInterfaceClique(unsigned& riClique,bool& riCliqueSameAsInterf
 unsigned
 JT_Partition::cliqueWithMaxWeight()
 {
-  double weight = -10e20;
+  double weight = -DBL_MAX;
   unsigned res= ~0x0;
   // TODO: for empty P or E partitions, this next assertion will need to be removed.
   // assert ( cliques.size() > 0 );
   for (unsigned i=0;i<cliques.size();i++) {
-    if (MaxClique::computeWeight(cliques[i].nodes) > weight) {
+    double wt = MaxClique::computeWeight(cliques[i].nodes);
+    if (wt > weight) {
+      weight = wt;
       res = i;
     }
   }
@@ -498,7 +500,9 @@ JT_Partition::cliqueWithMinWeight()
   // TODO: for empty P or E partitions, this next assertion will need to be removed.
   // assert ( cliques.size() > 0 );
   for (unsigned i=0;i<cliques.size();i++) {
-    if (MaxClique::computeWeight(cliques[i].nodes) < weight) {
+    double wt = MaxClique::computeWeight(cliques[i].nodes);
+    if (wt < weight) {
+      weight = wt;
       res = i;
     }
   }
