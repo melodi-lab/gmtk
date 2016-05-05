@@ -462,11 +462,6 @@ JT_Partition::findLInterfaceClique(vector<unsigned> &liClique,bool& liCliqueSame
     bool iCliqueSameAsInterface;
     findInterfaceCliques(liNodes[i], i_clique, iCliqueSameAsInterface, priorityStr);
     liClique.push_back(i_clique);
-printf("li clique # %u {", i_clique);
-printRVSet(stdout, cliques[i_clique].nodes, false);
-printf("} for interface vars {");
-printRVSet(stdout, liNodes[i], false);
-printf("}\n");
     liCliqueSameAsInterface = liCliqueSameAsInterface && iCliqueSameAsInterface;
   }
 }
@@ -480,11 +475,6 @@ JT_Partition::findRInterfaceClique(vector<unsigned> &riClique,bool& riCliqueSame
     bool iCliqueSameAsInterface;
     findInterfaceCliques(riNodes[i], i_clique, iCliqueSameAsInterface, priorityStr);
     riClique.push_back(i_clique);
-printf("ri clique # %u {", i_clique);
-printRVSet(stdout, cliques[i_clique].nodes, false);
-printf("} for interface vars {");
-printRVSet(stdout, riNodes[i], false);
-printf("}\n");
     riCliqueSameAsInterface = riCliqueSameAsInterface && iCliqueSameAsInterface;
   }
 }
@@ -575,13 +565,6 @@ void sv_intersect(set<unsigned> const &s, vector<unsigned> const &v, vector<unsi
   for (unsigned i=0; i < v.size(); ++i) {
     if (s.find(v[i]) != s.end()) intersection.push_back(v[i]);
   }
-
-for (set<unsigned>::iterator i=s.begin(); i != s.end(); ++i) printf(" %u", *i); 
-printf(" \\cap");
-for (unsigned i=0; i < v.size(); ++i) printf(" %u", v[i]);
-printf(" =");
-for (unsigned i=0; i < intersection.size(); ++i) printf(" %u", intersection[i]);
-printf("\n");
 }
 
 void
@@ -596,7 +579,6 @@ JT_Partition::findSubtreeRoots(vector<unsigned> const &interface_cliques) {
     if (interface_cliques_in_subtree.size() == 0) {
       // This subtree has no interface cliques, so just pick the heaviest clique
       subtree_roots[i] = cliqueWithMaxWeight(subtree);
-printf("   for component %u picking heaviest clique %u\n", i, subtree_roots[i]);
     } else {
       // This subtree has at least one interface clique. Pick the heaviest 
       // interface clique as the root of the subtree.
@@ -610,7 +592,6 @@ printf("   for component %u picking heaviest clique %u\n", i, subtree_roots[i]);
 	}
       }
       subtree_roots[i] = subtree_root;
-printf("   for component %u picking heaviest interface clique %u\n", i, subtree_roots[i]);
     }
   }
 }

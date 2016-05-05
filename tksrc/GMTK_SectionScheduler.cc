@@ -575,7 +575,6 @@ SectionScheduler::setUpDataStructures(char const *varSectionAssignmentPrior,
 				      char const *varCliqueAssignmentPrior)
 {
   createSectionJunctionTrees(junctionTreeMSTpriorityStr);
-#if 1
   computeSectionInterfacesMFA();
   createFactorCliques();
   createDirectedGraphOfCliques();
@@ -593,7 +592,6 @@ SectionScheduler::setUpDataStructures(char const *varSectionAssignmentPrior,
   // -- --
 
   sortCliqueAssignedNodesAndComputeDispositions(varCliqueAssignmentPrior);
-#endif
 }
 
 /*
@@ -1206,6 +1204,7 @@ SectionScheduler::createSectionJunctionTree(Section& section, const string junct
     // Nothing to do.
     // This could happen if the section is empty which might occur
     // for empty P's and E's. C should never be empty.
+    infoMsg(IM::Giga,"Section has no cliques\n");
     return;
   } else if (numMaxCliques == 1) {
     // then nothing to do
@@ -1505,14 +1504,12 @@ SectionScheduler::createSectionJunctionTree(Section& section, const string junct
 		edges[i].clique1,edges[i].clique2,i,edges[i].weights[0]);
         section.cliques[edges[i].clique1].neighbors.push_back(edges[i].clique2);
         section.cliques[edges[i].clique2].neighbors.push_back(edges[i].clique1);
+	
+	// Early termination optimization: there are (n)(n-1)/2 edges to iterate 
+	//   over, but a spanning forest can use at most n-1.
+	if (++joinsPlusOne == numMaxCliques)
+	  break;
       }
-      // Early termination optimization: there are (n)(n-1)/2 edges to iterate 
-      //   over, but a spanning forest can use at most n-1.  I think it's safe to
-      //   count zero weight edges here - actually, if the edges are sorted with
-      //   sep set size as the major key, I think we could break on 
-      //   weights[0] == 0.0  -RR
-      if (++joinsPlusOne == numMaxCliques)
-	break;
     }
   }
   
@@ -1539,19 +1536,22 @@ SectionScheduler::createSectionJunctionTree(Section& section, const string junct
       num_components += 1;
     }
   }
-
-  printf("connected components:\n");
-  for (unsigned i=0; i < num_components; ++i) {
-    printf("  %u: ", i);
-    set<unsigned> &cc = section.connected_components[i];
-    for (set<unsigned>::iterator it = cc.begin(); it != cc.end(); ++it) {
-      printf("%u {", *it);
-      printRVSet(stdout, section.cliques[*it].nodes, false);
-      printf("}  ");
+  if (IM::messageGlb(IM::High)) {
+    printf("--------\n Cliques:\n");
+    for (unsigned i=0; i < section.cliques.size(); ++i) {
+      printf("  %2u: ", i); printRVSet(stdout, section.cliques[i].nodes);
     }
-    printf("\n");
+    for (unsigned i=0; i < section.connected_components.size(); ++i) {
+      printf(" Connected component %u:", i);
+      for (set<unsigned>::iterator it = section.connected_components[i].begin();
+	   it != section.connected_components[i].end();
+	   ++it)
+      {
+	printf(" %u", *it); 
+      }
+      printf("\n");
+    }
   }
-
 }
 
 
@@ -1906,15 +1906,24 @@ SectionScheduler::computeSectionInterfacesMFA() {
   // set up the base sections
   create_base_sections_mfa();
 
-  printf("Finding interface clique(s) amoung:\n");
   bool P_riCliqueSameAsInterface;
   bool E_liCliqueSameAsInterface;
-printf("P -> C interface (in P):\n");
   P1.findRInterfaceClique(P_ri_to_C,P_riCliqueSameAsInterface,interfaceCliquePriorityStr);
   P1.section_ri = P_ri_to_C;
-printf("C <- E interface (in E):\n");
+  if (IM::messageGlb(IM::High)) {
+    for (unsigned i_rv_set=0; i_rv_set < P1.riNodes.size(); ++i_rv_set) {
+      printf("P ri clique %u for interface factor ", P_ri_to_C[i_rv_set]);
+      printRVSet(stdout, P1.riNodes[i_rv_set]);
+    }
+  }
   E1.findLInterfaceClique(E_li_to_C,E_liCliqueSameAsInterface,interfaceCliquePriorityStr);
   E1.section_li = E_li_to_C;
+  if (IM::messageGlb(IM::High)) {
+    for (unsigned i_rv_set=0; i_rv_set < E1.liNodes.size(); ++i_rv_set) {
+      printf("E li clique %u for interface factor ", E_li_to_C[i_rv_set]);
+      printRVSet(stdout, E1.liNodes[i_rv_set]);
+    }
+  }
 
   P_ri_to_C_size = P_ri_to_C.size();
 
@@ -1922,30 +1931,49 @@ printf("C <- E interface (in E):\n");
   bool Co_riCliqueSameAsInterface;
   if (gm_template.usesLeftInterface()) {
     // left interface case
-printf("C <- C interface:\n");
     Co.findLInterfaceClique(C_li_to_C,Co_liCliqueSameAsInterface,interfaceCliquePriorityStr);
     C_li_to_P = C_li_to_C;
     Co.section_li = C_li_to_P;
+    if (IM::messageGlb(IM::High)) {
+      for (unsigned i_rv_set=0; i_rv_set < Co.liNodes.size(); ++i_rv_set) {
+	printf("C li clique %u for interface factor ", C_li_to_C[i_rv_set]);
+	printRVSet(stdout, Co.liNodes[i_rv_set]);
+      }
+    }
 
-printf("C -> C interface:\n");
     Co.findRInterfaceClique(C_ri_to_E,Co_riCliqueSameAsInterface,interfaceCliquePriorityStr);
     C_ri_to_C = C_ri_to_E;
     C_ri_to_C_size = C_ri_to_C.size();
     Co.section_ri = C_ri_to_C;
-
+    if (IM::messageGlb(IM::High)) {
+      for (unsigned i_rv_set=0; i_rv_set < Co.riNodes.size(); ++i_rv_set) {
+	printf("C ri clique %u for interface factor ", C_ri_to_C[i_rv_set]);
+	printRVSet(stdout, Co.riNodes[i_rv_set]);
+      }
+    }
   } else {
     // right interface case
 
-printf("C <- C interface:\n");
     Co.findLInterfaceClique(C_li_to_P,Co_liCliqueSameAsInterface,interfaceCliquePriorityStr);
     C_li_to_C = C_li_to_P;
     Co.section_li = C_li_to_P;
+    if (IM::messageGlb(IM::High)) {
+      for (unsigned i_rv_set=0; i_rv_set < Co.liNodes.size(); ++i_rv_set) {
+	printf("C li clique %u for interface factor ", C_li_to_C[i_rv_set]);
+	printRVSet(stdout, Co.liNodes[i_rv_set]);
+      }
+    }
 
-printf("C -> C interface:\n");
     Co.findRInterfaceClique(C_ri_to_C,Co_riCliqueSameAsInterface,interfaceCliquePriorityStr);
     C_ri_to_E = C_ri_to_C;
     Co.section_ri = C_ri_to_E;
     C_ri_to_C_size = C_ri_to_C.size();
+    if (IM::messageGlb(IM::High)) {
+      for (unsigned i_rv_set=0; i_rv_set < Co.riNodes.size(); ++i_rv_set) {
+	printf("C ri clique %u for interface factor ", C_ri_to_C[i_rv_set]);
+	printRVSet(stdout, Co.riNodes[i_rv_set]);
+      }
+    }
   }
 
   P_to_C_icliques_same =
@@ -1960,16 +1988,29 @@ printf("C -> C interface:\n");
   // root junction subtress
 
   P1.findSubtreeRoots(P_ri_to_C);
-printf("P subtree root cliques: "); for (unsigned i=0; i < P1.subtree_roots.size(); ++i) printf(" %u", P1.subtree_roots[i]); printf("\n");
+  if (IM::messageGlb(IM::High) && P1.subtree_roots.size() > 0) {
+    printf("P subtree root cliques:");
+    for (unsigned i=0; i < P1.subtree_roots.size(); ++i) printf(" %u", P1.subtree_roots[i]);
+    printf("\n");
+  }
   if (gm_template.usesLeftInterface()) {
     Co.findSubtreeRoots(C_ri_to_E);
   } else { // right interface
     Co.findSubtreeRoots(C_ri_to_C);
   }
-printf("C subtree root cliques: "); for (unsigned i=0; i < Co.subtree_roots.size(); ++i) printf(" %u", Co.subtree_roots[i]); printf("\n");
+  if (IM::messageGlb(IM::High)) {
+    printf("C subtree root cliques:");
+    for (unsigned i=0; i < Co.subtree_roots.size(); ++i) printf(" %u", Co.subtree_roots[i]);
+    printf("\n");
+  }
   E1.findSubtreeCliquesWithMaxWeight(E_root_clique);
   E1.subtree_roots = E_root_clique;
-printf("E subtree root cliques: "); for (unsigned i=0; i < E1.subtree_roots.size(); ++i) printf(" %u", E1.subtree_roots[i]); printf("\n");
+  if (IM::messageGlb(IM::High) && E1.subtree_roots.size() > 0) {
+    printf("E subtree root cliques:");
+    for (unsigned i=0; i < E1.subtree_roots.size(); ++i) printf(" %u", E1.subtree_roots[i]);
+    printf("\n");
+  }
+
 }
 
 
@@ -2452,6 +2493,7 @@ assignRVsToCliques(const char* varSectionAssignmentPrior, const char *varCliqueA
     for (unsigned i=0; i < P_ri_to_C.size(); ++i) {
       unionRVs(P1.cliques[ P_ri_to_C[i] ].cumulativeAssignedNodes,
 	       P1.cliques[ P_ri_to_C[i] ].assignedNodes,
+// FIXME - should this be P subtree root(s) to C LI?  
 	       Co.cliques[ C_li_to_P[i] ].cumulativeAssignedNodes);
       unionRVs(P1.cliques[ P_ri_to_C[i] ].cumulativeAssignedProbNodes,
 	       P1.cliques[ P_ri_to_C[i] ].assignedProbNodes,
@@ -2512,7 +2554,7 @@ assignRVsToCliques(const char* varSectionAssignmentPrior, const char *varCliqueA
   if (nodesThatGiveNoProb.size() > 0) {
     fprintf(stderr,"INTERNAL ERROR: some nodes do not give probability to any clique, those nodes include: ");
     printRVSet(stderr,nodesThatGiveNoProb);
-    coredump("Possibly corrupt trifile. Exiting program ...");
+    coredump("Possibly corrupt inference architecture file. Exiting program ...");
   }
 }
 
