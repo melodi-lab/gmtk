@@ -2481,6 +2481,18 @@ SectionScheduler::createDirectedGraphOfCliquesRecurse(JT_Partition& section,
  *
  *-----------------------------------------------------------------------
  */
+
+static unsigned
+findRootOfSubtreeContainingClique(JT_Partition const &section, unsigned clique) {
+  for (unsigned i=0; i < section.connected_components.size(); ++i) {
+    if (section.connected_components[i].find(clique) != section.connected_components[i].end()) {
+      return section.subtree_roots[i];
+    }
+  }
+  assert(false); // the clique must be in the section or something's very wrong
+  return 0;
+}
+
 void 
 SectionScheduler::
 assignRVsToCliques(const char* varSectionAssignmentPrior, const char *varCliqueAssignmentPrior) {
@@ -2491,12 +2503,12 @@ assignRVsToCliques(const char* varSectionAssignmentPrior, const char *varCliqueA
     // accumulate what occured in P1 so Co can use it. 
     assert(P_ri_to_C.size() == C_li_to_P.size());
     for (unsigned i=0; i < P_ri_to_C.size(); ++i) {
-      unionRVs(P1.cliques[ P_ri_to_C[i] ].cumulativeAssignedNodes,
-	       P1.cliques[ P_ri_to_C[i] ].assignedNodes,
-// FIXME - should this be P subtree root(s) to C LI?  
+      unsigned ri_subtree_root = findRootOfSubtreeContainingClique(P1, P_ri_to_C[i]);
+      unionRVs(P1.cliques[ri_subtree_root].cumulativeAssignedNodes,
+	       P1.cliques[ri_subtree_root].assignedNodes,
 	       Co.cliques[ C_li_to_P[i] ].cumulativeAssignedNodes);
-      unionRVs(P1.cliques[ P_ri_to_C[i] ].cumulativeAssignedProbNodes,
-	       P1.cliques[ P_ri_to_C[i] ].assignedProbNodes,
+      unionRVs(P1.cliques[ri_subtree_root].cumulativeAssignedProbNodes,
+	       P1.cliques[ri_subtree_root].assignedProbNodes,
 	       Co.cliques[ C_li_to_P[i] ].cumulativeAssignedProbNodes);
     }
   }
@@ -2508,11 +2520,12 @@ assignRVsToCliques(const char* varSectionAssignmentPrior, const char *varCliqueA
     // accumulate what occured in P1,Co so E1 can use it. 
     assert(C_ri_to_E.size() == E_li_to_C.size());
     for (unsigned i=0; i < C_ri_to_E.size(); ++i) {
-      unionRVs(Co.cliques[ C_ri_to_E[i] ].cumulativeAssignedNodes,
-	       Co.cliques[ C_ri_to_E[i] ].assignedNodes,
+      unsigned ri_subtree_root = findRootOfSubtreeContainingClique(Co, C_ri_to_C[i]);
+      unionRVs(Co.cliques[ri_subtree_root].cumulativeAssignedNodes,
+	       Co.cliques[ri_subtree_root].assignedNodes,
 	       E1.cliques[ E_li_to_C[i] ].cumulativeAssignedNodes);
-      unionRVs(Co.cliques[ C_ri_to_E[i] ].cumulativeAssignedProbNodes,
-	       Co.cliques[ C_ri_to_E[i] ].assignedProbNodes,
+      unionRVs(Co.cliques[ri_subtree_root].cumulativeAssignedProbNodes,
+	       Co.cliques[ri_subtree_root].assignedProbNodes,
 	       E1.cliques[ E_li_to_C[i] ].cumulativeAssignedProbNodes);
     }
     vector<unsigned> empty_interface;
