@@ -3442,50 +3442,76 @@ SectionScheduler::setUpReverseMessageOrder(JT_Partition &section,
 
   // build subtrees containing only cliques on paths from interface cliques to root cliques
 
-  vector<unsigned> node; // cliques in residual tree needing to be made consistent
-  vector< vector<unsigned> > child;  // edges between cliques in residual tree needing to be made consistent
-  vector< unsigned > parent;
+  vector<unsigned> node;      // cliques in residual tree needing to be made consistent
+  vector< unsigned > parent;  // edges between cliques in residual tree needing to be made consistent
+  
+  // The constructed subtrees will contian n nodes.
+  // Let i \in [0,n) be the i^th node in the constructed subtrees. Then
+  //   node[i] = j means the i^th node in the constructed subtree is section.cliques[j]
+  //                     and section_to_subtree_map[j] = i (~0x0u if section.cliques[j] is not in the constructed subtree)
+  //   parent[i] = j means node[j] = section.cliques[ node[i] ].parent
 
   for (unsigned i=0; i < section.subtree_roots.size(); ++i)
     assert(section.cliques[section.subtree_roots[i]].parent == ~0x0u);
 
+#if 0
+printf("input tree paths:\n");
+for(unsigned i=0; i < ri_clique.size(); ++i) {
+  unsigned j = ri_clique[i];
+  printf("%u", j);
+  for (j=section.cliques[j].parent; j != ~0x0u; j=section.cliques[j].parent) {
+    printf(" <- %u", j);
+  }
+  printf("\n");
+}
+#endif
+
   vector<unsigned> section_to_subtree_map(section.cliques.size(), ~0x0u); // section.cliques[k] is node[  section_to_subtree_map[k] ] in the subtree
   for (unsigned i=0; i < ri_clique.size(); ++i) {
     for (unsigned j=ri_clique[i]; j != ~0x0u; j = section.cliques[j].parent) {
-printf("iteration for clique[%u] -> stm = %u\n", j, section_to_subtree_map[j]);
+//printf("iteration for clique[%u] -> stm = %u\n", j, section_to_subtree_map[j]);
       if (section_to_subtree_map[j] != ~0x0u) break; // already processed the rest of the path
       unsigned idx = node.size();
       node.push_back(j);
       section_to_subtree_map[j] = idx;
-printf("node[%u] = %u\n", idx, j);
+//printf("node[%u] = %u\n", idx, j);
       if (section.cliques[j].parent == ~0x0u) {
 	// parent of current node is a root
-printf("ri clique %u is a root - no edges\n", j);
+//printf("ri clique %u is a root - no edges\n", j);
 	parent.push_back(~0x0u);
       } else if (section_to_subtree_map[ section.cliques[j].parent ] == ~0x0u) { 
 	// parent is unknown, it will be processed next
-printf("%u -> %u?\n", j, section.cliques[j].parent); 
+//printf("%u <- %u?\n", j, section.cliques[j].parent); 
 	parent.push_back( idx+1 );
       } else {
 	// parent is already known
-printf("%u -> %u\n", j, section.cliques[j].parent);
+//printf("%u <- %u\n", j, section.cliques[j].parent);
 	parent.push_back( section_to_subtree_map[ section.cliques[j].parent ] );
       }
     }
   }
 
-  printf("subtree paths:\n");
-  for (unsigned i=0; i < ri_clique.size(); ++i) {
-    printf("%u", node[section_to_subtree_map[i]]);
-    for (unsigned j=parent[section_to_subtree_map[i]]; j != ~0x0u; j = parent[j]) {
-      printf(" -> %u", node[j]);
-    }
-    printf("\n");
+#if 0
+printf("subtree paths:\n");
+for (unsigned i=0; i < ri_clique.size(); ++i) {
+  printf("%u", node[ section_to_subtree_map[ ri_clique[i] ] ]);
+  for (unsigned j=parent[ section_to_subtree_map[ ri_clique[i] ] ]; j != ~0x0u; j = parent[j]) {
+    printf(" -> %u", node[j]);
   }
-  printf("necessary backwards messages:\n");
-  for (unsigned i=0; i < node.size(); ++i) {
-    if (parent[i] != ~0x0u) printf("(%u, %u)\n", node[i], node[parent[i]]);
-  }
+  printf("\n");
+}
+printf("necessary backwards messages:\n");
+for (unsigned i=0; i < node.size(); ++i) {
+  if (parent[i] != ~0x0u) printf("(%u, %u)\n", node[parent[i]], node[i]);
+}
+#endif
+
+ vector<unsigned> child_count(node.size(), 0); // count of node[i]'s children that haven't sent their message yet
+ for () {
+   // increment child_count[i]
+ }
+ // DFS, adding new edges when child_count[i] gets to 0
+
   //  set< pair<unsigned,unsigned> > 
 }
 
