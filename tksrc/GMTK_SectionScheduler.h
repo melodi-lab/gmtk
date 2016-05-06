@@ -427,7 +427,7 @@ class SectionScheduler {
   // to the section separators.
   vector< pair<unsigned,unsigned> > P1_reverse_messages;
   vector< pair<unsigned,unsigned> > Co_reverse_messages;
-  vector< pair<unsigned,unsigned> > E1_reverse_messages;
+  // E doesn't need reverse messages as there are no right interface cliques to make consistent
 
   // sets of random variables for frame shifting.
 

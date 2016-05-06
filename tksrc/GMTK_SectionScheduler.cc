@@ -113,6 +113,8 @@ SectionScheduler::printAllIAInfo(char const* fileName, bool writeComments) {
   P1.writeInferenceArchitecture(os, 'P');
   os.writeComment("---- within-section message order\n");
   writeMsgOrder(os, P1_message_order);
+  os.writeComment("---- within-section reverse message order\n");
+  writeMsgOrder(os, P1_reverse_messages);
   os.writeComment("---- P has no left interface\n");
   os.write(0); os.nl();
   os.writeComment("---- P right interface\n");
@@ -131,6 +133,8 @@ SectionScheduler::printAllIAInfo(char const* fileName, bool writeComments) {
   Co.writeInferenceArchitecture(os, 'C');
   os.writeComment("---- within-section message order\n");
   writeMsgOrder(os, Co_message_order);
+  os.writeComment("---- within-section reverse message order\n");
+  writeMsgOrder(os, Co_reverse_messages);
   os.writeComment("---- C left interface\n");
   os.write(C_li_to_C.size()); os.nl();
   for (unsigned i=0; i < C_li_to_C.size(); ++i) {
@@ -148,6 +152,8 @@ SectionScheduler::printAllIAInfo(char const* fileName, bool writeComments) {
   E1.writeInferenceArchitecture(os, 'E');
   os.writeComment("---- within-section message order\n");
   writeMsgOrder(os, E1_message_order);
+  os.writeComment("---- E has no reverse messages\n");
+  os.write(0);
   os.writeComment("---- E left interface\n");
   if (E1.cliques.size() > 0) {
     os.write(E_li_to_C.size()); os.nl();
@@ -1614,6 +1620,8 @@ SectionScheduler::create_base_sections()
 			 section_unrolled_rvs,section_ppf);
 
   P1_message_order = P1.ia_message_order[string("default:P")];
+  P1_reverse_messages = P1.ia_rev_msg_order[string("default:P")];
+
   // copy E section
 assert(gm_template.E.cliques.size() > 0);
   new (&E1) JT_Partition(gm_template.E, 0*S*fp.numFramesInC(),
@@ -1674,6 +1682,7 @@ assert(gm_template.E.cliques.size() > 0);
     }
   }
   Co_message_order = Co.ia_message_order[string("default:C")];
+  Co_rev_msg_order = Co.ia_rev_msg_order[string("default:C")];
 }
 
 // This version supports mean field approximation inference architecture
@@ -3442,8 +3451,8 @@ SectionScheduler::setUpReverseMessageOrder(JT_Partition &section,
 
   // build subtrees containing only cliques on paths from interface cliques to root cliques
 
-  vector<unsigned> node;      // cliques in residual tree needing to be made consistent
-  vector< unsigned > parent;  // edges between cliques in residual tree needing to be made consistent
+  vector<unsigned>        node;               // cliques in residual tree needing to be made consistent
+  vector< unsigned >      parent;             // edges between cliques in residual tree needing to be made consistent
   
   // The constructed subtrees will contian n nodes.
   // Let i \in [0,n) be the i^th node in the constructed subtrees. Then
@@ -3500,20 +3509,53 @@ for (unsigned i=0; i < ri_clique.size(); ++i) {
   }
   printf("\n");
 }
+#endif
+#if 0
 printf("necessary backwards messages:\n");
 for (unsigned i=0; i < node.size(); ++i) {
   if (parent[i] != ~0x0u) printf("(%u, %u)\n", node[parent[i]], node[i]);
 }
 #endif
 
- vector<unsigned> child_count(node.size(), 0); // count of node[i]'s children that haven't sent their message yet
- for () {
-   // increment child_count[i]
- }
- // DFS, adding new edges when child_count[i] gets to 0
-
-  //  set< pair<unsigned,unsigned> > 
+  vector< set<unsigned> > child(node.size()); // node[i]'s children
+  // compute subtree children sets
+  for (unsigned i=0; i < ri_clique.size(); ++i) {
+    unsigned ri_node = section_to_subtree_map[ ri_clique[i] ];
+    for (unsigned j = parent[ri_node]; j != ~0x0u; ri_node = j, j = parent[j]) {
+      child[j].insert(ri_node);
+    }
+  }
+#if 0
+printf("children:\n");
+for (unsigned i=0; i < node.size(); ++i) {
+  printf("  %2u:", node[i]);
+  for (set<unsigned>::iterator it = child[i].begin(); it != child[i].end(); ++it) {
+    printf(" %2u", node[*it]);
+  }
+  printf("\n");
 }
+#endif
+
+  // now compute messages - BFS from junction forest roots down to ri cliques
+ 
+  vector<unsigned> bfs_queue;
+  for (unsigned r=0; r < section.subtree_roots.size(); ++r) {
+    assert(section_to_subtree_map[section.subtree_roots[r]] != ~0x0u);
+    bfs_queue.push_back(section_to_subtree_map[ section.subtree_roots[r] ]);
+  }
+//printf("reverse messages:\n");
+  for (unsigned i=0; i < bfs_queue.size(); ++i) {
+    unsigned p = bfs_queue[i];
+    for (set<unsigned>::iterator j=child[p].begin(); j != child[p].end(); ++j) {
+      pair<unsigned,unsigned> msg(node[p], node[*j]);
+      order.push_back(msg);
+//printf(" (%u,%u)", msg.first, msg.second);
+      bfs_queue.push_back(*j);
+    }
+  }
+//printf("\n");
+}
+
 
 
 // Separator creation, meaning create the seperator objects

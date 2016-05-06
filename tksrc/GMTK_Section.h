@@ -63,8 +63,8 @@ public:
 
   // FIXME - this is section inference algorithm specific
   vector<unsigned> section_ri, section_li;
-  map<string, vector<pair<unsigned, unsigned > > > ia_message_order;
-
+  map<string, vector<pair<unsigned, unsigned > > > ia_message_order; // forward pass forward messages
+  map<string, vector<pair<unsigned, unsigned > > > ia_rev_msg_order; // forward pass backward messages for multi-clique right interface
 
   //  map<string, string> ia_name_to_section_inf_alg;
   map<string, map<string, unsigned> > clique_name_dictionary;

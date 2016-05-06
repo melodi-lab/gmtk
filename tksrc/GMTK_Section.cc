@@ -608,6 +608,34 @@ Section::readInferenceArchitectureDefinition(iDataStreamFile &is,
   }
   ia_message_order[dictionary_key] = msg_order;
 
+  // forward pass backwards messages to make multiple right interface cliques consistent
+  // before projecting down for next section
+
+  msg_order.clear();
+  is.read(num_msgs, "number of reverse messages");
+  for (unsigned i=0; i < num_msgs; ++i) {
+    unsigned index;
+    is.read(index, "message number");
+    if (index != i) {
+      error("ERROR: reading file '$s' line %d, bad message number (= %u) out of sequence, should be %u instead.\n",
+	    is.fileName(), is.lineNo(), index, i);
+    }
+    string source_clique_name, dest_clique_name;
+    is.read(source_clique_name, "message source clique name");
+    if (dictionary.find(source_clique_name) == dictionary.end()) {
+      error("ERROR: unknown source clique name '%s' in message %u at line %d in file '%s'\n", 
+	    source_clique_name.c_str(), i, is.lineNo(), is.fileName());
+    }
+    is.read(dest_clique_name, "message destination clique name");
+    if (dictionary.find(dest_clique_name) == dictionary.end()) {
+      error("ERROR: unknown source clique name '%s' in message %u at line %d in file '%s'\n", 
+	    dest_clique_name.c_str(), i, is.lineNo(), is.fileName());
+    }
+    pair<unsigned, unsigned> msg(dictionary[source_clique_name], dictionary[dest_clique_name]);
+    msg_order.push_back(msg);
+  }
+  ia_rev_msg_order[dictionary_key] = msg_order;
+
   // read section's left interface cliques
   readSectionInterface(is, "left", dictionary, section_li);
   readSectionInterface(is, "right", dictionary, section_ri);
