@@ -583,6 +583,7 @@ SectionScheduler::setUpDataStructures(char const *varSectionAssignmentPrior,
   assignFactorsToCliques();
   // TODO: assignScoringFactorsToCliques();
   setUpMessagePassingOrders();
+  setUpReverseMessageOrders();
   // create seps and VE seps.
   createSeparators();
   computeSeparatorIterationOrders();
@@ -2345,6 +2346,7 @@ SectionScheduler::createDirectedGraphOfCliques(JT_Partition &section) {
   for (unsigned i=0; i < section.cliques.size(); i++) {
     visited[i] = false;
     section.cliques[i].children.clear();
+    section.cliques[i].parent = ~0x0u;
   }
   for (unsigned i=0; i < section.connected_components.size(); ++i) {
     createDirectedGraphOfCliquesRecurse(section, section.subtree_roots[i], visited);
@@ -2389,6 +2391,7 @@ SectionScheduler::createDirectedGraphOfCliques(JT_Partition& part,
   for (unsigned i=0;i<part.cliques.size();i++) {
     visited[i] = false;
     part.cliques[i].children.clear();
+    part.cliques[i].parent = ~0x0u;
   }
   createDirectedGraphOfCliquesRecurse(part,root,visited);
 }
@@ -2445,6 +2448,7 @@ SectionScheduler::createDirectedGraphOfCliquesRecurse(JT_Partition& section,
     if (visited[child])
       continue;
     section.cliques[root].children.push_back(child);
+    section.cliques[child].parent = root;
     createDirectedGraphOfCliquesRecurse(section,child,visited);
   }
 }
@@ -3415,6 +3419,74 @@ SectionScheduler::setUpMessagePassingOrderRecurse(JT_Partition &section,
       order.push_back(msg);
     }
   }
+}
+
+
+// Set up the backward message passing orders required to ensure
+// all outgoing interface cliques are consistent before projecting
+// to the section separators.
+void 
+SectionScheduler::setUpReverseMessageOrders() {
+  setUpReverseMessageOrder(P1, P_ri_to_C, P1_reverse_messages);
+  setUpReverseMessageOrder(Co, C_ri_to_C, Co_reverse_messages);
+  // E doesn't require any reverse messages since it doesn't project
+  // to any following section.
+}
+
+void
+SectionScheduler::setUpReverseMessageOrder(JT_Partition &section, 
+					   vector<unsigned> const &ri_clique,
+					   vector< pair<unsigned,unsigned> > &order)
+{
+  order.clear();
+
+  // build subtrees containing only cliques on paths from interface cliques to root cliques
+
+  vector<unsigned> node; // cliques in residual tree needing to be made consistent
+  vector< vector<unsigned> > child;  // edges between cliques in residual tree needing to be made consistent
+  vector< unsigned > parent;
+
+  for (unsigned i=0; i < section.subtree_roots.size(); ++i)
+    assert(section.cliques[section.subtree_roots[i]].parent == ~0x0u);
+
+  vector<unsigned> section_to_subtree_map(section.cliques.size(), ~0x0u); // section.cliques[k] is node[  section_to_subtree_map[k] ] in the subtree
+  for (unsigned i=0; i < ri_clique.size(); ++i) {
+    for (unsigned j=ri_clique[i]; j != ~0x0u; j = section.cliques[j].parent) {
+printf("iteration for clique[%u] -> stm = %u\n", j, section_to_subtree_map[j]);
+      if (section_to_subtree_map[j] != ~0x0u) break; // already processed the rest of the path
+      unsigned idx = node.size();
+      node.push_back(j);
+      section_to_subtree_map[j] = idx;
+printf("node[%u] = %u\n", idx, j);
+      if (section.cliques[j].parent == ~0x0u) {
+	// parent of current node is a root
+printf("ri clique %u is a root - no edges\n", j);
+	parent.push_back(~0x0u);
+      } else if (section_to_subtree_map[ section.cliques[j].parent ] == ~0x0u) { 
+	// parent is unknown, it will be processed next
+printf("%u -> %u?\n", j, section.cliques[j].parent); 
+	parent.push_back( idx+1 );
+      } else {
+	// parent is already known
+printf("%u -> %u\n", j, section.cliques[j].parent);
+	parent.push_back( section_to_subtree_map[ section.cliques[j].parent ] );
+      }
+    }
+  }
+
+  printf("subtree paths:\n");
+  for (unsigned i=0; i < ri_clique.size(); ++i) {
+    printf("%u", node[section_to_subtree_map[i]]);
+    for (unsigned j=parent[section_to_subtree_map[i]]; j != ~0x0u; j = parent[j]) {
+      printf(" -> %u", node[j]);
+    }
+    printf("\n");
+  }
+  printf("necessary backwards messages:\n");
+  for (unsigned i=0; i < node.size(); ++i) {
+    if (parent[i] != ~0x0u) printf("(%u, %u)\n", node[i], node[parent[i]]);
+  }
+  //  set< pair<unsigned,unsigned> > 
 }
 
 

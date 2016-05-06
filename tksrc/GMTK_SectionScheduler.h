@@ -422,6 +422,12 @@ class SectionScheduler {
   vector< pair<unsigned,unsigned> > E1_message_order;  
   vector< unsigned > E1_leaf_cliques;
 
+  // Backward message passing orders required to ensure all
+  // outgoing interface cliques are consistent before projecting
+  // to the section separators.
+  vector< pair<unsigned,unsigned> > P1_reverse_messages;
+  vector< pair<unsigned,unsigned> > Co_reverse_messages;
+  vector< pair<unsigned,unsigned> > E1_reverse_messages;
 
   // sets of random variables for frame shifting.
 
@@ -605,6 +611,15 @@ class SectionScheduler {
   // orders that are to be used. This basically just does a tree
   // traversal using the previously selected root.
   void setUpMessagePassingOrders();
+
+  // Set up the backward message passing orders required to ensure
+  // all outgoing interface cliques are consistent before projecting
+  // to the section separators.
+  void setUpReverseMessageOrders();
+  void setUpReverseMessageOrder(JT_Partition &section,
+				 vector<unsigned> const &ir_clique,
+				 vector< pair<unsigned,unsigned> >&order);
+
   static void setUpMessagePassingOrder(JT_Partition& section,
 				       vector< pair<unsigned,unsigned> >&order,
 				       vector< unsigned>& leaf_cliques);

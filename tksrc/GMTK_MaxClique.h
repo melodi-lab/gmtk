@@ -469,6 +469,7 @@ class MaxClique : public MaxCliqueBase {
   // clique cloning.
   // Computed in JunctionTree::createDirectedGraphOfCliques()
   vector<unsigned> children;
+  unsigned parent; // clique's parent in junction tree
 
   // USED ONLY IN JUNCTION TREE INFERENCE
   // set of separators that we receive from in the collect evidence
