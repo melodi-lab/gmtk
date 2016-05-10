@@ -1682,7 +1682,7 @@ assert(gm_template.E.cliques.size() > 0);
     }
   }
   Co_message_order = Co.ia_message_order[string("default:C")];
-  Co_rev_msg_order = Co.ia_rev_msg_order[string("default:C")];
+  Co_reverse_messages = Co.ia_rev_msg_order[string("default:C")];
 }
 
 // This version supports mean field approximation inference architecture
