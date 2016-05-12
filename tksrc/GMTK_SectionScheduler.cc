@@ -566,10 +566,10 @@ SectionScheduler::setUpDataStructures(iDataStreamFile &tri_file,
 
   ////////////////////////////////////////////////////////////////////
   // CREATE JUNCTION TREE DATA STRUCTURES
-  infoMsg(IM::Default,"Creating Junction Tree\n"); fflush(stdout);
+  infoMsg(IM::Default,"Creating Junction Forest\n"); fflush(stdout);
   setUpJTDataStructures(varSectionAssignmentPrior,varCliqueAssignmentPrior);
   prepareForUnrolling();
-  infoMsg(IM::Default,"DONE creating Junction Tree\n"); fflush(stdout);
+  infoMsg(IM::Default,"DONE creating Junction Forest\n"); fflush(stdout);
   ////////////////////////////////////////////////////////////////////
 }
 
@@ -3645,6 +3645,11 @@ SectionScheduler::createSeparators() {
   if (P1.cliques.size() > 0) { 
     createSeparators(P1, P1_message_order);
 
+#if 0
+    // FIXME - I don't think placeholders are needed. The code that
+    //         sends forward messages across sections knows that PC interface
+    //         separators live in C.
+
     // set to invalid value, since the ri clique sends to a separator
     // in the next section, rather than internal to this section.
 
@@ -3652,7 +3657,7 @@ SectionScheduler::createSeparators() {
     for (unsigned i=0; i < P1.section_ri.size(); ++i) {
       P1.cliques[ P1.section_ri[i] /* P_ri_to_C */ ].ceSendSeparators.push_back(~0x0); 
     }
-
+#endif
     // insert VE seps last
     if (useVESeparators && (veSeparatorWhere & VESEP_WHERE_P)) {
       infoMsg(IM::Max,"Searching for VE seps in P1\n");
@@ -3777,12 +3782,12 @@ SectionScheduler::createSeparators() {
       Co.cliques[C_li_clique_num].ceReceiveSeparators.push_back(Co.separators.size()-1);
     }
   }
-
+#if 0
   // don't update left sections RI clique's send separator since handled explicitly
   for (unsigned i=0; i < Co.section_ri.size(); ++i) {
     Co.cliques[ Co.section_ri[i] ].ceSendSeparators.push_back(~0x0); //set to invalid value
   }
-
+#endif
   if (E1.cliques.size() > 0) { 
 
     // normal separators
