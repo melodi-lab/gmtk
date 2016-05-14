@@ -1792,6 +1792,29 @@ SectionScheduler::create_base_sections_mfa()
  *
  *-----------------------------------------------------------------------
  */
+
+static void
+findRootCliques(vector<unsigned> &roots, unsigned num_cliques, vector< pair<unsigned,unsigned> > const &message_order) {
+  roots.clear();
+  set<unsigned> potential_roots;
+  for (unsigned i=0; i < num_cliques; ++i) {
+    potential_roots.insert(i);
+  }
+  for (vector<pair<unsigned,unsigned> >::const_iterator it = message_order.begin();
+       it != message_order.end();
+       ++it)
+  {
+    potential_roots.erase((*it).first); // roots cannot be message source
+  }
+  for (set<unsigned>::iterator it = potential_roots.begin();
+       it != potential_roots.end();
+       ++it)
+  {
+    roots.push_back(*it);
+  }
+}
+
+
 void 
 SectionScheduler::computeSectionInterfaces() {
 
@@ -1814,7 +1837,12 @@ SectionScheduler::computeSectionInterfaces() {
   
   C_ri_to_C_size = C_ri_to_C.size(); //gm_template.CEInterface_in_C.size();
 
-  
+#if 1
+  findRootCliques(P1.subtree_roots, P1.cliques.size(), P1_message_order);
+  findRootCliques(Co.subtree_roots, Co.cliques.size(), Co_message_order);
+  findRootCliques(E1.subtree_roots, E1.cliques.size(), E1_message_order);
+  E_root_clique = E1.subtree_roots;
+#else
   set<unsigned> potential_E_roots;
   for (unsigned i=0; i < E1.cliques.size(); ++i) {
     potential_E_roots.insert(i);
@@ -1831,6 +1859,7 @@ SectionScheduler::computeSectionInterfaces() {
   {
     E_root_clique.push_back(*it);
   }
+#endif
 
 #else
   // Use base sections to find the various interface cliques.
@@ -3547,9 +3576,19 @@ for (unsigned i=0; i < node.size(); ++i) {
   for (unsigned i=0; i < bfs_queue.size(); ++i) {
     unsigned p = bfs_queue[i];
     for (set<unsigned>::iterator j=child[p].begin(); j != child[p].end(); ++j) {
+#if 0
+/* FIXME - the backward message inference code expects to reverse the forward
+  message schedule, so the pair elements need to be reversed. Also, I think
+  the entire message order needs to be reversed, since the inferece code iterates
+  through the message order backwards too */
+
       pair<unsigned,unsigned> msg(node[p], node[*j]);
       order.push_back(msg);
 //printf(" (%u,%u)", msg.first, msg.second);
+#else
+      pair<unsigned,unsigned> msg(node[*j], node[p]);
+      order.insert(order.begin(), msg);
+#endif
       bfs_queue.push_back(*j);
     }
   }

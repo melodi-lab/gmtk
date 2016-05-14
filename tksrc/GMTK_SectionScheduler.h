@@ -428,7 +428,8 @@ class SectionScheduler {
   vector< pair<unsigned,unsigned> > P1_reverse_messages;
   vector< pair<unsigned,unsigned> > Co_reverse_messages;
   // E doesn't need reverse messages as there are no right interface cliques to make consistent
-
+  //   so this should always be empty
+  vector< pair<unsigned,unsigned> > E1_reverse_messages; 
   // sets of random variables for frame shifting.
 
   // Trickiness: there are no uses of cur_{CC,CE}_rvs other than keeping

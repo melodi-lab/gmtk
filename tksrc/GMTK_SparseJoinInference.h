@@ -97,7 +97,7 @@ class SparseJoinInference : public SectionInferenceAlgorithm {
 
   void deScatterOutofRoot(PartitionStructures &ss,
 			  SparseJoinSectionTables &st,
-			  const unsigned root,
+			  vector<unsigned> const &roots,
 			  vector< pair<unsigned,unsigned> > &message_order,
 			  const char *const sect_type_name,
 			  const unsigned sect_num);
