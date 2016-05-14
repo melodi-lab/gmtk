@@ -180,6 +180,7 @@ JT_Partition::JT_Partition(
   section_li = from_part.section_li;
   section_ri = from_part.section_ri;
   ia_message_order = from_part.ia_message_order;
+  ia_rev_msg_order = from_part.ia_rev_msg_order;
   clique_name_dictionary = from_part.clique_name_dictionary;
 
   // make the cliques.

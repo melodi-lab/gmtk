@@ -338,6 +338,16 @@
       else 
 	return jt.C_ri_to_C;
     }
+
+    vector<unsigned> cur_roots() {
+      if (at_first_entry())
+	return jt.P1.subtree_roots;
+      else if (at_last_entry())
+	return jt.E1.subtree_roots;
+      else 
+	return jt.Co.subtree_roots;
+    }
+
     // the previous section's right interface clique number
     vector<unsigned> prev_ri() {
       if (at_p())
@@ -402,6 +412,16 @@
 	return jt.E1_message_order;
       else 
 	return jt.Co_message_order;
+    }
+
+    vector< pair<unsigned,unsigned> > & cur_reverse_msg_order() {
+assert(jt.E1_reverse_messages.size()==0);
+      if (at_first_entry())
+	return jt.P1_reverse_messages;
+      else if (at_last_entry())
+	return jt.E1_reverse_messages;
+      else 
+	return jt.Co_reverse_messages;
     }
 
     JT_Partition& cur_jt_section() {

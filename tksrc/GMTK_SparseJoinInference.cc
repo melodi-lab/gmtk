@@ -68,11 +68,18 @@ SparseJoinInference::prepareForwardInterfaceSeparator(SectionTablesBase *cur_sec
   // gather into the root of the current  section
   ceGatherIntoRoot(myjt->section_structure_array[inference_it->cur_ss()],
 		   *section,
-		   inference_it->cur_ri(),
+		   inference_it->cur_roots(),
 		   inference_it->cur_message_order(),
 		   inference_it->cur_nm(),
 		   inference_it->cur_st());
 
+  deScatterOutofRoot(myjt->section_structure_array[inference_it->cur_ss()],
+		     *section,
+		     inference_it->cur_roots(),
+		     inference_it->cur_reverse_msg_order(),
+		     inference_it->cur_nm(),
+		     inference_it->cur_st());
+  
   // if the LI separator was turned off, we need to turn it back on.
   if (!inference_it->has_c_section() && myjt->P1.cliques.size() == 0) {
     myjt->E1.useLISeparator();
@@ -519,7 +526,7 @@ SparseJoinInference::deScatterOutofRoot(// the section
 					PartitionStructures &ss, 
 					SparseJoinSectionTables &st,
 					// root (right interface clique) of this section
-					const unsigned root,
+					vector<unsigned> const &roots,
 					vector< pair<unsigned,unsigned> > &message_order,
 					// name (debugging/status msgs)
 					const char *const sect_type_name,
@@ -538,30 +545,40 @@ SparseJoinInference::deScatterOutofRoot(// the section
     IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
   }
 
-  infoMsg(IM::Inference, IM::Med+5,"DE: distributing out of section root %s,section[%d]: clique %d\n",
-	  sect_type_name,sect_num,root);
-  st.maxCliques[root].
-    deScatterToOutgoingSeparators(ss.maxCliquesSharedStructure[root],
-				  st.separatorCliques,
-				  ss.separatorCliquesSharedStructure.ptr);
-  for (unsigned msgNoP1=message_order.size();msgNoP1 > 0; msgNoP1 --) {
-    const unsigned to = message_order[msgNoP1-1].first;
-    const unsigned from = message_order[msgNoP1-1].second;
-    infoMsg(IM::Inference, IM::Mod,"DE: message %s,section[%d]: clique %d <-- clique %d\n",
-	    sect_type_name, sect_num, to, from);
-    st.maxCliques[to].
-      deReceiveFromIncommingSeparator(ss.maxCliquesSharedStructure[to],
-				      st.separatorCliques,
-				      ss.separatorCliquesSharedStructure.ptr);
 
-    infoMsg(IM::Inference, IM::Med+5,"DE: distributing out of %s,section[%d]: clique %d\n",
-	    sect_type_name, sect_num, to);
-    st.maxCliques[to].
-      deScatterToOutgoingSeparators(ss.maxCliquesSharedStructure[to],
+  for (unsigned i=0; i < roots.size(); ++i) {
+    unsigned root = roots[i];
+    infoMsg(IM::Inference, IM::Med+5,"DE: distributing out of section root %s,section[%d]: clique %d\n",
+	    sect_type_name, sect_num, root);
+
+    // FIXME - the reverse message order must be such that root[i] will deScatterToOutgoingSeparators() 
+    //         before any messages are passed out of root[i]. I.e., if roots = <a,b,c>, the reverse
+    //         message order <(b,x), (c,y), (a,z)> would be invalid because the message out of root b
+    //         would be sent before the st.maxCliques[b].deScatterToOutgoingSeparators(). Likewise for
+    //         root c. 
+
+    st.maxCliques[root].
+      deScatterToOutgoingSeparators(ss.maxCliquesSharedStructure[root],
 				    st.separatorCliques,
 				    ss.separatorCliquesSharedStructure.ptr);
+    for (unsigned msgNoP1=message_order.size();msgNoP1 > 0; msgNoP1 --) {
+      const unsigned to = message_order[msgNoP1-1].first;
+      const unsigned from = message_order[msgNoP1-1].second;
+      infoMsg(IM::Inference, IM::Mod,"DE: message %s,section[%d]: clique %d <-- clique %d\n",
+	      sect_type_name, sect_num, to, from);
+      st.maxCliques[to].
+	deReceiveFromIncommingSeparator(ss.maxCliquesSharedStructure[to],
+					st.separatorCliques,
+					ss.separatorCliquesSharedStructure.ptr);
+      
+      infoMsg(IM::Inference, IM::Med+5,"DE: distributing out of %s,section[%d]: clique %d\n",
+	      sect_type_name, sect_num, to);
+      st.maxCliques[to].
+	deScatterToOutgoingSeparators(ss.maxCliquesSharedStructure[to],
+				      st.separatorCliques,
+				      ss.separatorCliquesSharedStructure.ptr);
+    }
   }
-
   if (! myjt->section_debug_range.contains((int)sect_num)) {
     IM::setGlbMsgLevel(IM::InferenceMemory, inferenceMemoryDebugLevel);
     IM::setGlbMsgLevel(IM::Inference, inferenceDebugLevel);
