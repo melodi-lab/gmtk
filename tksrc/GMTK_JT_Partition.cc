@@ -27,6 +27,7 @@
 #include <set>
 #include <algorithm>
 #include <new>
+#include <queue>
 
 #include "general.h"
 #include "error.h"
@@ -572,19 +573,72 @@ void
 JT_Partition::findSubtreeRoots(vector<unsigned> const &interface_cliques) {
   subtree_roots.clear();
   subtree_roots.resize(connected_components.size());
+  ri_subtree_cliques.resize(connected_components.size());
+
+  vector<unsigned> parent(cliques.size(), ~0x0u);
+  vector<bool>     processed(cliques.size(), false);
 
   for (unsigned i=0; i < connected_components.size(); ++i) {
     set<unsigned> const &subtree = connected_components[i];
     vector<unsigned> interface_cliques_in_subtree;
     sv_intersect(subtree, interface_cliques, interface_cliques_in_subtree);
     if (interface_cliques_in_subtree.size() == 0) {
-      // This subtree has no interface cliques, so just pick the heaviest clique
+      // This connected component has no interface cliques, so just pick the heaviest clique
       subtree_roots[i] = cliqueWithMaxWeight(subtree);
+    } else if (interface_cliques_in_subtree.size() == 1) {
+      // This connected component has only 1 interface clique, so it's the root
+      subtree_roots[i] = interface_cliques[0];
     } else {
-      // This subtree has at least one interface clique. Pick the heaviest 
-      // interface clique as the root of the subtree.
+      // This connected component has more than one interface clique. Pick the heaviest 
+      // clique in the interface subtree as the root of the connected component.
+
+      // First, temporarily root the connected component at the first RI clique.
+      // Then, follow the parents from the remaining RI cliques to the temporary root
+      // to find the set of cliques in the right interface subtree. Finally, the
+      // heaviest in that set can be chosen as the root for the connected component.
+
+      queue<unsigned> work_queue;             // temporarily root the connected component
+      work_queue.push(interface_cliques_in_subtree[0]);
+      processed[interface_cliques_in_subtree[0]] = true;
+      ri_subtree_cliques[i].clear();
+      unsigned p;
+      while (!work_queue.empty()) {
+	p = work_queue.front();
+	work_queue.pop();
+	for (unsigned j=0; j < cliques[p].neighbors.size(); ++j) {
+	  unsigned q = cliques[p].neighbors[j];
+	  assert(q != p);
+	  if (!processed[q]) {
+	    parent[q] = p;
+	    work_queue.push(q);
+	    processed[q] = true;
+	  }
+	}
+      }
+
+printf("CC %u RI subtree:", i);      
+      for (unsigned j=0; j < interface_cliques_in_subtree.size(); ++j) { // follow paths to root
+	ri_subtree_cliques[i].insert(interface_cliques_in_subtree[j]);
+	for (unsigned p=parent[j]; p != ~0x0u; p = parent[p]) {
+printf(" %u", p);
+	  ri_subtree_cliques[i].insert(p);
+	}
+      }
       unsigned subtree_root = ~0x0;
       double weight = DBL_MIN;
+#if 1
+      for (set<unsigned>::iterator it = ri_subtree_cliques[i].begin();
+	   it != ri_subtree_cliques[i].end();
+	   ++it)
+      {
+	unsigned j = *it;
+	double wt = MaxClique::computeWeight(cliques[j].nodes);
+	if (wt > weight) {
+	  subtree_root = j;
+	  weight = wt;
+	}
+      }
+#else
       for (unsigned j=0; j < interface_cliques_in_subtree.size(); ++j) {
 	double wt = MaxClique::computeWeight(cliques[interface_cliques_in_subtree[j]].nodes);
 	if (wt > weight) {
@@ -592,6 +646,8 @@ JT_Partition::findSubtreeRoots(vector<unsigned> const &interface_cliques) {
 	  weight = wt;
 	}
       }
+#endif
+printf(" : root %u\n", subtree_root);
       subtree_roots[i] = subtree_root;
     }
   }
