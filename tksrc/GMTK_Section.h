@@ -52,7 +52,10 @@ public:
 
   // Connected components of the junction forest
   vector< set<unsigned> > connected_components;
- 
+
+  // Right interface subtree of each connected component
+  vector< set<unsigned> > ri_subtree_cliques;
+
   // Root clique of each connected component
   vector<unsigned> subtree_roots;
 
