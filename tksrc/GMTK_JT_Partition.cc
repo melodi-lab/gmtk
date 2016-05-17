@@ -169,6 +169,7 @@ JT_Partition::JT_Partition(
 		       map < RVInfo::rvParent, unsigned >& ppf)
 {
   connected_components = from_part.connected_components;
+  ri_subtree_cliques = from_part.ri_subtree_cliques;
   subtree_roots = from_part.subtree_roots;
 
   triMethod = from_part.triMethod;
@@ -616,18 +617,16 @@ JT_Partition::findSubtreeRoots(vector<unsigned> const &interface_cliques) {
 	}
       }
 
-printf("CC %u RI subtree:", i);      
       for (unsigned j=0; j < interface_cliques_in_subtree.size(); ++j) { // follow paths to root
 	ri_subtree_cliques[i].insert(interface_cliques_in_subtree[j]);
-	for (unsigned p=parent[j]; p != ~0x0u; p = parent[p]) {
-printf(" %u", p);
+	for (unsigned p=parent[ interface_cliques_in_subtree[j] ]; p != ~0x0u; p = parent[p]) {
 	  ri_subtree_cliques[i].insert(p);
 	}
       }
       unsigned subtree_root = ~0x0;
       double weight = DBL_MIN;
 #if 1
-      for (set<unsigned>::iterator it = ri_subtree_cliques[i].begin();
+      for (set<unsigned>::iterator it = ri_subtree_cliques[i].begin();  // choose heaviest as root
 	   it != ri_subtree_cliques[i].end();
 	   ++it)
       {
@@ -647,7 +646,6 @@ printf(" %u", p);
 	}
       }
 #endif
-printf(" : root %u\n", subtree_root);
       subtree_roots[i] = subtree_root;
     }
   }

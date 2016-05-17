@@ -10,8 +10,10 @@
  *
  */
 
-#include <algorithm>
 #include <float.h>
+
+#include <algorithm>
+#include <queue>
 
 #include "error.h"
 
@@ -153,7 +155,7 @@ SectionScheduler::printAllIAInfo(char const* fileName, bool writeComments) {
   os.writeComment("---- within-section message order\n");
   writeMsgOrder(os, E1_message_order);
   os.writeComment("---- E has no reverse messages\n");
-  os.write(0);
+  os.write(0); os.nl();
   os.writeComment("---- E left interface\n");
   if (E1.cliques.size() > 0) {
     os.write(E_li_to_C.size()); os.nl();
@@ -3465,19 +3467,43 @@ SectionScheduler::setUpMessagePassingOrderRecurse(JT_Partition &section,
 // to the section separators.
 void 
 SectionScheduler::setUpReverseMessageOrders() {
-  setUpReverseMessageOrder(P1, P_ri_to_C, P1_reverse_messages);
-  setUpReverseMessageOrder(Co, C_ri_to_C, Co_reverse_messages);
+  setUpReverseMessageOrder(P1, /* P_ri_to_C, */ P1_reverse_messages);
+  setUpReverseMessageOrder(Co, /* C_ri_to_C, */ Co_reverse_messages);
   // E doesn't require any reverse messages since it doesn't project
   // to any following section.
 }
 
 void
 SectionScheduler::setUpReverseMessageOrder(JT_Partition &section, 
+#if 0
 					   vector<unsigned> const &ri_clique,
-					   vector< pair<unsigned,unsigned> > &order)
+#endif
+					   vector< pair<unsigned,unsigned> > &reverse_order)
 {
-  order.clear();
+  reverse_order.clear();
 
+#if 1
+  // BFS within interface subtree to generate reverse message schedule
+  for (unsigned i=0; i < section.connected_components.size(); ++i) {
+    queue<unsigned> bfs_queue;
+    bfs_queue.push(section.subtree_roots[i]);
+    for (unsigned p = ~0x0u; !bfs_queue.empty(); bfs_queue.pop()) {
+      p = bfs_queue.front(); 
+      // unnecessary - only cliques in the interface subtree ever make it into the queue
+      //      if (section.ri_subtree_cliques.find(p) == section.ri_subtree_cliques.end()) continue; // skip cliques not in the interface subtree
+      for (unsigned j=0; j < section.cliques[p].children.size(); ++j) {
+	unsigned q = section.cliques[p].children[j];
+	if (section.ri_subtree_cliques[i].find(q) == section.ri_subtree_cliques[i].end()) continue; // child clique's not in the interace subtree
+	// The distribute evidence/scatter code reverses the message order and
+	// the source/destination pairs, so we fill reverse_order as if we were
+	// doing collect evidence/gather
+	reverse_order.insert(reverse_order.begin(), pair<unsigned,unsigned>(q, p));
+	bfs_queue.push(q);
+      }
+    }
+  }
+
+#else
   // build subtrees containing only cliques on paths from interface cliques to root cliques
 
   vector<unsigned>        node;               // cliques in residual tree needing to be made consistent
@@ -3593,6 +3619,7 @@ for (unsigned i=0; i < node.size(); ++i) {
     }
   }
 //printf("\n");
+#endif
 }
 
 

@@ -618,8 +618,10 @@ class SectionScheduler {
   // to the section separators.
   void setUpReverseMessageOrders();
   void setUpReverseMessageOrder(JT_Partition &section,
-				 vector<unsigned> const &ir_clique,
-				 vector< pair<unsigned,unsigned> >&order);
+#if 0
+				vector<unsigned> const &ri_clique,
+#endif
+				vector< pair<unsigned,unsigned> > &reverse_order);
 
   static void setUpMessagePassingOrder(JT_Partition& section,
 				       vector< pair<unsigned,unsigned> >&order,
