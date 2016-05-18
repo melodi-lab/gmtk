@@ -1,10 +1,10 @@
 /*
- * gmtkTriangulate.cc
- * triangulate a graph
+ * gmtkMFA.cc
+ * triangulate a graph wtih mean field approximation interface factorization
  *
- * Written by Jeff Bilmes <bilmes@ee.washington.edu>
+ * Written by Richard Rogers <rprogers@uw.edu>
  *
- * Copyright (C) 2001 Jeff Bilmes
+ * Copyright (C) 2016 Jeff Bilmes
  * Licensed under the Open Software License version 3.0
  * See COPYING or http://opensource.org/licenses/OSL-3.0
  *
