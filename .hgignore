@@ -124,6 +124,7 @@ tksrc/gmtkTriangulate
 tksrc/gmtkViterbi
 tksrc/gmtkOnline
 tksrc/gmtkPrint
+tksrc/gmtkFixIA
 tksrc/gmtkViz
 tksrc/gmtkViz.app
 tksrc/gmtkViz.app/*
