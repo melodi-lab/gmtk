@@ -3501,6 +3501,8 @@ JunctionTree::printAllIAInfo(char const* fileName, bool writeComments) {
   P1.writeInferenceArchitecture(os, 'P');
   os.writeComment("---- within-section message order\n");
   writeMsgOrder(os, P1_message_order);
+  os.writeComment("---- within-section reverse message order\n");
+  os.write(0); os.nl();
   os.writeComment("---- P has no left interface\n");
   os.write(0); os.nl();
   os.writeComment("---- P right interface\n");
@@ -3517,6 +3519,8 @@ JunctionTree::printAllIAInfo(char const* fileName, bool writeComments) {
   Co.writeInferenceArchitecture(os, 'C');
   os.writeComment("---- within-section message order\n");
   writeMsgOrder(os, Co_message_order);
+  os.writeComment("---- within-section reverse message order\n");
+  os.write(0); os.nl();
   os.writeComment("---- C left interface\n");
   os.write(1); os.nl();
   os.write(0); os.write(cliqueName(C_li_to_C)); os.nl();
@@ -3530,6 +3534,8 @@ JunctionTree::printAllIAInfo(char const* fileName, bool writeComments) {
   E1.writeInferenceArchitecture(os, 'E');
   os.writeComment("---- within-section message order\n");
   writeMsgOrder(os, E1_message_order);
+  os.writeComment("---- within-section reverse message order\n");
+  os.write(0); os.nl();
   os.writeComment("---- E left interface\n");
   if (E1.cliques.size() > 0) {
     os.write(1); os.nl();
