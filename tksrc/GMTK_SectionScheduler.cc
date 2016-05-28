@@ -603,6 +603,51 @@ SectionScheduler::setUpDataStructures(char const *varSectionAssignmentPrior,
   sortCliqueAssignedNodesAndComputeDispositions(varCliqueAssignmentPrior);
 }
 
+
+// Update message schedule etc. based on manually edited IA file
+void 
+SectionScheduler::updateDataStructures(iDataStreamFile &tri_file,
+				       char const *varSectionAssignmentPrior,
+				       char const *varCliqueAssignmentPrior,
+				       bool checkTriFileCards)
+{
+  infoMsg(IM::Max,"Reading triangulation file '%s' ...\n", tri_file.fileName());
+  if (!fp.readAndVerifyGMId(tri_file, checkTriFileCards)) {
+    error("ERROR: triangulation file '%s' does not match graph given in structure file '%s'\n",
+	  tri_file.fileName(),fp.fileNameParsing.c_str());
+  }
+  gm_template.readPartitions(tri_file);
+  gm_template.readInferenceArchitectures(tri_file);
+
+  infoMsg(IM::Max,"Triangulating graph...\n");
+
+  gm_template.triangulatePartitionsByCliqueCompletion();
+
+  if (1) { 
+    // check that graph is indeed triangulated.
+    // TODO: perhaps take this check out so that inference code does
+    // not need to link to the triangulation code (either that, or put
+    // the triangulation check in a different file, so that we only
+    // link to tri check code).
+
+    // TODO: Post-refactor, we're not assuming the graph must be triangulated?
+    //       Move this into the subset of section inference algorithms that require it.
+    BoundaryTriangulate triangulator(fp,
+				     gm_template.maxNumChunksInBoundary(),
+				     gm_template.chunkSkip(),1.0);
+    triangulator.ensurePartitionsAreChordal(gm_template);
+  }
+
+  ////////////////////////////////////////////////////////////////////
+  // CREATE JUNCTION TREE DATA STRUCTURES
+  infoMsg(IM::Default,"Creating Junction Forest\n"); fflush(stdout);
+  updateJTDataStructures(varSectionAssignmentPrior,varCliqueAssignmentPrior);
+  prepareForUnrolling();
+  infoMsg(IM::Default,"DONE creating Junction Forest\n"); fflush(stdout);
+  ////////////////////////////////////////////////////////////////////
+}
+
+
 /*
  *  init_CC_CE_rvs(it)
  *    given an iterator representing an unrolled segment,
@@ -1823,8 +1868,6 @@ SectionScheduler::computeSectionInterfaces() {
   // set up the base sections
   create_base_sections();
 
-
-#if 1
   P_ri_to_C = P1.section_ri;
   P_ri_to_C_size = P_ri_to_C.size(); // gm_template.PCInterface_in_P.size();
   E_li_to_C = E1.section_li;
@@ -1839,97 +1882,10 @@ SectionScheduler::computeSectionInterfaces() {
   
   C_ri_to_C_size = C_ri_to_C.size(); //gm_template.CEInterface_in_C.size();
 
-#if 1
   findRootCliques(P1.subtree_roots, P1.cliques.size(), P1_message_order);
   findRootCliques(Co.subtree_roots, Co.cliques.size(), Co_message_order);
   findRootCliques(E1.subtree_roots, E1.cliques.size(), E1_message_order);
   E_root_clique = E1.subtree_roots;
-#else
-  set<unsigned> potential_E_roots;
-  for (unsigned i=0; i < E1.cliques.size(); ++i) {
-    potential_E_roots.insert(i);
-  }
-  for (vector<pair<unsigned,unsigned> >::iterator it = E1_message_order.begin();
-       it != E1_message_order.end();
-       ++it)
-  {
-    potential_E_roots.erase((*it).first); // roots cannot be message source
-  }
-  for (set<unsigned>::iterator it = potential_E_roots.begin();
-       it != potential_E_roots.end();
-       ++it)
-  {
-    E_root_clique.push_back(*it);
-  }
-#endif
-
-#else
-  // Use base sections to find the various interface cliques.
-  bool P_riCliqueSameAsInterface;
-  bool E_liCliqueSameAsInterface;
-  P1.findRInterfaceClique(P_ri_to_C,P_riCliqueSameAsInterface,interfaceCliquePriorityStr);
-  P_ri_to_C_size = gm_template.PCInterface_in_P.size();
-  E1.findLInterfaceClique(E_li_to_C,E_liCliqueSameAsInterface,interfaceCliquePriorityStr);
-
-  // Note that here, we do the same for both left and right interface,
-  // but we break it out into two cases for clarity.
-  if (gm_template.usesLeftInterface()) {
-    // left interface case
-
-    bool Co_liCliqueSameAsInterface;
-    bool Co_riCliqueSameAsInterface;
-
-    Co.findLInterfaceClique(C_li_to_C,Co_liCliqueSameAsInterface,interfaceCliquePriorityStr);
-    C_li_to_P = C_li_to_C;
-    Co.findRInterfaceClique(C_ri_to_E,Co_riCliqueSameAsInterface,interfaceCliquePriorityStr);
-    C_ri_to_C = C_ri_to_E;
-
-    // sanity check
-    assert (C_ri_to_C == C_ri_to_E);
-
-    P_to_C_icliques_same =
-      P_riCliqueSameAsInterface && Co_liCliqueSameAsInterface;
-
-    C_to_C_icliques_same =
-      Co_riCliqueSameAsInterface && Co_liCliqueSameAsInterface;    
-
-    C_to_E_icliques_same =
-      Co_riCliqueSameAsInterface && E_liCliqueSameAsInterface;
-
-  } else { // right interface
-
-    bool Co_liCliqueSameAsInterface;
-    bool Co_riCliqueSameAsInterface;
-
-    Co.findLInterfaceClique(C_li_to_P,Co_liCliqueSameAsInterface,interfaceCliquePriorityStr);
-    Co.findRInterfaceClique(C_ri_to_C,Co_riCliqueSameAsInterface,interfaceCliquePriorityStr);
-    C_li_to_C = C_li_to_P;
-    C_ri_to_E = C_ri_to_C;
-
-    // sanity check
-    assert (C_li_to_C == C_li_to_P);
-
-    P_to_C_icliques_same =
-      P_riCliqueSameAsInterface && Co_liCliqueSameAsInterface;
-
-    C_to_C_icliques_same =
-      Co_riCliqueSameAsInterface && Co_liCliqueSameAsInterface;    
-
-    C_to_E_icliques_same =
-      Co_riCliqueSameAsInterface && E_liCliqueSameAsInterface;
-  }
-  C_ri_to_C_size = gm_template.CEInterface_in_C.size();
-
-  // TODO: see if it is possible to choose a better root for E.  
-  // TODO: make command line heuristics for choosing E-root-clique as well.
-  // E order, clique 0 could be choosen as root arbitrarily.  
-  // E_root_clique = 0;
-  // E_root_clique = E1.cliqueWithMinWeight();
-  E_root_clique.resize(1);
-  E_root_clique[0] = E1.cliqueWithMaxWeight();
-  // If this is updated, need also to update in all other places
-  // the code, search for string "update E_root_clique"
-#endif
 }
 
 // This version supports mean field approximation inference architecture
@@ -2654,6 +2610,22 @@ assignRVsToCliques(const char* varSectionAssignmentPrior, const char *varCliqueA
  *
  *-----------------------------------------------------------------------
  */
+
+void
+getSubtreeNodes(JT_Partition &section, unsigned root_clique, set<RV *> &subtree_nodes) {
+  subtree_nodes.clear();
+  queue<unsigned> clique_queue;
+  clique_queue.push(root_clique);
+  do {
+    unsigned p = clique_queue.front();
+    clique_queue.pop();
+    subtree_nodes.insert(section.cliques[p].nodes.begin(), section.cliques[p].nodes.end());
+    for (unsigned i=0; i < section.cliques[p].children.size(); ++i) {
+      clique_queue.push(section.cliques[p].children[i]);
+    }
+  } while (!clique_queue.empty());
+}
+
 void 
 SectionScheduler::assignRVsToCliques(const char *const sectionName,
 				     JT_Partition &section,
@@ -2662,7 +2634,6 @@ SectionScheduler::assignRVsToCliques(const char *const sectionName,
 				     const char *varCliqueAssignmentPrior)
 {
   vector<RV*> sortedNodes;
-
   // We use a constrained topological sort based on command line
   // arguments, so that variables are considered in what hopefully
   // will be a good order (e.g., might have it such that continuous
@@ -2672,16 +2643,24 @@ SectionScheduler::assignRVsToCliques(const char *const sectionName,
   infoMsg(IM::Giga,"Sorting section variables using priority order (%s)\n",
 	  (varSectionAssignmentPrior ? varSectionAssignmentPrior : "NULL"));
 
+#if 0
   GraphicalModel::topologicalSortWPriority(section.nodes,section.nodes,sortedNodes,varSectionAssignmentPrior);
+#endif
 
   // printf("have %d sorted nodes and %d cliques\n",sortedNodes.size(),section.cliques.size());
 
   for (unsigned i=0; i < section.subtree_roots.size(); ++i) {
     unsigned rootClique = section.subtree_roots[i];
 
+    set<RV *> subtree_nodes;
+    getSubtreeNodes(section, rootClique, subtree_nodes);
+    GraphicalModel::topologicalSortWPriority(subtree_nodes, subtree_nodes, sortedNodes, varSectionAssignmentPrior);
+
     // update the cumulative RV assignments before we begin.
     getCumulativeAssignedNodes(section,rootClique);
-    
+
+  //  This is bogus - this iterates each node (RV) more than once (the number of connected components), and with the wrong roots...
+
     for (unsigned n=0;n<sortedNodes.size();n++) {
       
       RV* rv = sortedNodes[n];
@@ -4547,7 +4526,6 @@ SectionScheduler::setUpJTDataStructures(const char* varSectionAssignmentPrior,
   // main() routine for this class.
 
   createSectionJunctionForests();   // create undirected graph with edges in clique[i].neighbors
-
   computeSectionInterfaces();       // setup left & right interfaces
   //createFactorCliques();
   createDirectedGraphOfCliques();   // create junction forest with edges in clique[i].children
@@ -4558,7 +4536,34 @@ SectionScheduler::setUpJTDataStructures(const char* varSectionAssignmentPrior,
   //setUpMessagePassingOrders();
   // create seps and VE seps.
   createSeparators();               // create within- & between-section separators per message order
+  computeSeparatorIterationOrders();
+  // -- -- used only to compute weight.
+  getCumulativeUnassignedIteratedNodes(); 
+  // -- --
+sortCliqueAssignedNodesAndComputeDispositions();
+  //sortCliqueAssignedNodesAndComputeDispositions(varCliqueAssignmentPrior);
+}
 
+
+
+void
+SectionScheduler::updateJTDataStructures(const char* varSectionAssignmentPrior,
+					 const char *varCliqueAssignmentPrior)
+{
+  // main() routine for this class.
+
+  createSectionJunctionTrees(junctionTreeMSTpriorityStr);   // create undirected graph with edges in clique[i].neighbors
+  computeSectionInterfacesMFA();       // setup left & right interfaces
+  createFactorCliques();
+  createDirectedGraphOfCliques();   // create junction forest with edges in clique[i].children
+  //  assignRVsToCliques(varSectionAssignmentPrior,varCliqueAssignmentPrior);
+  assignFactorsToCliques();
+  //  computeUnassignedCliqueNodes();
+  // TODO: assignScoringFactorsToCliques();
+  setUpMessagePassingOrders();
+  setUpReverseMessageOrders();
+  // create seps and VE seps.
+  createSeparators();               // create within- & between-section separators per message order
   computeSeparatorIterationOrders();
 
   // -- -- used only to compute weight.
@@ -4568,9 +4573,6 @@ SectionScheduler::setUpJTDataStructures(const char* varSectionAssignmentPrior,
 sortCliqueAssignedNodesAndComputeDispositions();
   //sortCliqueAssignedNodesAndComputeDispositions(varCliqueAssignmentPrior);
 }
-
-
-
 
 
 /*-

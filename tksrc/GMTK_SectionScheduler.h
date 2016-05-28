@@ -91,10 +91,15 @@ class SectionScheduler {
 				   char const *varSectionAssignmentPrior,
 				   char const *varCliqueAssignmentPrior,
 				   bool checkTriFileCards);
-
   // gmtkMFA version
   virtual void setUpDataStructures(char const *varSectionAssignmentPrior,
 				   char const *varCliqueAssignmentPrior);
+
+  // Update message schedule etc. based on manually edited IA file
+  virtual void updateDataStructures(iDataStreamFile &tri_file,
+				    char const *varSectionAssignmentPrior,
+				    char const *varCliqueAssignmentPrior,
+				    bool checkTriFileCards);
 
 
   // Prepare to do inference on segment of length T. Note that this
@@ -528,6 +533,9 @@ class SectionScheduler {
 
   virtual void setUpJTDataStructures(const char* varSectionAssignmentPrior,
 				     const char *varCliqueAssignmentPrior);
+
+  virtual void updateJTDataStructures(const char* varSectionAssignmentPrior,
+				      const char *varCliqueAssignmentPrior);
 
   // create the three junction trees for the basic sections.
   void createSectionJunctionTrees(const string pStr = junctionTreeMSTpriorityStr);
