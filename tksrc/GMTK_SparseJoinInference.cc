@@ -73,13 +73,17 @@ SparseJoinInference::prepareForwardInterfaceSeparator(SectionTablesBase *cur_sec
 		   inference_it->cur_nm(),
 		   inference_it->cur_st());
 
-  deScatterOutofRoot(myjt->section_structure_array[inference_it->cur_ss()],
-		     *section,
-		     inference_it->cur_roots(),
-		     inference_it->cur_reverse_msg_order(),
-		     inference_it->cur_nm(),
-		     inference_it->cur_st());
-  
+  // make the right interface cliques consistent if we need to
+  vector< pair<unsigned,unsigned> > &subtree_reverse_messages = inference_it->cur_reverse_msg_order();
+  if (subtree_reverse_messages.size() > 0) {
+    deScatterOutofRoot(myjt->section_structure_array[inference_it->cur_ss()],
+		       *section,
+		       inference_it->cur_roots(),
+		       inference_it->cur_reverse_msg_order(),
+		       inference_it->cur_nm(),
+		       inference_it->cur_st());
+  }
+
   // if the LI separator was turned off, we need to turn it back on.
   if (!inference_it->has_c_section() && myjt->P1.cliques.size() == 0) {
     myjt->E1.useLISeparator();
