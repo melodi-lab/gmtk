@@ -75,11 +75,12 @@ SparseJoinInference::prepareForwardInterfaceSeparator(SectionTablesBase *cur_sec
 
   // make the right interface cliques consistent if we need to
   vector< pair<unsigned,unsigned> > &subtree_reverse_messages = inference_it->cur_reverse_msg_order();
+
   if (subtree_reverse_messages.size() > 0) {
     deScatterOutofRoot(myjt->section_structure_array[inference_it->cur_ss()],
 		       *section,
 		       inference_it->cur_roots(),
-		       inference_it->cur_reverse_msg_order(),
+		       subtree_reverse_messages,
 		       inference_it->cur_nm(),
 		       inference_it->cur_st());
   }
