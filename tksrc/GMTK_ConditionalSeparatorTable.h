@@ -345,6 +345,9 @@ public:
   }
 
 
+  // Make separator values sum to 1.0
+  void sumNormalize();
+
   // insert current value of RVs into separator
   void insert(SeparatorClique& origin,
 	      ConditionalSeparatorTable::SharedLocalStructure& sepSharedStructure);

@@ -1874,9 +1874,11 @@ static float normalizeScoreEachClique = MaxClique::normalizeScoreEachClique;
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
     MaxClique::normalizeScoreEachClique = normalizeScoreEachClique;
 
+#if 0
     if (MaxClique::normalizeScoreEachClique < 0.0) {
       error("ERROR: -cliqueTableNormalize option must be non-negative\n");
     }
+#endif
 
 #if defined(GMTK_ARG_EM_TRAINING_PARAMS)
     if (MaxClique::normalizeScoreEachClique != 1.0 && localCliqueNormalization == false) {
@@ -1886,6 +1888,28 @@ static float normalizeScoreEachClique = MaxClique::normalizeScoreEachClique;
     }
 #endif
 
+
+#else
+#endif
+#endif // defined(GMTK_ARG_CLIQUE_TABLE_NORMALIZE)
+
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
+#if defined(GMTK_ARG_SEPARATOR_NORMALIZE)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+Arg("separatorNormalize",Arg::Opt,SparseJoinSectionTables::normalizeSeparators,"Normalize scores in section interface separators."),
+
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
 #else
 #endif

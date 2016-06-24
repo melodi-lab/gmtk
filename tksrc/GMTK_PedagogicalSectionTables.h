@@ -21,6 +21,8 @@ class PedagogicalSectionTables : public SectionTablesBase {
 
   PedagogicalCliqueTable* maxCliques;
 
+  MaxCliqueTable *getMaxCliques() { return NULL; }
+
   // Create a dummy/invalid table for arrays that can be written over.
   PedagogicalSectionTables() : maxCliques(NULL) {}
 

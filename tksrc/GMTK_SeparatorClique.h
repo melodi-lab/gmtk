@@ -209,6 +209,10 @@ public:
   // construct a separator between two cliques
   SeparatorClique(MaxClique& c1, MaxClique& c2);
 
+  // construct a separator between two cliques restricted to the specified RVs 
+  // (for factored interfaces)
+  SeparatorClique(MaxClique& c1, MaxClique& c2, set<RV *> const &sepset);
+
 #if 0
   // not used any longer. Keep here in case we 
   // need it again in future.

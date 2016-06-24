@@ -471,6 +471,26 @@ ConditionalSeparatorTable
 }
 
 
+
+void
+ConditionalSeparatorTable::sumNormalize() {
+  logpr sum;
+  for (unsigned i=0; i < numSeparatorValuesUsed; ++i) {
+    ConditionalSeparatorTable::AISeparatorValue &cur_sep_val = separatorValues->ptr[i];
+    for (unsigned j=0; j < cur_sep_val.numRemValuesUsed; ++j) {
+      sum += cur_sep_val.remValues[j].p;
+    }
+  }
+  for (unsigned i=0; i < numSeparatorValuesUsed; ++i) {
+    ConditionalSeparatorTable::AISeparatorValue &cur_sep_val = separatorValues->ptr[i];
+    for (unsigned j=0; j < cur_sep_val.numRemValuesUsed; ++j) {
+      cur_sep_val.remValues[j].p /= sum;
+    }
+  }
+}
+
+
+
 /*-
  *-----------------------------------------------------------------------
  * ConditionalSeparatorTable::insert()

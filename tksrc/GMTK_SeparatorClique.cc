@@ -187,6 +187,64 @@ SeparatorClique::SeparatorClique(MaxClique& c1, MaxClique& c2)
   
 }
 
+SeparatorClique::SeparatorClique(MaxClique& c1, MaxClique& c2, set<RV *> const &sepset)
+  :  veSeparator(false),
+     separatorValueSpaceManager(1,     // starting size
+				sepSpaceMgrGrowthRate,   // growth rate
+				1,     // growth addition
+				sepSpaceMgrDecayRate),   // decay rate 
+     remainderValueSpaceManager(1,     // starting size
+				remSpaceMgrGrowthRate,   // growth rate
+				1,     // growth addition
+				remSpaceMgrDecayRate)    // decay rate
+     
+{
+  nodes.clear();
+
+  // not a ve sep clique.
+  veSepClique = NULL;
+
+  skipMe = false;
+
+  set<RV *> tmp1; // c1.nodes \cap c2.nodes
+
+  // create a set of nodes that is the intersection of the two
+  set_intersection(c1.nodes.begin(),c1.nodes.end(),
+		   c2.nodes.begin(),c2.nodes.end(),
+		   inserter(tmp1, tmp1.end()));
+
+  map< RVInfo::rvParent, RV * > ppf;
+  for (set<RV *>::iterator it = tmp1.begin(); it != tmp1.end(); ++it) {
+    RVInfo::rvParent rvp;
+    rvp.first  = (*it)->name();
+    rvp.second = (*it)->frame();
+    ppf[rvp] = *it;
+  }
+  set<RV *> tmp2; // sepset RVs mapped to c2.nodes RV*s so intersection will work
+  for (set<RV *>::iterator it = sepset.begin(); it != sepset.end(); ++it) {
+    RVInfo::rvParent rvp;
+    rvp.first  = (*it)->name();
+    rvp.second = (*it)->frame();
+    if (ppf.find(rvp) != ppf.end()) {
+      tmp2.insert(ppf[rvp]);
+    }
+  }
+
+
+  // nodes = c1.nodes \cup c2.nodes \cup sepset
+  set_intersection(tmp1.begin(), tmp1.end(),
+		   tmp2.begin(), tmp2.end(),
+		   inserter(nodes, nodes.end()));
+  if (nodes.size() != sepset.size()) {
+    fprintf(stderr, "    c1 nodes: "); printRVSet(stderr, c1.nodes);
+    fprintf(stderr, "    c2 nodes: "); printRVSet(stderr, c2.nodes);
+    fprintf(stderr, "sepset nodes: "); printRVSet(stderr, sepset);
+    fprintf(stderr, "    SC.nodes: "); printRVSet(stderr, nodes);
+    error("ERROR: Bad inference architecture - sepset nodes must be a subset of both c1's and c2's nodes\n");
+  }
+  // assert (nodes.size() > 0);  
+}
+
 SeparatorClique::~SeparatorClique()
 {
   if (veSeparator) {
