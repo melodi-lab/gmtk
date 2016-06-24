@@ -975,12 +975,12 @@ SectionScheduler::unroll(const unsigned int numFrames,
 							       false // does not have a li separator
 							       );
   for (int p=0;p<numCoSectionStructures;p++) {
-    new (&section_structure_array[sectionNo]) PartitionStructures(Co,cur_unrolled_rvs,cur_ppf,p*S*fp.numFramesInC());
+    new (&section_structure_array[sectionNo]) PartitionStructures(Co,cur_unrolled_rvs,cur_ppf,p*S*fp.numFramesInC(), Co.liNodes.size() > 0);
     sectionNo++;
   }
   new (&section_structure_array[sectionNo++]) 
     PartitionStructures(E1,cur_unrolled_rvs,cur_ppf,
-			modifiedTemplateMinUnrollAmount*S*fp.numFramesInC());
+			modifiedTemplateMinUnrollAmount*S*fp.numFramesInC(), E1.liNodes.size() > 0);
 
    
   // 
