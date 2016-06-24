@@ -3763,11 +3763,13 @@ SectionScheduler::createSeparators() {
       }
       
       // build PC separators in C (i.e., P's right & C's left interface separators)
+      assert(P1.section_ri.size() == gm_template.PCInterface_in_C.size());
       for (unsigned i=0; i < P1.section_ri.size(); ++i) {
 	unsigned P_ri_clique_num = P1.section_ri[i], 
                  C_li_clique_num = Co.section_li[i];
 	Co.separators.push_back(SeparatorClique(P1.cliques[P_ri_clique_num], 
-						Co.cliques[C_li_clique_num]));
+						Co.cliques[C_li_clique_num],
+						gm_template.PCInterface_in_C[i]));
 	Co.cliques[C_li_clique_num].ceReceiveSeparators.push_back(Co.separators.size()-1);
       }
 #endif
@@ -3787,12 +3789,14 @@ SectionScheduler::createSeparators() {
 	// variables in Ci with their parents in C_{i+1}. It is not
 	// possible in this case for a child in Ci to have a parent in
 	// C_{i-1} since we're in the size(P) == 0 case here.
+	assert(Co.section_li.size() == gm_template.PCInterface_in_C.size());
 	for (unsigned i=0; i < Co.section_li.size(); ++i) {
 	  // FIXME - the GMTK 1.X code has C_li_to_P -> C_li_to_P ?
 	  unsigned C_ri_clique_num = Co.section_ri[i],
                    C_li_clique_num = Co.section_li[i];
 	  Co.separators.push_back(SeparatorClique(Co.cliques[C_ri_clique_num],
-						  Co.cliques[C_li_clique_num]));
+						  Co.cliques[C_li_clique_num],
+						  gm_template.PCInterface_in_C[i]));
 	  Co.cliques[C_li_clique_num].ceReceiveSeparators.push_back(Co.separators.size()-1);
 	}
       } else {
@@ -3818,11 +3822,13 @@ SectionScheduler::createSeparators() {
     }
 
     // Note that the interface separator always has to be the last separator inserted.
+    assert(Co.section_li.size() == gm_template.PCInterface_in_C.size());
     for (unsigned i=0; i < Co.section_li.size(); ++i) {
       unsigned P_ri_clique_num = P1.section_ri[i],
 	       C_li_clique_num = Co.section_li[i];
       Co.separators.push_back(SeparatorClique(P1.cliques[P_ri_clique_num],
-					      Co.cliques[C_li_clique_num]));
+					      Co.cliques[C_li_clique_num],
+					      gm_template.PCInterface_in_C[i]));
       // update right sections LI clique to include new separator
       Co.cliques[C_li_clique_num].ceReceiveSeparators.push_back(Co.separators.size()-1);
     }
@@ -3856,11 +3862,13 @@ SectionScheduler::createSeparators() {
     // 
     // Create separator of interface cliques. Co is never empty. Note that the interface
     // separator always has to be the last separator inserted.
+    assert(Co.section_ri.size() == gm_template.CEInterface_in_E.size());
     for (unsigned i=0; i < Co.section_ri.size(); ++i) {
       unsigned C_ri_clique_num = Co.section_ri[i],
 	       E_li_clique_num = E1.section_li[i];
       E1.separators.push_back(SeparatorClique(Co.cliques[C_ri_clique_num],
-					      E1.cliques[E_li_clique_num]));
+					      E1.cliques[E_li_clique_num],
+					      gm_template.CEInterface_in_E[i]));
       // update right sections LI clique to include new separator
       E1.cliques[E_li_clique_num].ceReceiveSeparators.push_back(E1.separators.size()-1);
     }

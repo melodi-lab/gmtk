@@ -27,6 +27,7 @@
 #include "GMTK_GMTemplate.h"
 #include "GMTK_PartitionStructures.h"
 #include "GMTK_JT_Partition.h"
+#include "GMTK_MaxCliqueTable.h"
 
 #include "debug.h"
 
@@ -79,6 +80,8 @@ class SectionTablesBase {
   }
 
   virtual ~SectionTablesBase() { clear(); }
+
+  virtual MaxCliqueTable *getMaxCliques() = 0;
 
   virtual logpr probEvidence(SectionIterator &inference_it, SectionScheduler &myjt) = 0;
 

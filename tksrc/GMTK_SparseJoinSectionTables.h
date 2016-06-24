@@ -19,7 +19,11 @@
 class SparseJoinSectionTables : public SectionTablesBase {
  public:
 
+  static bool normalizeSeparators;
+
   MaxCliqueTable* maxCliques;
+
+  MaxCliqueTable *getMaxCliques() { return maxCliques; }
 
   // Create a dummy/invalid table for arrays that can be written over.
   SparseJoinSectionTables() : maxCliques(NULL) {}

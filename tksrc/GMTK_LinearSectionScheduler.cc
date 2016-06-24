@@ -56,9 +56,22 @@ LinearSectionScheduler::probEvidence(SectionInferenceAlgorithm *algorithm,
   SectionTablesBase *prev_sect_tab = NULL;
   SectionTablesBase *cur_sect_tab = algorithm->getSectionTables(inference_it.cur_jt_section());
   
-  // do P'
+  // do P' (or first C' if no P') gather into root
   algorithm->prepareForwardInterfaceSeparator(cur_sect_tab);
 
+printf("XXXXX %u %f\n", 0, cur_sect_tab->probEvidence(inference_it, *this).val());
+
+  // possibly print the P or C section posteriors
+  if (inference_it.cur_section_clique_print_range() != NULL)
+    algorithm->printAllCliques(section_structure_array[inference_it.cur_ss()],
+		    *cur_sect_tab,
+		    inference_it.cur_st(),
+		    inference_it.cur_nm(),
+		    inference_it.cur_section_clique_print_range(),
+		    stdout,
+		    cliquePosteriorNormalize,cliquePosteriorUnlog,
+		    false, posteriorFile);
+  
   // do C' C' ... E'
   unsigned t;
   for (t=1; t < T; t+=1) {
@@ -72,8 +85,23 @@ LinearSectionScheduler::probEvidence(SectionInferenceAlgorithm *algorithm,
     algorithm->receiveForwardInterfaceSeparator(prev_sect_tab, cur_sect_tab);
     algorithm->prepareForwardInterfaceSeparator(cur_sect_tab);
 
+printf("XXXXX %u %f\n", t, cur_sect_tab->probEvidence(inference_it, *this).val());
+
+      // possibly print the C' or E' section posteriors
+      if (inference_it.cur_section_clique_print_range() != NULL)
+	algorithm->printAllCliques(section_structure_array[inference_it.cur_ss()],
+			*cur_sect_tab,
+			inference_it.cur_st(),
+			inference_it.cur_nm(),
+			inference_it.cur_section_clique_print_range(),
+			stdout,
+			cliquePosteriorNormalize, cliquePosteriorUnlog,
+			false, posteriorFile);
+
     //if (limitTime && probEvidenceTimeExpired) goto finished;
   }
+
+printf("XXXXX %u %f\n", t, cur_sect_tab->probEvidence(inference_it, *this).val());
 
   //finished:
   

@@ -2130,7 +2130,6 @@ ceSendToOutgoingSeparator(MaxCliqueTable::SharedLocalStructure& sharedStructure,
       sv.remValues.resize(1); 
     // in all cases
     sv.numRemValuesUsed = 1;	  
-
     sv.remValues.ptr[0].p = cliqueValues.ptr[0].p;
 
     // and we're done already. This was easy!
@@ -2698,6 +2697,12 @@ MaxCliqueTable::ceDoCliqueScoreNormalization(MaxCliqueTable::SharedLocalStructur
   if (origin.normalizeScoreEachClique == 0.0) {
     // find max score and take inverse
     normValue = maxProb().inverse();
+  } else if (origin.normalizeScoreEachClique < 0.0) {
+    logpr sum;
+    for (unsigned cvn=0; cvn < numCliqueValuesUsed; ++cvn) {
+      sum += cliqueValues.ptr[cvn].p;
+    }
+    normValue = sum.inverse();
   } else {
     normValue = origin.normalizeScoreEachClique;
   }

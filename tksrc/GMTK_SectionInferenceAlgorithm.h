@@ -118,7 +118,31 @@ class SectionInferenceAlgorithm {
 			       const bool unlog,
 			       const bool justPrintEntropy = false,
 			       ObservationFile *obsFile = NULL)
-  {}
+  {
+    MaxCliqueTable *maxCliques = st.getMaxCliques();
+    char buff[2048];
+    if (rng != NULL) {
+      BP_Range::iterator it = rng->begin();
+      while (!it.at_end()) {
+	const unsigned cliqueNum = (unsigned)(*it);
+	if (cliqueNum < ss.maxCliquesSharedStructure.size()) {
+	if (obsFile) {
+	  maxCliques[cliqueNum].
+            printCliqueEntries(ss.maxCliquesSharedStructure[cliqueNum],
+			       obsFile,normalize,unlog);
+	} else {
+	  sprintf(buff,"Section %d (%s), Clique %d:",section_num,nm,cliqueNum); 
+	  maxCliques[cliqueNum].
+	    printCliqueEntries(ss.maxCliquesSharedStructure[cliqueNum],
+			       f,buff,normalize,unlog,justPrintEntropy);
+	}
+      } else {
+	// could print out a warning here.
+      }
+      it++;
+    }
+  }
+}
 
   virtual void printAllCliques(const unsigned section,
 			       SectionTablesBase *st,

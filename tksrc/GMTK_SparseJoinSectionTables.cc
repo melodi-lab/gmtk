@@ -55,6 +55,7 @@
 VCID(HGID)
 
 
+bool SparseJoinSectionTables::normalizeSeparators = false;
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -97,13 +98,13 @@ SparseJoinSectionTables::projectToOutgoingSeparators(SectionIterator &stss_it,
   // of each of those cliques...
 #if 1
 #  if 1
-  vector<unsigned> roots(stss_it.prev_ri());
+  vector<unsigned> roots(stss_it.prev_ri()); // we ARE prev, so this is our RI to cur
   for (unsigned i=0, n=roots.size(); i < n; ++i) {
     maxCliques[roots[i]].ceSendToOutgoingSeparator(sourceSectionStructures.maxCliquesSharedStructure[roots[i]],
 						   separatorTableArray[i], 
 						   sepSharedStructure[i]);
 
-
+    if (normalizeSeparators) separatorTableArray[i].sumNormalize();
 
     // correct 1.x code
 #if 0
