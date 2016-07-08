@@ -58,9 +58,9 @@ LinearSectionScheduler::probEvidence(SectionInferenceAlgorithm *algorithm,
   
   // do P' (or first C' if no P') gather into root
   algorithm->prepareForwardInterfaceSeparator(cur_sect_tab);
-
+#ifdef PLOT_SCORE_VS_T
 printf("XXXXX %u %f\n", 0, cur_sect_tab->probEvidence(inference_it, *this).val());
-
+#endif
   // possibly print the P or C section posteriors
   if (inference_it.cur_section_clique_print_range() != NULL)
     algorithm->printAllCliques(section_structure_array[inference_it.cur_ss()],
@@ -84,9 +84,9 @@ printf("XXXXX %u %f\n", 0, cur_sect_tab->probEvidence(inference_it, *this).val()
 
     algorithm->receiveForwardInterfaceSeparator(prev_sect_tab, cur_sect_tab);
     algorithm->prepareForwardInterfaceSeparator(cur_sect_tab);
-
+#ifdef PLOT_SCORE_VS_T
 printf("XXXXX %u %f\n", t, cur_sect_tab->probEvidence(inference_it, *this).val());
-
+#endif
       // possibly print the C' or E' section posteriors
       if (inference_it.cur_section_clique_print_range() != NULL)
 	algorithm->printAllCliques(section_structure_array[inference_it.cur_ss()],
@@ -101,8 +101,9 @@ printf("XXXXX %u %f\n", t, cur_sect_tab->probEvidence(inference_it, *this).val()
     //if (limitTime && probEvidenceTimeExpired) goto finished;
   }
 
+#ifdef PLOT_SCORE_VS_T
 printf("XXXXX %u %f\n", t, cur_sect_tab->probEvidence(inference_it, *this).val());
-
+#endif
   //finished:
   
   if (numSectionsDone) *numSectionsDone = t;
