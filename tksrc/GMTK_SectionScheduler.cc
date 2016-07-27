@@ -24,6 +24,8 @@
 #include "GMTK_SectionInferenceAlgorithm.h"
 #include "GMTK_ObsDiscRV.h"
 
+extern bool die_if_not_chordal; // command line arg to ignore non-chordal inference architectures
+
 // default names of the three sections for printing/debugging messages.
 const char* SectionScheduler::P1_n = "P'";
 const char* SectionScheduler::Co_n = "C'";
@@ -563,7 +565,7 @@ SectionScheduler::setUpDataStructures(iDataStreamFile &tri_file,
     BoundaryTriangulate triangulator(fp,
 				     gm_template.maxNumChunksInBoundary(),
 				     gm_template.chunkSkip(),1.0);
-    triangulator.ensurePartitionsAreChordal(gm_template);
+    triangulator.ensurePartitionsAreChordal(gm_template, die_if_not_chordal);
   }
 
   ////////////////////////////////////////////////////////////////////
@@ -635,7 +637,7 @@ SectionScheduler::updateDataStructures(iDataStreamFile &tri_file,
     BoundaryTriangulate triangulator(fp,
 				     gm_template.maxNumChunksInBoundary(),
 				     gm_template.chunkSkip(),1.0);
-    triangulator.ensurePartitionsAreChordal(gm_template);
+    triangulator.ensurePartitionsAreChordal(gm_template, die_if_not_chordal);
   }
 
   ////////////////////////////////////////////////////////////////////
@@ -1667,6 +1669,14 @@ SectionScheduler::create_base_sections()
 			 section_unrolled_rvs,section_ppf);
 
   P1_message_order = P1.ia_message_order[string("default:P")];
+  set<unsigned> already_sent_outgoing_msgs;
+  for (unsigned i=0; i < P1_message_order.size(); ++i) {
+    unsigned src = P1_message_order[i].first;
+    if (already_sent_outgoing_msgs.find(src) == already_sent_outgoing_msgs.end()) {
+      P1_collect_clique_order.push_back(src);
+      already_sent_outgoing_msgs.insert(src);
+    }
+  }
   P1_reverse_messages = P1.ia_rev_msg_order[string("default:P")];
 
   // copy E section
@@ -1676,6 +1686,14 @@ assert(gm_template.E.cliques.size() > 0);
 			 empty, 0*S*fp.numFramesInC(),
 			 section_unrolled_rvs,section_ppf);
   E1_message_order = E1.ia_message_order[string("default:E")];
+  already_sent_outgoing_msgs.clear();
+  for (unsigned i=0; i < E1_message_order.size(); ++i) {
+    unsigned src = E1_message_order[i].first;
+    if (already_sent_outgoing_msgs.find(src) == already_sent_outgoing_msgs.end()) {
+      E1_collect_clique_order.push_back(src);
+      already_sent_outgoing_msgs.insert(src);
+    }
+  }
 
   if (gm_template.usesLeftInterface()) {
     // left interface case
@@ -1729,6 +1747,14 @@ assert(gm_template.E.cliques.size() > 0);
     }
   }
   Co_message_order = Co.ia_message_order[string("default:C")];
+  already_sent_outgoing_msgs.clear();
+  for (unsigned i=0; i < Co_message_order.size(); ++i) {
+    unsigned src = Co_message_order[i].first;
+    if (already_sent_outgoing_msgs.find(src) == already_sent_outgoing_msgs.end()) {
+      Co_collect_clique_order.push_back(src);
+      already_sent_outgoing_msgs.insert(src);
+    }
+  }
   Co_reverse_messages = Co.ia_rev_msg_order[string("default:C")];
 }
 
@@ -4550,9 +4576,24 @@ SectionScheduler::setUpJTDataStructures(const char* varSectionAssignmentPrior,
   // -- --
 sortCliqueAssignedNodesAndComputeDispositions();
   //sortCliqueAssignedNodesAndComputeDispositions(varCliqueAssignmentPrior);
+#if 0
+printf("\ncliques:\n  P':\n");
+for (unsigned i=0; i < P1.cliques.size(); ++i) {
+  printf("    %u: ", i);
+  printRVSet(stdout, P1.cliques[i].nodes, true);
 }
-
-
+printf("\n  C':\n");
+for (unsigned i=0; i < Co.cliques.size(); ++i) {
+  printf("    %u: ", i);
+  printRVSet(stdout, Co.cliques[i].nodes, true);
+}
+printf("\n  E':\n");
+for (unsigned i=0; i < E1.cliques.size(); ++i) {
+  printf("    %u: ", i);
+  printRVSet(stdout, E1.cliques[i].nodes, true);
+}
+#endif
+}
 
 void
 SectionScheduler::updateJTDataStructures(const char* varSectionAssignmentPrior,

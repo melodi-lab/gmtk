@@ -414,6 +414,15 @@
 	return jt.Co_message_order;
     }
 
+    vector<unsigned> & cur_collect_clique_order() {
+      if (at_first_entry())
+	return jt.P1_collect_clique_order;
+      else if (at_last_entry())
+	return jt.E1_collect_clique_order;
+      else 
+	return jt.Co_collect_clique_order;
+    }
+
     vector< pair<unsigned,unsigned> > & cur_reverse_msg_order() {
 assert(jt.E1_reverse_messages.size()==0);
       if (at_first_entry())

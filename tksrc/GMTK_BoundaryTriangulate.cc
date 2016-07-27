@@ -52,6 +52,7 @@
 #endif
 VCID(HGID)
 
+bool die_if_not_chordal = true; // command line arg to ignore non-chordal inference architectures
 
 #ifndef MAXFLOAT
 #define MAXFLOAT (3.40282347e+38F)

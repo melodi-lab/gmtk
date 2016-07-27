@@ -69,7 +69,7 @@ SparseJoinInference::prepareForwardInterfaceSeparator(SectionTablesBase *cur_sec
   ceGatherIntoRoot(myjt->section_structure_array[inference_it->cur_ss()],
 		   *section,
 		   inference_it->cur_roots(),
-		   inference_it->cur_message_order(),
+		   inference_it->cur_collect_clique_order(),
 		   inference_it->cur_nm(),
 		   inference_it->cur_st());
 
@@ -293,7 +293,7 @@ void
 SparseJoinInference::ceGatherIntoRoot(PartitionStructures &ss,
 				      SparseJoinSectionTables &st,
 				      vector<unsigned> const &roots,
-				      vector< pair<unsigned,unsigned> > &message_order,
+				      vector< unsigned > &clique_order,
 				      const char *const section_type_name,
 				      const unsigned section_num,
 				      const bool clear_when_done,
@@ -315,12 +315,114 @@ SparseJoinInference::ceGatherIntoRoot(PartitionStructures &ss,
   bool zeroClique = false;
   try {
     // Now, do section messages.
+    for (unsigned i=0; i < clique_order.size(); ++i) {
+      const unsigned from = clique_order[i];
+      // By virtue of the fact that the "from" clique is at this positiion in the order,
+      // it must be the case that all of its incoming messages have been sent. It is 
+      // therefore safe to gather them into the "from" clique. Thus the "from" clique
+      // is actually receiving its incoming messages before sending its outgoing messages.
+
+      infoMsg(IM::Inference, IM::Med+5,
+	      "CE: gathering into %s,section[%d]: clique %d\n",
+	      section_type_name,section_num,from);
+
+      // this may now throw an exception on zero clique errors - RR
+      st.maxCliques[from].
+	ceGatherFromIncommingSeparators(ss.maxCliquesSharedStructure[from],
+					st.separatorCliques,
+					ss.separatorCliquesSharedStructure.ptr);
+
+      // Now that the "from" clique has processed its incoming messages (if any), it is
+      // ready to send its outgoing messages
+  
+      infoMsg(IM::Inference, IM::Mod,
+	      "CE: message %s,section[%d]: clique %d sending to outgoing separators\n",
+	      section_type_name,section_num,from);
+
+      st.maxCliques[from].
+	ceSendToOutgoingSeparators(ss.maxCliquesSharedStructure[from],
+				   st.separatorCliques,
+				   ss.separatorCliquesSharedStructure.ptr);
+      
+      // TODO: if we are just computing probE here, we should delete
+      // memory in st.maxCliques[from]. Also, if we're only doing probE,
+      // we should not keep the cliques around at all, only the outgoing
+      // separator.
+      if (clear_when_done) {
+	st.maxCliques[from].
+	  clearCliqueAndIncommingSeparatorMemory(ss.maxCliquesSharedStructure[from],
+						 st.separatorCliques,
+						 ss.separatorCliquesSharedStructure.ptr);
+	
+	if (also_clear_origins) {
+	  // then clear out the origin memory used for inference.
+	  ss.origin.clearCliqueAndIncommingSeparatorMemoryForClique(from); 
+	}
+      }
+    }
+  } catch (ZeroCliqueException &e) {
+    zeroClique = true; // abort this section & segment
+  }
+  if (!zeroClique) {
+    // Collect into section's root cliques - The right interface cliques do not show
+    // up as sources in the section's message schedule (they are roots), so the above
+    // loop will not have gathered the incoming messages into the RI root cliques.
+    // We need to do so now, before sending any messages to the next section.
+    set<unsigned> gathered_roots;
+    for (unsigned i=0; i < roots.size(); ++i) {
+      unsigned root = roots[i];
+      if (gathered_roots.find(root) != gathered_roots.end()) continue;
+      gathered_roots.insert(root);
+      infoMsg(IM::Inference, IM::Med+5,
+	      "CE: gathering into section root %s,section[%d]: clique %d\n",
+	      section_type_name,section_num,root);
+      try {
+	st.maxCliques[root].
+	  ceGatherFromIncommingSeparators(ss.maxCliquesSharedStructure[root],
+					  st.separatorCliques,
+					  ss.separatorCliquesSharedStructure.ptr);
+      } catch (ZeroCliqueException &e) {
+	zeroClique = true; // abort this section & segment
+      }
+      if (!zeroClique) {
+	if (IM::messageGlb(IM::InferenceMemory, IM::Med+9)) {
+	  st.reportMemoryUsageTo(ss,stdout);
+	}
+      }
+    }
+  }
+  if (! myjt->section_debug_range.contains((int)section_num)) {
+    IM::setGlbMsgLevel(IM::InferenceMemory, inference_memory_debug_level);
+    IM::setGlbMsgLevel(IM::Inference, inference_debug_level);
+  }
+  if (zeroClique) {
+    throw ZeroCliqueException(); // continue to abort segment
+  }
+
+#else
+    // first check that this is not an empty section.
+    if (ss.maxCliquesSharedStructure.size() == 0)
+      return;
+    
+    unsigned inference_debug_level = IM::glbMsgLevel(IM::Inference);
+    unsigned inference_memory_debug_level = IM::glbMsgLevel(IM::InferenceMemory);
+    
+    if (! myjt->section_debug_range.contains((int)section_num)) {
+      IM::setGlbMsgLevel(IM::Inference, IM::glbMsgLevel(IM::DefaultModule));
+      IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
+    }
+    
+  bool zeroClique = false;
+  try {
+    // Now, do section messages.
     for (unsigned msgNo=0;msgNo < message_order.size(); msgNo ++) {
       const unsigned from = message_order[msgNo].first;
       const unsigned to = message_order[msgNo].second;
       infoMsg(IM::Inference, IM::Med+5,
 	      "CE: gathering into %s,section[%d]: clique %d\n",
 	      section_type_name,section_num,from);
+
+printf("CE: gathering into %s,section[%d]: clique %d\n", section_type_name,section_num,from);
 
       // this may now throw an exception on zero clique errors - RR
       st.maxCliques[from].
@@ -331,6 +433,8 @@ SparseJoinInference::ceGatherIntoRoot(PartitionStructures &ss,
       infoMsg(IM::Inference, IM::Mod,
 	      "CE: message %s,section[%d]: clique %d --> clique %d\n",
 	      section_type_name,section_num,from,to);
+
+printf("CE: message %s,section[%d]: clique %d --> clique %d\n", section_type_name,section_num,from,to);
       st.maxCliques[from].
 	ceSendToOutgoingSeparators(ss.maxCliquesSharedStructure[from],
 				   st.separatorCliques,
@@ -386,13 +490,6 @@ SparseJoinInference::ceGatherIntoRoot(PartitionStructures &ss,
   }
   if (zeroClique) {
     throw ZeroCliqueException(); // continue to abort segment
-  }
-#else
-  // FIXME - just run through the whole message order as below once,
-  //         then do final gather from incoming seps for each root
-
-  for (unsigned i=0; i < roots.size(); ++i) {
-    ceGatherIntoRoot(ss,st,roots[i],message_order,section_type_name,section_num,clear_when_done,also_clear_origins);
   }
 #endif
 }
