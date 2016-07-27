@@ -421,10 +421,13 @@ class SectionScheduler {
   // rather than in the sections, since they are re-used for all
   // cloned sections.
   vector< pair<unsigned,unsigned> > P1_message_order;
+  vector< unsigned > P1_collect_clique_order; // collect evidence clique order to send to outgoing separators
   vector< unsigned > P1_leaf_cliques;
   vector< pair<unsigned,unsigned> > Co_message_order;
+  vector< unsigned > Co_collect_clique_order;
   vector< unsigned > Co_leaf_cliques;
   vector< pair<unsigned,unsigned> > E1_message_order;  
+  vector< unsigned > E1_collect_clique_order;
   vector< unsigned > E1_leaf_cliques;
 
   // Backward message passing orders required to ensure all

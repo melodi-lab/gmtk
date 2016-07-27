@@ -1222,6 +1222,30 @@ Arg("map",Arg::Opt,dlopenFilenames,"Deterministic mapping dynamic library file. 
 #endif
 #endif // defined(GMTK_ARG_SKIP_STARTUP_CHECKS)
 
+
+
+/*-----------------------------------------------------------------------------------------------------------*/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+/*************************************************************************************************************/
+
+
+#if defined(GMTK_ARG_DIE_IF_NOT_CHORDAL)
+#if defined(GMTK_ARGUMENTS_DEFINITION)
+
+    extern bool die_if_not_chordal;
+
+#elif defined(GMTK_ARGUMENTS_DOCUMENTATION)
+
+  Arg("dieIfNotChordal",Arg::Opt,die_if_not_chordal, "Abort program if a non-chordal inference architecture is detected"),
+
+#elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
+
+#else
+#endif
+#endif // defined(GMTK_ARG_SKIP_CHORDALITY_WARNING)
+
+
 /*-----------------------------------------------------------------------------------------------------------*/
 /*************************************************************************************************************/
 /*************************************************************************************************************/

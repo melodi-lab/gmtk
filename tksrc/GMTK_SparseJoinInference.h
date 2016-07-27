@@ -72,7 +72,7 @@ class SparseJoinInference : public SectionInferenceAlgorithm {
 			// index of root clique in the section
 			vector<unsigned> const &roots,
 			// message order of the JT in this section
-			vector< pair<unsigned,unsigned> > &message_order,
+			vector< unsigned > &clique_order,
 			// the name of the section (for debugging/status msgs)
 			const char *const section_type_name,
 			// number of the section in unrolled graph 
