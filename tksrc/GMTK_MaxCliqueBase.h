@@ -283,7 +283,8 @@ class MaxCliqueBase : public IM {
   // of nodes to compute the weight of.
   static float computeWeight(const set<RV*>& nodes,
 			     const RV* node = NULL,
-			     const bool useDeterminism = true);
+			     const bool useDeterminism = true,
+			     const bool hateDeterminism = false); // hateDeterminism to avoid det RVs in interface for MFA
   static float computeWeightWithExclusion(const set<RV*>& nodes,
 					  const set<RV*>& unassignedIteratedNodes,
 					  const set<RV*>& unionSepNodes,
@@ -300,6 +301,9 @@ class MaxCliqueBase : public IM {
 					   const bool upperBound,
 					   const bool moreConservative,
 					   const bool useDeterminism);
+
+  // Helper function for computeWeight()
+  static bool isTrulySparse(DiscRV const *const drv, set<RV *> const &nodes);
 
   // compute the weight (log10 state space) of this clique.
   virtual float weight(const bool useDeterminism = true) const { 

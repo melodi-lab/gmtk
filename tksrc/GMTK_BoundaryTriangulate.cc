@@ -512,6 +512,9 @@ BoundaryTriangulate::createVectorBoundaryHeuristic(const string& bnd_heur_str,
       case 'N':
 	bnd_heur_v.push_back(IH_MIN_WEIGHT_NO_D);
 	break;
+      case 'd': 
+	bnd_heur_v.push_back(IH_MIN_WEIGHT_HATE_D);
+	break;
 
       case 'p':
 	bnd_heur_v.push_back(IH_MIN_MIN_POSITION_IN_FILE);
@@ -7106,9 +7109,10 @@ BoundaryTriangulate::interfaceScore(
   score.clear();
   for (unsigned fhi=0;fhi<bnd_heur_v.size();fhi++) {
     const BoundaryHeuristic fh = bnd_heur_v[fhi];
-    if (fh == IH_MIN_WEIGHT || fh == IH_MIN_WEIGHT_NO_D) {
+    if (fh == IH_MIN_WEIGHT || fh == IH_MIN_WEIGHT_NO_D || IH_MIN_WEIGHT_HATE_D) {
       float tmp_weight = MaxClique::computeWeight(C_l,NULL,
-				       (fh == IH_MIN_WEIGHT));
+						  (fh == IH_MIN_WEIGHT),
+						  (fh == IH_MIN_WEIGHT_HATE_D));
       score.push_back(tmp_weight);
       infoMsg(Low,"  Interface Score: set has weight = %f\n",tmp_weight);
     } else if (fh == IH_MIN_FILLIN) {
