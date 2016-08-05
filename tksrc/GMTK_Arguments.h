@@ -2569,7 +2569,7 @@ static char * mVitValsFileName = (char *)"-";
 
   Arg("boundaryHeuristic",
       Arg::Opt,boundaryHeuristic,
-      "Boundary heuristic, >1 of S=size,F=fill,W=wght,N=wght-w/o-det,M=max-clique,C=max-C-clique,A=st-spc,Q=C-st-spc"),
+      "Boundary heuristic, >1 of S=size,F=fill,W=wght,N=wght-w/o-det,d=wght-hate-det,M=max-clique,C=max-C-clique,A=st-spc,Q=C-st-spc"),
 
   Arg("M",
       Arg::Opt,maxNumChunksInBoundary,

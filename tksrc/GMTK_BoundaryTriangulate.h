@@ -192,7 +192,8 @@ private:
 			   /* t */ IH_MIN_MIN_TIMEFRAME = 12,
 			   /* T */ IH_MIN_MAX_TIMEFRAME = 13,
 			   /* h */ IH_MIN_MIN_HINT = 14,
-			   /* H */ IH_MIN_MAX_HINT = 15
+			   /* H */ IH_MIN_MAX_HINT = 15,
+			   /* d */ IH_MIN_WEIGHT_HATE_D = 16
   };
 
   // While much of the code for finding the best right and best left

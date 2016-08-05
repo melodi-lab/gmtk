@@ -413,12 +413,36 @@ MaxCliqueBase::makeComplete(const set<RV*> &rvs)
  *
  *-----------------------------------------------------------------------
  */
+
+bool
+MaxCliqueBase::
+isTrulySparse(DiscRV const *const drv, set<RV *> const &nodes) {
+  bool truly_sparse = true;
+  for (unsigned i=0;i<drv->allParents.size();i++) {
+    if (nodes.find(drv->allParents[i]) == nodes.end()) {
+      // found a parent of drv that is not in 'nodes' set so the
+      // node would not truly be sparse/deterministic here.
+      truly_sparse = false;
+      break;
+    }
+  }
+  return truly_sparse;
+}
+
 float
 MaxCliqueBase::
 computeWeight(const set<RV*>& nodes,
 	      const RV* node,
-	      const bool useDeterminism)
+	      const bool useDeterminism,
+              const bool hateDeterminism
+)
 {
+  // !useDet && !hateDet => deterministic relationships are counted normally in weight
+  //  useDet && !hateDet => deterministic relationships aren't counted against weight
+  // !useDet &&  hateDet => deterministic relationships are infinitely bad (for MFA)
+  //  useDet &&  hateDet => ERROR: determinism can't be both good & bad at the same time
+  assert( !(useDeterminism && hateDeterminism));
+
   // compute weight in log base 10 so that
   //   1) we don't overflow
   //   2) base 10 is an easy to understand magnitude rating of state space.
@@ -436,6 +460,9 @@ computeWeight(const set<RV*>& nodes,
 	// then there is a possibility that this node does not affect
 	// the state space, as long as all of this nodes parents are
 	// in the clique.  The variable 'truly_sparse' indicates that.
+#if 1
+	bool truly_sparse = isTrulySparse(drv, nodes);
+#else
 	bool truly_sparse = true;
 	for (unsigned i=0;i<drv->allParents.size();i++) {
 	  if (nodes.find(drv->allParents[i]) == nodes.end()) {
@@ -445,12 +472,21 @@ computeWeight(const set<RV*>& nodes,
 	    break;
 	  }
 	}
+#endif
 	if (truly_sparse)
 	  tmp_weight += log10((double)drv->useCardinality());	
 	else 
 	  tmp_weight += log10((double)drv->cardinality);
-      } else
+      } else if (hateDeterminism && drv->sparse()) {
+	bool truly_sparse = isTrulySparse(drv, nodes);
+	if (truly_sparse) {
+	  tmp_weight = INFINITY;
+	} else {
+	  tmp_weight += log10((double)drv->cardinality);
+	}
+      } else {
 	tmp_weight += log10((double)drv->cardinality);
+      }
     } else if (!node->discrete()) {
       // node is continuous observed.
       ContRV *crv = (ContRV*)node;
@@ -472,6 +508,9 @@ computeWeight(const set<RV*>& nodes,
 	// then there is a possibility that this node does not affect
 	// the state space, as long as all of this nodes parents are
 	// in the clique.  The variable 'truly_sparse' indicates that.
+#if 1
+	bool truly_sparse = isTrulySparse(drv, nodes);
+#else
 	bool truly_sparse = true;
 	for (unsigned i=0;i<drv->allParents.size();i++) {
 	  if ((nodes.find(drv->allParents[i]) == nodes.end())
@@ -483,12 +522,21 @@ computeWeight(const set<RV*>& nodes,
 	    break;
 	  }
 	}
+#endif
 	if (truly_sparse)
 	  tmp_weight += log10((double)drv->useCardinality());	
 	else 
 	  tmp_weight += log10((double)drv->cardinality);
-      } else
-	tmp_weight += log10((double)drv->cardinality);
+      } else if (hateDeterminism && drv->sparse()) {
+	bool truly_sparse = isTrulySparse(drv, nodes);
+	if (truly_sparse) {
+	  tmp_weight = INFINITY;
+	} else {
+	  tmp_weight += log10((double)drv->cardinality);
+	}
+      } else {
+ 	tmp_weight += log10((double)drv->cardinality);
+      }
     } else if (!rv->discrete()) {
       // node is continuous observed.
       ContRV *crv = (ContRV*)rv;
