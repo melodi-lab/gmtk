@@ -5,10 +5,15 @@
  * 
  *  $Header$
  * 
- * Copyright (C) 2001 Jeff Bilmes
- * Licensed under the Open Software License version 3.0
- * See COPYING or http://opensource.org/licenses/OSL-3.0
+ * Copyright (c) 2001, < fill in later >
  *
+ * Permission to use, copy, modify, and distribute this
+ * software and its documentation for any non-commercial purpose
+ * and without fee is hereby granted, provided that the above copyright
+ * notice appears in all copies.  The University of Washington,
+ * Seattle make no representations about
+ * the suitability of this software for any purpose.  It is provided
+ * "as is" without express or implied warranty.
  *
  */
 
@@ -99,8 +104,17 @@ void LatticeEdgeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
 							   DiscRV* drv, 
 							   logpr& p) 
 {
-  LatticeADT::LatticeEdgeList* outEdge 
-    = _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].edges.find(RV2DRV(parents[1])->val);
+  
+    //To enable multiple jump, we should use the larger_cpt
+
+    //LatticeADT::LatticeEdgeList* outEdge 
+    //= _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].edges.find(RV2DRV(parents[1])->val);
+
+
+    LatticeADT::LatticeEdgeList* outEdge
+    = _latticeAdt->_latticeNodes[RV2DRV(parents[0])->val].larger_cpt->find(RV2DRV(parents[1])->val);
+    
+
   if ( outEdge == NULL ) {
     // If this occurs, it means that there is no outgoing edge
     // in the lattice starting from the node with value parent0->val.
@@ -127,7 +141,7 @@ void LatticeEdgeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
     return;
   }
 
-  // get first edge of list, we are guaranteed that there is at least
+  // get first edge of list, we are gauranteed that there is at least
   // one edge in the array.
   assert ( outEdge->edge_array.size() > 0 );
   it.drv = drv;
@@ -135,6 +149,7 @@ void LatticeEdgeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
   it.internalStatePtr = outEdge;
   drv->val = outEdge->edge_array[it.uInternalState].emissionId;
   p = outEdge->edge_array[it.uInternalState].gmtk_score;
+
 }
 
 
@@ -152,6 +167,20 @@ bool LatticeEdgeCPT::next(iterator &it, logpr& p)
 {
   LatticeADT::LatticeEdgeList* outEdge =
     (LatticeADT::LatticeEdgeList*) it.internalStatePtr;
+
+
+    if(outEdge == NULL) {
+        //fprintf(stderr, "null pointer\n");
+        p.set_to_zero();
+        return false;
+    }
+
+    if(outEdge->num_edges == 0) {
+        //fprintf(stderr, "zero edge\n");
+        p.set_to_zero();
+        return false;
+    }
+
   if (it.uInternalState+1 < outEdge->edge_array.size()) {
     it.uInternalState++;
     it.drv->val = outEdge->edge_array[it.uInternalState].emissionId;

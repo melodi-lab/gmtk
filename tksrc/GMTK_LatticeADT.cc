@@ -5,10 +5,15 @@
  * 
  *  $Header$
  * 
- * Copyright (C) 2001 Jeff Bilmes
- * Licensed under the Open Software License version 3.0
- * See COPYING or http://opensource.org/licenses/OSL-3.0
+ * Copyright (c) 2001, < fill in later >
  *
+ * Permission to use, copy, modify, and distribute this
+ * software and its documentation for any non-commercial purpose
+ * and without fee is hereby granted, provided that the above copyright
+ * notice appears in all copies.  The University of Washington,
+ * Seattle make no representations about
+ * the suitability of this software for any purpose.  It is provided
+ * "as is" without express or implied warranty.
  *
  */
 
@@ -23,6 +28,7 @@
 #include "GMTK_GMParms.h"
 #include "error.h"
 
+#include <time.h>
 
 // The default frame rate for lattices. This is needed in order to
 // calculate the actual GMTK frame that corresponds to the time that
@@ -65,7 +71,8 @@ LatticeADT::LatticeADT()
     _frameRate(fabs(_defaultFrameRate)), 
     _frameRelax(0),
     _latticeFile(NULL), _numLattices(0), _curNum(0),
-    _nodeCardinality(0), _wordCardinality(0), _timeCardinality(0), score_options(0) {
+    _nodeCardinality(0), _wordCardinality(0), _timeCardinality(0), score_options(0),
+    _transitionCardinality(2) {
 }
 
 
@@ -134,7 +141,7 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab)
   // Read Lattice Header
   /////////////////////////
 
-  char *s_tmp, *ptr;
+  char *s_tmp, *ptr, *sub_ptr;
   do {
     ifs.read(s_tmp);
     if ( s_tmp == NULL )
@@ -318,6 +325,11 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab)
   // reading links
   double score;
   unsigned endNodeId = 0;
+
+    unsigned edge_global_id = 0;
+
+
+  bool use_edge_scale = false;
   for ( unsigned i = 0; i < _numberOfLinks; i++ ) {
     ifs.readLine(line, linesize);
     ptr = strtok(line, seps);
@@ -343,17 +355,17 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab)
 
     LatticeEdge edge;
 
+
     while ( (ptr = strtok(NULL, seps)) != NULL ) {
       switch ( ptr[0] ) {
       case 'E':
 	// ending link
 	endNodeId = atoi(ptr+2);
-	if (endNodeId >= _numberOfNodes) {
-	  error("Error in lattice '%s', line %d, node id %u is bigger than number of lattice nodes %d",
-		ifs.fileName(), ifs.lineNo(), id, _numberOfNodes);
-	}
 	break;
+
       case 'W':
+
+    {
 	// word token
 	edge.emissionId = vocab.index(ptr+2);
 	if ( edge.emissionId == vocab.index("<unk>") ) {
@@ -372,7 +384,37 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab)
 	  // TODO: fix this /rethink.
 	  // error("Error: word '%s' in lattice '%s' cannot be found in vocab", ptr+2, ifs.fileName());
 	}
+
+    //TODO:we need to add the length of the edge
+    unsigned str_length = 0;
+
+    for(unsigned k=0; k < strlen(ptr+2); k++) {
+        if((ptr+2)[k] == '|') str_length ++;
+    }
+    edge.length = str_length;
+    edge.global_id = edge_global_id ++;
+
+    edge.path_labels.insert(1);
+
+
+    //printf("%u\n", str_length);
+
 	break;
+
+    }
+
+
+    case 'P':
+            sub_ptr = strtok(ptr + 2, ",");
+            //printf("%s\n", sub_ptr);
+            while( (sub_ptr = strtok(NULL, ",")) != NULL ) {
+                //printf("%s, %d\n", sub_ptr, atoi(sub_ptr));
+                edge.path_labels.insert(atoi(sub_ptr));
+            }
+    
+    break;
+
+
       case 'a':
 	// acoustic score
 	score = atof(ptr+2);
@@ -401,6 +443,10 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab)
 	score = atof(ptr+2);
 	edge.posterior.setFromP(score);
 	break;
+      case 'j':
+        score = atof(ptr + 2);
+        edge.posterior.setFromP(score);
+        use_edge_scale = true;
       default: 
 	// is its anything other than the above, simply ignore it for now. 
 	infoMsg(IM::Warning,"WARNING: Lattice '%s', line %d, contains a token '%s' that is not currently supported and will be ignored\n",ifs.fileName(),ifs.lineNo(),ptr);
@@ -431,6 +477,7 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab)
       edge_list.edge_array[0] = edge;
       // record edge.
       edge_list.num_edges  = 1;
+
       // and lastly, insert it in the hash table
       _latticeNodes[id].edges.insert(endNodeId,edge_list);
     } else {
@@ -440,7 +487,10 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab)
       // make sure there is room for at least one more, use a
       // conservative growth rate
       const float growth_rate = 1.25;
-      edge_listp->edge_array.growByFIfNeededAndCopy(growth_rate,
+      //edge_listp->edge_array.growByFIfNeededAndCopy(growth_rate,
+		//				    edge_listp->num_edges+1);
+
+    edge_listp->edge_array.growByFIfNeededAndCopyShallowDeletion(growth_rate,
 						    edge_listp->num_edges+1);
 
       // place edge (using copy).
@@ -456,8 +506,274 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab)
 	  _start, _latticeNodes[_start].time, 
 	  _end, _latticeNodes[_end].time);
 
-  normalizePosterior();
+  if(!use_edge_scale)
+    normalizePosterior();
+
+
 }
+
+
+void LatticeADT::generateAllLargerCPTs() {
+
+    //clock_t t1, t2;
+
+    //fprintf(stderr, "generating all larger cpts\n");
+
+    //t1 = clock();
+
+    for(unsigned i=_numberOfNodes; i>=1; i--) {
+        //printf("===== %u\n", i);
+        for(unsigned delta=1; delta<_numberOfNodes - i + 1; delta++) {
+
+            //printf("delta %u\n", delta);
+if(delta > 30) break;
+            logpr ident(1.0);
+            if(!generateLargerCPTs(_latticeNodes[i - 1], delta, ident)) break;   
+        }
+    }
+
+    //t2 = clock();
+
+    //fprintf(stderr, "done generating all larger cpts %f %u\n", ((float)t2 - (float)t1)/CLOCKS_PER_SEC, add_counter);
+
+    //exit(1);
+
+}
+
+
+
+
+
+bool LatticeADT::generateLargerCPTs(LatticeADT::LatticeNode & node, unsigned delta, logpr & acu_posterior) {
+    if(delta >= node.max_delta) {
+            return false;
+    }
+    else {
+
+        bool cpt_new = false;
+
+        //enlarge the cached hash table if necessary
+        if(delta >= node.larger_cpts.size()) {
+//            printf("enlarge cpt array size: %u from orig_size: %u\n", delta, node.larger_cpts.size());
+
+            unsigned last_size = node.larger_cpts.size();
+            const float growth_rate = 1.25;
+            
+            node.larger_cpts.growByFIfNeededAndCopyShallowDeletion(growth_rate, delta + 1);
+            
+            for(unsigned i=last_size; i<node.larger_cpts.size(); i++) node.larger_cpts[i] = NULL;
+        }
+
+        //if(node.larger_cpts[delta].totalNumberEntries() <= 0) {
+        if(node.larger_cpts[delta] == NULL) {
+            cpt_new = true;
+            shash_map_iter<unsigned, LatticeADT::LatticeEdgeList> new_cpt(1);
+            node.larger_cpts[delta] = new shash_map_iter<unsigned, LatticeADT::LatticeEdgeList>(1);
+
+            dfsOnNode(node, delta, *node.larger_cpts[delta], acu_posterior);
+
+            //dfsOnNode(node, delta, node.larger_cpts[delta]);
+
+        }
+
+        //node.larger_cpt = &node.larger_cpts[delta];
+        node.larger_cpt = node.larger_cpts[delta];
+
+
+        
+        //if we get invalid results, set max_delta
+        if(node.larger_cpt->totalNumberEntries() <= 0) {
+//printf("zero found\n");
+
+            node.max_delta = delta; //delta is gaurenteed to be less than node.max_delta
+            node.larger_cpts[delta] = NULL;
+            return false;
+        }
+        else {
+            //Valid new CPT
+            if(cpt_new) {
+                //printf("set gmtk score on larger cpt: %u\n", delta);
+                setGMTKScoresOnLargerCPT(node);
+            }
+        }
+    }
+
+    return true;
+
+    //node.larger_cpt->begin(*pit);
+
+}
+
+
+
+void LatticeADT::queryLargerCPT(LatticeNode & node, unsigned delta, shash_map_iter<unsigned, LatticeEdgeList> & result, std::set<unsigned> & path_labels, logpr & acu_posterior) {
+    if(delta > node.max_delta) return;
+    if(delta >= node.larger_cpts.size()) generateLargerCPTs(node, delta, acu_posterior);
+    
+    if(delta > node.max_delta || delta >= node.larger_cpts.size()) return;
+
+    if(node.larger_cpts[delta] != NULL) {
+        addMap2Map(*node.larger_cpts[delta], result, path_labels, acu_posterior);
+    }
+    
+}
+
+
+
+
+//map2 is the added one
+void LatticeADT::addMap2Map(shash_map_iter<unsigned, LatticeADT::LatticeEdgeList> & map1, shash_map_iter<unsigned, LatticeADT::LatticeEdgeList> & map2, std::set<unsigned> & path_labels, logpr & acu_posterior) {
+    shash_map_iter<unsigned, LatticeADT::LatticeEdgeList>::iterator it;
+    map1.begin(it);
+    
+    do {
+        LatticeEdgeList outEdge = (LatticeEdgeList) (*it);
+        unsigned child_id = it.key();
+
+        //printf("edge array size %u, child_id %u\n", outEdge.edge_array.size(), child_id);
+
+        //for(unsigned k=0; k<outEdge.edge_array.size(); k++) {
+        for(unsigned k=0; k<outEdge.num_edges; k++) {
+
+            if(!pathLabelIntersect(path_labels, outEdge.edge_array[k].path_labels)) continue;
+
+            addNodeEdge2Map(map2, child_id, outEdge.edge_array[k], acu_posterior);
+        }
+        
+    } while(it.next());
+}
+
+
+bool LatticeADT::pathLabelIntersect(std::set<unsigned> &labels1, std::set<unsigned> &labels2) {
+    /*shash_map_iter<unsigned, unsigned >::iterator it;
+    labels1.begin(it);
+    do {
+        //if(labels2.find((unsigned)(*it)) != NULL) return true;
+    } while(it.next());*/
+
+    std::set<unsigned>::iterator it;
+    for(it = labels1.begin(); it != labels1.end(); ++it) {
+        if(labels2.find(*it) != labels2.end()) return true;
+    }
+
+
+    return false;
+}
+
+
+double lat_prob_weight = 1.0;
+
+//DEAL WITH THE SCORES: for the current code, only posterior is handled
+void LatticeADT::dfsOnNode(LatticeADT::LatticeNode & cur_node, unsigned delta, shash_map_iter<unsigned, LatticeADT::LatticeEdgeList> & result, logpr & acu_posterior) {
+
+    if(cur_node.edges.totalNumberEntries() <= 0) return;
+
+    shash_map_iter<unsigned, LatticeADT::LatticeEdgeList>::iterator it;
+
+    cur_node.edges.begin(it);
+    
+//fprintf(stderr, "%f\n", acu_posterior.val());
+
+     do {
+        LatticeEdgeList outEdge = (LatticeEdgeList) (*it);
+        unsigned child_id = it.key();
+
+
+        //For each edge to child_node
+        //for(unsigned k=0; k<outEdge.edge_array.size(); k++) {
+        for(unsigned k=0; k<outEdge.num_edges; k++) {
+            unsigned length = outEdge.edge_array[k].length;
+
+            LatticeNode &child_node = _latticeNodes[child_id];
+
+            //if(child_id == _end && delta > length) continue;
+
+//fprintf(stderr, "%u %u %u %f\n", child_id, k, delta, outEdge.edge_array[k].posterior.val());
+
+            logpr tmp(acu_posterior);
+            //we can explore more nodes
+            if(delta > length) {
+                //dfsOnNode(child_node, delta-length, result);
+                //printf("child id %u\n", child_id);
+
+                tmp *= outEdge.edge_array[k].posterior.pow(lat_prob_weight);
+//fprintf(stderr, "tmp %f %f\n", acu_posterior.val(), tmp.val());
+//fprintf(stderr, "n%u ", child_id);
+                queryLargerCPT(child_node, delta-length, result, outEdge.edge_array[k].path_labels, tmp);
+            }
+            //we cannot go further beyond the child node
+            else {
+                addNodeEdge2Map(result, child_id, outEdge.edge_array[k], tmp);
+            }
+        }
+    } while(it.next());
+
+
+}
+
+
+
+void LatticeADT::addNodeEdge2Map(shash_map_iter<unsigned, LatticeADT::LatticeEdgeList> & added, unsigned child_id, LatticeADT::LatticeEdge & edge, logpr & acu_posterior) {
+
+    LatticeEdgeList* edge_listp = added.find(child_id);
+
+    //printf(" adding child id %u\n", child_id);
+    
+    if (edge_listp == NULL) {
+        //printf("insert new\n");
+
+        // need to insert new edge list
+        LatticeADT::LatticeEdgeList edge_list;
+
+        // start with only one edge (conserve memory)
+        edge_list.edge_array.resize(1);
+        // place edge (using copy).
+        edge_list.edge_array[0] = edge;
+        // set posterior
+        logpr tmp(acu_posterior);
+        tmp *= edge.posterior;
+        edge_list.edge_array[0].posterior.set_to_one();
+        edge_list.edge_array[0].posterior *= tmp.pow(lat_prob_weight);
+
+        // record edge.
+        edge_list.num_edges  = 1;
+        // and lastly, insert it in the hash table
+        added.insert(child_id, edge_list);
+
+
+    } else {
+        // edge list already there, add to the end.
+        assert ( edge_listp->num_edges > 0 );
+
+        
+        for(unsigned i=0; i<edge_listp->num_edges; i++) {
+            if(edge_listp->edge_array[i].global_id == edge.global_id) {
+                //fprintf(stderr, "duplication\n");
+                return;
+            }
+        }
+        
+
+        // make sure there is room for at least one more, use a
+        // conservative growth rate
+        const float growth_rate = 1.25;
+        edge_listp->edge_array.growByFIfNeededAndCopyShallowDeletion(growth_rate,
+						    edge_listp->num_edges+1);
+
+        // place edge (using copy).
+        edge_listp->edge_array[edge_listp->num_edges] = edge;
+        // set posterior
+        edge_listp->edge_array[edge_listp->num_edges].posterior = (acu_posterior * edge.posterior).pow(lat_prob_weight);
+        // record num
+        edge_listp->num_edges++;
+        
+        //fprintf(stderr, "edge list size: %u %u\n", edge_listp->num_edges, edge_listp->edge_array.size());
+    }
+}
+
+
+
+
 
 
 // Binary encodings of score options.
@@ -478,6 +794,97 @@ void LatticeADT::readFromHTKLattice(iDataStreamFile &ifs, const Vocab &vocab)
 #define LADT_SCORE_OPTION_LMSCALE 0x8
 #define LADT_SCORE_OPTION_WDPENALTY 0x10
 #define LADT_SCORE_OPTION_POSTERIOR 0x20
+
+
+
+void LatticeADT::setGMTKScoresOnLargerCPT(LatticeADT::LatticeNode & cur_node) {
+
+    if(cur_node.larger_cpt->totalNumberEntries() > 0) {
+        shash_map_iter<unsigned, LatticeADT::LatticeEdgeList>::iterator it;
+        cur_node.larger_cpt->begin(it);
+        
+        do {
+            LatticeEdgeList	&edge_list = (*it);
+	        edge_list.max_gmtk_score.set_to_zero();
+
+            for (unsigned edge_ctr=0;edge_ctr < edge_list.num_edges; edge_ctr ++ ) {
+	  LatticeEdge &edge = edge_list.edge_array[edge_ctr];
+
+	  // the final score of the edge in ln value that GMTK will
+	  // use. This is a log score, so our initial score is unity
+	  // (log(unity) = 0). This means that the lattice is only
+	  // used as a sequencer that does nothing other than provide
+	  // valid values, and does not produce any score.
+	  double score = 0;
+
+	  if ( score_options & LADT_SCORE_OPTION_POSTERIOR ) {
+	    // use only posterior, ignore all the other scores.
+	    score = edge.posterior.val();
+	  } else {
+
+	    bool assigned = false;
+	    // do we use AC score?
+	    if (score_options & LADT_SCORE_OPTION_AC) {
+	      // AC score only
+	      score = edge.ac_score.val();
+	      assigned = true;
+	    } else if (score_options & LADT_SCORE_OPTION_ACSCALE) {
+	      // ac^acscale
+	      score = edge.ac_score.val() * _acscale;
+	      assigned = true;
+	    }
+
+	    if (score_options & LADT_SCORE_OPTION_LMSCALE) {
+	      if (assigned) 
+		score += edge.lm_score.val();
+	      else 
+		score = edge.lm_score.val();
+	      assigned = true;
+	    } else if (score_options & LADT_SCORE_OPTION_LM) {
+	      if (assigned)
+		score += edge.lm_score.val() * _lmscale;
+	      else
+		score = edge.lm_score.val() * _lmscale;
+	      assigned = true;
+	    }
+	    
+	    // do we use insertion penalty?
+	    if ( score_options & 0x10 ) {
+	      if (assigned)
+		score += log(_base)*_wdpenalty;
+	      else
+		score = log(_base)*_wdpenalty;
+	    }
+	  }
+
+	  // check whether the score is too small that will have zero
+	  // probability.
+	  if ( score <= LSMALL )
+	    warning("score is essentially zero in lattice\n");
+
+	  edge.gmtk_score.setFromLogP(score);
+	  if (edge.gmtk_score > edge_list.max_gmtk_score) 
+	    edge_list.max_gmtk_score = edge.gmtk_score;
+	}
+
+            if (_latticeNodeUseMaxScore) {
+                // need to renormize the edge scores.
+                for (unsigned edge_ctr=0;edge_ctr < edge_list.num_edges; edge_ctr ++ ) {
+                    LatticeADT::LatticeEdge &edge = edge_list.edge_array[edge_ctr];
+                    edge.gmtk_score = edge.gmtk_score / edge_list.max_gmtk_score;
+                }
+	        } else {
+	            // need to reset the max scores to 1 so that they are
+	            // effectively not used.
+	            edge_list.max_gmtk_score.set_to_one();
+            }
+
+        } while(it.next());
+    }
+}
+
+
+
 
 
 /*-
@@ -578,9 +985,18 @@ void LatticeADT::read(iDataStreamFile &is) {
 
    initializeIterableLattice(_latticeFileName);
   } else {
-    // read in next to see whether it is time parent
+
+    
     string tmpStr;
     int tmpInt;
+    is.read(tmpStr);
+
+    //read in next to get the transition cardinality
+    //TODO: make it happen in the iterative cases
+    strIsInt(tmpStr.c_str(), (int*)&_transitionCardinality);
+
+    
+    // read in next to see whether it is time parent
     is.read(tmpStr);
     char *latticeFile;
     if ( strIsInt(tmpStr.c_str(), &tmpInt) ) {
@@ -616,6 +1032,8 @@ void LatticeADT::read(iDataStreamFile &is) {
 
     score_options = readScoreOptions(is);
     setGMTKScores();
+
+    generateAllLargerCPTs();
 
     // read in frame relaxation
     is.read(_frameRelax, "Can't read lattice frame relaxation");
@@ -785,6 +1203,10 @@ void LatticeADT::nextIterableLattice()
   score_options = readScoreOptions(*_latticeFile);
   setGMTKScores();
 
+
+    //TODO: handle larger cpt here
+    generateAllLargerCPTs();
+
   // read in frame relaxation
   _latticeFile->read(_frameRelax, "Can't read lattice frame relaxation");
 }
@@ -928,7 +1350,10 @@ void LatticeADT::setGMTKScores()
       } while ( it.next() );
     }
   }
+
 }
+
+
 
 
 void LatticeADT::printScoreOptions(FILE* f)
