@@ -100,6 +100,20 @@ class LatticeNodeCPT : public CPT {
   // the type of the object.
   virtual const string typeName() {return std::string("LatticeNodeCPT");}
 
+
+    void generateLargerCPTs(LatticeADT::LatticeNode & node, unsigned delta);
+
+    void queryLargerCPT(LatticeADT::LatticeNode & node, unsigned delta, shash_map_iter<unsigned, LatticeADT::LatticeEdgeList> & result);
+    void addMap2Map(shash_map_iter<unsigned, LatticeADT::LatticeEdgeList> & map1, shash_map_iter<unsigned, LatticeADT::LatticeEdgeList> & map2);
+
+    void dfsOnNode(LatticeADT::LatticeNode & cur_node, unsigned delta, shash_map_iter<unsigned, LatticeADT::LatticeEdgeList> & result);
+
+    void addNodeEdge2Map(shash_map_iter<unsigned, LatticeADT::LatticeEdgeList> & added, unsigned child_id, const LatticeADT::LatticeEdge & edge);
+
+    void printLargerCPT(shash_map_iter<unsigned, LatticeADT::LatticeEdgeList> & cpt, LatticeADT::LatticeNode & cur_node, unsigned cur_node_id);
+
+    void setGMTKScoresOnLargerCPT(LatticeADT::LatticeNode & cur_node);
+
   const LatticeADT *_latticeAdt;
 };
 
