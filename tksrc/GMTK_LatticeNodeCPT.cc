@@ -305,7 +305,8 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
 
 
 
-    else if (_latticeAdt->_timeMarks && RV2DRV(parents[2])->val > lat_time + 1000){ //_latticeAdt->_frameRelax ) {
+    // else if (_latticeAdt->_timeMarks && RV2DRV(parents[2])->val > lat_time + 1000){ //_latticeAdt->_frameRelax ) {
+    else if (_latticeAdt->_timeMarks && RV2DRV(parents[2])->val > lat_time + _latticeAdt->_frameRelax ) {
       // Then, the current time (i.e., parent[2]'s time value) is
       // already ahead (i.e., after, later) of when a transition for
       // the previous lattice node value may occur. We also want to
@@ -368,39 +369,14 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
 
     //printf("node id: %u, delta: %u, cpt size: %u, max_delta: %u\n", node_id, delta, node.larger_cpts.size(), node.max_delta);
 
-    if(delta > 30 || delta >= node.max_delta || node.larger_cpts[delta] == NULL) {
+    if(delta > _latticeAdt->_transitionCardinality || delta >= node.max_delta || node.larger_cpts[delta] == NULL) {
         it.internalStatePtr = NULL;
         p.set_to_zero();
         return;
     }
 
 
-
-
-    //LatticeADT::LatticeNode &node_before = _latticeAdt->_latticeNodes[target_id - 1];
-
-    //if(node.larger_cpts[delta].totalNumberEntries() <= 0) {
-    
-
-    /*
-    bool new_cpt = false;
-    if(node.larger_cpts[delta] == NULL) {
-
-        new_cpt = true;
-        node.larger_cpt = node.larger_cpts[delta];
-
-        printf("one larger cpt size: %u\n", node.larger_cpt->totalNumberEntries());
-    }
-    */
-
-
-    //node.larger_cpt = &node.larger_cpts[delta];
     node.larger_cpt = node.larger_cpts[delta];
-
-    //node.larger_cpt = &node_before.edges;
-    
-
-
     node.larger_cpt->begin(*pit);
         
 
@@ -487,7 +463,7 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
 
         unsigned delta = RV2DRV(parents[1])->val;
 
-        if(delta > 30 || delta >= node.max_delta || node.larger_cpts[delta] == NULL) {
+        if(delta > _latticeAdt->_transitionCardinality || delta >= node.max_delta || node.larger_cpts[delta] == NULL) {
             it.internalStatePtr = NULL;
             p.set_to_zero();
             return;
@@ -531,145 +507,6 @@ void LatticeNodeCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parent
   }
 }
 
-
-/*
-
-void LatticeNodeCPT::addMap2Map(shash_map_iter<unsigned, LatticeADT::LatticeEdgeList> & map1, shash_map_iter<unsigned, LatticeADT::LatticeEdgeList> & map2) {
-    shash_map_iter<unsigned, LatticeADT::LatticeEdgeList>::iterator it;
-    map1.begin(it);
-    
-    do {
-        LatticeADT::LatticeEdgeList outEdge = (LatticeADT::LatticeEdgeList) (*it);
-        unsigned child_id = it.key();
-
-        for(unsigned k=0; k<outEdge.edge_array.size(); k++) {
-
-            addNodeEdge2Map(map2, child_id, outEdge.edge_array[k]);
-        }
-        
-    } while(it.next());
-}
-
-
-
-void LatticeNodeCPT::dfsOnNode(LatticeADT::LatticeNode & cur_node, unsigned delta, shash_map_iter<unsigned, LatticeADT::LatticeEdgeList> & result) {
-
-    if(cur_node.edges.totalNumberEntries() <= 0) return;
-
-    shash_map_iter<unsigned, LatticeADT::LatticeEdgeList>::iterator it;
-
-    //printf("dfs num entries: %d\n", cur_node.edges.totalNumberEntries());
-    cur_node.edges.begin(it);
-    
-    //TODO: return_structure to include delta information?
-
-     do {
-        LatticeADT::LatticeEdgeList outEdge = (LatticeADT::LatticeEdgeList) (*it);
-        unsigned child_id = it.key();
-
-        //printf("\tloop on child_id %u: ", child_id);
-
-        //For each edge to child_node
-        for(unsigned k=0; k<outEdge.edge_array.size(); k++) {
-            unsigned length = outEdge.edge_array[k].length;
-
-            LatticeADT::LatticeNode &child_node = _latticeAdt->_latticeNodes[child_id];
-    
-            //we can explore more nodes
-            if(delta > length) {
-                dfsOnNode(child_node, delta-length, result);
-                //queryLargerCPT(child_node, delta-length, result);
-            }
-            //we cannot go further beyond the child node
-            else {
-                addNodeEdge2Map(result, child_id, outEdge.edge_array[k]);
-            }
-        }
-    } while(it.next());
-
-
-}
-
-
-
-void LatticeNodeCPT::addNodeEdge2Map(shash_map_iter<unsigned, LatticeADT::LatticeEdgeList> & added, unsigned child_id, const LatticeADT::LatticeEdge & edge) {
-
-    LatticeADT::LatticeEdgeList* edge_listp = added.find(child_id);
-
-    //printf(" adding child id %u\n", child_id);
-    
-    if (edge_listp == NULL) {
-        //printf("insert new\n");
-
-        // need to insert new edge list
-        LatticeADT::LatticeEdgeList edge_list;
-        // start with only one edge (conserve memory)
-        edge_list.edge_array.resize(1);
-        // place edge (using copy).
-        edge_list.edge_array[0] = edge;
-        // record edge.
-        edge_list.num_edges  = 1;
-        // and lastly, insert it in the hash table
-        added.insert(child_id, edge_list);
-
-    } else {
-        // edge list already there, add to the end.
-        assert ( edge_listp->num_edges > 0 );
-
-        for(unsigned i=0; i<edge_listp->num_edges; i++) {
-            if(&edge_listp->edge_array[i] == &edge) {
-                printf("same");
-                return;
-            }
-        }
-
-        // make sure there is room for at least one more, use a
-        // conservative growth rate
-        const float growth_rate = 1.25;
-        edge_listp->edge_array.growByFIfNeededAndCopy(growth_rate,
-						    edge_listp->num_edges+1);
-
-        // place edge (using copy).
-        edge_listp->edge_array[edge_listp->num_edges] = edge;
-        edge_listp->num_edges++;
-    }
-}
-
-
-
-void LatticeNodeCPT::setGMTKScoresOnLargerCPT(LatticeADT::LatticeNode & cur_node) {
-
-    if(cur_node.larger_cpt->totalNumberEntries() > 0) {
-        shash_map_iter<unsigned, LatticeADT::LatticeEdgeList>::iterator it;
-        cur_node.larger_cpt->begin(it);
-        
-        do {
-            LatticeADT::LatticeEdgeList	&edge_list = (*it);
-	        edge_list.max_gmtk_score.set_to_zero();
-
-            for (unsigned edge_ctr=0;edge_ctr < edge_list.num_edges; edge_ctr ++ ) {
-	              LatticeADT::LatticeEdge &edge = edge_list.edge_array[edge_ctr];
-
-	            if (edge.gmtk_score > edge_list.max_gmtk_score) 
-	                edge_list.max_gmtk_score = edge.gmtk_score;
-            }
-
-            if (LatticeADT::_latticeNodeUseMaxScore) {
-                // need to renormize the edge scores.
-                for (unsigned edge_ctr=0;edge_ctr < edge_list.num_edges; edge_ctr ++ ) {
-                    LatticeADT::LatticeEdge &edge = edge_list.edge_array[edge_ctr];
-                    edge.gmtk_score = edge.gmtk_score / edge_list.max_gmtk_score;
-                }
-	        } else {
-	            // need to reset the max scores to 1 so that they are
-	            // effectively not used.
-	            edge_list.max_gmtk_score.set_to_one();
-            }
-
-        } while(it.next());
-    }
-}
-*/
 
 void LatticeNodeCPT::printLargerCPT(shash_map_iter<unsigned, LatticeADT::LatticeEdgeList> & cpt, LatticeADT::LatticeNode & cur_node, unsigned cur_node_id) {
 

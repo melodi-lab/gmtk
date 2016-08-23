@@ -526,7 +526,7 @@ void LatticeADT::generateAllLargerCPTs() {
         for(unsigned delta=1; delta<_numberOfNodes - i + 1; delta++) {
 
             //printf("delta %u\n", delta);
-if(delta > 30) break;
+if(delta > _transitionCardinality) break;
             logpr ident(1.0);
             if(!generateLargerCPTs(_latticeNodes[i - 1], delta, ident)) break;   
         }

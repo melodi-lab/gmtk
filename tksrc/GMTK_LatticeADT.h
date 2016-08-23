@@ -163,10 +163,10 @@ class LatticeADT : public NamedObject {
 
     LatticeNode() : startFrame(0), endFrame(0), edges(shash_map_iter<unsigned, LatticeEdgeList>(1)), 
                     larger_cpt(NULL),
-                    larger_cpts(sArray<shash_map_iter<unsigned, LatticeEdgeList>* >(35)),
-                    //larger_cpts(15, shash_map_iter<unsigned, LatticeEdgeList>(1)),
-                    max_delta(99999999) {
-                        for(unsigned i=0; i<35; i++) larger_cpts[i] = NULL;
+                    larger_cpts(sArray<shash_map_iter<unsigned, LatticeEdgeList>* >(16)),
+                    //16 seems to be a good initial size
+                    max_delta(2147483646) {
+                        for(unsigned i=0; i<16; i++) larger_cpts[i] = NULL;
                     }
     ~LatticeNode(); 
   };
