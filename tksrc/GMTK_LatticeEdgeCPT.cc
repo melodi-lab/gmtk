@@ -170,13 +170,11 @@ bool LatticeEdgeCPT::next(iterator &it, logpr& p)
 
 
     if(outEdge == NULL) {
-        //fprintf(stderr, "null pointer\n");
         p.set_to_zero();
         return false;
     }
 
     if(outEdge->num_edges == 0) {
-        //fprintf(stderr, "zero edge\n");
         p.set_to_zero();
         return false;
     }
