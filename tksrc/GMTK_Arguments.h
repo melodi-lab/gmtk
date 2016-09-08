@@ -729,6 +729,21 @@ Arg("map",Arg::Opt,dlopenFilenames,"Deterministic mapping dynamic library file. 
   Arg("cusample",Arg::Opt,MaxClique::cliqueBeamUniformSampleAmount,"Uniformly sample pruned clique (0<v=<=1 fraction, > 1 number)"),
 
 
+    Arg("use_kadap", Arg::Opt, MaxClique::useAdaptiveKPrune, "use k adaptive pruning (adaptive ckbeam)"),
+    Arg("kadap_downrate", Arg::Opt, MaxClique::kbeam_down_rate, "down rate for adaptive kbeam"),
+    Arg("kadap_uprate", Arg::Opt, MaxClique::kbeam_up_rate, "up rate for adaptive kbeam"),
+    Arg("kadap_window", Arg::Opt, MaxClique::kbeam_window, "window size for adaptive kbeam"),
+    Arg("kadap_upthresh", Arg::Opt, MaxClique::up_threshold, "up threshold of slope for adaptive kbeam"),
+    Arg("kadap_downthresh", Arg::Opt, MaxClique::down_threshold, "down threshold of slope for adaptive kbeam"),
+    Arg("kadap_adap_init", Arg::Opt, MaxClique::initial_k, "init k beam for adaptive kbeam"),
+    Arg("kadap_adap_cap", Arg::Opt, MaxClique::kbeam_cap, "adaptive k beam cap"),
+
+    Arg("use_cadap", Arg::Opt, MaxClique::useAdaptiveCPrune, "use c adaptive pruning (adaptive cbeam)"),
+    Arg("cadap_downrate", Arg::Opt, MaxClique::cbeam_down_rate, "down rate for adaptive cbeam"),
+    Arg("cadap_uprate", Arg::Opt, MaxClique::cbeam_up_rate, "up rate for adaptive cbeam"),
+    Arg("cadap_init", Arg::Opt, MaxClique::adaptiveCliqueBeamInitialValue, "init c beam for adaptive cbeam"),
+
+
 #elif defined(GMTK_ARGUMENTS_CHECK_ARGS)
 
     if (MaxClique::cliqueBeamUniformSampleAmount < 0.0) {
