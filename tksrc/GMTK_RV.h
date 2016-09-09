@@ -511,6 +511,9 @@ void printRVSet(FILE*f,sArray<RV*>& locset,const bool nl=true,regex_t* preg = NU
 void printRVSet(FILE*f,const set<RV*>& locset,const bool nl=true,regex_t* preg = NULL);
 void printRVSetPtr(FILE*f,set<RV*>& locset,const bool nl=true,regex_t* preg = NULL);
 
+unsigned kldRange(sArray<RV*>& locset);
+unsigned kldNum(sArray<RV*>& locset);
+
 // other useful routines.
 
 void unionRVs(const set<RV*>& A,
