@@ -493,6 +493,42 @@ void printRVSetAndValues(FILE*f,set<RV*>& locset,bool nl,regex_t* preg)
   if (nl) fprintf(f,"\n");
 }
 
+static vector<unsigned> base;
+
+unsigned kldRange(sArray<RV*>& locset) {
+  base.resize(locset.size());
+  for (unsigned i=0; i < base.size(); ++i) base[i] = 1;
+  unsigned range = 1;
+  for (unsigned i=0; i<locset.size(); ++i) {
+    RV* rv = locset[i];
+    char const *rv_name = rv->name().c_str();
+    if (*rv_name == 'a') {
+      DiscRV *drv = dynamic_cast<DiscRV *>(rv);
+      unsigned cardinality = drv->cardinality;
+      range *= cardinality;
+      unsigned position = atoi(rv_name+1); // rv is named aXXXX
+      for (unsigned j=position+1; j < base.size(); ++j)
+	base[j] *= cardinality;
+    }
+  }
+  return range;
+}
+
+unsigned kldNum(sArray<RV*>& locset) {
+  unsigned num = 0;
+  for (unsigned i=0;i<locset.size();i++) {
+    RV* rv = locset[i];
+    char const *rv_name = rv->name().c_str();
+    if (*rv_name == 'a') {
+      unsigned position = atoi(rv_name+1); // rv is named aXXXX
+      DiscRV *drv = dynamic_cast<DiscRV *>(rv);
+      unsigned value = drv->val;
+      num += value * base[position];
+    }
+  }
+  return num;
+}
+
 
 void printRVSet(FILE*f,vector<RV*>& locset,const bool nl,regex_t* preg)
 {
