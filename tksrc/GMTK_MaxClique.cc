@@ -6163,6 +6163,7 @@ printCliqueEntries(MaxCliqueTable::SharedLocalStructure& sharedStructure,
     sum = sumProbabilities();
   const bool imc_nwwoh_p = (origin.packer.packedLen() <= IMC_NWWOH);
   const bool clique_has_hidden_vars = (origin.hashableNodes.size() > 0);
+unsigned kld_range = kldRange(sharedStructure.fNodes);
   for (unsigned cvn=0;cvn<numCliqueValuesUsed;cvn++) {
 
     if (clique_has_hidden_vars) {
@@ -6188,19 +6189,20 @@ printCliqueEntries(MaxCliqueTable::SharedLocalStructure& sharedStructure,
 	RV2DRV(rv)->assignDeterministicChild();
       }
     }
+unsigned kld_num = kldNum(sharedStructure.fNodes);
     if (normalize) {
       if (unlog) {
 	// then print the exponentiated probability
-	fprintf(f,"%d: %.8e ",cvn,(cliqueValues.ptr[cvn].p/sum).unlog());
+	fprintf(f,"%u %u %.8e ",kld_num,kld_range, (cliqueValues.ptr[cvn].p/sum).unlog());
       } else {
-	fprintf(f,"%d: %.8e ",cvn,(cliqueValues.ptr[cvn].p/sum).valref());
+	fprintf(f,"%u %u %.8e ",kld_num,kld_range, (cliqueValues.ptr[cvn].p/sum).valref());
       }
     } else {
       if (unlog) {
-	fprintf(f,"%d: %.8e ",cvn,cliqueValues.ptr[cvn].p.unlog());
+	fprintf(f,"%u %u %.8e ",kld_num,kld_range, cliqueValues.ptr[cvn].p.unlog());
       } else {
 	// print the log value directly
-	fprintf(f,"%d: %.8e ",cvn,cliqueValues.ptr[cvn].p.valref());
+	fprintf(f,"%u %u %.8e ",kld_num,kld_range, cliqueValues.ptr[cvn].p.valref());
       }
     }
     printRVSetAndValues(f,sharedStructure.fNodes);
