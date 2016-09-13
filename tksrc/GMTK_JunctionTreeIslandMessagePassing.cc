@@ -1261,7 +1261,7 @@ JunctionTree::collectDistributeIsland(// number of frames in this segment.
 				   cliquePosteriorNormalization,
 				   cliquePosteriorUnlog);
     deleteIsland(0);
-  } catch (ZeroCliqueException &e) {
+  } catch (ZeroCliqueException const &e) {
     islandsMap.clear();
     E1.useLISeparator();
     throw ZeroCliqueException();

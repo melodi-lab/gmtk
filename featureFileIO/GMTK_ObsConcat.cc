@@ -523,6 +523,7 @@ Arg Arg::Args[] = {
 
 
 int main(int argc, const char *argv[]) {
+  try { // for catching std::bad_alloc(), indicating memory exhaustion
 
   //////////////////////////////////////////////////////////////////////
   // Check all necessary arguments provided before creating objects.
@@ -639,4 +640,7 @@ int main(int argc, const char *argv[]) {
   //////////////////////////////////////////////////////////////////////
 
   return EXIT_SUCCESS;
+  } catch (std::bad_alloc const &e) {
+    memory_error();
+  }
 }

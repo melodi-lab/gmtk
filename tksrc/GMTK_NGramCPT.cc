@@ -93,6 +93,7 @@ void NGramCPT::setNumParents(const unsigned nParents) {
     // set the context pointers buffer
     _contextEntriesStack.resize(1);
     _contextEntriesStack[0] = (void *) malloc(sizeof(ContextHashEntry*) * 4 * _numParents);
+    if (! _contextEntriesStack[0]) throw std::bad_alloc();
     _numberOfActiveIterators = 0;
 }
 
@@ -157,6 +158,7 @@ void NGramCPT::becomeAwareOfParentValuesAndIterBegin(vector< RV* >& parents, ite
 
     if ( _numberOfActiveIterators >= _contextEntriesStack.size() * 4 ) {
         void *tmpPtr = (void *) malloc(sizeof(ContextHashEntry *) * 4 * _numParents);
+	if (!tmpPtr) throw std::bad_alloc();
         _contextEntriesStack.push_back(tmpPtr);
         ptr = (ContextHashEntry **)tmpPtr;
     } else {

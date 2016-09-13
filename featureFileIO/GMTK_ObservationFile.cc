@@ -92,7 +92,10 @@ ObservationFile::getLogicalFrames(unsigned first, unsigned count) {
   if (needed > logicalObsBufSize) {
     logicalObservationBuffer = (Data32 *) 
       realloc(logicalObservationBuffer, needed * sizeof(Data32));
-    assert(logicalObservationBuffer);
+    if (!logicalObservationBuffer) {
+      warning("ObservationFile: failed to allocate memory\n");
+      throw std::bad_alloc();
+    }
     logicalObsBufSize = needed;
   }
   Data32 *dest = logicalObservationBuffer;

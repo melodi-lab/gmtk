@@ -4,6 +4,8 @@
 # .str parser will give warnings if the bug is not fixed
 
 AT_SETUP([cpp warnings (ticket 192)])
+AT_SKIP_IF([test -z `which pushd`])
+AT_SKIP_IF([test -z `which popd`])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/trivial])
 AT_CHECK([pushd . >/dev/null; cd $TEST_AND_DEV/trivial; 
           gmtkJT -strF test.str -inputM test.mtr -of1 filelist.txt -fmt1 ascii -ni1 1 | \

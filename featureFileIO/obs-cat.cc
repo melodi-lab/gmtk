@@ -194,6 +194,7 @@ makeFileSource() {
 
 int 
 main(int argc, char *argv[]) {
+  try { // for catching std::bad_alloc(), indicating memory exhaustion
 
   CODE_TO_COMPUTE_ENDIAN
 
@@ -271,6 +272,7 @@ main(int argc, char *argv[]) {
   unsigned frmNum = 0;
   
   Data32 const *frame;
+  source->setActiveFrameCount(startSkip+1);
   for (; !source->EOS(); segNum += 1) {
     source->preloadFrames( startSkip + 1 );  // + 1 because the first n are skipped!
     for (frmNum=0; source->numFrames() == 0 || frmNum < source->numFrames(); frmNum += 1) {
@@ -291,5 +293,8 @@ main(int argc, char *argv[]) {
   printf("%s", binaryOutputStream ? "E" : "E\n");
 
   exit(0);
+  } catch (std::bad_alloc const &e) {
+    memory_error();
+  }
 }
 

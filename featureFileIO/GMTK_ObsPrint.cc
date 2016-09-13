@@ -646,7 +646,8 @@ Arg Arg::Args[] = {
 
 
 int main(int argc, const char *argv[]) {
-  
+  try { // for catching std::bad_alloc(), indicating memory exhaustion
+
   int numFiles=0;
 
   // Figure out the Endian of the machine this is running on and set the swap defaults accordingly
@@ -855,4 +856,7 @@ int main(int argc, const char *argv[]) {
     }
 
     return EXIT_SUCCESS;
+  } catch (std::bad_alloc const &e) {
+    memory_error();
+  }
 }

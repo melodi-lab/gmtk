@@ -429,7 +429,10 @@ MergeFile::getFrames(unsigned first, unsigned count) {
   unsigned needed = count * numFeatures();
   if (needed > buffSize) {
     buffer = (Data32 *) realloc(buffer, needed * sizeof(Data32));
-    assert(buffer);
+    if (!buffer) {
+      warning("MergeFile: failed to allocate memory\n");
+      throw std::bad_alloc();
+    }
     buffSize = needed;
   }
   memset(buffer, 0, sizeof(Data32) * needed);

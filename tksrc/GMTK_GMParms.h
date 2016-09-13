@@ -29,6 +29,7 @@
 #include "sArray.h"
 #include "debug.h"
 
+
 /////////////////////
 // forward refs
 class Dense1DPMF;
@@ -103,6 +104,18 @@ public:
     arr.push_back(ob);
     map[ob->name()] = arr.size()-1;
   }
+
+    // Most GMTK programs have a single GMParms global variable to hold this
+    // information. The new gmtkMMItrain needs 2 separate GMParms instances
+    // (one for numerator model, one for denominator model). Rather than rewrite
+    // all the GMTK code that uses the globals, gmtkMMItrain instead uses the
+    // assignment operator to set the global GMParms variable to the numerator 
+    // or denominator GMParms as needed.
+    // TODO: The global GMParms should probably be eliminated - perhaps in the
+    //       upcoming inference refactoring...
+    GMParms & operator=(const GMParms & that);
+
+    
 
   //////////////////////////////////////////////////////////////////
   // BASIC SHARED LOW-LEVEL SUPPORT PARAMETERS: These are the objects that 
@@ -424,7 +437,9 @@ public:
   // read/write an entire GM (params + structure, i.e.,
   // all of the above) from a single file consisting
   // of sets of <keyword,fileName> pairs
-  void read(iDataStreamFile& is);
+    void read(iDataStreamFile& is, bool reset = false);
+    
+    
   void write(const char *const outputFileFormat, 
 	     const char * const cppCommandOptions,
 	     const int intTag=CSWT_EMPTY_TAG,
@@ -527,6 +542,10 @@ public:
 				    unsigned num_features,
 				    CFunctionMapperType);
 
+  ////////////////////////////////////////////////////////////////////////////
+  // Clear parameter structures; this is used in gmtkMMItrain to load two sets of parameters.
+    void clearParms();
+
 private:
 
   unsigned firstUtterance; 
@@ -542,4 +561,4 @@ extern GMParms GM_Parms;
 void dlopenDeterministicMaps(char **dlopenFilenames, unsigned maxFilenames);
 
 #endif
-
+    

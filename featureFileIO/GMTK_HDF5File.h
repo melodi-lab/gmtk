@@ -108,9 +108,25 @@ class HDF5File: public ObservationFile {
  
   // Set frame # to write within current segemnt
   void setFrame(unsigned frame) {
-    assert(0); // we only support sequential writing
+    // The HDF5 output file consists of single group shared by all the GMTK segments.
+    // curFrame is the index of the current frame within the shared single group
+    // segStart is the index of the first frame with the shared single group for the current GMTK segment
+    //    thus curFrame - segStart is the frame # within the current GMTK segment
+    if (frame + segStart == curFrame) return;  // didn't need to seek, so nothing to do
+    assert(curFeature == 0); 
+    if (frame + segStart > curFrame) {
+      // We only support sequential writing, so pad with all-0 posterior if we have to skip ahead
+      for (unsigned i=0; i < frame + segStart - curFrame; i+=1) {
+	for (unsigned j=0; j < _numFeatures; j+=1) {
+	  writeFeature(0);
+	}
+      }
+    } else {
+      // Fail if the setFrame() would result in a backward seek
+      error("ERROR: HDF5 output files do not support random access. For example, they cannot be used with island inference.\n");
+    }
   }
-
+  
   // Write frame to the file (call endOfSegment after last frame of a segment)
   void writeFeature(Data32 x);
 

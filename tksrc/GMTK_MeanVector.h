@@ -48,6 +48,17 @@ private:
   // The actual mean vector
   sArray<float> means;
 
+  //////////////////////////////////
+  // Data structures support for EM
+  // NOTE: if we change from type float, to type double,
+  //   we will need to check the load/store accumulator code
+  //   for subclasses of GaussianComponent.
+  sArray<float> nextMeans;
+
+  /////////////////////////////////////////////////////////
+  // the denominator used in the case of shared means.
+  sArray<double> sharedMeansDenominator;
+
   /////////////////////////////////////////////////
   // counts the number of gaussian components
   // that are sharing this mean at all. This is a static
@@ -147,6 +158,9 @@ public:
       trMembers->elementAccumulatedProbability[i].set_to_zero();
     }
   }
+
+    sArray<float>& getMeans() {return means;}
+    sArray<float>& getNextMeans() {return nextMeans;}
 
   //////////////////////////////////
   // Public interface support for EM

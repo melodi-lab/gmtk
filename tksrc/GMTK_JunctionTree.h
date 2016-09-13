@@ -1335,6 +1335,10 @@ public:
   // fetch Viterbi values from a file instead of memory
   void readBinaryVitPartition(PartitionStructures& ps, unsigned part);
 
+  // online smoothing helper function to read numNewFrames frames from the input stream & update state accordingly
+  void enqueueMoreFrames(unsigned &truePtLen, unsigned part, StreamSource *globalObservationMatrix, 
+			 unsigned numNewFrames, unsigned *numUsableFrames);
+
  public:
 
   static ObservationFile *vitObsFile;

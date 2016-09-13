@@ -223,6 +223,7 @@ gmtkTie \
 gmtkModelInfo \
 gmtkOnline \
 gmtkPrint \
+gmtkMMItrain \
 $(dmlp_programs) $(GMTKVIZ) $(OSXBUNDLE)
 EXTRA_PROGRAMS = gmtkDMLPtrain gmtkViz gmtkViz.app abstest dmlp
 
@@ -273,6 +274,8 @@ gmtkNGramIndex_SOURCES = gmtkNGramIndex.cc
 
 gmtkOnline_SOURCES = gmtkOnline.cc
 
+gmtkMMItrain_SOURCES = gmtkMMItrain.cc
+
 #gmtkUnroll_SOURCES = gmtkUnroll.o  libGMTK.a ../miscSupport/libmiscSupport.a .NOEXPORT
 #	-@rm -f $@
 #	$(compile.cc.link) -Wall -g -DMAIN  -o $@ gmtkUnroll.o $(LIBS)
@@ -281,7 +284,7 @@ gmtkOnline_SOURCES = gmtkOnline.cc
 
 gmtkViz_SOURCES = gmtkViz.cc
 gmtkViz_CXXFLAGS = $(VERSIONFLAG) $(VIZCXXFLAGS) $(DEBUGFLAGS) $(OPTFLAGS) $(X_CFLAGS) $(EXTRA_WX_FLAGS)
-gmtkViz_LDFLAGS = $(VIZLDFLAGS) $(X_PRE_LIBS) $(X_LIBS) $(X_EXTRA_LIBS) -lX11 $(OSXLDFLAGS)
+gmtkViz_LDADD = $(LDADD) $(VIZLDFLAGS) $(X_PRE_LIBS) $(X_LIBS) $(X_EXTRA_LIBS) $(OSXLDFLAGS)
 gmtkViz_app_SOURCES = Info.plist.in wxmac.icns
 
 if MAKE_BUNDLE
@@ -289,7 +292,7 @@ gmtkViz.app: gmtkViz.app/Contents/PkgInfo
 
 app_verbose   = $(app_verbose_@AM_V@)
 app_verbose_  = $(app_verbose_@AM_DEFAULT_V@)
-app_verbose_0 = @echo "  APP\t gmtkViz.app";
+app_verbose_0 = @echo "  APP\t   gmtkViz.app";
 
 gmtkViz.app/Contents/PkgInfo: gmtkViz$(EXEEXT) $(srcdir)/Info.plist.in \
                               $(srcdir)/wxmac.icns

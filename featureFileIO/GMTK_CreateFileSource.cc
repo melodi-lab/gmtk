@@ -82,15 +82,6 @@ extern bool constantSpace;
 FileSource *
 instantiateFileSource() {
 
-  if (ofs == NULL)
-    error("CreateFileSource: list of file names is NULL\n");
-  if (fmts == NULL)
-    error("CreateFileSource: list of file formats is NULL\n");
-  if (nfs == NULL)
-    error("CreateFileSource: list of number of floats is NULL\n");
-  if (nis == NULL)
-    error("CreateFileSource: list of number of ints is NULL\n");
-
   // range selection is much more efficient if "all" is replaced with NULL
   // since the logical <-> physical mapping step can be skipped
   for (unsigned i=0; i < MAX_NUM_OBS_FILES; i+=1) {

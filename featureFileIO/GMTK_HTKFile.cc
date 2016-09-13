@@ -366,7 +366,10 @@ HTKFile::getFrames(unsigned first, unsigned count) {
   unsigned needed = numFeatures() * count;
   if (needed > bufferSize) {
     buffer = (Data32 *) realloc(buffer, needed * sizeof(Data32));
-    assert(buffer);
+    if (!buffer) {
+      warning("HTKFile: failed to allocate memory\n");
+      throw std::bad_alloc();
+    }
     bufferSize = needed;
   }
   const HTKFileInfo *htkInfo = info->curHTKFileInfo;
