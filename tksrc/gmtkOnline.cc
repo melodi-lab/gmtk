@@ -199,8 +199,10 @@ ObservationSource *globalObservationMatrix = NULL;
 #endif
 
 int
-main(int argc,char*argv[])
-{{ // use double so that we can destruct objects at end.
+main(int argc,char*argv[]) {
+  try { // for catching std::bad_alloc(), indicating memory exhaustion
+
+{ // use double so that we can destruct objects at end.
 
   ////////////////////////////////////////////
   // set things up so that if an FP exception
@@ -211,11 +213,7 @@ main(int argc,char*argv[])
 
   //  CODE_TO_COMPUTE_ENDIAN;
 
-
-#if 0
   JunctionTree::viterbiScore = true; // default is true for gmtkOnline
-  // no it isn't?
-#endif
 
   ////////////////////////////////////////////
   // parse arguments
@@ -263,6 +261,7 @@ main(int argc,char*argv[])
   regex_t *vitPreg = NULL;
   if (pVitRegexFilter != NULL) {
     vitPreg = (regex_t*) malloc(sizeof(regex_t));
+    if (!vitPreg) throw std::bad_alloc();
     if (regcomp(vitPreg,pVitRegexFilter,
 		REG_EXTENDED
 		| case_ignore
@@ -274,6 +273,7 @@ main(int argc,char*argv[])
   regex_t *vitCreg = NULL;
   if (cVitRegexFilter != NULL) {
     vitCreg = (regex_t*) malloc(sizeof(regex_t));
+    if (!vitCreg) throw std::bad_alloc();
     if (regcomp(vitCreg,cVitRegexFilter,
 		REG_EXTENDED
 		| case_ignore
@@ -285,6 +285,7 @@ main(int argc,char*argv[])
   regex_t *vitEreg = NULL;
   if (eVitRegexFilter != NULL) {
     vitEreg = (regex_t*) malloc(sizeof(regex_t));
+    if (!vitEreg) throw std::bad_alloc();
     if (regcomp(vitEreg,eVitRegexFilter,
 		REG_EXTENDED
 		| case_ignore
@@ -577,5 +578,8 @@ main(int argc,char*argv[])
   } // close brace to cause a destruct on valid end of program.
 
   exit_program_with_status(0); 
+  } catch (std::bad_alloc const &e) {
+    memory_error();
+  }
 }
 

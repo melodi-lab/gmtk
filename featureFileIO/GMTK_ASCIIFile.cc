@@ -135,6 +135,10 @@ ASCIIFile::openSegment(unsigned seg) {
   nFrames = n_samples;
   if (n_samples > bufferSize) {
     buffer = (Data32 *) realloc(buffer, n_samples * _numFeatures * sizeof(Data32));
+    if (!buffer) {
+      warning("ASCIIFile: failed to allocate memory\n");
+      throw std::bad_alloc();
+    }
     bufferSize = n_samples;
   }
   Data32 *dest = buffer;

@@ -66,6 +66,9 @@ public:
   MDCPT();
   ~MDCPT() { }
 
+    sArray<logpr>& getMdcpt() {return mdcpt;}
+    sArray<logpr>& getNextMdcpt() {return nextMdcpt;}
+
   ///////////////////////////////////////////////////////////    
   // Semi-constructors: useful for debugging.
   // See parent class for further documention.

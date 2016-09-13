@@ -14,6 +14,6 @@ AT_CHECK([(cd $TEST_AND_DEV/mintest.train.nonan && \
            obs-print -iswp1 F -nf1 2 -ni1 0 -of1 float32.list \
            -fmt1 binary -cppifascii T) > cpp.yes],
          [],[ignore],[ignore])
-AT_CHECK([cmp cpp.{yes,no}])
+AT_CHECK([cmp cpp.yes cpp.no])
 
 AT_CLEANUP

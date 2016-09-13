@@ -560,7 +560,7 @@ VECPT::read(iDataStreamFile& is)
       }
 
     }
-  } catch ( string error_message ) {
+  } catch ( string const &error_message ) {
     error("ERROR: reading file '%s' line %u, of VirtualEvidenceCPT spec '%s': %s",
 	  is.fileName(),is.lineNo(),name().c_str(),error_message.c_str());
   } catch( const char * const error_message ) {

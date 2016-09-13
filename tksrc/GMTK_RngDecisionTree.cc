@@ -554,7 +554,7 @@ RngDecisionTree::readRecurse(iDataStreamFile& is,Node& node)
       try {
 	node.ln_e().equation.parseFormula(leafNodeVal);
       }
-      catch( string error_message ){
+      catch( string const &error_message ){
         error("ERROR: In file '%s' line %d, DT '%s', equation '%s':  %s", 
           is.fileName(), is.lineNo(),name().c_str(), leafNodeVal.c_str(), 
 	  error_message.c_str());
@@ -3292,7 +3292,7 @@ bool RngDecisionTree::testFormula(
   try {
     node.ln_e().equation.parseFormula(formula);
   }
-  catch( string error_message ){
+  catch( string const &error_message ){
     error("   PARSE ERROR: %s", error_message.c_str());
   }
   catch( const char * const error_message ) {

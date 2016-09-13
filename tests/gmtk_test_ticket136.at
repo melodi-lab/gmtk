@@ -11,6 +11,7 @@ AT_CHECK([(cd $TEST_AND_DEV/trivial && \
 AT_CLEANUP
 
 AT_SETUP([unpack observed cliques (ticket 136 2-stream)])
+AT_SKIP_IF([test -z `which gcc`])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/2-stream])
 AT_CHECK([(cd $TEST_AND_DEV/2-stream/misc; 
 	   for f in `ls *.bz2`; do

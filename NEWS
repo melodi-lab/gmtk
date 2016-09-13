@@ -10,6 +10,41 @@ For general questions:  gmtk-users@u.washington.edu
 Subscribe to the email list at
   http://mailman.u.washington.edu/mailman/listinfo/gmtk-users
 
+Version 1.4.4  2016-01-06
+        * Minor build system tweak to avoid requiring X11 on OS X
+
+Version 1.4.3  2015-10-29
+        * Minor gmtkViz tweaks to avoid requiring X11 on OS X
+
+Version 1.4.2  2015-10-28
+        * Consistently exit with status 75 on failure due to 
+          memory exhaustion
+        * Removed some non-portable Bash-isms from shell commands
+        * "observation" is now allowed as an identifier in GMTKL
+          (the structure file language)
+        * Fixed gmtkViz build failure on Ubuntu-derived Linuxes
+        * Added automatically generated man pages
+
+Version 1.4.1  2015-09-02
+        * Reduced latency in gmtkOnline
+        * Several bug fixes for writing HDF5 output files
+        * Added obsfile and obsstream as modules for -verbosity
+
+Version 1.4.0  2015-06-25
+        * Added gmtkMMItrain discriminitive training program
+        * Added --with-hdf5 configure argument
+        * EM training warns if Dirichlet prior is responsible for
+          the entire accumulated count
+
+Version 1.3.3  2015-06-15
+        * Fixed build failure on OS X 10.8 with Apple LLVM 5.1 compiler
+
+Version 1.3.2  2015-06-10
+        * Changed the code that handles random variable weights
+	  so that the scale is applied before the penalty if
+	  both are present, which matches the documentation.
+	* Made -viterbiScore T the default for gmtkOnline
+	
 Version 1.3.1  2015-05-29
         * Fixed regression in bursty gmtkOnline output
 

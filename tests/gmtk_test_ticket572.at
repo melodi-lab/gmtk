@@ -1,0 +1,29 @@
+# Verify that https://j.ee.washington.edu/trac/gmtk/ticket/572 is fixed
+
+# If it's working, gmtkJT should not crash
+
+# Note that this test requires GMTK to be built with HDF5 support.
+# Furthermore, GMTK must be compiled with the same C++ compiler as
+# the HDF5 library. I haven't yet thought of a reasonable way to
+# test those requirements here, so this test is skipped unless 
+# enabled by the environment variable GMTK_ENABLE_HDF5_TESTS being
+# non-empty.
+
+AT_SETUP([HDF5 clique posterior output (ticket 572)])
+AT_SKIP_IF([test x"$GMTK_ENABLE_HDF5_TESTS" = x""])
+AT_SKIP_IF([test ! -d $TEST_AND_DEV/simple_hmm_1])
+AT_SKIP_IF([test ! -f $TEST_AND_DEV/pfiles/ex_short.pfile])
+
+# ticket 586 - The HDF5 library must be compiled by the same
+#              compiler as GMTK or there may be ABI incompatibility
+AT_SKIP_IF(test `uname` = Darwin -a x$CXX != xclang++)
+AT_SKIP_IF(test `uname` = Linux -a x$CXX != x)
+
+AT_CHECK([(cd $TEST_AND_DEV/simple_hmm_1 && \
+  gmtkJT -iswp1 -strFile ex.str -of1 ../pfiles/ex_short.pfile -nf1 26 \
+         -inputMasterFile ex.params \
+         -cCliquePrintRange 0 -cliquePrintFormat hdf5 \
+         -cliqueOutputFileName posterior_hdf5 \
+         -cliqueListFileName posterior.hdf5)],[],[ignore])
+
+AT_CLEANUP

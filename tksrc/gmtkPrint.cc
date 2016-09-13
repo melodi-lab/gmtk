@@ -176,8 +176,8 @@ FileSource *gomFS;
 ObservationSource *globalObservationMatrix;
 
 int
-main(int argc,char*argv[])
-{
+main(int argc,char*argv[]) {
+  try { // for catching std::bad_alloc(), indicating memory exhaustion
 
   ////////////////////////////////////////////
   // set things up so that if an FP exception
@@ -445,6 +445,7 @@ main(int argc,char*argv[])
   regex_t *vitPreg = NULL;
   if (pVitRegexFilter != NULL) {
     vitPreg = (regex_t*) malloc(sizeof(regex_t));
+    if (!vitPreg) throw std::bad_alloc();
     if (regcomp(vitPreg,pVitRegexFilter,
 		REG_EXTENDED
 		| case_ignore
@@ -456,6 +457,7 @@ main(int argc,char*argv[])
   regex_t *vitCreg = NULL;
   if (cVitRegexFilter != NULL) {
     vitCreg = (regex_t*) malloc(sizeof(regex_t));
+    if (!vitCreg) throw std::bad_alloc();
     if (regcomp(vitCreg,cVitRegexFilter,
 		REG_EXTENDED
 		| case_ignore
@@ -467,6 +469,7 @@ main(int argc,char*argv[])
   regex_t *vitEreg = NULL;
   if (eVitRegexFilter != NULL) {
     vitEreg = (regex_t*) malloc(sizeof(regex_t));
+    if (!vitEreg) throw bad_alloc();
     if (regcomp(vitEreg,eVitRegexFilter,
 		REG_EXTENDED
 		| case_ignore
@@ -590,4 +593,7 @@ main(int argc,char*argv[])
     fclose(JunctionTree::binaryViterbiFile);
 
   exit_program_with_status(0);
+  } catch (std::bad_alloc const &e) {
+    memory_error();
+  }
 }

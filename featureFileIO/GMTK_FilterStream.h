@@ -20,6 +20,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <new>
 using namespace std;
 
 #include "machine-dependent.h"
@@ -117,8 +118,8 @@ class FilterStream: public ObservationStream {
       infoMsg(IM::ObsStream,IM::High-2,"FilterStream: resize queue %u -> %u\n", inputBufferCapacity, newInputSize);
       inputBuffer = (Data32 *)realloc(inputBuffer, newInputSize * inStride * sizeof(Data32));
       if (!inputBuffer) {
-	error("FilterStream::getNextFrame failed to resize input buffer\n");
-	inputBufferCapacity = newInputSize;
+	warning("FilterStream::getNextFrame failed to resize input buffer\n");
+	throw std::bad_alloc();
       }
       inputBufferCapacity = newInputSize;
     }
@@ -177,7 +178,8 @@ class FilterStream: public ObservationStream {
     if (numNewOut > outputBufferCapacity) {
       outputBuffer = (Data32 *)realloc(outputBuffer, numNewOut * outStride * sizeof(Data32));
       if (!outputBuffer) {
-	error("FilterStream::getNextFrame failed to resize output buffer\n");
+	warning("FilterStream::getNextFrame failed to resize output buffer\n");
+	throw std::bad_alloc();
       }
       outputBufferCapacity = numNewOut;
     }

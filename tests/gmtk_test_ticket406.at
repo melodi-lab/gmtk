@@ -85,21 +85,22 @@ AT_CLEANUP
 
 AT_SETUP([Triggers: bin modified sections (ticket 406)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
-AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial && \
+export GMTK_TEST_DIR=$(mktemp -d $TEST_AND_DEV/GMTKTESTSUITE.XXXXXX)
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
            gmtkViterbi -iswp1 -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
                        -inputMasterFile PARAMS/nonTrainable.master          \
                        -inputTrainable PARAMS/highly_trained.gmp            \
                        -str PARAMS/aurora_decode.str                        \
                        -binaryVitFile $GMTK_TEST_DIR/vit.bin)], [], [ignore])
 
-AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&   \
            gmtkPrint -iswp1 -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0     \
                      -inputMasterFile PARAMS/nonTrainable.master              \
                      -inputTrainable PARAMS/highly_trained.gmp                \
                      -str PARAMS/aurora_decode.str                            \
                      -binaryVitFile $GMTK_TEST_DIR/vit.bin -mVitValsFile -) | \
            egrep "wordTransition\(@<:@0-9@:>@+\)=1" > vit.tru], [], [ignore])
-AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&   \
            gmtkPrint -iswp1 -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0     \
                      -inputMasterFile PARAMS/nonTrainable.master              \
                      -inputTrainable PARAMS/highly_trained.gmp                \
@@ -108,26 +109,27 @@ AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
                      -cVitTrigger "wordTransition(0)==1"                      \
                -eVitTrigger "wordTransition(0)==1||wordTransition(1)==1"      \
                -binaryVitFile $GMTK_TEST_DIR/vit.bin -mVitValsFile -)   |     \
-           egrep "^Ptn-@<:@0-9@:>@+" | diff - vit.tru], [], [ignore])
+           egrep "^Ptn-@<:@0-9@:>@+" | diff - vit.tru && rm -rf $GMTK_TEST_DIR], [], [ignore])
 AT_CLEANUP
 
 AT_SETUP([Triggers: bin original sections (ticket 406)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
-AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial && \
+export GMTK_TEST_DIR=$(mktemp -d $TEST_AND_DEV/GMTKTESTSUITE.XXXXXX) 
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
            gmtkViterbi -iswp1 -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0 \
                        -inputMasterFile PARAMS/nonTrainable.master          \
                        -inputTrainable PARAMS/highly_trained.gmp            \
                        -str PARAMS/aurora_decode.str                        \
                        -binaryVitFile $GMTK_TEST_DIR/vit.bin)], [], [ignore])
 
-AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&   \
            gmtkPrint -iswp1 -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0     \
                      -inputMasterFile PARAMS/nonTrainable.master              \
                      -inputTrainable PARAMS/highly_trained.gmp                \
                      -str PARAMS/aurora_decode.str                            \
                      -binaryVitFile $GMTK_TEST_DIR/vit.bin -vitValsFile -) |  \
            egrep "wordTransition\(@<:@0-9@:>@+\)=1" > vit.tru], [], [ignore])
-AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&   \
            gmtkPrint -iswp1 -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0     \
                      -inputMasterFile PARAMS/nonTrainable.master              \
                      -inputTrainable PARAMS/highly_trained.gmp                \
@@ -136,7 +138,7 @@ AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
                      -cVitTrigger "wordTransition(0)==1"                      \
                -eVitTrigger "wordTransition(0)==1"                            \
                -binaryVitFile $GMTK_TEST_DIR/vit.bin -vitValsFile -)   |      \
-           egrep "^Ptn-@<:@0-9@:>@+" | diff - vit.tru], [], [ignore])
+           egrep "^Ptn-@<:@0-9@:>@+" | diff - vit.tru && rm -rf $GMTK_TEST_DIR], [], [ignore])
 AT_CLEANUP
 
 
@@ -237,14 +239,15 @@ AT_CLEANUP
 
 AT_SETUP([Run-length: bin modified sections (ticket 406)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
-AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial && \
+export GMTK_TEST_DIR=$(mktemp -d $TEST_AND_DEV/GMTKTESTSUITE.XXXXXX)
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
            gmtkViterbi -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0        \
                        -inputMasterFile PARAMS/nonTrainable.master          \
                        -inputTrainable PARAMS/highly_trained.gmp            \
                        -str PARAMS/aurora_decode.str                        \
                        -binaryVitFile $GMTK_TEST_DIR/vit.bin)], [], [ignore])
 
-AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&   \
            gmtkPrint -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0            \
                      -inputMasterFile PARAMS/nonTrainable.master              \
                      -inputTrainable PARAMS/highly_trained.gmp                \
@@ -253,7 +256,7 @@ AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
            grep -E "Ptn-(@<:@@<:@:digit:@:>@@:>@)+ C" |                                   \
            sed 's/(@<:@0-9@:>@@<:@0-9@:>@*)//g' |                                         \
            uniq -f 2 > vit.tru], [], [ignore])
-AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&   \
            gmtkPrint -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0            \
                      -inputMasterFile PARAMS/nonTrainable.master              \
                      -inputTrainable PARAMS/highly_trained.gmp                \
@@ -261,19 +264,20 @@ AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
                -binaryVitFile $GMTK_TEST_DIR/vit.bin -mVitValsFile -)   |     \
            grep -E "Ptn-(@<:@@<:@:digit:@:>@@:>@)+ C" |                                   \
            sed 's/(@<:@0-9@:>@@<:@0-9@:>@*)//g' |                                         \
-         diff - vit.tru], [], [ignore])
+         diff - vit.tru && rm -rf $GMTK_TEST_DIR], [], [ignore])
 AT_CLEANUP
 
 AT_SETUP([Run-length: bin original sections (ticket 406)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/auroraTutorial])
-AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial && \
+export GMTK_TEST_DIR=$(mktemp -d $TEST_AND_DEV/GMTKTESTSUITE.XXXXXX)
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial && \
            gmtkViterbi -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0        \
                        -inputMasterFile PARAMS/nonTrainable.master          \
                        -inputTrainable PARAMS/highly_trained.gmp            \
                        -str PARAMS/aurora_decode.str                        \
                        -binaryVitFile $GMTK_TEST_DIR/vit.bin)], [], [ignore])
 
-AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&   \
            gmtkPrint -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0            \
                      -inputMasterFile PARAMS/nonTrainable.master              \
                      -inputTrainable PARAMS/highly_trained.gmp                \
@@ -282,7 +286,7 @@ AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
            grep -E "Ptn-(@<:@@<:@:digit:@:>@@:>@)+ C" |                                   \
            sed 's/(@<:@0-9@:>@@<:@0-9@:>@*)//g' |                                         \
            uniq -f 2 > vit.tru], [], [ignore])
-AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
+AT_CHECK([(cd $TEST_AND_DEV/auroraTutorial &&   \
            gmtkPrint -of1 DATA/small.pfile -iswp1 T -nf1 42 -ni1 0            \
                      -inputMasterFile PARAMS/nonTrainable.master              \
                      -inputTrainable PARAMS/highly_trained.gmp                \
@@ -290,7 +294,7 @@ AT_CHECK([(export GMTK_TEST_DIR=`pwd` && cd $TEST_AND_DEV/auroraTutorial &&   \
                -binaryVitFile $GMTK_TEST_DIR/vit.bin -vitValsFile -)   |      \
            grep -E "Ptn-(@<:@@<:@:digit:@:>@@:>@)+ C" |                                   \
            sed 's/(@<:@0-9@:>@@<:@0-9@:>@*)//g' |                                         \
-         diff - vit.tru], [], [ignore])
+         diff - vit.tru && rm -rf $GMTK_TEST_DIR], [], [ignore])
 AT_CLEANUP
 
 

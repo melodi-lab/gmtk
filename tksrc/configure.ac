@@ -88,7 +88,7 @@ AC_ARG_WITH([LZERO],
             [AS_HELP_STRING([--with-LZERO],
               [the smallest log value that we represent (note that values > -1e16 may cause arithmetic problems (0+0 != 0) @<:@default: -1.0E17@:>@])],
 	    [],
-            [with_LZERO=(-1.0E17)])
+            [with_LZERO=-1.0E17])
 
 badLZERO=`echo ${with_LZERO} | awk '{if ($1 > -1.0e16) {print "bad"}}'`
 if test x"$badLZERO" = x"bad"; then
@@ -141,50 +141,52 @@ AM_CONDITIONAL([HAVE_HG],[test  x$HAVE_HG = xyes])
 
 m4_include([m4/wxwin.m4])
 
-WX_CONFIG_OPTIONS
-WX_CONFIG_CHECK([2.9.0], [HAVE_WXWIDGETS=yes], [AC_MSG_WARN([$wx_error_message
-
-gmtkViz will not be built])])
 
 AC_ARG_ENABLE([gmtkViz], 
               [AS_HELP_STRING([--disable-gmtkViz],
                               [disable gmtkViz @<:@default: no@:>@])],
               [gmtkViz=${enableval}], [gmtkViz=yes])
 
-AC_DEFUN([GMTK_WCHAR_PROG],[dnl
+if test x"$gmtkViz" = x"yes"; then
+  WX_CONFIG_OPTIONS
+  WX_CONFIG_CHECK([2.9.0], [HAVE_WXWIDGETS=yes], [AC_MSG_WARN([$wx_error_message
+
+gmtkViz will not be built])])
+
+  AC_DEFUN([GMTK_WCHAR_PROG],[dnl
 AC_LANG_PROGRAM([dnl
 #include <string>
 using namespace std;
 #include <wx/wx.h>
 ],[wxString s("foo")])])
 
-if test x"$HAVE_WXWIDGETS" = x"yes" -a x$gmtkViz = xyes; then
-  AC_MSG_CHECKING([whether wxWidgets works without -D_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_])
-  AC_LANG_PUSH([C++])
-  wx_check_save_CXXFLAGS=${CXXFLAGS}
-  wx_check_save_LIBS=${LIBS}
-  CXXFLAGS="$wx_check_save_CXXFLAGS $WX_CXXFLAGS"
-  LIBS="$wx_check_save_LIBS $WX_LIBS"
-  AC_LINK_IFELSE([GMTK_WCHAR_PROG],[
-    AC_MSG_RESULT([yes])
-  ],[
-    AC_MSG_RESULT([no])
-    AC_MSG_CHECKING([whether wxWidgets works with -D_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_])
-    CXXFLAGS="$CXXFLAGS -D_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_"
+  if test x"$HAVE_WXWIDGETS" = x"yes" -a x$gmtkViz = xyes; then
+    AC_MSG_CHECKING([whether wxWidgets works without -D_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_])
+    AC_LANG_PUSH([C++])
+    wx_check_save_CXXFLAGS=${CXXFLAGS}
+    wx_check_save_LIBS=${LIBS}
+    CXXFLAGS="$wx_check_save_CXXFLAGS $WX_CXXFLAGS"
+    LIBS="$wx_check_save_LIBS $WX_LIBS"
     AC_LINK_IFELSE([GMTK_WCHAR_PROG],[
       AC_MSG_RESULT([yes])
-      EXTRA_WX_FLAGS=-D_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_
-    ],[ 
+    ],[
       AC_MSG_RESULT([no])
-      AC_MSG_WARN([wxWidgets doesn't seem to work. gmtkViz will not be built.])
-      HAVE_WXWIDGETS=no
+      AC_MSG_CHECKING([whether wxWidgets works with -D_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_])
+      CXXFLAGS="$CXXFLAGS -D_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_"
+      AC_LINK_IFELSE([GMTK_WCHAR_PROG],[
+        AC_MSG_RESULT([yes])
+        EXTRA_WX_FLAGS=-D_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_
+      ],[ 
+        AC_MSG_RESULT([no])
+        AC_MSG_WARN([wxWidgets doesn't seem to work. gmtkViz will not be built.])
+        HAVE_WXWIDGETS=no
+      ])
     ])
-  ])
-  CXXFLAGS=$wx_check_save_CXXFLAGS
-  LIBS=$wx_check_save_LIBS
-  AC_LANG_POP([C++])
+    CXXFLAGS=$wx_check_save_CXXFLAGS
+    LIBS=$wx_check_save_LIBS
+    AC_LANG_POP([C++])
+  fi
 fi
-
 if test x"$HAVE_WXWIDGETS" = x"yes"; then
    AC_SUBST([GMTKVIZ],[gmtkViz])
    AC_SUBST([VIZCXXFLAGS],["$WX_CXXFLAGS $EXTRA_WX_FLAGS"])
@@ -203,6 +205,11 @@ case "${host}" in
   fi ;;
 *-sun-solaris*) AC_CHECK_LIB([sunmath],[annuity]) ;;
 *cygwin*) AC_SUBST([XOPEN],[-D__USE_XOPEN2K]) ;;
+esac
+
+case "${host}" in
+*apple*) ;; # don't use X11 on OS X
+*) AC_SUBST([X_LIBS],[-lX11]) ;; 
 esac
 
 # Check for SSE headers
@@ -254,23 +261,8 @@ AM_CONDITIONAL([CYGWIN_FLAGS],[test x"$XOPEN" = x"-D__USE_XOPEN2K"])
 AM_CONDITIONAL([MAKE_BUNDLE],[test  x$OSXBUNDLE = xgmtkViz.app])
 AC_CHECK_LIB([m], [log])
 
-
-AC_LANG_PUSH([C++])
-hdf_check_save_LIBS=${LIBS}
-LIBS="${LIBS} -lhdf5_cpp -lhdf5"
-AC_LINK_IFELSE([AC_LANG_PROGRAM([#include <H5Cpp.h>
-#ifndef H5_NO_NAMESPACE
-using namespace H5;
-#endif],
-[H5File file("/dev/null", H5F_ACC_RDONLY )])],
-        AC_SUBST([HAVE_HDF5],[yes]),[])
-LIBS=${hdf_check_save_LIBS}
-AC_LANG_POP([C++])
-if test x"$HAVE_HDF5" = x"yes"; then 
-  LIBS="-lhdf5_cpp -lhdf5 $LIBS"
-  AC_DEFINE([HAVE_LIBHDF5_CPP],[1],[Are the C++ bindings for HDF5 available?])
-fi
-
+m4_include([../m4/ax_lib_hdf5.m4])
+AX_LIB_HDF5
 
 AC_ARG_WITH([detBrush],
             [AS_HELP_STRING([--with-detBrush],
@@ -301,7 +293,11 @@ AC_SEARCH_LIBS([dlopen], [dl dld], [], [
 m4_include([../deepMLP/blas_check])
 
 # Checks for header files.
-AC_PATH_XTRA
+case "${host}" in
+*apple*) ;; # don't use X11 on OS X
+*) AC_PATH_XTRA ;;
+esac
+
 AC_CHECK_HEADERS([float.h stdlib.h string.h sys/time.h unistd.h dlfcn.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
@@ -326,6 +322,50 @@ AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 AC_FUNC_STRTOD
 AC_CHECK_FUNCS([alarm floor memset pow regcomp sqrt strchr strerror strstr strtol log1p getline])
+
+if test x$ac_cv_func_getline = x"yes"; then
+  AC_LANG_PUSH([C++])
+
+  AC_DEFUN([GMTK_GETLINE_PROG],[dnl
+    AC_LANG_PROGRAM([dnl
+#include <stdlib.h>
+#include <stdio.h>
+char *lineptr;
+size_t n;
+FILE *stream;
+],[if (getline(&lineptr, &n, stream) > 0) exit(0)])])
+
+  AC_MSG_CHECKING([if getline works without any feature test flags])
+  AC_LINK_IFELSE([GMTK_GETLINE_PROG],[
+    AC_MSG_RESULT([yes])
+    AC_DEFINE([USE_GETLINE],[1],[use POSIX getline function])
+  ],[
+    AC_MSG_RESULT([no])
+    AC_MSG_CHECKING([if getline requires _WITH_GETLINE])
+    getline_check_save_CPPFLAGS=${CPPFLAGS}
+    CPPFLAGS="-D_WITH_GETLINE ${getline_check_save_CPPFLAGS}"
+    AC_LINK_IFELSE([GMTK_GETLINE_PROG],[
+      AC_MSG_RESULT([yes])
+      AC_DEFINE([_WITH_GETLINE],[1],[enable POSIX getline function])
+      AC_DEFINE([USE_GETLINE],[1],[use POSIX getline function])
+    ],[
+      AC_MSG_RESULT([no])
+      AC_MSG_CHECKING([if getline requires _POSIX_C_SOURCE >= 200809])
+      CPPFLAGS="-D_POSIX_C_SOURCE=200809 ${getline_check_save_CPPFLAGS}"
+      AC_LINK_IFELSE([GMTK_GETLINE_PROG],[
+        AC_MSG_RESULT([yes])
+        AC_DEFINE([_POSIX_C_SOURCE],[200809],[enable POSIX getline function])
+        AC_DEFINE([USE_GETLINE],[1],[use POSIX getline function])
+      ],[
+        AC_MSG_RESULT([no])
+        AC_MSG_WARN([unable to use getline function - will use fgets instead])
+      ])
+    ])
+    CPPFLAGS=${getline_check_save_CPPFLAGS}
+  ])
+  AC_LANG_POP([C++])
+fi
+
 AC_FUNC_FSEEKO
 AC_SYS_LARGEFILE
 

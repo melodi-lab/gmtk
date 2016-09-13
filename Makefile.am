@@ -16,7 +16,7 @@ scripts/triangulateGA \
 scripts/triangulateParallel \
 scripts/triangulateTimings
 
-SUBDIRS = IEEEFloatingpoint miscSupport featureFileIO mitk deepMLP tksrc tests
+SUBDIRS = IEEEFloatingpoint miscSupport featureFileIO mitk deepMLP tksrc tests man
 
 # machine to publish to (any that mount /g/melodi/html will probably do)
 PUBLISHHOST=trumpet
@@ -34,6 +34,14 @@ PUBLISH=/g/melodi/html/web-pages/downloads/gmtk/mkhtml.sh
 # There should only be one release of a version number, so no -f on
 # the hg tag. If it fails, you probably forgot to update the RELEASE file.
 release: distcheck
+	hg tag v`cat RELEASE` -m "This is the "`cat RELEASE`" release"
+	hg push
+	scp gmtk-`cat RELEASE`.tar.gz $(DOWNLOADS)
+	ssh $(PUBLISHHOST) $(PUBLISH)
+
+# Skip the distcheck because you've already done it and it's slow.
+# You're on your honor not to skip it :)
+quickrelease: dist
 	hg tag v`cat RELEASE` -m "This is the "`cat RELEASE`" release"
 	hg push
 	scp gmtk-`cat RELEASE`.tar.gz $(DOWNLOADS)

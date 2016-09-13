@@ -18,7 +18,6 @@ endif
 
 DEBUGFLAGS = 
 
-
 # If configure determines we're using GCC C/C++ compilers, set flags appropriately
 if USE_GCC_FLAGS
 # Only used for GCC compilers
@@ -100,7 +99,12 @@ GMTK_TrainingSchedule.h GMTK_TrainingSchedule.cc \
 GMTK_RandomSampleSchedule.h \
 GMTK_LinearSchedule.h \
 GMTK_PermutationSchedule.h \
-GMTK_ShuffleSchedule.h
+GMTK_ShuffleSchedule.h \
+GMTK_SegmentSchedule.h GMTK_BaseSegmentSchedule.h \
+GMTK_RandomSegmentSchedule.h \
+GMTK_PermutationSegmentSchedule.h \
+GMTK_ShuffleSegmentSchedule.h \
+GMTK_LinearSegmentSchedule.h 
 
 check_PROGRAMS = \
 testPFileFile \
@@ -117,6 +121,10 @@ testStreamSource \
 testMerge
 
 #testFileSource 
+
+#check_PROGRAMS = gmtest
+
+#gmtest_SOURCES = gmtest.cc
 
 
 testPFileFile_SOURCES = testPFileFile.cc 
@@ -136,11 +144,8 @@ testMerge_SOURCES = testMerge.cc
 bin_PROGRAMS = obs-print obs-info obs-skmeans obs-window \
                obs-concat obs-diff obs-stats obs-cat
 
-#check_PROGRAMS = gmtest
-
-#gmtest_SOURCES = gmtest.cc
-
 obs_cat_SOURCES = obs-cat.cc
+
 obs_stats_SOURCES = obs-stats.cc
 
 obs_print_SOURCES = \

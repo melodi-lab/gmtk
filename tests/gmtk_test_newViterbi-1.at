@@ -5,6 +5,11 @@
 
 AT_SETUP([new Viterbi printing test_hmm3 (ticket 85)])
 AT_SKIP_IF([test ! -d $TEST_AND_DEV/test_hmm3])
-AT_CHECK([cp $TEST_AND_DEV/test_hmm3/{3e.master,3e.str,3e_observations.ascii_data,observation_file_list.txt,atjt.sh,atvit.sh} .],[],[ignore])
+AT_CHECK([cp $TEST_AND_DEV/test_hmm3/3e.master . && \
+cp $TEST_AND_DEV/test_hmm3/3e.str . && \
+cp $TEST_AND_DEV/test_hmm3/3e_observations.ascii_data . && \
+cp $TEST_AND_DEV/test_hmm3/observation_file_list.txt . && \
+cp $TEST_AND_DEV/test_hmm3/atjt.sh . && \
+cp $TEST_AND_DEV/test_hmm3/atvit.sh . && chmod +x *.sh],[],[ignore])
 AT_CHECK([$TEST_AND_DEV/scripts/at_test.sh 3e.str > vit_test.log], [], [ignore])
 AT_CLEANUP
