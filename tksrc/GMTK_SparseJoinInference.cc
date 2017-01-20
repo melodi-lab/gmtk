@@ -205,6 +205,7 @@ SparseJoinInference::sendBackwardInterfaceSeparator(SectionTablesBase *prev_sect
   vector<unsigned>     next_part_leaf = inference_it->cur_li();
   const char*const     next_part_type_name = inference_it->cur_nm();
   unsigned             next_part_num = inference_it->cur_st();
+  unsigned             li_size = inference_it->cur_li().size();
 
   // check for empty partitions.
 
@@ -239,8 +240,8 @@ SparseJoinInference::sendBackwardInterfaceSeparator(SectionTablesBase *prev_sect
   // speak the same section separator data structure).
   prev_section->receiveBackwardsSeparators(*inference_it,
 					   previous_ps,
-					   &(next_st->separatorCliques[next_ps.separatorCliquesSharedStructure.size()-1]),
-					   next_ps.separatorCliquesSharedStructure[next_ps.separatorCliquesSharedStructure.size()-1]);
+					   &(next_st->separatorCliques[next_ps.separatorCliquesSharedStructure.size()-li_size]),
+					   next_ps.separatorCliquesSharedStructure[next_ps.separatorCliquesSharedStructure.size()-li_size]);
 #endif
   if (IM::messageGlb(IM::InferenceMemory, IM::Med+9)) {
     // FIXME - previous_st->reportMemoryUsageTo(previous_ps,stdout);

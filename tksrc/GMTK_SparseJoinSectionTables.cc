@@ -145,8 +145,9 @@ SparseJoinSectionTables::receiveBackwardsSeparators(SectionIterator &stss_it,
   // how many MaxCliques are in the section, and the MaxCliqueTable::SharedLocalStructure
   // of each of those cliques...
 #if 1
-  for (unsigned i=0, n=stss_it.prev_ri_size(); i < n; ++i) {
-    maxCliques[i].deReceiveFromIncommingSeparator(sourceSectionStructures.maxCliquesSharedStructure[i],
+  vector<unsigned> roots(stss_it.prev_ri());
+  for (unsigned i=0, n=roots.size(); i < n; ++i) {
+    maxCliques[roots[i]].deReceiveFromIncommingSeparator(sourceSectionStructures.maxCliquesSharedStructure[roots[i]],
 						  *separatorTableArray, sepSharedStructure);
   }
 #else
