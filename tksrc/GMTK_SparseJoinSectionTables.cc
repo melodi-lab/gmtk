@@ -146,7 +146,7 @@ SparseJoinSectionTables::receiveBackwardsSeparators(SectionIterator &stss_it,
   // of each of those cliques...
 #if 1
   vector<unsigned> roots(stss_it.prev_ri());
-  for (unsigned i=0, n=roots.size(); i < n; ++i) {
+  for (unsigned i=0, n=stss_it.prev_ri_size(); i < n; ++i) {
     maxCliques[roots[i]].deReceiveFromIncommingSeparator(sourceSectionStructures.maxCliquesSharedStructure[roots[i]],
 						  *separatorTableArray, sepSharedStructure);
   }
