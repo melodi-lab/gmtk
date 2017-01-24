@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "general.h"
+#include "debug.h"
 
 VCID(HGID)
 
@@ -38,6 +39,9 @@ SparseJoinInference::getSectionTables(unsigned t) {
       myjt->section_table_array[t] = new SparseJoinSectionTables(myjt->E1);
     }
   }
+  // else{
+    // printf("get st value %u %f\n", t, ((SparseJoinInferenceSectionTable* )myjt->section_table_array[t])->maxCliques[0].cliqueValues.ptr[0].p.val());
+  // }
   // FIXME - assert typeof(section_table_array[t] == SparseJoinInferenceSectionTable)
   return myjt->section_table_array[t];
 }
@@ -168,7 +172,14 @@ SparseJoinInference::prepareBackwardInterfaceSeparator(SectionTablesBase *cur_se
     myjt->E1.skipLISeparator();
   }
   
-#if 0
+if (inference_it->cur_st() == 0) {
+  printf("DE: pBIS @ %s  cur_ss=%u\n", inference_it->cur_nm(), inference_it->cur_ss());
+  printf("  root: {");
+  for (unsigned i=0; i < inference_it->cur_ri().size(); ++i)
+    printf(" %u", inference_it->cur_ri()[i]);
+  printf(" }\n");
+}
+#if 1
   deScatterOutofRoot(myjt->section_structure_array[inference_it->cur_ss()],
 		     *section,
 		     inference_it->cur_ri(),
@@ -198,21 +209,27 @@ SparseJoinInference::sendBackwardInterfaceSeparator(SectionTablesBase *prev_sect
   const char*const     previous_part_type_name = inference_it->prev_nm();
   unsigned             previous_part_num = inference_it->prev_st();
 
+
+
   PartitionStructures &next_ps = myjt->section_structure_array[inference_it->cur_ss()];
   SparseJoinSectionTables *next_st = dynamic_cast<SparseJoinSectionTables *>(cur_section);
+
+
   assert(next_st);
 
   vector<unsigned>     next_part_leaf = inference_it->cur_li();
   const char*const     next_part_type_name = inference_it->cur_nm();
   unsigned             next_part_num = inference_it->cur_st();
-  unsigned             li_size = inference_it->cur_li().size();
 
   // check for empty partitions.
 
   // FIXME - see receive...
-  if (previous_ps.maxCliquesSharedStructure.size() == 0 || next_ps.maxCliquesSharedStructure.size() == 0)
+  if (previous_ps.maxCliquesSharedStructure.size() == 0 || next_ps.maxCliquesSharedStructure.size() == 0) {
+printf("%s %s skipping sBIS\n", 
+	   (previous_ps.maxCliquesSharedStructure.size() == 0) ? "prev section empty" : "", 
+	   (next_ps.maxCliquesSharedStructure.size() == 0) ? "next section empty" : "");
     return;
-
+  }
   unsigned inferenceDebugLevel = IM::glbMsgLevel(IM::Inference);
   unsigned inferenceMemoryDebugLevel = IM::glbMsgLevel(IM::InferenceMemory);
 
@@ -220,11 +237,15 @@ SparseJoinInference::sendBackwardInterfaceSeparator(SectionTablesBase *prev_sect
     IM::setGlbMsgLevel(IM::Inference, IM::glbMsgLevel(IM::DefaultModule));
     IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
   }
-#if 0
-  infoMsg(IM::Inference, IM::Mod,"DE: message %s,part[%d],clique(%d) <-- %s,part[%d],clique(%d)\n",
-	  previous_part_type_name,previous_part_num,previous_part_root,
-	  next_part_type_name,next_part_num,next_part_leaf);
-#endif
+  if (IM::messageGlb(IM::Inference, IM::Mod)) {
+    printf("DE: message %s,part[%d],cliques {", previous_part_type_name,previous_part_num);
+    for (unsigned i=0; i < previous_part_root.size(); ++i)
+      printf(" %u", previous_part_root[i]);
+    printf(" } <-- %s,part[%d],cliques {", next_part_type_name,next_part_num);
+    for (unsigned i=0; i < next_part_leaf.size(); ++i) 
+      printf(" %u", next_part_leaf[i]);
+    printf(" }\n");
+  }
 #if 0
   // FIXME - call prev_section->projectToIncomingSeporator()
   prevous_st->maxCliques[previous_part_root].
@@ -236,12 +257,25 @@ SparseJoinInference::sendBackwardInterfaceSeparator(SectionTablesBase *prev_sect
   // used for prev_section. But we do know that next_st is a SparseJoinSectionTables, since
   // we're running SparseJoinInference on that section. So we know how to find next_st's
   // outgoing (for the backwards pass) separators. Thus prev_section can figure out for itself 
-  // how to project receive next_st's interface separators (all SectionInferenceAlgorithms 
+  // how to receive next_st's interface separators (all SectionInferenceAlgorithms 
   // speak the same section separator data structure).
+  unsigned li_size = inference_it->cur_li().size();
+  //if (inference_it->prev_at_p()){
+    
+
+  //prev_section->receiveBackwardsSeparators(*inference_it,
+  //           previous_ps, // was preivous_ps, next_ps seems to be wrong
+  //           &(next_st->separatorCliques[4]),
+  //           next_ps.separatorCliquesSharedStructure[4]);
+
+  //}
+  //else {
   prev_section->receiveBackwardsSeparators(*inference_it,
-					   previous_ps,
+					   previous_ps, // was preivous_ps, next_ps seems to be wrong
 					   &(next_st->separatorCliques[next_ps.separatorCliquesSharedStructure.size()-li_size]),
 					   next_ps.separatorCliquesSharedStructure[next_ps.separatorCliquesSharedStructure.size()-li_size]);
+  //}
+
 #endif
   if (IM::messageGlb(IM::InferenceMemory, IM::Med+9)) {
     // FIXME - previous_st->reportMemoryUsageTo(previous_ps,stdout);
@@ -648,7 +682,7 @@ SparseJoinInference::deScatterOutofRoot(// the section
     IM::setGlbMsgLevel(IM::InferenceMemory, IM::glbMsgLevel(IM::DefaultModule));
   }
 
-
+#if 0
   for (unsigned i=0; i < roots.size(); ++i) {
     unsigned root = roots[i];
     infoMsg(IM::Inference, IM::Med+5,"DE: distributing out of section root %s,section[%d]: clique %d\n",
@@ -664,6 +698,15 @@ SparseJoinInference::deScatterOutofRoot(// the section
       deScatterToOutgoingSeparators(ss.maxCliquesSharedStructure[root],
 				    st.separatorCliques,
 				    ss.separatorCliquesSharedStructure.ptr);
+#else
+  unsigned root = roots[roots.size()-1];
+  infoMsg(IM::Inference, IM::Med+5,"DE: distributing out of section root %s,section[%d]: clique %d\n",
+	  sect_type_name, sect_num, root);
+  st.maxCliques[root].
+  deScatterToOutgoingSeparators(ss.maxCliquesSharedStructure[root],
+				st.separatorCliques,
+				ss.separatorCliquesSharedStructure.ptr);
+#endif
     for (unsigned msgNoP1=message_order.size();msgNoP1 > 0; msgNoP1 --) {
       const unsigned to = message_order[msgNoP1-1].first;
       const unsigned from = message_order[msgNoP1-1].second;
@@ -681,7 +724,9 @@ SparseJoinInference::deScatterOutofRoot(// the section
 				      st.separatorCliques,
 				      ss.separatorCliquesSharedStructure.ptr);
     }
+#if 0
   }
+#endif
   if (! myjt->section_debug_range.contains((int)sect_num)) {
     IM::setGlbMsgLevel(IM::InferenceMemory, inferenceMemoryDebugLevel);
     IM::setGlbMsgLevel(IM::Inference, inferenceDebugLevel);

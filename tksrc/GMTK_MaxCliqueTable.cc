@@ -4806,10 +4806,12 @@ deReceiveFromIncommingSeparator(MaxCliqueTable::SharedLocalStructure& sharedStru
   // FIXME - this needs to be deGatherFromIncomingSeparators()
 
   MaxClique& origin = *(sharedStructure.origin);
-  deReceiveFromIncommingSeparator(sharedStructure,
-				  separatorTableArray[origin.ceSendSeparators[0]],
-				  sepSharedStructureArray[origin.ceSendSeparators[0]]
+  for (unsigned i=0; i < origin.ceSendSeparators.size(); ++i) {
+	deReceiveFromIncommingSeparator(sharedStructure,
+				  separatorTableArray[origin.ceSendSeparators[i]],
+				  sepSharedStructureArray[origin.ceSendSeparators[i]]
 				  );
+  }
 }
 void 
 MaxCliqueTable::
