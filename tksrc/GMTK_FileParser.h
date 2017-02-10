@@ -427,6 +427,7 @@ public:
   // in condensed by writeGMId(), and it verifies that
   // the GM ID written matches the current template.
   bool readAndVerifyGMId(iDataStreamFile& is,const bool checkCardinality=true);
+  bool readAndVerifyGMIdJson(iDataStreamFile& is,const bool checkCardinality=true);
 
 
   //////////////////////////////////////////////////////////////

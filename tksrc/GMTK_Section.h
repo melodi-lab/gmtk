@@ -105,10 +105,21 @@ public:
 		      char section_type,
 		      string const &section_inf_alg,
 		      map< RVInfo::rvParent, RV* > &model_namePos2Var);
+  void readMaxCliques(iDataStreamFile& is,  
+          string const &ia_name,
+          char section_type,
+          string const &section_inf_alg,
+          map< RVInfo::rvParent, RV* > &model_namePos2Var,
+          Json::Value const & inference);
   void readInferenceArchitectureDefinition(iDataStreamFile &is,
 					   string const &ia_name,
 					   char section_type,
 					   string const &section_inf_alg);
+  void readInferenceArchitectureDefinition(iDataStreamFile &is,
+             string const &ia_name,
+             char section_type,
+             string const &section_inf_alg,
+             Json::Value const & inference);
   void triangulateSectionsByCliqueCompletion();
   void setCliquesFromAnotherSection(Section& p);
   void reportScoreStats();

@@ -328,6 +328,30 @@ getRVfromIS(iDataStreamFile &is,
   return (*loc).second;
 }
 
+
+RV *
+getRVfromIS(iDataStreamFile &is, 
+      map < RVInfo::rvParent, RV* > &namePos2Var,
+      char const *member_name, 
+      unsigned clique_index, unsigned rv_index,
+      Json::Value const var_frame)
+{
+  RVInfo::rvParent par;
+  par.first = var_frame[0].asString();
+  par.second = var_frame[1].asInt();
+  // is.read(par.first,"RV name");
+  // is.read(par.second,"RV frame");
+  
+  map < RVInfo::rvParent, RV* >::iterator loc;
+  loc = namePos2Var.find(par);
+  if (loc == namePos2Var.end())
+    error("ERROR: reading file %s line %d, %s %d has %d'th variable %s(%d) that does not exist.\n",
+    is.fileName(), is.lineNo(), member_name, clique_index, rv_index, par.first.c_str(), par.second);
+  return (*loc).second;
+}
+
+
+
 void
 readRVSetFromIS(iDataStreamFile &is,
 		char const *err_msg, char const *member_name,
@@ -339,6 +363,24 @@ readRVSetFromIS(iDataStreamFile &is,
   is.read(num_rvs, err_msg);
   for (unsigned j=0; j < num_rvs; ++j) {
     RV *rv = getRVfromIS(is, namePos2Var, member_name, clique_idx, j);
+    rv_set.insert(rv);
+  }
+}
+
+
+
+void
+readRVSetFromIS(iDataStreamFile &is,
+    char const *err_msg, char const *member_name,
+    unsigned clique_idx, 
+    map < RVInfo::rvParent, RV* > &namePos2Var,
+    set<RV*> &rv_set,
+    Json::Value const var_frame)
+{
+  unsigned num_rvs = var_frame.size();
+  // is.read(num_rvs, err_msg);
+  for (unsigned j=0; j < num_rvs; ++j) {
+    RV *rv = getRVfromIS(is, namePos2Var, member_name, clique_idx, j, var_frame[j]);
     rv_set.insert(rv);
   }
 }
@@ -488,6 +530,194 @@ assert(cliques[cliques.size()-1].dispositionSortedAssignedNodes.ptr == NULL);
 }
 
 
+
+
+void
+Section::
+readMaxCliques(iDataStreamFile& is,
+         string const &ia_name,
+         char section_type,
+         string const &section_inf_alg,
+         map< RVInfo::rvParent, RV* > &model_namePos2Var,
+         Json::Value const & inference)
+{
+
+  string dictionary_key = makeDictionaryKey(ia_name, section_type);
+
+  // read triangulation method used to produce these cliques.
+  if (!inference.isMember("tri_method")) {
+    error("ERROR: json file %s section %s %c inference_arch does not have tri_method field\n", 
+      is.fileName(), ia_name.c_str(), section_type);
+  }
+  triMethod = inference["tri_method"].asString();
+  // is.read(triMethod,"triangulation method string");
+
+
+  // read number of cliques
+  unsigned numCliques = inference.get("num", 0).asInt();
+
+  // is.read(numCliques,"number of cliques");
+#if 0
+  // remove check for numCliques being > 0 since we now allow for empty sections.
+  if (numCliques == 0)
+    error("ERROR: reading file '%s' line %d, numCliques must be >= 1\n",
+    is.fileName(),is.lineNo());
+#endif
+
+  // create a map for easy access to set of nodes in this section
+  // model_namePos2Var includes all model RVs for cumulative sets
+  map < RVInfo::rvParent, RV* > namePos2Var;
+  for (set<RV*>::iterator i=nodes.begin();
+       i != nodes.end(); i++) {
+    RV* rv = (*i);
+    RVInfo::rvParent par;
+    par.first = rv->name();
+    par.second = rv->frame();
+    namePos2Var[par] = rv;
+  }
+
+  if (!inference.isMember("clique_inference")) {
+    error("ERROR: json file %s section %s %c inference_arch does not have clique_inference field\n", 
+      is.fileName(), ia_name.c_str(), section_type);
+  }
+
+  const Json::Value cinfer = inference["clique_inference"];
+  if (numCliques != cinfer.size()) {
+    error("ERROR: json file %s section %s %c inference_arch num of cliques %d does not match clique_inference list\n", 
+      is.fileName(), ia_name.c_str(), section_type, numCliques, cinfer.size());
+  }
+
+  vector<unsigned> disposition_vector;
+  cliques.reserve(numCliques); // required to avoid dtor of MaxCliques due to resizing, which breaks sArray members
+  for (unsigned i=0;i<numCliques;i++) {
+    set<RV*> clique;
+    
+    unsigned cliqueNo = cinfer[i].get("index", numCliques + 1).asInt();
+    // is.read(cliqueNo,"clique number value");
+
+    if (cliqueNo != i)
+      error("ERROR: reading file %s, line %d, bad cliqueNo (= %d) when reading cliques, out of sequence, should be = %d instead.\n",
+      is.fileName(),is.lineNo(),cliqueNo,i);
+    string clique_name = cinfer[i].get("name", "nullGarbageuaidsofnqewnmzxcvString").asString();
+    // is.read(clique_name, "clique name");
+
+    if (clique_name_dictionary[ dictionary_key ].find(clique_name) != clique_name_dictionary[ dictionary_key ].end()) {
+      error("ERROR: clique name '%s' already defined in file '%s' line %d\n",
+      clique_name.c_str(), is.fileName(), is.lineNo());
+    }
+    clique_name_dictionary[ dictionary_key ][ clique_name ] = i;
+
+    if (!cinfer[i].isMember("var_frame")) {
+      error("ERROR: json file %s section %s %c inference_arch clique_inference %d does not have var_frame field\n", 
+      is.fileName(), ia_name.c_str(), section_type, i);
+    }
+
+    unsigned cliqueSize = cinfer[i]["var_frame"].size();
+    // is.read(cliqueSize,"clique size value");
+
+#if 0
+    // unsigned can never be less than 0
+    if (cliqueSize <= 0)
+      error("ERROR: reading file %s line %d, reading clique number %d, but clique size %d must be >= 1\n",
+      is.fileName(),is.lineNo(),i,cliqueSize);
+#endif
+
+    for (unsigned j=0;j<cliqueSize;j++) {
+      RV *rv = getRVfromIS(is, namePos2Var, "clique RV node specification", i, j, cinfer[i]["var_frame"][j]);
+      clique.insert(rv);
+    }
+    assert(cliques.size() == i);
+
+    cliques.push_back(MaxClique(clique));
+assert(cliques[cliques.size()-1].dispositionSortedAssignedNodes.ptr == NULL);
+    disposition_vector.clear();
+    // read cliques[i].assigedNodes & sortedAssignedNodes & dispostitions
+
+    if (!cinfer[i].isMember("sorted_assigned")) {
+      error("ERROR: json file %s section %s %c inference_arch clique_inference %d does not have sorted_assigned field\n", 
+      is.fileName(), ia_name.c_str(), section_type, i);
+    }
+    unsigned num_sorted_assigned = cinfer[i]["sorted_assigned"].size();
+    // is.read(num_sorted_assigned, "number of sorted assigned RVs");
+
+    for (unsigned j=0; j < num_sorted_assigned; ++j) {
+      RV *rv = getRVfromIS(is, namePos2Var, "clique assigned RV specification", i, j, cinfer[i]["sorted_assigned"][j]);
+      unsigned disposition = cinfer[i]["sorted_assigned"][j][2].asInt();
+      // is.read(disposition, "assigned RV disposition");
+//printf("read RV: %s(%d) %u", rv->name().c_str(), rv->frame(), disposition);
+      cliques[i].assignedNodes.insert(rv);
+      if (disposition != MaxClique::AN_CONTINUE) {
+//printf("  sass %lu/%lu = %u", cliques[i].sortedAssignedNodes.size(), disposition_vector.size(),disposition);
+  cliques[i].sortedAssignedNodes.push_back(rv);
+  disposition_vector.push_back(disposition);
+      }
+//printf("\n");
+    }
+    cliques[i].dispositionSortedAssignedNodes.resize(disposition_vector.size());
+    for (unsigned j=0; j < disposition_vector.size(); ++j) {
+      cliques[i].dispositionSortedAssignedNodes[j] = (MaxClique::AssignedNodeDisposition)disposition_vector[j];
+    }
+    // read cliques[i].assignedProbNodes
+
+    if (!cinfer[i].isMember("assigned_prob")) {
+      error("ERROR: json file %s section %s %c inference_arch clique_inference %d does not have assigned_prob field\n", 
+      is.fileName(), ia_name.c_str(), section_type, i); 
+    }
+    readRVSetFromIS(is, "number of assigned probability RVs", "clique assigned probability RV specification",
+        i, namePos2Var, cliques[i].assignedProbNodes, cinfer[i]["assigned_prob"]);
+
+
+    if (!cinfer[i].isMember("cumulative_assigned")) {
+      error("ERROR: json file %s section %s %c inference_arch clique_inference %d does not have cumulative_assigned field\n", 
+      is.fileName(), ia_name.c_str(), section_type, i); 
+    }
+    // read cliques[i].cumulativeAssignedNodes
+    readRVSetFromIS(is, "number of cumulative assigned RVs", "cumulative assigned RV specification",
+        i, model_namePos2Var, cliques[i].cumulativeAssignedNodes, cinfer[i]["cumulative_assigned"]);
+
+
+    if (!cinfer[i].isMember("cumulative_assigned_prob")) {
+      error("ERROR: json file %s section %s %c inference_arch clique_inference %d does not have cumulative_assigned_prob field\n", 
+      is.fileName(), ia_name.c_str(), section_type, i); 
+    }
+    // read cliques[i].cumulativeAssignedProbNodes
+    readRVSetFromIS(is, "number of cumulative assigned probability RVs", 
+        "cumulative assigned probability RV specification",
+        i, model_namePos2Var, cliques[i].cumulativeAssignedProbNodes, cinfer[i]["cumulative_assigned_prob"]);
+
+    if (!cinfer[i].isMember("union_incomming_seps")) {
+      error("ERROR: json file %s section %s %c inference_arch clique_inference %d does not have union_incomming_seps field\n", 
+      is.fileName(), ia_name.c_str(), section_type, i); 
+    }
+    // read cliques[i].unionIncomingCESeps
+    readRVSetFromIS(is, "number of incomming separator RVs", 
+        "incomming separator RV specification",
+        i, namePos2Var, cliques[i].unionIncommingCESeps, cinfer[i]["union_incomming_seps"]);
+
+
+    if (!cinfer[i].isMember("unassigned_iterated")) {
+      error("ERROR: json file %s section %s %c inference_arch clique_inference %d does not have unassigned_iterated field\n", 
+      is.fileName(), ia_name.c_str(), section_type, i); 
+    }
+    // read cliques[i].unassignedIteratedNodes
+    readRVSetFromIS(is, "number of unassigned iterated RVs", 
+        "unassigned iterated RV specification",
+        i, namePos2Var, cliques[i].unassignedIteratedNodes, cinfer[i]["unassigned_iterated"]);
+
+
+    if (!cinfer[i].isMember("cumulative_unassigned_iterated")) {
+      error("ERROR: json file %s section %s %c inference_arch clique_inference %d does not have cumulative_unassigned_iterated field\n", 
+      is.fileName(), ia_name.c_str(), section_type, i); 
+    }    
+    // read cliques[i].cumulativteUnassignedIteratedNodes
+    readRVSetFromIS(is, "number of cumulative unassigned iterated RVs", 
+        "cumulative unassigned iterated RV specification",
+        i, model_namePos2Var, cliques[i].cumulativeUnassignedIteratedNodes, cinfer[i]["cumulative_unassigned_iterated"]);
+  }
+
+}
+
+
 /*-
  *-----------------------------------------------------------------------
  * Section::reportScoreStats()
@@ -572,6 +802,34 @@ readSectionInterface(iDataStreamFile &is, char const *side, map<string, unsigned
 }
 
 
+void
+readSectionInterface(iDataStreamFile &is, char const *side, map<string, unsigned> &dictionary, 
+         vector<unsigned> &interface, Json::Value const jsonInter) 
+{
+  unsigned i_size;
+  string msg(string(side) + string(" interface size"));
+  i_size = jsonInter.size();
+  // is.read(i_size, msg.c_str());
+  for (unsigned j=0; j < i_size; ++j) {
+    unsigned root_clique_idx;
+    root_clique_idx = j;
+    // is.read(root_clique_idx, string(string(side)+string(" interface source clique index")).c_str());
+    // if (root_clique_idx != j) {
+      // error("ERROR: expected %s interface source clique number %u, but got %u at line %d of '%s'\n",
+      // side, j, root_clique_idx, is.lineNo(), is.fileName());
+    // }
+    string root_clique_name = jsonInter[j].asString();
+    is.read(root_clique_name, string(string(side) + string(" interface source clique name")).c_str());
+    if (dictionary.find(root_clique_name) == dictionary.end()) {
+      error("ERROR: unknown clique name '%s' at %s interface %u at line %d in file '%s'\n",
+      root_clique_name.c_str(), side, j, is.lineNo(), is.fileName());
+    }
+    interface.push_back( dictionary[root_clique_name] );
+  }
+}
+
+
+
 void 
 Section::readInferenceArchitectureDefinition(iDataStreamFile &is,
 					     string const &ia_name,
@@ -640,6 +898,118 @@ Section::readInferenceArchitectureDefinition(iDataStreamFile &is,
   readSectionInterface(is, "left", dictionary, section_li);
   readSectionInterface(is, "right", dictionary, section_ri);
 }
+
+
+
+
+void 
+Section::readInferenceArchitectureDefinition(iDataStreamFile &is,
+               string const &ia_name,
+               char section_type,
+               string const &section_inf_alg,
+               Json::Value const & inference)
+{
+
+  if (!inference.isMember("message_order")) {
+    error("ERROR: json file %s section %s %c inference_arch does not have message_order field\n", 
+      is.fileName(), ia_name.c_str(), section_type);
+  }
+  const Json::Value mOrder = inference["message_order"];
+
+  string dictionary_key = makeDictionaryKey(ia_name, section_type);
+  map<string, unsigned> &dictionary = clique_name_dictionary[ dictionary_key ];
+
+  vector< pair<unsigned, unsigned> > msg_order;
+
+  unsigned num_msgs = mOrder.get("num_msg_forward", 0).asInt();
+  if (!mOrder.isMember("forward_messages")) {
+    error("ERROR: json file %s section %s %c message_order does not have forward_messages field\n", 
+      is.fileName(), ia_name.c_str(), section_type); 
+  }
+  if (num_msgs != mOrder["forward_messages"].size()){
+    error("ERROR: json file %s section %s %c message_order number of forward messages %d does not match num in the foward_messages list %d\n", 
+      is.fileName(), ia_name.c_str(), section_type, num_msgs, mOrder["forward_messages"].size());
+  }
+
+  // is.read(num_msgs, "number of messages");
+  for (unsigned i=0; i < num_msgs; ++i) {
+    unsigned index = i;
+    // is.read(index, "message number");
+    // if (index != i) {
+    //   error("ERROR: reading file '$s' line %d, bad message number (= %u) out of sequence, should be %u instead.\n",
+    //   is.fileName(), is.lineNo(), index, i);
+    // }
+    string source_clique_name, dest_clique_name;
+    source_clique_name = mOrder["forward_messages"][i][0].asString();
+    // is.read(source_clique_name, "message source clique name");
+    if (dictionary.find(source_clique_name) == dictionary.end()) {
+      error("ERROR: unknown source clique name '%s' in message %u at line %d in file '%s'\n", 
+      source_clique_name.c_str(), i, is.lineNo(), is.fileName());
+    }
+    dest_clique_name = mOrder["forward_messages"][i][1].asString();
+    // is.read(dest_clique_name, "message destination clique name");
+    if (dictionary.find(dest_clique_name) == dictionary.end()) {
+      error("ERROR: unknown source clique name '%s' in message %u at line %d in file '%s'\n", 
+      dest_clique_name.c_str(), i, is.lineNo(), is.fileName());
+    }
+    pair<unsigned, unsigned> msg(dictionary[source_clique_name], dictionary[dest_clique_name]);
+    msg_order.push_back(msg);
+  }
+  ia_message_order[dictionary_key] = msg_order;
+
+  // forward pass backwards messages to make multiple right interface cliques consistent
+  // before projecting down for next section
+
+  msg_order.clear();
+
+  num_msgs = mOrder.get("num_msg_backward", 0).asInt();
+  if (!mOrder.isMember("backward_messages")) {
+    error("ERROR: json file %s section %s %c message_order does not have backward_messages field\n", 
+      is.fileName(), ia_name.c_str(), section_type); 
+  }
+  if (num_msgs != mOrder["backward_messages"].size()){
+    error("ERROR: json file %s section %s %c message_order number of backward messages %d does not match num in the backward_messages list %d\n", 
+      is.fileName(), ia_name.c_str(), section_type, num_msgs, mOrder["backward_messages"].size());
+  }
+  // is.read(num_msgs, "number of reverse messages");
+  for (unsigned i=0; i < num_msgs; ++i) {
+    unsigned index = i;
+    // is.read(index, "message number");
+    // if (index != i) {
+    //   error("ERROR: reading file '$s' line %d, bad message number (= %u) out of sequence, should be %u instead.\n",
+    //   is.fileName(), is.lineNo(), index, i);
+    // }
+    string source_clique_name, dest_clique_name;
+    source_clique_name = mOrder["backward_messages"][i][0].asString();
+    // is.read(source_clique_name, "message source clique name");
+    if (dictionary.find(source_clique_name) == dictionary.end()) {
+      error("ERROR: unknown source clique name '%s' in message %u at line %d in file '%s'\n", 
+      source_clique_name.c_str(), i, is.lineNo(), is.fileName());
+    }
+    dest_clique_name = mOrder["backward_messages"][i][1].asString();
+    // is.read(dest_clique_name, "message destination clique name");
+    if (dictionary.find(dest_clique_name) == dictionary.end()) {
+      error("ERROR: unknown source clique name '%s' in message %u at line %d in file '%s'\n", 
+      dest_clique_name.c_str(), i, is.lineNo(), is.fileName());
+    }
+    pair<unsigned, unsigned> msg(dictionary[source_clique_name], dictionary[dest_clique_name]);
+    msg_order.push_back(msg);
+  }
+  ia_rev_msg_order[dictionary_key] = msg_order;
+
+  // read section's left interface cliques
+  if (!mOrder.isMember("li")) {
+    error("ERROR: json file %s section %s %c inference_arch message_order does not have li field\n", 
+      is.fileName(), ia_name.c_str(), section_type);
+  }
+  readSectionInterface(is, "left", dictionary, section_li, mOrder["li"]);
+  if (!mOrder.isMember("li")) {
+    error("ERROR: json file %s section %s %c inference_arch message_order does not have ri field\n", 
+      is.fileName(), ia_name.c_str(), section_type);
+  }
+  readSectionInterface(is, "right", dictionary, section_ri, mOrder["ri"]);
+}
+
 
 /*-
  *-----------------------------------------------------------------------
