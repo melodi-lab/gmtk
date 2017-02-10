@@ -36,6 +36,8 @@ VCID(HGID)
 #include "fileParser.h"
 #include "sArray.h"
 
+#include <iostream>
+#include <fstream>
 
 #define MAXLINSIZEPLUS1 (262144)
 #define COMMENTCHAR '%'
@@ -208,7 +210,7 @@ void iDataStreamFile::initialize()
 
 #if defined(PIPE_ASCII_FILES_THROUGH_CPP) || defined(ENABLE_GZIP) || defined(ENABLE_BIZP2)
 iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary, bool _cppIfAscii, const char *const _cppCommandOptions,const char _extraCommentChar)
-  : ioDataStreamFile(_name,_Binary), cppIfAscii(!_Binary && _cppIfAscii), extraCommentChar(_extraCommentChar)
+  : ioDataStreamFile(_name,_Binary), cppIfAscii(!_Binary && _cppIfAscii), extraCommentChar(_extraCommentChar) 
 #else
 iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary,const char _extraCommentChar)
   : ioDataStreamFile(_name,_Binary),extraCommentChar(_extraCommentChar)
@@ -224,6 +226,16 @@ iDataStreamFile::iDataStreamFile(const char *const _name, bool _Binary,const cha
   }
 #endif
   piped = false;
+  
+  ifstream jsf(_name);
+  json_valid = json_reader.parse(jsf, json_root);
+  if(json_valid) {
+    printf("json file %s is valid\n", _name);
+  }
+  else {
+    printf("file %s is not json valid\n", _name);
+    cout << json_reader.getFormattedErrorMessages();
+  }
   initialize();
 }
 

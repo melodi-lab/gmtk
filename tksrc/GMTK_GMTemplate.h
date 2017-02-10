@@ -233,6 +233,7 @@ public:
 
   // Read partition information into file
   void readPartitions(iDataStreamFile& is);
+  void readPartitionsJson(iDataStreamFile& is);
 
   // Write clique information into file
   void writeMaxCliques(oDataStreamFile& os);
@@ -244,7 +245,14 @@ public:
 		      char section_type,
 		      string const &section_inf_alg);
 
+  void readMaxCliques(iDataStreamFile& is,
+          string const &ia_name,
+          char section_type,
+          string const &section_inf_alg,
+          Json::Value const & inference);
+
   void readInferenceArchitectures(iDataStreamFile &is);
+  void readInferenceArchitecturesJson(iDataStreamFile &is);
 
   // given the cliques, triangulate the partitions.
   void triangulatePartitionsByCliqueCompletion();

@@ -94,7 +94,8 @@ bin_search.cc \
 lms_filter.h lms_filter.cc \
 rls_filter.h rls_filter.cc \
 vhash_set.h \
-prime.h prime.c
+prime.h prime.c \
+jsoncpp.cpp 
 
 # GMTKCPPCMD is set to an appropriate default CPP for GMTK
 # to process its ASCII input files

@@ -29,6 +29,8 @@
 
 #include "general.h"
 
+#include <json/json.h>
+
 
 class ioDataStreamFile {
 
@@ -40,6 +42,7 @@ class ioDataStreamFile {
   string _fileName;
   // the current line number in the current file name (always 0 for binary file).
   int _curLineNo;
+
 
  public:
 
@@ -69,7 +72,13 @@ class iDataStreamFile : public ioDataStreamFile {
 #endif
   const char extraCommentChar;
 
+
  public:
+
+  bool json_valid;
+  Json::Value json_root;
+  Json::Reader json_reader;
+
 
 
 #define IDATASTREAMFILE_DEFAULT_EXTRA_COMMENT_CHAR '\1'

@@ -886,6 +886,9 @@ void
 GMTemplate::
 readPartitions(iDataStreamFile& is)
 {
+
+  if (is.json_valid) return readPartitionsJson(is);
+
   unsigned loc_S,loc_M;
   string loc_I;
 
@@ -1092,6 +1095,334 @@ readPartitions(iDataStreamFile& is)
   createPartitions(loc_P,loc_C,loc_E,loc_PCInterface,loc_CEInterface);
 
 }
+
+
+void
+GMTemplate::
+readPartitionsJson(iDataStreamFile& is)
+{
+
+
+  unsigned loc_S,loc_M;
+  string loc_I;
+
+  if (!is.json_root.isMember("section_info")) {
+    error("ERROR: json file does not have member section_info");
+  }
+  const Json::Value sectionInfo = is.json_root["section_info"];
+
+  loc_M = sectionInfo.get("M", 0).asInt();
+
+  if (loc_M == 0)
+    error("ERROR: reading file '%s' line %d, M (number of chunks in which to find interface boundary) must be >= 1\n",
+    is.fileName(),is.lineNo());
+
+  if (M == GMTEMPLATE_UNINITIALIZED_MS) {
+    // This is a const cast hack to get around the fact that member M
+    // is declared constant, in cases where we create an object with
+    // an uninitialized M.  Perhaps the right thing to do is to
+    // undeclare M constant.
+    unsigned* Mp = (unsigned*)&M;
+    *Mp = loc_M;
+  } else {
+    if (loc_M != M)
+      error("ERROR: reading file '%s' line %d, M (=%d) given in tri-file does not equal %d\n",
+      is.fileName(),is.lineNo(),loc_M,M);
+  }
+
+  loc_S = sectionInfo.get("S", 0).asInt();
+  if (loc_S == 0)
+    error("ERROR: reading file '%s' line %d, S (chunk skip) must be >= 1\n",
+    is.fileName(),is.lineNo());
+
+  if (S == GMTEMPLATE_UNINITIALIZED_MS) {
+    unsigned *Sp = (unsigned*)&S;
+    *Sp = loc_S;
+  } else {
+    if (loc_S != S)
+      error("ERROR: reading file '%s' line %d, S in file (%d) does not equal %d\n",
+      is.fileName(),is.lineNo(),loc_S,S);
+  }
+
+
+
+  // interface method
+  loc_I = sectionInfo.get("interface", "nullGarbageuaidsofnqewnmzxcvString").asString();
+  if (loc_I == "LEFT") {
+    leftInterface = true;
+  } else if  (loc_I == "RIGHT") {
+    leftInterface = false;
+  } else {
+      error("ERROR: reading file '%s' line %d, interface in file must be 'LEFT' or 'RIGHT' but got string '%s'\n",
+      is.fileName(),is.lineNo(),loc_I.c_str());
+  }
+
+  // read in information about method used to create current boundary
+  // is.read(boundaryMethod,"boundary method string");
+  boundaryMethod = sectionInfo.get("boundary_method", "nullGarbageuaidsofnqewnmzxcvString").asString();
+  if (boundaryMethod == "nullGarbageuaidsofnqewnmzxcvString") {
+    error("ERROR: reading file '%s' line boundary method string invalid\n",
+      is.fileName());
+  }
+
+
+  vector <RV*> unrolled_rvs;
+  map < RVInfo::rvParent, unsigned > positions;
+  fp.unroll(M+S-1,unrolled_rvs,positions);
+
+  // need to moralize.
+  for (unsigned i=0;i<unrolled_rvs.size();i++) {
+    unrolled_rvs[i]->createNeighborsFromParentsChildren();
+  }
+  // add edges from any extra factors in .str file
+  fp.addUndirectedFactorEdges(M+S-1,unrolled_rvs,positions);
+  for (unsigned i=0;i<unrolled_rvs.size();i++) {
+    unrolled_rvs[i]->moralize();    
+  }
+
+  // create temporary local variables.
+  set<RV*> loc_P;
+  set<RV*> loc_C;
+  set<RV*> loc_E;
+
+  unsigned setSize;
+  string str_tmp;
+
+
+  if (!sectionInfo.isMember("p_section")) {
+    error("ERROR: json file %s has no p section info\n", is.fileName());
+  }
+  if (!sectionInfo["p_section"].isMember("var_frame")) {
+    error("ERROR: json file %s p section info has no var_frame field\n", is.fileName());
+  }
+  // is.read(str_tmp,"P partition name");
+  // if (str_tmp != P_partition_name)
+    // error("ERROR: P partition information in file '%s' line %d is invalid for given graph structure\n",
+    // is.fileName(),is.lineNo());
+
+  setSize = sectionInfo["p_section"].get("num_var", 0).asInt();
+
+  const Json::Value var_frame_p = sectionInfo["p_section"]["var_frame"];
+  if (setSize != var_frame_p.size()) {
+    error("ERROR: json file %s p section info field var_frame size %d does not match given size %d\n", 
+      is.fileName(), var_frame_p.size(), setSize);
+  }
+  // is.read(setSize,"P partition set size");
+  for (unsigned i=0;i<setSize;i++) {
+    RVInfo::rvParent par;
+    par.first = var_frame_p[i][0].asString();
+    par.second = var_frame_p[i][1].asInt();
+    // is.read(par.first,"parent name");
+    // is.read(par.second,"parent position");
+
+    map < RVInfo::rvParent, unsigned >::iterator loc;
+    loc = positions.find(par);
+    if (loc == positions.end())
+      error("ERROR: P partition information in file '%s' line %d is invalid for given graph structure\n",
+      is.fileName(),is.lineNo());
+    loc_P.insert(unrolled_rvs[(*loc).second]);
+  }
+
+
+
+
+  if (!sectionInfo.isMember("c_section")) {
+    error("ERROR: json file %s has no c section info\n", is.fileName());
+  }
+  if (!sectionInfo["c_section"].isMember("var_frame")) {
+    error("ERROR: json file %s c section info has no var_frame field\n", is.fileName());
+  }
+
+  // is.read(str_tmp,"C partition name");
+  // if (str_tmp != C_partition_name)
+    // error("ERROR: C partition information in file '%s' line %d is invalid for given graph structure\n",
+    // is.fileName(),is.lineNo());
+
+  setSize = sectionInfo["c_section"].get("num_var", 0).asInt();
+
+  const Json::Value var_frame_c = sectionInfo["c_section"]["var_frame"];
+  if (setSize != var_frame_c.size()) {
+    error("ERROR: json file %s c section info field var_frame size %d does not match given size %d\n", 
+      is.fileName(), var_frame_c.size(), setSize);
+  }
+  // is.read(setSize,"C partition set size");
+  if (setSize == 0)
+    error("ERROR: C partition information in file '%s' line %d specifies no variables. C partition must not be empty.\n",
+    is.fileName(),is.lineNo());
+  for (unsigned i=0;i<setSize;i++) {
+    RVInfo::rvParent par;
+    par.first = var_frame_c[i][0].asString();
+    par.second = var_frame_c[i][1].asInt();
+    // is.read(par.first,"parent name");
+    // is.read(par.second,"parent position");
+
+    map < RVInfo::rvParent, unsigned >::iterator loc;
+    loc = positions.find(par);
+    if (loc == positions.end())
+      error("ERROR: C partition information in file '%s' line %d is invalid for given graph structure\n",
+      is.fileName(),is.lineNo());
+    loc_C.insert(unrolled_rvs[(*loc).second]);
+  }
+
+
+
+
+  if (!sectionInfo.isMember("e_section")) { 
+    error("ERROR: json file %s has no e section info\n", is.fileName());
+  }
+  if (!sectionInfo["e_section"].isMember("var_frame")) {
+    error("ERROR: json file %s e section info has no var_frame field\n", is.fileName());
+  }
+
+  // is.read(str_tmp,"E partition name");
+  // if (str_tmp != E_partition_name)
+    // error("ERROR: E partition information in file '%s' line %d is invalid for given graph structure\n",
+    // is.fileName(),is.lineNo());
+
+  setSize = sectionInfo["e_section"].get("num_var", 0).asInt();
+
+  const Json::Value var_frame_e = sectionInfo["e_section"]["var_frame"];
+  if (setSize != var_frame_e.size()) {
+    error("ERROR: json file %s e section info field var_frame size %d does not match given size %d\n", 
+      is.fileName(), var_frame_e.size(), setSize);
+  }
+  // is.read(setSize,"E partition set size");
+  for (unsigned i=0;i<setSize;i++) {
+    RVInfo::rvParent par;
+    par.first = var_frame_e[i][0].asString();
+    par.second = var_frame_e[i][1].asInt();
+    // is.read(par.first,"parent name");
+    // is.read(par.second,"parent position");
+
+    map < RVInfo::rvParent, unsigned >::iterator loc;
+    loc = positions.find(par);
+    if (loc == positions.end())
+      error("ERROR: E partition information in file '%s' line %d is invalid for given graph structure\n",
+      is.fileName(),is.lineNo());
+    loc_E.insert(unrolled_rvs[(*loc).second]);
+  }
+
+  //////////////////////////////////////////////
+  // next, read in the interface definitions. //
+  //////////////////////////////////////////////
+  vector< set<RV*> > loc_PCInterface;
+  vector< set<RV*> > loc_CEInterface;
+
+  // get PC interface
+  if (!sectionInfo.isMember("pc_interface")) { 
+    error("ERROR: json file %s has no pc_interface info\n", is.fileName());
+  }
+  if (!sectionInfo["pc_interface"].isMember("interface")) {
+    error("ERROR: json file %s pc_interface info has no interface field\n", is.fileName());
+  }
+
+
+  // is.read(str_tmp,"PC interface name");
+  // if (str_tmp != PC_interface_name)
+  //   error("ERROR: PC interface information in file '%s' line %d is invalid for given graph structure\n",
+  //   is.fileName(),is.lineNo());
+
+  unsigned numInterfaceSeparators = sectionInfo["pc_interface"].get("num", 0).asInt();
+  // is.read(numInterfaceSeparators, "Number of PC interface separators");
+  loc_PCInterface.resize(numInterfaceSeparators);
+  for (unsigned curSep=0; curSep < numInterfaceSeparators; ++curSep) {
+
+    const Json::Value interface = sectionInfo["pc_interface"]["interface"][curSep];
+    unsigned sepNum = interface.get("index", 0).asInt();
+    // is.read(sepNum, "Current PC separator index");
+
+    if (sepNum != curSep) {
+      error("ERROR: PC interface information in file '%s' line %d expected separator number %u but got %u\n",
+      is.fileName(), is.lineNo(), curSep, sepNum);
+    }
+
+    if (!interface.isMember("var_frame")) {
+      error("ERROR: PC interface information in file '%s' interface %d does not have var_frame field\n",
+        is.fileName(), curSep);
+    }
+    setSize = interface["var_frame"].size();
+    // is.read(setSize,"PC interface set size");
+
+    for (unsigned i=0;i<setSize;i++) {
+      RVInfo::rvParent par;
+      par.first = interface["var_frame"][i][0].asString();
+      par.second = interface["var_frame"][i][1].asInt();
+      // is.read(par.first,"parent name");
+      // is.read(par.second,"parent position");
+
+      map < RVInfo::rvParent, unsigned >::iterator loc;
+      loc = positions.find(par);
+      if (loc == positions.end())
+  error("ERROR: PC interface information in file '%s' line %d is invalid for given graph structure\n",
+        is.fileName(),is.lineNo());
+      loc_PCInterface[curSep].insert(unrolled_rvs[(*loc).second]);
+    }
+  }
+
+
+  // get CE interface
+
+    // get PC interface
+  if (!sectionInfo.isMember("ce_interface")) { 
+    error("ERROR: json file %s has no ce_interface info\n", is.fileName());
+  }
+  if (!sectionInfo["ce_interface"].isMember("interface")) {
+    error("ERROR: json file %s ce_interface info has no interface field\n", is.fileName());
+  }
+
+  // is.read(str_tmp,"CE interface name");
+  // if (str_tmp != CE_interface_name)
+  //   error("ERROR: CE interface information in file '%s' line %d is invalid for given graph structure\n",
+  //   is.fileName(),is.lineNo());
+
+  numInterfaceSeparators = sectionInfo["ce_interface"].get("num", 0).asInt();
+  // is.read(numInterfaceSeparators, "Number of CE interface separators");
+  loc_CEInterface.resize(numInterfaceSeparators);
+  for (unsigned curSep=0; curSep < numInterfaceSeparators; ++curSep) {
+
+    const Json::Value interface = sectionInfo["ce_interface"]["interface"][curSep];
+    unsigned sepNum = interface.get("index", 0).asInt();
+    // unsigned sepNum;
+    // is.read(sepNum, "Current CE separator index");
+    if (sepNum != curSep) {
+      error("ERROR: CE interface information in file '%s' line %d expected separator number %u but got %u\n",
+      is.fileName(), is.lineNo(), curSep, sepNum);
+    }
+
+
+    if (!interface.isMember("var_frame")) {
+      error("ERROR: PC interface information in file '%s' interface %d does not have var_frame field\n",
+        is.fileName(), curSep);
+    }
+    setSize = interface["var_frame"].size();
+    // is.read(setSize,"CE interface set size");
+    for (unsigned i=0;i<setSize;i++) {
+      RVInfo::rvParent par;
+      par.first = interface["var_frame"][i][0].asString();
+      par.second = interface["var_frame"][i][1].asInt();
+      // is.read(par.first,"parent name");
+      // is.read(par.second,"parent position");
+
+      map < RVInfo::rvParent, unsigned >::iterator loc;
+      loc = positions.find(par);
+      if (loc == positions.end())
+  error("ERROR: CE interface information in file '%s' line %d is invalid for given graph structure\n",
+        is.fileName(),is.lineNo());
+      loc_CEInterface[curSep].insert(unrolled_rvs[(*loc).second]);
+    }
+  }
+
+  /////////////////////////////////////////////////////////////////////
+  // finally create a new variable set for each, make the interfaces
+  // complete, and finish up.
+
+  createPartitions(loc_P,loc_C,loc_E,loc_PCInterface,loc_CEInterface);
+
+
+}
+
+
+
 
 /*-
  *-----------------------------------------------------------------------
@@ -1506,6 +1837,7 @@ accumulateNamePos2Var(map<RVInfo::rvParent, RV*> &model_namePos2Var, Section con
   }
 }
 
+
 void
 GMTemplate::
 readMaxCliques(iDataStreamFile& is,  
@@ -1530,7 +1862,34 @@ readMaxCliques(iDataStreamFile& is,
 
 void
 GMTemplate::
+readMaxCliques(iDataStreamFile& is,  
+         string const &ia_name,
+         char section_type,
+         string const &section_inf_alg,
+         Json::Value const & inference)
+{
+  map< RVInfo::rvParent, RV* > model_namePos2Var;
+  accumulateNamePos2Var(model_namePos2Var, E); // E C P so rv will be from earliest section
+  accumulateNamePos2Var(model_namePos2Var, C);
+  accumulateNamePos2Var(model_namePos2Var, P);
+
+  P.readMaxCliques(is, ia_name, section_type, section_inf_alg, model_namePos2Var, inference);
+  C.readMaxCliques(is, ia_name, section_type, section_inf_alg, model_namePos2Var, inference);
+  // C can't be empty.
+  if (C.cliques.size() == 0)
+    error("ERROR: reading file '%s' near line %d. Number of cliques in the C partition must be >= 1\n",
+    is.fileName(),is.lineNo());
+  E.readMaxCliques(is, ia_name, section_type, section_inf_alg, model_namePos2Var);
+}
+
+
+
+void
+GMTemplate::
 readInferenceArchitectures(iDataStreamFile &is) {
+
+  if (is.json_valid) return readInferenceArchitecturesJson(is);  
+
   // FIXME - implement ia identifiers and section inference algorithm support
   map< RVInfo::rvParent, RV* > model_namePos2Var;
   accumulateNamePos2Var(model_namePos2Var, E); // E C P so rv will be from earliest section
@@ -1564,6 +1923,91 @@ readInferenceArchitectures(iDataStreamFile &is) {
     } else {
       error("Unkown section inference algorithm '%s', must be SPARSE_JOIN or PEDAGOGICAL.",
 	    section_inference_alg.c_str());
+    }
+  }
+}
+
+
+
+
+
+
+void
+GMTemplate::
+readInferenceArchitecturesJson(iDataStreamFile &is) {
+
+  if (!is.json_root.isMember("inference_info")) {
+    error("ERROR: json file does not have member inference_info");
+  }
+  const Json::Value inferenceInfo = is.json_root["inference_info"];
+  if (!inferenceInfo.isMember("p_inference")) {
+    error("ERROR: json file inference_info field does not have member p_inference");
+  }
+  if (!inferenceInfo.isMember("c_inference")) {
+    error("ERROR: json file inference_info field does not have member c_inference");
+  }
+  if (!inferenceInfo.isMember("e_inference")) {
+    error("ERROR: json file inference_info field does not have member e_inference");
+  }
+
+  map< RVInfo::rvParent, RV* > model_namePos2Var;
+  accumulateNamePos2Var(model_namePos2Var, E); // E C P so rv will be from earliest section
+  accumulateNamePos2Var(model_namePos2Var, C);
+  accumulateNamePos2Var(model_namePos2Var, P);
+
+
+  for (unsigned i=0; i < 3; ++i) { // FIXME - N ias, index ia stanzas
+    string ia_name, section_inference_alg;
+    char section_type;
+
+    Json::Value inference;
+    if (i == 0) {
+      inference = inferenceInfo["p_inference"];
+      ia_name = inference["name"].asString();
+      section_type = 'P';
+      section_inference_alg = inference["alg"].asString();
+    }
+    else if (i == 1) {
+      inference =  inferenceInfo["c_inference"];
+      ia_name = inference["name"].asString();
+      section_type = 'C';
+      section_inference_alg = inference["alg"].asString();
+    }
+    else {
+      inference =  inferenceInfo["e_inference"];
+      ia_name = inference["name"].asString();
+      section_type = 'E';
+      section_inference_alg = inference["alg"].asString();
+    }
+    // is.read(ia_name, "inference architecture identifier");
+    // is.read(section_type, "section type");
+    // is.read(section_inference_alg, "section inference algorithm");
+
+    if (!inference.isMember("inference_arch")) {
+      error("ERROR: json file %s inference_info field %s %c does not have member inference_arch\n",
+        is.fileName(), ia_name.c_str(), section_type);
+    }
+
+    switch (section_type) {
+    case 'P': 
+      P.readMaxCliques(is, ia_name, section_type, section_inference_alg, model_namePos2Var, inference["inference_arch"]); 
+      P.readInferenceArchitectureDefinition(is, ia_name, section_type, section_inference_alg, inference["inference_arch"]);
+      break;
+    case 'C': 
+      C.readMaxCliques(is, ia_name, section_type, section_inference_alg, model_namePos2Var, inference["inference_arch"]); 
+      C.readInferenceArchitectureDefinition(is, ia_name, section_type, section_inference_alg, inference["inference_arch"]);
+      break;
+    case 'E': 
+      E.readMaxCliques(is, ia_name, section_type, section_inference_alg, model_namePos2Var, inference["inference_arch"]); 
+      E.readInferenceArchitectureDefinition(is, ia_name, section_type, section_inference_alg, inference["inference_arch"]);
+      break;
+    default: error("Unknown section type '%c', must be P C or E.", section_type);
+    }
+    if (section_inference_alg == sparse_join_alg_name) {
+    } else if (section_inference_alg == pedagogical_alg_name) {
+    } else {
+      error("Unkown section inference algorithm '%s', must be SPARSE_JOIN or PEDAGOGICAL.",
+      section_inference_alg.c_str());
     }
   }
 }

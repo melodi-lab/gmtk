@@ -20,6 +20,9 @@
 #include <float.h>
 #include <assert.h>
 
+#include <iostream>
+#include <climits>
+
 #include "general.h"
 #include "error.h"
 #include "rand.h"
@@ -4508,14 +4511,18 @@ FileParser::writeGMId(oDataStreamFile& os)
 bool
 FileParser::readAndVerifyGMId(iDataStreamFile& is,const bool checkCardinality)
 {
+
+  if (is.json_valid) return readAndVerifyGMIdJson(is, checkCardinality);
+
   // just go through and make sure everything is the same.
 
   // variables for checking
   int ival;
   unsigned uval;
   string nm;
-  bool warned = false; 
- 
+  bool warned = false;
+
+  
   for (unsigned i=0;i<rvInfoVector.size();i++) {
 
     if (!is.read(uval)) return false;
@@ -4706,6 +4713,192 @@ FileParser::readAndVerifyGMId(iDataStreamFile& is,const bool checkCardinality)
   return true;
 }
 
+
+
+bool
+FileParser::readAndVerifyGMIdJson(iDataStreamFile& is,const bool checkCardinality) {
+
+  int ival;
+  unsigned uval;
+  string nm;
+  bool warned;
+
+  if (!is.json_root.isMember("gmid")) {
+    warning("WARNING: json file does not have member gmid to verify graph info");
+    return false;
+  }
+  // const Json::Value gmid = is.json_root["gmid"];
+  // string encoding = gmid.asString();
+  // cout << encoding;
+  if (!is.json_root["gmid"].isMember("info_vec")) {
+    warning("WARNING: field gmid does not have member info_vec to verify graph info");
+    return false;
+
+  }
+  const Json::Value infovec = is.json_root["gmid"]["info_vec"];
+  // printf("%d\n", infovec.size());
+
+  unsigned rvInfoVectorSize = rvInfoVector.size();
+  if (infovec.size() != rvInfoVectorSize) {
+      warning("WARNING: GM ID number of entries does not match: %d as in json file %s, %d as expected.", 
+        infovec.size(), is.fileName(), rvInfoVectorSize);
+      return false;
+  }
+
+  for (unsigned i=0;i<rvInfoVectorSize;i++) {
+
+    unsigned id = infovec[i].get("id", rvInfoVectorSize).asInt();
+    if (id != i) {
+      warning("WARNING: Triangulation file '%s' has out-of-order GM ID entries", is.fileName());
+      return false;
+    }
+    // printf("%d\n", id);
+
+
+    nm = infovec[i].get("v_name", "nullGarbageuaidsofnqewnmzxcvString").asString();
+    if (nm != rvInfoVector[i].name) {
+      warning("WARNING: Triangulation file '%s' has variable %s at position %u, expected %s",
+        is.fileName(), nm.c_str(), i, rvInfoVector[i].name.c_str());
+      return false;
+    }
+
+    uval = infovec[i].get("v_frame", ULONG_MAX).asInt();
+    if (!is.read(uval)) return false;
+    if (uval != rvInfoVector[i].frame) {
+      warning("WARNING: Triangulation file '%s' has variable %s(%u), expected %s(%u)",
+        is.fileName(), rvInfoVector[i].name.c_str(), uval, rvInfoVector[i].name.c_str(), rvInfoVector[i].frame);
+      return false;
+    }
+
+    if (checkCardinality) {
+      uval = infovec[i].get("cardinality", ULONG_MAX).asInt();
+      if (rvInfoVector[i].rvType == RVInfo::t_discrete) {
+        if (uval != rvInfoVector[i].rvCard) {
+          warning("WARNING: Triangulation file '%s' has cardinality %u for variable %s, expected %u\n",
+            is.fileName(), uval, rvInfoVector[i].name.c_str(), rvInfoVector[i].rvCard);
+          return false;
+        }
+        } else if (rvInfoVector[i].rvType == RVInfo::t_continuous && uval != 0 && !warned) {
+#ifdef CONTINUOUS_CARDINALITY_WARNING
+          warning("WARNING: Triangulation file '%s' was created by a buggy version of GMTK.\n"
+            "It will work fine as-is, but you can repair the file and eliminate this\n"
+            "warning by running the fixTri.sh script distributed with GMTK:\n"
+            "  %s/fixTri.sh %s\n", is.fileName(), BINDIR, is.fileName());
+#endif
+        warned = true;
+      }
+    }
+
+    nm = infovec[i].get("v_name", "nullGarbageuaidsofnqewnmzxcvString").asString();
+    if (rvInfoVector[i].rvType == RVInfo::t_discrete) {
+      if (nm != "D") {
+        warning("WARNING: Triangulation file '%s' has %s as continuous, expected discrete", 
+          is.fileName(), rvInfoVector[i].name.c_str());
+        return false;
+      }
+    } else {
+      if (nm != "C") {
+        warning("WARNING: Triangulation file '%s' has %s as discrete, expected continuous", 
+          is.fileName(), rvInfoVector[i].name.c_str());
+        return false;
+      }
+    }
+
+    if (!infovec[i].isMember("switch_parent")) {
+      warning("WARNING: switch_parent field not found in json file %s for variable %s",
+        is.fileName(), rvInfoVector[i].name.c_str());
+      return false;
+    }
+
+    uval = infovec[i]["switch_parent"].size();
+    if (uval != rvInfoVector[i].switchingParents.size()) {
+      warning("WARNING: Triangulation file '%s' has %u switching parents for variable %s, expected %u",
+        is.fileName(), uval, rvInfoVector[i].name.c_str(), rvInfoVector[i].switchingParents.size());
+      return false;
+    }
+
+    for (unsigned j=0;j<rvInfoVector[i].switchingParents.size();j++) {
+      if (infovec[i]["switch_parent"][j].size() != 2) {
+        warning("WARNING: Triangulation file '%s' has %u th swtiching parent entry invalid for variable %s",
+          is.fileName(), j, rvInfoVector[i].name.c_str());
+        return false;
+      }
+      nm = infovec[i]["switch_parent"][j][0].asString();
+      ival = infovec[i]["switch_parent"][1].asInt();
+
+      if (nm != rvInfoVector[i].switchingParents[j].first) {
+        warning("WARNING: Triangulation file '%s' has %s as the %uth switching parent of %s, expected %s",
+          is.fileName(), nm.c_str(), j, rvInfoVector[i].name.c_str(), rvInfoVector[i].switchingParents[j].first.c_str());
+        return false;
+      }
+
+      // if (!is.read(ival)) return false;
+      if (ival != rvInfoVector[i].switchingParents[j].second) {
+        warning("WARNING: Triangulation file '%s' has %s(%d) as the %uth switching parent of %s, expected %s(%d)",
+          is.fileName(), nm.c_str(), ival, j, rvInfoVector[i].name.c_str(), rvInfoVector[i].switchingParents[j].first.c_str(),
+          rvInfoVector[i].switchingParents[j].second);
+        return false;
+      }
+    }
+
+
+    if (!infovec[i].isMember("condition_parent_set")) {
+      warning("WARNING: condition_parent_set field not found in json file %s for variable %s",
+        is.fileName(), rvInfoVector[i].name.c_str());
+      return false;
+    }
+    const Json::Value cps = infovec[i]["condition_parent_set"];
+    uval = cps.size();
+    if (uval != rvInfoVector[i].conditionalParents.size()) {
+      warning("WARNING: Triangulation file '%s' has %u conditional parent sets for variable %s, expected %u",
+        is.fileName(), uval, rvInfoVector[i].name.c_str(), rvInfoVector[i].conditionalParents.size());
+      return false;
+    }
+
+
+    for (unsigned j=0;j<rvInfoVector[i].conditionalParents.size();j++) {
+
+      uval = cps[j].size();
+      if (uval != rvInfoVector[i].conditionalParents[j].size()) {
+        warning("WARNING: Triangulation file '%s' has %u conditional parents of variable %s in the %uth set, expected %u", 
+          is.fileName(), uval, rvInfoVector[i].name.c_str(), j, rvInfoVector[i].conditionalParents[j].size());
+        return false;
+      }
+
+      for (unsigned k=0;k<rvInfoVector[i].conditionalParents[j].size();k++) {
+        if (cps[j][k].size() != 2) {
+          warning("WARNING: Triangulation file '%s' has %u th conditional parent entry invalid for variable %s",
+            is.fileName(), j, rvInfoVector[i].name.c_str());
+          return false;
+        }
+
+        nm = cps[j][k][0].asString();
+        ival = cps[j][k][1].asInt();
+
+        if (nm != rvInfoVector[i].conditionalParents[j][k].first) {
+          warning("WARNING: Triangulation file '%s' has %s as conditional parent of %s, expected %s", 
+            is.fileName(), nm.c_str(), rvInfoVector[i].name.c_str(), rvInfoVector[i].conditionalParents[j][k].first.c_str());
+          return false;
+        }
+
+        if (ival != rvInfoVector[i].conditionalParents[j][k].second) {
+          warning("WARNING: Triangulation file '%s' has %s(%d) as conditional parent of %s, expected %s(%d)", 
+            is.fileName(), nm.c_str(), ival,  rvInfoVector[i].name.c_str(), rvInfoVector[i].conditionalParents[j][k].first.c_str(), 
+            rvInfoVector[i].conditionalParents[j][k].second);
+          return false;
+        }
+      } // End of condition parent loop
+
+
+    } // End of condition parent set loop
+
+
+  } //End of info vec loop
+
+  
+
+  return true;
+}
 
 /*-
  *-----------------------------------------------------------------------
