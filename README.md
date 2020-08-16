@@ -1,6 +1,9 @@
 
 ![GMTK Logo](/images/gmtk_logo.png=250x)
 
+<img src="/images/gmtk_logo.png" align="center" width="250">
+
+
 The Graphical Models Toolkit (GMTK) is an open source, publicly available toolkit for rapidly prototyping statistical models using dynamic graphical models (DGMs) and dynamic Bayesian networks (DBNs). GMTK can be used for applications and research in speech and language processing, bioinformatics, activity recognition, and any time series application. GMTK has many features, including exact and approximate inference; a large variety of built-in factors including dense, sparse, and deterministic conditional probability tables, native support for ARPA backoff-based factors and factored language models, parameter sharing, gamma and beta distributions, dense and sparse Gaussian factors, heterogeneous mixtures, deep neural network factors, and time-inhomogeneous trellis factors; arbitrary order embedded Markov chains; a GUI-based graph viewer; flexible feature-file support and processing tools (supporting pfiles, HTK files, ASCII/binary, and HDF5 files); and both offline and streaming online inference methods that can be used for both parameter learning and prediction. More information is available in the documentation. All in all, GMTK offers a flexible, concise, and expressive probabilistic modeling framework with which one may rapidly specify a vast collection of temporal statistical models.
 
 GMTK was developed by Prof. Jeff Bilmes, Richard Rogers, and a number
@@ -158,7 +161,3 @@ Subscribe to the email list at
 ```
 http://mailman.u.washington.edu/mailman/listinfo/gmtk-users
 ```
-
-
-======================================================================
-======================================================================
