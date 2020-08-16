@@ -1,46 +1,31 @@
- 
-======================================================================
-======================================================================
-======================================================================
 
-The Graphical Models Toolkit (GMTK) is an open source, publicly available 
-toolkit for rapidly prototyping statistical models using dynamic graphical 
-models (DGMs) and dynamic Bayesian networks (DBNs). GMTK can be used for 
-applications and research in speech and language processing, bioinformatics, 
-activity recognition, and any time series application. GMTK has many features, 
-including exact and approximate inference; a large variety of built-in 
-factors including dense, sparse, and deterministic conditional probability 
-tables, native support for ARPA backoff-based factors and factored language 
-models, parameter sharing, gamma and beta distributions, dense and sparse 
-Gaussian factors, heterogeneous mixtures, deep neural network factors, and 
-time-inhomogeneous trellis factors; arbitrary order embedded Markov chains; a 
-GUI-based graph viewer; flexible feature-file support and processing tools 
-(supporting pfiles, HTK files, ASCII/binary, and HDF5 files); and both 
-offline and streaming online inference methods that can be used for both 
-parameter learning and prediction. More information is available in the 
-documentation. All in all, GMTK offers a flexible, concise, and expressive 
-probabilistic modeling framework with which one may rapidly specify a vast 
-collection of temporal statistical models.
+![GMTK Logo](/images/gmtk_logo.png)
 
-GMTK was developed by Prof. Jeff Bilmes, Richard Rogers, and a number of 
-other individuals. Please see the documentation for complete details and 
-acknowledgments. Work on GMTK was supported by the TerraSwarm Research 
-Center, one of six centers administered by the STARnet phase of the Focus 
-Center Research Program (FCRP) a Semiconductor Research Corporation program 
-sponsored by MARCO and DARPA. Support was also provided by the National 
-Science Foundation grants CNS-0855230, IIS-0905341, IIS-0093430, IIS-0434720, 
-and IIS-0326382, DARPA's ASSIST Program (contract number NBCH-C-05-0137), NIH
-awards R01 GM096306 and P41 GM103533, an ONR MURI grant (No. N000140510388),
-and generous gifts by Microsoft Research, the Intel corporation, and Google.
+The Graphical Models Toolkit (GMTK) is an open source, publicly available toolkit for rapidly prototyping statistical models using dynamic graphical models (DGMs) and dynamic Bayesian networks (DBNs). GMTK can be used for applications and research in speech and language processing, bioinformatics, activity recognition, and any time series application. GMTK has many features, including exact and approximate inference; a large variety of built-in factors including dense, sparse, and deterministic conditional probability tables, native support for ARPA backoff-based factors and factored language models, parameter sharing, gamma and beta distributions, dense and sparse Gaussian factors, heterogeneous mixtures, deep neural network factors, and time-inhomogeneous trellis factors; arbitrary order embedded Markov chains; a GUI-based graph viewer; flexible feature-file support and processing tools (supporting pfiles, HTK files, ASCII/binary, and HDF5 files); and both offline and streaming online inference methods that can be used for both parameter learning and prediction. More information is available in the documentation. All in all, GMTK offers a flexible, concise, and expressive probabilistic modeling framework with which one may rapidly specify a vast collection of temporal statistical models.
 
-You can obtain the latest GMTK source, pre-compiled binary packages, 
-documentation, tutorials, and examples at http://melodi.ee.washington.edu/gmtk
+GMTK was developed by Prof. Jeff Bilmes, Richard Rogers, and a number
+of other individuals. Please see the PDF documentation for complete
+details and acknowledgments. Work on GMTK was supported by NIH award
+U01 HG009395 and by the CONIX Research Center, one of six centers in
+JUMP, a Semiconductor Research Corporation (SRC) program sponsored by
+DARPA. Support was also provided by the TerraSwarm Research Center,
+one of six centers administered by the STARnet phase of the Focus
+Center Research Program (FCRP) a Semiconductor Research Corporation
+program sponsored by MARCO and DARPA, the National Science Foundation
+grants CNS-0855230, IIS-0905341, IIS-0093430, IIS-0434720, and
+IIS-0326382, DARPA's ASSIST Program (contract number NBCH-C-05-0137),
+NIH awards R01 GM096306 and P41 GM103533, an ONR MURI grant
+(No. N000140510388), and generous gifts by Microsoft Research, the
+Intel corporation, and Google.
+
+Documentation for GMTK, and on dynamic graphical models
+in general, [is available in this PDF file](./documentation.pdf).
 
 
 			 How to compile GMTK
 
-                         Updated: June, 2015
- 
+                         Updated: Aug, 2020
+
 
 GMTK uses a simple GNU Autotools build process. The familiar
 
@@ -168,9 +153,6 @@ enjoy!!
      Subscribe to the email list at 
        http://mailman.u.washington.edu/mailman/listinfo/gmtk-users
 
-     For bugs:
-        -- https://j.ee.washington.edu/trac/gmtk/newticket
 
-   
 ======================================================================
 ======================================================================
