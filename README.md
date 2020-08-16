@@ -1,5 +1,5 @@
 
-![GMTK Logo](/images/gmtk_logo.png)
+![GMTK Logo](/images/gmtk_logo.png=250x)
 
 The Graphical Models Toolkit (GMTK) is an open source, publicly available toolkit for rapidly prototyping statistical models using dynamic graphical models (DGMs) and dynamic Bayesian networks (DBNs). GMTK can be used for applications and research in speech and language processing, bioinformatics, activity recognition, and any time series application. GMTK has many features, including exact and approximate inference; a large variety of built-in factors including dense, sparse, and deterministic conditional probability tables, native support for ARPA backoff-based factors and factored language models, parameter sharing, gamma and beta distributions, dense and sparse Gaussian factors, heterogeneous mixtures, deep neural network factors, and time-inhomogeneous trellis factors; arbitrary order embedded Markov chains; a GUI-based graph viewer; flexible feature-file support and processing tools (supporting pfiles, HTK files, ASCII/binary, and HDF5 files); and both offline and streaming online inference methods that can be used for both parameter learning and prediction. More information is available in the documentation. All in all, GMTK offers a flexible, concise, and expressive probabilistic modeling framework with which one may rapidly specify a vast collection of temporal statistical models.
 
@@ -21,22 +21,22 @@ Intel corporation, and Google.
 Documentation for GMTK, and on dynamic graphical models
 in general, [is available in this PDF file](./documentation.pdf).
 
-
-			 How to compile GMTK
-
-                         Updated: Aug, 2020
-
+#  How to compile GMTK
 
 GMTK uses a simple GNU Autotools build process. The familiar
 
-   ./configure && make && make install
+```
+./configure && make && make install
+```
 
 should work on the target platforms (Linux, Mac OS X, and Windows/Cygwin).
 Other POSIX-like platforms might work too. By default, the GMTK programs
 will be installed to /usr/local/bin. You can change that with the --prefix
 option to the configure script. See
 
-   ./configure --help
+```
+./configure --help
+```
 
 for full information on the available configure options.
 
@@ -47,7 +47,9 @@ other compilers that enable ISO C++ 2011 support with -std=c++0x or -std=c++11.
 For compilers for which that doesn't work, you may need to specify the 
 required command line arguments with something like
 
-  ./configure CXXFLAGS='<arguments to enable C++ 2011>' ...
+```
+./configure CXXFLAGS='<arguments to enable C++ 2011>' ...
+```
 
 If you build GMTK with a compiler that does not support ISO C++ 2011,
 the gmtkDMLPtrain program will not be compiled. You will also want to 
@@ -106,7 +108,9 @@ There are a few variables that control the flags passed to the C++
 compiler. You may want to specify them to the make command, though
 they all have reasonable defaults. For example, you might try
 
- make DEBUGFLAGS=-ggdb3 OPTFLAGS="-O3 -march=pentium4 -mfpmath=sse -ffast-math"
+```
+make DEBUGFLAGS=-ggdb3 OPTFLAGS="-O3 -march=pentium4 -mfpmath=sse -ffast-math"
+```
 
 The default is just generic optimization, but you might want to use
 something more aggressive (which can lead to significant speedups, but
@@ -114,7 +118,9 @@ also are such that if you run on the wrong architecture will produce
 illegal instructions and/or a bus error). If you wish to turn off all
 optimization, then do:
 
-     make OPTFLAGS= XOPTFLAGS=
+```
+make OPTFLAGS= XOPTFLAGS=
+```
 
 Turning off all optimizations will lead to significantly slower
 executation, but is very useful when debugging the code.
@@ -122,8 +128,10 @@ executation, but is very useful when debugging the code.
 
 You can also change the version of gcc/g++ that you use to compile 
 by specifying CC/CXX to the configure command:
-    
-     ./configure CC=gcc-4.2 CXX=g++-4.2
+
+```
+./configure CC=gcc-4.2 CXX=g++-4.2
+```
 
 You can set the CC and CXX variables in the make command as well, but
 it's safer to do so at configure time.
@@ -133,25 +141,23 @@ If you wish to create static binaries (i.e., ones that are not dependent
 on shared libraries), then assuming you've got the static libraries 
 installed, do
 
-    ./configure --disable-gmtkViz && make LDFLAGS=-static
+```
+./configure --disable-gmtkViz && make LDFLAGS=-static
+```
 
 Note, many of the above options can be combined.
 
-Don't forget to read the documentation. It can be found along with the latest
-GMTK distribution at:
-
-       http://melodi.ee.washington.edu/gmtk
-
-and will be updated in the near future. 
-
+Don't forget to read the [documentation](./documentation.pdf).
 
 enjoy!!
 
-	-- Jeff Bilmes
+-- Jeff Bilmes
 
-     For general questions:  gmtk-users@u.washington.edu
-     Subscribe to the email list at 
-       http://mailman.u.washington.edu/mailman/listinfo/gmtk-users
+For general questions:  gmtk-users@u.washington.edu
+Subscribe to the email list at
+```
+http://mailman.u.washington.edu/mailman/listinfo/gmtk-users
+```
 
 
 ======================================================================
