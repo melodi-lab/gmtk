@@ -11,9 +11,8 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([GMTK],m4_esyscmd([printf %s `head -n 1 RELEASE`]),
-        [https://j.ee.washington.edu/trac/gmtk/newticket])
-AM_INIT_AUTOMAKE([1.11 tar-ustar silent-rules -Wall -Werror foreign])
+AC_INIT([GMTK],[m4_esyscmd(printf %s `head -n 1 RELEASE`)],[https://j.ee.washington.edu/trac/gmtk/newticket])
+AM_INIT_AUTOMAKE([1.16 tar-ustar silent-rules -Wall -Werror foreign])
 AM_SILENT_RULES([yes])
 
 AC_ARG_ENABLE([register],
@@ -126,7 +125,7 @@ AC_ARG_ENABLE([continuous-cardinality-warning],
 
 AC_PROG_AWK
 
-if test -d $srcdir/.hg ; then
+if test -d $srcdir/.git ; then
   (cd $srcdir; ./version.sh) > version.info
 fi
 
