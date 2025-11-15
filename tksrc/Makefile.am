@@ -12,7 +12,7 @@ ACLOCAL_AMFLAGS = -I m4
 if HAVE_HG
 # this will keep the Mercurial revision id current if you're building 
 # in a working directory. If you're not, use the distributed hgstamp.h
-VERSIONFLAG = -DHGID="\"`hg id`\"" -DHGDATE="\"`hg parents --template '{date|date}'`\""
+VERSIONFLAG = -DHGID="\"`git rev-parse HEAD`\"" -DHGDATE="\"`git log --no-walk --first-parent --format='format:%aD' HEAD`\""
 else
 VERSIONFLAG = 
 endif

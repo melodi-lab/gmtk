@@ -2,7 +2,7 @@
 
 
 CORRECT_AC_VERSION="2.69"
-CORRECT_AM_VERSION="1.14"
+CORRECT_AM_VERSION="1.16"
 
 
 acversion=`autoconf --version | head -n 1 | awk '{print $4}'`

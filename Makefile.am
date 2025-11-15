@@ -34,25 +34,25 @@ PUBLISH=/g/melodi/html/web-pages/downloads/gmtk/mkhtml.sh
 # There should only be one release of a version number, so no -f on
 # the hg tag. If it fails, you probably forgot to update the RELEASE file.
 release: distcheck
-	hg tag v`cat RELEASE` -m "This is the "`cat RELEASE`" release"
-	hg push
+	git tag v`cat RELEASE` -m "This is the "`cat RELEASE`" release"
+	git push origin --tags
 	scp gmtk-`cat RELEASE`.tar.gz $(DOWNLOADS)
 	ssh $(PUBLISHHOST) $(PUBLISH)
 
 # Skip the distcheck because you've already done it and it's slow.
 # You're on your honor not to skip it :)
 quickrelease: dist
-	hg tag v`cat RELEASE` -m "This is the "`cat RELEASE`" release"
-	hg push
+	git tag v`cat RELEASE` -m "This is the "`cat RELEASE`" release"
+	git push origin --tags
 	scp gmtk-`cat RELEASE`.tar.gz $(DOWNLOADS)
 	ssh $(PUBLISHHOST) $(PUBLISH)
 
 # There can be lots of beta releases of the same version, even on the same
 # date. So hg tag -f, and also include date and hg id in the tarball name.
 beta-release: distcheck
-	hg tag -f v`cat RELEASE`+`date +%Y%m%d` \
+	git tag  v`cat RELEASE`+`date +%Y%m%d` \
 	  -m "This is the "`cat RELEASE`+`date +%Y%m%d`" release"
-	hg push
+	git push origin --tags
 	mv gmtk-`cat RELEASE`.tar.gz \
 	  gmtk-`cat RELEASE`+`date +%Y%m%d`.`hg id -i | tr ' ()' _`.tar.gz
 	scp gmtk-`cat RELEASE`+`date +%Y%m%d`.`hg id -i | tr ' ()' _`.tar.gz \
@@ -60,14 +60,14 @@ beta-release: distcheck
 	ssh $(PUBLISHHOST) $(PUBLISH)
 
 beta:
-	make VERSION=`cat RELEASE`+`date +%Y%m%d`.`hg id -i | tr ' ()' _` dist
+	make VERSION=`cat RELEASE`+`date +%Y%m%d`.`git rev-parse HEAD` dist
 
 revdist:
-	make VERSION=`cat RELEASE`+`hg id | tr ' ()' _` dist
+	make VERSION=`cat RELEASE`+`git rev-parse HEAD` dist
 
 datedist:
 	make VERSION=`cat RELEASE`+`date +"%Y-%m-%d"` dist
 
 hgdatedist:
-	make VERSION=`cat RELEASE`+`date +"%Y-%m-%d"`.`hg id | tr ' ()' _` dist
+	make VERSION=`cat RELEASE`+`date +"%Y-%m-%d"`.`git rev-parse HEAD` dist
 
